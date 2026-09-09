@@ -306,10 +306,10 @@ func (s *apiServer) publishedAuthorSeriesPage(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			previousToken = encodeSeriesCursor(pagination.Backward, order, seriesFilters{}, rows[0])
+			previousToken = encodeSeriesCursor(pagination.Backward, order, seriesFilters{}, seriesBoundary{row: rows[0]})
 		}
 		if hasNext {
-			nextToken = encodeSeriesCursor(pagination.Forward, order, seriesFilters{}, rows[len(rows)-1])
+			nextToken = encodeSeriesCursor(pagination.Forward, order, seriesFilters{}, seriesBoundary{row: rows[len(rows)-1]})
 		}
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
 		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, seriesFilters{}, keys)

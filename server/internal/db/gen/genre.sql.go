@@ -130,6 +130,30 @@ func (q *Queries) GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreB
 	return i, err
 }
 
+const getGenreIDByPublicIDForTenant = `-- name: GetGenreIDByPublicIDForTenant :one
+SELECT g.id
+FROM genres g
+WHERE g.tenant_id = $1
+    AND g.public_id = $2
+LIMIT 1
+`
+
+type GetGenreIDByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+// Whether a public ID the series list was filtered by names a genre of this
+// tenant. A filter naming nothing is refused rather than answered with an
+// empty list, so a storefront cannot show an empty page for a genre that was
+// deleted or belongs to somebody else.
+func (q *Queries) GetGenreIDByPublicIDForTenant(ctx context.Context, arg GetGenreIDByPublicIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getGenreIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getMaxGenreDisplayOrderForTenant = `-- name: GetMaxGenreDisplayOrderForTenant :one
 SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
 FROM genres
@@ -350,6 +374,194 @@ func (q *Queries) ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTe
 			&i.Slug,
 			&i.DisplayOrder,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedGenresByTenantAsc = `-- name: ListPublishedGenresByTenantAsc :many
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    (
+        SELECT COUNT(*)
+        FROM series_genres sg
+            JOIN series s ON s.id = sg.series_id
+        WHERE sg.tenant_id = $1
+            AND sg.genre_id = g.id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )::int4 AS published_series_count
+FROM genres g
+WHERE g.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (g.display_order, g.id) >= ($4::int4, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (g.display_order, g.id) > ($4::int4, $2::uuid)
+        )
+    )
+ORDER BY g.display_order ASC,
+    g.id ASC
+LIMIT $5
+`
+
+type ListPublishedGenresByTenantAscParams struct {
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	CursorID           uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive    bool          `json:"cursor_inclusive"`
+	CursorDisplayOrder sql.NullInt32 `json:"cursor_display_order"`
+	Limit              int32         `json:"limit"`
+}
+
+type ListPublishedGenresByTenantAscRow struct {
+	ID                   uuid.UUID `json:"id"`
+	PublicID             string    `json:"public_id"`
+	Name                 string    `json:"name"`
+	Slug                 string    `json:"slug"`
+	DisplayOrder         int32     `json:"display_order"`
+	PublishedSeriesCount int32     `json:"published_series_count"`
+}
+
+// The public genre list: the tenant's whole genre list, in the order the
+// console put it in, each genre carrying how many of its series are published
+// right now. A genre no published series carries stays in the list, for the
+// reason a label with no published series does — the URL of its page has to
+// keep working after its last series is taken down.
+//
+// The count is a sub-select rather than a join so it cannot multiply the
+// genre rows, and it walks idx_series_genres_tenant_genre from the genre into
+// the series it names.
+//
+// The cursor is the same (display_order, id) pair the console list pages on;
+// forward uses the ascending query and backward the descending one, and the
+// handler flips those rows back into display order.
+// cursor rules: proto/README.md.
+func (q *Queries) ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPublishedGenresByTenantAscParams) ([]ListPublishedGenresByTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedGenresByTenantAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorDisplayOrder,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedGenresByTenantAscRow
+	for rows.Next() {
+		var i ListPublishedGenresByTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.Slug,
+			&i.DisplayOrder,
+			&i.PublishedSeriesCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedGenresByTenantDesc = `-- name: ListPublishedGenresByTenantDesc :many
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.display_order,
+    (
+        SELECT COUNT(*)
+        FROM series_genres sg
+            JOIN series s ON s.id = sg.series_id
+        WHERE sg.tenant_id = $1
+            AND sg.genre_id = g.id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )::int4 AS published_series_count
+FROM genres g
+WHERE g.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (g.display_order, g.id) <= ($4::int4, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (g.display_order, g.id) < ($4::int4, $2::uuid)
+        )
+    )
+ORDER BY g.display_order DESC,
+    g.id DESC
+LIMIT $5
+`
+
+type ListPublishedGenresByTenantDescParams struct {
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	CursorID           uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive    bool          `json:"cursor_inclusive"`
+	CursorDisplayOrder sql.NullInt32 `json:"cursor_display_order"`
+	Limit              int32         `json:"limit"`
+}
+
+type ListPublishedGenresByTenantDescRow struct {
+	ID                   uuid.UUID `json:"id"`
+	PublicID             string    `json:"public_id"`
+	Name                 string    `json:"name"`
+	Slug                 string    `json:"slug"`
+	DisplayOrder         int32     `json:"display_order"`
+	PublishedSeriesCount int32     `json:"published_series_count"`
+}
+
+func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListPublishedGenresByTenantDescParams) ([]ListPublishedGenresByTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedGenresByTenantDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorDisplayOrder,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedGenresByTenantDescRow
+	for rows.Next() {
+		var i ListPublishedGenresByTenantDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.Slug,
+			&i.DisplayOrder,
+			&i.PublishedSeriesCount,
 		); err != nil {
 			return nil, err
 		}

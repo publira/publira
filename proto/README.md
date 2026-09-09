@@ -47,7 +47,7 @@ Go encoding and validation live in [server/internal/pagination](../server/intern
 - Use row-value comparison for keyset scans. `(a.created_at, a.id) < ($1, $2)` can use a composite index, while `a.created_at < $1 OR (a.created_at = $1 AND a.id < $2)` may not.
 - Index the same combination as the sort keys. A btree can scan in reverse, so separate ascending and descending indexes are unnecessary.
 - **Do not branch `ORDER BY` on a runtime parameter.** `CASE WHEN $1 THEN ... END` does not align with index ordering, which can force a full sort before `LIMIT` and defeat keyset pagination. Use separate queries with a fixed `ORDER BY` for each order.
-- If a list row is expensive (`json_agg` or multiple `LEFT JOIN`s), make the keyset scan a lightweight query that returns only IDs, then fetch display data by ID. This keeps one heavy query while each sort-order query stays short. `ListPublishedSeries` uses this pattern (`ListActiveSeriesIDsBy*` and `ListActiveSeriesByIDs` in `db/query/series.sql`).
+- If a list row is expensive (`json_agg` or multiple `LEFT JOIN`s), make the keyset scan a lightweight query that returns only IDs, then fetch display data by ID. This keeps one heavy query while each sort-order query stays short. `ListPublishedSeries` uses this pattern (`ListActiveSeriesIDsBy*` and `ListActiveSeriesByIDs` in `db/query/published_series.sql`).
 
 ### Lists with selectable ordering
 
@@ -58,6 +58,7 @@ Go encoding and validation live in [server/internal/pagination](../server/intern
 ### Lists with filters
 
 - A filter decides which rows the list holds, so a boundary row sits somewhere else once it changes — the same problem the order name solves. Bind the token to the filters as well, by appending the ones that are on to the order name in that first key (`published_at_desc+has_free_episodes`), and reject a mismatch with `invalid_argument`. A request with no filter therefore keeps the plain order name, and an unfiltered list needs no change.
+- A filter that narrows to one value carries that value in the key, after the filter's own name (`published_at_desc+genre:GENRE0000001`), because two values of the same filter are two different lists. Append the filters in a fixed order rather than in the order the request happened to carry them, so one narrowed list always names itself the same way.
 - Changing a filter resets the client to page 1, exactly as changing the order does.
 - Keep the filter out of the sort keys. It narrows the list rather than ordering it, so the keyset comparison and the index it walks stay as they are.
 

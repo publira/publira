@@ -60,3 +60,114 @@ WHERE t.tenant_id = sqlc.arg('tenant_id')
         FROM series_tags st
         WHERE st.tag_id = t.id
     );
+
+-- The public tag list: the tags at least one published series carries, the
+-- most-carried first. A tag no published series carries is not listed — a tag
+-- exists because a series carries it, so one nothing published carries has no
+-- page to keep working, which is where it differs from a genre.
+--
+-- No index can serve this order. Its first sort key is a count the query
+-- itself groups, the way ListEpisodeReadThroughDesc sorts by an aggregate of
+-- its own; the scan is bounded by one tenant's assignments, which
+-- idx_series_tags_tenant_tag narrows first.
+--
+-- (published_series_count, slug) is unique because slug is unique within the
+-- tenant, so the keyset scan can neither skip nor repeat a tag two of them
+-- tie on. The two keys run in opposite directions, so the comparison is
+-- spelled out rather than written as a row value.
+-- cursor rules: proto/README.md.
+-- name: ListPublishedTagsByTenantDesc :many
+WITH counted AS (
+    SELECT t.name,
+        t.slug,
+        COUNT(*)::int4 AS published_series_count
+    FROM tags t
+        JOIN series_tags st ON st.tag_id = t.id
+        JOIN series s ON s.id = st.series_id
+    WHERE t.tenant_id = sqlc.arg('tenant_id')
+        AND st.tenant_id = sqlc.arg('tenant_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+    GROUP BY t.id,
+        t.name,
+        t.slug
+)
+SELECT name,
+    slug,
+    published_series_count
+FROM counted
+WHERE (
+        sqlc.narg('cursor_slug')::text IS NULL
+        OR published_series_count < sqlc.narg('cursor_published_series_count')::int4
+        OR (
+            published_series_count = sqlc.narg('cursor_published_series_count')::int4
+            AND (
+                (
+                    sqlc.arg('cursor_inclusive')::boolean
+                    AND slug >= sqlc.narg('cursor_slug')::text
+                )
+                OR (
+                    NOT sqlc.arg('cursor_inclusive')::boolean
+                    AND slug > sqlc.narg('cursor_slug')::text
+                )
+            )
+        )
+    )
+ORDER BY published_series_count DESC,
+    slug ASC
+LIMIT sqlc.arg('limit');
+
+-- ListPublishedTagsByTenantDesc walked the other way. It exists only to build
+-- a previous page; the order it describes is the same one.
+-- name: ListPublishedTagsByTenantAsc :many
+WITH counted AS (
+    SELECT t.name,
+        t.slug,
+        COUNT(*)::int4 AS published_series_count
+    FROM tags t
+        JOIN series_tags st ON st.tag_id = t.id
+        JOIN series s ON s.id = st.series_id
+    WHERE t.tenant_id = sqlc.arg('tenant_id')
+        AND st.tenant_id = sqlc.arg('tenant_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+    GROUP BY t.id,
+        t.name,
+        t.slug
+)
+SELECT name,
+    slug,
+    published_series_count
+FROM counted
+WHERE (
+        sqlc.narg('cursor_slug')::text IS NULL
+        OR published_series_count > sqlc.narg('cursor_published_series_count')::int4
+        OR (
+            published_series_count = sqlc.narg('cursor_published_series_count')::int4
+            AND (
+                (
+                    sqlc.arg('cursor_inclusive')::boolean
+                    AND slug <= sqlc.narg('cursor_slug')::text
+                )
+                OR (
+                    NOT sqlc.arg('cursor_inclusive')::boolean
+                    AND slug < sqlc.narg('cursor_slug')::text
+                )
+            )
+        )
+    )
+ORDER BY published_series_count ASC,
+    slug DESC
+LIMIT sqlc.arg('limit');
+
+-- name: GetTagBySlugForTenant :one
+-- Whether a slug the series list was filtered by names a tag of this tenant.
+-- A filter naming nothing is refused rather than answered with an empty list,
+-- for the reason GetGenreIDByPublicIDForTenant gives.
+SELECT t.id
+FROM tags t
+WHERE t.tenant_id = $1
+    AND t.slug = $2
+LIMIT 1;

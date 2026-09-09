@@ -39,6 +39,10 @@ enum SeriesOrder {
   SERIES_ORDER_TITLE_ASC = 3;
   // By title, descending.
   SERIES_ORDER_TITLE_DESC = 4;
+  // By the most recent episode of each series, newest first. A series whose
+  // episodes are all still unpublished sorts by its own publication instant,
+  // which is the last thing that happened to it.
+  SERIES_ORDER_LATEST_EPISODE_AT_DESC = 5;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -61,8 +65,28 @@ message ListPublishedSeriesRequest {
   // was built for next to the order, and for the same reason — the row it names
   // sits somewhere else in a differently filtered list — so sending it with a
   // different filter is invalid_argument and changing the filter restarts at
-  // page 1.
+  // page 1. Every filter below is bound to the token the same way.
   bool has_free_episodes = 6;
+  // Keep only the series carrying this genre, named by the public ID
+  // ListPublishedGenres reports. Empty applies no genre filter. A public ID
+  // naming no genre of the tenant is not_found rather than an empty list: the
+  // storefront asked for a page that does not exist, and a genre of another
+  // tenant has to be indistinguishable from one that was never there.
+  string genre_public_id = 7;
+  // Keep only the series carrying this tag, named by the slug
+  // ListPublishedTags reports. Empty applies no tag filter. A slug naming no
+  // tag of the tenant is not_found, for the reason genre_public_id is.
+  string tag_slug = 8;
+  // Keep only the series in this serialization state. Unlike the status a
+  // series is saved with, where unspecified means the column default, an
+  // unspecified status here applies no filter: a list nobody narrowed holds
+  // every state.
+  publira.types.v1.SeriesStatus status = 9;
+  // Keep only the series expecting an episode on this weekday, as an
+  // EXTRACT(DOW) number: 0 is Sunday and 6 is Saturday. It is optional because
+  // 0 is Sunday rather than "no weekday"; a weekday outside 0 to 6 is
+  // invalid_argument.
+  optional int32 weekday = 10;
 }
 
 message ListPublishedSeriesResponse {
@@ -228,6 +252,72 @@ message GetPublishedLabelDetailResponse {
   string previous_token = 3;
   // Token for the next series page. Empty on the last page.
   string next_token = 4;
+}
+
+// A genre the tenant curates, next to how many of its series are published
+// right now. The count is what a browse page puts beside the name; it is
+// counted per read rather than stored, so a series taken down stops counting
+// the moment it does.
+message PublishedGenre {
+  string public_id = 1;
+  string name = 2;
+  string slug = 3;
+  int32 published_series_count = 4;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// Sorted by the tenant's own genre order, then id. There is no order field:
+// the console decides where a genre sits, and a browse page that reordered
+// them would be showing a list the tenant did not arrange.
+// A genre no published series carries is still listed, for the reason a label
+// with no published series is: the URL of its page has to keep working after
+// its last series is taken down.
+message ListPublishedGenresRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListPublishedGenresResponse {
+  repeated PublishedGenre genres = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+// A tag at least one published series carries, next to how many carry it. A
+// tag is addressed by slug, which is why it has no public ID of its own.
+message PublishedTag {
+  string name = 1;
+  string slug = 2;
+  int32 published_series_count = 3;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// Sorted by how many published series carry the tag, most first, then by slug,
+// which is unique within the tenant and therefore breaks every tie. There is
+// no order field: a tag cloud has one order, the one that puts the tags a
+// storefront actually uses in front.
+// Unlike a genre, a tag nothing published carries is not listed: a tag exists
+// because a series carries it, so one no published series carries has no page
+// to keep working.
+message ListPublishedTagsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListPublishedTagsResponse {
+  repeated PublishedTag tags = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -402,6 +492,11 @@ service CatalogService {
   // missing labels are surfaced as NotFound so a foreign label cannot be
   // distinguished from one that does not exist.
   rpc GetPublishedLabelDetail(GetPublishedLabelDetailRequest) returns (GetPublishedLabelDetailResponse) {}
+  // The tenant's genres, in the order the console put them in, each with how
+  // many of its series are published right now.
+  rpc ListPublishedGenres(ListPublishedGenresRequest) returns (ListPublishedGenresResponse) {}
+  // The tags at least one published series carries, the most-carried first.
+  rpc ListPublishedTags(ListPublishedTagsRequest) returns (ListPublishedTagsResponse) {}
   // Keyword search over published series titles and synopses. An empty query
   // is invalid_argument. A token carries the Unicode-lowercased query it was
   // built for; sending it with a query that lowers to a different string is

@@ -239,6 +239,11 @@ type Querier interface {
 	// period.
 	GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error)
 	GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error)
+	// Whether a public ID the series list was filtered by names a genre of this
+	// tenant. A filter naming nothing is refused rather than answered with an
+	// empty list, so a storefront cannot show an empty page for a genre that was
+	// deleted or belongs to somebody else.
+	GetGenreIDByPublicIDForTenant(ctx context.Context, arg GetGenreIDByPublicIDForTenantParams) (uuid.UUID, error)
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
@@ -341,6 +346,10 @@ type Querier interface {
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
+	// Whether a slug the series list was filtered by names a tag of this tenant.
+	// A filter naming nothing is refused rather than answered with an empty list,
+	// for the reason GetGenreIDByPublicIDForTenant gives.
+	GetTagBySlugForTenant(ctx context.Context, arg GetTagBySlugForTenantParams) (uuid.UUID, error)
 	GetTenantAdminInvitationByHashForTenant(ctx context.Context, arg GetTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg GetTenantAdminInvitationByIDForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error)
@@ -476,21 +485,54 @@ type Querier interface {
 	// No ORDER BY: the caller sorts the rows into the id order stage one settled
 	// on.
 	ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error)
+	ListActiveSeriesIDsByLatestEpisodeAtAsc(ctx context.Context, arg ListActiveSeriesIDsByLatestEpisodeAtAscParams) ([]ListActiveSeriesIDsByLatestEpisodeAtAscRow, error)
+	// The latest-update order, and the only stage-one pair no index can serve.
+	// Its sort key is the newest published episode of each series, which lives in
+	// episode_listings rather than in a column of series, so the scan reads the
+	// tenant's published series and sorts them. That is bounded by one tenant's
+	// catalogue, and the per-series lookup walks idx_episodes_series_order_index
+	// into the listing's primary key.
+	//
+	// A series whose episodes are all still unpublished falls back to its own
+	// publication instant, which is the last thing that happened to it. The
+	// fallback is also what keeps the sort key non-null, so the keyset comparison
+	// needs no ordering rule for a missing value.
+	//
+	// latest_episode_at comes back with each row because the cursor is built from
+	// it, the way ListRecommendedSeriesIDs hands back the rank it sorted by: a
+	// caller that recomputed it would be reading a second NOW(), and a token built
+	// on a value this query never sorted by points at the wrong page.
+	ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx context.Context, arg ListActiveSeriesIDsByLatestEpisodeAtDescParams) ([]ListActiveSeriesIDsByLatestEpisodeAtDescRow, error)
 	ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error)
+	// The published series list, in every shape the storefront reads it: the whole
+	// catalogue, one creator's, one label's, and a keyword search. They are apart
+	// from series.sql because they are one aggregate of their own — six stage-one
+	// scans and the display query they all feed — and keeping them next to the
+	// writes and the admin lists put both past the size at which a file stops
+	// reading as a unit.
+	//
 	// The cursor pagination of the published series list runs in two stages.
 	//
-	// Stage one is the four keyset scans below, which settle nothing but the ids
-	// of one page. The sort key is (published_at, id) or (title, id); id is a
-	// UUIDv7, so the order stays unique even when published_at or title ties.
-	// Every sort order gets its own query with a fixed ORDER BY, because
-	// branching with CASE stops the rows from being read in index order and puts
-	// a full sort ahead of the LIMIT. As written, each query walks
-	// idx_series_tenant_published_at or idx_series_tenant_title directly.
-	// Backward calls the query of the reversed order, and the caller sorts the
-	// rows back.
+	// Stage one is the six keyset scans below, which settle nothing but the ids of
+	// one page. The sort key is (published_at, id), (title, id), or
+	// (latest_episode_at, id); id is a UUIDv7, so the order stays unique even when
+	// the sorted value ties. Every sort order gets its own query with a fixed
+	// ORDER BY, because branching with CASE stops the rows from being read in
+	// index order and puts a full sort ahead of the LIMIT. The published_at and
+	// title queries walk idx_series_tenant_published_at or idx_series_tenant_title
+	// directly. Backward calls the query of the reversed order, and the caller
+	// sorts the rows back.
 	//
 	// Stage two is ListActiveSeriesByIDs, which builds the display data for the
 	// ids stage one settled on.
+	//
+	// Every stage-one query carries the same five filters, because a filter
+	// narrows the list rather than ordering it and the token is bound to the set
+	// that was on. Each is written as EXISTS so the planner may drive the scan
+	// from either side: the ordering index when the filter keeps most of the
+	// catalogue, and idx_series_genres_tenant_genre, idx_series_tags_tenant_tag,
+	// idx_series_listings_tenant_status, or idx_series_listings_schedule_weekdays
+	// when it keeps a handful.
 	//
 	// What counts as a free episode is the published_free_episodes view, which
 	// both stages read: stage one keeps only the series that have such an episode
@@ -813,6 +855,22 @@ type Querier interface {
 	// moment the reader would follow it.
 	ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
+	// The public genre list: the tenant's whole genre list, in the order the
+	// console put it in, each genre carrying how many of its series are published
+	// right now. A genre no published series carries stays in the list, for the
+	// reason a label with no published series does — the URL of its page has to
+	// keep working after its last series is taken down.
+	//
+	// The count is a sub-select rather than a join so it cannot multiply the
+	// genre rows, and it walks idx_series_genres_tenant_genre from the genre into
+	// the series it names.
+	//
+	// The cursor is the same (display_order, id) pair the console list pages on;
+	// forward uses the ascending query and backward the descending one, and the
+	// handler flips those rows back into display order.
+	// cursor rules: proto/README.md.
+	ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPublishedGenresByTenantAscParams) ([]ListPublishedGenresByTenantAscRow, error)
+	ListPublishedGenresByTenantDesc(ctx context.Context, arg ListPublishedGenresByTenantDescParams) ([]ListPublishedGenresByTenantDescRow, error)
 	// Restricted to the pages flagged for the footer, which is the only place a
 	// reader navigates to them from.
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
@@ -846,6 +904,25 @@ type Querier interface {
 	ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error)
 	// The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
 	ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error)
+	// ListPublishedTagsByTenantDesc walked the other way. It exists only to build
+	// a previous page; the order it describes is the same one.
+	ListPublishedTagsByTenantAsc(ctx context.Context, arg ListPublishedTagsByTenantAscParams) ([]ListPublishedTagsByTenantAscRow, error)
+	// The public tag list: the tags at least one published series carries, the
+	// most-carried first. A tag no published series carries is not listed — a tag
+	// exists because a series carries it, so one nothing published carries has no
+	// page to keep working, which is where it differs from a genre.
+	//
+	// No index can serve this order. Its first sort key is a count the query
+	// itself groups, the way ListEpisodeReadThroughDesc sorts by an aggregate of
+	// its own; the scan is bounded by one tenant's assignments, which
+	// idx_series_tags_tenant_tag narrows first.
+	//
+	// (published_series_count, slug) is unique because slug is unique within the
+	// tenant, so the keyset scan can neither skip nor repeat a tag two of them
+	// tie on. The two keys run in opposite directions, so the comparison is
+	// spelled out rather than written as a row value.
+	// cursor rules: proto/README.md.
+	ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error)
 	// Every device to push one notification to, one row per recipient device. The
 	// notification id travels with the token because the push mirrors that row and
 	// the app routes from it.
@@ -1044,6 +1121,8 @@ type Querier interface {
 	// revision it compares against cannot change between the comparison and the
 	// write. Returns no rows when the platform has never saved any settings.
 	LockPlatformConfig(ctx context.Context) (PlatformConfig, error)
+	// A series as one row: locked, read, written, and listed for the console. The
+	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
 	// calls serialize. The following read of the current order (or
 	// MAX(order_index)) must be a separate statement: READ COMMITTED

@@ -58,7 +58,7 @@ func recommendedSeriesIDRows(rows ...rankedID) *sqlmock.Rows {
 // recommendedSeriesRow is one row of the display query, with no eye catch
 // image so the variant lookup stays out of the expectations.
 func recommendedSeriesRow(rows *sqlmock.Rows, id uuid.UUID, publicID, title string, publishedAt time.Time) *sqlmock.Rows {
-	return rows.AddRow(id, publicID, title, "", "ongoing", []byte("{}"), "all", publishedAt, nil, nil, int32(0), []byte("[]"), []byte("{}"))
+	return rows.AddRow(id, publicID, title, "", "ongoing", []byte("{}"), "all", publishedAt, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}"))
 }
 
 func expectRankingSnapshotLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, items []byte) {

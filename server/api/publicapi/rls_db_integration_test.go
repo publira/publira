@@ -66,6 +66,10 @@ var publicDataTables = []struct {
 	// difference between the catalog counting the tenant's free episodes and
 	// counting everyone's.
 	{name: "published_free_episodes", count: "SELECT count(*) FROM published_free_episodes"},
+	{name: "genres", count: "SELECT count(*) FROM genres"},
+	{name: "tags", count: "SELECT count(*) FROM tags"},
+	{name: "series_genres", count: "SELECT count(*) FROM series_genres"},
+	{name: "series_tags", count: "SELECT count(*) FROM series_tags"},
 	{name: "episode_reads", count: "SELECT count(*) FROM episode_reads"},
 	{name: "episode_reading_positions", count: "SELECT count(*) FROM episode_reading_positions"},
 	{name: "users", count: "SELECT count(*) FROM users"},
@@ -98,6 +102,10 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		Title:    "Tenant A Free Episode",
 		Status:   testutil.EpisodeStatusPublished,
 	})
+	genre := env.PG.SeedGenre(t, first.ID, testutil.GenreSeed{PublicID: "GENREA000001", Name: "Fantasy"})
+	env.PG.SeedSeriesGenre(t, first.ID, series.ID, genre.ID)
+	tag := env.PG.SeedTag(t, first.ID, testutil.TagSeed{Name: "Swordplay"})
+	env.PG.SeedSeriesTag(t, first.ID, series.ID, tag.ID)
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID); err != nil {
