@@ -31,7 +31,7 @@ export const DangerConfirmButton = ({
   actionArg,
   actionCreator,
   actionText,
-  actionVariant = "destructive",
+  actionVariant = "destructiveFilled",
   cancelText,
   description,
   title,

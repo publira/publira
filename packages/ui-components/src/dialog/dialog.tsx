@@ -4,6 +4,8 @@ import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef } from "react";
 
+import { FLOATING_TRANSITION } from "../motion";
+
 type DivProps = ComponentPropsWithoutRef<"div">;
 
 export const Dialog = BaseDialog.Root;
@@ -44,7 +46,8 @@ export const DialogPopup = ({
   <BaseDialog.Popup
     {...props}
     className={cn(
-      "fixed top-1/2 left-1/2 z-50 w-[min(92vw,32rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-lg",
+      "fixed top-1/2 left-1/2 z-50 w-[min(92vw,32rem)] -translate-x-1/2 -translate-y-1/2 rounded-surface border border-border bg-card p-5 text-card-foreground shadow-floating",
+      FLOATING_TRANSITION,
       className
     )}
   />

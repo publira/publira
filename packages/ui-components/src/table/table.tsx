@@ -10,19 +10,30 @@ type TrProps = ComponentPropsWithoutRef<"tr">;
 type ThProps = ComponentPropsWithoutRef<"th">;
 type TdProps = ComponentPropsWithoutRef<"td">;
 
+/**
+ * The table is the page: rows separated by hairlines, on the paper the screen
+ * is already on. Nothing wraps it — a card around a table draws a second
+ * boundary around the one the rules already describe.
+ *
+ * `tabular-nums` sits on the table rather than on the cells that hold numbers.
+ * A column of figures only lines up if every figure in it is the same width,
+ * and which columns those are is decided by the data a screen puts in them,
+ * not by the primitive.
+ */
 export const Table = ({ className, ...props }: TableProps) => (
   <div className="w-full overflow-auto">
     <table
       {...props}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn("w-full caption-bottom text-sm tabular-nums", className)}
     />
   </div>
 );
 
+/** The rule under the header is heavier than the ones between rows. */
 export const TableHeader = ({ className, ...props }: TheadProps) => (
   <thead
     {...props}
-    className={cn("[&_tr]:border-b [&_tr]:border-border", className)}
+    className={cn("[&_tr]:border-b-2 [&_tr]:border-border", className)}
   />
 );
 
@@ -34,7 +45,7 @@ export const TableRow = ({ className, ...props }: TrProps) => (
   <tr
     {...props}
     className={cn(
-      "border-b border-border transition-colors hover:bg-muted/50",
+      "border-b border-border transition-colors duration-state ease-state hover:bg-muted",
       className
     )}
   />
@@ -87,7 +98,7 @@ export const TableLoadingRow = ({
         <TableCell className="py-3" colSpan={colSpan}>
           <div
             aria-hidden
-            className="h-5 rounded-md bg-muted/70 motion-safe:animate-pulse"
+            className="h-5 rounded-control bg-muted motion-safe:animate-pulse"
           />
         </TableCell>
       </TableRow>

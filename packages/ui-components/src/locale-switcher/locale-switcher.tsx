@@ -110,7 +110,7 @@ export const LocaleSwitcherTrigger = ({
 }) => (
   <PopoverTrigger
     aria-label={ariaLabel}
-    className="inline-flex h-9 max-w-28 items-center rounded-full border border-border/70 bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-border hover:bg-muted data-popup-open:bg-muted"
+    className="inline-flex h-9 max-w-28 items-center rounded-control border border-input bg-card px-3 text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted"
   >
     <span className="truncate">{children}</span>
   </PopoverTrigger>
@@ -163,7 +163,7 @@ export const LocaleSwitcherOption = ({
     <button
       aria-current={isCurrent ? "true" : undefined}
       className={cn(
-        "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm outline-hidden transition-colors hover:bg-muted focus-visible:bg-muted",
+        "flex w-full items-center justify-between rounded-control px-3 py-2 text-left text-sm outline-hidden transition-colors duration-state ease-state hover:bg-muted focus-visible:bg-muted",
         isCurrent
           ? "bg-muted font-medium text-foreground"
           : "text-muted-foreground"

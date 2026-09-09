@@ -4,6 +4,8 @@ import { Popover as BasePopover } from "@base-ui/react/popover";
 import { cn } from "@publira/utils";
 import type { ReactNode } from "react";
 
+import { FLOATING_TRANSITION } from "../motion";
+
 export const Popover = BasePopover.Root;
 export const PopoverTrigger = BasePopover.Trigger;
 export const PopoverTitle = BasePopover.Title;
@@ -37,7 +39,8 @@ export const PopoverContent = ({
       <BasePopover.Popup
         {...popupProps}
         className={cn(
-          "max-w-[calc(100vw-2rem)] origin-[var(--transform-origin)] rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-lg outline-hidden",
+          "max-w-[calc(100vw-2rem)] origin-[var(--transform-origin)] rounded-surface border border-border bg-popover p-1.5 text-popover-foreground shadow-floating outline-hidden",
+          FLOATING_TRANSITION,
           className
         )}
       >

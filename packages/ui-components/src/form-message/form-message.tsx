@@ -6,7 +6,7 @@ import type { VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithoutRef } from "react";
 
 const formMessageVariants = cva(
-  "flex items-start gap-2 rounded-md border px-3 py-2 text-xs",
+  "flex items-start gap-2 rounded-control border px-3 py-2 text-xs",
   {
     defaultVariants: {
       variant: "info",
