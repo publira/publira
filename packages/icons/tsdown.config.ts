@@ -10,6 +10,7 @@ export default defineConfig({
     "src/chevron-down-icon.tsx",
     "src/chevron-left-icon.tsx",
     "src/chevron-right-icon.tsx",
+    "src/chevron-up-icon.tsx",
     "src/close-icon.tsx",
     "src/collection-icon.tsx",
     "src/comment-icon.tsx",

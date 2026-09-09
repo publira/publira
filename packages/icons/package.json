@@ -35,6 +35,10 @@
       "types": "./dist/chevron-right-icon.d.mts",
       "default": "./dist/chevron-right-icon.mjs"
     },
+    "./chevron-up-icon": {
+      "types": "./dist/chevron-up-icon.d.mts",
+      "default": "./dist/chevron-up-icon.mjs"
+    },
     "./close-icon": {
       "types": "./dist/close-icon.d.mts",
       "default": "./dist/close-icon.mjs"

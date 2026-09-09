@@ -4,6 +4,7 @@ export { CheckIcon } from "./check-icon";
 export { ChevronDownIcon } from "./chevron-down-icon";
 export { ChevronLeftIcon } from "./chevron-left-icon";
 export { ChevronRightIcon } from "./chevron-right-icon";
+export { ChevronUpIcon } from "./chevron-up-icon";
 export { CloseIcon } from "./close-icon";
 export { CollectionIcon } from "./collection-icon";
 export { CommentIcon } from "./comment-icon";
