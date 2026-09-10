@@ -6,7 +6,9 @@ import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { RelatedSeries } from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { SeriesShelfSkeleton } from "#components/series-shelf";
 import type {
   EpisodeDetail,
   EpisodeNeighborItem,
@@ -15,6 +17,12 @@ import type {
 import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { episodePath } from "../_lib/episode-path";
+
+/**
+ * Three covers, one row on a phone. The panel sits under the pages a reader
+ * just finished, so it suggests rather than lists.
+ */
+const RELATED_SERIES_COUNT = 3;
 
 /**
  * What the reader is offered once the pages run out: the next episode, or the
@@ -112,6 +120,30 @@ export const EpisodeEndPanel = async ({
       >
         {getMessage(messages, "host.episode.end.back_to_series")}
       </LocaleLink>
+
+      {/* Only where the series has run out. While there is a next episode the
+          panel makes one offer, and a shelf of other works beside it is what
+          turns that one offer into a choice. */}
+      {nextEpisode ? null : (
+        <section className="mt-8 border-t border-border/70 pt-6">
+          <h2 className="mb-4 font-serif text-lg font-semibold">
+            {getMessage(messages, "host.related.heading")}
+          </h2>
+          <SectionErrorBoundary
+            title={getMessage(messages, "host.related.list_error")}
+          >
+            <Suspense
+              fallback={<SeriesShelfSkeleton count={RELATED_SERIES_COUNT} />}
+            >
+              <RelatedSeries
+                limit={RELATED_SERIES_COUNT}
+                seriesPublicId={series.publicId}
+                tenantId={tenantId}
+              />
+            </Suspense>
+          </SectionErrorBoundary>
+        </section>
+      )}
     </section>
   );
 };

@@ -10,6 +10,7 @@ import {
 import type {
   ListRankedSeriesResponse,
   ListRecommendedSeriesResponse,
+  ListRelatedSeriesResponse,
 } from "@publira/api-client/public/catalog";
 import { SeriesStatus } from "@publira/api-client/public/types";
 import type {
@@ -439,6 +440,81 @@ export const listRecommendedSeries = async (
     });
   } catch (error) {
     return localizedReadFailure(error, locale, "host.top.recommended_failed");
+  }
+
+  return {
+    ok: true,
+    value: {
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
+      series: (response.series ?? []).map(toSeriesListItem),
+    },
+  };
+};
+
+/**
+ * The tenant's other published series, the most related to `seriesPublicId`
+ * first.
+ *
+ * Relatedness is the server's: shared creators weigh most, then the label, then
+ * each genre and each tag. The list does not stop at the related ones — a
+ * series sharing nothing still takes its place among the rest, in the ranking
+ * order the storefront uses — so the strip under a brand new title shows what
+ * the tenant's readers are reading rather than nothing at all.
+ *
+ * A subject series that is missing, unpublished, or another tenant's answers
+ * with an empty page. That is the "nothing" value rather than a failure: it is
+ * what the section has to show when the series it hangs under goes away between
+ * two reads, and it is cacheable.
+ *
+ * Cursor pagination: `token` is whatever the previous response returned as
+ * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
+ * `proto/README.md`. A token carries the series it was scored against, so it
+ * cannot be continued under a different one.
+ */
+export const listRelatedSeries = async (
+  tenantId: string,
+  {
+    limit = 4,
+    locale,
+    seriesPublicId,
+    token = "",
+  }: {
+    limit?: number;
+    locale: Locale;
+    seriesPublicId: string;
+    token?: string;
+  }
+): Promise<CachedReadResult<SeriesListPage>> => {
+  "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  const normalizedSeriesPublicId = seriesPublicId.trim();
+  // Which series are published decides the tail of the answer, and the subject
+  // series' own label, genres and tags decide the order of the head, so an edit
+  // to either is what this entry has to follow. The ranking that breaks the
+  // ties is replaced by a batch that never calls back here, so a new snapshot
+  // arrives with the cache profile's own revalidation rather than with a tag.
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
+
+  let response: ListRelatedSeriesResponse;
+  try {
+    response = await apiClient.catalog.listRelatedSeries({
+      limit,
+      seriesPublicId: normalizedSeriesPublicId,
+      tenant: { tenantId: normalizedTenantId },
+      token,
+    });
+  } catch (error) {
+    if (isMissingResourceRpcError(error)) {
+      return {
+        ok: true,
+        value: { nextToken: "", previousToken: "", series: [] },
+      };
+    }
+    return localizedReadFailure(error, locale, "host.related.list_failed");
   }
 
   return {

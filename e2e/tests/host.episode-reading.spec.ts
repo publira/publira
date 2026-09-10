@@ -506,6 +506,23 @@ test.describe("web-host episode reading", () => {
     ).toHaveCount(0);
   });
 
+  test("only the end of a series suggests other works to read", async ({
+    page,
+  }) => {
+    await page.goto(edgeUrl(LAST_EPISODE_PATH));
+
+    await expect(
+      page.getByRole("heading", { name: "You may also like" })
+    ).toBeVisible();
+
+    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+
+    await expect(
+      page.getByRole("heading", { name: "You may also like" }),
+      "the next episode is the one offer a panel in the middle of a series makes"
+    ).toHaveCount(0);
+  });
+
   test("the episode information below the viewer names its series and links back to it", async ({
     page,
   }) => {

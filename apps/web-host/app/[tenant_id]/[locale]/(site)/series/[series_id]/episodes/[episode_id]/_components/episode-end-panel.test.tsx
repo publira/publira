@@ -47,6 +47,14 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+// The shelf reads the catalogue, which `related-series.test.tsx` covers; what
+// this file asserts is which ending of the series carries one.
+vi.mock("#components/related-series", () => ({
+  RelatedSeries: ({ limit }: { limit: number }) => (
+    <div data-limit={limit} data-testid="related-series" />
+  ),
+}));
+
 // The follow control reads the reader's own session, which this file is not
 // about; what it asserts is that the last episode offers one at all.
 vi.mock("#components/follow-control", () => ({
@@ -132,6 +140,22 @@ describe("EpisodeEndPanel", () => {
     expect(
       screen.getByRole("button", { name: "Follow" }).dataset.returnTo
     ).toBe("/series/SERIES_001/episodes/EPISODE_002");
+  });
+
+  it("suggests other works once the series has run out", async () => {
+    await renderPanel();
+
+    expect(
+      screen.getByRole("heading", { name: "You may also like" })
+    ).toBeDefined();
+    expect(screen.getByTestId("related-series").dataset.limit).toBe("3");
+  });
+
+  it("keeps the next episode the only offer while there is one", async () => {
+    await renderPanel(nextEpisode);
+
+    expect(screen.queryByTestId("related-series")).toBeNull();
+    expect(screen.queryByText("You may also like")).toBeNull();
   });
 
   it("always leads back to the series", async () => {

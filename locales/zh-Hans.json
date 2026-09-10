@@ -2180,6 +2180,12 @@
       "period_weekly": "周榜",
       "rank_position": "第 {$rank} 名"
     },
+    "related": {
+      "heading": "你可能也喜欢",
+      "list_empty": "暂无其他可推荐的作品。",
+      "list_error": "无法显示相关作品",
+      "list_failed": "无法加载相关作品。请稍后再试。"
+    },
     "search": {
       "description": "按标题和简介搜索已发布的系列",
       "error": "无法显示搜索结果",

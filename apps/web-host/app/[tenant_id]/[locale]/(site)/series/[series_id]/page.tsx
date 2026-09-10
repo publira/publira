@@ -22,7 +22,9 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { Prose } from "#components/prose";
+import { RelatedSeries } from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { SeriesShelfSkeleton } from "#components/series-shelf";
 import { getSeriesDetail } from "#lib/catalog";
 import type { SeriesSerializationStatus } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
@@ -48,6 +50,13 @@ const seriesDetailParamsSchema = z.object({
 
 /** Half a screen of rows, which is what a phone shows of the list at once. */
 const EPISODE_SKELETON_COUNT = 5;
+
+/**
+ * Four covers of what to read next. The page has the width for a full shelf,
+ * but the episode list above is what a reader came here for, so the suggestions
+ * stay a strip rather than a second catalogue.
+ */
+const RELATED_SERIES_COUNT = 4;
 
 const SeriesDetailSkeleton = () => (
   <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
@@ -339,6 +348,31 @@ const SeriesDetailContent = async (
             ))}
           </ol>
         )}
+      </section>
+
+      <section className="grid gap-4">
+        <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
+          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+            <Message message="host.related.heading" />
+          </Suspense>
+        </h2>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.related.list_error" />
+            </Suspense>
+          }
+        >
+          <Suspense
+            fallback={<SeriesShelfSkeleton count={RELATED_SERIES_COUNT} />}
+          >
+            <RelatedSeries
+              limit={RELATED_SERIES_COUNT}
+              seriesPublicId={series.publicId}
+              tenantId={tenantId}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
       </section>
 
       <p>
