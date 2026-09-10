@@ -611,6 +611,50 @@
       "list_failed": "작가 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "save_failed": "작가를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
     },
+    "creator_roles": {
+      "title": "작가 역할",
+      "page_description": "작가를 표기할 때 사용하는 역할을, 크레딧이 표시되는 순서로 관리합니다.",
+      "create_card_title": "역할 추가",
+      "create_description": "추가한 역할은 표시 순서 맨 뒤에 배치됩니다.",
+      "create_action": "역할 추가",
+      "created": "역할을 추가했습니다.",
+      "list_title": "작가 역할",
+      "list_description": "이름 변경, 표시 순서 변경, 어떤 크레딧에도 사용되지 않은 역할의 삭제를 할 수 있습니다.",
+      "list_error": "작가 역할을 표시할 수 없습니다",
+      "empty_title": "이 테넌트에는 작가 역할이 없습니다.",
+      "empty_description": "위 양식에서 추가하세요. 역할이 없으면 누구도 표기할 수 없습니다.",
+      "priority_hint": "표시 순서 {$position}",
+      "save_action": "저장",
+      "saving": "저장 중...",
+      "updated": "역할을 수정했습니다.",
+      "delete_action": "삭제",
+      "deleting": "삭제 중...",
+      "deleted": "역할을 삭제했습니다.",
+      "delete_confirm_title": "이 역할을 삭제할까요?",
+      "delete_confirm_description": "{$name}을(를) 표시 순서에서 삭제합니다. 작품이나 회차의 크레딧에 사용 중인 역할은 삭제할 수 없습니다.",
+      "delete_confirm_action": "삭제",
+      "move_up_action": "{$name}을(를) 위로 이동",
+      "move_down_action": "{$name}을(를) 아래로 이동",
+      "name_field_label": "{$name}의 이름",
+      "form": {
+        "name": "역할 이름",
+        "name_placeholder": "예: 원작"
+      },
+      "validation": {
+        "name_required": "역할 이름을 입력하세요.",
+        "name_too_long": "역할 이름은 {$count}자 이내로 입력하세요.",
+        "tenant_missing": "테넌트 ID가 지정되지 않았습니다.",
+        "id_missing": "수정할 역할의 ID가 지정되지 않았습니다."
+      },
+      "name_taken": "같은 이름의 역할이 이미 있습니다.",
+      "name_invalid": "역할 이름은 {$count}자 이내로 입력하세요.",
+      "list_failed": "작가 역할을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "save_failed": "역할을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "delete_failed": "역할을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "delete_in_use": "작품이나 회차가 이 역할로 표기되어 있습니다. 크레딧을 다시 지정한 뒤 삭제하세요.",
+      "reorder_failed": "역할 표시 순서를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "reorder_conflict": "다른 곳에서 역할 표시 순서가 변경되었습니다. 페이지를 새로 고친 뒤 다시 시도해 주세요."
+    },
     "dashboard": {
       "section_error": "대시보드를 표시할 수 없습니다",
       "title": "대시보드",
@@ -1290,6 +1334,7 @@
       "delete_action": "삭제하기",
       "tabs": {
         "basic": "기본 정보",
+        "creator_roles": "작가 역할",
         "theme": "테마",
         "email": "메일",
         "payment": "결제"

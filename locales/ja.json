@@ -611,6 +611,50 @@
       "list_failed": "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
       "save_failed": "著者の保存に失敗しました。時間をおいて再試行してください。"
     },
+    "creator_roles": {
+      "title": "作者の役割",
+      "page_description": "作者のクレジットに使う役割を、クレジットの表示順で管理します。",
+      "create_card_title": "役割の追加",
+      "create_description": "追加した役割は表示順の末尾に並びます。",
+      "create_action": "役割を追加",
+      "created": "役割を追加しました。",
+      "list_title": "作者の役割",
+      "list_description": "名前の変更、表示順の変更、どのクレジットにも使われていない役割の削除ができます。",
+      "list_error": "作者の役割を表示できませんでした",
+      "empty_title": "このテナントには作者の役割がありません。",
+      "empty_description": "上のフォームから追加してください。役割がないと作者をクレジットできません。",
+      "priority_hint": "表示順 {$position}",
+      "save_action": "保存",
+      "saving": "保存中...",
+      "updated": "役割を更新しました。",
+      "delete_action": "削除",
+      "deleting": "削除中...",
+      "deleted": "役割を削除しました。",
+      "delete_confirm_title": "この役割を削除しますか?",
+      "delete_confirm_description": "{$name} を表示順から削除します。作品またはエピソードのクレジットに使われている役割は削除できません。",
+      "delete_confirm_action": "削除",
+      "move_up_action": "{$name} を上へ移動",
+      "move_down_action": "{$name} を下へ移動",
+      "name_field_label": "{$name} の名前",
+      "form": {
+        "name": "役割名",
+        "name_placeholder": "例: 原作"
+      },
+      "validation": {
+        "name_required": "役割名を入力してください。",
+        "name_too_long": "役割名は{$count}文字以内で入力してください。",
+        "tenant_missing": "テナントIDが指定されていません。",
+        "id_missing": "更新する役割のIDが指定されていません。"
+      },
+      "name_taken": "同じ名前の役割がすでに存在します。",
+      "name_invalid": "役割名は{$count}文字以内で入力してください。",
+      "list_failed": "作者の役割を読み込めませんでした。しばらくしてからもう一度お試しください。",
+      "save_failed": "役割を保存できませんでした。しばらくしてからもう一度お試しください。",
+      "delete_failed": "役割を削除できませんでした。しばらくしてからもう一度お試しください。",
+      "delete_in_use": "この役割は作品またはエピソードのクレジットに使われています。クレジットを付け替えてから削除してください。",
+      "reorder_failed": "役割の表示順を変更できませんでした。しばらくしてからもう一度お試しください。",
+      "reorder_conflict": "ほかの場所で役割の表示順が変更されました。ページを再読み込みしてからもう一度お試しください。"
+    },
     "dashboard": {
       "section_error": "ダッシュボードを表示できませんでした",
       "title": "ダッシュボード",
@@ -1290,6 +1334,7 @@
       "delete_action": "削除する",
       "tabs": {
         "basic": "基本情報",
+        "creator_roles": "作者の役割",
         "theme": "テーマ",
         "email": "メール情報",
         "payment": "決済"

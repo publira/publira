@@ -611,6 +611,50 @@
       "list_failed": "Could not load the creators. Please try again later.",
       "save_failed": "Could not save the creator. Please try again later."
     },
+    "creator_roles": {
+      "title": "Creator roles",
+      "page_description": "Maintain the roles creators are credited in, in the order the credits are shown.",
+      "create_card_title": "New role",
+      "create_description": "A new role goes to the end of the priority order.",
+      "create_action": "Create role",
+      "created": "Role created.",
+      "list_title": "Creator roles",
+      "list_description": "Rename a role, move it in the priority order, or remove one no credit names.",
+      "list_error": "Could not display creator roles",
+      "empty_title": "This tenant has no creator roles.",
+      "empty_description": "Create one with the form above. Nobody can be credited until a role exists.",
+      "priority_hint": "Priority {$position}",
+      "save_action": "Save",
+      "saving": "Saving...",
+      "updated": "Role updated.",
+      "delete_action": "Delete",
+      "deleting": "Deleting...",
+      "deleted": "Role deleted.",
+      "delete_confirm_title": "Delete this role?",
+      "delete_confirm_description": "{$name} is removed from the priority order. A role that a series or an episode is still credited in cannot be deleted.",
+      "delete_confirm_action": "Delete",
+      "move_up_action": "Move {$name} up",
+      "move_down_action": "Move {$name} down",
+      "name_field_label": "Name of {$name}",
+      "form": {
+        "name": "Role name",
+        "name_placeholder": "Example: Original Author"
+      },
+      "validation": {
+        "name_required": "Role name is required.",
+        "name_too_long": "Role name must be {$count} characters or fewer.",
+        "tenant_missing": "Tenant ID is missing.",
+        "id_missing": "The role ID to update is missing."
+      },
+      "name_taken": "A role with this name already exists.",
+      "name_invalid": "Enter a role name of at most {$count} characters.",
+      "list_failed": "Could not load the creator roles. Please try again later.",
+      "save_failed": "Could not save the role. Please try again later.",
+      "delete_failed": "Could not delete the role. Please try again later.",
+      "delete_in_use": "A series or an episode is still credited in this role. Re-credit them before deleting it.",
+      "reorder_failed": "Could not change the role priority. Please try again later.",
+      "reorder_conflict": "The role priority changed somewhere else. Reload the page and try again."
+    },
     "dashboard": {
       "section_error": "Could not display the dashboard",
       "title": "Dashboard",
@@ -1290,6 +1334,7 @@
       "delete_action": "Delete",
       "tabs": {
         "basic": "General",
+        "creator_roles": "Creator roles",
         "theme": "Theme",
         "email": "Email",
         "payment": "Payments"
