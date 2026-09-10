@@ -305,10 +305,10 @@ test.describe("web-admin comment moderation", () => {
         removedRow.getByText("Removed by a moderator.")
       ).toBeVisible();
       // A removal is silent, and staff have to be told so they are not caught
-      // out by the author quoting it back at them.
+      // out by the commenter quoting it back at them.
       await expect(
         removedRow.getByText(
-          "The author still sees it exactly as they posted it — they are never told about a removal."
+          "The commenter still sees it exactly as they posted it — they are never told about a removal."
         )
       ).toBeVisible();
       await pollEpisodePage(readerPage, () =>

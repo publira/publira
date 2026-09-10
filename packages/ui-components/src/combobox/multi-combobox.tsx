@@ -46,7 +46,7 @@ export interface MultiComboboxProps {
  *             </MultiComboboxChip>
  *           ))}
  *           <MultiComboboxInput
- *             placeholder={selected.length > 0 ? "" : "Search creators"}
+ *             placeholder={selected.length > 0 ? "" : "Search authors"}
  *           />
  *         </>
  *       )}

@@ -249,7 +249,7 @@ describe("getCreator", () => {
     );
 
     expect(result).toEqual({
-      message: "Could not load the creators. Please try again later.",
+      message: "Could not load the authors. Please try again later.",
       ok: false,
     });
   });
@@ -345,7 +345,7 @@ describe("listAllCreators", () => {
     expect(mockListCreators).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
       creators: [],
-      message: "Could not load the creators. Please try again later.",
+      message: "Could not load the authors. Please try again later.",
       nextToken: "",
       ok: false,
       previousToken: "",

@@ -1330,7 +1330,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get commentsReportDescription {
-    return 'Tell the moderators why this comment breaks the rules. Only they see your report — its author is not told about it.';
+    return 'Tell the moderators why this comment breaks the rules. Only they see your report — its commenter is not told about it.';
   }
 
   @override
@@ -2536,7 +2536,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String get commentsReportDescription {
-    return '请告诉审核人员这条评论违反规则的原因。只有审核人员能看到您的举报，评论作者不会收到通知。';
+    return '请告诉审核人员这条评论违反规则的原因。只有审核人员能看到您的举报，评论者不会收到通知。';
   }
 
   @override

@@ -159,7 +159,7 @@ describe("CommentManager", () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "The author still sees it exactly as they posted it — they are never told about a removal."
+        "The commenter still sees it exactly as they posted it — they are never told about a removal."
       )
     ).toBeTruthy();
     expect(screen.getByText("restore COMMENT0001")).toBeTruthy();
