@@ -36,6 +36,7 @@ import {
   MULTI_TENANT_SCENARIO,
   OTHER_TENANT,
 } from "../src/scenarios/multi-tenant";
+import { serverActionAnswered } from "../src/server-action";
 import {
   hostPath,
   WEB_ADMIN_BASE_URL,
@@ -389,9 +390,15 @@ test.describe("admin catalog masters", () => {
     const created = await genreNamesInOrder(page);
     expect(created.indexOf(first)).toBeLessThan(created.indexOf(second));
 
+    // The list rearranges itself the moment the button is pressed, and a
+    // reorder puts nothing else on screen, so the flip below says nothing about
+    // whether the Action behind it has even been sent. Waiting for its answer
+    // is what keeps the reload from cancelling the write it is about to read.
+    const reordered = serverActionAnswered(page);
     await page
       .getByRole("button", { exact: true, name: `Move ${second} up` })
       .click();
+    await reordered;
 
     await expect
       .poll(async () => {
