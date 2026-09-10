@@ -4,7 +4,11 @@ import type { Locale } from "@publira/i18n";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
-import { applyCacheTag, tenantAuthorsTag } from "./cache-tags";
+import {
+  applyCacheTag,
+  tenantAuthorsTag,
+  tenantSeriesListTag,
+} from "./cache-tags";
 import { toSeriesListItem } from "./catalog";
 import type { SeriesListItem } from "./catalog";
 import { localizedReadFailure } from "./read-failure";
@@ -87,6 +91,65 @@ export const listPublishedAuthors = async (
     });
   } catch (error) {
     return localizedReadFailure(error, locale, "host.authors.list_failed");
+  }
+
+  return {
+    ok: true,
+    value: {
+      authors: (response.authors ?? []).map((author) => {
+        const mapped = mapPublishedAuthor(author);
+        return {
+          iconImageUrl: mapped.iconImageUrl,
+          id: mapped.id,
+          name: mapped.name,
+          seriesCount: mapped.seriesCount,
+        };
+      }),
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
+    },
+  };
+};
+
+/**
+ * Creators whose name matches, narrowed to the ones credited on a currently
+ * published series — the population {@link listPublishedAuthors} shows. A
+ * publish therefore changes the answer, so the series list tag invalidates it
+ * alongside the author tag.
+ *
+ * Only the name is matched: a biography that mentions another creator would
+ * otherwise answer a name search with someone the reader did not ask for.
+ *
+ * Cursor pagination as {@link listPublishedAuthors}, plus the rule that a token
+ * belongs to the query it was built for.
+ */
+export const searchPublishedAuthors = async (
+  tenantId: string,
+  {
+    limit = 20,
+    locale,
+    query,
+    token = "",
+  }: { limit?: number; locale: Locale; query: string; token?: string }
+): Promise<CachedReadResult<PublishedAuthorListResult>> => {
+  "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+
+  let response: Awaited<
+    ReturnType<typeof apiClient.catalog.searchPublishedAuthors>
+  >;
+  try {
+    response = await apiClient.catalog.searchPublishedAuthors({
+      limit,
+      query,
+      tenant: { tenantId: normalizedTenantId },
+      token,
+    });
+  } catch (error) {
+    return localizedReadFailure(error, locale, "host.search.authors_failed");
   }
 
   return {
