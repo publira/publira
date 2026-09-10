@@ -1,4 +1,4 @@
-// Package publishepisodes publishes scheduled episodes and writes member
+// Package publishepisodes publishes scheduled episodes and writes follower
 // notifications on success, tenant-admin notifications for the result,
 // and operator notifications when the final attempt fails.
 package publishepisodes
@@ -28,6 +28,11 @@ const (
 
 	notificationTypeEpisodePublished     = "episode_published"
 	notificationTypeEpisodePublishFailed = "episode_publish_failed"
+
+	// defaultFollowerPageSize bounds one recipient query. The fan-out grows
+	// with the tenant's readership, so the run walks the followers a page at a
+	// time instead of materializing every one of them before the first insert.
+	defaultFollowerPageSize = 500
 )
 
 var tracer = otel.Tracer("github.com/publira/publira/server/internal/publishepisodes")
@@ -39,9 +44,13 @@ type Runner struct {
 	reval      *revalidate.Client
 	logger     *slog.Logger
 	maxRetries int
+	// followerPageSize bounds one recipient query. New sets it to
+	// defaultFollowerPageSize; a test lowers it to walk several pages without
+	// seeding a page's worth of readers.
+	followerPageSize int32
 	// publish, when set, replaces publishEpisode so tests can force a final failure.
 	publish func(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error
-	// notify, when set, replaces notifyMembersOfPublish so tests can force a
+	// notify, when set, replaces notifyFollowersOfPublish so tests can force a
 	// failure after the listing is marked published and before commit.
 	notify func(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error
 }
@@ -76,11 +85,12 @@ func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Client, logger
 		maxRetries = 0
 	}
 	return &Runner{
-		db:         db,
-		queries:    queries,
-		reval:      reval,
-		logger:     logger,
-		maxRetries: maxRetries,
+		db:               db,
+		queries:          queries,
+		reval:            reval,
+		logger:           logger,
+		maxRetries:       maxRetries,
+		followerPageSize: defaultFollowerPageSize,
 	}
 }
 
@@ -175,19 +185,23 @@ func (r *Runner) publishOne(ctx context.Context, row dbmodels.ListEpisodesReadyT
 	return r.publishEpisode(ctx, row)
 }
 
-func (r *Runner) notifyMembers(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
+func (r *Runner) notifyFollowers(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
 	if r.notify != nil {
 		return r.notify(ctx, q, row)
 	}
-	return r.notifyMembersOfPublish(ctx, q, row)
+	return r.notifyFollowersOfPublish(ctx, q, row)
 }
 
-func (r *Runner) notifyMembersOfPublish(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
-	members, err := q.ListTenantMemberIDs(ctx, row.TenantID)
-	if err != nil {
-		return fmt.Errorf("list members: %w", err)
-	}
-
+// notifyFollowersOfPublish writes one notification per reader who asked to
+// hear about this episode — a follower of the episode, of its series, or of a
+// creator credited on it. A tenant whose readers follow nothing publishes
+// silently, which is the point: a follow is the request to be told.
+//
+// The recipients arrive a page at a time and the notification rows are written
+// as each page lands, so the run holds one page rather than the whole
+// readership. Every page runs in the publishing transaction, so a failure
+// half way leaves neither the notifications nor the published listing behind.
+func (r *Runner) notifyFollowersOfPublish(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
 	payload, err := json.Marshal(episodePublishedPayload{
 		EpisodeID:    row.EpisodePublicID,
 		EpisodeTitle: row.EpisodeTitle,
@@ -199,24 +213,48 @@ func (r *Runner) notifyMembersOfPublish(ctx context.Context, q *dbmodels.Queries
 	}
 
 	subjectKey := "episode:" + row.EpisodePublicID
-	for _, memberID := range members {
-		notificationID, err := uuid.NewV7()
-		if err != nil {
-			return fmt.Errorf("allocate notification id: %w", err)
-		}
-		_, err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
-			ID:               notificationID,
-			TenantID:         row.TenantID,
-			UserID:           memberID,
-			NotificationType: notificationTypeEpisodePublished,
-			SubjectKey:       subjectKey,
-			Payload:          payload,
+	notified := 0
+	// The nil UUID sorts below every UUID, so the first page starts there.
+	after := uuid.Nil
+	for {
+		followers, err := q.ListEpisodeFollowerIDs(ctx, dbmodels.ListEpisodeFollowerIDsParams{
+			TenantID:    row.TenantID,
+			EpisodeID:   row.EpisodeID,
+			AfterUserID: after,
+			Limit:       r.followerPageSize,
 		})
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("insert notification for %s: %w", memberID, err)
+		if err != nil {
+			return fmt.Errorf("list followers: %w", err)
+		}
+		if len(followers) == 0 {
+			break
+		}
+
+		for _, followerID := range followers {
+			notificationID, err := uuid.NewV7()
+			if err != nil {
+				return fmt.Errorf("allocate notification id: %w", err)
+			}
+			_, err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+				ID:               notificationID,
+				TenantID:         row.TenantID,
+				UserID:           followerID,
+				NotificationType: notificationTypeEpisodePublished,
+				SubjectKey:       subjectKey,
+				Payload:          payload,
+			})
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("insert notification for %s: %w", followerID, err)
+			}
+		}
+
+		notified += len(followers)
+		after = followers[len(followers)-1]
+		if int32(len(followers)) < r.followerPageSize {
+			break
 		}
 	}
-	if len(members) == 0 {
+	if notified == 0 {
 		return nil
 	}
 	return r.enqueueMemberPush(ctx, q, row, subjectKey)
@@ -393,9 +431,9 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 		_ = tx.Rollback()
 		return fmt.Errorf("mark episode published: %w", err)
 	}
-	if err := r.notifyMembers(ctx, qtx, row); err != nil {
+	if err := r.notifyFollowers(ctx, qtx, row); err != nil {
 		_ = tx.Rollback()
-		return fmt.Errorf("notify members: %w", err)
+		return fmt.Errorf("notify followers: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {

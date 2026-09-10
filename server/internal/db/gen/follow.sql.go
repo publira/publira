@@ -167,6 +167,85 @@ func (q *Queries) DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollow
 	return result.RowsAffected()
 }
 
+const listEpisodeFollowerIDs = `-- name: ListEpisodeFollowerIDs :many
+SELECT user_id
+FROM (
+    SELECT sf.user_id
+    FROM series_follows sf
+        JOIN episodes e ON e.tenant_id = sf.tenant_id
+            AND e.series_id = sf.series_id
+    WHERE sf.tenant_id = $1
+        AND e.id = $2
+        AND sf.user_id > $3
+    UNION
+    SELECT cf.user_id
+    FROM creator_follows cf
+        JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
+            AND ec.creator_id = cf.creator_id
+    WHERE cf.tenant_id = $1
+        AND ec.episode_id = $2
+        AND cf.user_id > $3
+    UNION
+    SELECT ef.user_id
+    FROM episode_follows ef
+    WHERE ef.tenant_id = $1
+        AND ef.episode_id = $2
+        AND ef.user_id > $3
+) AS followers
+ORDER BY user_id
+LIMIT $4
+`
+
+type ListEpisodeFollowerIDsParams struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	EpisodeID   uuid.UUID `json:"episode_id"`
+	AfterUserID uuid.UUID `json:"after_user_id"`
+	Limit       int32     `json:"limit"`
+}
+
+// Worker fan-out: who is told about a new episode. The union of the follows
+// that point at the episode, at the series it belongs to, and at a creator
+// credited on it. UNION rather than UNION ALL, so a reader who follows both
+// the series and its author is one recipient and gets one notification.
+//
+// The credits come from episode_creators rather than series_creators because
+// the episode is the unit that is credited: a guest who appears on this
+// episode alone reaches their followers, and someone who has since left the
+// series team is not announced with an episode they were not on.
+//
+// Keyset paging on user_id, because the result grows with the tenant's
+// readership and the caller writes one row per recipient. The cursor is
+// pushed into each branch rather than applied to the union, so every branch
+// still drives its own index. The nil UUID sorts below every UUID, so it is
+// what the first page asks for.
+func (q *Queries) ListEpisodeFollowerIDs(ctx context.Context, arg ListEpisodeFollowerIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodeFollowerIDs,
+		arg.TenantID,
+		arg.EpisodeID,
+		arg.AfterUserID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedCreatorFollowTargetPublicIDsByIDs = `-- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
 SELECT c.id,
     c.public_id

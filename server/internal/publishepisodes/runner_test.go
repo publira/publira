@@ -45,8 +45,8 @@ func TestPublishSuccessNotifiesEachAdminOnce(t *testing.T) {
 	if _, ok := gotAdmins[editor.ID]; !ok {
 		t.Fatal("missing notification for tenant editor")
 	}
-	if _, ok := gotAdmins[env.member.ID]; !ok {
-		t.Fatal("missing notification for member")
+	if _, ok := gotAdmins[env.follower.ID]; !ok {
+		t.Fatal("missing notification for the series follower")
 	}
 
 	for _, row := range rows {
@@ -76,9 +76,10 @@ func TestPublishSuccessNotifiesEachAdminOnce(t *testing.T) {
 	assertNotificationCounts(t, pg, notificationCounts{tenant: 3})
 }
 
-func TestPublishSuccessNotifiesEachMemberOnce(t *testing.T) {
+func TestPublishSuccessNotifiesEachFollowerOnce(t *testing.T) {
 	pg, env := newPublishTestEnv(t)
-	otherMember := pg.SeedEndUser(t, env.tenant.ID, "MEMBERFAIL02", "member2@fail.example.com", "Member Two")
+	episodeFollower := env.seedReader(t, "MEMBERFAIL02", "member2@fail.example.com", "Member Two")
+	env.followEpisode(t, episodeFollower.ID, env.episode.ID)
 	r := env.runner()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -89,18 +90,96 @@ func TestPublishSuccessNotifiesEachMemberOnce(t *testing.T) {
 	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
 		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
 	}
-	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
+	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, episodeFollower.ID, env.admin.ID)
 
 	r.RunOnce(ctx)
-	if err := r.notifyMembersOfPublish(ctx, dbmodels.New(pg.DB), env.readyRow()); err != nil {
-		t.Fatalf("notifyMembersOfPublish: %v", err)
+	if err := r.notifyFollowersOfPublish(ctx, dbmodels.New(pg.DB), env.readyRow()); err != nil {
+		t.Fatalf("notifyFollowersOfPublish: %v", err)
 	}
-	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
+	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, episodeFollower.ID, env.admin.ID)
 }
 
-func TestPublishRetriesMemberNotificationsAfterInsertFailure(t *testing.T) {
+func TestPublishSuccessNotifiesTheUnionOfFollowTargets(t *testing.T) {
 	pg, env := newPublishTestEnv(t)
-	otherMember := pg.SeedEndUser(t, env.tenant.ID, "MEMBERFAIL02", "member2@fail.example.com", "Member Two")
+	creatorFollower := env.seedReader(t, "MEMBERFAIL03", "member3@fail.example.com", "Member Three")
+	env.followCreator(t, creatorFollower.ID, env.creator.ID)
+	episodeFollower := env.seedReader(t, "MEMBERFAIL04", "member4@fail.example.com", "Member Four")
+	env.followEpisode(t, episodeFollower.ID, env.episode.ID)
+	env.seedReader(t, "MEMBERFAIL05", "member5@fail.example.com", "Member Five")
+	r := env.runner()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, creatorFollower.ID, episodeFollower.ID, env.admin.ID)
+}
+
+func TestPublishSuccessNotifiesAReaderWhoFollowsSeveralTargetsOnce(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	env.followCreator(t, env.follower.ID, env.creator.ID)
+	env.followEpisode(t, env.follower.ID, env.episode.ID)
+	r := env.runner()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, env.admin.ID)
+}
+
+func TestPublishSuccessWalksEveryPageOfFollowers(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	second := env.seedReader(t, "MEMBERFAIL06", "member6@fail.example.com", "Member Six")
+	env.followSeries(t, second.ID)
+	third := env.seedReader(t, "MEMBERFAIL07", "member7@fail.example.com", "Member Seven")
+	env.followSeries(t, third.ID)
+	r := env.runner()
+	r.followerPageSize = 1
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, second.ID, third.ID, env.admin.ID)
+}
+
+func TestPublishSuccessSkipsReadersWhoFollowNothing(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	deleteFollows(t, pg)
+	env.seedReader(t, "MEMBERFAIL08", "member8@fail.example.com", "Member Eight")
+	r := env.runner()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
+		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
+	}
+	assertPublishedUsers(t, pg, env.admin.ID)
+	assertNotificationCounts(t, pg, notificationCounts{tenant: 1})
+}
+
+func TestPublishSuccessSkipsFollowersOfACreatorNotCreditedOnTheEpisode(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	deleteFollows(t, pg)
+	formerCreator := pg.SeedCreator(t, env.tenant.ID, testutil.CreatorSeed{PublicID: "CREATORFAIL2", Name: "Former Creator"})
+	pg.SeedSeriesCreator(t, env.tenant.ID, env.series.ID, formerCreator.ID, "")
+	env.followCreator(t, env.follower.ID, formerCreator.ID)
+	r := env.runner()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	assertPublishedUsers(t, pg, env.admin.ID)
+}
+
+func TestPublishRetriesFollowerNotificationsAfterInsertFailure(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	otherFollower := env.seedReader(t, "MEMBERFAIL02", "member2@fail.example.com", "Member Two")
+	env.followSeries(t, otherFollower.ID)
 	r := env.runner()
 	r.maxRetries = 1
 	attempts := 0
@@ -109,7 +188,7 @@ func TestPublishRetriesMemberNotificationsAfterInsertFailure(t *testing.T) {
 		if attempts == 1 {
 			return errors.New("insert boom")
 		}
-		return r.notifyMembersOfPublish(ctx, q, row)
+		return r.notifyFollowersOfPublish(ctx, q, row)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -122,7 +201,7 @@ func TestPublishRetriesMemberNotificationsAfterInsertFailure(t *testing.T) {
 	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
 		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
 	}
-	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
+	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, otherFollower.ID, env.admin.ID)
 }
 
 func TestPublishSuccessSkipsOtherTenantAdmins(t *testing.T) {
@@ -135,7 +214,7 @@ func TestPublishSuccessSkipsOtherTenantAdmins(t *testing.T) {
 	defer cancel()
 	r.RunOnce(ctx)
 
-	assertPublishedUsers(t, pg, env.admin.ID, env.member.ID)
+	assertPublishedUsers(t, pg, env.admin.ID, env.follower.ID)
 	for _, row := range listTenantNotifications(t, pg) {
 		if row.UserID == otherAdmin.ID {
 			t.Fatal("notified other tenant admin")
@@ -144,20 +223,26 @@ func TestPublishSuccessSkipsOtherTenantAdmins(t *testing.T) {
 	assertNotificationCounts(t, pg, notificationCounts{tenant: 2})
 }
 
-func TestPublishSuccessSkipsOtherTenantMembers(t *testing.T) {
+func TestPublishSuccessSkipsFollowersOfAnotherTenant(t *testing.T) {
 	pg, env := newPublishTestEnv(t)
 	otherTenant := pg.SeedTenant(t, "TENANTFAIL02", "other.example.com", "Other Tenant")
+	otherSeries := pg.SeedSeries(t, otherTenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESFAIL02",
+		Title:     "Other Series",
+		Published: true,
+	})
 	otherMember := pg.SeedEndUser(t, otherTenant.ID, "MEMBEROTHER1", "member@other.example.com", "Other Member")
+	insertFollow(t, pg, "INSERT INTO series_follows (tenant_id, user_id, series_id) VALUES ($1, $2, $3)", otherTenant.ID, otherMember.ID, otherSeries.ID)
 	r := env.runner()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	r.RunOnce(ctx)
 
-	assertPublishedUsers(t, pg, env.admin.ID, env.member.ID)
+	assertPublishedUsers(t, pg, env.admin.ID, env.follower.ID)
 	for _, row := range listTenantNotifications(t, pg) {
 		if row.UserID == otherMember.ID {
-			t.Fatal("notified other tenant member")
+			t.Fatal("notified a follower of another tenant")
 		}
 	}
 	assertNotificationCounts(t, pg, notificationCounts{tenant: 2})
@@ -349,8 +434,9 @@ type publishTestEnv struct {
 	tenant        testutil.Tenant
 	series        testutil.Series
 	episode       testutil.Episode
+	creator       testutil.Creator
 	admin         testutil.TenantUser
-	member        testutil.TenantUser
+	follower      testutil.TenantUser
 	operator      testutil.PlatformOperator
 	otherOperator testutil.PlatformOperator
 }
@@ -373,17 +459,47 @@ func newPublishTestEnv(t *testing.T) (*testutil.PostgresEnv, publishTestEnv) {
 		Status:      testutil.EpisodeStatusScheduled,
 		ScheduledAt: time.Now().Add(-time.Minute),
 	})
+	creator := pg.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORFAIL1", Name: "Credited Creator"})
+	pg.SeedSeriesCreator(t, tenant.ID, series.ID, creator.ID, "")
+	pg.SeedEpisodeCreator(t, tenant.ID, episode.ID, creator.ID, "")
 
-	return pg, publishTestEnv{
+	env := publishTestEnv{
 		pg:            pg,
 		tenant:        tenant,
 		series:        series,
 		episode:       episode,
+		creator:       creator,
 		admin:         pg.SeedTenantAdmin(t, tenant.ID, "ADMINFAIL001", "admin@fail.example.com", "Tenant Admin"),
-		member:        pg.SeedEndUser(t, tenant.ID, "MEMBERFAIL01", "member@fail.example.com", "Member"),
+		follower:      pg.SeedEndUser(t, tenant.ID, "MEMBERFAIL01", "member@fail.example.com", "Member"),
 		operator:      pg.SeedPlatformOperator(t, "PLATFAIL0001", "op1@example.com", "Operator One"),
 		otherOperator: pg.SeedPlatformOperator(t, "PLATFAIL0002", "op2@example.com", "Operator Two"),
 	}
+	// The tenant's one reader follows the series, so the default environment
+	// publishes to exactly one recipient. A test about who is reached seeds
+	// the follows it is interested in instead.
+	env.followSeries(t, env.follower.ID)
+
+	return pg, env
+}
+
+func (env publishTestEnv) followSeries(t *testing.T, userID uuid.UUID) {
+	t.Helper()
+	insertFollow(t, env.pg, "INSERT INTO series_follows (tenant_id, user_id, series_id) VALUES ($1, $2, $3)", env.tenant.ID, userID, env.series.ID)
+}
+
+func (env publishTestEnv) followCreator(t *testing.T, userID, creatorID uuid.UUID) {
+	t.Helper()
+	insertFollow(t, env.pg, "INSERT INTO creator_follows (tenant_id, user_id, creator_id) VALUES ($1, $2, $3)", env.tenant.ID, userID, creatorID)
+}
+
+func (env publishTestEnv) followEpisode(t *testing.T, userID, episodeID uuid.UUID) {
+	t.Helper()
+	insertFollow(t, env.pg, "INSERT INTO episode_follows (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)", env.tenant.ID, userID, episodeID)
+}
+
+func (env publishTestEnv) seedReader(t *testing.T, publicID, email, name string) testutil.TenantUser {
+	t.Helper()
+	return env.pg.SeedEndUser(t, env.tenant.ID, publicID, email, name)
 }
 
 func (env publishTestEnv) readyRow() dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow {
@@ -457,23 +573,23 @@ func listingStatus(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) 
 	return status
 }
 
-func assertMemberPublishedNotifications(t *testing.T, pg *testutil.PostgresEnv, env publishTestEnv, memberIDs ...uuid.UUID) {
+func assertFollowerPublishedNotifications(t *testing.T, pg *testutil.PostgresEnv, env publishTestEnv, recipientIDs ...uuid.UUID) {
 	t.Helper()
 	rows := listTenantNotifications(t, pg)
-	if len(rows) != len(memberIDs) {
-		t.Fatalf("notifications = %d, want %d", len(rows), len(memberIDs))
+	if len(rows) != len(recipientIDs) {
+		t.Fatalf("notifications = %d, want %d", len(rows), len(recipientIDs))
 	}
 
-	gotMembers := map[uuid.UUID]dbmodels.Notification{}
+	gotRecipients := map[uuid.UUID]dbmodels.Notification{}
 	for _, row := range rows {
-		if _, exists := gotMembers[row.UserID]; exists {
-			t.Fatalf("duplicate notification for member %s", row.UserID)
+		if _, exists := gotRecipients[row.UserID]; exists {
+			t.Fatalf("duplicate notification for %s", row.UserID)
 		}
-		gotMembers[row.UserID] = row
+		gotRecipients[row.UserID] = row
 	}
-	for _, memberID := range memberIDs {
-		if _, ok := gotMembers[memberID]; !ok {
-			t.Fatalf("missing notification for member %s", memberID)
+	for _, recipientID := range recipientIDs {
+		if _, ok := gotRecipients[recipientID]; !ok {
+			t.Fatalf("missing notification for %s", recipientID)
 		}
 	}
 
@@ -501,7 +617,29 @@ func assertMemberPublishedNotifications(t *testing.T, pg *testutil.PostgresEnv, 
 		}
 	}
 
-	assertNotificationCounts(t, pg, notificationCounts{tenant: len(memberIDs)})
+	assertNotificationCounts(t, pg, notificationCounts{tenant: len(recipientIDs)})
+}
+
+// insertFollow writes a follow row through the superuser connection, which is
+// not subject to the member isolation policy these tables carry.
+func insertFollow(t *testing.T, pg *testutil.PostgresEnv, statement string, tenantID, userID, targetID uuid.UUID) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := pg.DB.ExecContext(ctx, statement, tenantID, userID, targetID); err != nil {
+		t.Fatalf("insert follow for %s: %v", userID, err)
+	}
+}
+
+func deleteFollows(t *testing.T, pg *testutil.PostgresEnv) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for _, table := range []string{"series_follows", "creator_follows", "episode_follows"} {
+		if _, err := pg.DB.ExecContext(ctx, "DELETE FROM "+table); err != nil {
+			t.Fatalf("delete %s: %v", table, err)
+		}
+	}
 }
 
 func listTenantNotifications(t *testing.T, pg *testutil.PostgresEnv) []dbmodels.Notification {

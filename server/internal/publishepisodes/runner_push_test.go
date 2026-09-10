@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/testutil"
@@ -74,9 +72,9 @@ func TestPublishRerunDoesNotEnqueueASecondMemberPushEvent(t *testing.T) {
 	}
 }
 
-func TestPublishWithoutMembersEnqueuesNoMemberPushEvent(t *testing.T) {
+func TestPublishWithoutFollowersEnqueuesNoMemberPushEvent(t *testing.T) {
 	pg, env := newPublishTestEnv(t)
-	deleteTenantMembers(t, pg, env.tenant.ID)
+	deleteFollows(t, pg)
 	r := env.runner()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -88,20 +86,6 @@ func TestPublishWithoutMembersEnqueuesNoMemberPushEvent(t *testing.T) {
 	}
 	if events := listMemberPushEvents(t, pg); len(events) != 0 {
 		t.Fatalf("member push events = %d, want 0", len(events))
-	}
-}
-
-func deleteTenantMembers(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	_, err := pg.DB.ExecContext(ctx, `
-		DELETE FROM users u
-		WHERE u.tenant_id = $1
-			AND NOT EXISTS (SELECT 1 FROM tenant_user_roles r WHERE r.user_id = u.id)
-	`, tenantID)
-	if err != nil {
-		t.Fatalf("delete members: %v", err)
 	}
 }
 

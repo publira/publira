@@ -47,18 +47,6 @@ FROM tenant_user_roles tur
 WHERE tur.tenant_id = sqlc.arg('tenant_id')::uuid
 ORDER BY tur.user_id;
 
--- Worker fan-out: members are tenant users that do not hold a tenant role.
--- name: ListTenantMemberIDs :many
-SELECT u.id
-FROM users u
-WHERE u.tenant_id = sqlc.arg('tenant_id')::uuid
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    )
-ORDER BY u.id;
-
 -- name: CountPendingEndUsers :one
 SELECT COUNT(*)::int
 FROM users u
