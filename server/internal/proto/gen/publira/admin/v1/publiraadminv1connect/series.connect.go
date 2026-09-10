@@ -69,6 +69,12 @@ const (
 	// AdminSeriesServiceUpdateEpisodePublishScheduleProcedure is the fully-qualified name of the
 	// AdminSeriesService's UpdateEpisodePublishSchedule RPC.
 	AdminSeriesServiceUpdateEpisodePublishScheduleProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodePublishSchedule"
+	// AdminSeriesServiceListEpisodeCreditsProcedure is the fully-qualified name of the
+	// AdminSeriesService's ListEpisodeCredits RPC.
+	AdminSeriesServiceListEpisodeCreditsProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodeCredits"
+	// AdminSeriesServiceReplaceEpisodeCreditsProcedure is the fully-qualified name of the
+	// AdminSeriesService's ReplaceEpisodeCredits RPC.
+	AdminSeriesServiceReplaceEpisodeCreditsProcedure = "/publira.admin.v1.AdminSeriesService/ReplaceEpisodeCredits"
 	// AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure is the fully-qualified name of the
 	// AdminSeriesService's UploadSeriesEyeCatchAspectImage RPC.
 	AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadSeriesEyeCatchAspectImage"
@@ -97,6 +103,8 @@ type AdminSeriesServiceClient interface {
 	ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error)
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
+	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
+	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
 	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
 	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
 	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
@@ -186,6 +194,18 @@ func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodePublishSchedule")),
 			connect.WithClientOptions(opts...),
 		),
+		listEpisodeCredits: connect.NewClient[v1.ListEpisodeCreditsRequest, v1.ListEpisodeCreditsResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceListEpisodeCreditsProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodeCredits")),
+			connect.WithClientOptions(opts...),
+		),
+		replaceEpisodeCredits: connect.NewClient[v1.ReplaceEpisodeCreditsRequest, v1.ReplaceEpisodeCreditsResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceReplaceEpisodeCreditsProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("ReplaceEpisodeCredits")),
+			connect.WithClientOptions(opts...),
+		),
 		uploadSeriesEyeCatchAspectImage: connect.NewClient[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse](
 			httpClient,
 			baseURL+AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
@@ -227,6 +247,8 @@ type adminSeriesServiceClient struct {
 	listEpisodeImages               *connect.Client[v1.ListEpisodeImagesRequest, v1.ListEpisodeImagesResponse]
 	reorderEpisodeImages            *connect.Client[v1.ReorderEpisodeImagesRequest, v1.ReorderEpisodeImagesResponse]
 	updateEpisodePublishSchedule    *connect.Client[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse]
+	listEpisodeCredits              *connect.Client[v1.ListEpisodeCreditsRequest, v1.ListEpisodeCreditsResponse]
+	replaceEpisodeCredits           *connect.Client[v1.ReplaceEpisodeCreditsRequest, v1.ReplaceEpisodeCreditsResponse]
 	uploadSeriesEyeCatchAspectImage *connect.Client[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse]
 	createEpisodeFreeWindow         *connect.Client[v1.CreateEpisodeFreeWindowRequest, v1.CreateEpisodeFreeWindowResponse]
 	createSeriesFreeWindows         *connect.Client[v1.CreateSeriesFreeWindowsRequest, v1.CreateSeriesFreeWindowsResponse]
@@ -294,6 +316,16 @@ func (c *adminSeriesServiceClient) UpdateEpisodePublishSchedule(ctx context.Cont
 	return c.updateEpisodePublishSchedule.CallUnary(ctx, req)
 }
 
+// ListEpisodeCredits calls publira.admin.v1.AdminSeriesService.ListEpisodeCredits.
+func (c *adminSeriesServiceClient) ListEpisodeCredits(ctx context.Context, req *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error) {
+	return c.listEpisodeCredits.CallUnary(ctx, req)
+}
+
+// ReplaceEpisodeCredits calls publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits.
+func (c *adminSeriesServiceClient) ReplaceEpisodeCredits(ctx context.Context, req *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error) {
+	return c.replaceEpisodeCredits.CallUnary(ctx, req)
+}
+
 // UploadSeriesEyeCatchAspectImage calls
 // publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage.
 func (c *adminSeriesServiceClient) UploadSeriesEyeCatchAspectImage(ctx context.Context, req *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {
@@ -330,6 +362,8 @@ type AdminSeriesServiceHandler interface {
 	ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error)
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
+	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
+	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
 	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
 	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
 	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
@@ -415,6 +449,18 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodePublishSchedule")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminSeriesServiceListEpisodeCreditsHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceListEpisodeCreditsProcedure,
+		svc.ListEpisodeCredits,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodeCredits")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminSeriesServiceReplaceEpisodeCreditsHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceReplaceEpisodeCreditsProcedure,
+		svc.ReplaceEpisodeCredits,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("ReplaceEpisodeCredits")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler := connect.NewUnaryHandler(
 		AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
 		svc.UploadSeriesEyeCatchAspectImage,
@@ -465,6 +511,10 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 			adminSeriesServiceReorderEpisodeImagesHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceUpdateEpisodePublishScheduleProcedure:
 			adminSeriesServiceUpdateEpisodePublishScheduleHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceListEpisodeCreditsProcedure:
+			adminSeriesServiceListEpisodeCreditsHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceReplaceEpisodeCreditsProcedure:
+			adminSeriesServiceReplaceEpisodeCreditsHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:
 			adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceCreateEpisodeFreeWindowProcedure:
@@ -528,6 +578,14 @@ func (UnimplementedAdminSeriesServiceHandler) ReorderEpisodeImages(context.Conte
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ListEpisodeCredits is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits is not implemented"))
 }
 
 func (UnimplementedAdminSeriesServiceHandler) UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {

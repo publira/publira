@@ -386,13 +386,25 @@ func (s *adminServer) DeleteCreatorRole(
 	if err != nil {
 		return nil, err
 	}
-	credited, err := s.queriesFor(ctx).CountSeriesCreatorsByRoleIDForTenant(ctx, dbmodels.CountSeriesCreatorsByRoleIDForTenantParams{
+	creditedOnSeries, err := s.queriesFor(ctx).CountSeriesCreatorsByRoleIDForTenant(ctx, dbmodels.CountSeriesCreatorsByRoleIDForTenantParams{
 		TenantID: tenant.ID,
 		RoleID:   current.ID,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to count credits of a creator role", err, "tenant_id", tenant.ID.String(), "creator_role_id", current.ID.String())
 	}
+	// Every episode carries its own credits, so a role no series names any
+	// more can still be the one an episode shipped with. Both tables hold the
+	// role with a foreign key that has no ON DELETE, and both are counted here
+	// so the console can say how much re-crediting deleting it would take.
+	creditedOnEpisodes, err := s.queriesFor(ctx).CountEpisodeCreatorsByRoleIDForTenant(ctx, dbmodels.CountEpisodeCreatorsByRoleIDForTenantParams{
+		TenantID: tenant.ID,
+		RoleID:   current.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to count episode credits of a creator role", err, "tenant_id", tenant.ID.String(), "creator_role_id", current.ID.String())
+	}
+	credited := creditedOnSeries + creditedOnEpisodes
 	if credited > 0 {
 		return nil, creatorRoleInUseError(credited)
 	}

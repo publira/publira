@@ -262,6 +262,25 @@ func (e *PostgresEnv) SeedSeriesCreator(t *testing.T, tenantID, seriesID, creato
 	}
 }
 
+// SeedEpisodeCreator credits the creator on the episode in one of the tenant's
+// roles, the way the bake at episode creation does. An empty roleName takes
+// the leading role, which is what an episode credited to one person means.
+func (e *PostgresEnv) SeedEpisodeCreator(t *testing.T, tenantID, episodeID, creatorID uuid.UUID, roleName string) {
+	t.Helper()
+	e.requireDB(t)
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	role := e.CreatorRoleByName(t, tenantID, defaultIfEmpty(roleName, creatorroles.Defaults[0].Name))
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO episode_creators (tenant_id, episode_id, creator_id, role_id, display_order, source)
+		VALUES ($1, $2, $3, $4, 0, 'series')
+	`, tenantID, episodeID, creatorID, role.ID); err != nil {
+		t.Fatalf("insert episode_creators episode=%s creator=%s: %v", episodeID, creatorID, err)
+	}
+}
+
 // SeedSeriesCreatorWithoutRole credits the creator on the series stating no
 // role, which is the shape a credit written before the tenant had a role
 // vocabulary still has. Nothing writes one any more, so this is the only way

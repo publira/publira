@@ -510,6 +510,18 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to upsert episode listing", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
+	// The episode is credited to the team the series carries at this moment,
+	// in the same transaction that creates it, so an episode never exists
+	// without credits. Editing the series afterwards changes what the next
+	// episode is created with and leaves this one as it shipped.
+	err = q.BakeSeriesCreatorsOntoEpisode(ctx, dbmodels.BakeSeriesCreatorsOntoEpisodeParams{
+		TenantID:  tenant.ID,
+		SeriesID:  seriesID,
+		EpisodeID: base.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to bake series credits onto episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}

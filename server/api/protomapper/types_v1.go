@@ -249,6 +249,30 @@ func CreatorFromRow(
 	return creator
 }
 
+// EpisodeCreditsByEpisodeID groups the credits of several episodes by the
+// episode they are on. The query returns them in role priority order, so
+// nothing here reorders them.
+func EpisodeCreditsByEpisodeID(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) map[uuid.UUID][]*publirattypesv1.Creator {
+	credits := make(map[uuid.UUID][]*publirattypesv1.Creator)
+	for _, row := range rows {
+		// The icon's byte size is not on the credit read, the way it is not on
+		// the series aggregate's: what a page needs to render the icon is its
+		// URL and the instant it last changed.
+		creator := CreatorFromRow(row.PublicID, row.Name, row.ProfileText.String, row.IconImageID, 0, row.IconImageUpdatedAt)
+		// A credit baked from one written before roles existed carries none,
+		// and says so by leaving the field unset rather than by naming an
+		// empty role.
+		if row.RolePublicID.Valid {
+			creator.Role = &publirattypesv1.CreatorRole{
+				PublicId: row.RolePublicID.String,
+				Name:     row.RoleName.String,
+			}
+		}
+		credits[row.EpisodeID] = append(credits[row.EpisodeID], creator)
+	}
+	return credits
+}
+
 func Label(publicID, name string) *publirattypesv1.Label {
 	return &publirattypesv1.Label{
 		PublicId: publicID,

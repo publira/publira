@@ -47,6 +47,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil, tenantID))
+	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
 	mock.ExpectCommit()
 	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -103,6 +104,7 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(0), nil, "draft", nil, nil, tenantID))
+	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
 	mock.ExpectCommit()
 	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))

@@ -188,105 +188,6 @@ func (s *adminServer) seriesEyeCatchVariantsByImageIDs(
 	return mapped, nil
 }
 
-// seriesCreatorCredit is one credit a save asked for, with both ends resolved:
-// the person, and the role of this tenant they are credited in.
-type seriesCreatorCredit struct {
-	creator dbmodels.ListCreatorsByPublicIDsForTenantRow
-	role    dbmodels.ListCreatorRolesByPublicIDsForTenantRow
-}
-
-// resolveSeriesCreatorCredits reads the credits a save asked for, keeping the
-// order they were given in. A public_id naming nothing of this tenant is a bad
-// request rather than a silently dropped credit, and so is the same person
-// credited twice in the same role: the pair is the identity of a credit, which
-// is why one person can still appear under two roles.
-func (s *adminServer) resolveSeriesCreatorCredits(
-	ctx context.Context,
-	tenantID uuid.UUID,
-	credits []*publiraadminv1.SeriesCreatorCredit,
-) ([]seriesCreatorCredit, error) {
-	creatorPublicIDs := make([]string, 0, len(credits))
-	rolePublicIDs := make([]string, 0, len(credits))
-	seenCreators := make(map[string]struct{}, len(credits))
-	seenRoles := make(map[string]struct{}, len(credits))
-	seenPairs := make(map[[2]string]struct{}, len(credits))
-	normalized := make([][2]string, 0, len(credits))
-	for _, credit := range credits {
-		creatorPublicID := strings.TrimSpace(credit.GetCreatorPublicId())
-		if creatorPublicID == "" {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("creator_public_id is required"), "creator_credits")
-		}
-		rolePublicID := strings.TrimSpace(credit.GetRolePublicId())
-		if rolePublicID == "" {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("role_public_id is required"), "creator_credits")
-		}
-		pair := [2]string{creatorPublicID, rolePublicID}
-		if _, ok := seenPairs[pair]; ok {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("creator_credits contains the same creator twice in one role"), "creator_credits")
-		}
-		seenPairs[pair] = struct{}{}
-		normalized = append(normalized, pair)
-		if _, ok := seenCreators[creatorPublicID]; !ok {
-			seenCreators[creatorPublicID] = struct{}{}
-			creatorPublicIDs = append(creatorPublicIDs, creatorPublicID)
-		}
-		if _, ok := seenRoles[rolePublicID]; !ok {
-			seenRoles[rolePublicID] = struct{}{}
-			rolePublicIDs = append(rolePublicIDs, rolePublicID)
-		}
-	}
-	if len(normalized) == 0 {
-		return []seriesCreatorCredit{}, nil
-	}
-
-	creatorRows, err := s.queriesFor(ctx).ListCreatorsByPublicIDsForTenant(ctx, dbmodels.ListCreatorsByPublicIDsForTenantParams{
-		TenantID:  tenantID,
-		PublicIds: creatorPublicIDs,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list creators by public ids", err, "tenant_id", tenantID.String())
-	}
-	// Checked before the roles are read so a request naming nobody real is
-	// refused without a second query, the way it was before credits carried a
-	// role.
-	if len(creatorRows) != len(creatorPublicIDs) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
-	}
-	creatorsByPublicID := make(map[string]dbmodels.ListCreatorsByPublicIDsForTenantRow, len(creatorRows))
-	for _, row := range creatorRows {
-		creatorsByPublicID[row.PublicID] = row
-	}
-
-	roleRows, err := s.queriesFor(ctx).ListCreatorRolesByPublicIDsForTenant(ctx, dbmodels.ListCreatorRolesByPublicIDsForTenantParams{
-		TenantID:  tenantID,
-		PublicIds: rolePublicIDs,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list creator roles by public ids", err, "tenant_id", tenantID.String())
-	}
-	if len(roleRows) != len(rolePublicIDs) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator role not found"))
-	}
-	rolesByPublicID := make(map[string]dbmodels.ListCreatorRolesByPublicIDsForTenantRow, len(roleRows))
-	for _, row := range roleRows {
-		rolesByPublicID[row.PublicID] = row
-	}
-
-	resolved := make([]seriesCreatorCredit, 0, len(normalized))
-	for _, pair := range normalized {
-		creator, ok := creatorsByPublicID[pair[0]]
-		if !ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
-		}
-		role, ok := rolesByPublicID[pair[1]]
-		if !ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator role not found"))
-		}
-		resolved = append(resolved, seriesCreatorCredit{creator: creator, role: role})
-	}
-	return resolved, nil
-}
-
 // syncSeriesCredits writes the whole credit list of a series. replace is false
 // on create, where there is nothing to clear first.
 //
@@ -297,7 +198,7 @@ func (s *adminServer) resolveSeriesCreatorCredits(
 func (s *adminServer) syncSeriesCredits(
 	ctx context.Context,
 	tenantID, seriesID uuid.UUID,
-	credits []seriesCreatorCredit,
+	credits []creatorCredit,
 	replace bool,
 ) ([]*publirattypesv1.Creator, error) {
 	if replace {
@@ -305,7 +206,7 @@ func (s *adminServer) syncSeriesCredits(
 			return nil, s.internalDBError(ctx, "failed to delete series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 		}
 	}
-	ordered := slices.SortedStableFunc(slices.Values(credits), func(left, right seriesCreatorCredit) int {
+	ordered := slices.SortedStableFunc(slices.Values(credits), func(left, right creatorCredit) int {
 		return cmp.Compare(left.role.DisplayPriority, right.role.DisplayPriority)
 	})
 	items := make([]*publirattypesv1.Creator, 0, len(ordered))
@@ -664,7 +565,7 @@ func (s *adminServer) CreateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
-	creditsToLink, err := s.resolveSeriesCreatorCredits(ctx, tenant.ID, req.Msg.CreatorCredits)
+	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits))
 	if err != nil {
 		return nil, err
 	}
@@ -834,7 +735,7 @@ func (s *adminServer) UpdateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
-	creditsToLink, err := s.resolveSeriesCreatorCredits(ctx, tenant.ID, req.Msg.CreatorCredits)
+	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits))
 	if err != nil {
 		return nil, err
 	}

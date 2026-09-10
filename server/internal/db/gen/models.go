@@ -195,6 +195,16 @@ type EpisodeCommentReport struct {
 	ResolvedAt     sql.NullTime   `json:"resolved_at"`
 }
 
+type EpisodeCreator struct {
+	TenantID     uuid.UUID     `json:"tenant_id"`
+	EpisodeID    uuid.UUID     `json:"episode_id"`
+	CreatorID    uuid.UUID     `json:"creator_id"`
+	RoleID       uuid.NullUUID `json:"role_id"`
+	DisplayOrder int32         `json:"display_order"`
+	Source       string        `json:"source"`
+	CreatedAt    time.Time     `json:"created_at"`
+}
+
 type EpisodeFollow struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	UserID    uuid.UUID `json:"user_id"`

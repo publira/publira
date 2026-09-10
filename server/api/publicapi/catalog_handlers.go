@@ -1157,12 +1157,29 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 	}
-	previousEpisode, nextEpisode, err := s.episodeNeighbors(ctx, tenant.ID, row)
+	neighborRows, err := s.publishedEpisodeNeighborRows(ctx, tenant.ID, row)
 	if err != nil {
 		return nil, err
 	}
+	// The episode and the two links either side of it are credited in one
+	// read. Every episode carries its own credits, so a series whose artist
+	// changed part way through credits the next episode differently from this
+	// one, and a link that named this episode's team would be wrong.
+	episodeIDs := make([]uuid.UUID, 0, len(neighborRows)+1)
+	episodeIDs = append(episodeIDs, row.ID)
+	for _, neighborRow := range neighborRows {
+		episodeIDs = append(episodeIDs, neighborRow.ID)
+	}
+	creditsByEpisodeID, err := s.episodeCreditsByEpisodeIDs(ctx, tenant.ID, episodeIDs)
+	if err != nil {
+		return nil, err
+	}
+	previousEpisode, nextEpisode := episodeNeighborsFromRows(neighborRows, creditsByEpisodeID)
+
+	episode := protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row)
+	episode.Creators = creditsByEpisodeID[row.ID]
 	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
-		Episode:         protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row),
+		Episode:         episode,
 		Series:          series,
 		Images:          make([]*publirattypesv1.EpisodeImage, 0),
 		Access:          access,
@@ -1188,19 +1205,19 @@ func (s *apiServer) GetEpisodeDetail(
 	return res, nil
 }
 
-// episodeNeighbors returns the published episodes either side of the given one
-// in its series, in the shape the response carries them: nil where the series
-// ends.
+// publishedEpisodeNeighborRows reads the published episodes either side of the
+// given one in its series. A missing side is a missing row, so the result
+// holds none, one, or two.
 //
 // It is a read of its own rather than more columns on the episode row, because
 // each side is found by comparing against that row's own (order_index, id):
 // the episode has to be in hand before the episodes around it can be asked
 // for.
-func (s *apiServer) episodeNeighbors(
+func (s *apiServer) publishedEpisodeNeighborRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow,
-) (previous, next *publirav1.EpisodeNeighbor, err error) {
+) ([]dbmodels.ListPublishedEpisodeNeighborsForTenantRow, error) {
 	rows, err := s.queriesFor(ctx).ListPublishedEpisodeNeighborsForTenant(ctx, dbmodels.ListPublishedEpisodeNeighborsForTenantParams{
 		TenantID:   tenantID,
 		SeriesID:   row.SeriesID,
@@ -1208,9 +1225,17 @@ func (s *apiServer) episodeNeighbors(
 		EpisodeID:  row.ID,
 	})
 	if err != nil {
-		return nil, nil, s.internalDBError(ctx, "failed to list episode neighbors", err, "tenant_id", tenantID.String(), "episode_public_id", row.PublicID)
+		return nil, s.internalDBError(ctx, "failed to list episode neighbors", err, "tenant_id", tenantID.String(), "episode_public_id", row.PublicID)
 	}
+	return rows, nil
+}
 
+// episodeNeighborsFromRows puts the neighbour rows into the shape the response
+// carries them in: nil where the series ends.
+func episodeNeighborsFromRows(
+	rows []dbmodels.ListPublishedEpisodeNeighborsForTenantRow,
+	creditsByEpisodeID map[uuid.UUID][]*publirattypesv1.Creator,
+) (previous, next *publirav1.EpisodeNeighbor) {
 	for _, neighbor := range rows {
 		mapped := &publirav1.EpisodeNeighbor{
 			PublicId:   neighbor.PublicID,
@@ -1218,6 +1243,7 @@ func (s *apiServer) episodeNeighbors(
 			OrderIndex: neighbor.OrderIndex,
 			Price:      neighbor.Price,
 			IsFree:     neighbor.IsFree.Valid && neighbor.IsFree.Bool,
+			Creators:   creditsByEpisodeID[neighbor.ID],
 		}
 		if neighbor.Direction < 0 {
 			previous = mapped
@@ -1226,7 +1252,26 @@ func (s *apiServer) episodeNeighbors(
 		next = mapped
 	}
 
-	return previous, next, nil
+	return previous, next
+}
+
+// episodeCreditsByEpisodeIDs reads the credits of the given episodes, grouped
+// by the episode they are on. Nothing falls back to the series: an episode
+// answers with the credits it carries, which is what the bake at creation
+// writes and what an edit on the episode changes.
+func (s *apiServer) episodeCreditsByEpisodeIDs(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	episodeIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.Creator, error) {
+	if len(episodeIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.Creator{}, nil
+	}
+	rows, err := s.queriesFor(ctx).ListEpisodeCreatorsByEpisodeIDs(ctx, episodeIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list episode credits", err, "tenant_id", tenantID.String())
+	}
+	return protomapper.EpisodeCreditsByEpisodeID(rows), nil
 }
 
 // labelEyeCatchVariantsByImageIDs fetches the variants of the given label

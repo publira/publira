@@ -56,6 +56,12 @@ const (
 	updateEpisodeOrderIndexByPublicIDForTenantAndSeriesQuery = "-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec\n"
 	getMaxEpisodeOrderIndexBySeriesForTenantQuery            = "-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one\n"
 	getEpisodeByPublicIDForTenantQuery                       = "-- name: GetEpisodeByPublicIDForTenant :one\n"
+	lockEpisodeByPublicIDForTenantQuery                      = "-- name: LockEpisodeByPublicIDForTenant :one\n"
+	listEpisodeCreatorsByEpisodeIDsQuery                     = "-- name: ListEpisodeCreatorsByEpisodeIDs :many\n"
+	deleteEpisodeCreatorsByEpisodeIDQuery                    = "-- name: DeleteEpisodeCreatorsByEpisodeID :exec\n"
+	createEpisodeCreatorQuery                                = "-- name: CreateEpisodeCreator :exec\n"
+	listCreatorsByPublicIDsForTenantQuery                    = "-- name: ListCreatorsByPublicIDsForTenant :many\n"
+	listCreatorRolesByPublicIDsForTenantQuery                = "-- name: ListCreatorRolesByPublicIDsForTenant :many\n"
 	getEpisodeByPublicIDForTenantAndSeriesQuery              = "-- name: GetEpisodeByPublicIDForTenantAndSeries :one\n"
 	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery           = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
 	listEpisodeImagesByEpisodeIDQuery                        = "-- name: ListEpisodeImagesByEpisodeID :many\nSELECT\n    ei.id,\n    ei.tenant_id,\n    ei.episode_id,\n    ei.display_order,\n    ei.created_at,\n    eiv.content_type,\n    eiv.file_size_bytes,\n    eiv.width,\n    eiv.height\nFROM episode_images ei\nJOIN LATERAL (\n    SELECT content_type, file_size_bytes, width, height\n    FROM episode_image_variants\n    WHERE episode_image_id = ei.id\n    ORDER BY width DESC\n    LIMIT 1\n) eiv ON true\nWHERE ei.episode_id = $1\nORDER BY ei.display_order ASC,\n    ei.created_at ASC\n"
@@ -355,6 +361,15 @@ func expectUpdateEpisodeOrderIndex(mock sqlmock.Sqlmock, tenantID uuid.UUID, ser
 	mock.ExpectExec(regexp.QuoteMeta(updateEpisodeOrderIndexByPublicIDForTenantAndSeriesQuery)).
 		WithArgs(tenantID, seriesPublicID, episodePublicID, orderIndex).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+// expectBakeSeriesCreatorsOntoEpisode is the copy that credits a new episode
+// with the team its series carries. It runs in the transaction that creates
+// the episode, between the listing insert and the commit.
+func expectBakeSeriesCreatorsOntoEpisode(mock sqlmock.Sqlmock, tenantID, seriesID, episodeID uuid.UUID) {
+	mock.ExpectExec("INSERT INTO episode_creators").
+		WithArgs(episodeID, tenantID, seriesID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 }
 
 func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {

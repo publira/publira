@@ -1051,8 +1051,14 @@ type Episode struct {
 	Status             string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
 	ScheduledAt        string                 `protobuf:"bytes,7,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
 	PublishedAt        string                 `protobuf:"bytes,8,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Who this episode is credited to, in role priority order. Every episode
+	// carries its own credits, baked from the series when it was created, so an
+	// artist who took over at episode 12 is on episode 12 onwards and not on the
+	// eleven before it. Set where an Episode stands for one episode a reader or
+	// an editor opened; empty in the lists that carry an episode as a link.
+	Creators      []*Creator `protobuf:"bytes,9,rep,name=creators,proto3" json:"creators,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -1139,6 +1145,13 @@ func (x *Episode) GetPublishedAt() string {
 		return x.PublishedAt
 	}
 	return ""
+}
+
+func (x *Episode) GetCreators() []*Creator {
+	if x != nil {
+		return x.Creators
+	}
+	return nil
 }
 
 type EpisodeImage struct {
@@ -1885,7 +1898,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12/\n" +
 	"\x06genres\x18\x10 \x03(\v2\x17.publira.types.v1.GenreR\x06genres\x12)\n" +
 	"\x04tags\x18\x11 \x03(\v2\x15.publira.types.v1.TagR\x04tags\x12,\n" +
-	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +
+	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xba\x02\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -1895,7 +1908,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x14reading_period_hours\x18\x05 \x01(\x05R\x12readingPeriodHours\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
 	"\fscheduled_at\x18\a \x01(\tR\vscheduledAt\x12!\n" +
-	"\fpublished_at\x18\b \x01(\tR\vpublishedAt\"\xd9\x01\n" +
+	"\fpublished_at\x18\b \x01(\tR\vpublishedAt\x125\n" +
+	"\bcreators\x18\t \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +
@@ -2034,13 +2048,14 @@ var file_publira_types_v1_types_proto_depIdxs = []int32{
 	1,  // 6: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
 	11, // 7: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
 	12, // 8: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
-	16, // 9: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	16, // 10: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	7,  // 9: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	16, // 10: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	16, // 11: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }

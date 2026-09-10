@@ -924,6 +924,7 @@ func (q *Queries) ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, ar
 const listPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNeighborsForTenant :many
 (
     SELECT -1::int4 AS direction,
+        e.id,
         e.public_id,
         e.title,
         e.order_index,
@@ -957,6 +958,7 @@ const listPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
 UNION ALL
 (
     SELECT 1::int4 AS direction,
+        e.id,
         e.public_id,
         e.title,
         e.order_index,
@@ -998,6 +1000,7 @@ type ListPublishedEpisodeNeighborsForTenantParams struct {
 
 type ListPublishedEpisodeNeighborsForTenantRow struct {
 	Direction  int32        `json:"direction"`
+	ID         uuid.UUID    `json:"id"`
 	PublicID   string       `json:"public_id"`
 	Title      string       `json:"title"`
 	OrderIndex int32        `json:"order_index"`
@@ -1035,6 +1038,7 @@ func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, ar
 		var i ListPublishedEpisodeNeighborsForTenantRow
 		if err := rows.Scan(
 			&i.Direction,
+			&i.ID,
 			&i.PublicID,
 			&i.Title,
 			&i.OrderIndex,
@@ -1193,6 +1197,41 @@ func (q *Queries) ListRecentEpisodesForDashboard(ctx context.Context, arg ListRe
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockEpisodeByPublicIDForTenant = `-- name: LockEpisodeByPublicIDForTenant :one
+SELECT id,
+    public_id
+FROM episodes
+WHERE tenant_id = $1
+    AND public_id = $2
+FOR UPDATE
+`
+
+type LockEpisodeByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+type LockEpisodeByPublicIDForTenantRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+}
+
+// Lock the episode row so two calls that rewrite a set hanging off it — its
+// credits — serialize. Locking the credit rows themselves would not do it: a
+// replacement deletes and recreates the whole set, so an episode credited to
+// nobody has no row to lock and two replacements would both write.
+//
+// The read of the current credits must be a separate statement, for the reason
+// the series lock's is: READ COMMITTED freezes a statement's snapshot at its
+// start, so a read that waited for the lock inside the same statement would
+// still answer from before the wait.
+func (q *Queries) LockEpisodeByPublicIDForTenant(ctx context.Context, arg LockEpisodeByPublicIDForTenantParams) (LockEpisodeByPublicIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, lockEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var i LockEpisodeByPublicIDForTenantRow
+	err := row.Scan(&i.ID, &i.PublicID)
+	return i, err
 }
 
 const markEpisodePublished = `-- name: MarkEpisodePublished :exec

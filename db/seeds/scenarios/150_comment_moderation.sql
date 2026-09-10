@@ -196,6 +196,8 @@ SET price = EXCLUDED.price,
     published_at = EXCLUDED.published_at,
     tenant_id = EXCLUDED.tenant_id;
 
+\ir ../episode_creators.sql
+
 WITH user_seed (id, public_id, email, password_hash, name) AS (
     VALUES
         (
