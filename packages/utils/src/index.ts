@@ -15,15 +15,19 @@ export {
   formatDateTime,
   formatPlainDate,
   formatRelativeTime,
+  formatWeekdayName,
   fromDateTimeLocalValue,
   parseInstant,
   startOfDayIsoString,
   toDateTimeLocalValue,
   toInstantIsoString,
+  WEEKDAY_NUMBERS,
   type FormatDateTimeOptions,
   type FormatPlainDateOptions,
   type FormatRelativeTimeOptions,
+  type FormatWeekdayNameOptions,
   type ToDateTimeLocalOptions,
+  type WeekdayNameStyle,
 } from "./format-date-time";
 export { formatPercent, type FormatPercentOptions } from "./format-number";
 export { formatList, type FormatListOptions } from "./format-list";

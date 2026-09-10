@@ -7,11 +7,13 @@ import {
   formatDateTime,
   formatPlainDate,
   formatRelativeTime,
+  formatWeekdayName,
   fromDateTimeLocalValue,
   parseInstant,
   startOfDayIsoString,
   toDateTimeLocalValue,
   toInstantIsoString,
+  WEEKDAY_NUMBERS,
 } from "./format-date-time";
 
 /** Fixed UTC instant used across multi-zone display tests. */
@@ -526,5 +528,47 @@ describe("formatRelativeTime", () => {
     expect(formatRelativeTime("not-a-date", { locale: "en", now })).toBe(
       "not-a-date"
     );
+  });
+});
+
+describe("formatWeekdayName", () => {
+  it("names the day the EXTRACT(DOW) number stands for", () => {
+    expect(formatWeekdayName(0, { locale: "en" })).toBe("Sunday");
+    expect(formatWeekdayName(1, { locale: "en" })).toBe("Monday");
+    expect(formatWeekdayName(6, { locale: "en" })).toBe("Saturday");
+  });
+
+  it("names the day in the UI locale", () => {
+    expect(formatWeekdayName(1, { locale: "ja" })).toBe("月曜日");
+  });
+
+  it("writes a short name where one is asked for", () => {
+    expect(formatWeekdayName(1, { locale: "en", style: "short" })).toBe("Mon");
+  });
+
+  it("returns fallback for a number that is not a weekday", () => {
+    expect(formatWeekdayName(7, { fallback: "-", locale: "en" })).toBe("-");
+    expect(formatWeekdayName(-1, { fallback: "-", locale: "en" })).toBe("-");
+    expect(formatWeekdayName(1.5, { fallback: "-", locale: "en" })).toBe("-");
+  });
+
+  it("falls back to the number itself when no fallback is given", () => {
+    expect(formatWeekdayName(9, { locale: "en" })).toBe("9");
+  });
+
+  it("covers the whole week, Sunday first", () => {
+    const names = WEEKDAY_NUMBERS.map((weekday) =>
+      formatWeekdayName(weekday, { locale: "en" })
+    );
+
+    expect(names).toEqual([
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ]);
   });
 });
