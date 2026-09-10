@@ -116,6 +116,7 @@ Implementation:
 - Workflow: [`ci.yml`](./ci.yml)
 - Job planning—selected jobs and Docker matrix: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
 - Flutter SDK setup for the two mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
+- Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
 
 [`infra/docker/README.md`](../../infra/docker/README.md) is authoritative for Docker image placement, build steps, and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
 
@@ -129,7 +130,7 @@ Implementation:
 | `Lint / Go` | `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test` after package builds, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. Starts a Valkey service so `@publira/next-cache-handlers` Redis integration tests run. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
-| `Test / DB Migrations` | Append-only guard on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
+| `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
@@ -216,7 +217,19 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
 
 `Lint / Go` is independent from `Test / Go` so static-analysis results arrive before Testcontainers tests, and front-end-only PRs do not run it. Its rules and version are [`server/.golangci.yml`](../../server/.golangci.yml) and `GOLANGCI_LINT_VERSION` in `ci.yml`; reproduce it with `task server:lint`.
 
-`Test / DB Migrations` first checks that the PR only adds files under `db/migrations/` — an applied migration is immutable, so a modified, renamed, or deleted one fails the job before Postgres is touched. It then runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail. Because the guard diffs against `origin/main`, this job's checkout uses `fetch-depth: 0` on every event, where `Detect changes` fetches full history only on `push` and `merge_group`.
+`Test / DB Migrations` first checks that the PR only adds files under `db/migrations/` — an applied migration is immutable, so a modified, renamed, or deleted one fails the job before Postgres is touched.
+
+The second guard, [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh), checks that every migration the pull request adds is numbered above the highest version already on `origin/main`. `schema_migrations` records a single version rather than the set of applied ones, so `migrate up` applies only what sorts above that number: a migration that ends up below one which merged while the pull request was open is skipped permanently on any database that already applied the newer version, and `migrate up` still reports success. Neither the round trip below nor the E2E suite can see this — the round trip starts from an empty database, where every migration is applied in order whatever its number, and the E2E stack recreates its PostgreSQL volume per run. The failure names the offending file and the version it sorts below; the fix is to renumber with `task db:create NAME=<name>` and move the contents across, which is a plain addition and so satisfies the append-only guard. A push to `main` is a no-op, because `origin/main` and `HEAD` are then the same commit.
+
+Run it before pushing — a branch that has just been rebased onto a `main` carrying a newer migration is exactly when the number goes stale:
+
+```bash
+git fetch origin main && scripts/check-migration-order.sh
+```
+
+It compares against `origin/main` unless `BASE_REF` names another ref, and prints the same message CI does; under `GITHUB_ACTIONS` it emits that message as a file annotation instead.
+
+The job then runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail. Because both guards diff against `origin/main`, this job's checkout uses `fetch-depth: 0` on every event, where `Detect changes` fetches full history only on `push` and `merge_group`.
 
 `Test / TypeScript` starts a Valkey service — the same image as `compose.yaml` — and sets `PUBLIRA_REDIS_URL` so `@publira/next-cache-handlers` integration tests reach Redis. Reproduce it with `pnpm test` in the Dev Container.
 
@@ -239,7 +252,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, package build, `pnpm typegen`, and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm build --filter "./packages/*"`, then `pnpm test` and `pnpm test:scripts` |
-   | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. An append-only failure is not reproduced locally: restore the migration and add a new one instead |
+   | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. `scripts/check-migration-order.sh` reproduces the ordering guard; an append-only failure is not reproduced locally — restore the migration and add a new one instead |
    | `Test / Mobile` | `task mobile:check` |
    | `Test / Mobile E2E` | `task mobile:e2e` |
    | `Test / E2E` | `task e2e` |
