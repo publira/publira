@@ -127,12 +127,13 @@ A spec that changes state the whole console reads gets an isolated project for t
 
 `tests/host.screenshots.spec.ts`, `admin.screenshots.spec.ts`, and `platform.screenshots.spec.ts` record what a screen looks like, so a change to it arrives for review as an image beside the image it replaces. Each screen is taken full-page at 390px, the width of a phone, and at 1280px, the width the two consoles are used at. The baselines are committed under `tests/__screenshots__/<project>/<screen>-<width>.png`; a run compares against them and fails with a diff image in `test-results/`.
 
-Screens covered: the public site's catalog top page, series list, series detail, an episode with a comic body and one with no body, search results, sign-in, and not-found; the tenant console's dashboard, series list, series edit form, and theme settings with the public site preview; the operator console's dashboard and tenant list.
+Screens covered: the public site's catalog top page, ranking, series list, series detail, an episode with a comic body and one with no body, search results, sign-in, and not-found; the tenant console's dashboard, series list, series edit form, and theme settings with the public site preview; the operator console's dashboard and tenant list.
 
 Two things make a shot on one machine comparable with the run on another:
 
 - **The browser is pinned.** Fonts, FreeType, and Chromium all decide where a pixel goes, and a workstation shares none of them with a CI runner. `browser/Dockerfile` builds the Playwright image of the exact `@playwright/test` release this package depends on, adds the Noto CJK faces the font stacks fall back to on Linux — at a pinned package version, from a pinned Ubuntu archive snapshot, so a rebuild installs the same outlines rather than the day's — and runs `playwright run-server`; only the screenshot projects connect to it, through `connectOptions`. Everything else keeps driving the Playwright Chromium installed on the host. `task e2e:up` builds it, which pulls a base image of a couple of gigabytes the first time. Bumping `@playwright/test` means bumping the image tag in the same commit.
 - **The dates are pinned.** The development seed publishes its catalogue and creates its accounts relative to the moment it runs, and six of these screens print one of those timestamps. `db/seeds/scenarios/160_screenshot_baseline.sql`, applied by `task e2e:db`, rewrites them to fixed literals.
+- **The ranking is seeded.** Nothing in the development seed produces the reading signals the engagement batch ranks, so the ranking page and the top page's numbered module would photograph as an empty state and a recommendation shelf. `db/seeds/scenarios/170_ranking.sql`, applied by `task e2e:db` for the same reason as the baseline above, writes the snapshots that batch would have computed.
 
 ### Updating a baseline after an intended change
 

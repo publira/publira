@@ -12,6 +12,7 @@ import {
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, formatDate, formatList } from "@publira/utils";
+import type { CachedReadResult } from "@publira/utils/cached-read";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -23,16 +24,18 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { RelativeTime } from "#components/relative-time";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import type { SeriesListItem } from "#lib/catalog";
 import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
   getCatalogTopFeaturedWork,
   getCatalogTopNewEpisodes,
-  getCatalogTopRecommendedSeries,
+  getCatalogTopPopularSeries,
   getCatalogTopUpdatedSeries,
 } from "#lib/catalog-top";
 import type {
   CatalogTopEpisodeItem,
+  CatalogTopPopularSeries,
   CatalogTopUpdatedSeriesItem,
 } from "#lib/catalog-top";
 import { getLocale, loadHostMessages } from "#lib/locale";
@@ -229,6 +232,23 @@ const ShelfSkeleton = ({ count = 6 }: { count?: number }) => (
       </div>
     ))}
   </div>
+);
+
+/**
+ * The popularity shelf's own frame, since that section draws its heading from
+ * the same read as its cards: without the heading here, the row below it would
+ * jump into place under a line that appeared a moment later.
+ */
+const PopularSectionSkeleton = () => (
+  <section>
+    <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+      <SkeletonLine className="h-5 w-32" />
+      <SkeletonLine className="h-4 w-16" />
+    </div>
+    <div className="mt-6">
+      <ShelfSkeleton />
+    </div>
+  </section>
 );
 
 const EpisodeRowsSkeleton = ({ count = 6 }: { count?: number }) => (
@@ -451,11 +471,59 @@ const FeaturedWorkSection = async () => {
   );
 };
 
-const RecommendedSeriesSection = async () => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+/** One card of the popularity shelf, with or without a position above it. */
+const PopularSeriesCard = async ({
+  rank,
+  series,
+}: {
+  rank?: number;
+  series: SeriesListItem;
+}) => {
+  const locale = await getLocale();
 
-  const result = await getCatalogTopRecommendedSeries(tenantId, { locale });
+  return (
+    <LocaleLink className="group block" href={`/series/${series.publicId}`}>
+      <EyeCatchFrame
+        alt={series.title}
+        className="aspect-3/4 w-full rounded-surface"
+        preferredType="portrait"
+        sizes="(max-width: 640px) 33vw, 16vw"
+        variants={series.eyeCatchImageVariants}
+      >
+        <span className="line-clamp-4 font-serif text-xs leading-tight text-muted-foreground">
+          {series.title}
+        </span>
+      </EyeCatchFrame>
+      {rank !== undefined && (
+        <span className="mt-2 block font-serif text-sm leading-tight text-primary tabular-nums">
+          <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+            <Message message="host.ranking.rank_position" values={{ rank }} />
+          </Suspense>
+        </span>
+      )}
+      <span className="mt-2 block font-serif text-sm leading-tight underline-offset-4 group-hover:underline">
+        {series.title}
+      </span>
+      {series.creatorNames.length > 0 && (
+        <span className="mt-1 block truncate text-xs text-muted-foreground">
+          {formatList(series.creatorNames, { locale })}
+        </span>
+      )}
+    </LocaleLink>
+  );
+};
 
+/**
+ * What stands under the popularity heading: the chart, the cold-start shelf,
+ * or what went wrong. It takes the result rather than reading again, so the
+ * heading above it and the cards below it cannot disagree about which of the
+ * two the tenant has.
+ */
+const PopularSeriesShelf = ({
+  result,
+}: {
+  result: CachedReadResult<CatalogTopPopularSeries>;
+}) => {
   if (!result.ok) {
     return (
       <SectionReadError
@@ -465,43 +533,76 @@ const RecommendedSeriesSection = async () => {
     );
   }
 
-  const recommendedSeries = result.value;
+  const popular = result.value;
 
-  if (recommendedSeries.length === 0) {
+  if (popular.kind === "ranked") {
+    return (
+      <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
+        {popular.rankedSeries.map(({ rank, series }) => (
+          <li key={series.publicId}>
+            <PopularSeriesCard rank={rank} series={series} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (popular.series.length === 0) {
     return <SectionEmpty message="host.top.recommended_empty" />;
   }
 
   return (
     <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
-      {recommendedSeries.map((series) => (
+      {popular.series.map((series) => (
         <li key={series.publicId}>
-          <LocaleLink
-            className="group block"
-            href={`/series/${series.publicId}`}
-          >
-            <EyeCatchFrame
-              alt={series.title}
-              className="aspect-3/4 w-full rounded-surface"
-              preferredType="portrait"
-              sizes="(max-width: 640px) 33vw, 16vw"
-              variants={series.eyeCatchImageVariants}
-            >
-              <span className="line-clamp-4 font-serif text-xs leading-tight text-muted-foreground">
-                {series.title}
-              </span>
-            </EyeCatchFrame>
-            <span className="mt-2 block font-serif text-sm leading-tight underline-offset-4 group-hover:underline">
-              {series.title}
-            </span>
-            {series.creatorNames.length > 0 && (
-              <span className="mt-1 block truncate text-xs text-muted-foreground">
-                {formatList(series.creatorNames, { locale })}
-              </span>
-            )}
-          </LocaleLink>
+          <PopularSeriesCard series={series} />
         </li>
       ))}
     </ul>
+  );
+};
+
+/**
+ * The popularity shelf: the week's chart where the ranking batch has run, and
+ * the recommendation order where it has not.
+ *
+ * It owns its heading and its "view all" link, because both of them say which
+ * of the two the reader is looking at — a chart is headed "Top 10 this week"
+ * and leads to `/ranking`, a cold-start shelf keeps the wording and the
+ * destination the page has always had. A failed read is the cold-start shape
+ * too: `/series` is a list that always exists.
+ */
+const PopularSeriesSection = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
+  const result = await getCatalogTopPopularSeries(tenantId, { locale });
+  const ranked = result.ok && result.value.kind === "ranked";
+
+  return (
+    <section aria-labelledby="popular-works">
+      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+        <h2 className="font-serif text-xl leading-tight" id="popular-works">
+          <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+            {ranked ? (
+              <Message message="host.top.ranking_heading" />
+            ) : (
+              <Message message="host.top.recommended_heading" />
+            )}
+          </Suspense>
+        </h2>
+        <LocaleLink
+          className="text-sm text-primary underline underline-offset-4"
+          href={ranked ? "/ranking" : "/series"}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.top.view_all" />
+          </Suspense>
+        </LocaleLink>
+      </div>
+      <div className="mt-6">
+        <PopularSeriesShelf result={result} />
+      </div>
+    </section>
   );
 };
 
@@ -796,36 +897,17 @@ const Page = () => (
       </div>
     </section>
 
-    <section aria-labelledby="recommended-works">
-      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
-        <h2 className="font-serif text-xl leading-tight" id="recommended-works">
-          <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
-            <Message message="host.top.recommended_heading" />
-          </Suspense>
-        </h2>
-        <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
-          href="/series"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.top.view_all" />
-          </Suspense>
-        </LocaleLink>
-      </div>
-      <div className="mt-6">
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message={SECTION_TITLES.recommended} />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<ShelfSkeleton />}>
-            <RecommendedSeriesSection />
-          </Suspense>
-        </SectionErrorBoundary>
-      </div>
-    </section>
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message={SECTION_TITLES.recommended} />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={<PopularSectionSkeleton />}>
+        <PopularSeriesSection />
+      </Suspense>
+    </SectionErrorBoundary>
 
     <section aria-labelledby="updated-series">
       <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">

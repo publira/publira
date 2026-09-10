@@ -2075,6 +2075,25 @@
       "read_failed": "ページの内容を取得できませんでした。時間をおいて再試行してください。",
       "untitled": "ページ"
     },
+    "ranking": {
+      "computed_at": "{$datetime} 更新",
+      "description": "いま最も読まれている作品です。",
+      "first_page": "ランキングの先頭へ",
+      "list_empty": "ランキングはまだ集計されていません。",
+      "list_error": "ランキングを表示できませんでした",
+      "list_failed": "ランキングを取得できませんでした。時間をおいて再試行してください。",
+      "list_title": "ランキング",
+      "movement_down": "{$count}ランクダウン",
+      "movement_new": "初登場",
+      "movement_none": "変動なし",
+      "movement_up": "{$count}ランクアップ",
+      "page_empty": "このページに表示できる作品がありません。",
+      "pagination_aria": "ランキングページング",
+      "period_daily": "デイリー",
+      "period_nav": "ランキングの期間",
+      "period_weekly": "ウィークリー",
+      "rank_position": "{$rank}位"
+    },
     "search": {
       "description": "公開中シリーズのタイトルとあらすじから探せます",
       "error": "検索結果を表示できませんでした",
@@ -2186,6 +2205,7 @@
       "new_episodes_error": "新着エピソードを表示できませんでした",
       "new_episodes_heading": "新着エピソード",
       "published_on": "公開日 {$date}",
+      "ranking_heading": "今週のトップ10",
       "read_episode": "第{$number}話を読む",
       "recommended_empty": "公開中のシリーズはまだありません。",
       "recommended_error": "おすすめ作品を表示できませんでした",

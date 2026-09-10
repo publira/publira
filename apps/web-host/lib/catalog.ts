@@ -3,8 +3,14 @@ import {
   isMissingResourceRpcError,
   isRpcError,
 } from "@publira/api-client/errors";
-import { EpisodeAccess } from "@publira/api-client/public/catalog";
-import type { ListRecommendedSeriesResponse } from "@publira/api-client/public/catalog";
+import {
+  EpisodeAccess,
+  RankingPeriod,
+} from "@publira/api-client/public/catalog";
+import type {
+  ListRankedSeriesResponse,
+  ListRecommendedSeriesResponse,
+} from "@publira/api-client/public/catalog";
 import type {
   EpisodeImage,
   EpisodeNeighbor,
@@ -391,6 +397,120 @@ export const listRecommendedSeries = async (
       nextToken: response.nextToken ?? "",
       previousToken: response.previousToken ?? "",
       series: (response.series ?? []).map(toSeriesListItem),
+    },
+  };
+};
+
+/** The window a ranking snapshot covers, as the site names it in a URL. */
+export type RankingPeriodName = "daily" | "weekly";
+
+/** One series at the position the snapshot gave it. */
+export interface RankedSeriesItem {
+  rank: number;
+  /**
+   * The position the series held in the period before this one. Absent when
+   * there is no earlier snapshot, and when that snapshot did not rank this
+   * series — a new entry has no movement to draw, which is not the same as
+   * having moved from position 0.
+   */
+  previousRank?: number;
+  series: SeriesListItem;
+}
+
+export interface RankedSeriesPage {
+  rankedSeries: RankedSeriesItem[];
+  /** Token for the previous page. Empty on the first page. */
+  previousToken: string;
+  /** Token for the next page. Empty on the last page. */
+  nextToken: string;
+  /**
+   * When the batch computed the snapshot this page comes from (RFC 3339).
+   * Empty when the tenant has no snapshot yet, which is what tells an empty
+   * chart apart from the last page of one.
+   */
+  computedAt: string;
+  /** The ranked window as calendar dates in the tenant's time zone. */
+  periodStart: string;
+  periodEnd: string;
+}
+
+const rankingPeriods: Record<RankingPeriodName, RankingPeriod> = {
+  daily: RankingPeriod.DAILY,
+  weekly: RankingPeriod.WEEKLY,
+};
+
+/**
+ * One page of the latest ranking snapshot for a period, in the positions that
+ * snapshot recorded.
+ *
+ * Unlike {@link listRecommendedSeries} this is the leaderboard itself: only
+ * what the batch ranked, at the positions it assigned, so a series unpublished
+ * since the snapshot was written leaves a gap rather than pulling the rest of
+ * the chart up. A tenant the batch has not ranked yet answers with an empty
+ * page and an empty `computedAt` instead of an error.
+ *
+ * Cursor pagination: `token` is whatever the previous response returned as
+ * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
+ * `proto/README.md`. A token carries the period it was built for, so changing
+ * the period restarts at page 1.
+ */
+export const listRankedSeries = async (
+  tenantId: string,
+  {
+    limit = 20,
+    locale,
+    period,
+    token = "",
+  }: {
+    limit?: number;
+    locale: Locale;
+    period: RankingPeriodName;
+    token?: string;
+  }
+): Promise<CachedReadResult<RankedSeriesPage>> => {
+  "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  // The two tags `listRecommendedSeries` carries, for the same reason: they
+  // cover which series exist and are published, while the snapshot itself is
+  // replaced by a batch that never calls back here and therefore arrives with
+  // the cache profile's own revalidation.
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+
+  let response: ListRankedSeriesResponse;
+  try {
+    response = await apiClient.catalog.listRankedSeries({
+      limit,
+      period: rankingPeriods[period],
+      tenant: { tenantId: normalizedTenantId },
+      token,
+    });
+  } catch (error) {
+    return localizedReadFailure(error, locale, "host.ranking.list_failed");
+  }
+
+  const rankedSeries = (response.rankedSeries ?? []).flatMap((ranked) =>
+    ranked.series
+      ? [
+          {
+            previousRank: ranked.previousRank,
+            rank: ranked.rank,
+            series: toSeriesListItem(ranked.series),
+          },
+        ]
+      : []
+  );
+
+  return {
+    ok: true,
+    value: {
+      computedAt: response.computedAt ?? "",
+      nextToken: response.nextToken ?? "",
+      periodEnd: response.periodEnd ?? "",
+      periodStart: response.periodStart ?? "",
+      previousToken: response.previousToken ?? "",
+      rankedSeries,
     },
   };
 };

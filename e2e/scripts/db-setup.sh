@@ -41,4 +41,12 @@ screenshot_baseline_sql="${REPO_ROOT}/db/seeds/scenarios/160_screenshot_baseline
 e2e_log "applying ${screenshot_baseline_sql}"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${screenshot_baseline_sql}"
 
+# The ranking the engagement batch would have computed. Applied here for the
+# same reason as the baseline above: the screenshot projects photograph the
+# seeded state before any suite has applied a scenario, and the chart and the
+# top page's numbered module have to be there when they do.
+ranking_sql="${REPO_ROOT}/db/seeds/scenarios/170_ranking.sql"
+e2e_log "applying ${ranking_sql}"
+psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${ranking_sql}"
+
 e2e_log "database and storage ready"
