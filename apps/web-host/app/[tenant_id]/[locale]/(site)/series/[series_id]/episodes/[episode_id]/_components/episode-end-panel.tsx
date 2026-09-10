@@ -6,6 +6,10 @@ import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import {
+  RelatedSeries,
+  RelatedSeriesSkeleton,
+} from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import type {
   EpisodeDetail,
@@ -15,6 +19,12 @@ import type {
 import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { episodePath } from "../_lib/episode-path";
+
+/**
+ * Three covers, one row on a phone. The panel sits under the pages a reader
+ * just finished, so it suggests rather than lists.
+ */
+const RELATED_SERIES_COUNT = 3;
 
 /**
  * What the reader is offered once the pages run out: the next episode, or the
@@ -112,6 +122,31 @@ export const EpisodeEndPanel = async ({
       >
         {getMessage(messages, "host.episode.end.back_to_series")}
       </LocaleLink>
+
+      {/* Only where the series has run out. While there is a next episode the
+          panel makes one offer, and a shelf of other works beside it is what
+          turns that one offer into a choice.
+
+          `empty:hidden` because the section renders nothing at all when its
+          read fails or the tenant has no other work: the gap this wrapper adds
+          would otherwise be left hanging under the card's last line. */}
+      {nextEpisode ? null : (
+        <div className="mt-8 empty:hidden">
+          <SectionErrorBoundary
+            title={getMessage(messages, "host.related.list_error")}
+          >
+            <Suspense
+              fallback={<RelatedSeriesSkeleton count={RELATED_SERIES_COUNT} />}
+            >
+              <RelatedSeries
+                limit={RELATED_SERIES_COUNT}
+                seriesPublicId={series.publicId}
+                tenantId={tenantId}
+              />
+            </Suspense>
+          </SectionErrorBoundary>
+        </div>
+      )}
     </section>
   );
 };

@@ -2180,6 +2180,11 @@
       "period_weekly": "주간",
       "rank_position": "{$rank}위"
     },
+    "related": {
+      "heading": "이런 작품은 어떠세요",
+      "list_error": "관련 작품을 표시할 수 없습니다",
+      "list_failed": "관련 작품을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    },
     "search": {
       "description": "공개 중인 시리즈를 제목과 줄거리로 검색할 수 있습니다",
       "error": "검색 결과를 표시할 수 없습니다",

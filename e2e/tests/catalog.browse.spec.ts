@@ -9,6 +9,9 @@ const SERIES_PAGE_SIZE = 24;
 /** Labels created by `db/seeds/dev/010_catalog.sql`. */
 const SEED_LABEL_COUNT = 10;
 
+/** Keep in sync with `RELATED_SERIES_COUNT` in the web-host series detail page. */
+const RELATED_SERIES_COUNT = 6;
+
 /**
  * Main public catalog journeys for the dev-seed tenant (Host `localhost`):
  * catalog top → series list → series detail → episode, plus the label and
@@ -114,6 +117,18 @@ test.describe("web-host catalog browsing", () => {
     // Seed episodes are free except `Seed Episode 001-10` (¥500).
     await expect(page.getByText("¥500").first()).toBeVisible();
 
+    // The strip of what to read next. The server ranks the unrelated in behind
+    // the related rather than cutting the list off, so a seeded catalogue
+    // always fills it.
+    const relatedHeading = page.getByRole("heading", {
+      level: 2,
+      name: "You may also like",
+    });
+    await expect(relatedHeading).toBeVisible();
+    await expect(
+      page.locator("section").filter({ has: relatedHeading }).getByRole("link")
+    ).toHaveCount(RELATED_SERIES_COUNT);
+
     const episodeLink = page.getByRole("link", {
       name: new RegExp(SEED_TENANT.series.freeEpisodeTitle, "u"),
     });
@@ -142,10 +157,13 @@ test.describe("web-host catalog browsing", () => {
     expect(response?.status(), await page.content()).toBe(200);
 
     // db/seeds/dev/010_catalog.sql publishes more series than one page holds.
-    // `:not([href*="/episodes/"])`: a series detail page stays mounted while
-    // the next route streams in, and its episode links share the prefix.
+    // A series detail page this test opens stays in the document behind the
+    // list it returns to — Next.js keeps the tree it navigated away from — and
+    // it carries links of both shapes: its episode rows, and the covers of
+    // "You may also like". `:not([href*="/episodes/"])` drops the first, and
+    // `:visible` drops what the reader is no longer looking at.
     const seriesCards = page.locator(
-      `a[href^="${hostPath("/series/")}"]:not([href*="/episodes/"])`
+      `a[href^="${hostPath("/series/")}"]:not([href*="/episodes/"]):visible`
     );
     await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
     const firstPageHrefs = await seriesCards.evaluateAll((links) =>

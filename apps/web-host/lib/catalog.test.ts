@@ -11,15 +11,21 @@ import {
   isPublicEpisodeBody,
   listPublishedSeries,
   listRankedSeries,
+  listRelatedSeries,
   toEpisodeAccessState,
 } from "./catalog";
 
-const { mockGetEpisodeDetail, mockListPublishedSeries, mockListRankedSeries } =
-  vi.hoisted(() => ({
-    mockGetEpisodeDetail: vi.fn(),
-    mockListPublishedSeries: vi.fn(),
-    mockListRankedSeries: vi.fn(),
-  }));
+const {
+  mockGetEpisodeDetail,
+  mockListPublishedSeries,
+  mockListRankedSeries,
+  mockListRelatedSeries,
+} = vi.hoisted(() => ({
+  mockGetEpisodeDetail: vi.fn(),
+  mockListPublishedSeries: vi.fn(),
+  mockListRankedSeries: vi.fn(),
+  mockListRelatedSeries: vi.fn(),
+}));
 
 vi.mock("./api-client", () => ({
   apiClient: {
@@ -27,6 +33,7 @@ vi.mock("./api-client", () => ({
       getEpisodeDetail: mockGetEpisodeDetail,
       listPublishedSeries: mockListPublishedSeries,
       listRankedSeries: mockListRankedSeries,
+      listRelatedSeries: mockListRelatedSeries,
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
@@ -713,6 +720,89 @@ describe("catalog.listRankedSeries", () => {
 
     await expect(
       listRankedSeries("TENANT_001", { locale: "en", period: "daily" })
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.listRelatedSeries", () => {
+  beforeEach(() => {
+    mockListRelatedSeries.mockReset();
+  });
+
+  it("Names the series to relate to and keeps the order the server scored", async () => {
+    mockListRelatedSeries.mockResolvedValueOnce({
+      nextToken: "next-token",
+      previousToken: "",
+      series: [
+        {
+          creators: [{ name: "Jane Doe", publicId: "CREATOR_1" }],
+          freeEpisodeCount: 2,
+          publicId: "SERIES_2",
+          synopsis: "S2",
+          title: "Series 2",
+        },
+        {
+          creators: [],
+          publicId: "SERIES_3",
+          synopsis: "S3",
+          title: "Series 3",
+        },
+      ],
+    });
+
+    const result = await listRelatedSeries("  TENANT_001  ", {
+      limit: 4,
+      locale: "en",
+      seriesPublicId: "  SERIES_1  ",
+    });
+
+    expect(mockListRelatedSeries).toHaveBeenCalledWith({
+      limit: 4,
+      seriesPublicId: "SERIES_1",
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+    expect(
+      result.ok && result.value.series.map((item) => item.publicId)
+    ).toEqual(["SERIES_2", "SERIES_3"]);
+    expect(result.ok && result.value.nextToken).toBe("next-token");
+  });
+
+  /**
+   * The section hangs under a series that was published when the page read it,
+   * so a `not_found` here means it stopped being published in between. An empty
+   * strip is that answer; a failure would replace the section with a message
+   * about a series the reader is still looking at.
+   */
+  it("A series that is gone is an empty page rather than a failure", async () => {
+    mockListRelatedSeries.mockRejectedValueOnce(
+      new ConnectError("series not found", Code.NotFound)
+    );
+
+    await expect(
+      listRelatedSeries("TENANT_001", {
+        locale: "en",
+        seriesPublicId: "SERIES_1",
+      })
+    ).resolves.toEqual({
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: [] },
+    });
+  });
+
+  it("Errors are not thrown and return a failure value", async () => {
+    mockListRelatedSeries.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      listRelatedSeries("TENANT_001", {
+        locale: "en",
+        seriesPublicId: "SERIES_1",
+      })
     ).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,

@@ -22,6 +22,10 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { Prose } from "#components/prose";
+import {
+  RelatedSeries,
+  RelatedSeriesSkeleton,
+} from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getSeriesDetail } from "#lib/catalog";
 import type { SeriesSerializationStatus } from "#lib/catalog";
@@ -48,6 +52,13 @@ const seriesDetailParamsSchema = z.object({
 
 /** Half a screen of rows, which is what a phone shows of the list at once. */
 const EPISODE_SKELETON_COUNT = 5;
+
+/**
+ * Six covers of what to read next: one full shelf on a desktop, and two full
+ * rows on a phone. The shelf is three across at that width, so a count that is
+ * not a multiple of three leaves the last row short.
+ */
+const RELATED_SERIES_COUNT = 6;
 
 const SeriesDetailSkeleton = () => (
   <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
@@ -340,6 +351,28 @@ const SeriesDetailContent = async (
           </ol>
         )}
       </section>
+
+      {/* The section renders its own heading, because a read that fails takes
+          the whole thing with it rather than leaving a heading over nothing.
+          The boundary is still here for a throw, which is a defect rather than
+          the unreachable API the section answers by disappearing. */}
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="host.related.list_error" />
+          </Suspense>
+        }
+      >
+        <Suspense
+          fallback={<RelatedSeriesSkeleton count={RELATED_SERIES_COUNT} />}
+        >
+          <RelatedSeries
+            limit={RELATED_SERIES_COUNT}
+            seriesPublicId={series.publicId}
+            tenantId={tenantId}
+          />
+        </Suspense>
+      </SectionErrorBoundary>
 
       <p>
         <LocaleLink

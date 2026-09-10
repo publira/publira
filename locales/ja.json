@@ -2180,6 +2180,11 @@
       "period_weekly": "ウィークリー",
       "rank_position": "{$rank}位"
     },
+    "related": {
+      "heading": "こちらもおすすめ",
+      "list_error": "関連作品を表示できませんでした",
+      "list_failed": "関連作品を取得できませんでした。時間をおいて再試行してください。"
+    },
     "search": {
       "description": "公開中シリーズのタイトルとあらすじから探せます",
       "error": "検索結果を表示できませんでした",

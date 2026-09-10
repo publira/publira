@@ -2180,6 +2180,11 @@
       "period_weekly": "週榜",
       "rank_position": "第 {$rank} 名"
     },
+    "related": {
+      "heading": "你可能也喜歡",
+      "list_error": "無法顯示相關作品",
+      "list_failed": "無法載入相關作品。請稍後再試。"
+    },
     "search": {
       "description": "依標題與簡介搜尋已發布的系列",
       "error": "無法顯示搜尋結果",
