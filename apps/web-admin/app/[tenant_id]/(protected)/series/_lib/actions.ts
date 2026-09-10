@@ -28,6 +28,7 @@ import type { AdminMessages } from "#lib/locale";
 import {
   createSeries,
   seriesCacheTag,
+  seriesListCacheTag,
   updateSeries,
   uploadSeriesEyeCatchAspectImage,
 } from "#lib/series";
@@ -188,6 +189,8 @@ export const createSeriesAction = async (
     return toFailure(result.message, "create");
   }
 
+  updateTag(seriesListCacheTag(parsed.data.tenantId));
+
   redirect(`/series/${result.series.publicId}?created=1`);
 };
 
@@ -246,6 +249,7 @@ export const updateSeriesAction = async (
   }
 
   updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
+  updateTag(seriesListCacheTag(parsed.data.tenantId));
 
   redirect(`/series/${parsed.data.publicId}?updated=1`);
 };
@@ -342,6 +346,7 @@ export const updateSeriesEyeCatchAction = async (
   }
 
   updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
+  updateTag(seriesListCacheTag(parsed.data.tenantId));
 
   return {
     message: getMessage(messages, "admin.series.eye_catch_updated"),
@@ -432,6 +437,7 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
   }
 
   updateTag(seriesCacheTag(tenantId, publicId));
+  updateTag(seriesListCacheTag(tenantId));
 
   return {
     message: getMessage(messages, "admin.eye_catch.aspect.uploaded"),

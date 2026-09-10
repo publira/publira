@@ -123,15 +123,24 @@ test.describe("admin publish flow", () => {
     await fields.title.fill(editedTitle);
     await fields.synopsis.fill(editedSynopsis);
     await page.getByRole("button", { name: "Update series" }).click();
-    // FlashToast strips `?updated=1` via client replace; assert on values
-    // rather than waiting for a load event that may never re-fire.
-    await expect(fields.title).toHaveValue(editedTitle, {
+    // The toast is what says the Action finished. The field values cannot say
+    // it — `fill` already put them there, so asserting on them passes while the
+    // request is still in flight, and the navigation below would then cancel
+    // the save it is meant to read back. FlashToast strips `?updated=1` via a
+    // client replace, so the URL cannot say it either.
+    await expect(page.getByText("Series updated.")).toBeVisible({
       timeout: 30_000,
     });
+    await expect(fields.title).toHaveValue(editedTitle);
     await expect(fields.synopsis).toHaveValue(editedSynopsis);
 
-    // List row reflects the save.
-    await page.goto(adminUrl("/series"));
+    // List row reflects the save. The console's own link, not `page.goto`: the
+    // list is a `"use cache: private"` read, held in the browser and dropped by
+    // a reload, so `page.goto` would read it fresh whatever the Action did.
+    // An editor walks back through the sidebar instead, onto whatever entry the
+    // router already holds — which is what the Action has to clear.
+    await page.getByRole("link", { exact: true, name: "Series" }).click();
+    await page.waitForURL((url) => url.pathname === "/series");
     await expect(page.getByText(editedTitle)).toBeVisible();
     // Exact match: the synopsis cell can also contain the word "Draft".
     await expect(

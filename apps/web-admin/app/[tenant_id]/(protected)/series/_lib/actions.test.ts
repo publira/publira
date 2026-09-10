@@ -44,6 +44,7 @@ vi.mock("#lib/series", () => ({
   createSeries: mockCreateSeries,
   seriesCacheTag: (tenantId: string, publicId: string) =>
     `series-${tenantId}-${publicId}`,
+  seriesListCacheTag: (tenantId: string) => `series-list-${tenantId}`,
   updateSeries: mockUpdateSeries,
 }));
 
@@ -189,6 +190,9 @@ describe("series actions", () => {
     // The screen has no client-side refresh of its own, so clearing this tag is
     // what puts the saved series back on the page.
     expect(mockUpdateTag).toHaveBeenCalledWith("series-TENANT001-SERIES001");
+    // And clearing the list tag is what puts it back on `/series`, which reads
+    // its rows from a cache entry the per-series tag does not reach.
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
   });
 
   it("updating the basics rejects a published_at that cannot be read as a date and time", async () => {
@@ -231,5 +235,37 @@ describe("series actions", () => {
       ok: false,
     });
     expect(mockUpdateSeries).not.toHaveBeenCalled();
+  });
+
+  it("creating a series clears the list tag so the new row is on /series at once", async () => {
+    mockCreateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: {
+        creatorNames: [],
+        creatorPublicIds: [],
+        eyeCatchImageUpdatedAt: "",
+        eyeCatchImageVariants: [],
+        isPublished: false,
+        labelName: "Label",
+        labelPublicId: "LABEL001",
+        publicId: "SERIES001",
+        readingPeriodHours: 24,
+        synopsis: "A synopsis",
+        title: "Series title",
+      },
+    });
+
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+
+    await createSeriesAction(null, formData);
+
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
+    expect(mockRedirect).toHaveBeenCalledWith("/series/SERIES001?created=1");
   });
 });

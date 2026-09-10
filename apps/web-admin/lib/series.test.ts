@@ -1,9 +1,14 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockListSeries } = vi.hoisted(() => ({
+const { mockCacheTag, mockGetAccessToken, mockListSeries } = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockListSeries: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./session", () => ({
@@ -115,6 +120,15 @@ describe("listSeries", () => {
       series: [],
     });
   });
+
+  it("files the page under the tenant series list tag", async () => {
+    mockListSeries.mockResolvedValue({ series: [] });
+
+    const { listSeries, seriesListCacheTag } = await import("./series");
+    await listSeries("TENANT001", "en", {});
+
+    expect(mockCacheTag).toHaveBeenCalledWith(seriesListCacheTag("TENANT001"));
+  });
 });
 
 describe("listAllSeries", () => {
@@ -209,5 +223,14 @@ describe("listAllSeries", () => {
       ok: false,
       series: [],
     });
+  });
+
+  it("files the picker options under the tenant series list tag", async () => {
+    mockListSeries.mockResolvedValue({ nextToken: "", series: [] });
+
+    const { listAllSeries, seriesListCacheTag } = await import("./series");
+    await listAllSeries("TENANT001", "en");
+
+    expect(mockCacheTag).toHaveBeenCalledWith(seriesListCacheTag("TENANT001"));
   });
 });
