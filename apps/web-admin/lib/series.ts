@@ -38,6 +38,14 @@ import { getAccessToken } from "./session";
 export const seriesCacheTag = (tenantId: string, publicId: string): string =>
   `series-${tenantId}-${publicId}`;
 
+/**
+ * The tag the tenant's series lists are filed under. The tag above reaches one
+ * series, so on its own it carries a save back to the form that submitted it
+ * and leaves `/series` showing the row as it stood until the entry expired.
+ */
+export const seriesListCacheTag = (tenantId: string): string =>
+  `series-list-${tenantId}`;
+
 export interface SeriesItem {
   publicId: string;
   title: string;
@@ -207,6 +215,7 @@ export const listSeries = async (
   options: CursorPageOptions = {}
 ): Promise<ListSeriesResult> => {
   "use cache: private";
+  cacheTag(seriesListCacheTag(tenantId));
 
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
@@ -259,15 +268,14 @@ export const listSeries = async (
  * Sorted by title for readable search results. An incomplete walk (budget
  * exhausted or a repeated token) fails with an empty list rather than a
  * partial option set that would hide series beyond the rows already read.
- *
- * Deliberately uncached: series mutations do not `updateTag` a tenant-wide
- * series list, so a cache tag here would keep a newly created series out of
- * the picker until the entry expired.
  */
 export const listAllSeries = async (
   tenantId: string,
   locale: Locale
 ): Promise<ListSeriesResult> => {
+  "use cache: private";
+  cacheTag(seriesListCacheTag(tenantId));
+
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   if (!sessionId) {
