@@ -40,7 +40,7 @@ func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 
 func newAdminRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	handler, err := NewHandler(nil, nil, nil, slog.Default(), nil, nil, testutil.TokenManager())
+	handler, err := newTestHandler(nil, nil, nil, slog.Default(), nil, nil)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}

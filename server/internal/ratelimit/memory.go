@@ -32,7 +32,14 @@ type memoryEntry struct {
 
 // NewMemoryStore returns an empty in-process store.
 func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{entries: make(map[string]memoryEntry), now: time.Now}
+	return NewMemoryStoreWithClock(time.Now)
+}
+
+// NewMemoryStoreWithClock returns an empty in-process store that reads the time
+// from clock. A counter expires by the same clock the limiter charges it on, so
+// both have to be given the one a test is stepping.
+func NewMemoryStoreWithClock(clock func() time.Time) *MemoryStore {
+	return &MemoryStore{entries: make(map[string]memoryEntry), now: clock}
 }
 
 func (s *MemoryStore) Incr(_ context.Context, key string, ttl time.Duration) (int64, error) {

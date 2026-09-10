@@ -1,13 +1,15 @@
 // Package ratelimit bounds how often one subject may perform one action.
 //
-// It exists for the endpoints readers write to. Those are the first places on
-// this platform where a signed-in stranger can put text in front of everyone
-// else, so each of them needs an answer to "how often", and the answer has to
-// be the same one whichever instance of a server happens to take the request.
+// It exists for the endpoints a stranger can reach without being vouched for:
+// the ones a signed-in reader writes through, which are the first places on
+// this platform where they can put text in front of everyone else, and the
+// forms that make a mail server send without having authenticated anyone. Each
+// of them needs an answer to "how often", and the answer has to be the same one
+// whichever instance of a server happens to take the request.
 //
-// The mechanism knows nothing about comments or about any other RPC: a caller
-// names the subject it is charging and the rules to charge it against, so the
-// next reader-writable RPC is a policy this package never has to learn.
+// The mechanism knows nothing about comments or about mail: a caller names the
+// subject it is charging and the rules to charge it against, so the next
+// endpoint that needs a limit is a policy this package never has to learn.
 package ratelimit
 
 import (
@@ -55,7 +57,17 @@ type Limiter struct {
 
 // New returns a limiter that keeps its counters in store.
 func New(store Store) *Limiter {
-	return &Limiter{store: store, now: time.Now}
+	return NewWithClock(store, time.Now)
+}
+
+// NewWithClock returns a limiter that reads the time from clock.
+//
+// A policy built on this package is tested by letting its windows pass, and a
+// test that waited for a real one would either take a day or describe a policy
+// nobody deploys. The clock is what lets such a test state the windows it
+// actually charges against and then step over them.
+func NewWithClock(store Store, clock func() time.Time) *Limiter {
+	return &Limiter{store: store, now: clock}
 }
 
 // Allow charges one action by subject against every rule and reports the first

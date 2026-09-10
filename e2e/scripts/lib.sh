@@ -51,6 +51,17 @@ export PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL:-postgres://publira_outbox
 # another build's cached HTML (login then hangs waiting to hydrate).
 export PUBLIRA_REDIS_URL="redis://127.0.0.1:${E2E_REDIS_PORT}"
 export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
+
+# The forms that cause mail — sign-up, the resend, the password reset, the
+# address change — are limited per address and per origin. A suite drives them
+# far more often than a person does, and every spec reaches the servers from the
+# one browser, so the deployment defaults would refuse the later cases of a run
+# instead of letting them assert what they are about. The limit itself is
+# covered by the Go tests.
+export PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_HOUR="${PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_HOUR:-1000}"
+export PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_DAY="${PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_DAY:-1000}"
+export PUBLIRA_MAIL_REQUEST_LIMIT_PER_SOURCE_PER_HOUR="${PUBLIRA_MAIL_REQUEST_LIMIT_PER_SOURCE_PER_HOUR:-1000}"
+export PUBLIRA_MAIL_REQUEST_LIMIT_PER_SOURCE_PER_DAY="${PUBLIRA_MAIL_REQUEST_LIMIT_PER_SOURCE_PER_DAY:-1000}"
 # Same reasoning as PUBLIRA_REDIS_URL: the devcontainer exports
 # PUBLIRA_S3_ENDPOINT=http://rustfs:9000, so an inherited value would store
 # E2E uploads in the dev stack's RustFS (and is unreachable once it is down).

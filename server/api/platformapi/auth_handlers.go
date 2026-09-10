@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -227,6 +228,12 @@ func (s *platformServer) RequestPasswordReset(
 		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
+	// Charged before the address is looked up, so a caller out of allowance is
+	// refused the same way whether or not the address has an account.
+	if err := s.mail.Allow(ctx, req, mailguard.PlatformScope, email); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "rate_limited")
+		return nil, err
+	}
 
 	platformUser, err := s.queriesFor(ctx).GetPlatformUserByEmail(ctx, email)
 	if err != nil {
@@ -416,6 +423,20 @@ func (s *platformServer) RequestEmailChange(
 	if !errors.Is(err, sql.ErrNoRows) {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "platform_user_id", platformUser.ID.String())
+	}
+
+	// The session says who is asking, not that the address they named is
+	// theirs, so the mail this queues for it is bounded like any other mail to
+	// an address nobody has confirmed.
+	//
+	// Charged here rather than before the lookup above, which is the order the
+	// forms that must not disclose an account use. This one discloses on
+	// purpose and mails nothing when it does, so charging first would let any
+	// signed-in caller spend the allowance of every address they can name by
+	// naming ones that already have accounts.
+	if err := s.mail.Allow(ctx, req, mailguard.PlatformScope, newEmail); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "rate_limited")
+		return nil, err
 	}
 
 	rawToken := make([]byte, 32)

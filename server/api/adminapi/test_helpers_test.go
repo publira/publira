@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -18,6 +19,10 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/ratelimit"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -94,13 +99,41 @@ func newTestAdminServerWithStorage(t *testing.T, provider storage.Provider) (*ht
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	handler, err := NewHandler(db, dbmodels.New(db), provider, slog.Default(), nil, nil, testutil.TokenManager())
+	handler, err := newTestHandler(db, dbmodels.New(db), provider, slog.Default(), nil, nil)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 	return server, mock
+}
+
+// newTestHandler builds the handler the way NewHandler does, with the limit on
+// the mail the console's forms cause given rather than read from the
+// environment: the counters would otherwise be the deployment's shared Redis,
+// where one run of these tests would charge the budget of the next.
+func newTestHandler(
+	db *sql.DB,
+	queries Querier,
+	storageProvider storage.Provider,
+	logger *slog.Logger,
+	encryptor emailsettings.SecretManager,
+	tester internalsmtp.Tester,
+) (http.Handler, error) {
+	return newHandler(db, queries, storageProvider, logger, encryptor, tester, testutil.TokenManager(), nil, openMailGuard())
+}
+
+// openMailGuard allows far more than any case that is not about the mail limit
+// reaches, so those cases assert the behaviour they are about rather than the
+// limit they happen to sit under. Every one of them shares this process's
+// loopback address, which is a single origin as far as the limit is concerned.
+func openMailGuard() *mailguard.Guard {
+	return mailguard.New(
+		ratelimit.New(ratelimit.NewMemoryStore()),
+		mailguard.Rules(1000, 1000),
+		mailguard.Rules(1000, 1000),
+		slog.Default(),
+	)
 }
 
 // revalidateRecorder stands in for the Next.js apps and collects the tags the

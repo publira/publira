@@ -2,6 +2,11 @@
 package rpcerrors
 
 import (
+	"errors"
+	"math"
+	"strconv"
+	"time"
+
 	"connectrpc.com/connect"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/proto"
@@ -41,6 +46,18 @@ func NewErrorInfoError(code connect.Code, err error, reason string) *connect.Err
 		Domain: ErrorInfoDomain,
 		Reason: reason,
 	})
+}
+
+// NewRateLimitedError is the one answer every exhausted allowance gives. It
+// says how long the wait is and nothing about which rule ran out or what the
+// caller asked for, so a caller cannot map the limits themselves from it, and
+// two requests refused for different reasons are indistinguishable.
+func NewRateLimitedError(retryAfter time.Duration) *connect.Error {
+	err := connect.NewError(connect.CodeResourceExhausted, errors.New("too many requests, try again later"))
+	if seconds := int(math.Ceil(retryAfter.Seconds())); seconds > 0 {
+		err.Meta().Set("Retry-After", strconv.Itoa(seconds))
+	}
+	return err
 }
 
 func withDetail(code connect.Code, err error, message proto.Message) *connect.Error {

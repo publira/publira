@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ratelimit"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 // The reader-writable RPCs share one flood control.
@@ -177,18 +177,7 @@ func (s *apiServer) chargeReaderAction(ctx context.Context, action readerAction,
 	if decision.Allowed {
 		return nil
 	}
-	return rateLimitedError(decision.RetryAfter)
-}
-
-// rateLimitedError is the one answer every exhausted allowance gives. It says
-// how long the wait is and nothing about which of the rules ran out, so the
-// reply cannot be used to map the limits themselves.
-func rateLimitedError(retryAfter time.Duration) error {
-	err := connect.NewError(connect.CodeResourceExhausted, errors.New("too many requests, try again later"))
-	if seconds := int(math.Ceil(retryAfter.Seconds())); seconds > 0 {
-		err.Meta().Set("Retry-After", strconv.Itoa(seconds))
-	}
-	return err
+	return rpcerrors.NewRateLimitedError(decision.RetryAfter)
 }
 
 // duplicateCommentKey names one reader repeating themselves on one episode.

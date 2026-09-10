@@ -20,7 +20,6 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -55,7 +54,7 @@ func newPaymentAdminServer(t *testing.T, logs *bytes.Buffer) (*httptest.Server, 
 	if logs != nil {
 		logger = slog.New(slog.NewTextHandler(logs, nil))
 	}
-	handler, err := NewHandler(db, dbmodels.New(db), &testStorageProvider{}, logger, newAdminTestEncryptor(t), nil, testutil.TokenManager())
+	handler, err := newTestHandler(db, dbmodels.New(db), &testStorageProvider{}, logger, newAdminTestEncryptor(t), nil)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}

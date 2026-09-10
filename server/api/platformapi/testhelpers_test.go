@@ -1,8 +1,10 @@
 package platformapi
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
@@ -17,8 +19,10 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/mailguard"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -94,7 +98,29 @@ func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmoc
 		recorder: auditlog.New(queries, slog.Default()),
 		tokens:   testutil.TokenManager(),
 		logger:   slog.Default(),
+		mail:     openMailGuard(),
 	}, mock
+}
+
+// newTestHandler builds the handler the way NewHandler does, with the limit on
+// the mail the console's forms cause given rather than read from the
+// environment: the counters would otherwise be the deployment's shared Redis,
+// where one run of these tests would charge the budget of the next.
+func newTestHandler(db *sql.DB, queries Querier) http.Handler {
+	return newHandler(db, queries, slog.Default(), nil, nil, testutil.TokenManager(), nil, openMailGuard())
+}
+
+// openMailGuard allows far more than any case that is not about the mail limit
+// reaches, so those cases assert the behaviour they are about rather than the
+// limit they happen to sit under. Every one of them shares this process's
+// loopback address, which is a single origin as far as the limit is concerned.
+func openMailGuard() *mailguard.Guard {
+	return mailguard.New(
+		ratelimit.New(ratelimit.NewMemoryStore()),
+		mailguard.Rules(1000, 1000),
+		mailguard.Rules(1000, 1000),
+		slog.Default(),
+	)
 }
 
 func operatorTestUserColumns() []string {
@@ -200,7 +226,7 @@ func newIntegrationTestServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) 
 		t.Fatalf("sqlmock.New: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager()))
+	server := httptest.NewServer(newTestHandler(db, dbmodels.New(db)))
 	t.Cleanup(server.Close)
 	return server, mock
 }

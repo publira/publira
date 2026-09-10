@@ -16,6 +16,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
+	"github.com/publira/publira/server/internal/mailguard"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -35,6 +36,8 @@ type platformServer struct {
 	tester    internalsmtp.Tester
 	tokens    *auth.TokenManager
 	logger    *slog.Logger
+	// mail bounds how much mail the console's own forms may cause.
+	mail *mailguard.Guard
 }
 
 // internalDBError keeps context cancellation and deadline errors as-is so
@@ -98,22 +101,37 @@ func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (strin
 // NewHandler returns the HTTP handler for the platform API. It connects to the
 // database as publira_platform, whose BYPASSRLS attribute lets it read past
 // row-level security.
-func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
-	return newHandler(db, queries, logger, encryptor, tester, tokens, nil)
+//
+// It fails rather than serves when the limit on the mail the console's forms
+// may cause is misconfigured, so a limit nobody can meet is caught at startup
+// instead of by the first operator who cannot get their password reset.
+func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (http.Handler, error) {
+	mail, err := mailguard.NewFromEnv(logger)
+	if err != nil {
+		return nil, err
+	}
+	return newHandler(db, queries, logger, encryptor, tester, tokens, nil, mail), nil
 }
 
 // NewHandlerWithAsyncRecorder creates a platform API handler with an
 // AsyncRecorder.
-func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) http.Handler {
-	return newHandler(db, queries, logger, encryptor, tester, tokens, recorder)
+func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (http.Handler, error) {
+	mail, err := mailguard.NewFromEnv(logger)
+	if err != nil {
+		return nil, err
+	}
+	return newHandler(db, queries, logger, encryptor, tester, tokens, recorder, mail), nil
 }
 
-func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) http.Handler {
+func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	if recorder == nil {
 		recorder = auditlog.New(queries, logger)
+	}
+	if mail == nil {
+		mail = mailguard.NewDefault()
 	}
 	server := &platformServer{
 		queries:   queries,
@@ -123,6 +141,7 @@ func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		tester:    tester,
 		tokens:    tokens,
 		logger:    logger,
+		mail:      mail,
 	}
 	authInterceptor := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {

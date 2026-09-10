@@ -233,6 +233,12 @@ func (s *adminServer) RequestPasswordReset(
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
+	// Charged before the address is looked up, so a caller out of allowance is
+	// refused the same way whether or not the address has an account.
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, "", "rate_limited")
+		return nil, err
+	}
 
 	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -567,6 +573,20 @@ func (s *adminServer) RequestEmailChange(
 	if !errors.Is(err, sql.ErrNoRows) {
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	// The session says who is asking, not that the address they named is
+	// theirs, so the mail this queues for it is bounded like any other mail to
+	// an address nobody has confirmed.
+	//
+	// Charged here rather than before the lookup above, which is the order the
+	// forms that must not disclose an account use. This one discloses on
+	// purpose and mails nothing when it does, so charging first would let any
+	// signed-in caller spend the allowance of every address they can name by
+	// naming ones that already have accounts.
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), newEmail); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		return nil, err
 	}
 
 	rawToken := make([]byte, 32)

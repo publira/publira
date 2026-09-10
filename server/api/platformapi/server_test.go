@@ -11,11 +11,10 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
-	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil, testutil.TokenManager()))
+	ts := httptest.NewServer(newTestHandler(nil, nil))
 	t.Cleanup(ts.Close)
 
 	assertPlatformRouteRegistered(t, ts, "/publira.platform.v1.PlatformTenantService/ListTenants", true)

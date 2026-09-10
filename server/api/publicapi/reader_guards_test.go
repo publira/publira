@@ -1,12 +1,10 @@
 package publicapi
 
 import (
-	"errors"
 	"log/slog"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ratelimit"
@@ -142,22 +140,5 @@ func TestReaderActionSubjectKeepsReadersAndTenantsApart(t *testing.T) {
 		if subject == base {
 			t.Fatalf("%s shares the subject %q, want a budget of its own", name, subject)
 		}
-	}
-}
-
-func TestRateLimitedErrorSaysHowLongToWait(t *testing.T) {
-	err := rateLimitedError(1500 * time.Millisecond)
-
-	if connect.CodeOf(err) != connect.CodeResourceExhausted {
-		t.Fatalf("code = %v, want resource_exhausted", connect.CodeOf(err))
-	}
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("error %v is not a connect error", err)
-	}
-	// Rounded up, so a reader who waits exactly what they were told is past the
-	// window rather than back inside it.
-	if got := connectErr.Meta().Get("Retry-After"); got != "2" {
-		t.Fatalf("Retry-After = %q, want 2 seconds", got)
 	}
 }

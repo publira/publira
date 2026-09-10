@@ -15,6 +15,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -28,11 +29,19 @@ import (
 func newDBIntegrationEnv(t *testing.T) (*httptest.Server, *testutil.PostgresEnv) {
 	t.Helper()
 
+	return newDBIntegrationEnvWithMailGuard(t, openMailGuard())
+}
+
+// newDBIntegrationEnvWithMailGuard is newDBIntegrationEnv for the cases that are
+// about the limit on the mail a form causes and need it tight enough to reach.
+func newDBIntegrationEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) (*httptest.Server, *testutil.PostgresEnv) {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPlatformDB(t)
 
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager()))
+	server := httptest.NewServer(newHandler(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), nil, mail))
 	t.Cleanup(server.Close)
 	return server, pg
 }

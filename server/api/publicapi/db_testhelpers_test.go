@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/mailguard"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/ratelimit"
@@ -38,8 +39,22 @@ func newPublicDBEnv(t *testing.T) *publicDBEnv {
 }
 
 // newPublicDBEnvWithGuards is newPublicDBEnv for the cases that are about the
-// flood control itself and need it tight enough to reach.
+// reader flood control itself and need it tight enough to reach.
 func newPublicDBEnvWithGuards(t *testing.T, guards readerGuards) *publicDBEnv {
+	t.Helper()
+
+	return newPublicDBEnvWith(t, guards, openMailGuard())
+}
+
+// newPublicDBEnvWithMailGuard is newPublicDBEnv for the cases that are about
+// the limit on the mail a form causes.
+func newPublicDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *publicDBEnv {
+	t.Helper()
+
+	return newPublicDBEnvWith(t, openReaderGuards(), mail)
+}
+
+func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard) *publicDBEnv {
 	t.Helper()
 
 	pg := testutil.StartPostgres(t)
@@ -54,7 +69,7 @@ func newPublicDBEnvWithGuards(t *testing.T, guards readerGuards) *publicDBEnv {
 	// counters would otherwise be the deployment's shared Redis, where one run
 	// of these tests would charge the budget of the next.
 	server := httptest.NewServer(handlerFromServer(
-		newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, nil, testutil.TokenManager(), slog.Default(), guards),
+		newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, nil, testutil.TokenManager(), slog.Default(), guards, mail),
 	))
 	t.Cleanup(server.Close)
 	return &publicDBEnv{Server: server, PG: pg}
@@ -72,6 +87,18 @@ func openReaderGuards() readerGuards {
 		},
 		duplicateCommentWindow: defaultDuplicateCommentWindow,
 	}
+}
+
+// openMailGuard is openReaderGuards for the mail limit: the cases that are not
+// about it drive forms that would otherwise spend an allowance meant for a
+// person, and every one of them shares this process's loopback address.
+func openMailGuard() *mailguard.Guard {
+	return mailguard.New(
+		ratelimit.New(ratelimit.NewMemoryStore()),
+		mailguard.Rules(1000, 1000),
+		mailguard.Rules(1000, 1000),
+		slog.Default(),
+	)
 }
 
 func (e *publicDBEnv) seedTenant(t *testing.T, publicID, domain, name string) testutil.Tenant {
