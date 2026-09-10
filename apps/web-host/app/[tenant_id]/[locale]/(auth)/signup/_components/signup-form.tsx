@@ -116,14 +116,14 @@ export const SignupForm = () => (
           <Message message="host.auth.signup.have_account" />
         </Suspense>
       </span>{" "}
-      <LocaleLink
-        href="/login"
-        className="font-medium text-primary hover:underline"
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+      <Suspense fallback={<SkeletonLine className="inline-block h-4 w-12" />}>
+        <LocaleLink
+          href="/login"
+          className="font-medium text-primary hover:underline"
+        >
           <Message message="host.auth.signup.login" />
-        </Suspense>
-      </LocaleLink>
+        </LocaleLink>
+      </Suspense>
     </div>
   </>
 );

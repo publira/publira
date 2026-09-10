@@ -5,7 +5,7 @@ import { createContext, use } from "react";
 import type { ReactNode } from "react";
 
 const LocaleContext = createContext<Locale | null>(null);
-const TenantDefaultLocaleContext = createContext<Locale | null>(null);
+const TenantDefaultLocaleContext = createContext<Promise<Locale> | null>(null);
 
 /**
  * Carries the `[locale]` root parameter to Client Components.
@@ -48,13 +48,21 @@ export const LocaleProvider = ({
  * `GetTenant` and can. Splitting them is what lets the error boundary above
  * the group layouts render its own copy without pretending to know a default
  * the read that failed was going to supply.
+ *
+ * It takes the read rather than its result, and that is what keeps a route
+ * prerenderable. `[tenant_id]` is a placeholder in `generateStaticParams`, so
+ * one static shell is shared by every tenant and a layout that awaited this
+ * value would settle the whole tree — pages included — before anything could
+ * flush. Passing the promise lets the provider render in the shell and moves
+ * the wait to {@link useTenantDefaultLocale}, which suspends the one component
+ * that needs a prefix rather than everything under the layout.
  */
 export const TenantDefaultLocaleProvider = ({
   children,
   defaultLocale,
 }: {
   children: ReactNode;
-  defaultLocale: Locale;
+  defaultLocale: Promise<Locale>;
 }) => (
   <TenantDefaultLocaleContext value={defaultLocale}>
     {children}
@@ -77,7 +85,15 @@ export const useLocale = (): Locale => {
   return locale;
 };
 
-/** Tenant default locale, used to construct canonical public URLs. */
+/**
+ * Tenant default locale, used to construct canonical public URLs.
+ *
+ * This **suspends**: the value is a `GetTenant` read that no static shell can
+ * hold, so a component that calls it needs a `<Suspense>` between it and the
+ * layout — in practice the boundary its own section already sits behind,
+ * because a link that needs the tenant's setting is next to content that needs
+ * the tenant anyway. Everything that does not call it stays in the shell.
+ */
 export const useTenantDefaultLocale = (): Locale => {
   const defaultLocale = use(TenantDefaultLocaleContext);
   if (!defaultLocale) {
@@ -86,5 +102,5 @@ export const useTenantDefaultLocale = (): Locale => {
     );
   }
 
-  return defaultLocale;
+  return use(defaultLocale);
 };

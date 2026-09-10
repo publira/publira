@@ -17,6 +17,7 @@ import {
   SiteLayoutMain,
   SiteLayoutNav,
   SiteLayoutNavLink,
+  SiteLayoutNavSkeleton,
 } from "./site-layout";
 import {
   SiteLayoutActions,
@@ -100,5 +101,16 @@ describe("SiteLayout slots", () => {
     expect(
       screen.getByRole("link", { name: "Get started" }).getAttribute("href")
     ).toBe("/signup");
+  });
+});
+
+describe("SiteLayoutNavSkeleton", () => {
+  it("stands in for the navigation without naming a link", () => {
+    render(<SiteLayoutNavSkeleton />);
+
+    // The whole point of the stand-in: an href the caller cannot name yet is
+    // not rendered as a link a reader could follow.
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    expect(screen.queryByRole("navigation")).toBeNull();
   });
 });

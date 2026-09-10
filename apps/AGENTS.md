@@ -342,6 +342,24 @@ The escape is the same in both: the error leaves the app render, and `base-serve
 
 The apps sit on the good side of that line by construction: every read crosses the network, so a failure that is left to throw lands after the flush, and the cached-read rule above keeps it from throwing at all. The bare 500 is what a bug that throws synchronously at the top of a component gets. That last row is a property of the tenant route structure, not something to work around per route — a minimal reproduction showed the same throw producing Next.js's `__next_error__` document only when the root layout sits above the top-level dynamic segment, which is not this app's shape. Do not add per-route escape hatches (a `connection()` call, a `try` / `catch` around a component body) to chase it.
 
+## A component with one call site lives beside it
+
+A component that only one route renders goes in that route's own `_components/`, reached with a relative import. `#components/` is for the ones more than one route uses — `<Message>`, `<LocaleLink>`, the notification bell.
+
+Where a component sits is what says how far a change to it reaches. Putting a single-use component in `#components/` claims an audience it does not have, so the next reader has to search for the call sites before touching it; putting a shared one under a route hides it from the routes that should have reused it. Move a component up when its second call site appears, not in anticipation of one.
+
+No lint covers this.
+
+## A layout is named after the segment it governs
+
+The default export of a `layout.tsx` takes the name of its own segment or route group — `RootLayout` for the root, `AuthLayout` under `(auth)`, `ProtectedLayout` under `(protected)`, `SettingsLayout` under `settings/` — because that name is the only thing that says which of an app's several layouts a reader is looking at.
+
+Do not prefix it with something every route in the app already is. `web-host` and `web-admin` are tenant-scoped end to end, so a `Tenant` in front of a layout's name distinguishes it from nothing, and the two it leaves behind — a `(site)` layout and an `(auth)` layout both called `TenantLayout` — are indistinguishable in a stack trace, in a Next.js overlay, and in the editor's symbol list.
+
+When the segment's name is already taken in that file — `(site)`'s layout wants to be `SiteLayout`, which is a `@publira/layouts` compound component it renders — move the chrome into a component of its own, in the segment's `_components/`, rather than inventing a longer name for the layout. The layout file is then the segment's providers and nothing else, which is the shape `web-admin`'s `(protected)/layout.tsx` already has.
+
+No lint covers this.
+
 ## Never use `instant = false`
 
 `export const instant = false` opts a segment out of Cache Components' static-shell validation. It is an escape hatch for codebases that cannot yet fix a blocking read, and it has no place in a product being built from scratch — **do not add it to any segment**, and do not treat an existing occurrence as licence to add another.
@@ -494,13 +512,15 @@ The route tree is `app/[tenant_id]/[locale]/...`, and `proxy.ts` rewrites a publ
 - **The locale is stripped before a path is classified.** `buildTenantRewritePathname` decides "published page or app route" on the locale-less remainder, so a tenant page whose slug happens to be `ja` still resolves, and a locale code can never collide with a reserved segment
 - **A Server Component that needs the tenant's default reads `getTenantDefaultLocale()`.** The setting rides on `getTenantSiteInfo`, next to the display time zone and under the same `tenant:<id>:site` tag, so the admin console's save reaches the site. The proxy is the one caller that cannot use it — it runs before any route renders, where a `"use cache"` read is unavailable — which is why the same value also comes back from `GetTenantByDomain`. `generateStaticParams` still emits every supported locale: the default picks a redirect target, it does not narrow what the site serves
 - **The root layout is the document shell and nothing else.** It is synchronous and reads nothing, so both locales enter the tree one level down, at the `(site)` and `(auth)` layouts. That is also what puts the tenant read behind `app/[tenant_id]/[locale]/error.tsx`: a stored default that cannot be read brings up that boundary instead of a bare 500 no boundary catches. The boundary stands in for those layouts, so it seeds a provider of its own from what the browser holds (`lib/client-locale.ts`): the same path and cookie `<html lang>` was written from, and then `Accept-Language`, which the script has no equivalent of — an attribute can be left unset, copy cannot, so the boundary states what the visitor asked for where no stored answer is within reach
+- **`<TenantDefaultLocaleProvider>` takes the tenant read, not its result.** `[tenant_id]` is a placeholder in `generateStaticParams`, so one prerendered shell is shared by every tenant and no group layout can _await_ the tenant's stored default: doing so settles that layout's whole tree — pages included — before anything flushes, and Cache Components reports it as `blocking-prerender-runtime` on every route below. The layouts therefore pass `tenantDefaultLocale()` unawaited, so the provider renders in the static shell with `children` beside it, and `useTenantDefaultLocale()` **suspends** the one component that names a prefix. Never wrap a whole layout — chrome plus `children` — in a single boundary to make the report go away: that trades every route's page body for the chrome, which is what Cache Components and Partial Prefetching were turned on to keep. A `<Suspense>` absorbs the wait and not the failure, so a tenant read that throws still reaches `app/[tenant_id]/[locale]/error.tsx`
+- **A link whose href needs that default carries its own `<Suspense>`.** `withLocalePrefix` decides between `/series` and `/en/series` from the tenant's setting, so an anchor cannot be named before the read answers — the boundary goes **around** the `<LocaleLink>`, with a `SkeletonLine` the width of the label, rather than inside it around the `<Message>`. Everything else on the screen stays in the shell. Where the link already sits in a section that awaits the tenant anyway — a form, a list, a detail body — it needs nothing: that section's boundary is the one it suspends at
 
 Reading the locale, by context:
 
 | Context | How |
 | --- | --- |
 | Server Component | `getLocale()` from `lib/locale.ts` — `next/root-params`, `notFound()` on an unsupported value |
-| Client Component | `useLocale()` from `components/locale-provider.tsx` (React context, seeded by the `(site)` and `(auth)` layouts). The tenant's stored default travels beside it as `useTenantDefaultLocale()`, from a provider of its own |
+| Client Component | `useLocale()` from `components/locale-provider.tsx` (React context, seeded by the `(site)` and `(auth)` layouts). The tenant's stored default travels beside it as `useTenantDefaultLocale()`, from a provider of its own — that one suspends |
 | Server Action | An argument bound by the Server Component, or the `<LocaleField />` hidden field parsed with `localeFormSchema` |
 
 - **Never read the locale with `useParams()` or `usePathname()`.** Both call Next.js's dynamic-route-param hook, which aborts the prerender of a **fallback shell** — a route whose own dynamic segment has no value yet, such as `/series/[series_id]` — by bailing out to client rendering. The build fails with an empty `Error occurred prerendering page` line, so the cause is not obvious from the output. A Client Component that genuinely needs the current path (the locale switcher) belongs inside a `<Suspense>` with a skeleton. `lib/client-locale.ts` reads `window.location` rather than either hook, and only `app/[tenant_id]/[locale]/error.tsx` calls it: that boundary has no provider above it and renders in the browser, so there is no shell for the read to abort

@@ -62,14 +62,14 @@ export const ResendVerificationForm = () => (
     </div>
 
     <div className="mt-4 text-center text-sm">
-      <LocaleLink
-        href="/login"
-        className="font-medium text-primary hover:underline"
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+      <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
+        <LocaleLink
+          href="/login"
+          className="font-medium text-primary hover:underline"
+        >
           <Message message="host.auth.fields.to_login" />
-        </Suspense>
-      </LocaleLink>
+        </LocaleLink>
+      </Suspense>
     </div>
   </>
 );
