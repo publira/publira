@@ -7,6 +7,7 @@ import localeIndex from "../../../locales/index.json" with { type: "json" };
 import jaCatalog from "../../../locales/ja.json" with { type: "json" };
 import koCatalog from "../../../locales/ko.json" with { type: "json" };
 import zhHansCatalog from "../../../locales/zh-Hans.json" with { type: "json" };
+import zhHantCatalog from "../../../locales/zh-Hant.json" with { type: "json" };
 import {
   formatMessage,
   getLocales,
@@ -56,11 +57,20 @@ const zhHansFixture = {
   },
 } as const;
 
+const zhHantFixture = {
+  greeting: "你好，{$name}",
+  nav: {
+    home: "首頁",
+  },
+} as const;
+
 /** Compile-time: the root catalogs must match each other with no extra keys. */
 const enMatchesJa: ExactCatalog<typeof enCatalog, typeof jaCatalog> = enCatalog;
 const koMatchesEn: ExactCatalog<typeof koCatalog, typeof enCatalog> = koCatalog;
 const zhHansMatchesEn: ExactCatalog<typeof zhHansCatalog, typeof enCatalog> =
   zhHansCatalog;
+const zhHantMatchesEn: ExactCatalog<typeof zhHantCatalog, typeof enCatalog> =
+  zhHantCatalog;
 
 const missing: unknown = undefined;
 
@@ -284,6 +294,10 @@ describe("loadMessages", () => {
         imported.push("zh-Hans");
         return Promise.resolve(zhHansFixture);
       },
+      "zh-Hant": () => {
+        imported.push("zh-Hant");
+        return Promise.resolve(zhHantFixture);
+      },
     });
 
     expect(imported).toEqual(["en"]);
@@ -297,6 +311,8 @@ describe("loadMessages", () => {
       ko: () => Promise.resolve(asModuleNamespace({ default: koFixture })),
       "zh-Hans": () =>
         Promise.resolve(asModuleNamespace({ default: zhHansFixture })),
+      "zh-Hant": () =>
+        Promise.resolve(asModuleNamespace({ default: zhHantFixture })),
     });
 
     expect(catalog).toEqual(jaFixture);
@@ -312,6 +328,7 @@ describe("loadMessages", () => {
       ja: () => Promise.resolve(catalogWithDefault),
       ko: () => Promise.resolve(koFixture),
       "zh-Hans": () => Promise.resolve(zhHansFixture),
+      "zh-Hant": () => Promise.resolve(zhHantFixture),
     });
 
     expect(loaded).toEqual(catalogWithDefault);
@@ -388,6 +405,10 @@ describe("getMessage", () => {
     expect(zhHansMatchesEn).toBe(zhHansCatalog);
     expect(getMessage(zhHansCatalog, "errors.validation")).toBe(
       "请检查您输入的内容。"
+    );
+    expect(zhHantMatchesEn).toBe(zhHantCatalog);
+    expect(getMessage(zhHantCatalog, "errors.validation")).toBe(
+      "請檢查您輸入的內容。"
     );
     expect(getMessage(koCatalog, "errors.validation")).toBe(
       "입력한 내용을 확인해 주세요."

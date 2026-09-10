@@ -6,8 +6,8 @@ import 'package:publira/l10n/locale_negotiation.dart';
 
 /// A catalog set of the shape the script rules exist for: two catalogs that
 /// share a language and differ only in the script they are written in. The
-/// rules show nothing on a set where every language has one catalog, which is
-/// what `locales/index.json` holds.
+/// registry holds such a pair as well, and this fixture keeps the rules
+/// covered on a set the tests state outright rather than read from it.
 const chineseCatalogs = <Locale>[
   Locale('ja'),
   Locale('en'),
@@ -40,9 +40,11 @@ void main() {
       expect(supportedLocaleForCode(' en '), const Locale('en'));
     });
 
-    test('answers the Simplified Chinese catalog for its subtagged code', () {
+    test('answers a Chinese catalog for its subtagged code', () {
       expect(supportedLocaleForCode('zh-Hans'), zhHans);
       expect(supportedLocaleForCode('zh-hans'), zhHans);
+      expect(supportedLocaleForCode('zh-Hant'), zhHant);
+      expect(supportedLocaleForCode('zh-hant'), zhHant);
     });
 
     test('answers null for a code no catalog carries', () {
@@ -66,12 +68,16 @@ void main() {
       expect(matchDeviceLocale(const [Locale('ko', 'KR')]), const Locale('ko'));
     });
 
-    // The registry carries one Chinese catalog, so a device set to any
-    // Chinese reaches it: outright, through the script its region implies,
-    // or through the language alone.
-    test('reaches the Simplified Chinese catalog from a device set to it', () {
+    // The registry carries both Chinese catalogs, so a device reaches the one
+    // it is written in: outright, or through the script its region implies.
+    // A device that names the language alone gets Simplified, the script
+    // `zh` itself implies.
+    test('tells the two Chinese catalogs apart on the device locale', () {
       expect(matchDeviceLocale(const [zhHans]), zhHans);
       expect(matchDeviceLocale(const [Locale('zh', 'CN')]), zhHans);
+      expect(matchDeviceLocale(const [zhHant]), zhHant);
+      expect(matchDeviceLocale(const [Locale('zh', 'TW')]), zhHant);
+      expect(matchDeviceLocale(const [Locale('zh', 'HK')]), zhHant);
       expect(matchDeviceLocale(const [Locale('zh')]), zhHans);
     });
 

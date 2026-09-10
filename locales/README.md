@@ -13,6 +13,7 @@ The format is JSON. Every locale has the same set of keys; both missing and extr
 | `en.json` | English catalog |
 | `ko.json` | Korean catalog |
 | `zh-Hans.json` | Simplified Chinese catalog |
+| `zh-Hant.json` | Traditional Chinese catalog |
 
 Every leaf must be a string.
 
@@ -100,7 +101,7 @@ Use import attributes (`with { type: "json" }`) for JSON imports in generated fi
 ### Go
 
 ```go
-//go:embed ja.json en.json ko.json zh-Hans.json
+//go:embed ja.json en.json ko.json zh-Hans.json zh-Hant.json
 var files embed.FS
 
 raw, err := files.ReadFile(locale + ".json")

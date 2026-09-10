@@ -6,13 +6,19 @@ import { expect } from "@playwright/test";
  * it lists — the one string that does not change with the locale the page is
  * currently rendered in.
  */
-export type LocaleLabel = "English" | "日本語" | "한국어" | "简体中文";
+export type LocaleLabel =
+  | "English"
+  | "日本語"
+  | "한국어"
+  | "简体中文"
+  | "繁體中文";
 
 /** The code the same choice is stored and served under. */
 export const LOCALE_CODE: Record<LocaleLabel, string> = {
   English: "en",
   日本語: "ja",
   简体中文: "zh-Hans",
+  繁體中文: "zh-Hant",
   한국어: "ko",
 };
 
@@ -25,6 +31,7 @@ const HOST_SWITCHER_TRIGGER: Record<LocaleLabel, string> = {
   English: "Language: English",
   日本語: "表示言語: 日本語",
   简体中文: "显示语言: 简体中文",
+  繁體中文: "顯示語言: 繁體中文",
   한국어: "표시 언어: 한국어",
 };
 
@@ -33,6 +40,7 @@ const CONSOLE_SWITCHER_TRIGGER: Record<LocaleLabel, string> = {
   English: "Display language: English",
   日本語: "表示言語: 日本語",
   简体中文: "显示语言: 简体中文",
+  繁體中文: "顯示語言: 繁體中文",
   한국어: "표시 언어: 한국어",
 };
 
