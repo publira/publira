@@ -55,17 +55,20 @@ export const metadata: Metadata = {
  * first place the request's locale and the tenant's stored default both enter
  * the tree.
  *
- * Neither is awaited here, and that is what leaves the auth screens in the
- * static shell. The request's locale is a root parameter `generateStaticParams`
- * enumerates, so it already has a literal value in a prerender. The tenant's
- * default is a `GetTenant` read, and `[tenant_id]` is a placeholder — one shell
- * is shared by every tenant — so it travels as the read itself and is awaited
- * only where a prefix is actually named: the footer's own `<Suspense>` here,
- * and each `<LocaleLink>` inside the boundary its section already has.
+ * Only the first of the two is awaited here, and that is what leaves the auth
+ * screens in the static shell. The locale has to be awaited — `<LocaleProvider>`
+ * and `<DocumentLocale>` both take the value — and it costs the shell nothing:
+ * `generateStaticParams` enumerates that root parameter, so it already has a
+ * literal value in a prerender. The tenant's default is a `GetTenant` read, and
+ * `[tenant_id]` is a placeholder — one shell is shared by every tenant — so it
+ * travels as the read itself and is awaited only where a prefix is actually
+ * named: the footer's own `<Suspense>` here, and each `<LocaleLink>` inside the
+ * boundary its section already has.
  *
- * Awaiting it in this body instead costs every route under `(auth)` its static
- * shell — Cache Components reports it as `blocking-prerender-runtime` — and
- * `export const instant = false` is not the way out of that (`apps/AGENTS.md`).
+ * Awaiting that read in this body instead costs every route under `(auth)` its
+ * static shell — Cache Components reports it as `blocking-prerender-runtime` —
+ * and `export const instant = false` is not the way out of that
+ * (`apps/AGENTS.md`).
  */
 const TenantLayout = async ({
   children,
