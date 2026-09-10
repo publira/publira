@@ -24,7 +24,7 @@ import {
 } from "@publira/ui-components/section-error";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
-import { GENRE_NAME_MAX_LENGTH } from "#lib/genre-shared";
+import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 
 import { createGenreAction } from "../_lib/actions";
 import type { GenreListItem } from "../genre-types";
@@ -109,7 +109,7 @@ export const GenreManager = ({
               <FieldContent>
                 <Input
                   className="sm:max-w-sm"
-                  maxLength={GENRE_NAME_MAX_LENGTH}
+                  maxLength={CATALOG_NAME_MAX_LENGTH}
                   name="name"
                   placeholder={getMessage(
                     messages,
