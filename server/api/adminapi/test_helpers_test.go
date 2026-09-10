@@ -52,7 +52,7 @@ const (
 	listAccessTicketsForTenantDescQuery                      = "-- name: ListAccessTicketsForTenantDesc :many\n"
 	listSeriesByTenantAscQuery                               = "-- name: ListSeriesByTenantAsc :many\n"
 	listSeriesByTenantDescQuery                              = "-- name: ListSeriesByTenantDesc :many\n"
-	getSeriesByPublicIDForTenantQuery                        = "-- name: GetSeriesByPublicIDForTenant :one\n"
+	getSeriesByPublicIDForTenantQuery                        = "-- name: GetSeriesByPublicIDForTenant :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    l.public_id AS label_public_id,\n    l.name AS label_name,\n    sl.synopsis,\n    sl.reading_period_hours,\n    sl.status,\n    sl.schedule_weekdays,\n    sl.age_rating,\n    sl.comment_mode,\n    s.is_published,\n    s.published_at,\n    s.eye_catch_image_id,\n    si.updated_at AS eye_catch_image_updated_at,\n    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes\nFROM series s\n    LEFT JOIN labels l ON l.id = s.label_id\n    LEFT JOIN series_listings sl ON sl.series_id = s.id\n    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id\n    LEFT JOIN LATERAL (\n        SELECT file_size_bytes\n        FROM series_image_variants\n        WHERE series_image_id = si.id\n        ORDER BY width DESC\n        LIMIT 1\n    ) siv ON true\nWHERE s.tenant_id = $1\n    AND s.public_id = $2\nLIMIT 1\n"
 	lockSeriesByPublicIDForTenantQuery                       = "-- name: LockSeriesByPublicIDForTenant :one\n"
 	updateSeriesBaseQuery                                    = "-- name: UpdateSeriesBase :exec\n"
 	updateSeriesPublicationQuery                             = "-- name: UpdateSeriesPublication :exec\n"

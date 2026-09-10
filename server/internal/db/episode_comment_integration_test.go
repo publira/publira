@@ -597,6 +597,49 @@ func TestTenantConfigCommentModeDefaultsToDisabled(t *testing.T) {
 	}
 }
 
+func TestSeriesListingCommentModeIsNullUntilASeriesStatesOne(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "SRSMODETN01", "srs-mode.example.com", "admin-srs-mode.example.com", "Series Comment Mode Tenant")
+	seriesID := mustInsertSeries(t, ctx, pg.DB, tenantID, "SRSMODESR01")
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO series_listings (tenant_id, series_id)
+		VALUES ($1, $2)
+	`, tenantID, seriesID); err != nil {
+		t.Fatalf("insert series listing: %v", err)
+	}
+
+	var override sql.NullString
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT comment_mode FROM series_listings WHERE series_id = $1
+	`, seriesID).Scan(&override); err != nil {
+		t.Fatalf("read comment_mode: %v", err)
+	}
+	if override.Valid {
+		t.Fatalf("comment_mode = %s, want NULL so a series follows its tenant until it states otherwise", override.String)
+	}
+
+	// The same three values the tenant setting takes, so a series can state any
+	// policy its tenant could have stated for it.
+	for _, mode := range []string{"immediate", "approval_required", "disabled"} {
+		if _, err := pg.DB.ExecContext(ctx, `UPDATE series_listings SET comment_mode = $2 WHERE series_id = $1`, seriesID, mode); err != nil {
+			t.Fatalf("set comment_mode %s: %v", mode, err)
+		}
+	}
+	if _, err := pg.DB.ExecContext(ctx, `UPDATE series_listings SET comment_mode = NULL WHERE series_id = $1`, seriesID); err != nil {
+		t.Fatalf("clear comment_mode: %v", err)
+	}
+
+	_, err := pg.DB.ExecContext(ctx, `UPDATE series_listings SET comment_mode = 'members_only' WHERE series_id = $1`, seriesID)
+	if !isCheckViolation(err) || checkName(err) != "series_listings_comment_mode_check" {
+		t.Fatalf("unknown comment_mode error = %v (%s), want series_listings_comment_mode_check", err, checkName(err))
+	}
+}
+
 type commentSeed struct {
 	tenantID     uuid.UUID
 	episodeID    uuid.UUID

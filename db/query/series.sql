@@ -25,6 +25,10 @@ SELECT s.id,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
+    -- The series' own comment mode, and NULL when it follows the tenant's. The
+    -- caller resolves the two, so this read carries the override rather than
+    -- the answer.
+    sl.comment_mode,
     s.is_published,
     s.published_at,
     (
@@ -160,7 +164,8 @@ GROUP BY s.id,
     sl.synopsis,
     sl.status,
     sl.schedule_weekdays,
-    sl.age_rating;
+    sl.age_rating,
+    sl.comment_mode;
 
 -- name: CreateSeriesBase :one
 INSERT INTO series (
@@ -191,7 +196,8 @@ INSERT INTO series_listings (
         reading_period_hours,
         status,
         schedule_weekdays,
-        age_rating
+        age_rating,
+        comment_mode
     )
 VALUES (
         sqlc.arg('tenant_id'),
@@ -200,14 +206,16 @@ VALUES (
         sqlc.arg('reading_period_hours'),
         sqlc.arg('status'),
         sqlc.arg('schedule_weekdays'),
-        sqlc.arg('age_rating')
+        sqlc.arg('age_rating'),
+        sqlc.narg('comment_mode')
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours,
     status = EXCLUDED.status,
     schedule_weekdays = EXCLUDED.schedule_weekdays,
-    age_rating = EXCLUDED.age_rating
+    age_rating = EXCLUDED.age_rating,
+    comment_mode = EXCLUDED.comment_mode
 RETURNING *;
 
 -- name: UpdateSeriesPublication :exec
@@ -335,6 +343,7 @@ SELECT s.id,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
+    sl.comment_mode,
     s.is_published,
     s.published_at,
     s.eye_catch_image_id,

@@ -111,6 +111,7 @@ SELECT s.id,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
+    sl.comment_mode,
     s.is_published,
     s.published_at,
     s.eye_catch_image_id,
@@ -148,6 +149,7 @@ type GetSeriesByPublicIDForTenantRow struct {
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
 	AgeRating                  sql.NullString `json:"age_rating"`
+	CommentMode                sql.NullString `json:"comment_mode"`
 	IsPublished                bool           `json:"is_published"`
 	PublishedAt                sql.NullTime   `json:"published_at"`
 	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
@@ -169,6 +171,7 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		&i.Status,
 		pq.Array(&i.ScheduleWeekdays),
 		&i.AgeRating,
+		&i.CommentMode,
 		&i.IsPublished,
 		&i.PublishedAt,
 		&i.EyeCatchImageID,
@@ -190,6 +193,10 @@ SELECT s.id,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
+    -- The series' own comment mode, and NULL when it follows the tenant's. The
+    -- caller resolves the two, so this read carries the override rather than
+    -- the answer.
+    sl.comment_mode,
     s.is_published,
     s.published_at,
     (
@@ -325,7 +332,8 @@ GROUP BY s.id,
     sl.synopsis,
     sl.status,
     sl.schedule_weekdays,
-    sl.age_rating
+    sl.age_rating,
+    sl.comment_mode
 `
 
 type GetSeriesDetailParams struct {
@@ -345,6 +353,7 @@ type GetSeriesDetailRow struct {
 	Status                 sql.NullString  `json:"status"`
 	ScheduleWeekdays       []int32         `json:"schedule_weekdays"`
 	AgeRating              sql.NullString  `json:"age_rating"`
+	CommentMode            sql.NullString  `json:"comment_mode"`
 	IsPublished            bool            `json:"is_published"`
 	PublishedAt            sql.NullTime    `json:"published_at"`
 	FreeEpisodeCount       int32           `json:"free_episode_count"`
@@ -369,6 +378,7 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.Status,
 		pq.Array(&i.ScheduleWeekdays),
 		&i.AgeRating,
+		&i.CommentMode,
 		&i.IsPublished,
 		&i.PublishedAt,
 		&i.FreeEpisodeCount,
@@ -695,7 +705,8 @@ INSERT INTO series_listings (
         reading_period_hours,
         status,
         schedule_weekdays,
-        age_rating
+        age_rating,
+        comment_mode
     )
 VALUES (
         $1,
@@ -704,15 +715,17 @@ VALUES (
         $4,
         $5,
         $6,
-        $7
+        $7,
+        $8
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours,
     status = EXCLUDED.status,
     schedule_weekdays = EXCLUDED.schedule_weekdays,
-    age_rating = EXCLUDED.age_rating
-RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode
+    age_rating = EXCLUDED.age_rating,
+    comment_mode = EXCLUDED.comment_mode
+RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode
 `
 
 type UpsertSeriesListingParams struct {
@@ -723,6 +736,7 @@ type UpsertSeriesListingParams struct {
 	Status             string         `json:"status"`
 	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
 	AgeRating          string         `json:"age_rating"`
+	CommentMode        sql.NullString `json:"comment_mode"`
 }
 
 // The whole listing row is written on every admin save, so a field the
@@ -737,6 +751,7 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		arg.Status,
 		pq.Array(arg.ScheduleWeekdays),
 		arg.AgeRating,
+		arg.CommentMode,
 	)
 	var i SeriesListing
 	err := row.Scan(
@@ -750,6 +765,7 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		pq.Array(&i.ScheduleWeekdays),
 		&i.AgeRating,
 		&i.EpisodeRatingMode,
+		&i.CommentMode,
 	)
 	return i, err
 }

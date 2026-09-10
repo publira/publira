@@ -570,6 +570,7 @@ type SeriesListing struct {
 	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
 	AgeRating          string         `json:"age_rating"`
 	EpisodeRatingMode  sql.NullString `json:"episode_rating_mode"`
+	CommentMode        sql.NullString `json:"comment_mode"`
 }
 
 type SeriesTag struct {

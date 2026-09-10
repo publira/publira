@@ -483,16 +483,19 @@ type seriesListingMetadata struct {
 	status           string
 	scheduleWeekdays []int32
 	ageRating        string
+	commentMode      sql.NullString
 }
 
-// normalizeSeriesListingMetadata validates the three listing fields of a create
-// or update request. An unspecified enum stores the column's default, so a
-// client that does not carry these fields yet keeps saving series the way it
-// did.
+// normalizeSeriesListingMetadata validates the listing fields of a create or
+// update request. An unspecified enum stores the column's default, so a client
+// that does not carry these fields yet keeps saving series the way it did — and
+// for the comment mode that default is no value at all, which is the series
+// following whatever its tenant has chosen.
 func normalizeSeriesListingMetadata(
 	status publirattypesv1.SeriesStatus,
 	scheduleWeekdays []int32,
 	ageRating publirattypesv1.SeriesAgeRating,
+	commentMode publirattypesv1.CommentMode,
 ) (seriesListingMetadata, error) {
 	storedStatus, err := protomapper.SeriesStatusToStored(status)
 	if err != nil {
@@ -506,10 +509,15 @@ func normalizeSeriesListingMetadata(
 	if err != nil {
 		return seriesListingMetadata{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "age_rating")
 	}
+	storedCommentMode, err := protomapper.CommentModeOverrideToStored(commentMode)
+	if err != nil {
+		return seriesListingMetadata{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "comment_mode")
+	}
 	return seriesListingMetadata{
 		status:           storedStatus,
 		scheduleWeekdays: storedWeekdays,
 		ageRating:        storedAgeRating,
+		commentMode:      storedCommentMode,
 	}, nil
 }
 
@@ -543,7 +551,7 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, err
 	}
-	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating)
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating, req.Msg.CommentMode)
 	if err != nil {
 		return nil, err
 	}
@@ -605,6 +613,7 @@ func (s *adminServer) CreateSeries(
 		Status:             listingMetadata.status,
 		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
 		AgeRating:          listingMetadata.ageRating,
+		CommentMode:        listingMetadata.commentMode,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
@@ -678,7 +687,11 @@ func (s *adminServer) CreateSeries(
 	series.Creators = creators
 	series.Genres = genres
 	series.Tags = tags
-	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: series}), nil
+	commentMode, err := protomapper.CommentModeOverrideFromStored(created.CommentMode)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
+	}
+	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: series, CommentMode: commentMode}), nil
 }
 
 func (s *adminServer) UpdateSeries(
@@ -698,7 +711,7 @@ func (s *adminServer) UpdateSeries(
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating)
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating, req.Msg.CommentMode)
 	if err != nil {
 		return nil, err
 	}
@@ -767,6 +780,7 @@ func (s *adminServer) UpdateSeries(
 		Status:             listingMetadata.status,
 		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
 		AgeRating:          listingMetadata.ageRating,
+		CommentMode:        listingMetadata.commentMode,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
@@ -848,7 +862,11 @@ func (s *adminServer) UpdateSeries(
 	series.Creators = creators
 	series.Genres = genres
 	series.Tags = tags
-	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{Series: series}), nil
+	commentMode, err := protomapper.CommentModeOverrideFromStored(updated.CommentMode)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{Series: series, CommentMode: commentMode}), nil
 }
 
 const (
@@ -1149,5 +1167,9 @@ func (s *adminServer) GetSeries(
 	series.Creators = creatorsBySeriesID[row.ID]
 	series.Genres = genresBySeriesID[row.ID]
 	series.Tags = tagsBySeriesID[row.ID]
-	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{Series: series}), nil
+	commentMode, err := protomapper.CommentModeOverrideFromStored(row.CommentMode)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
+	}
+	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{Series: series, CommentMode: commentMode}), nil
 }

@@ -59,6 +59,10 @@ type SeriesSeed struct {
 	// AgeRating is series_listings.age_rating: all, r15, or r18. Empty takes the
 	// column's default.
 	AgeRating string
+	// CommentMode is series_listings.comment_mode: disabled, immediate, or
+	// approval_required. Empty stores no override, which leaves the series
+	// following its tenant's setting.
+	CommentMode string
 }
 
 // Episode is a seeded episode together with the listing that prices it.
@@ -146,6 +150,17 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 		defaultIfEmpty(seed.AgeRating, "all"),
 	); err != nil {
 		t.Fatalf("insert series_listings %s: %v", publicID, err)
+	}
+	// Written separately, and only for a seed that asks for it, because a test
+	// that rolls the schema back to an older migration seeds series through
+	// here too: the insert above has to name only the columns every version
+	// this seeder is used at already has.
+	if seed.CommentMode != "" {
+		if _, err := e.DB.ExecContext(ctx, `
+			UPDATE series_listings SET comment_mode = $2 WHERE series_id = $1
+		`, seriesID, seed.CommentMode); err != nil {
+			t.Fatalf("set series_listings comment_mode %s: %v", publicID, err)
+		}
 	}
 
 	return Series{ID: seriesID, PublicID: publicID, Title: title}

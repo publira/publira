@@ -318,6 +318,64 @@ func TestDBGetSeriesDetailCarriesTheListingMetadata(t *testing.T) {
 	}
 }
 
+// The series detail answers with the mode its comments are published under, so
+// a storefront decides whether to offer a comment section from the series read
+// it already makes.
+func TestDBGetSeriesDetailCarriesTheEffectiveCommentMode(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	following := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESA00001",
+		Title:     "Open Story",
+		Published: true,
+	})
+	overriding := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESA00002",
+		Title:       "Quiet Story",
+		Published:   true,
+		CommentMode: "disabled",
+	})
+	env.setCommentMode(t, tenant.ID, "immediate")
+
+	seriesCommentMode := func(publicID string) publirattypesv1.CommentMode {
+		t.Helper()
+		resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+			Tenant:   tenantContext(tenant),
+			PublicId: publicID,
+		}))
+		if err != nil {
+			t.Fatalf("GetSeriesDetail %s: %v", publicID, err)
+		}
+		return resp.Msg.CommentMode
+	}
+
+	if got := seriesCommentMode(following.PublicID); got != publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE {
+		t.Fatalf("comment_mode of a series that states none = %s, want the tenant's IMMEDIATE", got)
+	}
+	if got := seriesCommentMode(overriding.PublicID); got != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("comment_mode of a series that turned commenting off = %s, want DISABLED", got)
+	}
+
+	// A tenant that has saved nothing has no config row, and the series that
+	// states nothing follows it there too.
+	quiet := env.seedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	quietSeries := env.PG.SeedSeries(t, quiet.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESB00001",
+		Title:     "Unconfigured Story",
+		Published: true,
+	})
+	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   tenantContext(quiet),
+		PublicId: quietSeries.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeriesDetail on a tenant with no config row: %v", err)
+	}
+	if resp.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("comment_mode of a tenant that has saved nothing = %s, want DISABLED", resp.Msg.CommentMode)
+	}
+}
+
 // The episode detail answers with the rating of the series it belongs to, so a
 // reader is asked to confirm before the body rather than after it.
 func TestDBGetEpisodeDetailCarriesTheSeriesAgeRating(t *testing.T) {

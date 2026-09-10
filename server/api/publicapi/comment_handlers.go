@@ -63,20 +63,6 @@ func (s *apiServer) resolvePublicEpisode(
 	return dbmodels.GetPublishedEpisodeByPublicIDForTenantRow{}, s.internalDBError(ctx, "failed to get episode for comments", err, "tenant_id", tenantID.String(), "episode_public_id", publicID)
 }
 
-// tenantCommentMode reads the tenant's publishing policy for comments. A tenant
-// with no config row has saved no policy, which is the same answer as the
-// column's own default: commenting is off until someone turns it on.
-func (s *apiServer) tenantCommentMode(ctx context.Context, tenantID uuid.UUID) (string, error) {
-	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenantID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return commentmode.Disabled, nil
-	}
-	if err != nil {
-		return "", s.internalDBError(ctx, "failed to get tenant comment mode", err, "tenant_id", tenantID.String())
-	}
-	return config.CommentMode, nil
-}
-
 // validateCommentBody normalises what is stored and rejects what the column
 // should never hold. Trimming happens before the length check, so trailing
 // whitespace cannot push a comment over the limit, and a body of nothing but
@@ -453,9 +439,12 @@ func (s *apiServer) storeComment(
 
 // PostEpisodeComment stores one comment by the authenticated reader.
 //
-// The checks run from the tenant-wide to the episode-specific: a tenant with
-// commenting off answers the same way for every episode, so a reader cannot use
-// this RPC to find out which episodes exist there.
+// The episode is resolved before the mode is, because the mode is a property of
+// the series the episode is in: a tenant with commenting off can still have
+// opened it on one series, and which one is not known until the episode says
+// so. That order tells a reader whose target does not exist from one whose
+// target takes no comments — which is what the public list, taking no session
+// at all, already tells them.
 func (s *apiServer) PostEpisodeComment(
 	ctx context.Context,
 	req *connect.Request[publirav1.PostEpisodeCommentRequest],
@@ -473,7 +462,11 @@ func (s *apiServer) PostEpisodeComment(
 	if err := s.chargeReaderAction(ctx, actionPostComment, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
-	mode, err := s.tenantCommentMode(ctx, tenant.ID)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
+	}
+	mode, err := s.effectiveCommentMode(ctx, tenant.ID, episode.SeriesCommentMode)
 	if err != nil {
 		return nil, err
 	}
@@ -489,16 +482,13 @@ func (s *apiServer) PostEpisodeComment(
 	case commentmode.Disabled:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("comments are disabled"))
 	default:
-		// The column has a CHECK constraint listing the three modes, so any other
-		// value is a stored value this build cannot act on. Guessing a mode would
-		// either publish text the tenant wanted reviewed or silently swallow it.
-		return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", fmt.Errorf("unsupported comment mode %q", mode), "tenant_id", tenant.ID.String())
+		// Both columns carry a CHECK constraint listing the three modes, so any
+		// other value is a stored value this build cannot act on. Guessing a mode
+		// would either publish text the tenant wanted reviewed or silently
+		// swallow it.
+		return nil, s.internalError(ctx, "comment mode is not a supported mode", fmt.Errorf("unsupported comment mode %q", mode), "tenant_id", tenant.ID.String(), "series_id", episode.SeriesID.String())
 	}
 
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, req.Msg.EpisodePublicId)
-	if err != nil {
-		return nil, err
-	}
 	canRead, err := s.readerCanReadEpisodeBody(ctx, tenant.ID, user.ID, episode)
 	if err != nil {
 		return nil, err

@@ -135,9 +135,10 @@ func (SeriesAgeRating) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{1}
 }
 
-// How a tenant publishes the comments its readers write on an episode. It is
-// one tenant-wide setting (tenant_config.comment_mode), so a storefront reads
-// it once to decide whether the episode page offers commenting at all.
+// How comments a reader writes on an episode are published. The tenant states
+// it once (tenant_config.comment_mode) and one series may state its own
+// instead (series_listings.comment_mode), so a storefront deciding whether an
+// episode page offers commenting at all reads the mode of the series it is in.
 type CommentMode int32
 
 const (

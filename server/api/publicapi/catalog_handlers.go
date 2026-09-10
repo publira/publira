@@ -982,9 +982,20 @@ func (s *apiServer) GetSeriesDetail(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
 	}
+	storedCommentMode, err := s.effectiveCommentMode(ctx, tenant.ID, row.CommentMode)
+	if err != nil {
+		return nil, err
+	}
+	// The resolved mode, so the page that asks whether to offer a comment
+	// section gets one answer instead of the two it would have to combine.
+	commentMode, err := protomapper.CommentModeFromStored(storedCommentMode)
+	if err != nil {
+		return nil, s.internalError(ctx, "series comment mode is not a supported mode", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+	}
 
 	res := connect.NewResponse(&publirav1.GetSeriesDetailResponse{
 		RequiredMinimumAge: int32(requiredMinimumAge),
+		CommentMode:        commentMode,
 		Series: &publirattypesv1.Series{
 			PublicId:         row.PublicID,
 			Title:            row.Title,

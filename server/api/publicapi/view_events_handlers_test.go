@@ -79,10 +79,10 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_age_rating", "free_until", "rating_count",
+			"series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count",
 		}).AddRow(
 			fixture.episodeID, "EPISODE001", "Episode Title", int32(1), fixture.seriesID,
-			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, int64(0),
+			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, int64(0),
 		))
 	return fixture
 }
@@ -417,10 +417,10 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_age_rating", "free_until", "rating_count",
+			"series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count",
 		}).AddRow(
 			episodeID, "EPISODE001", "Episode Title", int32(1), seriesID,
-			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, int64(0),
+			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, int64(0),
 		))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	expectEpisodeCreditsLookup(mock)
@@ -471,14 +471,17 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "label_public_id", "label_name",
 			"eye_catch_image_id", "eye_catch_image_updated_at", "synopsis",
-			"status", "schedule_weekdays", "age_rating",
+			"status", "schedule_weekdays", "age_rating", "comment_mode",
 			"is_published", "published_at", "free_episode_count", "creators",
 			"genres", "tags", "episodes",
 		}).AddRow(
 			seriesID, "SERIES001", "Series Title", nil, nil, nil, nil,
-			"Synopsis", "ongoing", []byte("{}"), "all", true, now.UTC(), int32(0), []byte(`[]`),
+			"Synopsis", "ongoing", []byte("{}"), "all", nil, true, now.UTC(), int32(0), []byte(`[]`),
 			[]byte(`[]`), []byte(`[]`), []byte(`[]`),
 		))
+	// The series states no comment mode, so the tenant's own is what the
+	// detail read resolves it against.
+	expectTenantCommentMode(mock, tenantID, now, "disabled")
 	recorded := forbidSeriesViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
