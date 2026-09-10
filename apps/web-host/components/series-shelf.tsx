@@ -1,9 +1,12 @@
 import type { Locale } from "@publira/i18n";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Badge } from "@publira/ui-components/badge";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatList } from "@publira/utils";
+import { Suspense } from "react";
 
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import type { SeriesListItem } from "#lib/catalog";
 
 /**
@@ -17,6 +20,10 @@ import type { SeriesListItem } from "#lib/catalog";
  * Each cover is one link, and the title beneath it is that link's own text —
  * so the artwork is `alt=""` and the rectangle that stands in for a missing
  * one is hidden, or a reader hears every shelf twice.
+ *
+ * A series a reader can start without paying carries how many episodes that
+ * is, inside the link rather than beside it: it is what decides whether this
+ * cover is worth opening, so it belongs to the link's own text.
  */
 export const SeriesShelf = ({
   locale,
@@ -47,6 +54,16 @@ export const SeriesShelf = ({
             <span className="mt-1 block truncate text-xs text-muted-foreground">
               {formatList(item.creatorNames, { locale })}
             </span>
+          )}
+          {item.freeEpisodeCount > 0 && (
+            <Badge className="mt-2" tone="success">
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message
+                  message="host.common.free_episode_count"
+                  values={{ count: item.freeEpisodeCount }}
+                />
+              </Suspense>
+            </Badge>
           )}
         </LocaleLink>
       </li>

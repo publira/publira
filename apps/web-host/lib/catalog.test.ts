@@ -9,19 +9,23 @@ import {
   getEpisodeDetail,
   getEpisodeViewer,
   isPublicEpisodeBody,
+  listPublishedSeries,
   listRankedSeries,
   toEpisodeAccessState,
 } from "./catalog";
 
-const { mockGetEpisodeDetail, mockListRankedSeries } = vi.hoisted(() => ({
-  mockGetEpisodeDetail: vi.fn(),
-  mockListRankedSeries: vi.fn(),
-}));
+const { mockGetEpisodeDetail, mockListPublishedSeries, mockListRankedSeries } =
+  vi.hoisted(() => ({
+    mockGetEpisodeDetail: vi.fn(),
+    mockListPublishedSeries: vi.fn(),
+    mockListRankedSeries: vi.fn(),
+  }));
 
 vi.mock("./api-client", () => ({
   apiClient: {
     catalog: {
       getEpisodeDetail: mockGetEpisodeDetail,
+      listPublishedSeries: mockListPublishedSeries,
       listRankedSeries: mockListRankedSeries,
     },
   },
@@ -516,6 +520,74 @@ describe("catalog.getEpisodeViewer", () => {
   });
 });
 
+describe("catalog.listPublishedSeries", () => {
+  beforeEach(() => {
+    mockListPublishedSeries.mockReset();
+  });
+
+  it("Carries how many episodes of a series can be read without paying", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [
+        {
+          creators: [],
+          freeEpisodeCount: 3,
+          publicId: "SERIES_1",
+          synopsis: "S1",
+          title: "Series 1",
+        },
+        {
+          creators: [],
+          publicId: "SERIES_2",
+          synopsis: "S2",
+          title: "Series 2",
+        },
+      ],
+    });
+
+    const result = await listPublishedSeries("TENANT_001", {
+      limit: 24,
+      locale: "en",
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith({
+      hasFreeEpisodes: false,
+      limit: 24,
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+    expect(
+      result.ok && result.value.series.map((item) => item.freeEpisodeCount)
+    ).toEqual([3, 0]);
+  });
+
+  /**
+   * The count is settled per read, so a page filtered here would keep a series
+   * whose free window closed between the two.
+   */
+  it("Leaves the free-to-read filter to the server", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", {
+      hasFreeEpisodes: true,
+      limit: 6,
+      locale: "en",
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith({
+      hasFreeEpisodes: true,
+      limit: 6,
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+  });
+});
+
 describe("catalog.listRankedSeries", () => {
   beforeEach(() => {
     mockListRankedSeries.mockReset();
@@ -587,6 +659,7 @@ describe("catalog.listRankedSeries", () => {
               ],
               eyeCatchImageUpdatedAt: undefined,
               eyeCatchImageVariants: undefined,
+              freeEpisodeCount: 0,
               labelName: "",
               labelPublicId: "",
               publicId: "SERIES_1",
@@ -602,6 +675,7 @@ describe("catalog.listRankedSeries", () => {
               creators: [],
               eyeCatchImageUpdatedAt: undefined,
               eyeCatchImageVariants: undefined,
+              freeEpisodeCount: 0,
               labelName: "",
               labelPublicId: "",
               publicId: "SERIES_2",

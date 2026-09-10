@@ -93,6 +93,7 @@ describe("getPublishedLabelDetail", () => {
                 width: 1200,
               },
             ],
+            freeEpisodeCount: 0,
             labelName: "",
             labelPublicId: "",
             publicId: "SERIES_1",
@@ -101,6 +102,7 @@ describe("getPublishedLabelDetail", () => {
           {
             creatorNames: [],
             creators: [],
+            freeEpisodeCount: 0,
             labelName: "",
             labelPublicId: "",
             publicId: "SERIES_2",

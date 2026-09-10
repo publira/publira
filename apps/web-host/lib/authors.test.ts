@@ -192,6 +192,7 @@ describe("getPublishedAuthorDetail", () => {
                 width: 1200,
               },
             ],
+            freeEpisodeCount: 0,
             labelName: "",
             labelPublicId: "",
             publicId: "SERIES_1",
@@ -200,6 +201,7 @@ describe("getPublishedAuthorDetail", () => {
           {
             creatorNames: [],
             creators: [],
+            freeEpisodeCount: 0,
             labelName: "",
             labelPublicId: "",
             publicId: "SERIES_2",

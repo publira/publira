@@ -66,6 +66,7 @@ describe("searchPublishedSeries", () => {
             ],
             eyeCatchImageUpdatedAt: undefined,
             eyeCatchImageVariants: undefined,
+            freeEpisodeCount: 0,
             labelName: "Label A",
             labelPublicId: "LABEL_A",
             publicId: "SERIES_1",
