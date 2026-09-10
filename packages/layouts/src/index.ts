@@ -17,6 +17,7 @@ export {
   SiteLayoutMain,
   SiteLayoutNav,
   SiteLayoutNavLink,
+  SiteLayoutNavSkeleton,
 } from "./site-layout";
 export {
   SiteLayoutMobileNavigation,

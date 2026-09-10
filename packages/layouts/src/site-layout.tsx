@@ -59,6 +59,24 @@ export const SiteLayoutNavLink = ({
 );
 
 /**
+ * The same row the navigation renders at, from `md` up, for a caller whose
+ * hrefs are not resolved yet — on the public site the prefix each one needs
+ * depends on a tenant read.
+ */
+export const SiteLayoutNavSkeleton = () => (
+  <div
+    aria-busy="true"
+    className="hidden items-center gap-5 text-sm md:flex"
+    role="presentation"
+  >
+    <Skeleton className="inline-block h-4 w-14 rounded-control" />
+    <Skeleton className="inline-block h-4 w-12 rounded-control" />
+    <Skeleton className="inline-block h-4 w-12 rounded-control" />
+    <Skeleton className="inline-block h-4 w-12 rounded-control" />
+  </div>
+);
+
+/**
  * The catalog field's slot in the band. It is the child that gives up width
  * first, and below `md` the band does not draw it at all: the drawer holds the
  * field there, where the row has room for it.

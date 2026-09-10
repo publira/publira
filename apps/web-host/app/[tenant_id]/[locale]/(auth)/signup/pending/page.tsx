@@ -96,24 +96,28 @@ const SignupPendingPage = () => (
 
       <div className="space-y-2 text-center text-sm">
         <p>
-          <LocaleLink
-            href="/resend-verification"
-            className="font-medium text-primary hover:underline"
+          <Suspense
+            fallback={<SkeletonLine className="inline-block h-4 w-40" />}
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <LocaleLink
+              href="/resend-verification"
+              className="font-medium text-primary hover:underline"
+            >
               <Message message="host.auth.signup_pending.to_resend_verification" />
-            </Suspense>
-          </LocaleLink>
+            </LocaleLink>
+          </Suspense>
         </p>
         <p>
-          <LocaleLink
-            href="/login"
-            className="font-medium text-primary hover:underline"
+          <Suspense
+            fallback={<SkeletonLine className="inline-block h-4 w-32" />}
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <LocaleLink
+              href="/login"
+              className="font-medium text-primary hover:underline"
+            >
               <Message message="host.auth.fields.to_login" />
-            </Suspense>
-          </LocaleLink>
+            </LocaleLink>
+          </Suspense>
         </p>
       </div>
     </div>

@@ -7,8 +7,8 @@ import {
   LocaleProvider,
   TenantDefaultLocaleProvider,
 } from "#components/locale-provider";
-import { getLocale } from "#lib/locale";
-import { getTenantDefaultLocale, getTenantSiteInfo } from "#lib/tenant";
+import { getLocale, tenantDefaultLocale } from "#lib/locale";
+import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
@@ -42,12 +42,6 @@ const AuthShell = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
-const AuthShellFallback = ({ children }: { children: ReactNode }) => (
-  <div className="flex min-h-dvh flex-col bg-background text-foreground">
-    <div className="flex-1">{children}</div>
-  </div>
-);
-
 export const metadata: Metadata = {
   title: {
     default: "Publira",
@@ -58,25 +52,31 @@ export const metadata: Metadata = {
 /**
  * Seeds the locale context for everything under `(auth)`, the way `(site)`
  * does for the rest of the site: the root layout reads nothing, so this is the
- * first place the request's locale and the tenant's stored default both exist.
+ * first place the request's locale and the tenant's stored default both enter
+ * the tree.
  *
- * The `<Suspense>` below still stands between the shell and whatever the page
- * itself waits on; what this layout awaits is the pair of values every link
- * under it needs before it can name an href.
+ * Neither is awaited here, and that is what leaves the auth screens in the
+ * static shell. The request's locale is a root parameter `generateStaticParams`
+ * enumerates, so it already has a literal value in a prerender. The tenant's
+ * default is a `GetTenant` read, and `[tenant_id]` is a placeholder — one shell
+ * is shared by every tenant — so it travels as the read itself and is awaited
+ * only where a prefix is actually named: the footer's own `<Suspense>` here,
+ * and each `<LocaleLink>` inside the boundary its section already has.
+ *
+ * Awaiting it in this body instead costs every route under `(auth)` its static
+ * shell — Cache Components reports it as `blocking-prerender-runtime` — and
+ * `export const instant = false` is not the way out of that (`apps/AGENTS.md`).
  */
 const TenantLayout = async ({
   children,
 }: LayoutProps<"/[tenant_id]/[locale]">) => {
-  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
-  const defaultLocale = await getTenantDefaultLocale(tenantId);
+  const locale = await getLocale();
 
   return (
     <LocaleProvider locale={locale}>
       <DocumentLocale locale={locale} />
-      <TenantDefaultLocaleProvider defaultLocale={defaultLocale}>
-        <Suspense fallback={<AuthShellFallback>{children}</AuthShellFallback>}>
-          <AuthShell>{children}</AuthShell>
-        </Suspense>
+      <TenantDefaultLocaleProvider defaultLocale={tenantDefaultLocale()}>
+        <AuthShell>{children}</AuthShell>
       </TenantDefaultLocaleProvider>
     </LocaleProvider>
   );

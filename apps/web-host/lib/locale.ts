@@ -3,6 +3,7 @@ import type { Locale } from "@publira/i18n";
 import { notFound } from "next/navigation";
 import { locale as rootLocale } from "next/root-params";
 
+import { getTenantDefaultLocale } from "./tenant";
 import { getTenantId } from "./tenant-id";
 import { tenantLocalePath } from "./tenant-locale-path";
 
@@ -53,3 +54,20 @@ export const localePath = async (href: string): Promise<string> => {
   ]);
   return tenantLocalePath(tenantId, currentLocale, href);
 };
+
+/**
+ * The tenant's stored default locale for this request, as a read rather than
+ * its result.
+ *
+ * Callers hand this to `<TenantDefaultLocaleProvider>` without awaiting it.
+ * Awaiting it in a layout body would settle that layout's whole tree — pages
+ * included — before anything could flush, because `[tenant_id]` is a
+ * placeholder in `generateStaticParams` and one static shell is shared by every
+ * tenant. Cache Components reports that as `blocking-prerender-runtime`.
+ *
+ * A Server Component that needs the value itself awaits `localePath()` or
+ * `getTenantDefaultLocale()` from inside a `<Suspense>`, the way any other
+ * tenant read is made.
+ */
+export const tenantDefaultLocale = async (): Promise<Locale> =>
+  getTenantDefaultLocale(await getTenantId());

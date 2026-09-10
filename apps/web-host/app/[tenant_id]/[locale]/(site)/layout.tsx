@@ -1,5 +1,4 @@
 import { getMessage } from "@publira/i18n";
-import type { Locale } from "@publira/i18n";
 import {
   SiteLayout,
   SiteLayoutActions,
@@ -32,6 +31,7 @@ import {
   SiteLayoutMobileNavigationTitle,
   SiteLayoutNav,
   SiteLayoutNavLink,
+  SiteLayoutNavSkeleton,
   SiteLayoutPrimaryAction,
   SiteLayoutSecondaryAction,
   SiteLayoutUserMenu,
@@ -84,7 +84,7 @@ import {
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale, loadHostMessages, tenantDefaultLocale } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
@@ -346,52 +346,64 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * their locale in a cookie, so it renders plain `next/link`s and cannot add the
  * prefix itself.
  *
- * Both locales come from the layout, which has resolved them already, so the
- * links themselves are static and each label is the only thing behind a
- * boundary.
+ * Whether the prefix is there at all depends on the tenant's stored default, so
+ * the row is resolved rather than static and stands behind
+ * `<SiteLayoutNavSkeleton>`. Each label keeps a boundary of its own inside it:
+ * the catalog is a separate wait, and one label is not worth holding the rest.
  */
-const SiteNav = ({
-  defaultLocale,
-  locale,
-}: {
-  defaultLocale: Locale;
-  locale: Locale;
-}) => (
-  <SiteLayoutNav>
-    <SiteLayoutNavLink
-      href={withLocalePrefix(locale, defaultLocale, "/authors")}
-    >
-      <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
-        <Message message="host.nav.authors" />
-      </Suspense>
-    </SiteLayoutNavLink>
-    <SiteLayoutNavLink
-      href={withLocalePrefix(locale, defaultLocale, "/labels")}
-    >
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <Message message="host.nav.labels" />
-      </Suspense>
-    </SiteLayoutNavLink>
-    <SiteLayoutNavLink
-      href={withLocalePrefix(locale, defaultLocale, "/series")}
-    >
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <Message message="host.nav.series" />
-      </Suspense>
-    </SiteLayoutNavLink>
-    <SiteLayoutNavLink
-      href={withLocalePrefix(locale, defaultLocale, "/search")}
-    >
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <Message message="host.nav.search" />
-      </Suspense>
-    </SiteLayoutNavLink>
-  </SiteLayoutNav>
-);
+const SiteNav = async () => {
+  const [locale, defaultLocale] = await Promise.all([
+    getLocale(),
+    tenantDefaultLocale(),
+  ]);
+
+  return (
+    <SiteLayoutNav>
+      <SiteLayoutNavLink
+        href={withLocalePrefix(locale, defaultLocale, "/authors")}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
+          <Message message="host.nav.authors" />
+        </Suspense>
+      </SiteLayoutNavLink>
+      <SiteLayoutNavLink
+        href={withLocalePrefix(locale, defaultLocale, "/labels")}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.nav.labels" />
+        </Suspense>
+      </SiteLayoutNavLink>
+      <SiteLayoutNavLink
+        href={withLocalePrefix(locale, defaultLocale, "/series")}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.nav.series" />
+        </Suspense>
+      </SiteLayoutNavLink>
+      <SiteLayoutNavLink
+        href={withLocalePrefix(locale, defaultLocale, "/search")}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.nav.search" />
+        </Suspense>
+      </SiteLayoutNavLink>
+    </SiteLayoutNav>
+  );
+};
 
 /** Same footprint as the rendered menu button, so the header does not shift. */
 const MobileNavigationOpenButtonSkeleton = () => (
   <Skeleton className="size-9 rounded-control md:hidden" />
+);
+
+/** Same four rows the drawer draws, at the height the links render at. */
+const MobileNavigationLinksSkeleton = () => (
+  <div aria-hidden="true" className="grid gap-1">
+    <SkeletonLine className="my-2 h-4 w-14" />
+    <SkeletonLine className="my-2 h-4 w-12" />
+    <SkeletonLine className="my-2 h-4 w-12" />
+    <SkeletonLine className="my-2 h-4 w-12" />
+  </div>
 );
 
 /** Same footprint as the pair it stands in for, at the foot of the drawer. */
@@ -431,14 +443,12 @@ const MobileNavigationOpenButton = async () => {
  * Which of the two answers it is depends on a cookie, so this is the one part
  * of the drawer that has to wait on a read of its own.
  */
-const MobileNavigationAccountActions = async ({
-  defaultLocale,
-  locale,
-}: {
-  defaultLocale: Locale;
-  locale: Locale;
-}) => {
-  const cookieStore = await cookies();
+const MobileNavigationAccountActions = async () => {
+  const [cookieStore, locale, defaultLocale] = await Promise.all([
+    cookies(),
+    getLocale(),
+    tenantDefaultLocale(),
+  ]);
 
   if (cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value) {
     return null;
@@ -465,6 +475,51 @@ const MobileNavigationAccountActions = async ({
 };
 
 /**
+ * The drawer's four catalog rows. Their hrefs carry a locale prefix only when
+ * the request's locale is not the tenant's stored default, so the list is
+ * resolved rather than static — the same wait the band's own row makes.
+ */
+const MobileNavigationLinks = async () => {
+  const [locale, defaultLocale] = await Promise.all([
+    getLocale(),
+    tenantDefaultLocale(),
+  ]);
+
+  return (
+    <SiteLayoutMobileNavigationLinks>
+      <SiteLayoutMobileNavigationLink
+        href={withLocalePrefix(locale, defaultLocale, "/authors")}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
+          <Message message="host.nav.authors" />
+        </Suspense>
+      </SiteLayoutMobileNavigationLink>
+      <SiteLayoutMobileNavigationLink
+        href={withLocalePrefix(locale, defaultLocale, "/labels")}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.nav.labels" />
+        </Suspense>
+      </SiteLayoutMobileNavigationLink>
+      <SiteLayoutMobileNavigationLink
+        href={withLocalePrefix(locale, defaultLocale, "/series")}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.nav.series" />
+        </Suspense>
+      </SiteLayoutMobileNavigationLink>
+      <SiteLayoutMobileNavigationLink
+        href={withLocalePrefix(locale, defaultLocale, "/search")}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.nav.search" />
+        </Suspense>
+      </SiteLayoutMobileNavigationLink>
+    </SiteLayoutMobileNavigationLinks>
+  );
+};
+
+/**
  * What the band stops drawing below `md`: the catalog field, the navigation,
  * the language, and — for a reader who is not signed in — the account actions.
  * Four controls and a 342px row do not fit, and the band would rather truncate
@@ -472,16 +527,11 @@ const MobileNavigationAccountActions = async ({
  * menu button this renders beside the drawer holding them.
  *
  * The drawer itself is structure and resolves nothing: its rows, its field, and
- * its buttons are drawn from the start, and only the strings inside them and
- * the one answer that needs a cookie arrive behind boundaries of their own.
+ * its buttons are drawn from the start, and only the strings inside them, the
+ * hrefs that need the tenant's stored default, and the one answer that needs a
+ * cookie arrive behind boundaries of their own.
  */
-const SiteMobileNavigation = ({
-  defaultLocale,
-  locale,
-}: {
-  defaultLocale: Locale;
-  locale: Locale;
-}) => (
+const SiteMobileNavigation = () => (
   <>
     <SiteLayoutMobileNavigation>
       <SiteLayoutMobileNavigationHeader>
@@ -499,36 +549,9 @@ const SiteMobileNavigation = ({
           <CatalogSearchForm id="catalog-search-menu" />
         </Suspense>
       </SiteLayoutMobileNavigationSearch>
-      <SiteLayoutMobileNavigationLinks>
-        <SiteLayoutMobileNavigationLink
-          href={withLocalePrefix(locale, defaultLocale, "/authors")}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
-            <Message message="host.nav.authors" />
-          </Suspense>
-        </SiteLayoutMobileNavigationLink>
-        <SiteLayoutMobileNavigationLink
-          href={withLocalePrefix(locale, defaultLocale, "/labels")}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.nav.labels" />
-          </Suspense>
-        </SiteLayoutMobileNavigationLink>
-        <SiteLayoutMobileNavigationLink
-          href={withLocalePrefix(locale, defaultLocale, "/series")}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.nav.series" />
-          </Suspense>
-        </SiteLayoutMobileNavigationLink>
-        <SiteLayoutMobileNavigationLink
-          href={withLocalePrefix(locale, defaultLocale, "/search")}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.nav.search" />
-          </Suspense>
-        </SiteLayoutMobileNavigationLink>
-      </SiteLayoutMobileNavigationLinks>
+      <Suspense fallback={<MobileNavigationLinksSkeleton />}>
+        <MobileNavigationLinks />
+      </Suspense>
       <SiteLayoutMobileNavigationSection>
         <SiteLayoutMobileNavigationSectionTitle>
           <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
@@ -540,10 +563,7 @@ const SiteMobileNavigation = ({
         </Suspense>
       </SiteLayoutMobileNavigationSection>
       <Suspense fallback={<MobileNavigationAccountActionsSkeleton />}>
-        <MobileNavigationAccountActions
-          defaultLocale={defaultLocale}
-          locale={locale}
-        />
+        <MobileNavigationAccountActions />
       </Suspense>
     </SiteLayoutMobileNavigation>
     <Suspense fallback={<MobileNavigationOpenButtonSkeleton />}>
@@ -596,31 +616,61 @@ const TenantFooterCopyright = async () => {
 };
 
 /**
+ * The brand, whose href is `/` on the tenant's own default locale and
+ * `/{locale}` on the other, so the anchor cannot be named until the tenant read
+ * answers. Its mark waits on the same read, so both sit behind one boundary.
+ */
+const TenantBrandLink = async () => {
+  const [locale, defaultLocale] = await Promise.all([
+    getLocale(),
+    tenantDefaultLocale(),
+  ]);
+
+  return (
+    <SiteLayoutBrand href={withLocalePrefix(locale, defaultLocale, "/")}>
+      <TenantBrand />
+    </SiteLayoutBrand>
+  );
+};
+
+/**
  * Seeds the locale context for everything under `(site)`. The root layout
- * reads nothing, so this is the first place both values exist: the request's
- * locale from the root parameter, and the tenant's stored default from
- * `GetTenant`. A failed tenant read therefore throws here, where
- * `app/[tenant_id]/[locale]/error.tsx` catches it.
+ * reads nothing, so this is the first place both values enter the tree: the
+ * request's locale from the root parameter, and the tenant's stored default
+ * from `GetTenant`.
+ *
+ * Only the first of the two is awaited here. `generateStaticParams` enumerates
+ * the locale, so it has a literal value in a prerender, while `[tenant_id]` is
+ * a placeholder — one static shell is shared by every tenant — so the tenant's
+ * default travels as the read itself and is awaited only by the parts that name
+ * a prefix, each behind a boundary of its own. `children` are not one of them:
+ * the page below sits in the shell, and a `<LocaleLink>` inside it suspends at
+ * the boundary its own section already has.
+ *
+ * Awaiting the tenant in this body instead costs every route under `(site)` its
+ * static shell — Cache Components reports it as `blocking-prerender-runtime` —
+ * and `export const instant = false` is not the way out of that
+ * (`apps/AGENTS.md`). A read that fails still throws inside this layout's
+ * subtree, where `app/[tenant_id]/[locale]/error.tsx` catches it: a `<Suspense>`
+ * absorbs the wait, not the failure.
  */
 const TenantLayout = async ({
   children,
 }: LayoutProps<"/[tenant_id]/[locale]">) => {
-  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
-  const defaultLocale = await getTenantDefaultLocale(tenantId);
-  const brandHref = withLocalePrefix(locale, defaultLocale, "/");
+  const locale = await getLocale();
 
   return (
     <LocaleProvider locale={locale}>
       <DocumentLocale locale={locale} />
-      <TenantDefaultLocaleProvider defaultLocale={defaultLocale}>
+      <TenantDefaultLocaleProvider defaultLocale={tenantDefaultLocale()}>
         <SiteLayout>
           <SiteLayoutHeader>
-            <SiteLayoutBrand href={brandHref}>
-              <Suspense fallback={<SiteLayoutBrandSkeleton />}>
-                <TenantBrand />
-              </Suspense>
-            </SiteLayoutBrand>
-            <SiteNav defaultLocale={defaultLocale} locale={locale} />
+            <Suspense fallback={<SiteLayoutBrandSkeleton />}>
+              <TenantBrandLink />
+            </Suspense>
+            <Suspense fallback={<SiteLayoutNavSkeleton />}>
+              <SiteNav />
+            </Suspense>
             <SiteLayoutHeaderSearch>
               <Suspense fallback={<CatalogSearchFormSkeleton />}>
                 <CatalogSearchForm id="catalog-search-header" />
@@ -636,10 +686,7 @@ const TenantLayout = async ({
                 <HeaderActions />
               </Suspense>
             </SiteLayoutHeaderActions>
-            <SiteMobileNavigation
-              defaultLocale={defaultLocale}
-              locale={locale}
-            />
+            <SiteMobileNavigation />
           </SiteLayoutHeader>
           <SiteLayoutMain>{children}</SiteLayoutMain>
           <SiteLayoutFooter>
