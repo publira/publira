@@ -70,7 +70,11 @@ No lint covers this — nothing can tell an RPC that writes on a reader's behalf
 
 An RPC that queues mail for an address the request has not authenticated spends two allowances first, through `internal/mailguard`: one held by the mailbox, one held by the request's origin. `CreateUser`, `RequestEmailVerification`, `RequestPasswordReset` and `RequestEmailChange` all do, on every API surface that has them, and a new form of the same shape is a `Guard.Allow` call with the tenant's id as its scope — `mailguard.PlatformScope` for the console that has no tenant.
 
-The charge goes **before the address is looked up and before anything is written**. Those forms answer a registered address exactly as they answer a free one, so a refusal that depended on the lookup would be the disclosure the whole handler is written to avoid; and an attempt refused after a write would leave the outbox an event the worker has to recognize and drop. A caller over either allowance gets `resource_exhausted` with `Retry-After` and nothing else.
+The charge goes **as late as it can and still be before the first write**, and never after one: an attempt refused after a write would leave the outbox an event the worker has to recognize and drop. Every check that can reject the request without mailing anything therefore runs first, because an allowance spent on a request that sends no mail is one the mailbox it names cannot spend on its own password reset. `RequestEmailChange` is where that bites: it answers an address that already has an account with `already_exists` and mails nothing, so charging before that lookup would let any signed-in caller burn the allowance of every address they can name.
+
+The exception is the forms that answer a registered address exactly as they answer a free one — `CreateUser`, `RequestEmailVerification`, `RequestPasswordReset`. There the charge goes **before the address is looked up**, because a refusal that arrived only for one of the two outcomes would be the disclosure the whole handler is written to avoid.
+
+A caller over either allowance gets `resource_exhausted` with `Retry-After` and nothing else.
 
 Mail a session-bearing RPC sends to the account's own confirmed address — a password-changed notice, an email-changed notice — is not this: there is an account to attribute it to and no arbitrary recipient to aim.
 

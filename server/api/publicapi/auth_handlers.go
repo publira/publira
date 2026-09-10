@@ -767,6 +767,12 @@ func (s *apiServer) RequestEmailChange(
 	// The session says who is asking, not that the address they named is
 	// theirs, so the mail this queues for it is bounded like any other mail to
 	// an address nobody has confirmed.
+	//
+	// Charged here rather than before the lookup above, which is the order the
+	// forms that must not disclose an account use. This one discloses on
+	// purpose and mails nothing when it does, so charging first would let any
+	// signed-in caller spend the allowance of every address they can name by
+	// naming ones that already have accounts.
 	if err := s.mail.Allow(ctx, req, tenant.ID.String(), newEmail); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
 		return nil, err

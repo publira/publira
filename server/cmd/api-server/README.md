@@ -47,7 +47,7 @@ task server:build
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
-A limit below `1`, or one that is not a whole number, stops the server: a limit of zero refuses every reader, and either is better caught at startup than by the first reader who tries to post.
+A reader write limit or a mail limit below `1`, or one that is not a whole number, stops the server at startup rather than taking effect: a limit of zero would refuse every reader and every request for mail, and that is better caught before the server serves anything than by the first reader who runs into it.
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
