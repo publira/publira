@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -20,7 +21,7 @@ import (
 )
 
 const (
-	getTenantConfigByTenantIDQuery         = "-- name: GetTenantConfigByTenantID :one\nSELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode\nFROM tenant_config\nWHERE tenant_id = $1\nLIMIT 1\n"
+	getTenantConfigByTenantIDQuery         = "-- name: GetTenantConfigByTenantID :one\nSELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification\nFROM tenant_config\nWHERE tenant_id = $1\nLIMIT 1\n"
 	getTenantThemeByTenantIDQuery          = "-- name: GetTenantThemeByTenantID :one\nSELECT\n    t.id AS tenant_id,\n    COALESCE(tt.background_color, '#f5f5f2') AS background_color,\n    COALESCE(tt.foreground_color, '#1f1d1a') AS foreground_color,\n    COALESCE(tt.surface_color, '#fafaf8') AS surface_color,\n    COALESCE(tt.surface_foreground_color, '#1f1d1a') AS surface_foreground_color,\n    COALESCE(tt.card_color, '#ffffff') AS card_color,\n    COALESCE(tt.card_foreground_color, '#1f1d1a') AS card_foreground_color,\n    COALESCE(tt.popover_color, '#ffffff') AS popover_color,\n    COALESCE(tt.popover_foreground_color, '#1f1d1a') AS popover_foreground_color,\n    COALESCE(tt.primary_color, '#2b4c8c') AS primary_color,\n    COALESCE(tt.primary_foreground_color, '#ffffff') AS primary_foreground_color,\n    COALESCE(tt.secondary_color, '#c63d17') AS secondary_color,\n    COALESCE(tt.secondary_foreground_color, '#ffffff') AS secondary_foreground_color,\n    COALESCE(tt.accent_color, '#e3e9f5') AS accent_color,\n    COALESCE(tt.accent_foreground_color, '#22407a') AS accent_foreground_color,\n    COALESCE(tt.muted_color, '#e8e8e3') AS muted_color,\n    COALESCE(tt.muted_foreground_color, '#5f5e59') AS muted_foreground_color,\n    COALESCE(tt.border_color, '#d6d6d0') AS border_color,\n    COALESCE(tt.input_color, '#cfcfc8') AS input_color,\n    COALESCE(tt.ring_color, '#2b4c8c') AS ring_color,\n    COALESCE(tt.success_color, '#2a6b3f') AS success_color,\n    COALESCE(tt.success_foreground_color, '#ffffff') AS success_foreground_color,\n    COALESCE(tt.warning_color, '#8a5a0b') AS warning_color,\n    COALESCE(tt.warning_foreground_color, '#ffffff') AS warning_foreground_color,\n    COALESCE(tt.destructive_color, '#8f1d1d') AS destructive_color,\n    COALESCE(tt.destructive_foreground_color, '#ffffff') AS destructive_foreground_color,\n    COALESCE(tt.info_color, '#2f5d8a') AS info_color,\n    COALESCE(tt.info_foreground_color, '#ffffff') AS info_foreground_color,\n    tt.icon_image_id,\n    fi.updated_at AS icon_image_updated_at,\n    tt.logo_image_id,\n    li.updated_at AS logo_image_updated_at,\n    COALESCE(tt.updated_at, NOW()) AS updated_at\nFROM tenants t\nLEFT JOIN tenant_themes tt ON tt.tenant_id = t.id\nLEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id\nLEFT JOIN tenant_images li ON li.id = tt.logo_image_id\nWHERE t.id = $1\n"
 	listTenantImageVariantsByImageIDsQuery = "-- name: ListTenantImageVariantsByImageIDs :many\nSELECT tenant_image_id,\n    variant_type,\n    label,\n    content_type,\n    file_size_bytes,\n    width,\n    height\nFROM tenant_image_variants\nWHERE tenant_image_id = ANY($1::uuid [])\nORDER BY tenant_image_id,\n    variant_type\n"
 )
@@ -134,9 +135,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode", "comment_auto_hide_report_threshold", "episode_rating_mode",
-		}).AddRow(
+		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).AddRow(
 			tenantID,
 			sql.NullString{String: "© Publira", Valid: true},
 			sql.NullString{String: "Site description", Valid: true},
@@ -146,6 +145,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			"disabled",
 			int32(3),
 			"single",
+			ageverification.None,
 		))
 	expectPaymentsUnavailable(mock, tenantID)
 
@@ -553,9 +553,7 @@ func expectTenantConfigWithCommentMode(
 ) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode", "comment_auto_hide_report_threshold", "episode_rating_mode",
-		}).AddRow(
+		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).AddRow(
 			tenantID,
 			sql.NullString{},
 			sql.NullString{},
@@ -565,5 +563,66 @@ func expectTenantConfigWithCommentMode(
 			mode,
 			int32(3),
 			"single",
+			ageverification.None,
 		))
+}
+
+// The public site reads the rule to decide whether its sign-up form asks for a
+// birth date at all, so the setting is answered here as well as in the console.
+func TestGetTenantReportsTheTenantAgeVerification(t *testing.T) {
+	cases := []struct {
+		name   string
+		stored string
+		want   publirattypesv1.AgeVerification
+	}{
+		{name: "none", stored: ageverification.None, want: publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE},
+		{name: "r18", stored: ageverification.R18, want: publirattypesv1.AgeVerification_AGE_VERIFICATION_R18},
+		{name: "r15 and r18", stored: ageverification.R15AndR18, want: publirattypesv1.AgeVerification_AGE_VERIFICATION_R15_AND_R18},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+			expectTenantLookup(mock, tenantID, "TENANT001", now)
+			expectTenantAgeVerification(mock, tenantID, now, tc.stored)
+			expectPaymentsUnavailable(mock, tenantID)
+			mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+				WithArgs(tenantID).
+				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			}))
+			if err != nil {
+				t.Fatalf("GetTenant: %v", err)
+			}
+			if resp.Msg.AgeVerification != tc.want {
+				t.Fatalf("age_verification = %v, want %v", resp.Msg.AgeVerification, tc.want)
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+// A stored rule this build cannot act on fails the read rather than answering
+// with a rule the tenant never chose.
+func TestGetTenantFailsOnAnUnsupportedAgeVerification(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectTenantAgeVerification(mock, tenantID, now, "everything")
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetTenant error = %v, want CodeInternal", err)
+	}
+	assertPublicExpectations(t, mock)
 }

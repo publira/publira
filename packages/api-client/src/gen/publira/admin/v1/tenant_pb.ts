@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { CommentMode, TenantContext } from "../../types/v1/types_pb";
+import type { AgeVerification, CommentMode, TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/tenant.proto.
  */
 export const file_publira_admin_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCSJSCh9HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJ7CiBHZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXNwb25zZRIzCgxjb21tZW50X21vZGUYASABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAIgASgNIq4BCiJVcGRhdGVUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIzCgxjb21tZW50X21vZGUYAiABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAMgASgNIn4KI1VwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjMKDGNvbW1lbnRfbW9kZRgBIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSIgoaYXV0b19oaWRlX3JlcG9ydF90aHJlc2hvbGQYAiABKA0ynQYKFVRlbmFudFNldHRpbmdzU2VydmljZRJuChFHZXRUZW5hbnRUaW1lem9uZRIqLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGltZXpvbmVSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaW1lem9uZVJlc3BvbnNlIgASdwoUVXBkYXRlVGVuYW50VGltZXpvbmUSLS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFRpbWV6b25lUmVxdWVzdBouLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50VGltZXpvbmVSZXNwb25zZSIAEn0KFkdldFRlbmFudERlZmF1bHRMb2NhbGUSLy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2UiABKGAQoZVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZRIyLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QaMy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZSIAEoMBChhHZXRUZW5hbnRDb21tZW50U2V0dGluZ3MSMS5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudENvbW1lbnRTZXR0aW5nc1JlcXVlc3QaMi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgASjAEKG1VwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5ncxI0LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50Q29tbWVudFNldHRpbmdzUmVxdWVzdBo1LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50Q29tbWVudFNldHRpbmdzUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCSJSCh9HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJ7CiBHZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXNwb25zZRIzCgxjb21tZW50X21vZGUYASABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAIgASgNIq4BCiJVcGRhdGVUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIzCgxjb21tZW50X21vZGUYAiABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAMgASgNIn4KI1VwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjMKDGNvbW1lbnRfbW9kZRgBIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSIgoaYXV0b19oaWRlX3JlcG9ydF90aHJlc2hvbGQYAiABKA0iUgofR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiXwogR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2USOwoQYWdlX3ZlcmlmaWNhdGlvbhgBIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uIpIBCiJVcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI7ChBhZ2VfdmVyaWZpY2F0aW9uGAIgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24iYgojVXBkYXRlVGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2USOwoQYWdlX3ZlcmlmaWNhdGlvbhgBIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uMrIIChVUZW5hbnRTZXR0aW5nc1NlcnZpY2USbgoRR2V0VGVuYW50VGltZXpvbmUSKi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRpbWV6b25lUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGltZXpvbmVSZXNwb25zZSIAEncKFFVwZGF0ZVRlbmFudFRpbWV6b25lEi0ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRUaW1lem9uZVJlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFRpbWV6b25lUmVzcG9uc2UiABJ9ChZHZXRUZW5hbnREZWZhdWx0TG9jYWxlEi8ucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50RGVmYXVsdExvY2FsZVJlc3BvbnNlIgAShgEKGVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGUSMi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0GjMucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2UiABKDAQoYR2V0VGVuYW50Q29tbWVudFNldHRpbmdzEjEucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0GjIucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXNwb25zZSIAEowBChtVcGRhdGVUZW5hbnRDb21tZW50U2V0dGluZ3MSNC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1JlcXVlc3QaNS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgASgwEKGEdldFRlbmFudEFnZVZlcmlmaWNhdGlvbhIxLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVxdWVzdBoyLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2UiABKMAQobVXBkYXRlVGVuYW50QWdlVmVyaWZpY2F0aW9uEjQucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXF1ZXN0GjUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetTenantTimezoneRequest
@@ -272,6 +272,85 @@ export const UpdateTenantCommentSettingsResponseSchema: GenMessage<UpdateTenantC
   messageDesc(file_publira_admin_v1_tenant, 11);
 
 /**
+ * @generated from message publira.admin.v1.GetTenantAgeVerificationRequest
+ */
+export type GetTenantAgeVerificationRequest = Message<"publira.admin.v1.GetTenantAgeVerificationRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantAgeVerificationRequest.
+ * Use `create(GetTenantAgeVerificationRequestSchema)` to create a new message.
+ */
+export const GetTenantAgeVerificationRequestSchema: GenMessage<GetTenantAgeVerificationRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 12);
+
+/**
+ * @generated from message publira.admin.v1.GetTenantAgeVerificationResponse
+ */
+export type GetTenantAgeVerificationResponse = Message<"publira.admin.v1.GetTenantAgeVerificationResponse"> & {
+  /**
+   * Never AGE_VERIFICATION_UNSPECIFIED: a tenant that has saved nothing
+   * verifies no age, and a stored value naming no rule fails this RPC.
+   *
+   * @generated from field: publira.types.v1.AgeVerification age_verification = 1;
+   */
+  ageVerification: AgeVerification;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantAgeVerificationResponse.
+ * Use `create(GetTenantAgeVerificationResponseSchema)` to create a new message.
+ */
+export const GetTenantAgeVerificationResponseSchema: GenMessage<GetTenantAgeVerificationResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 13);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantAgeVerificationRequest
+ */
+export type UpdateTenantAgeVerificationRequest = Message<"publira.admin.v1.UpdateTenantAgeVerificationRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * AGE_VERIFICATION_UNSPECIFIED is rejected. Asking for no proof is
+   * AGE_VERIFICATION_NONE, which is a choice rather than the absence of one.
+   *
+   * @generated from field: publira.types.v1.AgeVerification age_verification = 2;
+   */
+  ageVerification: AgeVerification;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantAgeVerificationRequest.
+ * Use `create(UpdateTenantAgeVerificationRequestSchema)` to create a new message.
+ */
+export const UpdateTenantAgeVerificationRequestSchema: GenMessage<UpdateTenantAgeVerificationRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 14);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantAgeVerificationResponse
+ */
+export type UpdateTenantAgeVerificationResponse = Message<"publira.admin.v1.UpdateTenantAgeVerificationResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.AgeVerification age_verification = 1;
+   */
+  ageVerification: AgeVerification;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantAgeVerificationResponse.
+ * Use `create(UpdateTenantAgeVerificationResponseSchema)` to create a new message.
+ */
+export const UpdateTenantAgeVerificationResponseSchema: GenMessage<UpdateTenantAgeVerificationResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 15);
+
+/**
  * Per-tenant operational settings, separate from TenantConfig (site copy) and
  * TenantTheme (colors).
  *
@@ -325,6 +404,22 @@ export const TenantSettingsService: GenService<{
     methodKind: "unary";
     input: typeof UpdateTenantCommentSettingsRequestSchema;
     output: typeof UpdateTenantCommentSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantAgeVerification
+   */
+  getTenantAgeVerification: {
+    methodKind: "unary";
+    input: typeof GetTenantAgeVerificationRequestSchema;
+    output: typeof GetTenantAgeVerificationResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification
+   */
+  updateTenantAgeVerification: {
+    methodKind: "unary";
+    input: typeof UpdateTenantAgeVerificationRequestSchema;
+    output: typeof UpdateTenantAgeVerificationResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_tenant, 0);

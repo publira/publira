@@ -622,6 +622,7 @@ type TenantConfig struct {
 	CommentMode                    string         `json:"comment_mode"`
 	CommentAutoHideReportThreshold int32          `json:"comment_auto_hide_report_threshold"`
 	EpisodeRatingMode              string         `json:"episode_rating_mode"`
+	AgeVerification                string         `json:"age_verification"`
 }
 
 type TenantImage struct {
@@ -726,6 +727,7 @@ type User struct {
 	TenantID           uuid.NullUUID `json:"tenant_id"`
 	EmailVerifiedAt    sql.NullTime  `json:"email_verified_at"`
 	CredentialsVersion int32         `json:"credentials_version"`
+	BirthDate          sql.NullTime  `json:"birth_date"`
 }
 
 type UserEmailChangeToken struct {

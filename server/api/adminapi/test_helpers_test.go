@@ -47,6 +47,7 @@ const (
 	updateTenantDefaultLocaleQuery                           = "-- name: UpdateTenantDefaultLocale :one\n"
 	getTenantConfigByTenantIDQuery                           = "-- name: GetTenantConfigByTenantID :one\n"
 	upsertTenantCommentSettingsQuery                         = "-- name: UpsertTenantCommentSettings :one\n"
+	upsertTenantAgeVerificationQuery                         = "-- name: UpsertTenantAgeVerification :one\n"
 	listAccessTicketsForTenantAscQuery                       = "-- name: ListAccessTicketsForTenantAsc :many\n"
 	listAccessTicketsForTenantDescQuery                      = "-- name: ListAccessTicketsForTenantDesc :many\n"
 	listSeriesByTenantAscQuery                               = "-- name: ListSeriesByTenantAsc :many\n"
@@ -306,8 +307,8 @@ func expectActiveSessionLookupWithRole(mock sqlmock.Sqlmock, tenantID, userID uu
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version"}).
-			AddRow(userID, testUserPublicID, "user@example.com", "hashed", "User", now, "active", tenantID, nil, int32(1)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date"}).
+			AddRow(userID, testUserPublicID, "user@example.com", "hashed", "User", now, "active", tenantID, nil, int32(1), nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantRolesByUserAndTenantQuery)).
 		WithArgs(userID).

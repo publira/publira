@@ -23,8 +23,8 @@ WHERE id = $1
 FOR UPDATE;
 
 -- name: CreateUser :one
-INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: CreateTenantUserRole :one
@@ -416,6 +416,17 @@ WHERE id = $1;
 UPDATE users
 SET name = $2
 WHERE id = $1
+RETURNING *;
+
+-- name: SetUserBirthDateByID :one
+-- Written once. The IS NULL guard is what makes that true of two requests that
+-- race as well as of two a reader sends in turn: the second matches no row and
+-- comes back as no rows, which the caller reports as a refusal rather than as
+-- a missing account.
+UPDATE users
+SET birth_date = $2
+WHERE id = $1
+    AND birth_date IS NULL
 RETURNING *;
 
 -- name: GetUserNotificationSettings :one

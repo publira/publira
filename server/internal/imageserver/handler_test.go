@@ -20,6 +20,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
@@ -1356,6 +1357,157 @@ func TestFreeWindowCacheControl(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := freeWindowCacheControl(tc.freeUntil, now); got != tc.want {
 				t.Fatalf("freeWindowCacheControl = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The API withholds the body of a rated episode from a reader the tenant's age
+// rule stops. The pages have to be withheld here too, or the body is behind a
+// link rather than behind the rule.
+
+// The path that names no reader cannot tell an adult from anyone else, and its
+// response is a shared cache entry that could not be told apart either. A
+// rating the rule covers is refused there whatever the price says.
+func TestEpisodeImageRefusesARatedBodyOnThePublicPath(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("99999999-9999-9999-9999-999999999999")
+
+	cases := []struct {
+		name       string
+		rating     string
+		rule       string
+		wantStatus int
+	}{
+		{
+			name:       "a rated body under a tenant that verifies it",
+			rating:     ageverification.RatingR18,
+			rule:       ageverification.R18,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "the same body under a tenant that verifies nothing",
+			rating:     ageverification.RatingR18,
+			rule:       ageverification.None,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "an r15 body the r18 rule does not cover",
+			rating:     ageverification.RatingR15,
+			rule:       ageverification.R18,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "an r15 body the wider rule does cover",
+			rating:     ageverification.RatingR15,
+			rule:       ageverification.R15AndR18,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "an unrated body",
+			rating:     ageverification.RatingAll,
+			rule:       ageverification.R15AndR18,
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newTestServer(t,
+				stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test", Timezone: "Asia/Tokyo"}},
+				stubFactory{q: stubTenantQueries{
+					public: dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow{
+						ID:              mediaID,
+						ObjectKey:       "episodes/page.jpg",
+						ContentType:     "image/jpeg",
+						IsPublished:     sql.NullBool{Bool: true, Valid: true},
+						HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
+						AgeRating:       sql.NullString{String: tc.rating, Valid: true},
+						AgeVerification: sql.NullString{String: tc.rule, Valid: true},
+					},
+				}},
+				&countingStore{objects: map[string]storedObject{
+					"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+				}},
+			)
+
+			req := httptest.NewRequest(http.MethodGet, "/images/episodes/"+mediaID.String(), nil)
+			req.Host = "example.test"
+			req.Header.Set("Accept", "image/webp")
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("status = %d, want %d (body = %q)", rec.Code, tc.wantStatus, rec.Body.String())
+			}
+		})
+	}
+}
+
+// The credentialed path names the account, so the rule is checked against the
+// birth date on it. A grant is not proof of an age: the reader below has
+// bought the episode either way.
+func TestEpisodeImageChecksTheReaderAgainstTheAgeRule(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	userID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	tokens := auth.NewTokenManager([]byte(testMediaJWTSecret))
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+	today := ageverification.Today(time.Now(), tokyo)
+
+	cases := []struct {
+		name       string
+		birthDate  sql.NullTime
+		wantStatus int
+	}{
+		{
+			name:       "an account that has given no birth date",
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "a reader a day short of eighteen",
+			birthDate:  sql.NullTime{Time: today.AddDate(-18, 0, 1), Valid: true},
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "a reader eighteen today",
+			birthDate:  sql.NullTime{Time: today.AddDate(-18, 0, 0), Valid: true},
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			queries := paidEpisodeQueries(mediaID, episodeID, userID, 4)
+			queries.user.BirthDate = tc.birthDate
+			queries.userAccess.AgeRating = sql.NullString{String: ageverification.RatingR18, Valid: true}
+			queries.userAccess.AgeVerification = sql.NullString{String: ageverification.R18, Valid: true}
+
+			srv := newTestServerWithTokens(t,
+				stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test", Timezone: "Asia/Tokyo"}},
+				stubFactory{q: queries},
+				&countingStore{objects: map[string]storedObject{
+					"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+				}},
+				tokens,
+			)
+
+			token, _, issueErr := tokens.IssueMediaToken("reader-public-id", tenantID.String(), episodeID.String(), 4, time.Now())
+			if issueErr != nil {
+				t.Fatalf("IssueMediaToken: %v", issueErr)
+			}
+			target := "/images/episodes/" + mediaID.String() +
+				"?" + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
+			req := httptest.NewRequest(http.MethodGet, target, nil)
+			req.Host = "example.test"
+			req.Header.Set("Accept", "image/webp")
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("status = %d, want %d (body = %q)", rec.Code, tc.wantStatus, rec.Body.String())
 			}
 		})
 	}

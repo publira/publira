@@ -51,6 +51,12 @@ const (
 	// TenantSettingsServiceUpdateTenantCommentSettingsProcedure is the fully-qualified name of the
 	// TenantSettingsService's UpdateTenantCommentSettings RPC.
 	TenantSettingsServiceUpdateTenantCommentSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCommentSettings"
+	// TenantSettingsServiceGetTenantAgeVerificationProcedure is the fully-qualified name of the
+	// TenantSettingsService's GetTenantAgeVerification RPC.
+	TenantSettingsServiceGetTenantAgeVerificationProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantAgeVerification"
+	// TenantSettingsServiceUpdateTenantAgeVerificationProcedure is the fully-qualified name of the
+	// TenantSettingsService's UpdateTenantAgeVerification RPC.
+	TenantSettingsServiceUpdateTenantAgeVerificationProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantAgeVerification"
 )
 
 // TenantSettingsServiceClient is a client for the publira.admin.v1.TenantSettingsService service.
@@ -61,6 +67,8 @@ type TenantSettingsServiceClient interface {
 	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
 	GetTenantCommentSettings(context.Context, *connect.Request[v1.GetTenantCommentSettingsRequest]) (*connect.Response[v1.GetTenantCommentSettingsResponse], error)
 	UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error)
+	GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error)
+	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
 }
 
 // NewTenantSettingsServiceClient constructs a client for the publira.admin.v1.TenantSettingsService
@@ -110,6 +118,18 @@ func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommentSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantAgeVerification: connect.NewClient[v1.GetTenantAgeVerificationRequest, v1.GetTenantAgeVerificationResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceGetTenantAgeVerificationProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantAgeVerification")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantAgeVerification: connect.NewClient[v1.UpdateTenantAgeVerificationRequest, v1.UpdateTenantAgeVerificationResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceUpdateTenantAgeVerificationProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantAgeVerification")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -121,6 +141,8 @@ type tenantSettingsServiceClient struct {
 	updateTenantDefaultLocale   *connect.Client[v1.UpdateTenantDefaultLocaleRequest, v1.UpdateTenantDefaultLocaleResponse]
 	getTenantCommentSettings    *connect.Client[v1.GetTenantCommentSettingsRequest, v1.GetTenantCommentSettingsResponse]
 	updateTenantCommentSettings *connect.Client[v1.UpdateTenantCommentSettingsRequest, v1.UpdateTenantCommentSettingsResponse]
+	getTenantAgeVerification    *connect.Client[v1.GetTenantAgeVerificationRequest, v1.GetTenantAgeVerificationResponse]
+	updateTenantAgeVerification *connect.Client[v1.UpdateTenantAgeVerificationRequest, v1.UpdateTenantAgeVerificationResponse]
 }
 
 // GetTenantTimezone calls publira.admin.v1.TenantSettingsService.GetTenantTimezone.
@@ -154,6 +176,17 @@ func (c *tenantSettingsServiceClient) UpdateTenantCommentSettings(ctx context.Co
 	return c.updateTenantCommentSettings.CallUnary(ctx, req)
 }
 
+// GetTenantAgeVerification calls publira.admin.v1.TenantSettingsService.GetTenantAgeVerification.
+func (c *tenantSettingsServiceClient) GetTenantAgeVerification(ctx context.Context, req *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error) {
+	return c.getTenantAgeVerification.CallUnary(ctx, req)
+}
+
+// UpdateTenantAgeVerification calls
+// publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification.
+func (c *tenantSettingsServiceClient) UpdateTenantAgeVerification(ctx context.Context, req *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error) {
+	return c.updateTenantAgeVerification.CallUnary(ctx, req)
+}
+
 // TenantSettingsServiceHandler is an implementation of the publira.admin.v1.TenantSettingsService
 // service.
 type TenantSettingsServiceHandler interface {
@@ -163,6 +196,8 @@ type TenantSettingsServiceHandler interface {
 	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
 	GetTenantCommentSettings(context.Context, *connect.Request[v1.GetTenantCommentSettingsRequest]) (*connect.Response[v1.GetTenantCommentSettingsResponse], error)
 	UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error)
+	GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error)
+	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
 }
 
 // NewTenantSettingsServiceHandler builds an HTTP handler from the service implementation. It
@@ -208,6 +243,18 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommentSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantSettingsServiceGetTenantAgeVerificationHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceGetTenantAgeVerificationProcedure,
+		svc.GetTenantAgeVerification,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantAgeVerification")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantSettingsServiceUpdateTenantAgeVerificationHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceUpdateTenantAgeVerificationProcedure,
+		svc.UpdateTenantAgeVerification,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantAgeVerification")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.TenantSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TenantSettingsServiceGetTenantTimezoneProcedure:
@@ -222,6 +269,10 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 			tenantSettingsServiceGetTenantCommentSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantCommentSettingsProcedure:
 			tenantSettingsServiceUpdateTenantCommentSettingsHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceGetTenantAgeVerificationProcedure:
+			tenantSettingsServiceGetTenantAgeVerificationHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceUpdateTenantAgeVerificationProcedure:
+			tenantSettingsServiceUpdateTenantAgeVerificationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -253,4 +304,12 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantCommentSettings(contex
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantAgeVerification is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification is not implemented"))
 }

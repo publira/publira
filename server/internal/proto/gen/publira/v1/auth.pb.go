@@ -135,11 +135,17 @@ func (x *LoginResponse) GetAccessToken() *v1.AccessToken {
 }
 
 type CreateUserRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Email    string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	Password string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	// The reader's birth date as YYYY-MM-DD, and empty from a form that did not
+	// ask. It is accepted here rather than only after the first sign-in because
+	// a tenant that verifies ages asks for it on the sign-up form: collecting it
+	// later would leave the account that just agreed to give it unable to open
+	// the work it signed up for until it has verified an address and signed in.
+	BirthDate     string `protobuf:"bytes,5,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -198,6 +204,13 @@ func (x *CreateUserRequest) GetEmail() string {
 func (x *CreateUserRequest) GetPassword() string {
 	if x != nil {
 		return x.Password
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetBirthDate() string {
+	if x != nil {
+		return x.BirthDate
 	}
 	return ""
 }
@@ -1145,9 +1158,16 @@ func (x *GetMeResponse) GetUser() *v1.User {
 }
 
 type UpdateMeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// The reader's birth date as YYYY-MM-DD. Empty leaves the stored one alone,
+	// which is what the profile form sends when it is only renaming the account.
+	//
+	// It is written once. A reader who gives a date and then wants it changed
+	// goes through support, because a date a reader can rewrite at will proves
+	// nothing about their age: the second write is refused rather than applied.
+	BirthDate     string `protobuf:"bytes,3,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1192,6 +1212,13 @@ func (x *UpdateMeRequest) GetTenant() *v1.TenantContext {
 func (x *UpdateMeRequest) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateMeRequest) GetBirthDate() string {
+	if x != nil {
+		return x.BirthDate
 	}
 	return ""
 }
@@ -2031,12 +2058,14 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\"}\n" +
 	"\rLoginResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
-	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"\x92\x01\n" +
+	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"\xb1\x01\n" +
 	"\x11CreateUserRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x04 \x01(\tR\bpassword\"P\n" +
+	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\x1d\n" +
+	"\n" +
+	"birth_date\x18\x05 \x01(\tR\tbirthDate\"P\n" +
 	"\x12CreateUserResponse\x12\x1a\n" +
 	"\baccepted\x18\x03 \x01(\bR\bacceptedJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x04userR\faccess_token\"g\n" +
 	"\x16VerifyUserEmailRequest\x127\n" +
@@ -2086,10 +2115,12 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\fGetMeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\";\n" +
 	"\rGetMeResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"^\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"}\n" +
 	"\x0fUpdateMeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\">\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"birth_date\x18\x03 \x01(\tR\tbirthDate\">\n" +
 	"\x10UpdateMeResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"f\n" +
 	"\x0fDeleteMeRequest\x127\n" +

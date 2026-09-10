@@ -227,3 +227,22 @@ func assertPublicExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 		t.Fatalf("unmet SQL expectations: %v", err)
 	}
 }
+
+// tenantConfigColumns is the tenant_config row a `SELECT *` reads back.
+func tenantConfigColumns() []string {
+	return []string{
+		"tenant_id", "copyright_text", "site_description", "created_at", "updated_at",
+		"site_tagline", "comment_mode", "comment_auto_hide_report_threshold",
+		"episode_rating_mode", "age_verification",
+	}
+}
+
+// expectTenantAgeVerification stands in for the tenant config read a rated
+// series makes. Only a series that carries a rating causes it, so a test that
+// sets none up is asserting the read never happened.
+func expectTenantAgeVerification(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, rule string) {
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
+			AddRow(tenantID, nil, nil, now, now, nil, "disabled", int32(3), "single", rule))
+}

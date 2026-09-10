@@ -195,6 +195,68 @@ func (CommentMode) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{2}
 }
 
+// Which of a tenant's age ratings a reader has to prove an age for
+// (tenant_config.age_verification). The values are the rungs of one ladder
+// rather than a switch per rating: a tenant that gated `r15` while leaving
+// `r18` open would be stating a policy nobody means.
+type AgeVerification int32
+
+const (
+	AgeVerification_AGE_VERIFICATION_UNSPECIFIED AgeVerification = 0
+	// Nothing is proven. A rated series still carries its rating, and a client
+	// still interposes its own confirmation on one, but no birth date is asked
+	// for and none is checked. This is what a tenant that has never chosen gets.
+	AgeVerification_AGE_VERIFICATION_NONE AgeVerification = 1
+	// `r18` series demand a proven 18. `r15` series are left to the client's
+	// confirmation.
+	AgeVerification_AGE_VERIFICATION_R18 AgeVerification = 2
+	// `r15` series demand a proven 15 and `r18` series a proven 18.
+	AgeVerification_AGE_VERIFICATION_R15_AND_R18 AgeVerification = 3
+)
+
+// Enum value maps for AgeVerification.
+var (
+	AgeVerification_name = map[int32]string{
+		0: "AGE_VERIFICATION_UNSPECIFIED",
+		1: "AGE_VERIFICATION_NONE",
+		2: "AGE_VERIFICATION_R18",
+		3: "AGE_VERIFICATION_R15_AND_R18",
+	}
+	AgeVerification_value = map[string]int32{
+		"AGE_VERIFICATION_UNSPECIFIED": 0,
+		"AGE_VERIFICATION_NONE":        1,
+		"AGE_VERIFICATION_R18":         2,
+		"AGE_VERIFICATION_R15_AND_R18": 3,
+	}
+)
+
+func (x AgeVerification) Enum() *AgeVerification {
+	p := new(AgeVerification)
+	*p = x
+	return p
+}
+
+func (x AgeVerification) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AgeVerification) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[3].Descriptor()
+}
+
+func (AgeVerification) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[3]
+}
+
+func (x AgeVerification) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AgeVerification.Descriptor instead.
+func (AgeVerification) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{3}
+}
+
 // TenantContext identifies a tenant for internal RPC wiring.
 // tenant_id is the primary key (UUID), not the public-facing short code.
 type TenantContext struct {
@@ -242,10 +304,16 @@ func (x *TenantContext) GetTenantId() string {
 }
 
 type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Role     string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	// The reader's own birth date as YYYY-MM-DD, empty when they have given
+	// none. Set where a User stands for the account the request authenticated
+	// as, which is GetMe and UpdateMe; empty everywhere a User names someone the
+	// caller is merely looking at, so a console listing accounts never carries
+	// it.
+	BirthDate     string `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -297,6 +365,13 @@ func (x *User) GetName() string {
 func (x *User) GetRole() string {
 	if x != nil {
 		return x.Role
+	}
+	return ""
+}
+
+func (x *User) GetBirthDate() string {
+	if x != nil {
+		return x.BirthDate
 	}
 	return ""
 }
@@ -1851,11 +1926,13 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"\x1cpublira/types/v1/types.proto\x12\x10publira.types.v1\",\n" +
 	"\rTenantContext\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"K\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"j\n" +
 	"\x04User\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"B\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x1d\n" +
+	"\n" +
+	"birth_date\x18\x04 \x01(\tR\tbirthDate\"B\n" +
 	"\vAccessToken\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
 	"\n" +
@@ -2018,7 +2095,12 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x18COMMENT_MODE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15COMMENT_MODE_DISABLED\x10\x01\x12\x1a\n" +
 	"\x16COMMENT_MODE_IMMEDIATE\x10\x02\x12\"\n" +
-	"\x1eCOMMENT_MODE_APPROVAL_REQUIRED\x10\x03BWZUgithub.com/publira/publira/server/internal/proto/gen/publira/types/v1;publirattypesv1b\x06proto3"
+	"\x1eCOMMENT_MODE_APPROVAL_REQUIRED\x10\x03*\x8a\x01\n" +
+	"\x0fAgeVerification\x12 \n" +
+	"\x1cAGE_VERIFICATION_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15AGE_VERIFICATION_NONE\x10\x01\x12\x18\n" +
+	"\x14AGE_VERIFICATION_R18\x10\x02\x12 \n" +
+	"\x1cAGE_VERIFICATION_R15_AND_R18\x10\x03BWZUgithub.com/publira/publira/server/internal/proto/gen/publira/types/v1;publirattypesv1b\x06proto3"
 
 var (
 	file_publira_types_v1_types_proto_rawDescOnce sync.Once
@@ -2032,43 +2114,44 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(SeriesStatus)(0),             // 0: publira.types.v1.SeriesStatus
 	(SeriesAgeRating)(0),          // 1: publira.types.v1.SeriesAgeRating
 	(CommentMode)(0),              // 2: publira.types.v1.CommentMode
-	(*TenantContext)(nil),         // 3: publira.types.v1.TenantContext
-	(*User)(nil),                  // 4: publira.types.v1.User
-	(*AccessToken)(nil),           // 5: publira.types.v1.AccessToken
-	(*CreatorRole)(nil),           // 6: publira.types.v1.CreatorRole
-	(*Creator)(nil),               // 7: publira.types.v1.Creator
-	(*Label)(nil),                 // 8: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 9: publira.types.v1.SeriesEyeCatchVariant
-	(*ImageCropRect)(nil),         // 10: publira.types.v1.ImageCropRect
-	(*Genre)(nil),                 // 11: publira.types.v1.Genre
-	(*Tag)(nil),                   // 12: publira.types.v1.Tag
-	(*Series)(nil),                // 13: publira.types.v1.Series
-	(*Episode)(nil),               // 14: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 15: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 16: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 17: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 18: publira.types.v1.Page
-	(*PageVersion)(nil),           // 19: publira.types.v1.PageVersion
+	(AgeVerification)(0),          // 3: publira.types.v1.AgeVerification
+	(*TenantContext)(nil),         // 4: publira.types.v1.TenantContext
+	(*User)(nil),                  // 5: publira.types.v1.User
+	(*AccessToken)(nil),           // 6: publira.types.v1.AccessToken
+	(*CreatorRole)(nil),           // 7: publira.types.v1.CreatorRole
+	(*Creator)(nil),               // 8: publira.types.v1.Creator
+	(*Label)(nil),                 // 9: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 10: publira.types.v1.SeriesEyeCatchVariant
+	(*ImageCropRect)(nil),         // 11: publira.types.v1.ImageCropRect
+	(*Genre)(nil),                 // 12: publira.types.v1.Genre
+	(*Tag)(nil),                   // 13: publira.types.v1.Tag
+	(*Series)(nil),                // 14: publira.types.v1.Series
+	(*Episode)(nil),               // 15: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 16: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 17: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 18: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 19: publira.types.v1.Page
+	(*PageVersion)(nil),           // 20: publira.types.v1.PageVersion
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	6,  // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
-	9,  // 1: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	8,  // 2: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	7,  // 3: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	9,  // 4: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	7,  // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
+	10, // 1: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	9,  // 2: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	8,  // 3: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	10, // 4: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	0,  // 5: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
 	1,  // 6: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	11, // 7: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
-	12, // 8: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
-	7,  // 9: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
-	16, // 10: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	16, // 11: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	12, // 7: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	13, // 8: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	8,  // 9: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	17, // 10: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	17, // 11: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
 	12, // [12:12] is the sub-list for method output_type
 	12, // [12:12] is the sub-list for method input_type
 	12, // [12:12] is the sub-list for extension type_name
@@ -2086,7 +2169,7 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,

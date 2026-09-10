@@ -613,6 +613,194 @@ func (x *UpdateTenantCommentSettingsResponse) GetAutoHideReportThreshold() uint3
 	return 0
 }
 
+type GetTenantAgeVerificationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantAgeVerificationRequest) Reset() {
+	*x = GetTenantAgeVerificationRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantAgeVerificationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantAgeVerificationRequest) ProtoMessage() {}
+
+func (x *GetTenantAgeVerificationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantAgeVerificationRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantAgeVerificationRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetTenantAgeVerificationRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type GetTenantAgeVerificationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Never AGE_VERIFICATION_UNSPECIFIED: a tenant that has saved nothing
+	// verifies no age, and a stored value naming no rule fails this RPC.
+	AgeVerification v1.AgeVerification `protobuf:"varint,1,opt,name=age_verification,json=ageVerification,proto3,enum=publira.types.v1.AgeVerification" json:"age_verification,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GetTenantAgeVerificationResponse) Reset() {
+	*x = GetTenantAgeVerificationResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantAgeVerificationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantAgeVerificationResponse) ProtoMessage() {}
+
+func (x *GetTenantAgeVerificationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantAgeVerificationResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantAgeVerificationResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetTenantAgeVerificationResponse) GetAgeVerification() v1.AgeVerification {
+	if x != nil {
+		return x.AgeVerification
+	}
+	return v1.AgeVerification(0)
+}
+
+type UpdateTenantAgeVerificationRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// AGE_VERIFICATION_UNSPECIFIED is rejected. Asking for no proof is
+	// AGE_VERIFICATION_NONE, which is a choice rather than the absence of one.
+	AgeVerification v1.AgeVerification `protobuf:"varint,2,opt,name=age_verification,json=ageVerification,proto3,enum=publira.types.v1.AgeVerification" json:"age_verification,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpdateTenantAgeVerificationRequest) Reset() {
+	*x = UpdateTenantAgeVerificationRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantAgeVerificationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantAgeVerificationRequest) ProtoMessage() {}
+
+func (x *UpdateTenantAgeVerificationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantAgeVerificationRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTenantAgeVerificationRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *UpdateTenantAgeVerificationRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UpdateTenantAgeVerificationRequest) GetAgeVerification() v1.AgeVerification {
+	if x != nil {
+		return x.AgeVerification
+	}
+	return v1.AgeVerification(0)
+}
+
+type UpdateTenantAgeVerificationResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AgeVerification v1.AgeVerification     `protobuf:"varint,1,opt,name=age_verification,json=ageVerification,proto3,enum=publira.types.v1.AgeVerification" json:"age_verification,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpdateTenantAgeVerificationResponse) Reset() {
+	*x = UpdateTenantAgeVerificationResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantAgeVerificationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantAgeVerificationResponse) ProtoMessage() {}
+
+func (x *UpdateTenantAgeVerificationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantAgeVerificationResponse.ProtoReflect.Descriptor instead.
+func (*UpdateTenantAgeVerificationResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UpdateTenantAgeVerificationResponse) GetAgeVerification() v1.AgeVerification {
+	if x != nil {
+		return x.AgeVerification
+	}
+	return v1.AgeVerification(0)
+}
+
 var File_publira_admin_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_tenant_proto_rawDesc = "" +
@@ -647,14 +835,25 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\x1aauto_hide_report_threshold\x18\x03 \x01(\rR\x17autoHideReportThreshold\"\xa4\x01\n" +
 	"#UpdateTenantCommentSettingsResponse\x12@\n" +
 	"\fcomment_mode\x18\x01 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12;\n" +
-	"\x1aauto_hide_report_threshold\x18\x02 \x01(\rR\x17autoHideReportThreshold2\x9d\x06\n" +
+	"\x1aauto_hide_report_threshold\x18\x02 \x01(\rR\x17autoHideReportThreshold\"Z\n" +
+	"\x1fGetTenantAgeVerificationRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"p\n" +
+	" GetTenantAgeVerificationResponse\x12L\n" +
+	"\x10age_verification\x18\x01 \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification\"\xab\x01\n" +
+	"\"UpdateTenantAgeVerificationRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12L\n" +
+	"\x10age_verification\x18\x02 \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification\"s\n" +
+	"#UpdateTenantAgeVerificationResponse\x12L\n" +
+	"\x10age_verification\x18\x01 \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification2\xb2\b\n" +
 	"\x15TenantSettingsService\x12n\n" +
 	"\x11GetTenantTimezone\x12*.publira.admin.v1.GetTenantTimezoneRequest\x1a+.publira.admin.v1.GetTenantTimezoneResponse\"\x00\x12w\n" +
 	"\x14UpdateTenantTimezone\x12-.publira.admin.v1.UpdateTenantTimezoneRequest\x1a..publira.admin.v1.UpdateTenantTimezoneResponse\"\x00\x12}\n" +
 	"\x16GetTenantDefaultLocale\x12/.publira.admin.v1.GetTenantDefaultLocaleRequest\x1a0.publira.admin.v1.GetTenantDefaultLocaleResponse\"\x00\x12\x86\x01\n" +
 	"\x19UpdateTenantDefaultLocale\x122.publira.admin.v1.UpdateTenantDefaultLocaleRequest\x1a3.publira.admin.v1.UpdateTenantDefaultLocaleResponse\"\x00\x12\x83\x01\n" +
 	"\x18GetTenantCommentSettings\x121.publira.admin.v1.GetTenantCommentSettingsRequest\x1a2.publira.admin.v1.GetTenantCommentSettingsResponse\"\x00\x12\x8c\x01\n" +
-	"\x1bUpdateTenantCommentSettings\x124.publira.admin.v1.UpdateTenantCommentSettingsRequest\x1a5.publira.admin.v1.UpdateTenantCommentSettingsResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x1bUpdateTenantCommentSettings\x124.publira.admin.v1.UpdateTenantCommentSettingsRequest\x1a5.publira.admin.v1.UpdateTenantCommentSettingsResponse\"\x00\x12\x83\x01\n" +
+	"\x18GetTenantAgeVerification\x121.publira.admin.v1.GetTenantAgeVerificationRequest\x1a2.publira.admin.v1.GetTenantAgeVerificationResponse\"\x00\x12\x8c\x01\n" +
+	"\x1bUpdateTenantAgeVerification\x124.publira.admin.v1.UpdateTenantAgeVerificationRequest\x1a5.publira.admin.v1.UpdateTenantAgeVerificationResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_tenant_proto_rawDescOnce sync.Once
@@ -668,7 +867,7 @@ func file_publira_admin_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_tenant_proto_rawDescData
 }
 
-var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_publira_admin_v1_tenant_proto_goTypes = []any{
 	(*GetTenantTimezoneRequest)(nil),            // 0: publira.admin.v1.GetTenantTimezoneRequest
 	(*GetTenantTimezoneResponse)(nil),           // 1: publira.admin.v1.GetTenantTimezoneResponse
@@ -682,36 +881,50 @@ var file_publira_admin_v1_tenant_proto_goTypes = []any{
 	(*GetTenantCommentSettingsResponse)(nil),    // 9: publira.admin.v1.GetTenantCommentSettingsResponse
 	(*UpdateTenantCommentSettingsRequest)(nil),  // 10: publira.admin.v1.UpdateTenantCommentSettingsRequest
 	(*UpdateTenantCommentSettingsResponse)(nil), // 11: publira.admin.v1.UpdateTenantCommentSettingsResponse
-	(*v1.TenantContext)(nil),                    // 12: publira.types.v1.TenantContext
-	(v1.CommentMode)(0),                         // 13: publira.types.v1.CommentMode
+	(*GetTenantAgeVerificationRequest)(nil),     // 12: publira.admin.v1.GetTenantAgeVerificationRequest
+	(*GetTenantAgeVerificationResponse)(nil),    // 13: publira.admin.v1.GetTenantAgeVerificationResponse
+	(*UpdateTenantAgeVerificationRequest)(nil),  // 14: publira.admin.v1.UpdateTenantAgeVerificationRequest
+	(*UpdateTenantAgeVerificationResponse)(nil), // 15: publira.admin.v1.UpdateTenantAgeVerificationResponse
+	(*v1.TenantContext)(nil),                    // 16: publira.types.v1.TenantContext
+	(v1.CommentMode)(0),                         // 17: publira.types.v1.CommentMode
+	(v1.AgeVerification)(0),                     // 18: publira.types.v1.AgeVerification
 }
 var file_publira_admin_v1_tenant_proto_depIdxs = []int32{
-	12, // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 2: publira.admin.v1.GetTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 3: publira.admin.v1.UpdateTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 4: publira.admin.v1.GetTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 5: publira.admin.v1.GetTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	12, // 6: publira.admin.v1.UpdateTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 7: publira.admin.v1.UpdateTenantCommentSettingsRequest.comment_mode:type_name -> publira.types.v1.CommentMode
-	13, // 8: publira.admin.v1.UpdateTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	0,  // 9: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
-	2,  // 10: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
-	4,  // 11: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
-	6,  // 12: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
-	8,  // 13: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
-	10, // 14: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
-	1,  // 15: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
-	3,  // 16: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
-	5,  // 17: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
-	7,  // 18: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
-	9,  // 19: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
-	11, // 20: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
-	15, // [15:21] is the sub-list for method output_type
-	9,  // [9:15] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	16, // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 2: publira.admin.v1.GetTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 3: publira.admin.v1.UpdateTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 4: publira.admin.v1.GetTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 5: publira.admin.v1.GetTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	16, // 6: publira.admin.v1.UpdateTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 7: publira.admin.v1.UpdateTenantCommentSettingsRequest.comment_mode:type_name -> publira.types.v1.CommentMode
+	17, // 8: publira.admin.v1.UpdateTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	16, // 9: publira.admin.v1.GetTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	18, // 10: publira.admin.v1.GetTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	16, // 11: publira.admin.v1.UpdateTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	18, // 12: publira.admin.v1.UpdateTenantAgeVerificationRequest.age_verification:type_name -> publira.types.v1.AgeVerification
+	18, // 13: publira.admin.v1.UpdateTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	0,  // 14: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
+	2,  // 15: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
+	4,  // 16: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
+	6,  // 17: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
+	8,  // 18: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
+	10, // 19: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
+	12, // 20: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:input_type -> publira.admin.v1.GetTenantAgeVerificationRequest
+	14, // 21: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:input_type -> publira.admin.v1.UpdateTenantAgeVerificationRequest
+	1,  // 22: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
+	3,  // 23: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
+	5,  // 24: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
+	7,  // 25: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
+	9,  // 26: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
+	11, // 27: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
+	13, // 28: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:output_type -> publira.admin.v1.GetTenantAgeVerificationResponse
+	15, // 29: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:output_type -> publira.admin.v1.UpdateTenantAgeVerificationResponse
+	22, // [22:30] is the sub-list for method output_type
+	14, // [14:22] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_tenant_proto_init() }
@@ -725,7 +938,7 @@ func file_publira_admin_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_tenant_proto_rawDesc), len(file_publira_admin_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

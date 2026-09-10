@@ -16,6 +16,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
@@ -364,6 +365,24 @@ func (s *apiServer) CreateUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
 
+	// A form that did not ask sends nothing, and the account is created without
+	// one: whether a birth date is asked for is the tenant's rule, and a form
+	// that skipped it is not a sign-up to refuse.
+	var birthDate sql.NullTime
+	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
+		today, todayErr := s.tenantToday(ctx, tenant)
+		if todayErr != nil {
+			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "tenant_today_failed")
+			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", todayErr, "tenant_id", tenant.ID.String())
+		}
+		parsed, parseErr := ageverification.ParseBirthDate(raw, today)
+		if parseErr != nil {
+			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_birth_date")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, parseErr, "birth_date")
+		}
+		birthDate = sql.NullTime{Time: parsed, Valid: true}
+	}
+
 	// Charged before the address is looked up, so a caller out of allowance is
 	// refused the same way whether or not the address has an account, and
 	// neither the account nor the notice below is written on the way there.
@@ -429,6 +448,7 @@ func (s *apiServer) CreateUser(
 			Email:        email,
 			PasswordHash: passwordHash,
 			Name:         name,
+			BirthDate:    birthDate,
 		})
 	})
 	if err != nil {
@@ -1252,37 +1272,117 @@ func (s *apiServer) GetMe(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publirav1.GetMeResponse{User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role}}), nil
+	return connect.NewResponse(&publirav1.GetMeResponse{User: ownAccount(user, role)}), nil
+}
+
+// ownAccount is the account the request authenticated as, in the shape the two
+// RPCs that answer with it speak. The birth date is on it because these are
+// the only places a User stands for the reader's own account rather than for
+// someone they are looking at.
+func ownAccount(user dbmodels.User, role string) *publirattypesv1.User {
+	account := &publirattypesv1.User{
+		PublicId: user.PublicID,
+		Name:     user.Name,
+		Role:     role,
+	}
+	if user.BirthDate.Valid {
+		account.BirthDate = ageverification.FormatBirthDate(user.BirthDate.Time)
+	}
+	return account
 }
 
 func (s *apiServer) UpdateMe(
 	ctx context.Context,
 	req *connect.Request[publirav1.UpdateMeRequest],
 ) (*connect.Response[publirav1.UpdateMeResponse], error) {
-	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		auth.AuditEvent(req.Header(), "update_me", "failure", "", "", "invalid_session")
 		return nil, err
 	}
 	name := strings.TrimSpace(req.Msg.Name)
 	if name == "" {
-		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "invalid_name")
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_name")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
 	if len([]rune(name)) > 100 {
-		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "name_too_long")
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "name_too_long")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name must be 100 characters or fewer"))
 	}
-	updated, err := s.queriesFor(ctx).UpdateUserNameByID(ctx, dbmodels.UpdateUserNameByIDParams{
+
+	// An empty field leaves the stored date alone, so the form that is only
+	// renaming the account sends nothing here and the one collecting a birth
+	// date for the first time sends it alongside the name it already had.
+	var birthDate sql.NullTime
+	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
+		if user.BirthDate.Valid {
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
+			// Not InvalidArgument: the date is well formed and the session is
+			// fine. What refuses it is the state of the account, which is what
+			// the reader has to be told to take to support.
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeFailedPrecondition, errors.New("birth date is already set"), "birth_date")
+		}
+		today, todayErr := s.tenantToday(ctx, tenant)
+		if todayErr != nil {
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "tenant_today_failed")
+			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", todayErr, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		}
+		parsed, parseErr := ageverification.ParseBirthDate(raw, today)
+		if parseErr != nil {
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_birth_date")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, parseErr, "birth_date")
+		}
+		birthDate = sql.NullTime{Time: parsed, Valid: true}
+	}
+
+	// One transaction because the birth date is written once: a name that saved
+	// while the date beside it failed would be recoverable, and the reverse
+	// would leave the account carrying a date nobody can rewrite.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		return nil, s.internalDBError(ctx, "failed to begin profile update transaction", err, "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	updated, err := txq.UpdateUserNameByID(ctx, dbmodels.UpdateUserNameByIDParams{
 		ID:   user.ID,
 		Name: name,
 	})
 	if err != nil {
-		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "update_failed")
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "update_failed")
 		return nil, s.internalDBError(ctx, "failed to update user name", err, "user_id", user.ID.String())
 	}
-	auth.AuditEvent(req.Header(), "update_me", "success", user.PublicID, user.PublicID, "name_updated")
-	return connect.NewResponse(&publirav1.UpdateMeResponse{User: &publirattypesv1.User{PublicId: updated.PublicID, Name: updated.Name, Role: role}}), nil
+	if birthDate.Valid {
+		stored, birthDateErr := txq.SetUserBirthDateByID(ctx, dbmodels.SetUserBirthDateByIDParams{
+			ID:        user.ID,
+			BirthDate: birthDate,
+		})
+		if birthDateErr != nil {
+			if errors.Is(birthDateErr, sql.ErrNoRows) {
+				// The query matches no row when the account already has a date,
+				// which is the same refusal as above reached by a second
+				// request that raced this one past the read.
+				auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
+				return nil, rpcerrors.NewFieldViolationError(connect.CodeFailedPrecondition, errors.New("birth date is already set"), "birth_date")
+			}
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_update_failed")
+			return nil, s.internalDBError(ctx, "failed to set user birth date", birthDateErr, "user_id", user.ID.String())
+		}
+		updated = stored
+	}
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		return nil, s.internalDBError(ctx, "failed to commit profile update", err, "user_id", user.ID.String())
+	}
+
+	outcome := "name_updated"
+	if birthDate.Valid {
+		outcome = "name_and_birth_date_updated"
+	}
+	auth.AuditEvent(req.Header(), "update_me", "success", tenant.PublicID, user.PublicID, outcome)
+	return connect.NewResponse(&publirav1.UpdateMeResponse{User: ownAccount(updated, role)}), nil
 }
 
 func (s *apiServer) DeleteMe(

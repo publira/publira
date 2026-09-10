@@ -978,8 +978,13 @@ func (s *apiServer) GetSeriesDetail(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	requiredMinimumAge, err := s.requiredMinimumAgeForSeries(ctx, tenant.ID, row.AgeRating)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+	}
 
 	res := connect.NewResponse(&publirav1.GetSeriesDetailResponse{
+		RequiredMinimumAge: int32(requiredMinimumAge),
 		Series: &publirattypesv1.Series{
 			PublicId:         row.PublicID,
 			Title:            row.Title,
@@ -1072,6 +1077,14 @@ func (s *apiServer) GetEpisodeDetail(
 		return nil, s.internalDBError(ctx, "failed to get episode detail", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
 	}
 
+	// How old this series makes a reader be, decided before anything about the
+	// reader in front of it is known. It is 0 for every series the tenant's
+	// rule does not cover, which is the ordinary read and costs no extra query.
+	requiredMinimumAge, err := s.requiredMinimumAgeForSeries(ctx, tenant.ID, row.SeriesAgeRating)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+	}
+
 	access := publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED
 	includeImages := false
 	mediaToken := ""
@@ -1079,19 +1092,50 @@ func (s *apiServer) GetEpisodeDetail(
 	// nothing: the same query answers both, so the body, the token, and the
 	// access state below follow one condition.
 	freeToEveryone := row.Price == 0 || row.FreeUntil.Valid
-	if freeToEveryone {
+
+	// The session is resolved before any of that is acted on, because the age
+	// rule reads the birth date off it even for a body that costs nothing.
+	var reader dbmodels.User
+	hasReader := false
+	if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
+		// Optional auth: an invalid session reads as a guest. The RPC fails on
+		// Internal only where the session is what gates the body — a paid
+		// episode, or one the tenant's age rule covers — because a body that is
+		// free and unrated must stay readable when attribution breaks.
+		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
+		if authErr != nil {
+			if (!freeToEveryone || requiredMinimumAge > 0) && connect.CodeOf(authErr) == connect.CodeInternal {
+				return nil, authErr
+			}
+			// A gated body stays closed and the view stays anonymous; log for operational tracing.
+			slog.InfoContext(ctx, "episode detail: bearer session rejected, continuing without it",
+				"tenant_id", tenant.ID,
+				"episode_public_id", req.Msg.PublicId,
+				"code", connect.CodeOf(authErr).String(),
+			)
+		} else {
+			reader = session.User
+			hasReader = true
+		}
+	}
+
+	// The age rule outranks the price. A reader it stops is stopped whether the
+	// body is free, priced, or already bought, so it is answered first and the
+	// three states below are never reached.
+	clearsAgeGate, err := s.readerClearsMinimumAge(ctx, tenant, requiredMinimumAge, reader.BirthDate)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to check the reader against the tenant age rule", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+	}
+
+	switch {
+	case !clearsAgeGate:
+		// Withheld the way a locked body is: no images, and no token to fetch
+		// them with.
+		access = publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED
+	case freeToEveryone:
 		access = publirav1.EpisodeAccess_EPISODE_ACCESS_FREE
 		includeImages = true
-		// The row exists only for an episode that is published and whose series
-		// is, which is the same rule image-server applies to a free body, so
-		// reaching here is what makes attaching this safe. The token names no
-		// reader: it is what a reader with no credential derives the image key
-		// from, and image-server still decides access from the public rule.
-		token, _, tokenErr := s.tokens.IssueFreeEpisodeMediaToken(
-			tenant.ID.String(),
-			row.ID.String(),
-			time.Now(),
-		)
+		token, tokenErr := s.freeBodyMediaToken(tenant, row.ID, requiredMinimumAge, reader)
 		if tokenErr != nil {
 			s.logger.ErrorContext(ctx, "failed to issue free episode media token",
 				"tenant_id", tenant.ID.String(),
@@ -1101,55 +1145,38 @@ func (s *apiServer) GetEpisodeDetail(
 			return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 		}
 		mediaToken = token
-	}
-	if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
-		// Optional auth: invalid session stays locked. Only a paid episode
-		// fails the RPC on Internal, because only there does the session gate
-		// the body — a free body must stay readable when attribution breaks.
-		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
-		if authErr != nil {
-			if !freeToEveryone && connect.CodeOf(authErr) == connect.CodeInternal {
-				return nil, authErr
-			}
-			// A paid body stays locked and the view stays anonymous; log for operational tracing.
-			slog.InfoContext(ctx, "episode detail: bearer session rejected, continuing without it",
-				"tenant_id", tenant.ID,
-				"episode_public_id", req.Msg.PublicId,
-				"code", connect.CodeOf(authErr).String(),
+	case hasReader:
+		hasAccess, accessErr := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
+			TenantID:  tenant.ID,
+			UserID:    reader.ID,
+			EpisodeID: row.ID,
+		})
+		if accessErr != nil {
+			return nil, s.internalDBError(ctx, "failed to check episode content access", accessErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		}
+		if hasAccess.Valid && hasAccess.Bool {
+			access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
+			includeImages = true
+			// The reader fetches these images from image-server with an
+			// <img>, which cannot carry the bearer this RPC was called
+			// with. The token below is what makes that request identify
+			// the same reader; image-server still checks the grant.
+			token, _, tokenErr := s.tokens.IssueMediaToken(
+				reader.PublicID,
+				tenant.ID.String(),
+				row.ID.String(),
+				reader.CredentialsVersion,
+				time.Now(),
 			)
-		} else if !freeToEveryone {
-			hasAccess, accessErr := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
-				TenantID:  tenant.ID,
-				UserID:    session.User.ID,
-				EpisodeID: row.ID,
-			})
-			if accessErr != nil {
-				return nil, s.internalDBError(ctx, "failed to check episode content access", accessErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
-			}
-			if hasAccess.Valid && hasAccess.Bool {
-				access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
-				includeImages = true
-				// The reader fetches these images from image-server with an
-				// <img>, which cannot carry the bearer this RPC was called
-				// with. The token below is what makes that request identify
-				// the same reader; image-server still checks the grant.
-				token, _, tokenErr := s.tokens.IssueMediaToken(
-					session.User.PublicID,
-					tenant.ID.String(),
-					row.ID.String(),
-					session.User.CredentialsVersion,
-					time.Now(),
+			if tokenErr != nil {
+				s.logger.ErrorContext(ctx, "failed to issue episode media token",
+					"tenant_id", tenant.ID.String(),
+					"episode_public_id", req.Msg.PublicId,
+					"error", tokenErr,
 				)
-				if tokenErr != nil {
-					s.logger.ErrorContext(ctx, "failed to issue episode media token",
-						"tenant_id", tenant.ID.String(),
-						"episode_public_id", req.Msg.PublicId,
-						"error", tokenErr,
-					)
-					return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
-				}
-				mediaToken = token
+				return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 			}
+			mediaToken = token
 		}
 	}
 

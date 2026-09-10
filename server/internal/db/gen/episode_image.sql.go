@@ -146,7 +146,14 @@ SELECT ei.id,
                     OR at.expires_at > NOW()
                 )
         )
-    ) AS has_access
+    ) AS has_access,
+    -- The two halves of the tenant's age rule, handed back rather than decided
+    -- here: which rating demands which age is one mapping the whole build
+    -- shares, and it lives in Go. A series the tenant has not classified has no
+    -- listing row, and a tenant that has saved nothing has no config row, so
+    -- both are nullable and both read as asking nothing.
+    sl.age_rating,
+    tc.age_verification
 FROM episode_images ei
 JOIN LATERAL (
     SELECT object_key, content_type
@@ -158,6 +165,8 @@ JOIN LATERAL (
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN tenant_config tc ON tc.tenant_id = s.tenant_id
 WHERE ei.id = $2
     AND s.tenant_id = $3
 LIMIT 1
@@ -170,12 +179,14 @@ type GetEpisodeImageAccessByIDForUserParams struct {
 }
 
 type GetEpisodeImageAccessByIDForUserRow struct {
-	ID          uuid.UUID    `json:"id"`
-	EpisodeID   uuid.UUID    `json:"episode_id"`
-	ObjectKey   string       `json:"object_key"`
-	ContentType string       `json:"content_type"`
-	IsPublished sql.NullBool `json:"is_published"`
-	HasAccess   sql.NullBool `json:"has_access"`
+	ID              uuid.UUID      `json:"id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	ObjectKey       string         `json:"object_key"`
+	ContentType     string         `json:"content_type"`
+	IsPublished     sql.NullBool   `json:"is_published"`
+	HasAccess       sql.NullBool   `json:"has_access"`
+	AgeRating       sql.NullString `json:"age_rating"`
+	AgeVerification sql.NullString `json:"age_verification"`
 }
 
 func (q *Queries) GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error) {
@@ -188,6 +199,8 @@ func (q *Queries) GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetE
 		&i.ContentType,
 		&i.IsPublished,
 		&i.HasAccess,
+		&i.AgeRating,
+		&i.AgeVerification,
 	)
 	return i, err
 }
@@ -259,7 +272,12 @@ SELECT ei.id,
     -- When the body is public only because a window is open, this is the
     -- instant it stops being public. The caller bounds how long the response
     -- may be cached by it, so no copy of a paid page outlives the campaign.
-    fw.ends_at AS free_until
+    fw.ends_at AS free_until,
+    -- The age rule, for the reason GetEpisodeImageAccessByIDForUser gives. This
+    -- path names no reader, so what the caller does with a rating the rule
+    -- covers is refuse the request outright.
+    sl.age_rating,
+    tc.age_verification
 FROM episode_images ei
 JOIN LATERAL (
     SELECT object_key, content_type
@@ -271,6 +289,8 @@ JOIN LATERAL (
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN tenant_config tc ON tc.tenant_id = s.tenant_id
     -- At most one window can cover an instant of an episode, so this join
     -- cannot multiply the row.
     LEFT JOIN episode_free_windows fw ON fw.episode_id = e.id
@@ -287,13 +307,15 @@ type GetEpisodeImagePublicAccessByIDForTenantParams struct {
 }
 
 type GetEpisodeImagePublicAccessByIDForTenantRow struct {
-	ID              uuid.UUID    `json:"id"`
-	EpisodeID       uuid.UUID    `json:"episode_id"`
-	ObjectKey       string       `json:"object_key"`
-	ContentType     string       `json:"content_type"`
-	IsPublished     sql.NullBool `json:"is_published"`
-	HasPublicAccess sql.NullBool `json:"has_public_access"`
-	FreeUntil       sql.NullTime `json:"free_until"`
+	ID              uuid.UUID      `json:"id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	ObjectKey       string         `json:"object_key"`
+	ContentType     string         `json:"content_type"`
+	IsPublished     sql.NullBool   `json:"is_published"`
+	HasPublicAccess sql.NullBool   `json:"has_public_access"`
+	FreeUntil       sql.NullTime   `json:"free_until"`
+	AgeRating       sql.NullString `json:"age_rating"`
+	AgeVerification sql.NullString `json:"age_verification"`
 }
 
 func (q *Queries) GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error) {
@@ -307,6 +329,8 @@ func (q *Queries) GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, 
 		&i.IsPublished,
 		&i.HasPublicAccess,
 		&i.FreeUntil,
+		&i.AgeRating,
+		&i.AgeVerification,
 	)
 	return i, err
 }

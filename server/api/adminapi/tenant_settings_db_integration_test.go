@@ -86,3 +86,50 @@ func TestDBTenantCommentSettingsRoundTrip(t *testing.T) {
 		t.Fatalf("auto_hide_report_threshold = %d, want the automatic removal turned off", read.Msg.AutoHideReportThreshold)
 	}
 }
+
+// The age rule is saved the same way, and a tenant that has saved nothing is
+// answered with the rule the column's own default carries.
+func TestDBTenantAgeVerificationRoundTrip(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TAVTNNT1", "age-verification.example.com", "Age Verification", "TAVUSER1", "admin@age-verification.example.com")
+	settings := env.tenantSettingsClient()
+
+	reported, err := settings.GetTenantAgeVerification(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantAgeVerificationRequest{
+		Tenant: tenant.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("GetTenantAgeVerification: %v", err)
+	}
+	if reported.Msg.AgeVerification != publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE {
+		t.Fatalf("age_verification without a config row = %v, want AGE_VERIFICATION_NONE", reported.Msg.AgeVerification)
+	}
+
+	// The upsert writes the tenant's first config row, and saving again has to
+	// change the row that now exists.
+	for _, rule := range []publirattypesv1.AgeVerification{
+		publirattypesv1.AgeVerification_AGE_VERIFICATION_R18,
+		publirattypesv1.AgeVerification_AGE_VERIFICATION_R15_AND_R18,
+		publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE,
+	} {
+		saved, err := settings.UpdateTenantAgeVerification(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantAgeVerificationRequest{
+			AgeVerification: rule,
+			Tenant:          tenant.tenantContext(),
+		}))
+		if err != nil {
+			t.Fatalf("UpdateTenantAgeVerification(%v): %v", rule, err)
+		}
+		if saved.Msg.AgeVerification != rule {
+			t.Fatalf("saved age_verification = %v, want %v", saved.Msg.AgeVerification, rule)
+		}
+
+		read, err := settings.GetTenantAgeVerification(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantAgeVerificationRequest{
+			Tenant: tenant.tenantContext(),
+		}))
+		if err != nil {
+			t.Fatalf("GetTenantAgeVerification after saving %v: %v", rule, err)
+		}
+		if read.Msg.AgeVerification != rule {
+			t.Fatalf("read age_verification = %v, want %v", read.Msg.AgeVerification, rule)
+		}
+	}
+}
