@@ -4,7 +4,8 @@
 // Two places need that answer and have to agree on it: the admin console tells
 // staff when a withdrawn comment stops being readable, and the purge batch is
 // what makes that true. A window each of them carried separately would drift,
-// and the console would promise a deadline the batch does not keep.
+// and the console would promise a deadline the batch does not keep. The purge
+// itself lives here too, in purge.go, for the same reason.
 package commentretention
 
 import (

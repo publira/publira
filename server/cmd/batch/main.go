@@ -69,6 +69,11 @@ var subcommands = []subcommand{
 		run:     runPurgeMfaChallenges,
 	},
 	{
+		name:    "purge-withdrawn-comments",
+		summary: "Delete the comments their authors withdrew past the retention window",
+		run:     runPurgeWithdrawnComments,
+	},
+	{
 		name:    "purge-orphan-images",
 		summary: "Delete the image rows and storage objects nothing references",
 		run:     runPurgeOrphanImages,
