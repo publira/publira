@@ -179,6 +179,15 @@ message Episode {
   // eleven before it. Set where an Episode stands for one episode a reader or
   // an editor opened; empty in the lists that carry an episode as a link.
   repeated Creator creators = 9;
+  // How many readers have rated this episode. Set on the same reads `creators`
+  // is: a rating is given at the end of an episode, so the figure belongs to
+  // the episode a reader opened rather than to every link that names it.
+  //
+  // It counts readers rather than the points they gave, so it means the same
+  // thing whichever press mode the tenant chose. It is the stored tally rather
+  // than a count taken at read time, so the episode read carries one more
+  // column instead of one more scan.
+  int64 rating_count = 10;
 }
 
 message EpisodeImage {

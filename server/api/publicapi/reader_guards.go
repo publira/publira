@@ -34,6 +34,9 @@ type readerAction string
 const (
 	actionPostComment   readerAction = "comment.post"
 	actionReportComment readerAction = "comment.report"
+	// Every press of the rating control charges, because every press that adds
+	// a point files an event of its own.
+	actionRateEpisode readerAction = "episode.rate"
 )
 
 // The deployment settings, and the defaults a deployment that sets none of them
@@ -46,11 +49,21 @@ const (
 	reportCommentPerMinuteEnv = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_MINUTE"
 	reportCommentPerDayEnv    = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_DAY"
 	duplicateCommentWindowEnv = "PUBLIRA_COMMENT_DUPLICATE_WINDOW_MINUTES"
+	rateEpisodePerMinuteEnv   = "PUBLIRA_EPISODE_RATING_LIMIT_PER_MINUTE"
+	rateEpisodePerDayEnv      = "PUBLIRA_EPISODE_RATING_LIMIT_PER_DAY"
 
 	defaultPostCommentPerMinute   = 10
 	defaultPostCommentPerDay      = 100
 	defaultReportCommentPerMinute = 10
 	defaultReportCommentPerDay    = 50
+
+	// A rating costs a tap rather than sentences, so its budget is wider than a
+	// comment's: a reader working through a series rates an episode each time
+	// they finish one, and a tenant that lets them press their way up spends
+	// several of these on one episode. A day of them is still far more presses
+	// than anyone reading makes.
+	defaultRateEpisodePerMinute = 30
+	defaultRateEpisodePerDay    = 300
 
 	// defaultDuplicateCommentWindow is long enough to cover a reader hammering
 	// the button and short enough that coming back to an episode hours later
@@ -70,26 +83,54 @@ type readerGuards struct {
 	duplicateCommentWindow time.Duration
 }
 
+// readerLimits is one budget per action, as a deployment configured it. It is a
+// struct rather than a widening list of ints so that adding an action cannot
+// silently swap two of them at a call site.
+type readerLimits struct {
+	postCommentPerMinute   int
+	postCommentPerDay      int
+	reportCommentPerMinute int
+	reportCommentPerDay    int
+	rateEpisodePerMinute   int
+	rateEpisodePerDay      int
+}
+
+// defaultReaderLimits is the policy a deployment that sets none of the settings
+// gets.
+func defaultReaderLimits() readerLimits {
+	return readerLimits{
+		postCommentPerMinute:   defaultPostCommentPerMinute,
+		postCommentPerDay:      defaultPostCommentPerDay,
+		reportCommentPerMinute: defaultReportCommentPerMinute,
+		reportCommentPerDay:    defaultReportCommentPerDay,
+		rateEpisodePerMinute:   defaultRateEpisodePerMinute,
+		rateEpisodePerDay:      defaultRateEpisodePerDay,
+	}
+}
+
 // newReaderGuardsFromEnv reads the deployment's settings. A value that is not a
 // whole number of at least one stops the server: a limit of zero refuses every
 // reader and a negative one is not a limit at all, and either is better caught
 // at startup than by the first reader who tries to post.
 func newReaderGuardsFromEnv(logger *slog.Logger) (readerGuards, error) {
-	postPerMinute, err := envLimit(postCommentPerMinuteEnv, defaultPostCommentPerMinute)
-	if err != nil {
-		return readerGuards{}, err
-	}
-	postPerDay, err := envLimit(postCommentPerDayEnv, defaultPostCommentPerDay)
-	if err != nil {
-		return readerGuards{}, err
-	}
-	reportPerMinute, err := envLimit(reportCommentPerMinuteEnv, defaultReportCommentPerMinute)
-	if err != nil {
-		return readerGuards{}, err
-	}
-	reportPerDay, err := envLimit(reportCommentPerDayEnv, defaultReportCommentPerDay)
-	if err != nil {
-		return readerGuards{}, err
+	var limits readerLimits
+	for _, setting := range []struct {
+		name     string
+		fallback int
+		into     *int
+	}{
+		{postCommentPerMinuteEnv, defaultPostCommentPerMinute, &limits.postCommentPerMinute},
+		{postCommentPerDayEnv, defaultPostCommentPerDay, &limits.postCommentPerDay},
+		{reportCommentPerMinuteEnv, defaultReportCommentPerMinute, &limits.reportCommentPerMinute},
+		{reportCommentPerDayEnv, defaultReportCommentPerDay, &limits.reportCommentPerDay},
+		{rateEpisodePerMinuteEnv, defaultRateEpisodePerMinute, &limits.rateEpisodePerMinute},
+		{rateEpisodePerDayEnv, defaultRateEpisodePerDay, &limits.rateEpisodePerDay},
+	} {
+		value, err := envLimit(setting.name, setting.fallback)
+		if err != nil {
+			return readerGuards{}, err
+		}
+		*setting.into = value
 	}
 	duplicateMinutes, err := envLimit(duplicateCommentWindowEnv, int(defaultDuplicateCommentWindow/time.Minute))
 	if err != nil {
@@ -97,7 +138,7 @@ func newReaderGuardsFromEnv(logger *slog.Logger) (readerGuards, error) {
 	}
 	return readerGuards{
 		limiter:                ratelimit.NewFromEnv(logger),
-		rules:                  readerRules(postPerMinute, postPerDay, reportPerMinute, reportPerDay),
+		rules:                  readerRules(limits),
 		duplicateCommentWindow: time.Duration(duplicateMinutes) * time.Minute,
 	}, nil
 }
@@ -105,15 +146,19 @@ func newReaderGuardsFromEnv(logger *slog.Logger) (readerGuards, error) {
 // readerRules pairs a burst window with a daily budget for each action. The
 // minute keeps a script from emptying the day's budget in one breath, and the
 // day is what a script pacing itself under the minute still runs into.
-func readerRules(postPerMinute, postPerDay, reportPerMinute, reportPerDay int) map[readerAction][]ratelimit.Rule {
+func readerRules(limits readerLimits) map[readerAction][]ratelimit.Rule {
 	return map[readerAction][]ratelimit.Rule{
 		actionPostComment: {
-			{Limit: postPerMinute, Window: time.Minute},
-			{Limit: postPerDay, Window: 24 * time.Hour},
+			{Limit: limits.postCommentPerMinute, Window: time.Minute},
+			{Limit: limits.postCommentPerDay, Window: 24 * time.Hour},
 		},
 		actionReportComment: {
-			{Limit: reportPerMinute, Window: time.Minute},
-			{Limit: reportPerDay, Window: 24 * time.Hour},
+			{Limit: limits.reportCommentPerMinute, Window: time.Minute},
+			{Limit: limits.reportCommentPerDay, Window: 24 * time.Hour},
+		},
+		actionRateEpisode: {
+			{Limit: limits.rateEpisodePerMinute, Window: time.Minute},
+			{Limit: limits.rateEpisodePerDay, Window: 24 * time.Hour},
 		},
 	}
 }
@@ -127,12 +172,7 @@ func (g readerGuards) withDefaults() readerGuards {
 		g.limiter = ratelimit.New(ratelimit.NewMemoryStore())
 	}
 	if g.rules == nil {
-		g.rules = readerRules(
-			defaultPostCommentPerMinute,
-			defaultPostCommentPerDay,
-			defaultReportCommentPerMinute,
-			defaultReportCommentPerDay,
-		)
+		g.rules = readerRules(defaultReaderLimits())
 	}
 	if g.duplicateCommentWindow <= 0 {
 		g.duplicateCommentWindow = defaultDuplicateCommentWindow

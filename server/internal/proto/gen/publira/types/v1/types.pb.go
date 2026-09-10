@@ -1056,7 +1056,16 @@ type Episode struct {
 	// artist who took over at episode 12 is on episode 12 onwards and not on the
 	// eleven before it. Set where an Episode stands for one episode a reader or
 	// an editor opened; empty in the lists that carry an episode as a link.
-	Creators      []*Creator `protobuf:"bytes,9,rep,name=creators,proto3" json:"creators,omitempty"`
+	Creators []*Creator `protobuf:"bytes,9,rep,name=creators,proto3" json:"creators,omitempty"`
+	// How many readers have rated this episode. Set on the same reads `creators`
+	// is: a rating is given at the end of an episode, so the figure belongs to
+	// the episode a reader opened rather than to every link that names it.
+	//
+	// It counts readers rather than the points they gave, so it means the same
+	// thing whichever press mode the tenant chose. It is the stored tally rather
+	// than a count taken at read time, so the episode read carries one more
+	// column instead of one more scan.
+	RatingCount   int64 `protobuf:"varint,10,opt,name=rating_count,json=ratingCount,proto3" json:"rating_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1152,6 +1161,13 @@ func (x *Episode) GetCreators() []*Creator {
 		return x.Creators
 	}
 	return nil
+}
+
+func (x *Episode) GetRatingCount() int64 {
+	if x != nil {
+		return x.RatingCount
+	}
+	return 0
 }
 
 type EpisodeImage struct {
@@ -1898,7 +1914,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12/\n" +
 	"\x06genres\x18\x10 \x03(\v2\x17.publira.types.v1.GenreR\x06genres\x12)\n" +
 	"\x04tags\x18\x11 \x03(\v2\x15.publira.types.v1.TagR\x04tags\x12,\n" +
-	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xba\x02\n" +
+	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xdd\x02\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -1909,7 +1925,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
 	"\fscheduled_at\x18\a \x01(\tR\vscheduledAt\x12!\n" +
 	"\fpublished_at\x18\b \x01(\tR\vpublishedAt\x125\n" +
-	"\bcreators\x18\t \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\"\xd9\x01\n" +
+	"\bcreators\x18\t \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x12!\n" +
+	"\frating_count\x18\n" +
+	" \x01(\x03R\vratingCount\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +

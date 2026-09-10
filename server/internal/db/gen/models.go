@@ -256,6 +256,20 @@ type EpisodeListing struct {
 	TenantID           uuid.UUID     `json:"tenant_id"`
 }
 
+type EpisodeRating struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	Score     int16     `json:"score"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type EpisodeRatingCount struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	Count     int64     `json:"count"`
+}
+
 type EpisodeRead struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
@@ -555,6 +569,7 @@ type SeriesListing struct {
 	Status             string         `json:"status"`
 	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
 	AgeRating          string         `json:"age_rating"`
+	EpisodeRatingMode  sql.NullString `json:"episode_rating_mode"`
 }
 
 type SeriesTag struct {
@@ -606,6 +621,7 @@ type TenantConfig struct {
 	SiteTagline                    sql.NullString `json:"site_tagline"`
 	CommentMode                    string         `json:"comment_mode"`
 	CommentAutoHideReportThreshold int32          `json:"comment_auto_hide_report_threshold"`
+	EpisodeRatingMode              string         `json:"episode_rating_mode"`
 }
 
 type TenantImage struct {

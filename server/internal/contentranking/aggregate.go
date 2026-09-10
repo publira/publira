@@ -27,7 +27,7 @@ const (
 	// build from one an older build left behind. It is part of the snapshot's
 	// unique key, so a bumped version writes alongside the old rows rather
 	// than overwriting them.
-	AlgorithmVersion = 2
+	AlgorithmVersion = 3
 
 	// DailyRankingKey ranks a single day, WeeklyRankingKey the seven days
 	// ending on it. The days are the tenant's own, because the daily stats
@@ -57,16 +57,22 @@ const (
 // statement a reader makes, writing about it the next strongest, following a
 // series after that, and a view the weakest. A distinct viewer counts for more
 // than a repeat view, so a title read once by many outranks one refreshed by a
-// few. A comment sits above a favourite because it costs the reader sentences
+// few. A comment sits above a rating because it costs the reader sentences
 // rather than a tap, and below a purchase because it costs them no money.
+//
+// ratingWeight is per point, because a rating is 1 to 5 with no neutral: it is
+// how far a reader took their reaction, not a judgement with a bad end. Nothing
+// is subtracted from rating_sum for that reason. A whole rating is therefore
+// worth ratingWeight * maxRatingScore, the 8 that places it between a comment
+// and a distinct viewer.
 const (
 	viewWeight          = 1
 	uniqueViewerWeight  = 2
 	purchaseWeight      = 20
 	commentWeight       = 10
 	favoriteWeight      = 8
-	ratingWeight        = 3
-	neutralRatingScore  = 3
+	ratingWeight        = 1.6
+	maxRatingScore      = 5
 	recencyHalfLifeDays = 3
 )
 
@@ -272,7 +278,7 @@ func writeSnapshot(ctx context.Context, tx *sql.Tx, req snapshotRequest) (int, e
 		req.tenantID, req.periodStart, req.periodEnd, req.entityType, req.rankingKey,
 		req.itemLimit, AlgorithmVersion,
 		viewWeight, uniqueViewerWeight, purchaseWeight, favoriteWeight, ratingWeight,
-		neutralRatingScore, recencyHalfLifeDays, commentWeight,
+		recencyHalfLifeDays, commentWeight,
 	).Scan(&items)
 	if err != nil {
 		return 0, fmt.Errorf("upsert snapshot: %w", err)
@@ -306,9 +312,9 @@ func countRankableRows(ctx context.Context, tx *sql.Tx, req snapshotRequest) (in
 				OR purchase_count > 0
 				OR favorite_count > 0
 				OR comment_count > 0
-				OR rating_sum > $5::numeric * rating_count
+				OR rating_sum > 0
 			)
-	`, req.tenantID, req.entityType, req.periodStart, req.periodEnd, neutralRatingScore).Scan(&rankable)
+	`, req.tenantID, req.entityType, req.periodStart, req.periodEnd).Scan(&rankable)
 	return rankable, err
 }
 
@@ -316,11 +322,11 @@ func countRankableRows(ctx context.Context, tx *sql.Tx, req snapshotRequest) (in
 // snapshot's unique key.
 //
 // The score is a weighted sum over the window's daily rows, each faded by how
-// far it sits from the last day of the window. Ratings only ever add: a score
-// above neutral is a bonus, and one below it contributes nothing rather than
-// pushing a title down a popularity chart. Because the fade is measured
-// against the window rather than against now, re-running a past day produces
-// exactly the snapshot the first run produced.
+// far it sits from the last day of the window. Ratings only ever add, because
+// the scale has no bad end: one point is a reader who reacted a little, not one
+// who disliked the episode. Because the fade is measured against the window
+// rather than against now, re-running a past day produces exactly the snapshot
+// the first run produced.
 //
 // The order is fully determined — score, then purchases, then viewers, then
 // entity id — so two runs over unchanged stats agree on every position, not
@@ -345,9 +351,9 @@ WITH bounds AS (
 				+ $9::numeric * cds.unique_viewer_count
 				+ $10::numeric * cds.purchase_count
 				+ $11::numeric * cds.favorite_count
-				+ $15::numeric * cds.comment_count
-				+ $12::numeric * greatest(cds.rating_sum - $13::numeric * cds.rating_count, 0)
-			) * power(0.5, (b.window_end - cds.stat_date)::numeric / $14::numeric)
+				+ $14::numeric * cds.comment_count
+				+ $12::numeric * cds.rating_sum
+			) * power(0.5, (b.window_end - cds.stat_date)::numeric / $13::numeric)
 		) AS score
 	FROM content_daily_stats cds
 	CROSS JOIN bounds b

@@ -868,42 +868,73 @@ service FollowService {
   rpc ListMyFollows(ListMyFollowsRequest) returns (ListMyFollowsResponse) {}
 }
 
-// Kinds of public catalog targets a member can rate.
-enum RatingTargetType {
-  RATING_TARGET_TYPE_UNSPECIFIED = 0;
-  RATING_TARGET_TYPE_SERIES = 1;
-  RATING_TARGET_TYPE_EPISODE = 2;
+// How expressive an episode rating is, which a tenant decides and a series may
+// override. It reaches the client so the control knows whether to render a
+// plain button or one that can be pressed again.
+enum EpisodeRatingMode {
+  EPISODE_RATING_MODE_UNSPECIFIED = 0;
+  // One press says everything the reader can say, and stores the full 5.
+  EPISODE_RATING_MODE_SINGLE = 1;
+  // The reader presses their way up to 5.
+  EPISODE_RATING_MODE_MULTIPLE = 2;
 }
 
-// A public catalog target. The public ID is interpreted according to type.
-message RatingTarget {
-  RatingTargetType type = 1;
-  string public_id = 2;
-}
-
-// Records one rating by the authenticated member. Ratings are append-only: a
-// member who changes their mind sends this again and the earlier score is kept
-// as history, so aggregation decides for itself which one counts (the latest
-// per actor). There is no RPC to remove a rating.
-message RateContentRequest {
+// Records the authenticated reader's reaction to one episode, on the 1-5 scale
+// with no neutral point: more is better, and there is no way to call an episode
+// bad. A rating cannot be taken back or lowered, so there is no RPC for either,
+// and pressing again only ever raises the score towards its ceiling.
+message RateEpisodeRequest {
   publira.types.v1.TenantContext tenant = 1;
-  RatingTarget target = 2;
-  // 1 to 5 inclusive. Anything else, including the unset 0, is
-  // invalid_argument; the same range is a CHECK constraint on the stored row.
-  int32 score = 3;
+  string episode_public_id = 2;
+  // How many presses this call reports, so a client that batched a burst of
+  // them makes one request. <= 0 counts as one, and anything above 5 is capped.
+  // Ignored in EPISODE_RATING_MODE_SINGLE, where one press is the whole rating.
+  int32 presses = 3;
 }
 
-message RateContentResponse {
-  // The score that was recorded, echoed back from the stored row.
+message RateEpisodeResponse {
+  // The reader's score after this call, 1 to 5.
   int32 score = 1;
-  string rated_at = 2;
+  // How many readers have rated this episode, the same figure
+  // `publira.types.v1.Episode.rating_count` carries. It counts readers rather
+  // than presses, so it means the same thing whichever mode the tenant chose.
+  int64 rating_count = 2;
+  EpisodeRatingMode mode = 3;
+}
+
+message GetMyEpisodeRatingRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+}
+
+message GetMyEpisodeRatingResponse {
+  // 0 when this reader has not rated the episode, 1 to 5 once they have.
+  int32 score = 1;
+  int64 rating_count = 2;
+  EpisodeRatingMode mode = 3;
 }
 
 service RatingService {
-  // Records a rating for a currently public series or episode. Cross-tenant,
-  // unpublished, and missing targets are all surfaced as NotFound, matching
-  // FollowService, so a rating cannot be used to probe for hidden content.
-  rpc RateContent(RateContentRequest) returns (RateContentResponse) {}
+  // Rates an episode the authenticated reader may read, or raises the rating
+  // they already gave. The score is capped at 5, so a reader who is already
+  // there presses to no effect.
+  //
+  // What a press is worth is settled by the mode of the episode's series, which
+  // the server reads rather than taking from the request.
+  //
+  // Body access is required here and not on GetMyEpisodeRating, because a
+  // rating is given to something read. A locked episode is NotFound rather than
+  // permission_denied, matching MarkEpisodeAsRead: publication, tenant, and
+  // entitlement failures share one answer so this RPC cannot be used to probe
+  // for content the reader may not have.
+  rpc RateEpisode(RateEpisodeRequest) returns (RateEpisodeResponse) {}
+  // Returns the authenticated reader's rating of a currently published episode,
+  // how many readers have rated it, and which press mode governs it.
+  //
+  // It asks only that the episode be published, not that this reader may open
+  // its body: the answer is about a rating they already gave, and a rental that
+  // has run out does not take it back.
+  rpc GetMyEpisodeRating(GetMyEpisodeRatingRequest) returns (GetMyEpisodeRatingResponse) {}
 }
 
 // Kinds of public catalog targets a page view can be recorded for.

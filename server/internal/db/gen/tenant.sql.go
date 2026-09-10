@@ -101,7 +101,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 const createTenantConfig = `-- name: CreateTenantConfig :one
 INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
 VALUES ($1, $2, $3, $4)
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode
 `
 
 type CreateTenantConfigParams struct {
@@ -128,6 +128,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
+		&i.EpisodeRatingMode,
 	)
 	return i, err
 }
@@ -274,7 +275,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 }
 
 const getTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
-SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold
+SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode
 FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -292,6 +293,7 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
+		&i.EpisodeRatingMode,
 	)
 	return i, err
 }
@@ -469,7 +471,7 @@ const updateTenantConfig = `-- name: UpdateTenantConfig :one
 UPDATE tenant_config
 SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
 WHERE tenant_id = $1
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode
 `
 
 type UpdateTenantConfigParams struct {
@@ -496,6 +498,7 @@ func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfig
 		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
+		&i.EpisodeRatingMode,
 	)
 	return i, err
 }
@@ -637,7 +640,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET comment_mode = EXCLUDED.comment_mode,
     comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode
 `
 
 type UpsertTenantCommentSettingsParams struct {
@@ -666,6 +669,7 @@ func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTen
 		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
+		&i.EpisodeRatingMode,
 	)
 	return i, err
 }
