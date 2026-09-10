@@ -1,5 +1,13 @@
 import { getMessage } from "@publira/i18n";
+import {
+  EmptyState,
+  EmptyStateDescription,
+} from "@publira/ui-components/empty-state";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { resolveAccessToken } from "#lib/api-client";
 import type {
   EpisodeDetail,
@@ -47,20 +55,25 @@ export const EpisodeViewer = async ({
   previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
 }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-
+  // An episode whose pages are not published yet says so and nothing else,
+  // so the catalog the reader's own chrome needs is read past the guard.
   if (images.length === 0) {
     return (
       <EpisodeBodyNotice>
-        <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center text-muted-foreground">
-          {getMessage(messages, "host.episode.images_empty")}
-        </div>
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-72" />}>
+              <Message message="host.episode.images_empty" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
       </EpisodeBodyNotice>
     );
   }
 
-  const [tenantId, accessToken] = await Promise.all([
+  const locale = await getLocale();
+  const [messages, tenantId, accessToken] = await Promise.all([
+    loadHostMessages(locale),
     getTenantId(),
     resolveAccessToken(),
   ]);
@@ -77,7 +90,7 @@ export const EpisodeViewer = async ({
     : undefined;
 
   return (
-    <div className={`${VIEWER_HEIGHT_CLASS} w-full`}>
+    <div className={cn(VIEWER_HEIGHT_CLASS, "w-full")}>
       <EpisodeComicViewer
         copy={{
           enterFullscreen: getMessage(

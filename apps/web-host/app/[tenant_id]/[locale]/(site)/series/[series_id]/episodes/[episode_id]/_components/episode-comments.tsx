@@ -1,5 +1,9 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
+import {
+  EmptyState,
+  EmptyStateDescription,
+} from "@publira/ui-components/empty-state";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import {
   SectionError,
@@ -18,6 +22,10 @@ import {
   ActionFormPending,
   ActionFormSubmit,
 } from "#components/action-form";
+import {
+  ListPagination,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -99,34 +107,31 @@ export const EpisodeComments = async ({
   const ownComments = ownResult.ok ? ownResult.value : [];
   const comments = mergeOwnEpisodeComments(page, ownComments);
 
-  const previousLabel = getMessage(messages, "host.common.previous_page");
-  const nextLabel = getMessage(messages, "host.common.next_page");
   const pagination = (
-    <nav
+    <ListPagination
       aria-label={getMessage(messages, "host.episode.comments.pagination_aria")}
-      className="mt-6 flex items-center justify-center gap-6"
     >
-      {page.previousToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={episodeCommentsHref(episodePath, page.previousToken)}
-        >
-          {previousLabel}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">{previousLabel}</span>
-      )}
-      {page.nextToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={episodeCommentsHref(episodePath, page.nextToken)}
-        >
-          {nextLabel}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">{nextLabel}</span>
-      )}
-    </nav>
+      <ListPaginationStep
+        href={
+          page.previousToken
+            ? episodeCommentsHref(episodePath, page.previousToken)
+            : ""
+        }
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep
+        href={
+          page.nextToken ? episodeCommentsHref(episodePath, page.nextToken) : ""
+        }
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </ListPagination>
   );
 
   const commentedAt = (comment: EpisodeCommentItem) =>
@@ -170,23 +175,26 @@ export const EpisodeComments = async ({
   };
 
   return (
-    <section
-      className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8"
-      id="comments"
-    >
-      <h2 className="text-lg font-semibold">
-        {getMessage(messages, "host.episode.comments.title")}
-      </h2>
-      {commentMode === "approval_required" ? (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {getMessage(messages, "host.episode.comments.approval_notice")}
-        </p>
-      ) : null}
+    <section className="grid gap-4" id="comments">
+      <div className="grid gap-1">
+        <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
+          <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+            <Message message="host.episode.comments.title" />
+          </Suspense>
+        </h2>
+        {commentMode === "approval_required" ? (
+          <p className="text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="host.episode.comments.approval_notice" />
+            </Suspense>
+          </p>
+        ) : null}
+      </div>
 
       {viewer ? (
         <ActionForm
           action={postEpisodeCommentAction}
-          className="mt-6 grid gap-3"
+          className="grid max-w-(--measure-prose) gap-3"
         >
           <LocaleField />
           <input name="episodePublicId" type="hidden" value={episodePublicId} />
@@ -194,7 +202,9 @@ export const EpisodeComments = async ({
           <input name="tenantId" type="hidden" value={tenantId} />
           <Field>
             <FieldLabel>
-              {getMessage(messages, "host.episode.comments.body_label")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="host.episode.comments.body_label" />
+              </Suspense>
             </FieldLabel>
             {/* No `maxLength`: it counts UTF-16 code units, while the API
                 counts Unicode code points, so it would cut an emoji-heavy
@@ -223,8 +233,10 @@ export const EpisodeComments = async ({
           </ActionFormSubmit>
         </ActionForm>
       ) : (
-        <p className="mt-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          {getMessage(messages, "host.episode.comments.sign_in_prompt")}
+        <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="host.episode.comments.sign_in_prompt" />
+          </Suspense>
           <LinkButton
             render={
               <LocaleLink
@@ -233,13 +245,15 @@ export const EpisodeComments = async ({
             }
             variant="outline"
           >
-            {getMessage(messages, "host.episode.comments.sign_in")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="host.episode.comments.sign_in" />
+            </Suspense>
           </LinkButton>
         </p>
       )}
 
       {publicResult.ok ? null : (
-        <SectionError className="mt-6">
+        <SectionError>
           <SectionErrorHeading>
             <SectionErrorTitle>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -256,7 +270,7 @@ export const EpisodeComments = async ({
           the public comments: silently dropping those rows would take the
           reader's own pending comment off the page with nothing saying so. */}
       {ownResult.ok ? null : (
-        <SectionError className="mt-6">
+        <SectionError>
           <SectionErrorHeading>
             <SectionErrorTitle>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -271,23 +285,23 @@ export const EpisodeComments = async ({
       )}
 
       {publicResult.ok && comments.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
-          {getMessage(
-            messages,
-            token
-              ? "host.episode.comments.page_empty"
-              : "host.episode.comments.empty"
-          )}
-        </p>
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
+              {token ? (
+                <Message message="host.episode.comments.page_empty" />
+              ) : (
+                <Message message="host.episode.comments.empty" />
+              )}
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
       ) : null}
 
       {comments.length > 0 ? (
-        <ol className="mt-6 grid gap-3">
+        <ol className="divide-y divide-border border-t border-border">
           {comments.map((comment) => (
-            <li
-              className="rounded-xl border border-border/70 bg-background p-4"
-              key={comment.publicId}
-            >
+            <li className="py-4" key={comment.publicId}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium">{comment.authorName}</p>
@@ -296,11 +310,12 @@ export const EpisodeComments = async ({
                       {commentedAt(comment)}
                     </time>
                     {comment.awaitingApproval ? (
-                      <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 font-medium text-warning">
-                        {getMessage(
-                          messages,
-                          "host.episode.comments.awaiting_approval"
-                        )}
+                      <span className="ml-3 text-warning">
+                        <Suspense
+                          fallback={<SkeletonLine className="h-3 w-28" />}
+                        >
+                          <Message message="host.episode.comments.awaiting_approval" />
+                        </Suspense>
                       </span>
                     ) : null}
                   </p>
@@ -348,7 +363,9 @@ export const EpisodeComments = async ({
                   />
                 ) : null}
               </div>
-              <p className="mt-3 text-sm whitespace-pre-wrap">{comment.body}</p>
+              <p className="mt-3 max-w-(--measure-prose) text-sm whitespace-pre-wrap">
+                {comment.body}
+              </p>
             </li>
           ))}
         </ol>

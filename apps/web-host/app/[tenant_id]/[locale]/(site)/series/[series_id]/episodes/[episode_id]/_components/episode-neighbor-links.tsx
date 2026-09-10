@@ -2,6 +2,8 @@
 
 import { useViewerContext } from "@publira/comic-viewer";
 import { ChevronLeftIcon, ChevronRightIcon } from "@publira/icons";
+import { LinkButton } from "@publira/ui-components/button";
+import { cn } from "@publira/utils";
 
 import { LocaleLink } from "#components/locale-link";
 
@@ -15,9 +17,6 @@ export interface EpisodeNeighborLinksCopy {
   next: string;
   previous: string;
 }
-
-const LINK_CLASS_NAME =
-  "pointer-events-auto absolute top-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-3 py-1.5 text-sm font-medium text-neutral-100 transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100";
 
 /**
  * Links to the episodes either side of this one, drawn over the top of the
@@ -59,12 +58,17 @@ export const EpisodeNeighborLinks = ({
   return (
     <nav
       aria-label={copy.label}
-      className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-black/70 via-black/40 to-transparent"
+      className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16"
     >
       {previousHref === undefined ? null : (
-        <LocaleLink
-          className={`${LINK_CLASS_NAME} ${isRightToLeft ? "right-3" : "left-3"}`}
-          href={previousHref}
+        <LinkButton
+          className={cn(
+            "pointer-events-auto absolute top-3",
+            isRightToLeft ? "right-3" : "left-3"
+          )}
+          render={<LocaleLink href={previousHref} />}
+          size="sm"
+          variant="outline"
         >
           {isRightToLeft ? (
             <ChevronRightIcon aria-hidden="true" className="size-4" />
@@ -72,12 +76,17 @@ export const EpisodeNeighborLinks = ({
             <ChevronLeftIcon aria-hidden="true" className="size-4" />
           )}
           {copy.previous}
-        </LocaleLink>
+        </LinkButton>
       )}
       {nextHref === undefined ? null : (
-        <LocaleLink
-          className={`${LINK_CLASS_NAME} ${isRightToLeft ? "left-3" : "right-3"}`}
-          href={nextHref}
+        <LinkButton
+          className={cn(
+            "pointer-events-auto absolute top-3",
+            isRightToLeft ? "left-3" : "right-3"
+          )}
+          render={<LocaleLink href={nextHref} />}
+          size="sm"
+          variant="outline"
         >
           {copy.next}
           {isRightToLeft ? (
@@ -85,7 +94,7 @@ export const EpisodeNeighborLinks = ({
           ) : (
             <ChevronRightIcon aria-hidden="true" className="size-4" />
           )}
-        </LocaleLink>
+        </LinkButton>
       )}
     </nav>
   );

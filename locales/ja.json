@@ -1972,7 +1972,7 @@
       "detail_failed": "エピソードを取得できませんでした。時間をおいて再試行してください。",
       "end": {
         "back_to_series": "シリーズに戻る",
-        "up_next": "次のエピソード",
+        "more_episodes": "ほかのエピソード",
         "up_to_date_description": "「{$title}」にはこの先のエピソードがまだありません。フォローすると次の更新をお知らせします。",
         "up_to_date_title": "最新のエピソードまで読み終えました"
       },
@@ -1994,17 +1994,12 @@
         "previous": "前のエピソード",
         "previous_hint": "もう一度キーを押すと前のエピソードを開きます。"
       },
-      "page_count": "本文枚数",
       "page_count_value": "{$count}枚",
-      "price": "価格",
       "published": "公開 {$date}",
-      "published_on": "公開日",
       "reading_period": "閲覧期限",
       "reading_period_hours": "{$hours}時間",
       "reading_period_unlimited": "制限なし",
       "scheduled_at": "公開予定",
-      "series_detail": "シリーズ詳細",
-      "series_note": "シリーズ「{$title}」のエピソードです。",
       "to_series_detail": "シリーズ詳細へ",
       "viewer": {
         "enter_fullscreen": "全画面表示にする",

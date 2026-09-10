@@ -93,33 +93,87 @@ const nextEpisode: EpisodeNeighborItem = {
   title: "Third light",
 };
 
-const renderPanel = async (neighbor?: EpisodeNeighborItem) =>
+const previousEpisode: EpisodeNeighborItem = {
+  isFree: true,
+  orderIndex: 1,
+  price: 0,
+  publicId: "EPISODE_001",
+  title: "First light",
+};
+
+const renderPanel = async ({
+  marksNextEpisode = true,
+  neighbor,
+  previousNeighbor,
+}: {
+  marksNextEpisode?: boolean;
+  neighbor?: EpisodeNeighborItem;
+  previousNeighbor?: EpisodeNeighborItem;
+} = {}) =>
   render(
     await EpisodeEndPanel({
       episode,
+      marksNextEpisode,
       nextEpisode: neighbor,
+      previousEpisode: previousNeighbor,
       series,
       tenantId: "TENANT_001",
     })
   );
 
+/** The Shu dot, which is a drawing rather than something to read out. */
+const readingMarks = (container: HTMLElement) =>
+  container.querySelectorAll(".bg-secondary");
+
 describe("EpisodeEndPanel", () => {
-  it("offers the next episode as one link, with what it costs beside it", async () => {
-    await renderPanel(nextEpisode);
+  it("lists the episodes either side of this one as rows", async () => {
+    await renderPanel({
+      neighbor: nextEpisode,
+      previousNeighbor: previousEpisode,
+    });
 
     expect(
-      screen.getByRole("link", { name: "Third light" }).getAttribute("href")
+      screen.getByRole("heading", { name: "More episodes" })
+    ).toBeDefined();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(
+      screen.getByRole("link", { name: /Third light/u }).getAttribute("href")
     ).toBe("/series/SERIES_001/episodes/EPISODE_003");
-    expect(screen.getByRole("heading", { name: "Up next" })).toBeDefined();
-    expect(screen.getByText("Free")).toBeDefined();
-    expect(screen.getByText("#3")).toBeDefined();
+    expect(
+      screen.getByRole("link", { name: /First light/u }).getAttribute("href")
+    ).toBe("/series/SERIES_001/episodes/EPISODE_001");
+    expect(screen.getByText("Episode 3")).toBeDefined();
+    expect(screen.getByText("Episode 1")).toBeDefined();
+  });
+
+  it("marks the next episode alone, so the page keeps one Shu", async () => {
+    const { container } = await renderPanel({
+      neighbor: nextEpisode,
+      previousNeighbor: previousEpisode,
+    });
+
+    const marks = readingMarks(container);
+    expect(marks).toHaveLength(1);
+    expect(
+      marks[0]?.closest("a")?.getAttribute("href"),
+      "the mark sits on the row that opens the next episode"
+    ).toBe("/series/SERIES_001/episodes/EPISODE_003");
+  });
+
+  // A gated episode spends its Shu on the action that opens the body, so the
+  // row below carries none.
+  it("leaves the next episode unmarked where the body is not open", async () => {
+    const { container } = await renderPanel({
+      marksNextEpisode: false,
+      neighbor: nextEpisode,
+    });
+
+    expect(readingMarks(container)).toHaveLength(0);
   });
 
   it("names the price of a paid next episode rather than calling it free", async () => {
     await renderPanel({
-      ...nextEpisode,
-      isFree: false,
-      price: 500,
+      neighbor: { ...nextEpisode, isFree: false, price: 500 },
     });
 
     expect(screen.getByText("¥500")).toBeDefined();
@@ -127,13 +181,15 @@ describe("EpisodeEndPanel", () => {
   });
 
   it("keeps a free window free even where the episode carries a price", async () => {
-    await renderPanel({ ...nextEpisode, isFree: true, price: 500 });
+    await renderPanel({
+      neighbor: { ...nextEpisode, isFree: true, price: 500 },
+    });
 
     expect(screen.getByText("Free")).toBeDefined();
   });
 
   it("says the reader is up to date on the last episode, and offers to follow", async () => {
-    await renderPanel();
+    await renderPanel({ previousNeighbor: previousEpisode });
 
     expect(
       screen.getByRole("heading", { name: "You are up to date" })
@@ -151,13 +207,13 @@ describe("EpisodeEndPanel", () => {
   });
 
   it("keeps the next episode the only offer while there is one", async () => {
-    await renderPanel(nextEpisode);
+    await renderPanel({ neighbor: nextEpisode });
 
     expect(screen.queryByTestId("related-series")).toBeNull();
   });
 
   it("always leads back to the series", async () => {
-    await renderPanel(nextEpisode);
+    await renderPanel({ neighbor: nextEpisode });
 
     expect(
       screen

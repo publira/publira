@@ -1972,7 +1972,7 @@
       "detail_failed": "에피소드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "end": {
         "back_to_series": "시리즈로 돌아가기",
-        "up_next": "다음 에피소드",
+        "more_episodes": "다른 에피소드",
         "up_to_date_description": "“{$title}”에는 아직 다음 에피소드가 없습니다. 팔로우하면 다음 화가 올라올 때 알려드립니다.",
         "up_to_date_title": "최신 에피소드까지 읽었습니다"
       },
@@ -1994,17 +1994,12 @@
         "previous": "이전 에피소드",
         "previous_hint": "키를 한 번 더 누르면 이전 에피소드를 엽니다."
       },
-      "page_count": "페이지 수",
       "page_count_value": "{$count}쪽",
-      "price": "가격",
       "published": "{$date} 공개",
-      "published_on": "공개일",
       "reading_period": "열람 기한",
       "reading_period_hours": "{$hours}시간",
       "reading_period_unlimited": "제한 없음",
       "scheduled_at": "공개 예정",
-      "series_detail": "시리즈 상세",
-      "series_note": "“{$title}” 시리즈의 에피소드입니다.",
       "to_series_detail": "시리즈 상세로 이동",
       "viewer": {
         "enter_fullscreen": "전체 화면으로 보기",

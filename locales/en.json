@@ -1972,7 +1972,7 @@
       "detail_failed": "Could not load the episode. Please try again later.",
       "end": {
         "back_to_series": "Back to the series",
-        "up_next": "Up next",
+        "more_episodes": "More episodes",
         "up_to_date_description": "“{$title}” has no episode after this one yet. Follow the series to hear when the next one arrives.",
         "up_to_date_title": "You are up to date"
       },
@@ -1994,17 +1994,12 @@
         "previous": "Previous episode",
         "previous_hint": "Press the key again to open the previous episode."
       },
-      "page_count": "Pages",
       "page_count_value": "{$count} pages",
-      "price": "Price",
       "published": "Published {$date}",
-      "published_on": "Published",
       "reading_period": "Viewing period",
       "reading_period_hours": "{$hours} hours",
       "reading_period_unlimited": "Unlimited",
       "scheduled_at": "Scheduled",
-      "series_detail": "Series detail",
-      "series_note": "An episode of “{$title}”.",
       "to_series_detail": "Go to the series",
       "viewer": {
         "enter_fullscreen": "Enter full screen",
