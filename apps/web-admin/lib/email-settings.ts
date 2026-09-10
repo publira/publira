@@ -11,6 +11,7 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
+import { cacheTag } from "next/cache";
 
 import {
   isUnauthenticatedError,
@@ -68,6 +69,14 @@ export type TenantSmtpSettingsResult =
 export type TenantSmtpTestResult =
   | { ok: true; recipientEmail: string }
   | { ok: false; message: string };
+
+/**
+ * Tag the settings screen's cached read carries, so `updateTag` in the Server
+ * Action makes the saved SMTP settings visible in the same session instead of
+ * leaving the previous host and sender in the private cache.
+ */
+export const tenantEmailSettingsCacheTag = (tenantId: string): string =>
+  `tenant:${tenantId.trim()}:email-settings`;
 
 const genericErrorMessage = (messages: SharedMessages): string =>
   getMessage(messages, "admin.settings.email.failed");
@@ -154,6 +163,8 @@ export const getTenantEmailSettings = async (
       requiresSignIn: !sessionId,
     };
   }
+
+  cacheTag(tenantEmailSettingsCacheTag(normalizedTenantId));
 
   try {
     const response = await apiClient.emailSettings.getTenantEmailSettings(

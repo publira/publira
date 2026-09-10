@@ -5,20 +5,36 @@ import {
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { sendTenantSmtpTestEmail } from "./email-settings";
+import {
+  getTenantEmailSettings,
+  sendTenantSmtpTestEmail,
+  tenantEmailSettingsCacheTag,
+} from "./email-settings";
 import {
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "./email-settings-shared";
 
-const { mockGetAccessToken, mockSendTenantSmtpTestEmail } = vi.hoisted(() => ({
+const {
+  mockCacheTag,
+  mockGetAccessToken,
+  mockGetTenantEmailSettings,
+  mockSendTenantSmtpTestEmail,
+} = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockGetTenantEmailSettings: vi.fn(),
   mockSendTenantSmtpTestEmail: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api", () => ({
   apiClient: {
     emailSettings: {
+      getTenantEmailSettings: mockGetTenantEmailSettings,
       sendTenantSmtpTestEmail: mockSendTenantSmtpTestEmail,
     },
   },
@@ -86,6 +102,37 @@ describe("sendTenantSmtpTestEmail", () => {
         message: "SMTP 認証に失敗しました",
         ok: false,
       }
+    );
+  });
+});
+
+describe("getTenantEmailSettings", () => {
+  it("files the settings under the tenant email settings tag", async () => {
+    mockGetTenantEmailSettings.mockResolvedValueOnce({
+      settings: {
+        encryption: "starttls",
+        fromAddress: "noreply@example.com",
+        fromName: "Publira",
+        hasPassword: true,
+        host: "smtp.example.com",
+        port: 587,
+        replyTo: "",
+        smtpOverrideEnabled: true,
+        username: "mailer",
+      },
+    });
+
+    const result = await getTenantEmailSettings("TENANT001", "en");
+
+    expect(result.ok).toBe(true);
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:email-settings"
+    );
+  });
+
+  it("tenantEmailSettingsCacheTag normalizes the tenant id", () => {
+    expect(tenantEmailSettingsCacheTag("  TENANT001 ")).toBe(
+      "tenant:TENANT001:email-settings"
     );
   });
 });

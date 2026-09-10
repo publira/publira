@@ -14,6 +14,7 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
+import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   checkboxOnFormSchema,
   flagOneFormSchema,
@@ -190,6 +191,7 @@ export const createSeriesAction = async (
   }
 
   updateTag(seriesListCacheTag(parsed.data.tenantId));
+  updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
 
   redirect(`/series/${result.series.publicId}?created=1`);
 };
@@ -250,6 +252,7 @@ export const updateSeriesAction = async (
 
   updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
   updateTag(seriesListCacheTag(parsed.data.tenantId));
+  updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
 
   redirect(`/series/${parsed.data.publicId}?updated=1`);
 };

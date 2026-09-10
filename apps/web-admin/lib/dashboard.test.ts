@@ -1,9 +1,16 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSessionId, mockGetDashboardApi } = vi.hoisted(() => ({
-  mockGetDashboardApi: vi.fn(),
-  mockGetSessionId: vi.fn(),
+const { mockCacheTag, mockGetSessionId, mockGetDashboardApi } = vi.hoisted(
+  () => ({
+    mockCacheTag: vi.fn(),
+    mockGetDashboardApi: vi.fn(),
+    mockGetSessionId: vi.fn(),
+  })
+);
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./session", () => ({
@@ -175,5 +182,26 @@ describe("dashboard", () => {
       throw new Error("Expected ok result");
     }
     expect(result.queue[0].status).toBe("draft");
+  });
+
+  it("files the counts and the queue under the tenant dashboard tag", async () => {
+    mockGetDashboardApi.mockResolvedValueOnce({ queue: [], stats: {} });
+
+    const { getDashboard, tenantDashboardCacheTag } =
+      await import("./dashboard");
+
+    await getDashboard("TENANT001", "en");
+
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      tenantDashboardCacheTag("TENANT001")
+    );
+  });
+
+  it("tenantDashboardCacheTag normalizes the tenant id", async () => {
+    const { tenantDashboardCacheTag } = await import("./dashboard");
+
+    expect(tenantDashboardCacheTag("  TENANT001 ")).toBe(
+      "tenant:TENANT001:dashboard"
+    );
   });
 });

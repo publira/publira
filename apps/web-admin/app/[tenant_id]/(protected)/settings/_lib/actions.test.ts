@@ -8,7 +8,9 @@ const {
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantDefaultLocale,
+  mockUpdateTenantEmailSettings,
   mockUpdateTenantPaymentSettings,
+  mockUpdateTenantSiteSettings,
   mockUpdateTenantThemeSettings,
   mockUpdateTenantTimezone,
   mockUploadTenantIcon,
@@ -20,7 +22,9 @@ const {
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantDefaultLocale: vi.fn(),
+  mockUpdateTenantEmailSettings: vi.fn(),
   mockUpdateTenantPaymentSettings: vi.fn(),
+  mockUpdateTenantSiteSettings: vi.fn(),
   mockUpdateTenantThemeSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
   mockUploadTenantIcon: vi.fn(),
@@ -47,7 +51,9 @@ vi.mock("#lib/admin-auth", () => ({
 
 vi.mock("#lib/email-settings", () => ({
   sendTenantSmtpTestEmail: vi.fn(),
-  updateTenantEmailSettings: vi.fn(),
+  tenantEmailSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:email-settings`,
+  updateTenantEmailSettings: mockUpdateTenantEmailSettings,
 }));
 
 vi.mock("#lib/session", () => ({
@@ -55,7 +61,9 @@ vi.mock("#lib/session", () => ({
 }));
 
 vi.mock("#lib/site-settings", () => ({
-  updateTenantSiteSettings: vi.fn(),
+  tenantSiteSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:site-settings`,
+  updateTenantSiteSettings: mockUpdateTenantSiteSettings,
 }));
 
 vi.mock("#lib/tenant-default-locale", () => ({
@@ -879,6 +887,126 @@ describe("updateTenantLogoAction", () => {
       message: "Could not upload the logo.",
       ok: false,
     });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateSiteSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("clears the site settings tag so the saved copy is on the screen at once", async () => {
+    mockUpdateTenantSiteSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {
+        copyrightText: "Copyright 2026 Acme Inc.",
+        siteDescription: "A description",
+        siteTagline: "A tagline",
+      },
+    });
+
+    const { updateSiteSettingsAction } = await import("./actions");
+
+    const result = await updateSiteSettingsAction(
+      null,
+      textFormData({
+        copyright_text: "Copyright 2026 Acme Inc.",
+        site_description: "A description",
+        site_tagline: "A tagline",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "The settings were saved.",
+      ok: true,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:site-settings"
+    );
+  });
+
+  it("leaves the cache alone when the save fails", async () => {
+    mockUpdateTenantSiteSettings.mockResolvedValueOnce({
+      message: "Could not save the settings. Please try again later.",
+      ok: false,
+    });
+
+    const { updateSiteSettingsAction } = await import("./actions");
+
+    await updateSiteSettingsAction(
+      null,
+      textFormData({ site_tagline: "A tagline", tenant_id: "TENANT001" })
+    );
+
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateTenantEmailSettingsAction", () => {
+  const savedSmtpSettings = {
+    encryption: "starttls",
+    fromAddress: "noreply@example.com",
+    fromName: "Publira",
+    hasPassword: true,
+    host: "smtp.example.com",
+    port: 587,
+    replyTo: "",
+    smtpOverrideEnabled: true,
+    username: "mailer",
+  };
+
+  const smtpFormData = (): FormData =>
+    textFormData({
+      encryption: "starttls",
+      from_address: "noreply@example.com",
+      from_name: "Publira",
+      host: "smtp.example.com",
+      port: "587",
+      smtp_override_enabled: "on",
+      tenant_id: "TENANT001",
+      username: "mailer",
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("clears the email settings tag so the saved SMTP host is on the screen at once", async () => {
+    mockUpdateTenantEmailSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: savedSmtpSettings,
+    });
+
+    const { updateTenantEmailSettingsAction } = await import("./actions");
+
+    const result = await updateTenantEmailSettingsAction(null, smtpFormData());
+
+    expect(result).toEqual({
+      message: "The email settings were saved.",
+      ok: true,
+      settings: savedSmtpSettings,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:email-settings"
+    );
+  });
+
+  it("leaves the cache alone when the save fails", async () => {
+    mockUpdateTenantEmailSettings.mockResolvedValueOnce({
+      message: "Could not save the email settings.",
+      ok: false,
+    });
+
+    const { updateTenantEmailSettingsAction } = await import("./actions");
+
+    await updateTenantEmailSettingsAction(null, smtpFormData());
+
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });

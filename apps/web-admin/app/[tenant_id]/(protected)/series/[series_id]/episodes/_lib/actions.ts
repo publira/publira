@@ -5,12 +5,14 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { tenantDashboardCacheTag } from "#lib/dashboard";
 import { createEpisode, reorderEpisodePage } from "#lib/episode";
 import {
   jsonStringArrayFormSchema,
@@ -151,6 +153,8 @@ export const createEpisodeAction = async (
   if (!result.ok) {
     return toCreateFailure(result.message);
   }
+
+  updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
 
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${result.episode.publicId}?created=1`

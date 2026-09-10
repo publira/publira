@@ -7,6 +7,7 @@ const {
   mockRedirect,
   mockReorderEpisodeImages,
   mockUpdateEpisodePublishSchedule,
+  mockUpdateTag,
   mockUploadEpisodePages,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
@@ -15,6 +16,7 @@ const {
   mockRedirect: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
   mockUpdateEpisodePublishSchedule: vi.fn(),
+  mockUpdateTag: vi.fn(),
   mockUploadEpisodePages: vi.fn(),
 }));
 
@@ -26,11 +28,19 @@ vi.mock("#lib/action-messages", async () => {
   };
 });
 
+vi.mock("next/cache", () => ({
+  updateTag: mockUpdateTag,
+}));
+
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
+
+vi.mock("#lib/dashboard", () => ({
+  tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
+}));
 
 vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -112,6 +122,9 @@ describe("episode actions", () => {
       },
       "en"
     );
+    // The dashboard counts drafts and scheduled episodes and lists them in its
+    // publishing queue, so a new schedule changes what it shows.
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?schedule_updated=1"
     );

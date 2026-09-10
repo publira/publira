@@ -36,6 +36,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/dashboard", () => ({
+  tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
+}));
+
 vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,
 }));
@@ -193,6 +197,9 @@ describe("series actions", () => {
     // And clearing the list tag is what puts it back on `/series`, which reads
     // its rows from a cache entry the per-series tag does not reach.
     expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
+    // The dashboard counts published series and names the series each queued
+    // episode belongs to, so a publish or a retitle changes what it shows.
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
   });
 
   it("updating the basics rejects a published_at that cannot be read as a date and time", async () => {
@@ -266,6 +273,7 @@ describe("series actions", () => {
     await createSeriesAction(null, formData);
 
     expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
     expect(mockRedirect).toHaveBeenCalledWith("/series/SERIES001?created=1");
   });
 });
