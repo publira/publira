@@ -19,6 +19,7 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   sendTenantSmtpTestEmail,
+  tenantEmailSettingsCacheTag,
   updateTenantEmailSettings,
 } from "#lib/email-settings";
 import {
@@ -37,7 +38,10 @@ import {
   tenantPaymentSettingsCacheTag,
   updateTenantPaymentSettings,
 } from "#lib/payment-settings";
-import { updateTenantSiteSettings } from "#lib/site-settings";
+import {
+  tenantSiteSettingsCacheTag,
+  updateTenantSiteSettings,
+} from "#lib/site-settings";
 import {
   tenantCommentSettingsCacheTag,
   updateTenantCommentSettings,
@@ -486,6 +490,8 @@ export const updateSiteSettingsAction = async (
       ok: false,
     };
   }
+
+  updateTag(tenantSiteSettingsCacheTag(tenantId));
 
   return {
     message: getMessage(messages, "admin.settings.site.saved"),
@@ -994,6 +1000,8 @@ export const updateTenantEmailSettingsAction = async (
       ok: false,
     };
   }
+
+  updateTag(tenantEmailSettingsCacheTag(input.tenantId));
 
   return {
     message: getMessage(messages, "admin.settings.email.saved"),

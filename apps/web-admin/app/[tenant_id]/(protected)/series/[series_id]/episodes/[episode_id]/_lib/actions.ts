@@ -5,12 +5,14 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   reorderEpisodeImages,
   updateEpisodePublishSchedule,
@@ -174,6 +176,8 @@ export const updateEpisodeScheduleAction = async (
   if (!result.ok) {
     return toFailure(result.message, "schedule");
   }
+
+  updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
 
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?schedule_updated=1`

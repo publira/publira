@@ -4,6 +4,7 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
+import { cacheTag } from "next/cache";
 
 import {
   isUnauthenticatedError,
@@ -43,6 +44,16 @@ const genericLoadErrorMessage = (messages: SharedMessages): string =>
 const genericUpdateErrorMessage = (messages: SharedMessages): string =>
   getMessage(messages, "admin.settings.site.save_failed");
 
+/**
+ * Tag the settings screen's cached read carries, so `updateTag` in the Server
+ * Action makes the saved copy visible in the same session instead of leaving
+ * the previous text in the private cache. Distinct from `tenant:<id>:site`,
+ * which carries the public read of the tenant's name, theme, and default
+ * locale — none of which this screen writes.
+ */
+export const tenantSiteSettingsCacheTag = (tenantId: string): string =>
+  `tenant:${tenantId.trim()}:site-settings`;
+
 const mapErrorToMessage = (
   error: unknown,
   fallbackMessage: string,
@@ -66,6 +77,8 @@ export const getTenantSiteSettings = async (
       settings: defaultSettings,
     };
   }
+
+  cacheTag(tenantSiteSettingsCacheTag(normalizedTenantId));
 
   try {
     const response = await apiClient.auth.getTenantConfig(

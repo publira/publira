@@ -3,6 +3,7 @@ import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import { cacheTag } from "next/cache";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
@@ -32,6 +33,16 @@ export type GetDashboardResult =
       requiresSignIn: boolean;
     };
 
+/**
+ * Tag the dashboard's cached read carries, so `updateTag` in a Server Action
+ * that writes what it reports — a series' publish state or title, an episode's
+ * schedule — makes the new counts and publishing queue visible in the same
+ * session instead of leaving the numbers from before the save in the private
+ * cache.
+ */
+export const tenantDashboardCacheTag = (tenantId: string): string =>
+  `tenant:${tenantId.trim()}:dashboard`;
+
 const mapErrorToMessage = (error: unknown, locale: Locale): string =>
   rpcErrorMessage(
     error,
@@ -53,6 +64,8 @@ export const getDashboard = async (
       requiresSignIn: true,
     };
   }
+
+  cacheTag(tenantDashboardCacheTag(tenantId));
 
   try {
     const response = await apiClient.dashboard.getDashboard(
