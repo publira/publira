@@ -164,6 +164,27 @@ test.describe("web-host locale in the URL", () => {
     await expectDocumentLocale(page, "한국어");
   });
 
+  test("Simplified Chinese is reached through the switcher and keeps its prefix", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/series"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
+    ).toBeVisible();
+
+    await switchHostLocale(page, "English", "简体中文");
+
+    // The only registry code carrying a subtag, so this is also what proves a
+    // prefix that is not a bare language survives the switcher and the URL.
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeHostPath("zh-Hans", "/series")
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: "系列" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "简体中文");
+  });
+
   test("a locale the site does not serve reaches no page at all", async ({
     page,
   }) => {

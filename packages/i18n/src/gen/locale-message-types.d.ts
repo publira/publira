@@ -5,8 +5,9 @@ import type { Locale, MessageKey } from "../../dist/index.mjs";
 import type ja from "../../../../locales/ja.json";
 import type en from "../../../../locales/en.json";
 import type ko from "../../../../locales/ko.json";
+import type zhHans from "../../../../locales/zh-Hans.json";
 
-export type SharedMessages = typeof ja | typeof en | typeof ko;
+export type SharedMessages = typeof ja | typeof en | typeof ko | typeof zhHans;
 
 export declare const sharedCatalog: (locale: Locale) => SharedMessages;
 

@@ -40,6 +40,11 @@ void main() {
       expect(supportedLocaleForCode(' en '), const Locale('en'));
     });
 
+    test('answers the Simplified Chinese catalog for its subtagged code', () {
+      expect(supportedLocaleForCode('zh-Hans'), zhHans);
+      expect(supportedLocaleForCode('zh-hans'), zhHans);
+    });
+
     test('answers null for a code no catalog carries', () {
       expect(supportedLocaleForCode('fr'), isNull);
       expect(supportedLocaleForCode('en-US'), isNull);
@@ -59,6 +64,15 @@ void main() {
       expect(matchDeviceLocale(const [Locale('en', 'GB')]), const Locale('en'));
       expect(matchDeviceLocale(const [Locale('ja', 'JP')]), const Locale('ja'));
       expect(matchDeviceLocale(const [Locale('ko', 'KR')]), const Locale('ko'));
+    });
+
+    // The registry carries one Chinese catalog, so a device set to any
+    // Chinese reaches it: outright, through the script its region implies,
+    // or through the language alone.
+    test('reaches the Simplified Chinese catalog from a device set to it', () {
+      expect(matchDeviceLocale(const [zhHans]), zhHans);
+      expect(matchDeviceLocale(const [Locale('zh', 'CN')]), zhHans);
+      expect(matchDeviceLocale(const [Locale('zh')]), zhHans);
     });
 
     test('answers null when no device locale names a catalog', () {

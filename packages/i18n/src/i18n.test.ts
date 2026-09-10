@@ -6,6 +6,7 @@ import enCatalog from "../../../locales/en.json" with { type: "json" };
 import localeIndex from "../../../locales/index.json" with { type: "json" };
 import jaCatalog from "../../../locales/ja.json" with { type: "json" };
 import koCatalog from "../../../locales/ko.json" with { type: "json" };
+import zhHansCatalog from "../../../locales/zh-Hans.json" with { type: "json" };
 import {
   formatMessage,
   getLocales,
@@ -48,9 +49,18 @@ const koFixture = {
   },
 } as const;
 
+const zhHansFixture = {
+  greeting: "你好，{$name}",
+  nav: {
+    home: "首页",
+  },
+} as const;
+
 /** Compile-time: the root catalogs must match each other with no extra keys. */
 const enMatchesJa: ExactCatalog<typeof enCatalog, typeof jaCatalog> = enCatalog;
 const koMatchesEn: ExactCatalog<typeof koCatalog, typeof enCatalog> = koCatalog;
+const zhHansMatchesEn: ExactCatalog<typeof zhHansCatalog, typeof enCatalog> =
+  zhHansCatalog;
 
 const missing: unknown = undefined;
 
@@ -270,6 +280,10 @@ describe("loadMessages", () => {
         imported.push("ko");
         return Promise.resolve(koFixture);
       },
+      "zh-Hans": () => {
+        imported.push("zh-Hans");
+        return Promise.resolve(zhHansFixture);
+      },
     });
 
     expect(imported).toEqual(["en"]);
@@ -281,6 +295,8 @@ describe("loadMessages", () => {
       en: () => Promise.resolve(asModuleNamespace({ default: enFixture })),
       ja: () => Promise.resolve(asModuleNamespace({ default: jaFixture })),
       ko: () => Promise.resolve(asModuleNamespace({ default: koFixture })),
+      "zh-Hans": () =>
+        Promise.resolve(asModuleNamespace({ default: zhHansFixture })),
     });
 
     expect(catalog).toEqual(jaFixture);
@@ -295,6 +311,7 @@ describe("loadMessages", () => {
       en: () => Promise.resolve(enFixture),
       ja: () => Promise.resolve(catalogWithDefault),
       ko: () => Promise.resolve(koFixture),
+      "zh-Hans": () => Promise.resolve(zhHansFixture),
     });
 
     expect(loaded).toEqual(catalogWithDefault);
@@ -368,6 +385,10 @@ describe("getMessage", () => {
   it("reads the shared root catalogs by dotted key", () => {
     expect(enMatchesJa).toBe(enCatalog);
     expect(koMatchesEn).toBe(koCatalog);
+    expect(zhHansMatchesEn).toBe(zhHansCatalog);
+    expect(getMessage(zhHansCatalog, "errors.validation")).toBe(
+      "请检查您输入的内容。"
+    );
     expect(getMessage(koCatalog, "errors.validation")).toBe(
       "입력한 내용을 확인해 주세요."
     );

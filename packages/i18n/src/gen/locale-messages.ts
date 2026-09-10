@@ -12,6 +12,8 @@ const importers = {
   ja: () => import("../../../../locales/ja.json", { with: { type: "json" } }),
   en: () => import("../../../../locales/en.json", { with: { type: "json" } }),
   ko: () => import("../../../../locales/ko.json", { with: { type: "json" } }),
+  "zh-Hans": () =>
+    import("../../../../locales/zh-Hans.json", { with: { type: "json" } }),
 } satisfies LocaleCatalogImporters<LocaleMessages>;
 
 export const loadLocaleMessages = (

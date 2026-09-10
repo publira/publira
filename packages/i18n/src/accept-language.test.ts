@@ -75,6 +75,7 @@ describe("negotiateInitialLocale", () => {
     expect(negotiateInitialLocale("ja")).toBe("ja");
     expect(negotiateInitialLocale("en")).toBe("en");
     expect(negotiateInitialLocale("ko")).toBe("ko");
+    expect(negotiateInitialLocale("zh-Hans")).toBe("zh-Hans");
   });
 
   it("matches a subtagged range against its base language", () => {
@@ -82,7 +83,17 @@ describe("negotiateInitialLocale", () => {
     expect(negotiateInitialLocale("en-US")).toBe("en");
     expect(negotiateInitialLocale("en-GB")).toBe("en");
     expect(negotiateInitialLocale("ko-KR")).toBe("ko");
-    expect(negotiateInitialLocale("zh-Hant-TW,ja-JP")).toBe("ja");
+    expect(negotiateInitialLocale("th-TH,ja-JP")).toBe("ja");
+  });
+
+  it("reaches the Simplified Chinese catalog from the ranges a browser sends", () => {
+    expect(negotiateInitialLocale("zh-CN")).toBe("zh-Hans");
+    expect(negotiateInitialLocale("zh-Hans-CN")).toBe("zh-Hans");
+    expect(negotiateInitialLocale("zh")).toBe("zh-Hans");
+    // Simplified is the only Chinese catalog the registry holds, so a
+    // Traditional range reaches it through the language rather than the
+    // script. A zh-Hant catalog would take these instead.
+    expect(negotiateInitialLocale("zh-TW")).toBe("zh-Hans");
   });
 
   it("ignores the case of a language tag", () => {

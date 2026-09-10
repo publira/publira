@@ -14,6 +14,11 @@
       "code": "ko",
       "intl": "ko-KR",
       "label": "한국어"
+    },
+    {
+      "code": "zh-Hans",
+      "intl": "zh-Hans-CN",
+      "label": "简体中文"
     }
   ]
 }

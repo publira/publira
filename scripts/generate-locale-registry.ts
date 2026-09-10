@@ -144,39 +144,76 @@ if (catalogCodes.size > 0) {
 }
 
 const quote = (value: string) => JSON.stringify(value);
+
+/**
+ * The binding a catalog is imported under. A locale code carrying a subtag is
+ * a valid BCP 47 tag and not a valid JavaScript identifier, so `zh-Hans` binds
+ * as `zhHans`; the code itself stays the key of every generated record.
+ */
+const binding = (code: string): string =>
+  code
+    .split("-")
+    .map((segment, position) =>
+      position === 0
+        ? segment
+        : `${segment.slice(0, 1).toUpperCase()}${segment.slice(1)}`
+    )
+    .join("");
+
+/** The same code as a property name, quoted only when it has to be. */
+const property = (code: string): string =>
+  /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(code) ? code : quote(code);
+
+/**
+ * The one-line form while it stays inside the formatter's print width, and the
+ * wrapped form once a longer code pushes it past. Emitting what the formatter
+ * would produce keeps a locale added later from rewriting the lines above it.
+ */
+const printWidth = 80;
+const fitted = (oneLine: string, wrapped: string): string =>
+  oneLine.length <= printWidth ? oneLine : wrapped;
+
 const imports = locales
   .map(
     ({ code }) =>
-      `import ${code} from "../../../../locales/${code}.json" with { type: "json" };`
+      `import ${binding(code)} from "../../../../locales/${code}.json" with { type: "json" };`
   )
   .join(newline);
 const typeImports = locales
   .map(
-    ({ code }) => `import type ${code} from "../../../../locales/${code}.json";`
+    ({ code }) =>
+      `import type ${binding(code)} from "../../../../locales/${code}.json";`
   )
   .join(newline);
 const dynamicImports = locales
-  .map(
-    ({ code }) =>
-      `  ${code}: () => import("../../../../locales/${code}.json", { with: { type: "json" } }),`
-  )
+  .map(({ code }) => {
+    const call = `import("../../../../locales/${code}.json", { with: { type: "json" } })`;
+    const oneLine = `  ${property(code)}: () => ${call},`;
+    return fitted(oneLine, `  ${property(code)}: () =>${newline}    ${call},`);
+  })
   .join(newline);
-const catalogTypes = locales.map(({ code }) => `typeof ${code}`).join(" | ");
+const catalogTypes = locales
+  .map(({ code }) => `typeof ${binding(code)}`)
+  .join(" | ");
 const codesLiteral = locales.map(({ code }) => quote(code)).join(", ");
 const localeDetails = locales
   .map(
     ({ code, intl, label }) =>
-      `  ${code}: { intl: ${quote(intl)}, label: ${quote(label)} },`
+      `  ${property(code)}: { intl: ${quote(intl)}, label: ${quote(label)} },`
   )
   .join(newline);
 const catalogEntries = locales
-  .map(({ code }) => `  ${code}: ${code}MatchesCatalogs,`)
+  .map(({ code }) => `  ${property(code)}: ${binding(code)}MatchesCatalogs,`)
   .join(newline);
 const exactCatalogs = locales
-  .map(
-    ({ code }) =>
-      `const ${code}MatchesCatalogs: ExactCatalog<typeof ${code}, LocaleMessages> = ${code};`
-  )
+  .map(({ code }) => {
+    const name = `${binding(code)}MatchesCatalogs`;
+    const oneLine = `const ${name}: ExactCatalog<typeof ${binding(code)}, LocaleMessages> = ${binding(code)};`;
+    return fitted(
+      oneLine,
+      `const ${name}: ExactCatalog<${newline}  typeof ${binding(code)},${newline}  LocaleMessages${newline}> = ${binding(code)};`
+    );
+  })
   .join(newline);
 const goCodes = locales.map(({ code }) => quote(code)).join(", ");
 const generatedHeader =

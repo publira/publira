@@ -78,6 +78,23 @@ test.describe("web-admin display language", () => {
     await expectDocumentLocale(page, "한국어");
     expect(await storedLocaleCookie(page)).toBe("ko");
   });
+
+  // `zh-Hans` is the only registry code with a subtag, so it is also what
+  // proves the cookie and `<html lang>` carry such a code unchanged.
+  test("the switcher serves Simplified Chinese as well", async ({ page }) => {
+    await signInAsSeedAdmin(page, "/settings");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+
+    await switchConsoleLocale(page, "English", "简体中文");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "设置" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "简体中文");
+    expect(await storedLocaleCookie(page)).toBe("zh-Hans");
+  });
 });
 
 /**
