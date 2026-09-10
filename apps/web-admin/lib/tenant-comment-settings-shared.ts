@@ -4,7 +4,7 @@
  * settings form, the `FormData` it submits, and the catalog keys naming each
  * option are all the same three strings.
  *
- * Kept apart from `tenant-comment-mode.ts` because the settings card is a
+ * Kept apart from `tenant-comment-settings.ts` because the settings card is a
  * Client Component: importing the value from the module that reads the session
  * would pull `next/headers` into the browser graph.
  */
@@ -21,3 +21,10 @@ export const isTenantCommentMode = (
   value: string
 ): value is TenantCommentMode =>
   TENANT_COMMENT_MODES.some((mode) => mode === value);
+
+/**
+ * The largest automatic removal threshold the card offers, mirroring the
+ * ceiling the Go server enforces. The field is validated here only so an
+ * operator is told before a round trip; the server stays the authority.
+ */
+export const MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD = 1000;

@@ -31,7 +31,7 @@ INSERT INTO audit_logs (
 type InsertAuditLogParams struct {
 	ID          uuid.UUID      `json:"id"`
 	TenantID    uuid.UUID      `json:"tenant_id"`
-	ActorUserID uuid.UUID      `json:"actor_user_id"`
+	ActorUserID uuid.NullUUID  `json:"actor_user_id"`
 	ActorRole   string         `json:"actor_role"`
 	Action      string         `json:"action"`
 	TargetType  sql.NullString `json:"target_type"`
@@ -149,7 +149,7 @@ type ListAuditLogsByTenantAscParams struct {
 type ListAuditLogsByTenantAscRow struct {
 	ID            uuid.UUID      `json:"id"`
 	TenantID      uuid.UUID      `json:"tenant_id"`
-	ActorUserID   uuid.UUID      `json:"actor_user_id"`
+	ActorUserID   uuid.NullUUID  `json:"actor_user_id"`
 	ActorRole     string         `json:"actor_role"`
 	Action        string         `json:"action"`
 	TargetType    sql.NullString `json:"target_type"`
@@ -260,7 +260,7 @@ type ListAuditLogsByTenantDescParams struct {
 type ListAuditLogsByTenantDescRow struct {
 	ID            uuid.UUID      `json:"id"`
 	TenantID      uuid.UUID      `json:"tenant_id"`
-	ActorUserID   uuid.UUID      `json:"actor_user_id"`
+	ActorUserID   uuid.NullUUID  `json:"actor_user_id"`
 	ActorRole     string         `json:"actor_role"`
 	Action        string         `json:"action"`
 	TargetType    sql.NullString `json:"target_type"`

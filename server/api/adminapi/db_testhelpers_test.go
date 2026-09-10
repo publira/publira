@@ -148,6 +148,10 @@ func (e *adminDBEnv) themeClient() publiraadminv1connect.TenantThemeServiceClien
 	return publiraadminv1connect.NewTenantThemeServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *adminDBEnv) tenantSettingsClient() publiraadminv1connect.TenantSettingsServiceClient {
+	return publiraadminv1connect.NewTenantSettingsServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *adminDBEnv) authClient() publiraadminv1connect.AdminAuthServiceClient {
 	return publiraadminv1connect.NewAdminAuthServiceClient(e.Server.Client(), e.Server.URL)
 }

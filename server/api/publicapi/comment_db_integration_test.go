@@ -41,11 +41,16 @@ func (e *publicDBEnv) setCommentMode(t *testing.T, tenantID uuid.UUID, mode stri
 	}
 }
 
-// hideComment removes a comment the way the admin console does, through
-// AdminCommentService on its own RLS-bound role. Driving the real RPC is what
-// makes the silence of a removal a property of moderation rather than of a
-// hand-written UPDATE this test invented.
-func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff testutil.TenantUser, publicID string) {
+// adminCommentConsole is the moderation console as these tests drive it:
+// AdminCommentService on its own RLS-bound role, reached with a staff token.
+// Driving the real RPCs is what makes what staff can do a property of
+// moderation rather than of a hand-written UPDATE a test invented.
+type adminCommentConsole struct {
+	client publiraadminv1connect.AdminCommentServiceClient
+	token  string
+}
+
+func (e *publicDBEnv) openAdminCommentConsole(t *testing.T, tenant testutil.Tenant, staff testutil.TenantUser) adminCommentConsole {
 	t.Helper()
 
 	adminDB := e.PG.OpenAdminDB(t)
@@ -76,14 +81,23 @@ func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff te
 		t.Fatalf("issue admin token: %v", err)
 	}
 
+	return adminCommentConsole{
+		client: publiraadminv1connect.NewAdminCommentServiceClient(adminServer.Client(), adminServer.URL),
+		token:  token,
+	}
+}
+
+func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff testutil.TenantUser, publicID string) {
+	t.Helper()
+
+	console := e.openAdminCommentConsole(t, tenant, staff)
 	req := connect.NewRequest(&publiraadminv1.HideCommentRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		PublicId: publicID,
 		Reason:   "Removed for this test.",
 	})
-	req.Header().Set("Authorization", "Bearer "+token)
-	if _, err := publiraadminv1connect.NewAdminCommentServiceClient(adminServer.Client(), adminServer.URL).
-		HideComment(context.Background(), req); err != nil {
+	req.Header().Set("Authorization", "Bearer "+console.token)
+	if _, err := console.client.HideComment(context.Background(), req); err != nil {
 		t.Fatalf("HideComment %s: %v", publicID, err)
 	}
 }

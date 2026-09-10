@@ -344,30 +344,38 @@ func TestUpdateTenantDefaultLocaleRequiresSession(t *testing.T) {
 }
 
 func tenantConfigColumns() []string {
-	return []string{"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode"}
+	return []string{"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode", "comment_auto_hide_report_threshold"}
 }
 
-func expectTenantConfigWithCommentMode(
+func tenantConfigRow(tenantID uuid.UUID, now time.Time, mode string, threshold int32) *sqlmock.Rows {
+	return sqlmock.NewRows(tenantConfigColumns()).
+		AddRow(tenantID, nil, nil, now, now, nil, mode, threshold)
+}
+
+func expectTenantConfigWithCommentSettings(
 	mock sqlmock.Sqlmock,
 	tenantID uuid.UUID,
 	now time.Time,
 	mode string,
+	threshold int32,
 ) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
-			AddRow(tenantID, nil, nil, now, now, nil, mode))
+		WillReturnRows(tenantConfigRow(tenantID, now, mode, threshold))
 }
 
-func TestGetTenantCommentModeReturnsTheStoredMode(t *testing.T) {
+func TestGetTenantCommentSettingsReturnsTheStoredValues(t *testing.T) {
 	tests := []struct {
-		name string
-		mode string
-		want publirattypesv1.CommentMode
+		name          string
+		mode          string
+		threshold     int32
+		want          publirattypesv1.CommentMode
+		wantThreshold uint32
 	}{
-		{name: "disabled", mode: "disabled", want: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED},
-		{name: "immediate", mode: "immediate", want: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE},
-		{name: "approval required", mode: "approval_required", want: publirattypesv1.CommentMode_COMMENT_MODE_APPROVAL_REQUIRED},
+		{name: "disabled", mode: "disabled", threshold: 3, want: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED, wantThreshold: 3},
+		{name: "immediate", mode: "immediate", threshold: 5, want: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE, wantThreshold: 5},
+		{name: "approval required", mode: "approval_required", threshold: 1, want: publirattypesv1.CommentMode_COMMENT_MODE_APPROVAL_REQUIRED, wantThreshold: 1},
+		{name: "automatic removal turned off", mode: "immediate", threshold: 0, want: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE, wantThreshold: 0},
 	}
 
 	for _, tt := range tests {
@@ -379,17 +387,20 @@ func TestGetTenantCommentModeReturnsTheStoredMode(t *testing.T) {
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
-			expectTenantConfigWithCommentMode(mock, tenantID, now, tt.mode)
+			expectTenantConfigWithCommentSettings(mock, tenantID, now, tt.mode, tt.threshold)
 
 			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			resp, err := client.GetTenantCommentMode(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentModeRequest{
+			resp, err := client.GetTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentSettingsRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			}, sessionToken))
 			if err != nil {
-				t.Fatalf("GetTenantCommentMode: %v", err)
+				t.Fatalf("GetTenantCommentSettings: %v", err)
 			}
 			if resp.Msg.CommentMode != tt.want {
 				t.Fatalf("comment_mode = %v, want %v", resp.Msg.CommentMode, tt.want)
+			}
+			if resp.Msg.AutoHideReportThreshold != tt.wantThreshold {
+				t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.Msg.AutoHideReportThreshold, tt.wantThreshold)
 			}
 			assertExpectations(t, mock)
 		})
@@ -397,8 +408,8 @@ func TestGetTenantCommentModeReturnsTheStoredMode(t *testing.T) {
 }
 
 // A tenant with no config row has chosen nothing about commenting, which is the
-// answer the column's own default gives too.
-func TestGetTenantCommentModeReportsDisabledWithoutAConfigRow(t *testing.T) {
+// answer the columns' own defaults give too.
+func TestGetTenantCommentSettingsReportsTheColumnDefaultsWithoutAConfigRow(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
@@ -411,21 +422,24 @@ func TestGetTenantCommentModeReportsDisabledWithoutAConfigRow(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantCommentMode(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentModeRequest{
+	resp, err := client.GetTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}, sessionToken))
 	if err != nil {
-		t.Fatalf("GetTenantCommentMode: %v", err)
+		t.Fatalf("GetTenantCommentSettings: %v", err)
 	}
 	if resp.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
 		t.Fatalf("comment_mode = %v, want COMMENT_MODE_DISABLED", resp.Msg.CommentMode)
+	}
+	if resp.Msg.AutoHideReportThreshold != defaultCommentAutoHideReportThreshold {
+		t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.Msg.AutoHideReportThreshold, defaultCommentAutoHideReportThreshold)
 	}
 	assertExpectations(t, mock)
 }
 
 // A stored mode this build cannot act on is reported rather than answered with a
 // stand-in: the console would otherwise show a policy the posting path refuses.
-func TestGetTenantCommentModeFailsOnAnUnsupportedStoredMode(t *testing.T) {
+func TestGetTenantCommentSettingsFailsOnAnUnsupportedStoredMode(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
@@ -433,14 +447,14 @@ func TestGetTenantCommentModeFailsOnAnUnsupportedStoredMode(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
-	expectTenantConfigWithCommentMode(mock, tenantID, now, "members_only")
+	expectTenantConfigWithCommentSettings(mock, tenantID, now, "members_only", 3)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.GetTenantCommentMode(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentModeRequest{
+	_, err := client.GetTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}, sessionToken))
 	if err == nil {
-		t.Fatal("GetTenantCommentMode: expected error")
+		t.Fatal("GetTenantCommentSettings: expected error")
 	}
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
@@ -448,15 +462,17 @@ func TestGetTenantCommentModeFailsOnAnUnsupportedStoredMode(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestUpdateTenantCommentModePersistsTheChosenMode(t *testing.T) {
+func TestUpdateTenantCommentSettingsPersistsTheChosenValues(t *testing.T) {
 	tests := []struct {
-		name string
-		mode publirattypesv1.CommentMode
-		want string
+		name      string
+		mode      publirattypesv1.CommentMode
+		threshold uint32
+		want      string
 	}{
-		{name: "disabled", mode: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED, want: "disabled"},
-		{name: "immediate", mode: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE, want: "immediate"},
-		{name: "approval required", mode: publirattypesv1.CommentMode_COMMENT_MODE_APPROVAL_REQUIRED, want: "approval_required"},
+		{name: "disabled", mode: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED, threshold: 3, want: "disabled"},
+		{name: "immediate", mode: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE, threshold: 7, want: "immediate"},
+		{name: "approval required", mode: publirattypesv1.CommentMode_COMMENT_MODE_APPROVAL_REQUIRED, threshold: 1, want: "approval_required"},
+		{name: "automatic removal turned off", mode: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE, threshold: 0, want: "immediate"},
 	}
 
 	for _, tt := range tests {
@@ -468,31 +484,34 @@ func TestUpdateTenantCommentModePersistsTheChosenMode(t *testing.T) {
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-			mock.ExpectQuery(regexp.QuoteMeta(upsertTenantCommentModeQuery)).
-				WithArgs(tenantID, tt.want).
-				WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
-					AddRow(tenantID, nil, nil, now, now, nil, tt.want))
+			mock.ExpectQuery(regexp.QuoteMeta(upsertTenantCommentSettingsQuery)).
+				WithArgs(tenantID, tt.want, int32(tt.threshold)).
+				WillReturnRows(tenantConfigRow(tenantID, now, tt.want, int32(tt.threshold)))
 
 			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			resp, err := client.UpdateTenantCommentMode(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentModeRequest{
-				Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-				CommentMode: tt.mode,
+			resp, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
+				AutoHideReportThreshold: tt.threshold,
+				CommentMode:             tt.mode,
+				Tenant:                  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			}, sessionToken))
 			if err != nil {
-				t.Fatalf("UpdateTenantCommentMode: %v", err)
+				t.Fatalf("UpdateTenantCommentSettings: %v", err)
 			}
 			if resp.Msg.CommentMode != tt.mode {
 				t.Fatalf("comment_mode = %v, want %v", resp.Msg.CommentMode, tt.mode)
+			}
+			if resp.Msg.AutoHideReportThreshold != tt.threshold {
+				t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.Msg.AutoHideReportThreshold, tt.threshold)
 			}
 			assertExpectations(t, mock)
 		})
 	}
 }
 
-// An unset field names no mode. Turning commenting off is
-// COMMENT_MODE_DISABLED, so reading the zero value as "off" would let a request
-// that chose nothing overwrite a tenant's live setting.
-func TestUpdateTenantCommentModeRejectsUnspecified(t *testing.T) {
+// A threshold above the ceiling is rejected rather than clamped: a tenant that
+// mistyped one is told, instead of having a number they never chose saved as
+// their policy.
+func TestUpdateTenantCommentSettingsRejectsAThresholdAboveTheCeiling(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
@@ -502,11 +521,13 @@ func TestUpdateTenantCommentModeRejectsUnspecified(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantCommentMode(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentModeRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	_, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
+		AutoHideReportThreshold: maxCommentAutoHideReportThreshold + 1,
+		CommentMode:             publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE,
+		Tenant:                  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}, sessionToken))
 	if err == nil {
-		t.Fatal("UpdateTenantCommentMode: expected error")
+		t.Fatal("UpdateTenantCommentSettings: expected error")
 	}
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
@@ -515,7 +536,33 @@ func TestUpdateTenantCommentModeRejectsUnspecified(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestUpdateTenantCommentModeRequiresTenantAdmin(t *testing.T) {
+// An unset field names no mode. Turning commenting off is
+// COMMENT_MODE_DISABLED, so reading the zero value as "off" would let a request
+// that chose nothing overwrite a tenant's live setting.
+func TestUpdateTenantCommentSettingsRejectsUnspecified(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+	_, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, sessionToken))
+	if err == nil {
+		t.Fatal("UpdateTenantCommentSettings: expected error")
+	}
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	// No write is expected: the stored value must survive a rejected request.
+	assertExpectations(t, mock)
+}
+
+func TestUpdateTenantCommentSettingsRequiresTenantAdmin(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
@@ -525,12 +572,12 @@ func TestUpdateTenantCommentModeRequiresTenantAdmin(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantCommentMode(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentModeRequest{
+	_, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE,
 	}, sessionToken))
 	if err == nil {
-		t.Fatal("UpdateTenantCommentMode: expected error")
+		t.Fatal("UpdateTenantCommentSettings: expected error")
 	}
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodePermissionDenied)
@@ -538,19 +585,19 @@ func TestUpdateTenantCommentModeRequiresTenantAdmin(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestUpdateTenantCommentModeRequiresSession(t *testing.T) {
+func TestUpdateTenantCommentSettingsRequiresSession(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantCommentMode(context.Background(), connect.NewRequest(&publiraadminv1.UpdateTenantCommentModeRequest{
+	_, err := client.UpdateTenantCommentSettings(context.Background(), connect.NewRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE,
 	}))
 	if err == nil {
-		t.Fatal("UpdateTenantCommentMode: expected error")
+		t.Fatal("UpdateTenantCommentSettings: expected error")
 	}
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)

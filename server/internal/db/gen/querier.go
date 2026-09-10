@@ -16,6 +16,30 @@ type Querier interface {
 	// Approval is what publishes a comment posted under approval_required, so it is
 	// also where published_at is first written.
 	ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
+	// The tenant's own threshold applied to the comment a report has just moved,
+	// in the transaction that moved it.
+	//
+	// The threshold is read and compared inside the statement rather than fetched
+	// and checked around it: two readers reporting the same comment at once would
+	// otherwise both read a count below the threshold and neither would hide it.
+	// No row comes back when the comment is still short of the threshold, which is
+	// how the caller tells a report that removed a comment from one that did not.
+	//
+	// A threshold of 0 is a tenant that wants no automatic removal, so it matches
+	// nothing however many reports arrive. 'published' is named as the state the
+	// comment moves from, so a comment staff removed between the report and this
+	// statement is not removed a second time under a reason that would rewrite
+	// theirs.
+	//
+	// The join to tenant_config is inner rather than outer, and needs no default
+	// for a missing row: a comment cannot exist without one. Posting reads
+	// comment_mode, a tenant with no config row reads as 'disabled', and a disabled
+	// tenant stores no comment at all — so the row is written before the first
+	// comment is, and nothing deletes it afterwards except the tenant going away
+	// with its comments. Coming back empty here would mean a comment on a tenant
+	// that never enabled commenting, and inventing a threshold for that is
+	// inventing the tenant's policy.
+	AutoHideEpisodeCommentAtReportThreshold(ctx context.Context, arg AutoHideEpisodeCommentAtReportThresholdParams) (string, error)
 	// The copy that makes the episode the unit that is credited. It runs in the
 	// transaction that creates the episode, so an episode never exists without the
 	// team its series had at that moment, and a later edit of the series leaves it
@@ -344,6 +368,8 @@ type Querier interface {
 	//   RefreshEpisodeCommentOpenReportCount
 	//     -> episode_comments_tenant_id_id_key, then
 	//        episode_comment_reports_tenant_comment_reporter_key for the count
+	//   AutoHideEpisodeCommentAtReportThreshold
+	//     -> episode_comments_pkey, then tenant_config_pkey for the threshold
 	//   ListEpisodeCommentReportsForModerationByCreatedAt*
 	//     -> idx_episode_comment_reports_tenant_status_created_at with a status
 	//        filter, idx_episode_comment_reports_tenant_created_at without one
@@ -1524,10 +1550,15 @@ type Querier interface {
 	// tag saved as "Fantasy" — the slug says they are the same tag, and the name
 	// the tenant first wrote is the one every other series keeps showing.
 	UpsertTagForTenant(ctx context.Context, arg UpsertTagForTenantParams) (Tag, error)
-	// The settings screen can save the comment mode for a tenant whose config row
-	// does not exist yet, so the mode is written without disturbing the site copy
-	// columns UpdateTenantConfig owns.
-	UpsertTenantCommentMode(ctx context.Context, arg UpsertTenantCommentModeParams) (TenantConfig, error)
+	// The settings screen can save what the tenant has decided about commenting
+	// for a tenant whose config row does not exist yet, so both columns are
+	// written without disturbing the site copy columns UpdateTenantConfig owns.
+	//
+	// The mode and the automatic removal threshold are written together because
+	// the console offers them as one card: saving them separately would leave a
+	// tenant who changed both with one of the two stored when the second write
+	// failed.
+	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)

@@ -4,7 +4,7 @@ import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantSmtpSettings } from "#lib/email-settings";
 import type { TenantPaymentSettings } from "#lib/payment-settings";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
-import type { TenantCommentMode } from "#lib/tenant-comment-mode-shared";
+import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
 
 export type SiteSettingsActionState =
   | {
@@ -111,11 +111,12 @@ export type TenantDefaultLocaleActionState =
     }
   | null;
 
-export type TenantCommentModeActionState =
+export type TenantCommentSettingsActionState =
   | {
       ok: true;
       message: string;
       commentMode: TenantCommentMode;
+      autoHideReportThreshold: number;
     }
   | {
       ok: false;

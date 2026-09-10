@@ -548,6 +548,7 @@
         "tenant_editor": "Editor",
         "tenant_member": "Member",
         "tenant_owner": "Owner",
+        "system": "Automatic",
         "unset": "No role"
       },
       "cancel": "Cancel"
@@ -1346,11 +1347,11 @@
           "required": "Select a language."
         }
       },
-      "comment_mode": {
+      "comments": {
         "title": "Reader comments",
-        "description": "Whether readers can comment on your published episodes, and what happens to a comment once it is posted.",
-        "label": "How comments are published",
-        "options": {
+        "description": "Whether readers can comment on your published episodes, what happens to a comment once it is posted, and how many reports take one down without waiting for you.",
+        "mode_label": "How comments are published",
+        "mode_options": {
           "disabled": {
             "label": "Do not accept comments",
             "description": "Episode pages show no comment section, and a comment cannot be posted."
@@ -1364,13 +1365,16 @@
             "description": "Only its author sees a comment until a moderator approves it."
           }
         },
-        "load_error_hint": "Saving now would overwrite the stored setting, so reload the page before changing it.",
-        "submit": "Save how comments are published",
-        "saved": "How comments are published was saved.",
-        "load_failed": "Could not load how comments are published. Please try again later.",
-        "save_failed": "Could not save how comments are published. Please try again later.",
+        "auto_hide_label": "Reports that remove a comment",
+        "auto_hide_description": "A comment this many different readers have reported is hidden until someone reviews it, and waits in the report queue. Its author still sees it, and you can put it back. Enter 0 to leave every removal to your moderators.",
+        "load_error_hint": "Saving now would overwrite the stored settings, so reload the page before changing them.",
+        "submit": "Save the comment settings",
+        "saved": "The comment settings were saved.",
+        "load_failed": "Could not load the comment settings. Please try again later.",
+        "save_failed": "Could not save the comment settings. Please try again later.",
         "validation": {
-          "required": "Select how comments are published."
+          "mode_required": "Select how comments are published.",
+          "auto_hide_range": "Enter a whole number between 0 and {$max}."
         }
       },
       "icon": {

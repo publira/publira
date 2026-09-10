@@ -13,6 +13,58 @@ import (
 	"github.com/google/uuid"
 )
 
+const autoHideEpisodeCommentAtReportThreshold = `-- name: AutoHideEpisodeCommentAtReportThreshold :one
+UPDATE episode_comments c
+SET status = 'hidden',
+    hidden_at = NOW(),
+    hidden_by = NULL,
+    hidden_reason = 'auto_reports',
+    updated_at = NOW()
+FROM tenant_config tc
+WHERE c.tenant_id = $1
+    AND c.id = $2
+    AND c.status = 'published'
+    AND tc.tenant_id = c.tenant_id
+    AND tc.comment_auto_hide_report_threshold > 0
+    AND c.open_report_count >= tc.comment_auto_hide_report_threshold
+RETURNING c.public_id
+`
+
+type AutoHideEpisodeCommentAtReportThresholdParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	CommentID uuid.UUID `json:"comment_id"`
+}
+
+// The tenant's own threshold applied to the comment a report has just moved,
+// in the transaction that moved it.
+//
+// The threshold is read and compared inside the statement rather than fetched
+// and checked around it: two readers reporting the same comment at once would
+// otherwise both read a count below the threshold and neither would hide it.
+// No row comes back when the comment is still short of the threshold, which is
+// how the caller tells a report that removed a comment from one that did not.
+//
+// A threshold of 0 is a tenant that wants no automatic removal, so it matches
+// nothing however many reports arrive. 'published' is named as the state the
+// comment moves from, so a comment staff removed between the report and this
+// statement is not removed a second time under a reason that would rewrite
+// theirs.
+//
+// The join to tenant_config is inner rather than outer, and needs no default
+// for a missing row: a comment cannot exist without one. Posting reads
+// comment_mode, a tenant with no config row reads as 'disabled', and a disabled
+// tenant stores no comment at all — so the row is written before the first
+// comment is, and nothing deletes it afterwards except the tenant going away
+// with its comments. Coming back empty here would mean a comment on a tenant
+// that never enabled commenting, and inventing a threshold for that is
+// inventing the tenant's policy.
+func (q *Queries) AutoHideEpisodeCommentAtReportThreshold(ctx context.Context, arg AutoHideEpisodeCommentAtReportThresholdParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, autoHideEpisodeCommentAtReportThreshold, arg.TenantID, arg.CommentID)
+	var public_id string
+	err := row.Scan(&public_id)
+	return public_id, err
+}
+
 const createEpisodeCommentReport = `-- name: CreateEpisodeCommentReport :one
 INSERT INTO episode_comment_reports (
     id,
@@ -236,6 +288,8 @@ type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
 //	RefreshEpisodeCommentOpenReportCount
 //	  -> episode_comments_tenant_id_id_key, then
 //	     episode_comment_reports_tenant_comment_reporter_key for the count
+//	AutoHideEpisodeCommentAtReportThreshold
+//	  -> episode_comments_pkey, then tenant_config_pkey for the threshold
 //	ListEpisodeCommentReportsForModerationByCreatedAt*
 //	  -> idx_episode_comment_reports_tenant_status_created_at with a status
 //	     filter, idx_episode_comment_reports_tenant_created_at without one

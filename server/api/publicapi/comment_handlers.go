@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/commentmode"
 	"github.com/publira/publira/server/internal/contentevents"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -632,11 +633,74 @@ func validateCommentReportNote(note string) (sql.NullString, error) {
 	return sql.NullString{String: trimmed, Valid: true}, nil
 }
 
+// autoHideReportedComment applies the tenant's report threshold to the comment
+// the caller has just reported, and reports whether it took the comment down.
+//
+// The removal and its audit row are written on the transaction that holds the
+// report, so a tenant never ends up with a comment hidden by a threshold no
+// stored report reached, nor with reports that reached it and a comment still
+// on the site. The entry names no actor: the reader pressed "report", and what
+// removed the comment is the number the tenant itself saved.
+func (s *apiServer) autoHideReportedComment(
+	ctx context.Context,
+	txq *dbmodels.Queries,
+	tenantID, commentID uuid.UUID,
+) (bool, error) {
+	hiddenPublicID, err := txq.AutoHideEpisodeCommentAtReportThreshold(ctx, dbmodels.AutoHideEpisodeCommentAtReportThresholdParams{
+		TenantID:  tenantID,
+		CommentID: commentID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, s.internalDBError(ctx, "failed to apply the comment report threshold", err, "tenant_id", tenantID.String(), "comment_id", commentID.String())
+	}
+
+	if err := auditlog.WriteTenant(ctx, txq, s.logger, auditlog.TenantEntry{
+		TenantID:   tenantID,
+		ActorRole:  auditlog.RoleSystem,
+		Action:     "comment_auto_hidden",
+		TargetType: "comment",
+		TargetID:   hiddenPublicID,
+		Outcome:    auditlog.OutcomeSuccess,
+	}); err != nil {
+		return false, s.internalDBError(ctx, "failed to record the automatic comment removal", err, "tenant_id", tenantID.String(), "comment_public_id", hiddenPublicID)
+	}
+
+	return true, nil
+}
+
+// revalidateCommentList drops the storefront's cached comment list for one
+// episode.
+//
+// A comment the report threshold removed is gone from every answer this API
+// gives, but the section a reader sees is served from a cached page, so the
+// removal only reaches them once that entry is dropped. Best-effort: the
+// report itself is already committed, and a list that kept the comment until
+// its entry expired would be worse than a warning in the log.
+func (s *apiServer) revalidateCommentList(ctx context.Context, tenantID uuid.UUID, episodePublicID string) {
+	if s.reval == nil {
+		return
+	}
+	tag := fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
+	if err := s.reval.RevalidateTags(ctx, []string{tag}); err != nil {
+		s.logger.Warn("failed to request next revalidate after an automatic comment removal", "tenant_id", tenantID.String(), "episode_public_id", episodePublicID, "error", err)
+	}
+}
+
 // ReportEpisodeComment flags one published comment as breaking the rules.
 //
-// The report and the counter it moves are one write. open_report_count is what
-// the removal threshold checks and what the moderation queues show, so a report
-// stored without the counter following it would be a report nothing acts on.
+// The report, the counter it moves, and the tenant's threshold applied to that
+// counter are one write. open_report_count is what the threshold checks and
+// what the moderation queues show, so a report stored without the counter
+// following it would be a report nothing acts on, and a threshold checked
+// after the commit would let two reports arriving together each see a count
+// below it.
+//
+// The reader is told the same thing either way. Whether their report was the
+// one that removed the comment is not something the answer to a report may
+// reveal, for the reason a removal is silent at all.
 func (s *apiServer) ReportEpisodeComment(
 	ctx context.Context,
 	req *connect.Request[publirav1.ReportEpisodeCommentRequest],
@@ -719,6 +783,11 @@ func (s *apiServer) ReportEpisodeComment(
 		return nil, s.internalDBError(ctx, "failed to refresh comment open report count", err, "tenant_id", tenant.ID.String(), "comment_id", comment.ID.String())
 	}
 
+	autoHidden, err := s.autoHideReportedComment(ctx, txq, tenant.ID, comment.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := enqueueStaffCommentNotification(ctx, txq, outbox.EventTypeCommentReportedNotification, tenant.ID, staffCommentSubject{
 		episodePublicID: comment.EpisodePublicID,
 		episodeTitle:    comment.EpisodeTitle,
@@ -730,6 +799,10 @@ func (s *apiServer) ReportEpisodeComment(
 
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit comment report", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	if autoHidden {
+		s.revalidateCommentList(ctx, tenant.ID, comment.EpisodePublicID)
 	}
 
 	return noStorePrivateResponse(&publirav1.ReportEpisodeCommentResponse{}), nil
