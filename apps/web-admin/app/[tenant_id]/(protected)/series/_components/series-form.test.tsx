@@ -126,9 +126,7 @@ it("finds each input by its role and label", async () => {
     screen.getAllByRole("spinbutton", { name: /Reading period/u })
   ).toHaveLength(2);
   expect(screen.getAllByRole("combobox", { name: /Label/u })).toHaveLength(2);
-  expect(screen.getAllByRole("combobox", { name: /Creators/u })).toHaveLength(
-    2
-  );
+  expect(screen.getAllByRole("combobox", { name: /Authors/u })).toHaveLength(2);
   expect(screen.getAllByLabelText(/Publication date/u)).toHaveLength(2);
   // The weekday names come from `Intl` and are on screen at once; the labels of
   // the classification controls are catalog strings, each behind a `<Suspense>`

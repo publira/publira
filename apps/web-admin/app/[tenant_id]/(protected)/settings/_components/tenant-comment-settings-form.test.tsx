@@ -107,7 +107,7 @@ describe("TenantCommentSettingsForm", () => {
     ).toBeDefined();
     expect(
       screen.getByText(
-        "Only its author sees a comment until a moderator approves it."
+        "Only its commenter sees a comment until a moderator approves it."
       )
     ).toBeDefined();
   });

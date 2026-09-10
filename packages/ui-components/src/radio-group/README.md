@@ -16,7 +16,7 @@ const items = [
     value: "immediate",
   },
   {
-    description: "Only its author sees the comment until it is approved.",
+    description: "Only its commenter sees the comment until it is approved.",
     label: "Publish after approval",
     value: "approval_required",
   },

@@ -13,7 +13,7 @@ const items = [
     value: "immediate",
   },
   {
-    description: "Only its author sees it until it is approved.",
+    description: "Only its commenter sees it until it is approved.",
     label: "Publish after approval",
     value: "approval_required",
   },
@@ -51,7 +51,7 @@ describe("RadioGroup", () => {
 
     expect(
       document.querySelector(`#${CSS.escape(describedBy)}`)?.textContent
-    ).toBe("Only its author sees it until it is approved.");
+    ).toBe("Only its commenter sees it until it is approved.");
   });
 
   it("gives two groups mounted at once separate item ids", () => {

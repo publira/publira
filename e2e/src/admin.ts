@@ -111,7 +111,7 @@ export interface SeriesFormFields {
  */
 export const seriesFormFields = (page: Page): SeriesFormFields => ({
   ageRatingSelect: page.getByRole("combobox", { name: /Age rating/u }),
-  creatorCombobox: page.getByRole("combobox", { name: /Creators/u }),
+  creatorCombobox: page.getByRole("combobox", { name: /Authors/u }),
   genreCombobox: page.getByRole("combobox", { name: /Genres/u }),
   labelCombobox: page.getByRole("combobox", { name: /Label/u }),
   // `datetime-local` has no ARIA role, so this one filters on visibility.
