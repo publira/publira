@@ -266,14 +266,67 @@ test.describe("web-host catalog browsing", () => {
     expect(new URL(page.url()).searchParams.get("q")).toBe(
       SEED_TENANT.series.title
     );
-    // Each result is one row, and one link.
+    // Each result is one row, and one link, inside the group it belongs to.
     await expect(
       page
+        .getByRole("region", { exact: true, name: "Series" })
         .getByRole("link", {
           name: new RegExp(`^${SEED_TENANT.series.title}\\b`, "u"),
         })
         .first()
     ).toBeVisible();
+  });
+
+  test("a creator's name finds the author when no series matches", async ({
+    page,
+  }) => {
+    const response = await page.goto(
+      hostPath(`/search?q=${encodeURIComponent(SEED_TENANT.authorName)}`)
+    );
+    expect(response?.status(), await page.content()).toBe(200);
+
+    // The seeded synopses name their own series and never a creator, so this
+    // keyword reaches the author group alone: the whole point of searching
+    // more than series titles.
+    await expect(
+      page.getByRole("region", { exact: true, name: "Series" })
+    ).toContainText(`No series match “${SEED_TENANT.authorName}”.`);
+
+    const authorRow = page
+      .getByRole("region", { exact: true, name: "Authors" })
+      .getByRole("link", {
+        name: new RegExp(`^${SEED_TENANT.authorName}\\b`, "u"),
+      });
+    await expect(authorRow).toHaveCount(1);
+    await authorRow.click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/authors/${SEED_TENANT.authorId}$`, "u")
+    );
+  });
+
+  test("a group with more matches than the overview shows opens on its own", async ({
+    page,
+  }) => {
+    // Every seeded creator is named `Seed Author NNN`, so the prefix alone
+    // matches far more of them than the overview lists.
+    const response = await page.goto(hostPath("/search?q=Seed+Author"));
+    expect(response?.status(), await page.content()).toBe(200);
+
+    const authors = page.getByRole("region", { exact: true, name: "Authors" });
+    await authors.getByRole("link", { name: "Show all authors" }).click();
+
+    await expect(page).toHaveURL(/\/search\?q=Seed\+Author&kind=authors$/u);
+    // The group is alone on the screen now, and it pages.
+    await expect(
+      page.getByRole("region", { exact: true, name: "Series" })
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("navigation", { name: "Author result pagination" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /^Seed Author \d{3}\b/u })
+    ).not.toHaveCount(0);
   });
 
   test("the author list leads to author detail", async ({ page }) => {

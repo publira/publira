@@ -3,45 +3,36 @@ import {
   EmptyState,
   EmptyStateDescription,
 } from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatList } from "@publira/utils";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import {
   CatalogSearchForm,
   CatalogSearchFormSkeleton,
 } from "#components/catalog-search-form";
-import { EyeCatchFrame } from "#components/eye-catch-frame";
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { searchPublishedSeries } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
-import { getTenantId } from "#lib/tenant-id";
 
+import {
+  AuthorResults,
+  AuthorResultsSkeleton,
+} from "./_components/author-results";
+import {
+  LabelResults,
+  LabelResultsSkeleton,
+} from "./_components/label-results";
+import {
+  SeriesResults,
+  SeriesResultsSkeleton,
+} from "./_components/series-results";
 import {
   parseSearchPageSearchParams,
   searchPageHref,
 } from "./_lib/search-params";
-
-const SEARCH_PAGE_SIZE = 20;
-
-/** Enough rows to fill a phone screen while the read comes back. */
-const SEARCH_SKELETON_COUNT = 8;
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -67,79 +58,37 @@ export const generateMetadata = async ({
   };
 };
 
-const SearchRowsSkeleton = () => (
-  <div className="divide-y divide-border border-t border-border">
-    {Array.from({ length: SEARCH_SKELETON_COUNT }, (_, index) => (
-      <div className="flex items-center gap-4 py-3" key={index}>
-        <Skeleton className="size-14 shrink-0 rounded-control" />
-        <div className="grid flex-1 gap-2">
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-3 w-1/3" />
-        </div>
-      </div>
-    ))}
+/** What stands in for the three groups while the keyword is being read. */
+const SearchResultsSkeleton = () => (
+  <div className="grid gap-12">
+    <div className="grid gap-4">
+      <SkeletonLine className="h-6 w-24" />
+      <SeriesResultsSkeleton />
+    </div>
+    <div className="grid gap-4">
+      <SkeletonLine className="h-6 w-24" />
+      <AuthorResultsSkeleton />
+    </div>
   </div>
 );
 
 /**
- * The pagination's `<nav>`, and the one component on this screen that resolves
- * the catalog: an `aria-label` cannot be a node. The key stays written out
- * here, beside the `getMessage` that reads it.
+ * The three groups one keyword answers with.
+ *
+ * `kind` decides how many of them are on screen: the overview shows all three,
+ * each behind its own boundary so an author match arrives whether or not a
+ * series matched, and a group's own view shows that group alone with its cursor
+ * pagination. The heading of each group sits outside its boundary, so the shape
+ * of the answer is on screen before any of the three reads comes back.
  */
-const SearchPaginationNav = async ({ children }: { children: ReactNode }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-
-  return (
-    <ListPagination
-      aria-label={getMessage(messages, "host.search.pagination_aria")}
-    >
-      {children}
-    </ListPagination>
-  );
-};
-
-/** The two directions, written once for both places this screen shows them. */
-const SearchPagination = ({
-  query,
-  nextToken,
-  previousToken,
-}: {
-  query: string;
-  nextToken: string;
-  previousToken: string;
-}) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
-    <SearchPaginationNav>
-      <ListPaginationStep
-        href={previousToken ? searchPageHref(query, previousToken) : ""}
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <Message message="host.common.previous_page" />
-        </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
-        href={nextToken ? searchPageHref(query, nextToken) : ""}
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-          <Message message="host.common.next_page" />
-        </Suspense>
-      </ListPaginationStep>
-    </SearchPaginationNav>
-  </Suspense>
-);
-
-const SearchResultsData = async ({
+const SearchResults = async ({
   searchParams,
 }: {
   searchParams: SearchPageProps["searchParams"];
 }) => {
-  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
-    searchParams,
-    getTenantId(),
-    getLocale(),
-  ]);
-  const { query, token } = parseSearchPageSearchParams(resolvedSearchParams);
+  const resolvedSearchParams = await searchParams;
+  const { kind, query, token } =
+    parseSearchPageSearchParams(resolvedSearchParams);
 
   if (!query) {
     return (
@@ -153,114 +102,61 @@ const SearchResultsData = async ({
     );
   }
 
-  const result = await searchPublishedSeries(tenantId, {
-    limit: SEARCH_PAGE_SIZE,
-    locale,
-    query,
-    token,
-  });
-
-  if (!result.ok) {
-    return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="host.search.error" />
-            </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
-    );
-  }
-
-  const { nextToken, previousToken, series } = result.value;
-
-  if (series.length === 0) {
-    if (!token) {
-      return (
-        <EmptyState>
-          <EmptyStateDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <Message message="host.search.no_results" values={{ query }} />
-            </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
-      );
-    }
-
-    // The rows this page pointed at are gone. The server hands back a token for
-    // the neighbouring page when it can, and empty tokens when it cannot — then
-    // the only way out is the first page (`proto/README.md`).
-    return (
-      <div className="grid gap-8">
-        <EmptyState>
-          <EmptyStateDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <Message message="host.series.page_empty" />
-            </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
-        {previousToken || nextToken ? (
-          <SearchPagination
-            nextToken={nextToken}
-            previousToken={previousToken}
-            query={query}
-          />
-        ) : (
-          <p>
-            <LocaleLink
-              className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "")}
-            >
-              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                <Message message="host.search.first_page" />
-              </Suspense>
-            </LocaleLink>
-          </p>
-        )}
-      </div>
-    );
-  }
+  const view = kind === "all" ? "overview" : "page";
 
   return (
-    <div className="grid gap-8">
-      <ul className="divide-y divide-border border-t border-border">
-        {series.map((item) => (
-          <li key={item.publicId}>
-            <LocaleLink
-              className="group flex items-center gap-4 py-3"
-              href={`/series/${item.publicId}`}
-            >
-              <EyeCatchFrame
-                // The title is beside it in the row, so repeating it here
-                // would read every result out twice.
-                alt=""
-                className="size-14 shrink-0 rounded-control"
-                sizes="56px"
-                variants={item.eyeCatchImageVariants}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-serif leading-tight underline-offset-4 group-hover:underline">
-                  {item.title}
-                </span>
-                {item.creatorNames.length > 0 && (
-                  <span className="mt-1 block truncate text-sm text-muted-foreground">
-                    {formatList(item.creatorNames, { locale })}
-                  </span>
-                )}
-              </span>
-            </LocaleLink>
-          </li>
-        ))}
-      </ul>
+    <div className="grid gap-12">
+      {(kind === "all" || kind === "series") && (
+        <section aria-labelledby="search-series" className="grid gap-4">
+          <h2 className="font-serif text-xl leading-tight" id="search-series">
+            <Suspense fallback={<SkeletonLine className="h-6 w-24" />}>
+              <Message message="host.search.series_heading" />
+            </Suspense>
+          </h2>
+          <Suspense fallback={<SeriesResultsSkeleton />}>
+            <SeriesResults query={query} token={token} view={view} />
+          </Suspense>
+        </section>
+      )}
 
-      <SearchPagination
-        nextToken={nextToken}
-        previousToken={previousToken}
-        query={query}
-      />
+      {(kind === "all" || kind === "authors") && (
+        <section aria-labelledby="search-authors" className="grid gap-4">
+          <h2 className="font-serif text-xl leading-tight" id="search-authors">
+            <Suspense fallback={<SkeletonLine className="h-6 w-24" />}>
+              <Message message="host.search.authors_heading" />
+            </Suspense>
+          </h2>
+          <Suspense fallback={<AuthorResultsSkeleton />}>
+            <AuthorResults query={query} token={token} view={view} />
+          </Suspense>
+        </section>
+      )}
+
+      {(kind === "all" || kind === "labels") && (
+        <section aria-labelledby="search-labels" className="grid gap-4">
+          <h2 className="font-serif text-xl leading-tight" id="search-labels">
+            <Suspense fallback={<SkeletonLine className="h-6 w-24" />}>
+              <Message message="host.search.labels_heading" />
+            </Suspense>
+          </h2>
+          <Suspense fallback={<LabelResultsSkeleton />}>
+            <LabelResults query={query} token={token} view={view} />
+          </Suspense>
+        </section>
+      )}
+
+      {kind !== "all" && (
+        <p>
+          <LocaleLink
+            className="text-sm text-primary underline underline-offset-4"
+            href={searchPageHref(query)}
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="host.search.back_to_all" />
+            </Suspense>
+          </LocaleLink>
+        </p>
+      )}
     </div>
   );
 };
@@ -301,8 +197,8 @@ const SearchPage = ({ searchParams }: SearchPageProps) => (
         </Suspense>
       }
     >
-      <Suspense fallback={<SearchRowsSkeleton />}>
-        <SearchResultsData searchParams={searchParams} />
+      <Suspense fallback={<SearchResultsSkeleton />}>
+        <SearchResults searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>
   </main>

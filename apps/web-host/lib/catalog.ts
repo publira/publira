@@ -16,6 +16,7 @@ import { SeriesStatus } from "@publira/api-client/public/types";
 import type {
   EpisodeImage,
   EpisodeNeighbor,
+  Label,
   Series,
   SeriesEyeCatchVariant,
 } from "@publira/api-client/public/types";
@@ -333,6 +334,24 @@ export interface LabelListItem {
   eyeCatchImageUpdatedAt?: string;
   eyeCatchImageVariants?: EyeCatchImageVariant[];
 }
+
+/**
+ * The generated `Label` fields {@link toLabelListItem} reads. Naming them
+ * against the message type is what makes a proto rename fail here — a restated
+ * structural type keeps compiling, and a label row then renders nameless with
+ * nothing pointing at the cause.
+ */
+type RawLabelListItem = Pick<
+  Label,
+  "eyeCatchImageUpdatedAt" | "eyeCatchImageVariants" | "name" | "publicId"
+>;
+
+export const toLabelListItem = (label: RawLabelListItem): LabelListItem => ({
+  eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt || undefined,
+  eyeCatchImageVariants: toEyeCatchImageVariants(label.eyeCatchImageVariants),
+  name: label.name,
+  publicId: label.publicId,
+});
 
 export interface SeriesListPage {
   series: SeriesListItem[];
@@ -684,7 +703,7 @@ export const searchPublishedSeries = async (
       token,
     });
   } catch (error) {
-    return localizedReadFailure(error, locale, "host.search.failed");
+    return localizedReadFailure(error, locale, "host.search.series_failed");
   }
 
   const series = (response.series ?? []).map(toSeriesListItem);
@@ -728,14 +747,56 @@ export const listPublishedLabels = async (
   return {
     ok: true,
     value: {
-      labels: (response.labels ?? []).map((label) => ({
-        eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt || undefined,
-        eyeCatchImageVariants: toEyeCatchImageVariants(
-          label.eyeCatchImageVariants
-        ),
-        name: label.name,
-        publicId: label.publicId,
-      })),
+      labels: (response.labels ?? []).map(toLabelListItem),
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
+    },
+  };
+};
+
+/**
+ * Labels whose name matches, narrowed to the ones that still hold a published
+ * series — which is what separates this from {@link getPublishedLabelDetail},
+ * an address that keeps answering after the last series behind it comes down.
+ * A publish therefore changes the answer, so the series list tag invalidates it
+ * alongside the label tag.
+ *
+ * Cursor pagination as {@link searchPublishedSeries}, including the rule that a
+ * token belongs to the query it was built for.
+ */
+export const searchPublishedLabels = async (
+  tenantId: string,
+  {
+    limit = 20,
+    locale,
+    query,
+    token = "",
+  }: { limit?: number; locale: Locale; query: string; token?: string }
+): Promise<CachedReadResult<LabelListPage>> => {
+  "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantLabelsTag(normalizedTenantId));
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+
+  let response: Awaited<
+    ReturnType<typeof apiClient.catalog.searchPublishedLabels>
+  >;
+  try {
+    response = await apiClient.catalog.searchPublishedLabels({
+      limit,
+      query,
+      tenant: { tenantId: normalizedTenantId },
+      token,
+    });
+  } catch (error) {
+    return localizedReadFailure(error, locale, "host.search.labels_failed");
+  }
+
+  return {
+    ok: true,
+    value: {
+      labels: (response.labels ?? []).map(toLabelListItem),
       nextToken: response.nextToken ?? "",
       previousToken: response.previousToken ?? "",
     },

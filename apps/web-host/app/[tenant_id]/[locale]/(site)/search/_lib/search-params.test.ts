@@ -3,17 +3,23 @@ import { describe, expect, it } from "vitest";
 import { parseSearchPageSearchParams, searchPageHref } from "./search-params";
 
 describe("parseSearchPageSearchParams", () => {
-  it("Normalize q and token", () => {
+  it("normalizes q and token", () => {
     expect(
-      parseSearchPageSearchParams({ q: "  Seed  ", token: " djF8Zg-_ " })
+      parseSearchPageSearchParams({
+        kind: "series",
+        q: "  Seed  ",
+        token: " djF8Zg-_ ",
+      })
     ).toEqual({
+      kind: "series",
       query: "Seed",
       token: "djF8Zg-_",
     });
   });
 
-  it("If q is missing, the search screen will be empty.", () => {
+  it("shows the prompt when q is missing", () => {
     expect(parseSearchPageSearchParams({})).toEqual({
+      kind: "all",
       query: "",
       token: "",
     });
@@ -22,33 +28,69 @@ describe("parseSearchPageSearchParams", () => {
   it("truncates an over-long query at the limit, counting non-ASCII characters", () => {
     const longQuery = "あ".repeat(120);
     expect(parseSearchPageSearchParams({ q: longQuery })).toEqual({
+      kind: "all",
       query: "あ".repeat(100),
       token: "",
     });
   });
 
-  it("Discard tokens other than base64url", () => {
+  it("discards a token that is not base64url", () => {
     expect(
-      parseSearchPageSearchParams({ q: "Seed", token: "djF8Zg==" })
+      parseSearchPageSearchParams({
+        kind: "authors",
+        q: "Seed",
+        token: "djF8Zg==",
+      })
     ).toEqual({
+      kind: "authors",
       query: "Seed",
       token: "",
     });
   });
+
+  it("falls back to the overview for a kind no group answers to", () => {
+    expect(
+      parseSearchPageSearchParams({ kind: "episodes", q: "Seed" })
+    ).toEqual({
+      kind: "all",
+      query: "Seed",
+      token: "",
+    });
+  });
+
+  it("drops a token that arrives with the overview, which pages nothing", () => {
+    expect(parseSearchPageSearchParams({ q: "Seed", token: "djF8Zg" })).toEqual(
+      {
+        kind: "all",
+        query: "Seed",
+        token: "",
+      }
+    );
+  });
 });
 
 describe("searchPageHref", () => {
-  it("Put q and token in the query", () => {
-    expect(searchPageHref("Seed Series", "djF8Zg")).toBe(
-      "/search?q=Seed+Series&token=djF8Zg"
+  it("puts q, kind, and token in the query", () => {
+    expect(searchPageHref("Seed Series", "labels", "djF8Zg")).toBe(
+      "/search?q=Seed+Series&kind=labels&token=djF8Zg"
     );
   });
 
-  it("If token is empty, leave only q", () => {
-    expect(searchPageHref("Seed", "")).toBe("/search?q=Seed");
+  it("leaves only q when the kind is the overview", () => {
+    expect(searchPageHref("Seed")).toBe("/search?q=Seed");
   });
 
-  it("If both are empty, return to the top search screen", () => {
-    expect(searchPageHref("", "")).toBe("/search");
+  it("leaves only q and kind when the token is empty", () => {
+    expect(searchPageHref("Seed", "authors")).toBe(
+      "/search?q=Seed&kind=authors"
+    );
+  });
+
+  it("drops a token handed to the overview, which has no pages to name", () => {
+    expect(searchPageHref("Seed", "all", "djF8Zg")).toBe("/search?q=Seed");
+  });
+
+  it("returns to the top search screen when everything is empty", () => {
+    expect(searchPageHref("")).toBe("/search");
   });
 });

@@ -238,19 +238,23 @@ test.describe("web-host screenshots", () => {
       });
 
       test("search results", async ({ page }) => {
-        await page.goto(
-          hostPath(`/search?q=${encodeURIComponent(SEED_TENANT.series.title)}`)
-        );
+        // A prefix every seeded series, creator, and label carries, so the shot
+        // is of all three groups answering one keyword. Each group's link into
+        // its own view is the last thing it renders, so waiting for the three
+        // of them is waiting for the whole screen.
+        await page.goto(hostPath("/search?q=Seed"));
 
         await expect(
           page.getByRole("heading", { level: 1, name: "Search" })
         ).toBeVisible();
         await expect(
-          page
-            .getByRole("link", {
-              name: new RegExp(`^${SEED_TENANT.series.title}\\b`, "u"),
-            })
-            .first()
+          page.getByRole("link", { name: "Show all series" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("link", { name: "Show all authors" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("link", { name: "Show all labels" })
         ).toBeVisible();
 
         await expectScreenshot(page, viewport, "search-results");
