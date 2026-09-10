@@ -108,8 +108,17 @@ CREATE POLICY episode_rating_counts_tenant_isolation ON episode_rating_counts
 --
 -- Raising an existing score is an UPDATE, which fires neither trigger: the
 -- reader was already counted, and pressing again does not make them two.
+--
+-- SECURITY DEFINER because the storefront role is not allowed to write this
+-- table: the baseline seed revokes its DML, so the tally can only move through
+-- this function and never through a statement a request path sends. It reads
+-- nothing from the caller — the tenant and the episode come from the row the
+-- trigger was fired for, which row-level security already vouched for on
+-- episode_ratings — and search_path is fixed so the body cannot be pointed at
+-- another schema's tables.
 CREATE FUNCTION episode_rating_counts_follow_ratings() RETURNS trigger
     LANGUAGE plpgsql
+    SECURITY DEFINER
     SET search_path = pg_catalog, public
     AS $$
 BEGIN

@@ -157,6 +157,57 @@ func TestEpisodeRatingCountsAreTenantScoped(t *testing.T) {
 	}
 }
 
+// The tally is derived, so no API role may write it directly. Row-level
+// security is not what stops them: it is tenant isolation, which would let a
+// storefront connection set its own tenant's numbers. The baseline seed takes
+// the DML grant back, and the trigger keeps working because it is SECURITY
+// DEFINER.
+func TestEpisodeRatingCountsRefuseWritesFromTheAPIRoles(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "TRTF", "rating-f.example.com", "admin-rating-f.example.com", "Tenant Rating F")
+	member := mustInsertUser(t, ctx, pg.DB, tenantID, "URTH", "member-rating-h@example.com", "Member H")
+	episodeID := mustInsertEpisode(t, ctx, pg.DB, tenantID, "ERTF", "Episode F")
+
+	withMemberConn(t, pg, tenantID, member, func(ctx context.Context, conn *sql.Conn) {
+		// The reader writes their own rating, and the trigger writes the tally
+		// on their behalf: the privilege the trigger runs with is the owner's,
+		// not theirs.
+		if _, err := conn.ExecContext(ctx, `
+			INSERT INTO episode_ratings (tenant_id, user_id, episode_id, score)
+			VALUES ($1, $2, $3, 3)
+		`, tenantID, member, episodeID); err != nil {
+			t.Fatalf("store a rating as the reader: %v", err)
+		}
+		var count int64
+		if err := conn.QueryRowContext(ctx,
+			"SELECT count FROM episode_rating_counts WHERE episode_id = $1", episodeID).Scan(&count); err != nil {
+			t.Fatalf("read the tally the trigger wrote: %v", err)
+		}
+		if count != 1 {
+			t.Fatalf("count = %d, want the 1 the trigger wrote", count)
+		}
+
+		for name, statement := range map[string]string{
+			"update": "UPDATE episode_rating_counts SET count = 9999 WHERE episode_id = $1",
+			"delete": "DELETE FROM episode_rating_counts WHERE episode_id = $1",
+			"insert": "INSERT INTO episode_rating_counts (tenant_id, episode_id, count) SELECT $2, $1, 9999",
+		} {
+			args := []any{episodeID}
+			if name == "insert" {
+				args = append(args, tenantID)
+			}
+			if _, err := conn.ExecContext(ctx, statement, args...); err == nil {
+				t.Fatalf("%s on the tally succeeded, want permission denied", name)
+			}
+		}
+	})
+}
+
 // The tally counts readers, not points: raising a score leaves it alone, and a
 // deleted account lowers it. The second half is why it is kept by a trigger —
 // that delete is the cascade's, with no handler of ours on the path.
