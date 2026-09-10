@@ -80,6 +80,39 @@ func (s *apiServer) readerClearsMinimumAge(ctx context.Context, tenant dbmodels.
 	return ageverification.AgeOn(birthDate.Time, today) >= minimumAge, nil
 }
 
+// freeBodyMediaToken is what the reader's browser derives a free body's image
+// key from.
+//
+// Which token that is depends on whether the tenant's rule covers the series.
+// A body nobody has to prove an age for gets the per-episode token, which names
+// no reader: it is the same value for everyone, which is what lets a free body
+// stay one shared response. A body the rule covers gets the reader's own token
+// instead, because image-server refuses that body on the path that names
+// nobody — a token anyone could hold would put the pages one link away from the
+// reader the rule stopped.
+//
+// The row exists only for an episode that is published and whose series is,
+// which is the same rule image-server applies to a free body, so reaching here
+// is what makes attaching either token safe.
+func (s *apiServer) freeBodyMediaToken(tenant dbmodels.Tenant, episodeID uuid.UUID, minimumAge int, reader dbmodels.User) (string, error) {
+	if minimumAge > 0 {
+		token, _, err := s.tokens.IssueMediaToken(
+			reader.PublicID,
+			tenant.ID.String(),
+			episodeID.String(),
+			reader.CredentialsVersion,
+			time.Now(),
+		)
+		return token, err
+	}
+	token, _, err := s.tokens.IssueFreeEpisodeMediaToken(
+		tenant.ID.String(),
+		episodeID.String(),
+		time.Now(),
+	)
+	return token, err
+}
+
 // tenantToday is the calendar day the tenant is living through right now. An
 // age is counted against it rather than against UTC, so a reader's birthday
 // arrives when the tenant's own calendar says it does.

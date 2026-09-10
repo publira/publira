@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"net/url"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
+	"github.com/publira/publira/server/internal/auth"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -204,6 +206,75 @@ func TestDBGetEpisodeDetailAppliesTheTenantAgeRule(t *testing.T) {
 			}
 		})
 	}
+}
+
+// image-server refuses a rated body on the path that names no reader, so the
+// token on a gated body's image URLs has to name one. A free-episode token is
+// the same value for everyone and would put the pages one shared link away
+// from the reader the rule stopped.
+func TestDBGetEpisodeDetailNamesTheReaderInAGatedBodysMediaToken(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESA00001",
+		Title:     "Rated Series",
+		Published: true,
+		AgeRating: ageverification.RatingR18,
+	})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEAGE01",
+		Title:    "Rated Episode",
+		Status:   testutil.EpisodeStatusPublished,
+	})
+	env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
+	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	setBirthDate(t, env, reader.ID, birthDateForAge(t, tenant, 18, false))
+
+	read := func(t *testing.T) string {
+		t.Helper()
+		resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
+			&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID},
+			tokenFor(t, tenant, reader),
+		))
+		if err != nil {
+			t.Fatalf("GetEpisodeDetail: %v", err)
+		}
+		if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE || len(resp.Msg.Images) != 1 {
+			t.Fatalf("access = %v with %d images, want free with 1", resp.Msg.Access, len(resp.Msg.Images))
+		}
+		return mediaTokenSubject(t, resp.Msg.Images[0].ImageUrl)
+	}
+
+	if subject := read(t); subject != reader.PublicID {
+		t.Fatalf("media token subject under the rule = %q, want the reader %q", subject, reader.PublicID)
+	}
+
+	// The same body, once the tenant asks for nothing, goes back to the token
+	// that names nobody and keeps one shared response for every reader.
+	setTenantAgeVerification(t, env, tenant.ID, ageverification.None)
+	if subject := read(t); subject != auth.FreeEpisodeMediaSubject {
+		t.Fatalf("media token subject without the rule = %q, want %q", subject, auth.FreeEpisodeMediaSubject)
+	}
+}
+
+// mediaTokenSubject reads back who the token on an image URL was issued for.
+func mediaTokenSubject(t *testing.T, imageURL string) string {
+	t.Helper()
+
+	parsed, err := url.Parse(imageURL)
+	if err != nil {
+		t.Fatalf("parse image url %q: %v", imageURL, err)
+	}
+	raw := parsed.Query().Get(auth.MediaTokenQueryParam)
+	if raw == "" {
+		t.Fatalf("image url %q carries no media token", imageURL)
+	}
+	claims, err := testutil.TokenManager().Verify(raw, auth.AudienceMedia)
+	if err != nil {
+		t.Fatalf("verify media token: %v", err)
+	}
+	return claims.Subject
 }
 
 // Buying an episode is not proof of an age. A reader the rule stops is stopped

@@ -13,12 +13,55 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/requestmeta"
+	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/tracing"
 )
+
+// requiredMinimumAgeForImage answers how old the tenant's rule makes a reader
+// prove they are before this episode's pages may leave. Both columns are
+// nullable: an unclassified series has no listing row and a tenant that has
+// saved nothing has no config row, and neither asks anything.
+//
+// The rule is applied here rather than in the queries because the API applies
+// the same one to the same episode. A body the API withholds whose pages this
+// server still serves is not withheld at all, and two spellings of the mapping
+// is how the two would come to disagree.
+func requiredMinimumAgeForImage(ageRating, ageVerification sql.NullString) (int, error) {
+	if !ageRating.Valid || ageRating.String == ageverification.RatingAll {
+		return 0, nil
+	}
+	rule := ageverification.None
+	if ageVerification.Valid {
+		rule = ageVerification.String
+	}
+	return ageverification.RequiredMinimumAge(rule, ageRating.String)
+}
+
+// readerClearsMinimumAge reports whether the reader behind this row is old
+// enough on the tenant's own calendar day. An account that has given no birth
+// date has proven nothing and does not clear it.
+func readerClearsMinimumAge(tenant dbmodels.Tenant, minimumAge int, birthDate sql.NullTime) (bool, error) {
+	if minimumAge <= 0 {
+		return true, nil
+	}
+	if !birthDate.Valid {
+		return false, nil
+	}
+	// The platform default is out of reach here — this server holds no
+	// platform-settings reader — and it is not needed: tenants.timezone is NOT
+	// NULL with a non-blank CHECK, so the last-resort constant only guards a
+	// row written before those constraints existed.
+	location, err := time.LoadLocation(tenanttz.Resolve(tenant.Timezone, nil))
+	if err != nil {
+		return false, err
+	}
+	return ageverification.AgeOn(birthDate.Time, ageverification.Today(time.Now(), location)) >= minimumAge, nil
+}
 
 // publicImageCacheControl is what a body anyone may read is served with. An
 // episode that is free by price stays free, so its pages can be held for the
@@ -174,7 +217,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 	var cipher *imageCipher
 
 	if credential, ok := h.episodeImageCredential(r, tenant.ID); ok {
-		access, err := h.grantedEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, credential.claims)
+		access, err := h.grantedEpisodeImage(ctx, tenantQueries, tenant, mediaID, credential.claims)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				http.Error(w, "image not found", http.StatusNotFound)
@@ -229,6 +272,22 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		isPublished := publicAccess.IsPublished.Valid && publicAccess.IsPublished.Bool
 		hasPublicAccess := publicAccess.HasPublicAccess.Valid && publicAccess.HasPublicAccess.Bool
 		if !isPublished || !hasPublicAccess {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		minimumAge, ageErr := requiredMinimumAgeForImage(publicAccess.AgeRating, publicAccess.AgeVerification)
+		if ageErr != nil {
+			h.logger.ErrorContext(ctx, "failed to resolve the tenant age rule for an image", "error", ageErr, "media_id", mediaID.String())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if minimumAge > 0 {
+			// This path names no reader, so it cannot tell one who has proven
+			// an age from one who has not — and its response is a shared cache
+			// entry, which could not be told apart either. A body the rule
+			// covers therefore leaves only through the credentialed path
+			// above, and the API hands a reader who clears the rule the
+			// per-reader token that reaches it.
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -335,11 +394,11 @@ func (h *Handler) episodeImageCredential(r *http.Request, tenantID uuid.UUID) (*
 func (h *Handler) grantedEpisodeImage(
 	ctx context.Context,
 	tenantQueries TenantScopedQuerier,
-	tenantID uuid.UUID,
+	tenant dbmodels.Tenant,
 	mediaID uuid.UUID,
 	claims *auth.AccessTokenClaims,
 ) (*dbmodels.GetEpisodeImageAccessByIDForUserRow, error) {
-	user, err := h.activeUserForClaims(ctx, tenantQueries, tenantID, claims)
+	user, err := h.activeUserForClaims(ctx, tenantQueries, tenant.ID, claims)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +408,7 @@ func (h *Handler) grantedEpisodeImage(
 
 	access, err := tenantQueries.GetEpisodeImageAccessByIDForUser(ctx, dbmodels.GetEpisodeImageAccessByIDForUserParams{
 		ID:       mediaID,
-		TenantID: tenantID,
+		TenantID: tenant.ID,
 		UserID:   user.ID,
 	})
 	if err != nil {
@@ -364,6 +423,21 @@ func (h *Handler) grantedEpisodeImage(
 	isPublished := access.IsPublished.Valid && access.IsPublished.Bool
 	hasAccess := access.HasAccess.Valid && access.HasAccess.Bool
 	if !isPublished || !hasAccess {
+		return nil, nil
+	}
+	// The token names the reader, so the rule is checked against the account it
+	// names rather than against whoever is holding the URL. A grant is not
+	// proof of an age: a purchased body is withheld from a reader the rule
+	// stops, the same way the API withholds it.
+	minimumAge, err := requiredMinimumAgeForImage(access.AgeRating, access.AgeVerification)
+	if err != nil {
+		return nil, err
+	}
+	clears, err := readerClearsMinimumAge(tenant, minimumAge, user.BirthDate)
+	if err != nil {
+		return nil, err
+	}
+	if !clears {
 		return nil, nil
 	}
 	return &access, nil

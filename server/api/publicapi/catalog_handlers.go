@@ -1135,16 +1135,7 @@ func (s *apiServer) GetEpisodeDetail(
 	case freeToEveryone:
 		access = publirav1.EpisodeAccess_EPISODE_ACCESS_FREE
 		includeImages = true
-		// The row exists only for an episode that is published and whose series
-		// is, which is the same rule image-server applies to a free body, so
-		// reaching here is what makes attaching this safe. The token names no
-		// reader: it is what a reader with no credential derives the image key
-		// from, and image-server still decides access from the public rule.
-		token, _, tokenErr := s.tokens.IssueFreeEpisodeMediaToken(
-			tenant.ID.String(),
-			row.ID.String(),
-			time.Now(),
-		)
+		token, tokenErr := s.freeBodyMediaToken(tenant, row.ID, requiredMinimumAge, reader)
 		if tokenErr != nil {
 			s.logger.ErrorContext(ctx, "failed to issue free episode media token",
 				"tenant_id", tenant.ID.String(),

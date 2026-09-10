@@ -1302,11 +1302,11 @@ func (s *apiServer) UpdateMe(
 	}
 	name := strings.TrimSpace(req.Msg.Name)
 	if name == "" {
-		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "invalid_name")
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_name")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
 	if len([]rune(name)) > 100 {
-		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "name_too_long")
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "name_too_long")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name must be 100 characters or fewer"))
 	}
 
@@ -1316,7 +1316,7 @@ func (s *apiServer) UpdateMe(
 	var birthDate sql.NullTime
 	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
 		if user.BirthDate.Valid {
-			auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "birth_date_already_set")
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
 			// Not InvalidArgument: the date is well formed and the session is
 			// fine. What refuses it is the state of the account, which is what
 			// the reader has to be told to take to support.
@@ -1324,12 +1324,12 @@ func (s *apiServer) UpdateMe(
 		}
 		today, todayErr := s.tenantToday(ctx, tenant)
 		if todayErr != nil {
-			auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "tenant_today_failed")
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "tenant_today_failed")
 			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", todayErr, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 		parsed, parseErr := ageverification.ParseBirthDate(raw, today)
 		if parseErr != nil {
-			auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "invalid_birth_date")
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_birth_date")
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, parseErr, "birth_date")
 		}
 		birthDate = sql.NullTime{Time: parsed, Valid: true}
@@ -1340,7 +1340,7 @@ func (s *apiServer) UpdateMe(
 	// would leave the account carrying a date nobody can rewrite.
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "transaction_begin_failed")
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
 		return nil, s.internalDBError(ctx, "failed to begin profile update transaction", err, "user_id", user.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
@@ -1351,7 +1351,7 @@ func (s *apiServer) UpdateMe(
 		Name: name,
 	})
 	if err != nil {
-		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "update_failed")
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "update_failed")
 		return nil, s.internalDBError(ctx, "failed to update user name", err, "user_id", user.ID.String())
 	}
 	if birthDate.Valid {
@@ -1364,16 +1364,16 @@ func (s *apiServer) UpdateMe(
 				// The query matches no row when the account already has a date,
 				// which is the same refusal as above reached by a second
 				// request that raced this one past the read.
-				auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "birth_date_already_set")
+				auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
 				return nil, rpcerrors.NewFieldViolationError(connect.CodeFailedPrecondition, errors.New("birth date is already set"), "birth_date")
 			}
-			auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "birth_date_update_failed")
+			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_update_failed")
 			return nil, s.internalDBError(ctx, "failed to set user birth date", birthDateErr, "user_id", user.ID.String())
 		}
 		updated = stored
 	}
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "transaction_commit_failed")
+		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit profile update", err, "user_id", user.ID.String())
 	}
 
@@ -1381,7 +1381,7 @@ func (s *apiServer) UpdateMe(
 	if birthDate.Valid {
 		outcome = "name_and_birth_date_updated"
 	}
-	auth.AuditEvent(req.Header(), "update_me", "success", user.PublicID, user.PublicID, outcome)
+	auth.AuditEvent(req.Header(), "update_me", "success", tenant.PublicID, user.PublicID, outcome)
 	return connect.NewResponse(&publirav1.UpdateMeResponse{User: ownAccount(updated, role)}), nil
 }
 
