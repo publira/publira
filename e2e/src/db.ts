@@ -183,28 +183,6 @@ export const deleteCreatorsByPublicIds = (
 };
 
 /**
- * Attach a genre to a series.
- *
- * A series carries its genres as a field of `UpdateSeries` rather than through
- * an assignment RPC, and the console's series form has no control for that
- * field yet, so the join row is written here. It is what puts a genre into the
- * state the console's delete refusal exists for.
- */
-export const assignGenreToSeries = (
-  seriesPublicId: string,
-  genreName: string
-): void => {
-  runSql(
-    `INSERT INTO series_genres (tenant_id, series_id, genre_id)
-     SELECT s.tenant_id, s.id, g.id
-     FROM series AS s
-     JOIN genres AS g ON g.tenant_id = s.tenant_id
-     WHERE s.public_id = ${quoteSqlLiteral(seriesPublicId)}
-       AND g.name = ${quoteSqlLiteral(genreName)};`
-  );
-};
-
-/**
  * Remove genres created by admin tests, by name.
  *
  * By name rather than by public id, because a genre is made and read entirely

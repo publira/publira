@@ -7,7 +7,7 @@ import { Input } from "@publira/ui-components/input";
 import { useActionState } from "react";
 
 import { useAdminMessages } from "#components/admin-locale-context";
-import { GENRE_NAME_MAX_LENGTH } from "#lib/genre-shared";
+import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { renameGenreAction } from "../_lib/actions";
@@ -47,7 +47,7 @@ export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
           className="w-full sm:max-w-xs"
           defaultValue={genre.name}
           key={genre.name}
-          maxLength={GENRE_NAME_MAX_LENGTH}
+          maxLength={CATALOG_NAME_MAX_LENGTH}
           name="name"
           required
           type="text"

@@ -980,7 +980,9 @@
         "reading_period": "閲覧可能期間",
         "synopsis": "概要",
         "status": "状態",
-        "actions": "操作"
+        "actions": "操作",
+        "serialization": "連載状況",
+        "age_rating": "年齢制限"
       },
       "published": "公開中",
       "draft": "下書き",
@@ -1013,7 +1015,26 @@
         "eye_catch_description": "JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選択してください。保存時に用途別バリアント (3:4 / 1:1 / 16:9 / OG) と端末向けサイズが生成されます。",
         "eye_catch_update": "アイキャッチを更新",
         "creators_no_match": "一致するクリエイターが見つかりません。",
-        "creators_remove": "クリエイターの選択を解除"
+        "creators_remove": "クリエイターの選択を解除",
+        "status": "連載状況",
+        "status_description": "新しいエピソードが続くかどうかです。作品ページに表示されます。",
+        "schedule": "更新スケジュール",
+        "schedule_description": "新しいエピソードを公開する曜日を選択してください。",
+        "schedule_irregular": "曜日が選択されていないため、不定期として表示されます。",
+        "age_rating": "年齢制限",
+        "age_rating_all_hint": "全年齢: 誰でも閲覧できます。",
+        "age_rating_r15_hint": "R15: 15歳以上であることを確認してから閲覧できます。",
+        "age_rating_r18_hint": "R18: 18歳以上であることを確認してから閲覧できます。",
+        "genres": "ジャンル",
+        "genres_empty": "ジャンルがありません。先にジャンルを作成してください。",
+        "genres_search": "ジャンルを検索",
+        "genres_no_match": "一致するジャンルが見つかりません。",
+        "genres_remove": "ジャンルを削除",
+        "genres_description": "複数選択できます。ジャンル管理画面で設定した順に表示されます。",
+        "tags": "タグ",
+        "tags_add": "追加",
+        "tags_remove": "{$name} を削除",
+        "tags_description": "Enter または 追加 でタグを書き込みます。最大 {$count} 件です。使用中のタグと一致する名前は、そのタグにまとめられます。"
       },
       "validation": {
         "label_required": "レーベルは必須です。",
@@ -1022,7 +1043,10 @@
         "tenant_missing": "テナント ID が見つかりません。",
         "title_required": "タイトルは必須です。",
         "id_missing": "更新対象のシリーズ ID が見つかりません。",
-        "published_at_invalid": "公開日時の形式が正しくありません。"
+        "published_at_invalid": "公開日時の形式が正しくありません。",
+        "status_invalid": "連載状況を選択してください。",
+        "age_rating_invalid": "年齢制限を選択してください。",
+        "tags_too_many": "タグは最大 {$count} 件です。"
       },
       "created": "シリーズを作成しました。",
       "updated": "シリーズを更新しました。",
@@ -1145,7 +1169,18 @@
           "epub_invalid": "ePub 形式（.epub）のファイルを選択してください。",
           "pages_required": "追加するページ画像を選択してください。"
         }
-      }
+      },
+      "status": {
+        "ongoing": "連載中",
+        "completed": "完結",
+        "hiatus": "休載中"
+      },
+      "age_rating": {
+        "all": "全年齢",
+        "r15": "R15",
+        "r18": "R18"
+      },
+      "tags_unavailable": "使用中のタグを読み込めませんでした。タグ名の入力はできます。"
     },
     "settings": {
       "email_error": "メール設定を表示できませんでした",

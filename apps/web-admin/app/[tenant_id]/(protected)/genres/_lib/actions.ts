@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
+import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   jsonStringArrayFormSchema,
@@ -22,7 +23,6 @@ import {
   reorderGenres,
   updateGenre,
 } from "#lib/genre";
-import { GENRE_NAME_MAX_LENGTH } from "#lib/genre-shared";
 import type { AdminMessages } from "#lib/locale";
 
 import type { GenreReorderResult, GenreRowActionState } from "../genre-types";
@@ -30,9 +30,9 @@ import type { GenreReorderResult, GenreRowActionState } from "../genre-types";
 const nameSchema = (messages: AdminMessages) =>
   requiredTrimmedString(
     getMessage(messages, "admin.genres.validation.name_required"),
-    GENRE_NAME_MAX_LENGTH,
+    CATALOG_NAME_MAX_LENGTH,
     getMessage(messages, "admin.genres.validation.name_too_long", {
-      count: String(GENRE_NAME_MAX_LENGTH),
+      count: String(CATALOG_NAME_MAX_LENGTH),
     })
   );
 

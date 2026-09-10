@@ -468,3 +468,75 @@ export const formatRelativeTime = (
     unit
   );
 };
+
+/** How wide a weekday name is written: "Monday", "Mon", or "M". */
+export type WeekdayNameStyle = "long" | "narrow" | "short";
+
+export interface FormatWeekdayNameOptions {
+  /** Returned for a number outside 0 to 6. Default: the number itself. */
+  fallback?: string;
+  /** UI locale the day is named in. Required, for the reason above. */
+  locale: Locale;
+  /** Default: `long`. */
+  style?: WeekdayNameStyle;
+}
+
+/** The weekday numbers a weekly schedule is made of, Sunday first. */
+export const WEEKDAY_NUMBERS = [0, 1, 2, 3, 4, 5, 6] as const;
+
+/**
+ * The Sunday the weekday numbers are counted from. Any Sunday would do; this
+ * one is written out so resolving a number stays date arithmetic instead of a
+ * table of names.
+ */
+const WEEKDAY_REFERENCE_SUNDAY = "2024-01-07";
+
+const weekdayFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+const getWeekdayFormatter = (
+  intlLocale: string,
+  style: WeekdayNameStyle
+): Intl.DateTimeFormat => {
+  const key = `${intlLocale}\0${style}`;
+  const cached = weekdayFormatterCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  const formatter = new Intl.DateTimeFormat(intlLocale, {
+    timeZone: "UTC",
+    weekday: style,
+  });
+  weekdayFormatterCache.set(key, formatter);
+  return formatter;
+};
+
+/**
+ * Name one weekday, given as the number Postgres `EXTRACT(DOW)` uses: 0 is
+ * Sunday and 6 is Saturday.
+ *
+ * The name comes from `Intl` rather than from the message catalog, for the
+ * reason the month names in {@link formatDate} do — a weekday is calendar data
+ * every locale already carries, so a catalog copy would be seven more strings
+ * to translate for each language the apps add.
+ *
+ * There is no instant behind a weekday, so the number is resolved against a
+ * reference Sunday purely to reach a formatter, and the zone is pinned to UTC
+ * on both sides: reading that day back in UTC returns the day that went in.
+ */
+export const formatWeekdayName = (
+  weekday: number,
+  options: FormatWeekdayNameOptions
+): string => {
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+    return options.fallback ?? String(weekday);
+  }
+
+  const plainDate = Temporal.PlainDate.from(WEEKDAY_REFERENCE_SUNDAY).add({
+    days: weekday,
+  });
+
+  return getWeekdayFormatter(
+    toIntlLocale(options.locale),
+    options.style ?? "long"
+  ).format(plainDate.toZonedDateTime("UTC").epochMilliseconds);
+};

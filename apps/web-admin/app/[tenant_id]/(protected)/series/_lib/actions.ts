@@ -32,9 +32,33 @@ import {
   updateSeries,
   uploadSeriesEyeCatchAspectImage,
 } from "#lib/series";
+import {
+  MAX_SERIES_TAGS,
+  SERIES_AGE_RATING_VALUES,
+  SERIES_STATUS_VALUES,
+} from "#lib/series-classification";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { SeriesActionState, SeriesMutationMode } from "../series-types";
+
+/**
+ * A weekday as the form posts it: one decimal digit, 0 (Sunday) to 6. Anything
+ * else is dropped rather than coerced — `Number("")` is 0, which would put
+ * Sunday on a schedule nobody chose.
+ */
+const WEEKDAY_VALUE_RE = /^[0-6]$/u;
+
+const scheduleWeekdaysFormSchema = z
+  .array(z.string())
+  .transform((values) =>
+    [
+      ...new Set(
+        values.flatMap((value) =>
+          WEEKDAY_VALUE_RE.test(value.trim()) ? [Number(value.trim())] : []
+        )
+      ),
+    ].toSorted((a, b) => a - b)
+  );
 
 /**
  * `published_at` arrives either as an absolute timestamp (the form resolves
@@ -45,8 +69,12 @@ import type { SeriesActionState, SeriesMutationMode } from "../series-types";
  */
 const seriesCommonSchema = (messages: AdminMessages) =>
   z.object({
+    ageRating: z.enum(SERIES_AGE_RATING_VALUES, {
+      error: getMessage(messages, "admin.series.validation.age_rating_invalid"),
+    }),
     creatorPublicIds: trimmedStringListFormSchema,
     eyeCatchImage: optionalFileFormSchema,
+    genrePublicIds: trimmedStringListFormSchema,
     isPublished: checkboxOnFormSchema,
     labelPublicId: requiredTrimmedString(
       getMessage(messages, "admin.series.validation.label_required")
@@ -55,9 +83,19 @@ const seriesCommonSchema = (messages: AdminMessages) =>
     readingPeriodHours: nonNegativeIntFormSchema(
       getMessage(messages, "admin.series.validation.reading_period_invalid")
     ),
+    scheduleWeekdays: scheduleWeekdaysFormSchema,
+    status: z.enum(SERIES_STATUS_VALUES, {
+      error: getMessage(messages, "admin.series.validation.status_invalid"),
+    }),
     synopsis: requiredTrimmedString(
       getMessage(messages, "admin.series.validation.synopsis_required"),
       10_000
+    ),
+    tagNames: trimmedStringListFormSchema.refine(
+      (values) => values.length <= MAX_SERIES_TAGS,
+      getMessage(messages, "admin.series.validation.tags_too_many", {
+        count: String(MAX_SERIES_TAGS),
+      })
     ),
     tenantId: requiredTrimmedString(
       getMessage(messages, "admin.series.validation.tenant_missing")
@@ -81,13 +119,18 @@ const seriesEyeCatchSchema = (messages: AdminMessages) =>
   });
 
 const seriesFormFields = {
+  ageRating: { kind: "value", name: "age_rating" },
   creatorPublicIds: { kind: "values", name: "creator_public_ids" },
   eyeCatchImage: { kind: "file", name: "eye_catch_image" },
+  genrePublicIds: { kind: "values", name: "genre_public_ids" },
   isPublished: { kind: "value", name: "is_published" },
   labelPublicId: { kind: "value", name: "label_public_id" },
   publishedAt: { kind: "value", name: "published_at" },
   readingPeriodHours: { kind: "value", name: "reading_period_hours" },
+  scheduleWeekdays: { kind: "values", name: "schedule_weekdays" },
+  status: { kind: "value", name: "status" },
   synopsis: "value",
+  tagNames: { kind: "values", name: "tag_names" },
   tenantId: { kind: "value", name: "tenant_id" },
   title: "value",
 } as const;
@@ -170,14 +213,19 @@ export const createSeriesAction = async (
   const result = await withAdminSessionReauth(() =>
     createSeries(
       {
+        ageRating: parsed.data.ageRating,
         creatorPublicIds: parsed.data.creatorPublicIds,
         eyeCatchImageContentType,
         eyeCatchImageData,
+        genrePublicIds: parsed.data.genrePublicIds,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
         labelPublicId: parsed.data.labelPublicId,
         publishedAt: schedule.publishedAt,
         readingPeriodHours: parsed.data.readingPeriodHours,
+        scheduleWeekdays: parsed.data.scheduleWeekdays,
+        status: parsed.data.status,
         synopsis: parsed.data.synopsis,
+        tagNames: parsed.data.tagNames,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,
       },
@@ -228,15 +276,20 @@ export const updateSeriesAction = async (
   const result = await withAdminSessionReauth(() =>
     updateSeries(
       {
+        ageRating: parsed.data.ageRating,
         creatorPublicIds: parsed.data.creatorPublicIds,
         eyeCatchImageContentType,
         eyeCatchImageData,
+        genrePublicIds: parsed.data.genrePublicIds,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
         labelPublicId: parsed.data.labelPublicId,
         publicId: parsed.data.publicId,
         publishedAt: schedule.publishedAt,
         readingPeriodHours: parsed.data.readingPeriodHours,
+        scheduleWeekdays: parsed.data.scheduleWeekdays,
+        status: parsed.data.status,
         synopsis: parsed.data.synopsis,
+        tagNames: parsed.data.tagNames,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,
       },
@@ -300,16 +353,21 @@ export const updateSeriesEyeCatchAction = async (
   const result = await withAdminSessionReauth(() =>
     updateSeries(
       {
+        ageRating: parsed.data.ageRating,
         clearEyeCatchImage: parsed.data.clearEyeCatchImage,
         creatorPublicIds: parsed.data.creatorPublicIds,
         eyeCatchImageContentType,
         eyeCatchImageData,
+        genrePublicIds: parsed.data.genrePublicIds,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
         labelPublicId: parsed.data.labelPublicId,
         publicId: parsed.data.publicId,
         publishedAt: schedule.publishedAt,
         readingPeriodHours: parsed.data.readingPeriodHours,
+        scheduleWeekdays: parsed.data.scheduleWeekdays,
+        status: parsed.data.status,
         synopsis: parsed.data.synopsis,
+        tagNames: parsed.data.tagNames,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,
       },

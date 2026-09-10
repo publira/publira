@@ -14,7 +14,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { GENRE_NAME_MAX_LENGTH } from "./genre-shared";
+import { CATALOG_NAME_MAX_LENGTH } from "./catalog-name";
 import { getAccessToken } from "./session";
 
 export interface GenreItem {
@@ -68,7 +68,7 @@ const saveErrorMessage = (messages: SharedMessages): string =>
 const nameOverrides = (messages: SharedMessages): RpcErrorMessageOverrides => ({
   conflict: getMessage(messages, "admin.genres.name_taken"),
   "invalid-argument": getMessage(messages, "admin.genres.name_invalid", {
-    count: String(GENRE_NAME_MAX_LENGTH),
+    count: String(CATALOG_NAME_MAX_LENGTH),
   }),
 });
 

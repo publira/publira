@@ -8,7 +8,12 @@ import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { LRUCache } from "lru-cache";
 import { cacheLife, cacheTag } from "next/cache";
 
-const publicApiClient = createPublicApiClient({
+/**
+ * The public API, which the console reads for the few things the admin API
+ * cannot answer: the tenant chrome below, resolved before there is a session,
+ * and the tag vocabulary in `tag.ts`, which has no admin RPC of its own.
+ */
+export const publicApiClient = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_PUBLIC_GRPC_URL ?? "http://localhost:8100",
   transport: "grpc",
 });

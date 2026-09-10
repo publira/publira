@@ -1,11 +1,14 @@
+import { SeriesAgeRating, SeriesStatus } from "@publira/api-client/admin/types";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheTag, mockGetAccessToken, mockListSeries } = vi.hoisted(() => ({
-  mockCacheTag: vi.fn(),
-  mockGetAccessToken: vi.fn(),
-  mockListSeries: vi.fn(),
-}));
+const { mockCacheTag, mockGetAccessToken, mockListSeries, mockUpdateSeries } =
+  vi.hoisted(() => ({
+    mockCacheTag: vi.fn(),
+    mockGetAccessToken: vi.fn(),
+    mockListSeries: vi.fn(),
+    mockUpdateSeries: vi.fn(),
+  }));
 
 vi.mock("next/cache", () => ({
   cacheTag: mockCacheTag,
@@ -19,6 +22,7 @@ vi.mock("./api", () => ({
   apiClient: {
     series: {
       listSeries: mockListSeries,
+      updateSeries: mockUpdateSeries,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -232,5 +236,113 @@ describe("listAllSeries", () => {
     await listAllSeries("TENANT001", "en");
 
     expect(mockCacheTag).toHaveBeenCalledWith(seriesListCacheTag("TENANT001"));
+  });
+});
+
+describe("the classification a series carries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("reads the stored enums back as the values the form posts", async () => {
+    mockListSeries.mockResolvedValue({
+      series: [
+        {
+          ageRating: SeriesAgeRating.R18,
+          genres: [
+            { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
+            { name: "", publicId: "", slug: "" },
+          ],
+          publicId: "SERIES001",
+          scheduleWeekdays: [1, 4],
+          status: SeriesStatus.HIATUS,
+          synopsis: "A synopsis",
+          tags: [
+            { name: "seaside", slug: "seaside" },
+            { name: " ", slug: "" },
+          ],
+          title: "Series title",
+        },
+      ],
+    });
+
+    const { listSeries } = await import("./series");
+    const result = await listSeries("TENANT001", "en");
+
+    expect(result.series[0]).toMatchObject({
+      ageRating: "r18",
+      genrePublicIds: ["GENRE001"],
+      scheduleWeekdays: [1, 4],
+      status: "hiatus",
+      tagNames: ["seaside"],
+    });
+  });
+
+  // Unspecified is the column default rather than a missing value, so the form
+  // opens on the same state a save that named no status would have written.
+  it("reads an unspecified status and rating back as the column defaults", async () => {
+    mockListSeries.mockResolvedValue({
+      series: [
+        {
+          ageRating: SeriesAgeRating.UNSPECIFIED,
+          publicId: "SERIES001",
+          status: SeriesStatus.UNSPECIFIED,
+          synopsis: "A synopsis",
+          title: "Series title",
+        },
+      ],
+    });
+
+    const { listSeries } = await import("./series");
+    const result = await listSeries("TENANT001", "en");
+
+    expect(result.series[0]).toMatchObject({
+      ageRating: "all",
+      genrePublicIds: [],
+      scheduleWeekdays: [],
+      status: "ongoing",
+      tagNames: [],
+    });
+  });
+
+  // `UpdateSeries` writes the whole listing row, so every save has to carry the
+  // classification back or it resets to the column defaults.
+  it("sends the classification on every update", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries(
+      {
+        ageRating: "r15",
+        creatorPublicIds: [],
+        genrePublicIds: ["GENRE001"],
+        isPublished: true,
+        labelPublicId: "LABEL001",
+        publicId: "SERIES001",
+        readingPeriodHours: 24,
+        scheduleWeekdays: [2],
+        status: "completed",
+        synopsis: "A synopsis",
+        tagNames: ["seaside"],
+        tenantId: "TENANT001",
+        title: "Series title",
+      },
+      "en"
+    );
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ageRating: SeriesAgeRating.R15,
+        genrePublicIds: ["GENRE001"],
+        scheduleWeekdays: [2],
+        status: SeriesStatus.COMPLETED,
+        tagNames: ["seaside"],
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
   });
 });

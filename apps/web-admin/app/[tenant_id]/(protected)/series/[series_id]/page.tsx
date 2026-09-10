@@ -35,9 +35,11 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { parseEditTab } from "#lib/edit-tab-search-params";
+import { listGenres } from "#lib/genre";
 import { listAllLabels } from "#lib/label";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getSeries } from "#lib/series";
+import { listTagSuggestions } from "#lib/tag";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -189,11 +191,20 @@ const EditSeriesFormData = async ({
     );
   }
 
-  const [result, creatorsResult, labelsResult, timeZone] = await Promise.all([
+  const [
+    result,
+    creatorsResult,
+    labelsResult,
+    genresResult,
+    tagsResult,
+    timeZone,
+  ] = await Promise.all([
     getSeries({ publicId: seriesId, tenantId }, locale),
     // Walk every cursor page so the Combobox can search past the first 100.
     listAllCreators(tenantId, locale),
     listAllLabels(tenantId, locale),
+    listGenres(tenantId, locale),
+    listTagSuggestions(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -205,7 +216,11 @@ const EditSeriesFormData = async ({
     return <SeriesLoadError message={result.message} />;
   }
 
-  await redirectToLoginIfSessionRejected(creatorsResult, labelsResult);
+  await redirectToLoginIfSessionRejected(
+    creatorsResult,
+    labelsResult,
+    genresResult
+  );
 
   return (
     <SeriesForm
@@ -215,11 +230,17 @@ const EditSeriesFormData = async ({
         creatorsResult.ok ? undefined : creatorsResult.message
       }
       defaultReadingPeriodHours={result.series.readingPeriodHours}
+      genres={genresResult.genres}
+      genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
       initialSeries={result.series}
       key={result.series.publicId}
       labels={labelsResult.labels}
       labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="update"
+      tagSuggestions={tagsResult.tagNames}
+      tagSuggestionsErrorMessage={
+        tagsResult.ok ? undefined : tagsResult.message
+      }
       timeZone={timeZone}
     />
   );

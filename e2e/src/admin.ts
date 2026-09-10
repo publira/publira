@@ -71,6 +71,23 @@ export const selectComboboxOption = async (
   await page.getByRole("option", { name: optionLabel }).click();
 };
 
+/** Pick an option of a `Select` trigger by label. */
+export const selectOption = async (
+  page: Page,
+  select: Locator,
+  optionLabel: string
+): Promise<void> => {
+  await select.click();
+  await page.getByRole("option", { exact: true, name: optionLabel }).click();
+};
+
+/**
+ * One weekday of the series form's update schedule, by the short name `Intl`
+ * writes it as in the console's locale ("Mon").
+ */
+export const weekdayCheckbox = (page: Page, weekdayLabel: string): Locator =>
+  page.getByRole("checkbox", { exact: true, name: weekdayLabel });
+
 export interface SeriesFormFields {
   title: Locator;
   readingPeriodHours: Locator;
@@ -78,6 +95,10 @@ export interface SeriesFormFields {
   creatorCombobox: Locator;
   labelCombobox: Locator;
   publishedAt: Locator;
+  statusSelect: Locator;
+  ageRatingSelect: Locator;
+  genreCombobox: Locator;
+  tagInput: Locator;
 }
 
 /**
@@ -89,14 +110,20 @@ export interface SeriesFormFields {
  * accessibility tree, which pins these to the page in front of the user.
  */
 export const seriesFormFields = (page: Page): SeriesFormFields => ({
+  ageRatingSelect: page.getByRole("combobox", { name: /Age rating/u }),
   creatorCombobox: page.getByRole("combobox", { name: /Creators/u }),
+  genreCombobox: page.getByRole("combobox", { name: /Genres/u }),
   labelCombobox: page.getByRole("combobox", { name: /Label/u }),
   // `datetime-local` has no ARIA role, so this one filters on visibility.
   publishedAt: page
     .getByLabel(/Publication date and time/u)
     .filter({ visible: true }),
   readingPeriodHours: page.getByRole("spinbutton", { name: /Reading period/u }),
+  statusSelect: page.getByRole("combobox", { name: /Serialization status/u }),
   synopsis: page.getByRole("textbox", { name: /Synopsis/u }),
+  // A text input carrying a `list` is a combobox: the datalist of tags already
+  // in use is what the role names.
+  tagInput: page.getByRole("combobox", { name: /Tags/u }),
   title: page.getByRole("textbox", { name: /Title/u }),
 });
 
@@ -110,6 +137,10 @@ export interface CreateSeriesInput {
   /** When set, series is published at this absolute instant (Tokyo wall clock). */
   publishedAt?: Temporal.Instant;
   readingPeriodHours?: number;
+  /** Genre to assign, by the name the tenant's genre list shows. */
+  genreName?: string;
+  /** Tag to write, as an editor types it. */
+  tagName?: string;
 }
 
 /**
@@ -142,6 +173,15 @@ export const createSeriesViaUi = async (
     fields.creatorCombobox,
     input.creatorName ?? SEED_CATALOG.creatorName
   );
+
+  if (input.genreName) {
+    await selectComboboxOption(page, fields.genreCombobox, input.genreName);
+  }
+
+  if (input.tagName) {
+    await fields.tagInput.fill(input.tagName);
+    await page.getByRole("button", { exact: true, name: "Add" }).click();
+  }
 
   if (input.publishedAt) {
     await fields.publishedAt.fill(toTokyoDateTimeLocal(input.publishedAt));

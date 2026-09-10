@@ -86,6 +86,19 @@ formatRelativeTime(iso, { locale, timeZone: tenantTimeZone });
 
 `formatRelativeTime` answers differently depending on when it is called, so it belongs in the browser: a Server Component that renders one under Cache Components writes the phrase into the prerendered shell, where it stops matching the clock. `timeZone` is what decides where "yesterday" starts — from an hour up the phrase counts calendar days in that zone rather than elapsed hours, so two timestamps two hours apart are yesterday and today when midnight falls between them. `now` takes the moment to measure against, so a test states one instead of moving with the clock.
 
+```ts
+import { formatWeekdayName, WEEKDAY_NUMBERS } from "@publira/utils";
+
+// A weekday number as Postgres EXTRACT(DOW) gives it: 0 is Sunday, 6 is Saturday
+formatWeekdayName(1, { locale }); // "Monday"
+formatWeekdayName(1, { locale, style: "short" }); // "Mon"
+
+// The seven of them, Sunday first
+WEEKDAY_NUMBERS.map((weekday) => formatWeekdayName(weekday, { locale }));
+```
+
+`formatWeekdayName` takes no time zone: there is no instant behind a weekday, so the number is resolved against a fixed reference Sunday and formatted in UTC on both sides. The name comes from `Intl` rather than from the message catalog, for the same reason the month names in `formatDate` do — every locale already carries it. A number outside 0 to 6 returns `fallback` (default: the number itself).
+
 ### Picking and validating a time zone
 
 These are for a screen that lets someone choose an IANA name and saves it, such as the tenant time zone settings.

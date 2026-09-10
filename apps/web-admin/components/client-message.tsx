@@ -114,3 +114,20 @@ export const ClientMessage = ({
 
   return getMessage(messages, message, values);
 };
+
+/**
+ * The catalog itself, for the one element that carries a string-only attribute.
+ *
+ * `aria-label` on a shared component's slot cannot be a node, so the string has
+ * to be resolved by a component rather than rendered by one. Keep that
+ * component down to the element carrying the attribute and wrap it in its own
+ * `<Suspense>`: everything else the caller draws then stays out of the wait,
+ * which is the whole reason {@link ClientMessage} exists.
+ *
+ * Copy that lands as `children` never comes from here — `<ClientMessage>` is
+ * what renders it, one boundary per string. Before reaching for this, check
+ * whether the attribute can be a node at all: an icon-only button names itself
+ * with an `sr-only` `<span>`, and a list can be `aria-labelledby` its heading.
+ */
+export const useClientMessages = (): AdminMessages =>
+  use(adminCatalog(readClientLocale()));

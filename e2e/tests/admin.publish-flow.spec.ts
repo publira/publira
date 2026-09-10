@@ -4,8 +4,10 @@ import {
   createEpisodeViaUi,
   createSeriesViaUi,
   formMessage,
+  selectOption,
   seriesFormFields,
   signInAsSeedAdmin,
+  weekdayCheckbox,
 } from "../src/admin";
 import {
   applyScenarioSql,
@@ -148,6 +150,56 @@ test.describe("admin publish flow", () => {
         .locator("tr", { hasText: editedTitle })
         .getByText("Draft", { exact: true })
     ).toBeVisible();
+  });
+
+  test("classifies a series and reads the classification back on the form and the list", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const title = `E2E Classified Series ${suffix}`;
+    const tagName = `e2e-tag-${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        synopsis: `Classified synopsis ${suffix}`,
+        tagName,
+        title,
+      })
+    );
+
+    const fields = seriesFormFields(page);
+    await expect(page).toHaveURL(new RegExp(`/series/${seriesId}`, "u"));
+    // The tag written on the create form survives the save that redirected
+    // here, which is what says `CreateSeries` carried it.
+    await expect(
+      page.getByRole("listitem").filter({ hasText: tagName })
+    ).toBeVisible();
+
+    await selectOption(page, fields.statusSelect, "Completed");
+    await selectOption(page, fields.ageRatingSelect, "R15");
+    await weekdayCheckbox(page, "Fri").click();
+
+    await page.getByRole("button", { name: "Update series" }).click();
+    await expect(page.getByText("Series updated.")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Read back from the API rather than from the controls the click left
+    // behind: a reload is what proves the save reached the listing row.
+    await page.reload();
+    const savedFields = seriesFormFields(page);
+    await expect(savedFields.statusSelect).toContainText("Completed");
+    await expect(savedFields.ageRatingSelect).toContainText("R15");
+    await expect(weekdayCheckbox(page, "Fri")).toBeChecked();
+    await expect(
+      page.getByRole("listitem").filter({ hasText: tagName })
+    ).toBeVisible();
+
+    await page.getByRole("link", { exact: true, name: "Series" }).click();
+    await page.waitForURL((url) => url.pathname === "/series");
+    const row = page.locator("tr", { hasText: title });
+    await expect(row.getByText("Completed", { exact: true })).toBeVisible();
+    await expect(row.getByText("R15", { exact: true })).toBeVisible();
   });
 
   test("publishing a series makes it visible on the same tenant's web-host", async ({

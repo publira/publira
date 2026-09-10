@@ -45,9 +45,21 @@ import type { ChangeEventHandler } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
+import {
+  DEFAULT_SERIES_AGE_RATING,
+  DEFAULT_SERIES_STATUS,
+} from "#lib/series-classification";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
+import {
+  SeriesAgeRatingField,
+  SeriesGenreField,
+  SeriesScheduleField,
+  SeriesStatusField,
+  SeriesTagField,
+} from "./series-classification-fields";
+import type { GenreOption } from "./series-classification-fields";
 
 interface CreatorOption {
   publicId: string;
@@ -68,8 +80,12 @@ interface SeriesFormProps {
   defaultReadingPeriodHours: number;
   creators: CreatorOption[];
   labels: LabelOption[];
+  genres: GenreOption[];
+  tagSuggestions: string[];
   creatorsErrorMessage?: string;
   labelsErrorMessage?: string;
+  genresErrorMessage?: string;
+  tagSuggestionsErrorMessage?: string;
   initialSeries?: SeriesListItem;
   timeZone: string;
 }
@@ -370,6 +386,19 @@ const useSeriesFormState = ({
   const [selectedLabelPublicId, setSelectedLabelPublicId] = useState(
     initialSeries?.labelPublicId ?? ""
   );
+  const [status, setStatus] = useState(
+    () => initialSeries?.status ?? DEFAULT_SERIES_STATUS
+  );
+  const [scheduleWeekdays, setScheduleWeekdays] = useState<number[]>(
+    () => initialSeries?.scheduleWeekdays ?? []
+  );
+  const [ageRating, setAgeRating] = useState(
+    () => initialSeries?.ageRating ?? DEFAULT_SERIES_AGE_RATING
+  );
+  const [selectedGenrePublicIds, setSelectedGenrePublicIds] = useState(
+    () => initialSeries?.genrePublicIds ?? []
+  );
+  const [tagNames, setTagNames] = useState(() => initialSeries?.tagNames ?? []);
   const [uploadedEyeCatchPreviewUrl, setUploadedEyeCatchPreviewUrl] =
     useState("");
 
@@ -407,13 +436,23 @@ const useSeriesFormState = ({
   }
 
   return {
+    ageRating,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
+    scheduleWeekdays,
     selectedCreatorPublicIds,
+    selectedGenrePublicIds,
     selectedLabelPublicId,
+    setAgeRating,
+    setScheduleWeekdays,
     setSelectedCreatorPublicIds,
+    setSelectedGenrePublicIds,
     setSelectedLabelPublicId,
+    setStatus,
+    setTagNames,
+    status,
+    tagNames,
   };
 };
 
@@ -423,8 +462,12 @@ export const SeriesForm = ({
   defaultReadingPeriodHours,
   creators,
   labels,
+  genres,
+  tagSuggestions,
   creatorsErrorMessage,
   labelsErrorMessage,
+  genresErrorMessage,
+  tagSuggestionsErrorMessage,
   initialSeries,
   timeZone,
 }: SeriesFormProps) => {
@@ -460,13 +503,23 @@ export const SeriesForm = ({
     [labels, locale]
   );
   const {
+    ageRating,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
+    scheduleWeekdays,
     selectedCreatorPublicIds,
+    selectedGenrePublicIds,
     selectedLabelPublicId,
+    setAgeRating,
+    setScheduleWeekdays,
     setSelectedCreatorPublicIds,
+    setSelectedGenrePublicIds,
     setSelectedLabelPublicId,
+    setStatus,
+    setTagNames,
+    status,
+    tagNames,
   } = useSeriesFormState({ initialSeries });
 
   const useLabelFallbackInput =
@@ -605,6 +658,29 @@ export const SeriesForm = ({
                 </FieldDescription>
               </FieldContent>
             </Field>
+
+            <SeriesStatusField onChange={setStatus} value={status} />
+
+            <SeriesScheduleField
+              onChange={setScheduleWeekdays}
+              value={scheduleWeekdays}
+            />
+
+            <SeriesAgeRatingField onChange={setAgeRating} value={ageRating} />
+
+            <SeriesGenreField
+              genres={genres}
+              genresErrorMessage={genresErrorMessage}
+              onChange={setSelectedGenrePublicIds}
+              value={selectedGenrePublicIds}
+            />
+
+            <SeriesTagField
+              onChange={setTagNames}
+              suggestions={tagSuggestions}
+              suggestionsErrorMessage={tagSuggestionsErrorMessage}
+              value={tagNames}
+            />
           </div>
 
           {!isUpdate && (
