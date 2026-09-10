@@ -284,6 +284,11 @@ const mapEpisodeNeighbor = (
 };
 
 export interface EpisodeSeriesSummary {
+  /**
+   * The work's artwork. Episodes carry none of their own, so it is what a link
+   * to a neighbouring episode shows at the head of its row.
+   */
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
   publicId: string;
   title: string;
 }
@@ -878,6 +883,9 @@ export const getEpisodeDetail = async (
 
   const series = response.series
     ? {
+        eyeCatchImageVariants: toEyeCatchImageVariants(
+          response.series.eyeCatchImageVariants
+        ),
         publicId: response.series.publicId,
         title: response.series.title,
       }

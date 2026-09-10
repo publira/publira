@@ -110,6 +110,17 @@ const clearReadingPosition = (): void => {
 
 const readingProgress = (page: Page) => page.getByLabel(VIEWER_PROGRESS_LABEL);
 
+/**
+ * The viewer's own chrome, which links to the episodes either side of this one
+ * from over the top of the pages.
+ *
+ * Named as a landmark because the rows below the reader link to the same two
+ * episodes and label themselves the same way, so "Next episode" alone matches
+ * both.
+ */
+const viewerNavigation = (page: Page) =>
+  page.getByRole("navigation", { name: "Episode navigation" });
+
 /** The reading history section of `/my`, which names itself as a landmark. */
 const readingHistory = (page: Page) =>
   page.getByRole("region", { name: "Reading history" });
@@ -449,11 +460,11 @@ test.describe("web-host episode reading", () => {
     await expectFirstPageDrawn(page);
 
     await expect(
-      page.getByRole("link", { name: "Next episode" }),
+      viewerNavigation(page).getByRole("link", { name: "Next episode" }),
       "the viewer's own chrome links to the episode that follows"
     ).toHaveAttribute("href", hostPath(NEXT_EPISODE_PATH));
     await expect(
-      page.getByRole("link", { name: "Previous episode" }),
+      viewerNavigation(page).getByRole("link", { name: "Previous episode" }),
       "and to the one before it"
     ).toBeVisible();
 
@@ -471,9 +482,11 @@ test.describe("web-host episode reading", () => {
   }) => {
     await page.goto(edgeUrl(PENULTIMATE_EPISODE_PATH));
 
-    await expect(page.getByRole("heading", { name: "Up next" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "More episodes" })
+    ).toBeVisible();
     // The episode being read is free, so the only price on the page is the one
-    // the panel puts on the episode it offers.
+    // the row puts on the episode it offers.
     await expect(page.getByText(LAST_EPISODE_PRICE_LABEL)).toBeVisible();
 
     await page
@@ -501,8 +514,8 @@ test.describe("web-host episode reading", () => {
       })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Up next" }),
-      "there is no episode after the last one to offer"
+      page.getByRole("link", { name: "Next episode" }),
+      "there is no episode after the last one to offer, in the rows or over the pages"
     ).toHaveCount(0);
   });
 
@@ -523,22 +536,22 @@ test.describe("web-host episode reading", () => {
     ).toHaveCount(0);
   });
 
-  test("the episode information below the viewer names its series and links back to it", async ({
+  test("the running head below the viewer names its series and links back to it", async ({
     page,
   }) => {
     await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
 
+    const heading = page.getByRole("heading", { level: 1 });
+    await expect(heading).toContainText(VIEWER_EPISODE_TITLE);
+    await expect(heading, "the episode carries its number").toContainText(
+      "Episode 2"
+    );
     await expect(
-      page.getByRole("heading", { level: 1, name: VIEWER_EPISODE_TITLE })
-    ).toBeVisible();
-    await expect(
-      page.getByText(`An episode of “${SEED_TENANT.series.title}”.`)
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Go to the series" })
+      page.getByRole("link", { exact: true, name: SEED_TENANT.series.title }),
+      "the work the episode belongs to is the line above its title"
     ).toHaveAttribute("href", hostPath(seriesPath));
     await expect(
-      page.getByRole("link", { exact: true, name: "Series detail" })
+      page.getByRole("link", { name: "Back to the series" })
     ).toHaveAttribute("href", hostPath(seriesPath));
     await expect(page.getByText(`${VIEWER_PAGE_COUNT} pages`)).toBeVisible();
   });

@@ -144,12 +144,16 @@ test.describe("web-host catalog browsing", () => {
         name: SEED_TENANT.series.freeEpisodeTitle,
       })
     ).toBeVisible();
+    // The running head names the work above the episode's own title, and it
+    // is the way back to it.
     await expect(
-      page.getByText(`An episode of “${SEED_TENANT.series.title}”`).first()
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Go to the series" })
-    ).toBeVisible();
+      page
+        .getByRole("link", { exact: true, name: SEED_TENANT.series.title })
+        .first()
+    ).toHaveAttribute(
+      "href",
+      hostPath(`/series/${SEED_TENANT.series.publicId}`)
+    );
   });
 
   test("the series list pages through with a cursor", async ({ page }) => {

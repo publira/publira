@@ -1972,7 +1972,7 @@
       "detail_failed": "無法載入該章節。請稍後再試。",
       "end": {
         "back_to_series": "返回系列",
-        "up_next": "接下來",
+        "more_episodes": "更多章節",
         "up_to_date_description": "《{$title}》還沒有下一章。追蹤該系列，新章節發布時就會通知您。",
         "up_to_date_title": "已看到最新一章"
       },
@@ -1994,17 +1994,12 @@
         "previous": "上一章",
         "previous_hint": "再次按下該鍵即可開啟上一章。"
       },
-      "page_count": "頁數",
       "page_count_value": "{$count} 頁",
-      "price": "價格",
       "published": "發布於 {$date}",
-      "published_on": "發布日期",
       "reading_period": "閱讀期限",
       "reading_period_hours": "{$hours} 小時",
       "reading_period_unlimited": "無期限",
       "scheduled_at": "預約發布",
-      "series_detail": "系列詳情",
-      "series_note": "《{$title}》的其中一章。",
       "to_series_detail": "前往該系列",
       "viewer": {
         "enter_fullscreen": "進入全螢幕",

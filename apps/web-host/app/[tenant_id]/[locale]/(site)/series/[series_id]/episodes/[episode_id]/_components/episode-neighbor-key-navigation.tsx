@@ -99,7 +99,9 @@ const NeighborKeyListener = ({
     // pointer events, so the sentence never stands between the reader and the
     // page underneath it.
     <output className="pointer-events-none absolute inset-x-0 bottom-24 z-10 block text-center">
-      <span className="rounded-full bg-black/70 px-3 py-1.5 text-sm text-neutral-100">
+      {/* A floating layer over the pages, so it takes the radius and the one
+          shadow those get rather than the reader's own control radius. */}
+      <span className="inline-block rounded-surface border border-border bg-popover px-4 py-2 text-sm text-popover-foreground shadow-floating">
         {armedSide === "next" ? copy.nextHint : copy.previousHint}
       </span>
     </output>

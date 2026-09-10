@@ -231,7 +231,9 @@ test.describe("web-host screenshots", () => {
           })
         ).toBeVisible();
         await expect(
-          page.getByRole("link", { name: "Go to the series" })
+          page.getByText(
+            "The pages of this episode have not been published yet."
+          )
         ).toBeVisible();
 
         await expectScreenshot(page, viewport, "episode-without-body");

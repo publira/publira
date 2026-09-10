@@ -1,3 +1,5 @@
+import { cn } from "@publira/utils";
+
 /**
  * Height of the reader at the top of an episode page. The body skeleton
  * reserves the same box, so the episode metadata underneath keeps its position
@@ -7,4 +9,4 @@
  * the measurement, and the `rem` cap stops a tall desktop window from pushing
  * everything else off screen.
  */
-export const VIEWER_HEIGHT_CLASS = "h-[min(78svh,52rem)]";
+export const VIEWER_HEIGHT_CLASS = cn("h-[min(78svh,52rem)]");
