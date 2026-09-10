@@ -42,6 +42,16 @@ test.describe("web-host catalog browsing", () => {
       newEpisodes.locator('a[href*="/episodes/"]').first()
     ).toBeVisible();
 
+    // Every cover on this shelf carries how many episodes of it are free, and
+    // that is what the module is for: the badge is the assertion.
+    const freeSeries = page.getByRole("region", { name: "Free to read" });
+    await expect(
+      freeSeries.locator(`a[href^="${hostPath("/series/")}"]`).first()
+    ).toBeVisible();
+    await expect(
+      freeSeries.getByText(/^\d+ free episodes$/u).first()
+    ).toBeVisible();
+
     const updatedSeries = page.getByRole("region", {
       name: "Recently updated",
     });

@@ -4,6 +4,7 @@ import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
   getCatalogTopFeaturedWork,
+  getCatalogTopFreeSeries,
   getCatalogTopNewEpisodes,
   getCatalogTopPopularSeries,
   getCatalogTopRecommendedSeries,
@@ -49,6 +50,7 @@ const seriesFixture = [
   {
     creatorNames: ["Author A"],
     creators: [],
+    freeEpisodeCount: 2,
     labelName: "",
     publicId: "SERIES_1",
     synopsis: "S1",
@@ -57,6 +59,7 @@ const seriesFixture = [
   {
     creatorNames: ["Author B"],
     creators: [],
+    freeEpisodeCount: 0,
     labelName: "",
     publicId: "SERIES_2",
     synopsis: "S2",
@@ -254,6 +257,48 @@ describe("catalog-top section loaders", () => {
       })
     ).resolves.toEqual({
       message: "Could not load the recommended works. Please try again later.",
+      ok: false,
+    });
+  });
+
+  /**
+   * The filter is the server's, so the shelf holds whatever it returned: a
+   * series whose free window closed is gone from the answer rather than
+   * counted out of it here.
+   */
+  it("getCatalogTopFreeSeries asks for the series a reader can start without paying", async () => {
+    mockListPublishedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        nextToken: "",
+        previousToken: "",
+        series: [seriesFixture[0]],
+      },
+    });
+
+    const result = await getCatalogTopFreeSeries("TENANT_001", {
+      locale: "en",
+      maxFreeSeries: 6,
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith("TENANT_001", {
+      hasFreeEpisodes: true,
+      limit: 6,
+      locale: "en",
+    });
+    expect(result).toEqual({ ok: true, value: [seriesFixture[0]] });
+  });
+
+  it("getCatalogTopFreeSeries reports a failed catalogue read", async () => {
+    mockListPublishedSeries.mockResolvedValue({
+      message: "Could not load the series list. Please try again later.",
+      ok: false,
+    });
+
+    await expect(
+      getCatalogTopFreeSeries("TENANT_001", { locale: "en" })
+    ).resolves.toEqual({
+      message: "Could not load the series list. Please try again later.",
       ok: false,
     });
   });

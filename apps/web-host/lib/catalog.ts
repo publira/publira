@@ -97,6 +97,13 @@ export interface SeriesListItem {
     iconImageUrl: string;
   }[];
   creatorNames: string[];
+  /**
+   * How many published episodes of this series a reader can open without
+   * paying, counted by the server at the moment of the read: the ones priced
+   * at 0, and the priced ones an open free window covers. Zero is a series
+   * that costs money from its first episode.
+   */
+  freeEpisodeCount: number;
 }
 
 /**
@@ -110,6 +117,7 @@ type RawSeriesListItem = Pick<
   | "creators"
   | "eyeCatchImageUpdatedAt"
   | "eyeCatchImageVariants"
+  | "freeEpisodeCount"
   | "label"
   | "publicId"
   | "synopsis"
@@ -136,6 +144,7 @@ export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem => ({
   }),
   eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
   eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
+  freeEpisodeCount: s.freeEpisodeCount ?? 0,
   labelName: s.label?.name?.trim() ?? "",
   labelPublicId: s.label?.publicId?.trim() ?? "",
   publicId: s.publicId,
@@ -335,16 +344,28 @@ export interface SeriesListPage {
 /**
  * Cursor pagination: `token` is whatever the previous response returned as
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
- * `proto/README.md`. Sort order (`order`) is left at the server default — the
- * public list does not offer a sort control yet.
+ * `proto/README.md`. Sort order (`order`) is left at the server default —
+ * newest published first — because the public list does not offer a sort
+ * control yet.
+ *
+ * `hasFreeEpisodes` keeps only the series a reader can start without paying.
+ * The filter is the server's, so a series whose last free window closes drops
+ * out of the answer the moment it does; a token carries the filter it was
+ * built for, so a caller that changes the filter starts at page one again.
  */
 export const listPublishedSeries = async (
   tenantId: string,
   {
+    hasFreeEpisodes = false,
     limit = 50,
     locale,
     token = "",
-  }: { limit?: number; locale: Locale; token?: string }
+  }: {
+    hasFreeEpisodes?: boolean;
+    limit?: number;
+    locale: Locale;
+    token?: string;
+  }
 ): Promise<CachedReadResult<SeriesListPage>> => {
   "use cache";
 
@@ -357,6 +378,7 @@ export const listPublishedSeries = async (
   >;
   try {
     response = await apiClient.catalog.listPublishedSeries({
+      hasFreeEpisodes,
       limit,
       tenant: { tenantId: normalizedTenantId },
       token,

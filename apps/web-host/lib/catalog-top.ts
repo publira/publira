@@ -78,6 +78,7 @@ interface CatalogTopDataOptions {
   /** Part of every cache key here, because the failure copy is worded in it. */
   locale: Locale;
   maxAuthors?: number;
+  maxFreeSeries?: number;
   maxLabels?: number;
   maxNewEpisodes?: number;
   maxRanked?: number;
@@ -191,6 +192,33 @@ export const getCatalogTopRecommendedSeries = async (
 
   const page = await listRecommendedSeries(tenantId, {
     limit: maxRecommended,
+    locale,
+  });
+  if (!page.ok) {
+    return cachedReadFailure(page.message);
+  }
+
+  return { ok: true, value: page.value.series };
+};
+
+/**
+ * The free-to-read slot: published series a reader can start without paying,
+ * newest first.
+ *
+ * Which series those are is the server's `has_free_episodes` filter rather than
+ * a count compared here, so a series whose last free window closes leaves the
+ * shelf the moment it does, and the badge each card draws is the same number
+ * the filter selected on.
+ */
+export const getCatalogTopFreeSeries = async (
+  tenantId: string,
+  { locale, maxFreeSeries = 6 }: CatalogTopDataOptions
+): Promise<CachedReadResult<SeriesListItem[]>> => {
+  "use cache";
+
+  const page = await listPublishedSeries(tenantId, {
+    hasFreeEpisodes: true,
+    limit: maxFreeSeries,
     locale,
   });
   if (!page.ok) {

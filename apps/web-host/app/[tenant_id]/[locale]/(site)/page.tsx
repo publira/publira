@@ -1,4 +1,5 @@
 import { getMessage } from "@publira/i18n";
+import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   EmptyState,
@@ -22,11 +23,13 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { RelativeTime } from "#components/relative-time";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import type { SeriesListItem } from "#lib/catalog";
 import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
   getCatalogTopFeaturedWork,
+  getCatalogTopFreeSeries,
   getCatalogTopNewEpisodes,
   getCatalogTopPopularSeries,
   getCatalogTopUpdatedSeries,
@@ -101,6 +104,7 @@ const SECTION_TITLES = {
   authors: "host.top.featured_authors_error",
   continueReading: "host.top.continue_error",
   featuredWork: "host.top.featured_work_error",
+  freeSeries: "host.top.free_error",
   labels: "host.top.featured_labels_error",
   newEpisodes: "host.top.new_episodes_error",
   recommended: "host.top.recommended_error",
@@ -455,6 +459,16 @@ const PopularSeriesCard = async ({
           {formatList(series.creatorNames, { locale })}
         </span>
       )}
+      {series.freeEpisodeCount > 0 && (
+        <Badge className="mt-2" tone="success">
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message
+              message="host.common.free_episode_count"
+              values={{ count: series.freeEpisodeCount }}
+            />
+          </Suspense>
+        </Badge>
+      )}
     </LocaleLink>
   );
 };
@@ -550,6 +564,36 @@ const PopularSeriesSection = async () => {
       </div>
     </section>
   );
+};
+
+/**
+ * Where a reader can start without paying.
+ *
+ * The shelf is the same one the series list draws, so the free-episode count on
+ * each cover is the one every other list shows; what this module adds is that
+ * every cover on it has such a count.
+ */
+const FreeSeriesSection = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
+  const result = await getCatalogTopFreeSeries(tenantId, { locale });
+
+  if (!result.ok) {
+    return (
+      <SectionReadError
+        description={result.message}
+        title={SECTION_TITLES.freeSeries}
+      />
+    );
+  }
+
+  const freeSeries = result.value;
+
+  if (freeSeries.length === 0) {
+    return <SectionEmpty message="host.top.free_empty" />;
+  }
+
+  return <SeriesShelf locale={locale} series={freeSeries} />;
 };
 
 const NewEpisodesSection = async () => {
@@ -854,6 +898,39 @@ const Page = () => (
         <PopularSeriesSection />
       </Suspense>
     </SectionErrorBoundary>
+
+    <section aria-labelledby="free-series">
+      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+        <h2 className="font-serif text-xl leading-tight" id="free-series">
+          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+            <Message message="host.top.free_heading" />
+          </Suspense>
+        </h2>
+        {/* The whole list, because /series cannot yet be narrowed to the
+            series with free episodes (#1739). */}
+        <LocaleLink
+          className="text-sm text-primary underline underline-offset-4"
+          href="/series"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.top.view_all" />
+          </Suspense>
+        </LocaleLink>
+      </div>
+      <div className="mt-6">
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message={SECTION_TITLES.freeSeries} />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<SeriesShelfSkeleton />}>
+            <FreeSeriesSection />
+          </Suspense>
+        </SectionErrorBoundary>
+      </div>
+    </section>
 
     <section aria-labelledby="updated-series">
       <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
