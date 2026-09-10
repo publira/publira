@@ -82,6 +82,19 @@ const renderSection = async (limit = 4) =>
   );
 
 describe("RelatedSeries", () => {
+  it("heads the section itself, so nothing of it survives without covers", async () => {
+    mockListRelatedSeries.mockResolvedValueOnce({
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: [series()] },
+    });
+
+    await renderSection();
+
+    expect(
+      screen.getByRole("heading", { name: "You may also like" })
+    ).not.toBeNull();
+  });
+
   it("shows the neighbours the server returned, as links to each series", async () => {
     mockListRelatedSeries.mockResolvedValueOnce({
       ok: true,
@@ -117,34 +130,30 @@ describe("RelatedSeries", () => {
     });
   });
 
-  it("says why the section is missing when the read failed", async () => {
+  /**
+   * A suggestion the site cannot make is one it says nothing about: the page
+   * this hangs under is complete without it, and a heading over a failure
+   * message would be the only sign the reader ever had that it was coming.
+   */
+  it("renders nothing at all when the read failed", async () => {
     mockListRelatedSeries.mockResolvedValueOnce({
       message: "Could not load the related series. Please try again later.",
       ok: false,
     });
 
-    await renderSection();
+    const { container } = await renderSection();
 
-    expect(
-      screen.getByText("Could not show the related series")
-    ).not.toBeNull();
-    expect(
-      screen.getByText(
-        "Could not load the related series. Please try again later."
-      )
-    ).not.toBeNull();
+    expect(container.childNodes).toHaveLength(0);
   });
 
-  it("names the empty catalogue rather than leaving a bare heading", async () => {
+  it("renders nothing for a tenant whose catalogue holds nothing else", async () => {
     mockListRelatedSeries.mockResolvedValueOnce({
       ok: true,
       value: { nextToken: "", previousToken: "", series: [] },
     });
 
-    await renderSection();
+    const { container } = await renderSection();
 
-    expect(
-      screen.getByText("There are no other series to suggest yet.")
-    ).not.toBeNull();
+    expect(container.childNodes).toHaveLength(0);
   });
 });

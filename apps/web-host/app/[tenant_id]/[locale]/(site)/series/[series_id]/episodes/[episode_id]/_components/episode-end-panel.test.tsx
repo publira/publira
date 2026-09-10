@@ -47,12 +47,14 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// The shelf reads the catalogue, which `related-series.test.tsx` covers; what
-// this file asserts is which ending of the series carries one.
+// The shelf reads the catalogue and heads itself, both of which
+// `related-series.test.tsx` covers; what this file asserts is which ending of
+// the series carries one.
 vi.mock("#components/related-series", () => ({
   RelatedSeries: ({ limit }: { limit: number }) => (
     <div data-limit={limit} data-testid="related-series" />
   ),
+  RelatedSeriesSkeleton: () => null,
 }));
 
 // The follow control reads the reader's own session, which this file is not
@@ -145,9 +147,6 @@ describe("EpisodeEndPanel", () => {
   it("suggests other works once the series has run out", async () => {
     await renderPanel();
 
-    expect(
-      screen.getByRole("heading", { name: "You may also like" })
-    ).toBeDefined();
     expect(screen.getByTestId("related-series").dataset.limit).toBe("3");
   });
 
@@ -155,7 +154,6 @@ describe("EpisodeEndPanel", () => {
     await renderPanel(nextEpisode);
 
     expect(screen.queryByTestId("related-series")).toBeNull();
-    expect(screen.queryByText("You may also like")).toBeNull();
   });
 
   it("always leads back to the series", async () => {

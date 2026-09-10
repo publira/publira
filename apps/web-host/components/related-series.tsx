@@ -1,18 +1,8 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { SeriesShelf } from "#components/series-shelf";
+import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { listRelatedSeries } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
 
@@ -20,14 +10,16 @@ import { getLocale } from "#lib/locale";
  * The works a reader may want next, shown wherever one series is the subject:
  * under the series itself, and at the end of its last episode.
  *
- * The server never answers this with nothing while the tenant has another
- * published series — a work sharing no creator, label, genre or tag still joins
- * the list in ranking order — so the empty state below is what a tenant with a
- * single series sees, and nothing else.
+ * A suggestion is worth nothing to say nothing about, so this section either
+ * carries covers or is not there at all — heading included, which is why the
+ * heading is rendered here rather than by the caller. A read that failed leaves
+ * the page it hangs under intact and complete, and a tenant whose catalogue
+ * holds one series is not told that it holds one series.
  *
- * The heading belongs to the caller: the two places this appears in word it
- * into their own structure, and it is copy the reader sees before this read
- * resolves.
+ * The server never answers with nothing while there is another published
+ * series: a work sharing no creator, label, genre or tag still joins the list
+ * in ranking order. So the empty answer is the single-series tenant, and the
+ * failed one is an unreachable API.
  */
 export const RelatedSeries = async ({
   limit,
@@ -46,34 +38,30 @@ export const RelatedSeries = async ({
     seriesPublicId,
   });
 
-  if (!result.ok) {
-    return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="host.related.list_error" />
-            </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
-    );
+  if (!result.ok || result.value.series.length === 0) {
+    return null;
   }
 
-  const { series } = result.value;
-
-  if (series.length === 0) {
-    return (
-      <EmptyState>
-        <EmptyStateDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="host.related.list_empty" />
-          </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
-    );
-  }
-
-  return <SeriesShelf locale={locale} series={series} />;
+  return (
+    <section className="grid gap-4">
+      <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
+        <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+          <Message message="host.related.heading" />
+        </Suspense>
+      </h2>
+      <SeriesShelf locale={locale} series={result.value.series} />
+    </section>
+  );
 };
+
+/**
+ * What stands in the section's place while the read is in flight, shaped like
+ * the section rather than like the shelf alone: the heading is inside the
+ * boundary too, so it has to be stood in for as well.
+ */
+export const RelatedSeriesSkeleton = ({ count }: { count: number }) => (
+  <div className="grid gap-4">
+    <Skeleton className="h-7 w-40" />
+    <SeriesShelfSkeleton count={count} />
+  </div>
+);

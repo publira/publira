@@ -2182,7 +2182,6 @@
     },
     "related": {
       "heading": "你可能也喜欢",
-      "list_empty": "暂无其他可推荐的作品。",
       "list_error": "无法显示相关作品",
       "list_failed": "无法加载相关作品。请稍后再试。"
     },

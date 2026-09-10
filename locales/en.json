@@ -2182,7 +2182,6 @@
     },
     "related": {
       "heading": "You may also like",
-      "list_empty": "There are no other series to suggest yet.",
       "list_error": "Could not show the related series",
       "list_failed": "Could not load the related series. Please try again later."
     },

@@ -22,9 +22,11 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { Prose } from "#components/prose";
-import { RelatedSeries } from "#components/related-series";
+import {
+  RelatedSeries,
+  RelatedSeriesSkeleton,
+} from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { SeriesShelfSkeleton } from "#components/series-shelf";
 import { getSeriesDetail } from "#lib/catalog";
 import type { SeriesSerializationStatus } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
@@ -350,30 +352,27 @@ const SeriesDetailContent = async (
         )}
       </section>
 
-      <section className="grid gap-4">
-        <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
-          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-            <Message message="host.related.heading" />
+      {/* The section renders its own heading, because a read that fails takes
+          the whole thing with it rather than leaving a heading over nothing.
+          The boundary is still here for a throw, which is a defect rather than
+          the unreachable API the section answers by disappearing. */}
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="host.related.list_error" />
           </Suspense>
-        </h2>
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="host.related.list_error" />
-            </Suspense>
-          }
+        }
+      >
+        <Suspense
+          fallback={<RelatedSeriesSkeleton count={RELATED_SERIES_COUNT} />}
         >
-          <Suspense
-            fallback={<SeriesShelfSkeleton count={RELATED_SERIES_COUNT} />}
-          >
-            <RelatedSeries
-              limit={RELATED_SERIES_COUNT}
-              seriesPublicId={series.publicId}
-              tenantId={tenantId}
-            />
-          </Suspense>
-        </SectionErrorBoundary>
-      </section>
+          <RelatedSeries
+            limit={RELATED_SERIES_COUNT}
+            seriesPublicId={series.publicId}
+            tenantId={tenantId}
+          />
+        </Suspense>
+      </SectionErrorBoundary>
 
       <p>
         <LocaleLink

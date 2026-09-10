@@ -6,9 +6,11 @@ import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { RelatedSeries } from "#components/related-series";
+import {
+  RelatedSeries,
+  RelatedSeriesSkeleton,
+} from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { SeriesShelfSkeleton } from "#components/series-shelf";
 import type {
   EpisodeDetail,
   EpisodeNeighborItem,
@@ -123,17 +125,18 @@ export const EpisodeEndPanel = async ({
 
       {/* Only where the series has run out. While there is a next episode the
           panel makes one offer, and a shelf of other works beside it is what
-          turns that one offer into a choice. */}
+          turns that one offer into a choice.
+
+          `empty:hidden` because the section renders nothing at all when its
+          read fails or the tenant has no other work: the gap this wrapper adds
+          would otherwise be left hanging under the card's last line. */}
       {nextEpisode ? null : (
-        <section className="mt-8 border-t border-border/70 pt-6">
-          <h2 className="mb-4 font-serif text-lg font-semibold">
-            {getMessage(messages, "host.related.heading")}
-          </h2>
+        <div className="mt-8 empty:hidden">
           <SectionErrorBoundary
             title={getMessage(messages, "host.related.list_error")}
           >
             <Suspense
-              fallback={<SeriesShelfSkeleton count={RELATED_SERIES_COUNT} />}
+              fallback={<RelatedSeriesSkeleton count={RELATED_SERIES_COUNT} />}
             >
               <RelatedSeries
                 limit={RELATED_SERIES_COUNT}
@@ -142,7 +145,7 @@ export const EpisodeEndPanel = async ({
               />
             </Suspense>
           </SectionErrorBoundary>
-        </section>
+        </div>
       )}
     </section>
   );
