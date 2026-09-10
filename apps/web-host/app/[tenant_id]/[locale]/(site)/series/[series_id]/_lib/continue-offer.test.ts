@@ -19,8 +19,7 @@ describe("resolveContinueOffer", () => {
   it("invites a reader with no progress into the first episode", () => {
     expect(resolveContinueOffer(episodes, null)).toEqual({
       episodePublicId: "EPISODE_001",
-      label: "host.series.progress_start",
-      orderIndex: 1,
+      isContinuation: false,
     });
   });
 
@@ -32,8 +31,7 @@ describe("resolveContinueOffer", () => {
       })
     ).toEqual({
       episodePublicId: "EPISODE_002",
-      label: "host.series.progress_continue",
-      orderIndex: 2,
+      isContinuation: true,
     });
   });
 
@@ -45,18 +43,20 @@ describe("resolveContinueOffer", () => {
       })
     ).toEqual({
       episodePublicId: "EPISODE_003",
-      label: "host.series.progress_start",
-      orderIndex: 3,
+      isContinuation: true,
     });
   });
 
-  it("offers nothing to a reader who finished the last published episode", () => {
+  it("offers the first episode again to a reader who finished the last one", () => {
     expect(
       resolveContinueOffer(episodes, {
         episode: { orderIndex: 3, publicId: "EPISODE_003", title: "Episode 3" },
         isFinished: true,
       })
-    ).toBeNull();
+    ).toEqual({
+      episodePublicId: "EPISODE_001",
+      isContinuation: false,
+    });
   });
 
   it("offers nothing for a series with no published episodes", () => {

@@ -1,21 +1,32 @@
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { ImageIcon } from "@publira/icons";
+import {
+  EmptyState,
+  EmptyStateDescription,
+} from "@publira/ui-components/empty-state";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
   guardPlaceholders,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
+import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { getPublishedLabelDetail } from "#lib/labels";
 import type { PublishedLabelDetail } from "#lib/labels";
 import { getLocale, loadHostMessages } from "#lib/locale";
-import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
@@ -88,26 +99,38 @@ export const generateMetadata = async ({
 };
 
 const LabelDetailSkeleton = () => (
-  <div className="mx-auto max-w-5xl px-6 py-12">
-    <div className="mb-10 overflow-hidden rounded-3xl border border-border/70 bg-card/90 shadow-sm">
-      <div className="aspect-video animate-pulse bg-muted" />
-      <div className="space-y-4 p-8">
-        <div className="h-9 w-1/2 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
-      </div>
+  <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+    <div className="grid gap-2">
+      <SkeletonLine className="h-8 w-1/2" />
+      <SkeletonLine className="h-4 w-40" />
     </div>
-    <div className="grid gap-4">
-      {Array.from({ length: 3 }, (_, index) => (
-        <div
-          className="h-20 animate-pulse rounded-2xl border border-border/70 bg-muted/40"
-          key={index}
-        />
-      ))}
-    </div>
+    <SeriesShelfSkeleton />
   </div>
 );
 
-const LabelSeriesPagination = async ({
+/**
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the catalog: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the `getMessage` that reads it.
+ */
+const LabelSeriesPaginationNav = async ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return (
+    <ListPagination
+      aria-label={getMessage(messages, "host.labels.series_pagination_aria")}
+    >
+      {children}
+    </ListPagination>
+  );
+};
+
+const LabelSeriesPagination = ({
   labelId,
   nextToken,
   previousToken,
@@ -115,43 +138,26 @@ const LabelSeriesPagination = async ({
   labelId: string;
   nextToken: string;
   previousToken: string;
-}) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-
-  return (
-    <nav
-      aria-label={getMessage(messages, "host.labels.series_pagination_aria")}
-      className="mt-8 flex items-center justify-center gap-6"
-    >
-      {previousToken ? (
-        <LocaleLink
-          href={labelDetailHref(labelId, previousToken)}
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
-          {getMessage(messages, "host.common.previous_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
-        </span>
-      )}
-
-      {nextToken ? (
-        <LocaleLink
-          href={labelDetailHref(labelId, nextToken)}
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
-          {getMessage(messages, "host.common.next_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
-        </span>
-      )}
-    </nav>
-  );
-};
+}) => (
+  <Suspense fallback={<ListPaginationSkeleton />}>
+    <LabelSeriesPaginationNav>
+      <ListPaginationStep
+        href={previousToken ? labelDetailHref(labelId, previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep
+        href={nextToken ? labelDetailHref(labelId, nextToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </LabelSeriesPaginationNav>
+  </Suspense>
+);
 
 const LabelRelatedSeries = async ({
   label,
@@ -161,22 +167,32 @@ const LabelRelatedSeries = async ({
   token: string;
 }) => {
   const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
 
   if (label.series.length === 0) {
     if (!token) {
       return (
-        <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-6 text-sm text-muted-foreground">
-          {getMessage(messages, "host.labels.series_empty")}
-        </div>
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.labels.series_empty" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
       );
     }
 
+    // The covers this page pointed at are gone. The server hands back a token
+    // for the neighbouring page when it can, and empty tokens when it cannot —
+    // then the only way out is the first page (`proto/README.md`).
     return (
-      <div className="py-10 text-center">
-        <p className="mb-4 text-sm text-muted-foreground">
-          {getMessage(messages, "host.series.page_empty")}
-        </p>
+      <div className="grid gap-8">
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.series.page_empty" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
         {label.previousToken || label.nextToken ? (
           <LabelSeriesPagination
             labelId={label.id}
@@ -184,40 +200,30 @@ const LabelRelatedSeries = async ({
             previousToken={label.previousToken}
           />
         ) : (
-          <LocaleLink
-            href={labelDetailHref(label.id, "")}
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            {getMessage(messages, "host.labels.series_first_page")}
-          </LocaleLink>
+          <p>
+            <LocaleLink
+              className="text-sm text-primary underline underline-offset-4"
+              href={labelDetailHref(label.id, "")}
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="host.labels.series_first_page" />
+              </Suspense>
+            </LocaleLink>
+          </p>
         )}
       </div>
     );
   }
 
   return (
-    <>
-      <ul className="grid gap-4">
-        {label.series.map((series) => (
-          <li key={series.publicId}>
-            <LocaleLink
-              href={`/series/${series.publicId}`}
-              className="block rounded-2xl border border-border/70 bg-card p-5 transition hover:border-secondary/40 hover:shadow-sm"
-            >
-              <p className="font-medium text-foreground">{series.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {getMessage(messages, "host.common.view_series_detail")}
-              </p>
-            </LocaleLink>
-          </li>
-        ))}
-      </ul>
+    <div className="grid gap-8">
+      <SeriesShelf locale={locale} series={label.series} />
       <LabelSeriesPagination
         labelId={label.id}
         nextToken={label.nextToken}
         previousToken={label.previousToken}
       />
-    </>
+    </div>
   );
 };
 
@@ -240,11 +246,12 @@ const LabelDetailContent = async ({
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything.
-  const [siteLabel, result, messages] = await Promise.all([
-    getTenantSiteLabel(tenantId, locale),
-    loadPublishedLabelDetail(tenantId, labelId, locale, token),
-    loadHostMessages(locale),
-  ]);
+  const result = await loadPublishedLabelDetail(
+    tenantId,
+    labelId,
+    locale,
+    token
+  );
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;
@@ -257,58 +264,61 @@ const LabelDetailContent = async ({
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <section className="mb-10 overflow-hidden rounded-3xl border border-border/70 bg-card/90 shadow-sm">
+    <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+      <div className="grid gap-4">
         {label.eyeCatchImageVariants &&
-        label.eyeCatchImageVariants.length > 0 ? (
-          <div className="aspect-video overflow-hidden bg-muted">
-            <EyeCatchPicture
-              alt={label.name}
-              imgClassName="size-full object-cover"
-              variants={label.eyeCatchImageVariants}
-            />
-          </div>
-        ) : (
-          <div className="flex aspect-video items-center justify-center bg-linear-to-br from-accent/25 via-primary/10 to-secondary/20 text-accent/55">
-            <ImageIcon className="h-16 w-16" />
-          </div>
-        )}
-        <div className="p-8">
-          <p className="mb-3 text-xs tracking-[0.24em] text-muted-foreground uppercase">
-            {siteLabel}
-          </p>
-          <h1 className="mb-2 font-serif text-4xl font-bold text-foreground">
-            {label.name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {getMessage(messages, "host.common.series_count", {
-              count: label.seriesCount,
-            })}
+          label.eyeCatchImageVariants.length > 0 && (
+            <span className="block overflow-hidden rounded-surface bg-muted">
+              <EyeCatchPicture
+                alt=""
+                imgClassName="aspect-video size-full object-cover"
+                sizes="(max-width: 1200px) 100vw, 1152px"
+                variants={label.eyeCatchImageVariants}
+              />
+            </span>
+          )}
+        <div className="grid gap-2">
+          <h1 className="font-serif text-3xl leading-tight">{label.name}</h1>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message
+                message="host.common.series_count"
+                values={{ count: label.seriesCount }}
+              />
+            </Suspense>
           </p>
         </div>
-      </section>
-
-      <section>
-        <div className="mb-5">
-          <h2 className="font-serif text-2xl font-semibold">
-            {getMessage(messages, "host.labels.series_heading")}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {getMessage(messages, "host.labels.series_description")}
-          </p>
-        </div>
-
-        <LabelRelatedSeries label={label} token={token} />
-      </section>
-
-      <div className="mt-8">
-        <LocaleLink
-          href="/labels"
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          {getMessage(messages, "host.labels.back_to_list")}
-        </LocaleLink>
       </div>
+
+      <section className="grid gap-4">
+        <div className="grid gap-1 border-b border-border pb-2">
+          <h2 className="font-serif text-xl leading-tight">
+            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+              <Message message="host.labels.series_heading" />
+            </Suspense>
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.labels.series_description" />
+            </Suspense>
+          </p>
+        </div>
+
+        <Suspense fallback={<SeriesShelfSkeleton />}>
+          <LabelRelatedSeries label={label} token={token} />
+        </Suspense>
+      </section>
+
+      <p>
+        <LocaleLink
+          className="text-sm text-primary underline underline-offset-4"
+          href="/labels"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="host.labels.back_to_list" />
+          </Suspense>
+        </LocaleLink>
+      </p>
     </main>
   );
 };

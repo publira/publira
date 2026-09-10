@@ -12,7 +12,6 @@ import {
   NEXT_EPISODE_TITLE,
   PENULTIMATE_EPISODE_PATH,
   VIEWER_EPISODE_ID,
-  VIEWER_EPISODE_ORDER_INDEX,
   VIEWER_EPISODE_PATH,
   VIEWER_EPISODE_TITLE,
   VIEWER_PAGE_COUNT,
@@ -389,10 +388,17 @@ test.describe("web-host episode reading", () => {
 
     await page.goto(edgeUrl(seriesPath));
     await expect(
-      page.getByRole("link", {
-        name: `Continue from episode ${VIEWER_EPISODE_ORDER_INDEX}`,
-      })
+      page.getByRole("link", { name: "Continue reading" })
     ).toHaveAttribute("href", hostPath(VIEWER_EPISODE_PATH));
+    // The dot at the head of a row says what the button above the list says,
+    // so it has to land on the same episode. It is a mark rather than words,
+    // and this is the name it carries for a reader who cannot see it.
+    await expect(
+      page
+        .getByRole("listitem")
+        .filter({ hasText: VIEWER_EPISODE_TITLE })
+        .getByText("Next to read")
+    ).toBeAttached();
 
     await page.goto(edgeUrl("/"));
     await expect(

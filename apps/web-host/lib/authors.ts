@@ -5,6 +5,8 @@ import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantAuthorsTag } from "./cache-tags";
+import { toSeriesListItem } from "./catalog";
+import type { SeriesListItem } from "./catalog";
 import { localizedReadFailure } from "./read-failure";
 
 export interface PublishedAuthorListItem {
@@ -14,18 +16,13 @@ export interface PublishedAuthorListItem {
   seriesCount: number;
 }
 
-export interface PublishedAuthorSeriesItem {
-  publicId: string;
-  title: string;
-}
-
 export interface PublishedAuthorDetail {
   id: string;
   name: string;
   iconImageUrl: string;
   profileText: string;
   seriesCount: number;
-  series: PublishedAuthorSeriesItem[];
+  series: SeriesListItem[];
   /** Token for the previous series page. Empty on the first page. */
   previousToken: string;
   /** Token for the next series page. Empty on the last page. */
@@ -164,12 +161,11 @@ export const getPublishedAuthorDetail = async (
       ...mapPublishedAuthor(response.author),
       nextToken: response.nextToken ?? "",
       previousToken: response.previousToken ?? "",
-      series: (response.series ?? []).flatMap((series) => {
-        const publicId = series.publicId?.trim() ?? "";
-        return publicId.length > 0
-          ? [{ publicId, title: series.title?.trim() ?? "" }]
-          : [];
-      }),
+      series: (response.series ?? []).flatMap((series) =>
+        (series.publicId?.trim() ?? "").length > 0
+          ? [toSeriesListItem(series)]
+          : []
+      ),
     },
   };
 };

@@ -2,6 +2,7 @@
 
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { Skeleton } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { useActionState } from "react";
 
@@ -26,12 +27,7 @@ export interface FollowButtonCopy {
 
 const followButtonClassName = "shrink-0";
 
-export const FollowControlSkeleton = () => (
-  <div
-    aria-hidden="true"
-    className="h-9 w-28 animate-pulse rounded-md bg-muted"
-  />
-);
+export const FollowControlSkeleton = () => <Skeleton className="h-10 w-28" />;
 
 export const FollowLoginLink = ({
   ariaLabel,
@@ -46,7 +42,7 @@ export const FollowLoginLink = ({
     aria-label={ariaLabel}
     className={followButtonClassName}
     render={<Link href={href} />}
-    size="sm"
+    size="lg"
     variant="outline"
   >
     {label}
@@ -83,7 +79,7 @@ export const FollowButton = ({
   }
 
   return (
-    <form action={formAction} className="grid justify-items-end gap-2">
+    <form action={formAction} className="grid justify-items-start gap-2">
       <LocaleField />
       <input name="intent" type="hidden" value={intent} />
       <input name="publicId" type="hidden" value={publicId} />
@@ -96,9 +92,9 @@ export const FollowButton = ({
         aria-pressed={following}
         className={followButtonClassName}
         disabled={isPending}
-        size="sm"
+        size="lg"
         type="submit"
-        variant={following ? "outline" : "default"}
+        variant="outline"
       >
         {buttonLabel}
       </Button>

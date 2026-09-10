@@ -11,6 +11,7 @@ import type {
   ListRankedSeriesResponse,
   ListRecommendedSeriesResponse,
 } from "@publira/api-client/public/catalog";
+import { SeriesStatus } from "@publira/api-client/public/types";
 import type {
   EpisodeImage,
   EpisodeNeighbor,
@@ -115,7 +116,7 @@ type RawSeriesListItem = Pick<
   | "title"
 >;
 
-const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem => ({
+export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem => ({
   creatorNames: (s.creators ?? []).flatMap((c) => {
     const name = (c.name ?? "").trim();
     return name.length > 0 ? [name] : [];
@@ -277,6 +278,32 @@ export interface EpisodeSeriesSummary {
   title: string;
 }
 
+/**
+ * Whether a series is still gaining episodes, as a name a screen can branch
+ * on. `undefined` where the tenant has not said, which is a state a reader is
+ * told nothing about rather than one worded as "unknown".
+ */
+export type SeriesSerializationStatus = "completed" | "hiatus" | "ongoing";
+
+const toSeriesSerializationStatus = (
+  status: SeriesStatus | undefined
+): SeriesSerializationStatus | undefined => {
+  switch (status) {
+    case SeriesStatus.ONGOING: {
+      return "ongoing";
+    }
+    case SeriesStatus.COMPLETED: {
+      return "completed";
+    }
+    case SeriesStatus.HIATUS: {
+      return "hiatus";
+    }
+    default: {
+      return undefined;
+    }
+  }
+};
+
 export interface SeriesDetail {
   publicId: string;
   title: string;
@@ -284,6 +311,7 @@ export interface SeriesDetail {
   labelName: string;
   labelPublicId: string;
   creatorNames: string[];
+  status?: SeriesSerializationStatus;
   readingPeriodHours: number;
   eyeCatchImageUpdatedAt?: string;
   eyeCatchImageVariants?: EyeCatchImageVariant[];
@@ -678,6 +706,7 @@ export const getSeriesDetail = async (
           labelPublicId: response.series.label?.publicId?.trim() ?? "",
           publicId: response.series.publicId ?? "",
           readingPeriodHours: response.series.readingPeriodHours ?? 0,
+          status: toSeriesSerializationStatus(response.series.status),
           synopsis: response.series.synopsis ?? "",
           title: response.series.title ?? "",
         }

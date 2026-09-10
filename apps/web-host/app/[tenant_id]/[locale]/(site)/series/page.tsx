@@ -9,14 +9,12 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatList } from "@publira/utils";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
-import { EyeCatchFrame } from "#components/eye-catch-frame";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -25,6 +23,7 @@ import {
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { listPublishedSeries } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
@@ -49,18 +48,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
   return { title: getMessage(messages, "host.series.list_title") };
 };
-
-const SeriesShelfSkeleton = () => (
-  <div className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
-    {Array.from({ length: SERIES_SKELETON_COUNT }, (_, index) => (
-      <div className="grid gap-2" key={index}>
-        <Skeleton className="aspect-3/4 w-full rounded-surface" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-3 w-2/3" />
-      </div>
-    ))}
-  </div>
-);
 
 /**
  * The tenant's name sits inside the sentence, and the two locales put it in
@@ -206,38 +193,7 @@ const SeriesListData = async ({
 
   return (
     <div className="grid gap-8">
-      <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
-        {series.map((item) => (
-          <li key={item.publicId}>
-            <LocaleLink
-              className="group block"
-              href={`/series/${item.publicId}`}
-            >
-              <EyeCatchFrame
-                // The title is set beneath the cover, so repeating it here
-                // would read the shelf out twice.
-                alt=""
-                className="aspect-3/4 w-full rounded-surface"
-                preferredType="portrait"
-                sizes="(max-width: 640px) 33vw, 16vw"
-                variants={item.eyeCatchImageVariants}
-              >
-                <span className="line-clamp-4 font-serif text-xs leading-tight text-muted-foreground">
-                  {item.title}
-                </span>
-              </EyeCatchFrame>
-              <span className="mt-2 block font-serif text-sm leading-tight underline-offset-4 group-hover:underline">
-                {item.title}
-              </span>
-              {item.creatorNames.length > 0 && (
-                <span className="mt-1 block truncate text-xs text-muted-foreground">
-                  {formatList(item.creatorNames, { locale })}
-                </span>
-              )}
-            </LocaleLink>
-          </li>
-        ))}
-      </ul>
+      <SeriesShelf locale={locale} series={series} />
 
       <SeriesPagination nextToken={nextToken} previousToken={previousToken} />
     </div>
@@ -268,7 +224,9 @@ const SeriesPage = ({
         </Suspense>
       }
     >
-      <Suspense fallback={<SeriesShelfSkeleton />}>
+      <Suspense
+        fallback={<SeriesShelfSkeleton count={SERIES_SKELETON_COUNT} />}
+      >
         <SeriesListData searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>

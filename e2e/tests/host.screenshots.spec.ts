@@ -169,6 +169,38 @@ test.describe("web-host screenshots", () => {
         await expectScreenshot(page, viewport, "series-detail");
       });
 
+      test("a label detail page", async ({ page }) => {
+        await page.goto(hostPath(`/labels/${SEED_TENANT.labelId}`));
+
+        await expect(
+          page.getByRole("heading", {
+            level: 1,
+            name: SEED_TENANT.labelName,
+          })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("navigation", { name: "Label series pagination" })
+        ).toBeVisible();
+
+        await expectScreenshot(page, viewport, "label-detail");
+      });
+
+      test("an author detail page", async ({ page }) => {
+        await page.goto(hostPath(`/authors/${SEED_TENANT.authorId}`));
+
+        await expect(
+          page.getByRole("heading", {
+            level: 1,
+            name: SEED_TENANT.authorName,
+          })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("navigation", { name: "Related series pagination" })
+        ).toBeVisible();
+
+        await expectScreenshot(page, viewport, "author-detail");
+      });
+
       test("an episode with a comic body", async ({ page }) => {
         await page.goto(hostPath(VIEWER_EPISODE_PATH));
 

@@ -1810,7 +1810,6 @@
       "not_found_title": "Author not found",
       "page_empty": "There are no authors to show on this page.",
       "pagination_aria": "Author list pagination",
-      "profile": "Profile",
       "profile_empty": "No profile has been published yet.",
       "series_description": "The published series this author is credited on.",
       "series_empty": "No published series yet.",
@@ -1821,6 +1820,7 @@
     "common": {
       "back_to_top": "Back to home",
       "cancel": "Cancel",
+      "episode_number": "Episode {$number}",
       "error_id": "Error ID:",
       "find_series": "Browse series",
       "free": "Free",
@@ -2112,7 +2112,9 @@
     },
     "series": {
       "back_to_list": "← Back to the series list",
+      "continue_reading": "Continue reading",
       "detail_failed": "Could not load the series. Please try again later.",
+      "episode_count": "{$count} episodes",
       "episode_finished": "Finished",
       "episodes_empty": "No episodes have been published yet.",
       "episodes_heading": "Episodes",
@@ -2122,12 +2124,15 @@
       "list_error": "Could not show the series list",
       "list_failed": "Could not load the series list. Please try again later.",
       "list_title": "Series",
+      "next_to_read": "Next to read",
       "page_empty": "There are no series to show on this page.",
       "pagination_aria": "Series list pagination",
-      "progress_continue": "Continue from episode {$number}",
       "progress_error": "Could not show where you left off",
       "progress_failed": "Could not load where you left off. Please try again later.",
-      "progress_start": "Read episode {$number}"
+      "read_from_first": "Read from episode 1",
+      "status_completed": "Completed",
+      "status_hiatus": "On hiatus",
+      "status_ongoing": "Ongoing"
     },
     "settings": {
       "cancel": "Cancel",
@@ -2196,7 +2201,6 @@
       "continue_failed": "Could not load what you were reading. Please try again later.",
       "continue_heading": "Continue reading",
       "description": "Find your next read among the recommended, new, and recently updated works.",
-      "episode_number": "Episode {$number}",
       "featured_authors_empty": "No authors are credited on a published series yet.",
       "featured_authors_error": "Could not show the featured authors",
       "featured_authors_heading": "Featured authors",

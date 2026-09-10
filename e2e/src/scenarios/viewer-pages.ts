@@ -13,9 +13,6 @@ import { SEED_TENANT } from "./multi-tenant";
 export const VIEWER_EPISODE_ID = "SeedEPSDAAA2";
 export const VIEWER_EPISODE_TITLE = "Seed Episode 001-02";
 
-/** The number the series page prints for it, and that a resume offer names. */
-export const VIEWER_EPISODE_ORDER_INDEX = 2;
-
 /** Reading-order page count; keep in sync with the scenario's generate_series. */
 export const VIEWER_PAGE_COUNT = 8;
 

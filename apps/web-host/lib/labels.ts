@@ -8,14 +8,9 @@ import {
   tenantLabelsTag,
   tenantSeriesListTag,
 } from "./cache-tags";
-import { toEyeCatchImageVariants } from "./catalog";
-import type { EyeCatchImageVariant } from "./catalog";
+import { toEyeCatchImageVariants, toSeriesListItem } from "./catalog";
+import type { EyeCatchImageVariant, SeriesListItem } from "./catalog";
 import { localizedReadFailure } from "./read-failure";
-
-export interface PublishedLabelSeriesItem {
-  publicId: string;
-  title: string;
-}
 
 export interface PublishedLabelDetail {
   id: string;
@@ -23,7 +18,7 @@ export interface PublishedLabelDetail {
   seriesCount: number;
   eyeCatchImageUpdatedAt?: string;
   eyeCatchImageVariants?: EyeCatchImageVariant[];
-  series: PublishedLabelSeriesItem[];
+  series: SeriesListItem[];
   /** Token for the previous series page. Empty on the first page. */
   previousToken: string;
   /** Token for the next series page. Empty on the last page. */
@@ -91,12 +86,11 @@ export const getPublishedLabelDetail = async (
       name: (response.label.name ?? "").trim(),
       nextToken: response.nextToken ?? "",
       previousToken: response.previousToken ?? "",
-      series: (response.series ?? []).flatMap((series) => {
-        const seriesPublicId = series.publicId?.trim() ?? "";
-        return seriesPublicId.length > 0
-          ? [{ publicId: seriesPublicId, title: series.title?.trim() ?? "" }]
-          : [];
-      }),
+      series: (response.series ?? []).flatMap((series) =>
+        (series.publicId?.trim() ?? "").length > 0
+          ? [toSeriesListItem(series)]
+          : []
+      ),
       seriesCount: response.label.publishedSeriesCount ?? 0,
     },
   };
