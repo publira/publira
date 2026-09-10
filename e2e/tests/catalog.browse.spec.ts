@@ -189,22 +189,20 @@ test.describe("web-host catalog browsing", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Labels" })
     ).toBeVisible();
-    // One `<h2>` per card. Counting the seeded names rather than every card:
-    // the admin suites run beside this one and register labels of their own
-    // — all named `E2E …` — which sort onto this first page until their test
-    // deletes them again, so a count of the whole page is a race.
+    // One row per label, each a single link. Counting the seeded names rather
+    // than every row: the admin suites run beside this one and register labels
+    // of their own — all named `E2E …` — which sort onto this first page until
+    // their test deletes them again, so a count of the whole page is a race.
     await expect(
-      page.getByRole("heading", { level: 2, name: /^Seed Label \d{2}$/u })
+      page.getByRole("link", { name: /^Seed Label \d{2}$/u })
     ).toHaveCount(SEED_LABEL_COUNT);
 
-    const labelCard = page.getByRole("link").filter({
-      has: page.getByRole("heading", {
-        level: 2,
-        name: SEED_TENANT.labelName,
-      }),
+    const labelRow = page.getByRole("link", {
+      exact: true,
+      name: SEED_TENANT.labelName,
     });
-    await expect(labelCard).toHaveCount(1);
-    await labelCard.click();
+    await expect(labelRow).toHaveCount(1);
+    await labelRow.click();
 
     await expect(page).toHaveURL(
       new RegExp(`/labels/${SEED_TENANT.labelId}$`, "u")
@@ -240,11 +238,13 @@ test.describe("web-host catalog browsing", () => {
     expect(new URL(page.url()).searchParams.get("q")).toBe(
       SEED_TENANT.series.title
     );
+    // Each result is one row, and one link.
     await expect(
-      page.getByRole("heading", {
-        level: 2,
-        name: SEED_TENANT.series.title,
-      })
+      page
+        .getByRole("link", {
+          name: new RegExp(`^${SEED_TENANT.series.title}\\b`, "u"),
+        })
+        .first()
     ).toBeVisible();
   });
 
@@ -256,14 +256,12 @@ test.describe("web-host catalog browsing", () => {
       page.getByRole("heading", { level: 1, name: "Authors" })
     ).toBeVisible();
 
-    const authorCard = page.getByRole("link").filter({
-      has: page.getByRole("heading", {
-        level: 2,
-        name: SEED_TENANT.authorName,
-      }),
+    // Each row is one link carrying the name and the series count beside it.
+    const authorRow = page.getByRole("link", {
+      name: new RegExp(`^${SEED_TENANT.authorName}\\b`, "u"),
     });
-    await expect(authorCard).toHaveCount(1);
-    await authorCard.click();
+    await expect(authorRow).toHaveCount(1);
+    await authorRow.click();
 
     await expect(page).toHaveURL(
       new RegExp(`/authors/${SEED_TENANT.authorId}$`, "u")

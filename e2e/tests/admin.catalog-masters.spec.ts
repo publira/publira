@@ -149,11 +149,9 @@ const uploadIcon = async (
     .digest("hex");
 };
 
-/** The public label list's card for one label, by the name on its heading. */
-const labelCard = (page: Page, name: string): Locator =>
-  page.getByRole("link").filter({
-    has: page.getByRole("heading", { level: 2, name }),
-  });
+/** The public label list's row for one label. Each row is a single link. */
+const labelRow = (page: Page, name: string): Locator =>
+  page.getByRole("link", { exact: true, name });
 
 /**
  * The creator and label masters a tenant admin maintains beside the series
@@ -339,14 +337,15 @@ test.describe("admin catalog masters", () => {
     // A label is public in its own right — it does not need a series — and the
     // public list is newest first, so a label just made is on the first page.
     await pollHostPage(page, hostUrl("/labels"), async () => {
-      // Every card is one `<h2>`; wait for the list before counting in it.
+      // Wait for the list itself before counting in it: every row is one link
+      // into `/labels/`, and the pagination beneath them carries none.
       await page
-        .getByRole("heading", { level: 2 })
+        .locator('main a[href*="/labels/"]')
         .first()
         .waitFor({ state: "attached", timeout: 15_000 });
-      return await labelCard(page, name).count();
+      return await labelRow(page, name).count();
     }).toBe(1);
-    await labelCard(page, name).click();
+    await labelRow(page, name).click();
 
     await expect(page).toHaveURL(new RegExp(`/labels/${labelId}$`, "u"));
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();

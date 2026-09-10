@@ -11,15 +11,13 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { cn, formatDate, formatList } from "@publira/utils";
+import { formatDate, formatList } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { Suspense } from "react";
 
-import { EyeCatchPicture } from "#components/eye-catch-picture";
-import type { EyeCatchVariant } from "#components/eye-catch-picture";
+import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { RelativeTime } from "#components/relative-time";
@@ -139,58 +137,6 @@ const SectionEmpty = ({ message }: { message: HostMessageKey }) => (
     </EmptyStateDescription>
   </EmptyState>
 );
-
-/**
- * The frame a piece of artwork sits in, and what stands there when the work
- * has none: a flat `muted` rectangle carrying whatever the caller writes into
- * it, which for anything larger than a thumbnail is the title in the serif
- * face. No gradient and no icon — a title says which work this is, and the two
- * alternatives say nothing.
- *
- * A `<span>` rather than a `<div>`, because most of these frames are the first
- * child of a link that wraps a whole row.
- */
-const EyeCatchFrame = ({
-  alt,
-  children,
-  className,
-  fetchPriority,
-  loading,
-  preferredType,
-  sizes,
-  variants,
-}: {
-  alt: string;
-  children?: ReactNode;
-  className: string;
-  fetchPriority?: "high" | "low" | "auto";
-  loading?: "eager" | "lazy";
-  preferredType?: string;
-  sizes?: string;
-  variants: EyeCatchVariant[] | undefined;
-}) =>
-  variants && variants.length > 0 ? (
-    <span className={cn("block overflow-hidden bg-muted", className)}>
-      <EyeCatchPicture
-        alt={alt}
-        fetchPriority={fetchPriority}
-        imgClassName="size-full object-cover"
-        loading={loading}
-        preferredType={preferredType}
-        sizes={sizes}
-        variants={variants}
-      />
-    </span>
-  ) : (
-    <span
-      className={cn(
-        "flex items-center justify-center overflow-hidden bg-muted p-3 text-center",
-        className
-      )}
-    >
-      {children}
-    </span>
-  );
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");

@@ -1,22 +1,31 @@
 import { getMessage } from "@publira/i18n";
-import { CollectionIcon } from "@publira/icons";
+import {
+  EmptyState,
+  EmptyStateDescription,
+} from "@publira/ui-components/empty-state";
 import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import {
   CatalogSearchForm,
   CatalogSearchFormSkeleton,
 } from "#components/catalog-search-form";
-import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { EyeCatchFrame } from "#components/eye-catch-frame";
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -30,6 +39,9 @@ import {
 } from "./_lib/search-params";
 
 const SEARCH_PAGE_SIZE = 20;
+
+/** Enough rows to fill a phone screen while the read comes back. */
+const SEARCH_SKELETON_COUNT = 8;
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -55,66 +67,67 @@ export const generateMetadata = async ({
   };
 };
 
-const SearchListSkeleton = () => (
-  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-    {Array.from({ length: 6 }, (_, i) => (
-      <div
-        className="overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm"
-        key={i}
-      >
-        <div className="mb-4 h-32 animate-pulse rounded bg-muted" />
-        <div className="mb-1 h-5 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+const SearchRowsSkeleton = () => (
+  <div className="divide-y divide-border border-t border-border">
+    {Array.from({ length: SEARCH_SKELETON_COUNT }, (_, index) => (
+      <div className="flex items-center gap-4 py-3" key={index}>
+        <Skeleton className="size-14 shrink-0 rounded-control" />
+        <div className="grid flex-1 gap-2">
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-3 w-1/3" />
+        </div>
       </div>
     ))}
   </div>
 );
 
-const SearchPagination = async ({
-  nextToken,
-  previousToken,
-  query,
-}: {
-  nextToken: string;
-  previousToken: string;
-  query: string;
-}) => {
+/**
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the catalog: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the `getMessage` that reads it.
+ */
+const SearchPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
   return (
-    <nav
+    <ListPagination
       aria-label={getMessage(messages, "host.search.pagination_aria")}
-      className="mt-8 flex items-center justify-center gap-6"
     >
-      {previousToken ? (
-        <LocaleLink
-          href={searchPageHref(query, previousToken)}
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
-          {getMessage(messages, "host.common.previous_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
-        </span>
-      )}
-
-      {nextToken ? (
-        <LocaleLink
-          href={searchPageHref(query, nextToken)}
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
-          {getMessage(messages, "host.common.next_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
-        </span>
-      )}
-    </nav>
+      {children}
+    </ListPagination>
   );
 };
+
+/** The two directions, written once for both places this screen shows them. */
+const SearchPagination = ({
+  query,
+  nextToken,
+  previousToken,
+}: {
+  query: string;
+  nextToken: string;
+  previousToken: string;
+}) => (
+  <Suspense fallback={<ListPaginationSkeleton />}>
+    <SearchPaginationNav>
+      <ListPaginationStep
+        href={previousToken ? searchPageHref(query, previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep
+        href={nextToken ? searchPageHref(query, nextToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </SearchPaginationNav>
+  </Suspense>
+);
 
 const SearchResultsData = async ({
   searchParams,
@@ -127,13 +140,16 @@ const SearchResultsData = async ({
     getLocale(),
   ]);
   const { query, token } = parseSearchPageSearchParams(resolvedSearchParams);
-  const messages = await loadHostMessages(locale);
 
   if (!query) {
     return (
-      <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-        {getMessage(messages, "host.search.prompt")}
-      </p>
+      <EmptyState>
+        <EmptyStateDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="host.search.prompt" />
+          </Suspense>
+        </EmptyStateDescription>
+      </EmptyState>
     );
   }
 
@@ -164,17 +180,28 @@ const SearchResultsData = async ({
   if (series.length === 0) {
     if (!token) {
       return (
-        <div className="py-20 text-center text-muted-foreground">
-          {getMessage(messages, "host.search.no_results", { query })}
-        </div>
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.search.no_results" values={{ query }} />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
       );
     }
 
+    // The rows this page pointed at are gone. The server hands back a token for
+    // the neighbouring page when it can, and empty tokens when it cannot — then
+    // the only way out is the first page (`proto/README.md`).
     return (
-      <div className="py-20 text-center">
-        <p className="mb-4 text-muted-foreground">
-          {getMessage(messages, "host.series.page_empty")}
-        </p>
+      <div className="grid gap-8">
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.series.page_empty" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
         {previousToken || nextToken ? (
           <SearchPagination
             nextToken={nextToken}
@@ -182,71 +209,59 @@ const SearchResultsData = async ({
             query={query}
           />
         ) : (
-          <LocaleLink
-            href={searchPageHref(query, "")}
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            {getMessage(messages, "host.search.first_page")}
-          </LocaleLink>
+          <p>
+            <LocaleLink
+              className="text-sm text-primary underline underline-offset-4"
+              href={searchPageHref(query, "")}
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="host.search.first_page" />
+              </Suspense>
+            </LocaleLink>
+          </p>
         )}
       </div>
     );
   }
 
   return (
-    <>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-8">
+      <ul className="divide-y divide-border border-t border-border">
         {series.map((item) => (
-          <LocaleLink
-            key={item.publicId}
-            href={`/series/${item.publicId}`}
-            className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
-          >
-            {item.eyeCatchImageVariants &&
-            item.eyeCatchImageVariants.length > 0 ? (
-              <div className="aspect-video overflow-hidden bg-muted">
-                <EyeCatchPicture
-                  alt={item.title}
-                  imgClassName="size-full object-cover"
-                  preferredType="landscape"
-                  variants={item.eyeCatchImageVariants}
-                />
-              </div>
-            ) : (
-              <div className="flex aspect-video items-center justify-center bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50">
-                <CollectionIcon className="h-12 w-12" />
-              </div>
-            )}
-            <div className="px-6 py-5">
-              <h2 className="mb-1 font-serif text-lg font-semibold transition-colors group-hover:text-secondary">
-                {item.title}
-              </h2>
-              {item.creatorNames.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {formatList(item.creatorNames, { locale })}
-                </p>
-              )}
-              {item.labelName && (
-                <p className="mt-1 inline-flex rounded-full bg-accent/15 px-2.5 py-0.5 text-xs font-medium text-accent">
-                  {item.labelName}
-                </p>
-              )}
-              {item.synopsis && (
-                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                  {item.synopsis}
-                </p>
-              )}
-            </div>
-          </LocaleLink>
+          <li key={item.publicId}>
+            <LocaleLink
+              className="group flex items-center gap-4 py-3"
+              href={`/series/${item.publicId}`}
+            >
+              <EyeCatchFrame
+                // The title is beside it in the row, so repeating it here
+                // would read every result out twice.
+                alt=""
+                className="size-14 shrink-0 rounded-control"
+                sizes="56px"
+                variants={item.eyeCatchImageVariants}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-serif leading-tight underline-offset-4 group-hover:underline">
+                  {item.title}
+                </span>
+                {item.creatorNames.length > 0 && (
+                  <span className="mt-1 block truncate text-sm text-muted-foreground">
+                    {formatList(item.creatorNames, { locale })}
+                  </span>
+                )}
+              </span>
+            </LocaleLink>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <SearchPagination
         nextToken={nextToken}
         previousToken={previousToken}
         query={query}
       />
-    </>
+    </div>
   );
 };
 
@@ -261,23 +276,23 @@ const SearchFormFromParams = async ({
 };
 
 const SearchPage = ({ searchParams }: SearchPageProps) => (
-  <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">
-      <Suspense fallback={<SkeletonLine className="h-9 w-32" />}>
-        <Message message="host.search.title" />
-      </Suspense>
-    </h1>
-    <p className="mb-6 text-muted-foreground">
-      <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
-        <Message message="host.search.description" />
-      </Suspense>
-    </p>
-
-    <div className="mb-8 max-w-xl">
-      <Suspense fallback={<CatalogSearchFormSkeleton />}>
-        <SearchFormFromParams searchParams={searchParams} />
-      </Suspense>
+  <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+    <div className="grid gap-2">
+      <h1 className="font-serif text-3xl leading-tight">
+        <Suspense fallback={<SkeletonLine className="h-8 w-32" />}>
+          <Message message="host.search.title" />
+        </Suspense>
+      </h1>
+      <p className="text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
+          <Message message="host.search.description" />
+        </Suspense>
+      </p>
     </div>
+
+    <Suspense fallback={<CatalogSearchFormSkeleton />}>
+      <SearchFormFromParams searchParams={searchParams} />
+    </Suspense>
 
     <SectionErrorBoundary
       title={
@@ -286,7 +301,7 @@ const SearchPage = ({ searchParams }: SearchPageProps) => (
         </Suspense>
       }
     >
-      <Suspense fallback={<SearchListSkeleton />}>
+      <Suspense fallback={<SearchRowsSkeleton />}>
         <SearchResultsData searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>

@@ -70,9 +70,12 @@ test.describe("web-host tenant boundary", () => {
   }) => {
     await page.goto(otherTenantUrl("/series"));
 
-    const seriesHeadings = page.getByRole("heading", { level: 2 });
-    await expect(seriesHeadings).toHaveCount(1);
-    await expect(seriesHeadings).toHaveText(OTHER_TENANT.publishedSeries.title);
+    // The shelf holds one cover per published series, each a single link.
+    const covers = page.locator(
+      `main a[href^="${hostPath("/series/")}"]:not([href*="/episodes/"])`
+    );
+    await expect(covers).toHaveCount(1);
+    await expect(covers).toContainText(OTHER_TENANT.publishedSeries.title);
     await expect(
       page.getByText(OTHER_TENANT.unpublishedSeries.title)
     ).toHaveCount(0);
@@ -222,10 +225,11 @@ test.describe("web-host tenant boundary", () => {
       page.getByRole("heading", { level: 1, name: "Search" })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", {
-        level: 2,
-        name: OTHER_TENANT.publishedSeries.title,
-      })
+      page
+        .getByRole("link", {
+          name: new RegExp(`^${OTHER_TENANT.publishedSeries.title}\\b`, "u"),
+        })
+        .first()
     ).toBeVisible();
   });
 

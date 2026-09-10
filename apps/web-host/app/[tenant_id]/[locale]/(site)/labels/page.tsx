@@ -1,17 +1,26 @@
 import { getMessage } from "@publira/i18n";
-import { ImageIcon } from "@publira/icons";
+import {
+  EmptyState,
+  EmptyStateDescription,
+} from "@publira/ui-components/empty-state";
 import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
-import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { EyeCatchFrame } from "#components/eye-catch-frame";
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -27,6 +36,9 @@ import {
 
 const LABELS_PAGE_SIZE = 24;
 
+/** Enough rows to fill a phone screen while the read comes back. */
+const LABELS_SKELETON_COUNT = 8;
+
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
@@ -37,17 +49,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return { title: getMessage(messages, "host.labels.list_title") };
 };
 
-const LabelsListSkeleton = () => (
-  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-    {Array.from({ length: 6 }, (_, i) => (
-      <div
-        key={i}
-        className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
-      >
-        <div className="aspect-video animate-pulse bg-muted" />
-        <div className="p-4">
-          <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
-        </div>
+const LabelRowsSkeleton = () => (
+  <div className="divide-y divide-border border-t border-border">
+    {Array.from({ length: LABELS_SKELETON_COUNT }, (_, index) => (
+      <div className="flex items-center gap-4 py-3" key={index}>
+        <Skeleton className="size-14 shrink-0 rounded-control" />
+        <Skeleton className="h-4 w-40" />
       </div>
     ))}
   </div>
@@ -70,49 +77,49 @@ const LabelsListDescription = async () => {
   });
 };
 
-const LabelsPagination = async ({
+/**
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the catalog: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the `getMessage` that reads it.
+ */
+const LabelsPaginationNav = async ({ children }: { children: ReactNode }) => {
+  const locale = await getLocale();
+  const messages = await loadHostMessages(locale);
+
+  return (
+    <ListPagination
+      aria-label={getMessage(messages, "host.labels.pagination_aria")}
+    >
+      {children}
+    </ListPagination>
+  );
+};
+
+/** The two directions, written once for both places this screen shows them. */
+const LabelsPagination = ({
   nextToken,
   previousToken,
 }: {
   nextToken: string;
   previousToken: string;
-}) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-
-  return (
-    <nav
-      aria-label={getMessage(messages, "host.labels.pagination_aria")}
-      className="mt-8 flex items-center justify-center gap-6"
-    >
-      {previousToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={labelsListHref(previousToken)}
-        >
-          {getMessage(messages, "host.common.previous_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
-        </span>
-      )}
-
-      {nextToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={labelsListHref(nextToken)}
-        >
-          {getMessage(messages, "host.common.next_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
-        </span>
-      )}
-    </nav>
-  );
-};
+}) => (
+  <Suspense fallback={<ListPaginationSkeleton />}>
+    <LabelsPaginationNav>
+      <ListPaginationStep
+        href={previousToken ? labelsListHref(previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep href={nextToken ? labelsListHref(nextToken) : ""}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </LabelsPaginationNav>
+  </Suspense>
+);
 
 const LabelsListData = async ({
   searchParams,
@@ -125,14 +132,12 @@ const LabelsListData = async ({
     getLocale(),
   ]);
   const { token } = parseLabelsListSearchParams(resolvedSearchParams);
-  const [result, messages] = await Promise.all([
-    listPublishedLabels(tenantId, {
-      limit: LABELS_PAGE_SIZE,
-      locale,
-      token,
-    }),
-    loadHostMessages(locale),
-  ]);
+
+  const result = await listPublishedLabels(tenantId, {
+    limit: LABELS_PAGE_SIZE,
+    locale,
+    token,
+  });
 
   if (!result.ok) {
     return (
@@ -154,9 +159,13 @@ const LabelsListData = async ({
   if (labels.length === 0) {
     if (!token) {
       return (
-        <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-          {getMessage(messages, "host.labels.list_empty")}
-        </p>
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.labels.list_empty" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
       );
     }
 
@@ -164,76 +173,81 @@ const LabelsListData = async ({
     // the neighbouring page when it can, and empty tokens when it cannot — then
     // the only way out is the first page (`proto/README.md`).
     return (
-      <div className="py-20 text-center">
-        <p className="mb-4 text-muted-foreground">
-          {getMessage(messages, "host.labels.page_empty")}
-        </p>
+      <div className="grid gap-8">
+        <EmptyState>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.labels.page_empty" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyState>
         {previousToken || nextToken ? (
           <LabelsPagination
             nextToken={nextToken}
             previousToken={previousToken}
           />
         ) : (
-          <LocaleLink
-            className="text-sm text-primary underline-offset-4 hover:underline"
-            href={labelsListHref("")}
-          >
-            {getMessage(messages, "host.labels.first_page")}
-          </LocaleLink>
+          <p>
+            <LocaleLink
+              className="text-sm text-primary underline underline-offset-4"
+              href={labelsListHref("")}
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="host.labels.first_page" />
+              </Suspense>
+            </LocaleLink>
+          </p>
         )}
       </div>
     );
   }
 
   return (
-    <>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-8">
+      <ul className="divide-y divide-border border-t border-border">
         {labels.map((label) => (
-          <LocaleLink
-            key={label.publicId}
-            href={`/labels/${label.publicId}`}
-            className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
-          >
-            {label.eyeCatchImageVariants &&
-            label.eyeCatchImageVariants.length > 0 ? (
-              <div className="aspect-video overflow-hidden bg-muted">
-                <EyeCatchPicture
-                  alt={label.name}
-                  imgClassName="size-full object-cover"
-                  variants={label.eyeCatchImageVariants}
-                />
-              </div>
-            ) : (
-              <div className="flex aspect-video items-center justify-center bg-linear-to-br from-accent/25 via-primary/10 to-secondary/20 text-accent/55">
-                <ImageIcon className="h-12 w-12" />
-              </div>
-            )}
-            <div className="p-4">
-              <h2 className="font-serif text-lg font-semibold">{label.name}</h2>
-            </div>
-          </LocaleLink>
+          <li key={label.publicId}>
+            <LocaleLink
+              className="group flex items-center gap-4 py-3"
+              href={`/labels/${label.publicId}`}
+            >
+              <EyeCatchFrame
+                // The name is right beside it in the row, so the artwork
+                // adds nothing a reader has not already been given.
+                alt=""
+                className="size-14 shrink-0 rounded-control"
+                sizes="56px"
+                variants={label.eyeCatchImageVariants}
+              />
+              <span className="min-w-0 flex-1 truncate underline-offset-4 group-hover:underline">
+                {label.name}
+              </span>
+            </LocaleLink>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <LabelsPagination nextToken={nextToken} previousToken={previousToken} />
-    </>
+    </div>
   );
 };
 
 const LabelsPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/labels">) => (
-  <main className="mx-auto max-w-6xl px-6 py-12">
-    <h1 className="mb-2 font-serif text-4xl font-bold">
-      <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
-        <Message message="host.labels.list_title" />
-      </Suspense>
-    </h1>
-    <p className="mb-8 text-muted-foreground">
-      <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
-        <LabelsListDescription />
-      </Suspense>
-    </p>
+  <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+    <div className="grid gap-2">
+      <h1 className="font-serif text-3xl leading-tight">
+        <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
+          <Message message="host.labels.list_title" />
+        </Suspense>
+      </h1>
+      <p className="text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
+          <LabelsListDescription />
+        </Suspense>
+      </p>
+    </div>
 
     <SectionErrorBoundary
       title={
@@ -242,7 +256,7 @@ const LabelsPage = ({
         </Suspense>
       }
     >
-      <Suspense fallback={<LabelsListSkeleton />}>
+      <Suspense fallback={<LabelRowsSkeleton />}>
         <LabelsListData searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>

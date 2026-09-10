@@ -127,6 +127,32 @@ test.describe("web-host screenshots", () => {
         await expectScreenshot(page, viewport, "ranking");
       });
 
+      test("the label list", async ({ page }) => {
+        await page.goto(hostPath("/labels"));
+
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Labels" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("navigation", { name: "Label list pagination" })
+        ).toBeVisible();
+
+        await expectScreenshot(page, viewport, "label-list");
+      });
+
+      test("the author list", async ({ page }) => {
+        await page.goto(hostPath("/authors"));
+
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Authors" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("navigation", { name: "Author list pagination" })
+        ).toBeVisible();
+
+        await expectScreenshot(page, viewport, "author-list");
+      });
+
       test("a series detail page", async ({ page }) => {
         await page.goto(hostPath(`/series/${SEED_TENANT.series.publicId}`));
 
@@ -188,10 +214,11 @@ test.describe("web-host screenshots", () => {
           page.getByRole("heading", { level: 1, name: "Search" })
         ).toBeVisible();
         await expect(
-          page.getByRole("heading", {
-            level: 2,
-            name: SEED_TENANT.series.title,
-          })
+          page
+            .getByRole("link", {
+              name: new RegExp(`^${SEED_TENANT.series.title}\\b`, "u"),
+            })
+            .first()
         ).toBeVisible();
 
         await expectScreenshot(page, viewport, "search-results");
