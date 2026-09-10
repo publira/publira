@@ -159,6 +159,7 @@ jobs:
               - *docs_excluded
               - 'db/**'
               - 'sqlc.yaml'
+              - 'scripts/check-migration-order.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_mobile:
@@ -538,6 +539,12 @@ jobs:
             echo "$violations"
             exit 1
           fi
+
+      # scripts/check-migration-order.sh carries the reasoning; run it locally
+      # before pushing. On `push` to main, origin/main and HEAD are the same
+      # commit and the branch adds nothing.
+      - name: Validate / Migrations Sort Above main
+        run: scripts/check-migration-order.sh
 
       - name: Setup / Install migrate
         run: |
