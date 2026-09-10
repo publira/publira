@@ -77,6 +77,11 @@ var publicDataTables = []struct {
 	{name: "series_tags", count: "SELECT count(*) FROM series_tags"},
 	{name: "episode_reads", count: "SELECT count(*) FROM episode_reads"},
 	{name: "episode_reading_positions", count: "SELECT count(*) FROM episode_reading_positions"},
+	{name: "episode_ratings", count: "SELECT count(*) FROM episode_ratings"},
+	// The public tally beside the reader's own ratings. It is the one of the
+	// pair a storefront shows to everybody, so a missing policy here would hand
+	// every tenant's rating counts to every other one.
+	{name: "episode_rating_counts", count: "SELECT count(*) FROM episode_rating_counts"},
 	{name: "users", count: "SELECT count(*) FROM users"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
@@ -120,6 +125,11 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)", first.ID, member.ID, episode.ID); err != nil {
 		t.Fatalf("seed reading position: %v", err)
+	}
+	// The rating carries its own count row: the trigger on episode_ratings
+	// writes one, so both tables are seeded by this single insert.
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_ratings (tenant_id, user_id, episode_id, score) VALUES ($1, $2, $3, 5)", first.ID, member.ID, episode.ID); err != nil {
+		t.Fatalf("seed episode rating: %v", err)
 	}
 	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 

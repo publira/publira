@@ -97,13 +97,18 @@ func EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row dbmodels.GetEpisod
 	return episode
 }
 
+// EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow maps the episode a
+// reader opened. It is the one mapper that carries `rating_count`, because it
+// is the one read that stands for an episode a reader is at the end of rather
+// than for a link to one.
 func EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
-		PublicId:   row.PublicID,
-		Title:      row.Title,
-		OrderIndex: row.OrderIndex,
-		Price:      row.Price,
-		Status:     row.Status,
+		PublicId:    row.PublicID,
+		Title:       row.Title,
+		OrderIndex:  row.OrderIndex,
+		Price:       row.Price,
+		Status:      row.Status,
+		RatingCount: row.RatingCount,
 	}
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32

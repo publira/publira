@@ -116,9 +116,12 @@ const (
 	// FollowServiceListMyFollowsProcedure is the fully-qualified name of the FollowService's
 	// ListMyFollows RPC.
 	FollowServiceListMyFollowsProcedure = "/publira.v1.FollowService/ListMyFollows"
-	// RatingServiceRateContentProcedure is the fully-qualified name of the RatingService's RateContent
+	// RatingServiceRateEpisodeProcedure is the fully-qualified name of the RatingService's RateEpisode
 	// RPC.
-	RatingServiceRateContentProcedure = "/publira.v1.RatingService/RateContent"
+	RatingServiceRateEpisodeProcedure = "/publira.v1.RatingService/RateEpisode"
+	// RatingServiceGetMyEpisodeRatingProcedure is the fully-qualified name of the RatingService's
+	// GetMyEpisodeRating RPC.
+	RatingServiceGetMyEpisodeRatingProcedure = "/publira.v1.RatingService/GetMyEpisodeRating"
 	// ContentViewServiceRecordContentViewProcedure is the fully-qualified name of the
 	// ContentViewService's RecordContentView RPC.
 	ContentViewServiceRecordContentViewProcedure = "/publira.v1.ContentViewService/RecordContentView"
@@ -1073,10 +1076,26 @@ func (UnimplementedFollowServiceHandler) ListMyFollows(context.Context, *connect
 
 // RatingServiceClient is a client for the publira.v1.RatingService service.
 type RatingServiceClient interface {
-	// Records a rating for a currently public series or episode. Cross-tenant,
-	// unpublished, and missing targets are all surfaced as NotFound, matching
-	// FollowService, so a rating cannot be used to probe for hidden content.
-	RateContent(context.Context, *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error)
+	// Rates an episode the authenticated reader may read, or raises the rating
+	// they already gave. The score is capped at 5, so a reader who is already
+	// there presses to no effect.
+	//
+	// What a press is worth is settled by the mode of the episode's series, which
+	// the server reads rather than taking from the request.
+	//
+	// Body access is required here and not on GetMyEpisodeRating, because a
+	// rating is given to something read. A locked episode is NotFound rather than
+	// permission_denied, matching MarkEpisodeAsRead: publication, tenant, and
+	// entitlement failures share one answer so this RPC cannot be used to probe
+	// for content the reader may not have.
+	RateEpisode(context.Context, *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error)
+	// Returns the authenticated reader's rating of a currently published episode,
+	// how many readers have rated it, and which press mode governs it.
+	//
+	// It asks only that the episode be published, not that this reader may open
+	// its body: the answer is about a rating they already gave, and a rental that
+	// has run out does not take it back.
+	GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error)
 }
 
 // NewRatingServiceClient constructs a client for the publira.v1.RatingService service. By default,
@@ -1090,10 +1109,16 @@ func NewRatingServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 	baseURL = strings.TrimRight(baseURL, "/")
 	ratingServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods()
 	return &ratingServiceClient{
-		rateContent: connect.NewClient[v1.RateContentRequest, v1.RateContentResponse](
+		rateEpisode: connect.NewClient[v1.RateEpisodeRequest, v1.RateEpisodeResponse](
 			httpClient,
-			baseURL+RatingServiceRateContentProcedure,
-			connect.WithSchema(ratingServiceMethods.ByName("RateContent")),
+			baseURL+RatingServiceRateEpisodeProcedure,
+			connect.WithSchema(ratingServiceMethods.ByName("RateEpisode")),
+			connect.WithClientOptions(opts...),
+		),
+		getMyEpisodeRating: connect.NewClient[v1.GetMyEpisodeRatingRequest, v1.GetMyEpisodeRatingResponse](
+			httpClient,
+			baseURL+RatingServiceGetMyEpisodeRatingProcedure,
+			connect.WithSchema(ratingServiceMethods.ByName("GetMyEpisodeRating")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -1101,20 +1126,42 @@ func NewRatingServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // ratingServiceClient implements RatingServiceClient.
 type ratingServiceClient struct {
-	rateContent *connect.Client[v1.RateContentRequest, v1.RateContentResponse]
+	rateEpisode        *connect.Client[v1.RateEpisodeRequest, v1.RateEpisodeResponse]
+	getMyEpisodeRating *connect.Client[v1.GetMyEpisodeRatingRequest, v1.GetMyEpisodeRatingResponse]
 }
 
-// RateContent calls publira.v1.RatingService.RateContent.
-func (c *ratingServiceClient) RateContent(ctx context.Context, req *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error) {
-	return c.rateContent.CallUnary(ctx, req)
+// RateEpisode calls publira.v1.RatingService.RateEpisode.
+func (c *ratingServiceClient) RateEpisode(ctx context.Context, req *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error) {
+	return c.rateEpisode.CallUnary(ctx, req)
+}
+
+// GetMyEpisodeRating calls publira.v1.RatingService.GetMyEpisodeRating.
+func (c *ratingServiceClient) GetMyEpisodeRating(ctx context.Context, req *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error) {
+	return c.getMyEpisodeRating.CallUnary(ctx, req)
 }
 
 // RatingServiceHandler is an implementation of the publira.v1.RatingService service.
 type RatingServiceHandler interface {
-	// Records a rating for a currently public series or episode. Cross-tenant,
-	// unpublished, and missing targets are all surfaced as NotFound, matching
-	// FollowService, so a rating cannot be used to probe for hidden content.
-	RateContent(context.Context, *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error)
+	// Rates an episode the authenticated reader may read, or raises the rating
+	// they already gave. The score is capped at 5, so a reader who is already
+	// there presses to no effect.
+	//
+	// What a press is worth is settled by the mode of the episode's series, which
+	// the server reads rather than taking from the request.
+	//
+	// Body access is required here and not on GetMyEpisodeRating, because a
+	// rating is given to something read. A locked episode is NotFound rather than
+	// permission_denied, matching MarkEpisodeAsRead: publication, tenant, and
+	// entitlement failures share one answer so this RPC cannot be used to probe
+	// for content the reader may not have.
+	RateEpisode(context.Context, *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error)
+	// Returns the authenticated reader's rating of a currently published episode,
+	// how many readers have rated it, and which press mode governs it.
+	//
+	// It asks only that the episode be published, not that this reader may open
+	// its body: the answer is about a rating they already gave, and a rental that
+	// has run out does not take it back.
+	GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error)
 }
 
 // NewRatingServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1124,16 +1171,24 @@ type RatingServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewRatingServiceHandler(svc RatingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	ratingServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods()
-	ratingServiceRateContentHandler := connect.NewUnaryHandler(
-		RatingServiceRateContentProcedure,
-		svc.RateContent,
-		connect.WithSchema(ratingServiceMethods.ByName("RateContent")),
+	ratingServiceRateEpisodeHandler := connect.NewUnaryHandler(
+		RatingServiceRateEpisodeProcedure,
+		svc.RateEpisode,
+		connect.WithSchema(ratingServiceMethods.ByName("RateEpisode")),
+		connect.WithHandlerOptions(opts...),
+	)
+	ratingServiceGetMyEpisodeRatingHandler := connect.NewUnaryHandler(
+		RatingServiceGetMyEpisodeRatingProcedure,
+		svc.GetMyEpisodeRating,
+		connect.WithSchema(ratingServiceMethods.ByName("GetMyEpisodeRating")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/publira.v1.RatingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case RatingServiceRateContentProcedure:
-			ratingServiceRateContentHandler.ServeHTTP(w, r)
+		case RatingServiceRateEpisodeProcedure:
+			ratingServiceRateEpisodeHandler.ServeHTTP(w, r)
+		case RatingServiceGetMyEpisodeRatingProcedure:
+			ratingServiceGetMyEpisodeRatingHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1143,8 +1198,12 @@ func NewRatingServiceHandler(svc RatingServiceHandler, opts ...connect.HandlerOp
 // UnimplementedRatingServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedRatingServiceHandler struct{}
 
-func (UnimplementedRatingServiceHandler) RateContent(context.Context, *connect.Request[v1.RateContentRequest]) (*connect.Response[v1.RateContentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.RateContent is not implemented"))
+func (UnimplementedRatingServiceHandler) RateEpisode(context.Context, *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.RateEpisode is not implemented"))
+}
+
+func (UnimplementedRatingServiceHandler) GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.GetMyEpisodeRating is not implemented"))
 }
 
 // ContentViewServiceClient is a client for the publira.v1.ContentViewService service.

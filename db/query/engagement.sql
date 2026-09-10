@@ -25,8 +25,6 @@
 --     -> idx_content_events_episode_view_debounce
 --   InsertProjectedSourceEvent
 --     -> idx_content_events_source_unique
---   ListLatestContentRatingsByEntity
---     -> idx_content_events_tenant_series_occurred_at
 --   ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
 --     -> no index; sorts one tenant's published series (see the note there)
 --   ListRelatedSeriesIDs / ListRelatedSeriesIDsReversed
@@ -381,6 +379,14 @@ RETURNING *;
 -- series_id must still be the episode's own series. Both are resolved by the
 -- server from the catalog row, never taken from client input.
 -- name: InsertRatingEvent :one
+-- One press of the rating control, carrying the points it added rather than
+-- the score the reader now stands at: the day's rating_sum is what readers gave
+-- that day, and episode_ratings is where the score they stand at lives.
+--
+-- Append-only, so a reader who presses again files another event and the day
+-- keeps both. Nothing is ever taken back, which is why there is no query here
+-- reading the latest event per actor: the current score is a row, not a
+-- reduction over the log.
 INSERT INTO content_events (
     id,
     tenant_id,
@@ -401,26 +407,6 @@ INSERT INTO content_events (
     sqlc.arg('occurred_at')
 )
 RETURNING *;
-
--- The latest rating each actor currently stands by for one entity: the stock
--- view of an append-only log. `content_daily_stats.rating_count` /
--- `rating_sum` are the *flow* of a single day and cannot answer this,
--- because a member who rated 1 on Monday and 5 on Tuesday contributes to both
--- days. A stock average has to come from this DISTINCT ON, over the full
--- retained history, until a materialised current-rating table exists.
---
--- The tie-break runs past occurred_at because two events from one actor can
--- share a timestamp; id is UUIDv7, so the later insert wins.
--- name: ListLatestContentRatingsByEntity :many
-SELECT DISTINCT ON (actor_key) actor_key,
-    rating_score,
-    occurred_at
-FROM content_events
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND event_type = 'rating'
-    AND series_id = sqlc.arg('series_id')::uuid
-    AND episode_id IS NOT DISTINCT FROM sqlc.narg('episode_id')::uuid
-ORDER BY actor_key, occurred_at DESC, id DESC;
 
 -- name: GetContentEventByID :one
 SELECT *

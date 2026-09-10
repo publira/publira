@@ -54,7 +54,10 @@ func mustInsertFollowCreator(t *testing.T, ctx context.Context, db *sql.DB, tena
 	return id
 }
 
-func withFollowMember(t *testing.T, pg *testutil.PostgresEnv, tenantID, userID uuid.UUID, fn func(context.Context, *sql.Conn)) {
+// withMemberConn hands fn a connection scoped to one tenant and one of its
+// members, the way the public API scopes a request that acts on the reader's
+// own rows. Every member-isolated relation is tested through it.
+func withMemberConn(t *testing.T, pg *testutil.PostgresEnv, tenantID, userID uuid.UUID, fn func(context.Context, *sql.Conn)) {
 	t.Helper()
 	db := pg.OpenAdminDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -143,12 +146,12 @@ func TestFollowsEnforceTenantAndMemberIsolation(t *testing.T) {
 		})
 	}
 
-	withFollowMember(t, pg, a.tenantID, a.userID, func(ctx context.Context, conn *sql.Conn) {
+	withMemberConn(t, pg, a.tenantID, a.userID, func(ctx context.Context, conn *sql.Conn) {
 		assertFollowCount(t, ctx, conn, "episode_follows", 1)
 		assertFollowCount(t, ctx, conn, "creator_follows", 1)
 		assertFollowCount(t, ctx, conn, "series_follows", 1)
 	})
-	withFollowMember(t, pg, a.tenantID, a.otherUser, func(ctx context.Context, conn *sql.Conn) {
+	withMemberConn(t, pg, a.tenantID, a.otherUser, func(ctx context.Context, conn *sql.Conn) {
 		assertFollowCount(t, ctx, conn, "episode_follows", 0)
 		assertFollowCount(t, ctx, conn, "creator_follows", 0)
 		assertFollowCount(t, ctx, conn, "series_follows", 0)
@@ -165,7 +168,7 @@ func TestFollowsEnforceTenantAndMemberIsolation(t *testing.T) {
 			t.Fatalf("create another member's follow error = %v, want SQLSTATE 42501", err)
 		}
 	})
-	withFollowMember(t, pg, b.tenantID, b.userID, func(ctx context.Context, conn *sql.Conn) {
+	withMemberConn(t, pg, b.tenantID, b.userID, func(ctx context.Context, conn *sql.Conn) {
 		assertFollowCount(t, ctx, conn, "episode_follows", 0)
 		assertFollowCount(t, ctx, conn, "creator_follows", 0)
 		assertFollowCount(t, ctx, conn, "series_follows", 0)

@@ -344,12 +344,12 @@ func TestUpdateTenantDefaultLocaleRequiresSession(t *testing.T) {
 }
 
 func tenantConfigColumns() []string {
-	return []string{"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode", "comment_auto_hide_report_threshold"}
+	return []string{"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode", "comment_auto_hide_report_threshold", "episode_rating_mode"}
 }
 
 func tenantConfigRow(tenantID uuid.UUID, now time.Time, mode string, threshold int32) *sqlmock.Rows {
 	return sqlmock.NewRows(tenantConfigColumns()).
-		AddRow(tenantID, nil, nil, now, now, nil, mode, threshold)
+		AddRow(tenantID, nil, nil, now, now, nil, mode, threshold, "single")
 }
 
 func expectTenantConfigWithCommentSettings(

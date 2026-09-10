@@ -36,7 +36,9 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 	otherSeries := pg.SeedSeries(t, otherTenant.ID, testutil.SeriesSeed{PublicID: "RANKSERIES03"})
 	otherEpisode := pg.SeedEpisode(t, otherTenant.ID, otherSeries.ID, testutil.EpisodeSeed{PublicID: "RANKEPISO003"})
 
-	// 1*10 views + 2*6 viewers + 8*1 follow + 3*(9 - 3*2) rating bonus = 39.
+	// 1*10 views + 2*6 viewers + 8*1 favorite + 1.6*9 rating points = 44.4.
+	// Nothing is subtracted from the rating sum: the scale has no bad end, so a
+	// reader who pressed once still adds.
 	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: referenceDate, entityType: "series", entityID: rated.ID,
 		viewCount: 10, uniqueViewerCount: 6, ratingCount: 2, ratingSum: 9, favoriteCount: 1})
 	// 1*30 views + 2*2 viewers = 34 today, plus a much bigger day six days back
@@ -59,7 +61,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 	// One day before the weekly window opens: it must not reach any snapshot.
 	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: "2026-08-21", entityType: "series", entityID: rated.ID,
 		viewCount: 1000, uniqueViewerCount: 1000})
-	// Only ratings, and none of them above neutral: nothing to rank.
+	// Ratings and nothing else, low ones at that: 1.6*4 = 6.4, which places.
 	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: referenceDate, entityType: "episode", entityID: older.ID,
 		ratingCount: 2, ratingSum: 4})
 
@@ -73,7 +75,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 	insertStaleSnapshot(t, pg.DB, tenant.ID, DailyRankingKey, referenceDate, referenceDate, "series")
 
 	aggregator := New(pg.OpenPlatformDB(t))
-	want := Result{TenantCount: 2, SnapshotCount: 8, ItemCount: 13}
+	want := Result{TenantCount: 2, SnapshotCount: 8, ItemCount: 14}
 	result, err := aggregator.Run(context.Background(), runOptions())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -86,7 +88,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series"}, snapshot{
 		PeriodStart: referenceDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
-			{Rank: 1, EntityID: rated.ID, Score: 39, ViewCount: 10, ViewerDays: 6, RatingCount: 2, RatingSum: 9, FavoriteCount: 1, LastActiveDate: referenceDate},
+			{Rank: 1, EntityID: rated.ID, Score: 44.4, ViewCount: 10, ViewerDays: 6, RatingCount: 2, RatingSum: 9, FavoriteCount: 1, LastActiveDate: referenceDate},
 			{Rank: 2, EntityID: viewed.ID, Score: 34, ViewCount: 30, ViewerDays: 2, LastActiveDate: referenceDate},
 			{Rank: 3, EntityID: discussed.ID, Score: 30, CommentCount: 3, LastActiveDate: referenceDate},
 		},
@@ -96,7 +98,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 		PeriodStart: weeklyStartDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: viewed.ID, Score: 84, ViewCount: 130, ViewerDays: 52, LastActiveDate: referenceDate},
-			{Rank: 2, EntityID: rated.ID, Score: 39, ViewCount: 10, ViewerDays: 6, RatingCount: 2, RatingSum: 9, FavoriteCount: 1, LastActiveDate: referenceDate},
+			{Rank: 2, EntityID: rated.ID, Score: 44.4, ViewCount: 10, ViewerDays: 6, RatingCount: 2, RatingSum: 9, FavoriteCount: 1, LastActiveDate: referenceDate},
 			{Rank: 3, EntityID: discussed.ID, Score: 30, CommentCount: 3, LastActiveDate: referenceDate},
 		},
 	})
@@ -104,13 +106,15 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 		PeriodStart: referenceDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: bought.ID, Score: 61, ViewCount: 5, ViewerDays: 3, PurchaseCount: 2, CommentCount: 1, LastActiveDate: referenceDate},
+			{Rank: 2, EntityID: older.ID, Score: 6.4, RatingCount: 2, RatingSum: 4, LastActiveDate: referenceDate},
 		},
 	})
 	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "episode"}, snapshot{
 		PeriodStart: weeklyStartDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: bought.ID, Score: 61, ViewCount: 5, ViewerDays: 3, PurchaseCount: 2, CommentCount: 1, LastActiveDate: referenceDate},
-			{Rank: 2, EntityID: older.ID, Score: 6, ViewCount: 4, ViewerDays: 4, RatingCount: 2, RatingSum: 4, LastActiveDate: referenceDate},
+			// 6.4 from today's rating points plus the halved 12 of three days back.
+			{Rank: 2, EntityID: older.ID, Score: 12.4, ViewCount: 4, ViewerDays: 4, RatingCount: 2, RatingSum: 4, LastActiveDate: referenceDate},
 		},
 	})
 	assertSnapshot(t, snapshots, snapshotKey{tenantID: otherTenant.ID, rankingKey: DailyRankingKey, entityType: "series"}, snapshot{

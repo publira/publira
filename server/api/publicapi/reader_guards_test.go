@@ -24,6 +24,8 @@ func clearReaderGuardEnv(t *testing.T) {
 		reportCommentPerMinuteEnv,
 		reportCommentPerDayEnv,
 		duplicateCommentWindowEnv,
+		rateEpisodePerMinuteEnv,
+		rateEpisodePerDayEnv,
 	} {
 		t.Setenv(name, "")
 	}
@@ -56,6 +58,10 @@ func TestNewReaderGuardsFromEnvDefaults(t *testing.T) {
 			{Limit: defaultReportCommentPerMinute, Window: time.Minute},
 			{Limit: defaultReportCommentPerDay, Window: 24 * time.Hour},
 		},
+		actionRateEpisode: {
+			{Limit: defaultRateEpisodePerMinute, Window: time.Minute},
+			{Limit: defaultRateEpisodePerDay, Window: 24 * time.Hour},
+		},
 	}
 	for action, rules := range want {
 		got := guards.rules[action]
@@ -80,6 +86,8 @@ func TestNewReaderGuardsFromEnvTakesTheConfiguredLimits(t *testing.T) {
 	t.Setenv(reportCommentPerMinuteEnv, "2")
 	t.Setenv(reportCommentPerDayEnv, "5")
 	t.Setenv(duplicateCommentWindowEnv, "30")
+	t.Setenv(rateEpisodePerMinuteEnv, "4")
+	t.Setenv(rateEpisodePerDayEnv, "9")
 
 	guards := guardsFromEnv(t)
 
@@ -88,6 +96,9 @@ func TestNewReaderGuardsFromEnvTakesTheConfiguredLimits(t *testing.T) {
 	}
 	if got := guards.rules[actionReportComment]; got[0].Limit != 2 || got[1].Limit != 5 {
 		t.Fatalf("reporting rules = %+v, want 2 per minute and 5 per day", got)
+	}
+	if got := guards.rules[actionRateEpisode]; got[0].Limit != 4 || got[1].Limit != 9 {
+		t.Fatalf("rating rules = %+v, want 4 per minute and 9 per day", got)
 	}
 	if guards.duplicateCommentWindow != 30*time.Minute {
 		t.Fatalf("duplicate window = %s, want 30m", guards.duplicateCommentWindow)
@@ -117,7 +128,7 @@ func TestReaderGuardsWithDefaultsFillsInAMissingPolicy(t *testing.T) {
 	if guards.limiter == nil {
 		t.Fatal("limiter = nil, want the in-process default")
 	}
-	if len(guards.rules[actionPostComment]) == 0 || len(guards.rules[actionReportComment]) == 0 {
+	if len(guards.rules[actionPostComment]) == 0 || len(guards.rules[actionReportComment]) == 0 || len(guards.rules[actionRateEpisode]) == 0 {
 		t.Fatalf("rules = %v, want the default policy", guards.rules)
 	}
 	if guards.duplicateCommentWindow != defaultDuplicateCommentWindow {

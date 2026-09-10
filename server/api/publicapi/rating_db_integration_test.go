@@ -2,166 +2,379 @@ package publicapi
 
 import (
 	"context"
-	"database/sql"
+	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// A rating is append-only, its score range is a CHECK constraint, and its
-// tenant boundary is an RLS policy. None of that is visible to the sqlmock
-// tests in rating_handlers_test.go, so the acceptance criteria are carried
-// here, against a real database.
-
-// latestRatings runs the query the daily aggregation will use to turn the
-// append-only log into "what each actor currently says", on a tenant-scoped
-// connection so RLS applies exactly as it does for a request.
-func (e *publicDBEnv) latestRatings(
-	t *testing.T,
-	tenantID, seriesID uuid.UUID,
-	episodeID uuid.NullUUID,
-) []dbmodels.ListLatestContentRatingsByEntityRow {
-	t.Helper()
-
-	var rows []dbmodels.ListLatestContentRatingsByEntityRow
-	e.withTenantConn(t, tenantID, func(ctx context.Context, conn *sql.Conn) {
-		var err error
-		rows, err = dbmodels.New(conn).ListLatestContentRatingsByEntity(ctx, dbmodels.ListLatestContentRatingsByEntityParams{
-			TenantID:  tenantID,
-			SeriesID:  seriesID,
-			EpisodeID: episodeID,
-		})
-		if err != nil {
-			t.Fatalf("ListLatestContentRatingsByEntity: %v", err)
-		}
-	})
-	return rows
+func rateEpisodeRequest(tenant testutil.Tenant, episodePublicID, token string, presses int32) *connect.Request[publirav1.RateEpisodeRequest] {
+	return newBearerRequest(&publirav1.RateEpisodeRequest{
+		Tenant:          tenantContext(tenant),
+		EpisodePublicId: episodePublicID,
+		Presses:         presses,
+	}, token)
 }
 
-func (e *publicDBEnv) rate(
-	t *testing.T,
-	tenant testutil.Tenant,
-	member testutil.TenantUser,
-	target *publirav1.RatingTarget,
-	score int32,
-) (*connect.Response[publirav1.RateContentResponse], error) {
-	t.Helper()
-
-	return e.ratingClient().RateContent(context.Background(), newBearerRequest(&publirav1.RateContentRequest{
-		Tenant: tenantContext(tenant),
-		Target: target,
-		Score:  score,
-	}, tokenFor(t, tenant, member)))
+func myEpisodeRatingRequest(tenant testutil.Tenant, episodePublicID, token string) *connect.Request[publirav1.GetMyEpisodeRatingRequest] {
+	return newBearerRequest(&publirav1.GetMyEpisodeRatingRequest{
+		Tenant:          tenantContext(tenant),
+		EpisodePublicId: episodePublicID,
+	}, token)
 }
 
-func TestDBRatingKeepsEveryScoreAndAggregationTakesTheLatest(t *testing.T) {
+// setEpisodeRatingMode writes the tenant's press mode, the way the console will.
+func (e *publicDBEnv) setEpisodeRatingMode(t *testing.T, tenantID uuid.UUID, mode string) {
+	t.Helper()
+	if _, err := e.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_config (tenant_id, episode_rating_mode) VALUES ($1, $2)
+		ON CONFLICT (tenant_id) DO UPDATE SET episode_rating_mode = EXCLUDED.episode_rating_mode
+	`, tenantID, mode); err != nil {
+		t.Fatalf("set the episode rating mode: %v", err)
+	}
+}
+
+// In the mode a tenant gets by default, one press is the whole rating: it
+// stores 5, and pressing again adds nothing.
+func TestDBRateEpisodeStoresTheWholeRatingInSingleMode(t *testing.T) {
 	env := newPublicDBEnv(t)
-	tenant := env.seedTenant(t, "TENANTRAT", "rating.example.com", "Rating Tenant")
-	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRAT1", "member-rating@example.com", "Rating Member", "tenant_member")
-	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRAT01", Title: "Rated series", Published: true})
-	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERAT1", Title: "Rated episode", Status: testutil.EpisodeStatusPublished})
+	tenant := env.seedTenant(t, "TENANTRATEA", "rate-a.example.com", "Rate A")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEA", "member-rate-a@example.com", "Member A", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEA", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEA", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
+	client := env.ratingClient()
+	token := tokenFor(t, tenant, member)
 
-	first, err := env.rate(t, tenant, member, seriesRatingTarget(series.PublicID), 2)
+	first, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 1))
 	if err != nil {
-		t.Fatalf("first RateContent: %v", err)
+		t.Fatalf("first RateEpisode: %v", err)
 	}
-	if first.Msg.Score != 2 {
-		t.Fatalf("first score = %d, want 2", first.Msg.Score)
+	if first.Msg.Score != 5 || first.Msg.RatingCount != 1 {
+		t.Fatalf("first RateEpisode = %+v, want score 5 and one reader", first.Msg)
 	}
-	// The member changes their mind. Nothing is updated or deleted; the earlier
-	// score stays readable as history.
-	if _, err := env.rate(t, tenant, member, seriesRatingTarget(series.PublicID), 5); err != nil {
-		t.Fatalf("second RateContent: %v", err)
+	if first.Msg.Mode != publirav1.EpisodeRatingMode_EPISODE_RATING_MODE_SINGLE {
+		t.Fatalf("mode = %s, want single", first.Msg.Mode)
 	}
 
-	if got := env.countRows(t,
-		"SELECT COUNT(*) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND series_id = $2 AND episode_id IS NULL",
-		tenant.ID, series.ID); got != 2 {
-		t.Fatalf("series rating rows = %d, want both scores kept", got)
+	// A second press has nothing left to add, and files no event.
+	second, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 1))
+	if err != nil {
+		t.Fatalf("second RateEpisode: %v", err)
 	}
-	latest := env.latestRatings(t, tenant.ID, series.ID, uuid.NullUUID{})
-	if len(latest) != 1 {
-		t.Fatalf("latest series ratings = %d rows, want 1 per actor", len(latest))
-	}
-	if latest[0].RatingScore.Int16 != 5 {
-		t.Fatalf("latest series score = %d, want the newer 5", latest[0].RatingScore.Int16)
-	}
-	if latest[0].ActorKey.UUID != member.ID {
-		t.Fatalf("actor_key = %v, want the member %v", latest[0].ActorKey, member.ID)
-	}
-
-	// An episode rating is a different entity, filed under the same series.
-	if _, err := env.rate(t, tenant, member, episodeRatingTarget(episode.PublicID), 3); err != nil {
-		t.Fatalf("episode RateContent: %v", err)
+	if second.Msg.Score != 5 || second.Msg.RatingCount != 1 {
+		t.Fatalf("second RateEpisode = %+v, want score 5 and one reader", second.Msg)
 	}
 	if got := env.countRows(t,
-		"SELECT COUNT(*) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND episode_id = $2 AND series_id = $3",
-		tenant.ID, episode.ID, series.ID); got != 1 {
-		t.Fatalf("episode rating rows = %d, want 1 filed under the episode's own series", got)
+		"SELECT COUNT(*) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND episode_id = $2",
+		tenant.ID, episode.ID); got != 1 {
+		t.Fatalf("rating events = %d, want 1", got)
 	}
-	episodeLatest := env.latestRatings(t, tenant.ID, series.ID, uuid.NullUUID{UUID: episode.ID, Valid: true})
-	if len(episodeLatest) != 1 || episodeLatest[0].RatingScore.Int16 != 3 {
-		t.Fatalf("latest episode ratings = %+v, want a single score of 3", episodeLatest)
+	if got := env.countRows(t,
+		"SELECT COALESCE(sum(rating_score), 0) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND episode_id = $2",
+		tenant.ID, episode.ID); got != 5 {
+		t.Fatalf("rating points = %d, want 5", got)
 	}
-	// The series rating is unchanged by the episode one.
-	if seriesLatest := env.latestRatings(t, tenant.ID, series.ID, uuid.NullUUID{}); len(seriesLatest) != 1 || seriesLatest[0].RatingScore.Int16 != 5 {
-		t.Fatalf("latest series ratings after the episode rating = %+v, want a single score of 5", seriesLatest)
+	// The event names the series the episode belongs to, so the daily rollup
+	// finds it without the handler being trusted for that.
+	if got := env.countRows(t,
+		"SELECT COUNT(*) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND series_id = $2",
+		tenant.ID, series.ID); got != 1 {
+		t.Fatalf("rating events carrying the series = %d, want 1", got)
 	}
 }
 
-func TestDBRatingRejectsScoreOutsideOneToFive(t *testing.T) {
+// Where a tenant lets readers press their way up, the score climbs by what each
+// call reports and stops at five, and the tally still counts the reader once.
+func TestDBRateEpisodeClimbsAndCapsInMultipleMode(t *testing.T) {
 	env := newPublicDBEnv(t)
-	tenant := env.seedTenant(t, "TENANTRATB", "rating-b.example.com", "Rating Range")
-	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATB", "member-rating-b@example.com", "Range Member", "tenant_member")
-	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATB1", Title: "Range series", Published: true})
+	tenant := env.seedTenant(t, "TENANTRATEB", "rate-b.example.com", "Rate B")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEB", "member-rate-b@example.com", "Member B", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEB", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEB", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
+	env.setEpisodeRatingMode(t, tenant.ID, "multiple")
+	client := env.ratingClient()
+	token := tokenFor(t, tenant, member)
 
-	for _, score := range []int32{0, -1, 6} {
-		if _, err := env.rate(t, tenant, member, seriesRatingTarget(series.PublicID), score); connect.CodeOf(err) != connect.CodeInvalidArgument {
-			t.Fatalf("RateContent(%d) error = %v, want invalid_argument", score, err)
+	first, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 3))
+	if err != nil {
+		t.Fatalf("RateEpisode with three presses: %v", err)
+	}
+	if first.Msg.Score != 3 || first.Msg.RatingCount != 1 {
+		t.Fatalf("three presses = %+v, want score 3 and one reader", first.Msg)
+	}
+	if first.Msg.Mode != publirav1.EpisodeRatingMode_EPISODE_RATING_MODE_MULTIPLE {
+		t.Fatalf("mode = %s, want multiple", first.Msg.Mode)
+	}
+
+	// Three more would be six; five is the ceiling, and only the two points
+	// that landed are filed.
+	second, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 3))
+	if err != nil {
+		t.Fatalf("RateEpisode past the ceiling: %v", err)
+	}
+	if second.Msg.Score != 5 || second.Msg.RatingCount != 1 {
+		t.Fatalf("past the ceiling = %+v, want score 5 and one reader", second.Msg)
+	}
+
+	if got := env.countRows(t,
+		"SELECT COALESCE(sum(rating_score), 0) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND episode_id = $2",
+		tenant.ID, episode.ID); got != 5 {
+		t.Fatalf("rating points = %d, want 5", got)
+	}
+	if got := env.countRows(t, "SELECT score FROM episode_ratings WHERE tenant_id = $1 AND user_id = $2 AND episode_id = $3",
+		tenant.ID, member.ID, episode.ID); got != 5 {
+		t.Fatalf("stored score = %d, want 5", got)
+	}
+}
+
+// Presses that arrive at once must not each claim the whole difference they
+// see. Whatever order they land in, the points filed for the day add up to the
+// score the reader ended at.
+func TestDBConcurrentPressesFileExactlyThePointsTheyAdded(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRATEI", "rate-i.example.com", "Rate I")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEN", "member-rate-n@example.com", "Member N", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEI", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEN", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
+	env.setEpisodeRatingMode(t, tenant.ID, "multiple")
+	client := env.ratingClient()
+	token := tokenFor(t, tenant, member)
+
+	var wg sync.WaitGroup
+	errs := make(chan error, 8)
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 1)); err != nil {
+				errs <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Errorf("concurrent RateEpisode: %v", err)
+	}
+
+	// Eight presses of one point each, on a scale that stops at five.
+	score := env.countRows(t, "SELECT score FROM episode_ratings WHERE tenant_id = $1 AND user_id = $2 AND episode_id = $3",
+		tenant.ID, member.ID, episode.ID)
+	if score != 5 {
+		t.Fatalf("stored score = %d, want 5", score)
+	}
+	points := env.countRows(t,
+		"SELECT COALESCE(sum(rating_score), 0) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND episode_id = $2",
+		tenant.ID, episode.ID)
+	if points != score {
+		t.Fatalf("points filed = %d, want the %d the reader ended at", points, score)
+	}
+	if got := env.countRows(t,
+		"SELECT COALESCE((SELECT count FROM episode_rating_counts WHERE tenant_id = $1 AND episode_id = $2), -1)",
+		tenant.ID, episode.ID); got != 1 {
+		t.Fatalf("readers who rated = %d, want 1", got)
+	}
+}
+
+// Changing the mode leaves stored scores exactly as they were, in either
+// direction: that is what makes a single press worth the whole 5.
+func TestDBChangingTheRatingModeLeavesStoredScoresAlone(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRATEC", "rate-c.example.com", "Rate C")
+	pressedUp := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEC", "member-rate-c@example.com", "Member C", "tenant_member")
+	pressedOnce := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATED", "member-rate-d@example.com", "Member D", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEC", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEC", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
+	client := env.ratingClient()
+
+	env.setEpisodeRatingMode(t, tenant.ID, "multiple")
+	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, tokenFor(t, tenant, pressedUp), 3)); err != nil {
+		t.Fatalf("RateEpisode in multiple mode: %v", err)
+	}
+
+	env.setEpisodeRatingMode(t, tenant.ID, "single")
+	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, tokenFor(t, tenant, pressedOnce), 1)); err != nil {
+		t.Fatalf("RateEpisode in single mode: %v", err)
+	}
+
+	// The reader who stopped at three still has three, and the one press is a
+	// whole rating rather than the weakest one on record.
+	if got := env.countRows(t, "SELECT score FROM episode_ratings WHERE tenant_id = $1 AND user_id = $2", tenant.ID, pressedUp.ID); got != 3 {
+		t.Fatalf("score after the mode changed = %d, want the 3 that was stored", got)
+	}
+	if got := env.countRows(t, "SELECT score FROM episode_ratings WHERE tenant_id = $1 AND user_id = $2", tenant.ID, pressedOnce.ID); got != 5 {
+		t.Fatalf("single-mode score = %d, want 5", got)
+	}
+	if got := env.countRows(t,
+		"SELECT COALESCE((SELECT count FROM episode_rating_counts WHERE tenant_id = $1 AND episode_id = $2), -1)",
+		tenant.ID, episode.ID); got != 2 {
+		t.Fatalf("readers who rated = %d, want 2", got)
+	}
+}
+
+// Rating asks for the body access reading the episode asks for.
+func TestDBRateEpisodeRequiresCurrentPublicationAndBodyAccess(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant, otherTenant := env.seedTwoTenants(t)
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEE", "member-rate-e@example.com", "Member E", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATED", Title: "Public series", Published: true})
+	free := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATED", Title: "Free", Status: testutil.EpisodeStatusPublished})
+	paid := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEE", Title: "Paid", Status: testutil.EpisodeStatusPublished, Price: 500})
+	purchased := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEF", Title: "Purchased", Status: testutil.EpisodeStatusPublished, Price: 500})
+	ticketed := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEG", Title: "Ticketed", Status: testutil.EpisodeStatusPublished, Price: 500})
+	draft := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEH", Title: "Draft", Status: testutil.EpisodeStatusDraft})
+	foreignSeries := env.PG.SeedSeries(t, otherTenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEE", Title: "Foreign", Published: true})
+	foreign := env.PG.SeedEpisode(t, otherTenant.ID, foreignSeries.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEI", Title: "Foreign", Status: testutil.EpisodeStatusPublished})
+	env.PG.SeedPurchase(t, tenant.ID, member.ID, purchased.ID, purchased.Price)
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id)
+		VALUES ($1, $2, $3, $4, $5)
+	`, uuid.Must(uuid.NewV7()), tenant.ID, "TICKETRATE01", ticketed.ID, member.ID); err != nil {
+		t.Fatalf("seed access ticket: %v", err)
+	}
+
+	client := env.ratingClient()
+	token := tokenFor(t, tenant, member)
+	for _, episode := range []testutil.Episode{free, purchased, ticketed} {
+		response, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 1))
+		if err != nil {
+			t.Fatalf("RateEpisode %s: %v", episode.PublicID, err)
+		}
+		if response.Msg.Score == 0 {
+			t.Fatalf("RateEpisode %s left the reader at a score of 0", episode.PublicID)
 		}
 	}
-	if got := env.countRows(t, "SELECT COUNT(*) FROM content_events WHERE tenant_id = $1", tenant.ID); got != 0 {
-		t.Fatalf("content_events = %d rows, want a rejected score to write nothing", got)
+	for _, publicID := range []string{paid.PublicID, draft.PublicID, foreign.PublicID, "MISSINGRATE"} {
+		_, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, publicID, token, 1))
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("RateEpisode %s code = %v, want not_found (err=%v)", publicID, connect.CodeOf(err), err)
+		}
 	}
-	if _, err := env.rate(t, tenant, member, seriesRatingTarget(series.PublicID), 1); err != nil {
-		t.Fatalf("RateContent(1): %v", err)
-	}
-	if _, err := env.rate(t, tenant, member, seriesRatingTarget(series.PublicID), 5); err != nil {
-		t.Fatalf("RateContent(5): %v", err)
+	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_ratings WHERE tenant_id = $1 AND user_id = $2", tenant.ID, member.ID); got != 3 {
+		t.Fatalf("stored ratings = %d, want the 3 readable episodes", got)
 	}
 }
 
-func TestDBRatingIsTenantIsolated(t *testing.T) {
+// GetMyEpisodeRating asks only that the episode be published: a rating already
+// given stays readable after the rental that allowed it has run out.
+func TestDBGetMyEpisodeRatingAnswersTheReadersOwnScoreAndThePublicTally(t *testing.T) {
 	env := newPublicDBEnv(t)
-	first, second := env.seedTwoTenants(t)
-	firstMember := env.PG.SeedTenantUser(t, first.ID, "MEMBERRATA", "member-rating-a@example.com", "Member A", "tenant_member")
-	secondMember := env.PG.SeedTenantUser(t, second.ID, "MEMBERRATC", "member-rating-c@example.com", "Member B", "tenant_member")
-	firstSeries := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{PublicID: "SERIESRATA1", Title: "Tenant A series", Published: true})
+	tenant := env.seedTenant(t, "TENANTRATEF", "rate-f.example.com", "Rate F")
+	first := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEJ", "member-rate-j@example.com", "Member J", "tenant_member")
+	second := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEK", "member-rate-k@example.com", "Member K", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEF", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEJ", Title: "Paid", Status: testutil.EpisodeStatusPublished, Price: 500})
+	ticket := uuid.Must(uuid.NewV7())
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id)
+		VALUES ($1, $2, $3, $4, $5)
+	`, ticket, tenant.ID, "TICKETRATE02", episode.ID, first.ID); err != nil {
+		t.Fatalf("seed access ticket: %v", err)
+	}
+	client := env.ratingClient()
+	firstToken := tokenFor(t, tenant, first)
+	secondToken := tokenFor(t, tenant, second)
 
-	if _, err := env.rate(t, first, firstMember, seriesRatingTarget(firstSeries.PublicID), 4); err != nil {
-		t.Fatalf("RateContent in tenant A: %v", err)
+	before, err := client.GetMyEpisodeRating(context.Background(), myEpisodeRatingRequest(tenant, episode.PublicID, secondToken))
+	if err != nil {
+		t.Fatalf("GetMyEpisodeRating before any rating: %v", err)
+	}
+	if before.Msg.Score != 0 || before.Msg.RatingCount != 0 {
+		t.Fatalf("GetMyEpisodeRating before any rating = %+v, want score 0 and no readers", before.Msg)
 	}
 
-	// The other tenant's member cannot rate a series that is not theirs, and the
-	// failure is indistinguishable from a series that does not exist.
-	if _, err := env.rate(t, second, secondMember, seriesRatingTarget(firstSeries.PublicID), 4); connect.CodeOf(err) != connect.CodeNotFound {
-		t.Fatalf("cross-tenant RateContent error = %v, want not_found", err)
+	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, firstToken, 1)); err != nil {
+		t.Fatalf("RateEpisode: %v", err)
 	}
 
-	// Nor can the other tenant read the rating that was written: RLS filters it
-	// out even though the query names the row's own series ID.
-	if rows := env.latestRatings(t, second.ID, firstSeries.ID, uuid.NullUUID{}); len(rows) != 0 {
-		t.Fatalf("tenant B sees %d of tenant A's ratings, want 0", len(rows))
+	// The second reader gave nothing and still sees the first one in the tally.
+	other, err := client.GetMyEpisodeRating(context.Background(), myEpisodeRatingRequest(tenant, episode.PublicID, secondToken))
+	if err != nil {
+		t.Fatalf("GetMyEpisodeRating as the other member: %v", err)
 	}
-	if rows := env.latestRatings(t, first.ID, firstSeries.ID, uuid.NullUUID{}); len(rows) != 1 {
-		t.Fatalf("tenant A sees %d of its own ratings, want 1", len(rows))
+	if other.Msg.Score != 0 {
+		t.Fatalf("GetMyEpisodeRating as the other member reported a score of %d", other.Msg.Score)
 	}
-	if got := env.countRows(t, "SELECT COUNT(*) FROM content_events WHERE tenant_id = $1", second.ID); got != 0 {
-		t.Fatalf("tenant B content_events = %d rows, want 0", got)
+	if other.Msg.RatingCount != 1 {
+		t.Fatalf("GetMyEpisodeRating as the other member count = %d, want 1", other.Msg.RatingCount)
+	}
+
+	// The rental runs out. The rating is still theirs to read back.
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"UPDATE access_tickets SET expires_at = $1 WHERE id = $2", time.Now().Add(-time.Minute), ticket); err != nil {
+		t.Fatalf("expire the access ticket: %v", err)
+	}
+	mine, err := client.GetMyEpisodeRating(context.Background(), myEpisodeRatingRequest(tenant, episode.PublicID, firstToken))
+	if err != nil {
+		t.Fatalf("GetMyEpisodeRating after the rental ran out: %v", err)
+	}
+	if mine.Msg.Score != 5 {
+		t.Fatalf("own score after the rental ran out = %d, want 5", mine.Msg.Score)
+	}
+}
+
+// The episode detail carries the same tally, so the page renders it before the
+// reader's own state has been asked for.
+func TestDBEpisodeDetailCarriesTheStoredRatingCount(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRATEG", "rate-g.example.com", "Rate G")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEL", "member-rate-l@example.com", "Member L", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEG", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEL", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
+	detailRequest := func() *connect.Request[publirav1.GetEpisodeDetailRequest] {
+		return connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+			Tenant:   tenantContext(tenant),
+			PublicId: episode.PublicID,
+		})
+	}
+
+	detail, err := env.catalogClient().GetEpisodeDetail(context.Background(), detailRequest())
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail before any rating: %v", err)
+	}
+	if got := detail.Msg.GetEpisode().GetRatingCount(); got != 0 {
+		t.Fatalf("rating_count before any rating = %d, want 0", got)
+	}
+
+	if _, err := env.ratingClient().RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, tokenFor(t, tenant, member), 1)); err != nil {
+		t.Fatalf("RateEpisode: %v", err)
+	}
+
+	detail, err = env.catalogClient().GetEpisodeDetail(context.Background(), detailRequest())
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail after the rating: %v", err)
+	}
+	if got := detail.Msg.GetEpisode().GetRatingCount(); got != 1 {
+		t.Fatalf("rating_count after the rating = %d, want 1", got)
+	}
+}
+
+// The flood control the reader-writable RPCs share covers this one.
+func TestDBRateEpisodeChargesTheSharedFloodControl(t *testing.T) {
+	env := newPublicDBEnvWithGuards(t, guardsWith(map[readerAction][]ratelimit.Rule{
+		actionRateEpisode: {{Limit: 2, Window: time.Hour}},
+	}))
+	tenant := env.seedTenant(t, "TENANTRATEH", "rate-h.example.com", "Rate H")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEM", "member-rate-m@example.com", "Member M", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEH", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEM", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
+	env.setEpisodeRatingMode(t, tenant.ID, "multiple")
+	client := env.ratingClient()
+	token := tokenFor(t, tenant, member)
+
+	for range 2 {
+		if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 1)); err != nil {
+			t.Fatalf("RateEpisode within the allowance: %v", err)
+		}
+	}
+	_, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 1))
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("RateEpisode past the allowance code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
 }

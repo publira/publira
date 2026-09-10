@@ -385,8 +385,6 @@ type InsertContentEventParams struct {
 //	  -> idx_content_events_episode_view_debounce
 //	InsertProjectedSourceEvent
 //	  -> idx_content_events_source_unique
-//	ListLatestContentRatingsByEntity
-//	  -> idx_content_events_tenant_series_occurred_at
 //	ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
 //	  -> no index; sorts one tenant's published series (see the note there)
 //	ListRelatedSeriesIDs / ListRelatedSeriesIDsReversed
@@ -700,6 +698,14 @@ type InsertRatingEventParams struct {
 // episode_id NULL rates the series itself; set, it rates that episode, and
 // series_id must still be the episode's own series. Both are resolved by the
 // server from the catalog row, never taken from client input.
+// One press of the rating control, carrying the points it added rather than
+// the score the reader now stands at: the day's rating_sum is what readers gave
+// that day, and episode_ratings is where the score they stand at lives.
+//
+// Append-only, so a reader who presses again files another event and the day
+// keeps both. Nothing is ever taken back, which is why there is no query here
+// reading the latest event per actor: the current score is a row, not a
+// reduction over the log.
 func (q *Queries) InsertRatingEvent(ctx context.Context, arg InsertRatingEventParams) (ContentEvent, error) {
 	row := q.db.QueryRowContext(ctx, insertRatingEvent,
 		arg.ID,
@@ -1185,62 +1191,6 @@ func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg Lis
 			&i.AlgorithmVersion,
 			&i.ComputedAt,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listLatestContentRatingsByEntity = `-- name: ListLatestContentRatingsByEntity :many
-SELECT DISTINCT ON (actor_key) actor_key,
-    rating_score,
-    occurred_at
-FROM content_events
-WHERE tenant_id = $1
-    AND event_type = 'rating'
-    AND series_id = $2::uuid
-    AND episode_id IS NOT DISTINCT FROM $3::uuid
-ORDER BY actor_key, occurred_at DESC, id DESC
-`
-
-type ListLatestContentRatingsByEntityParams struct {
-	TenantID  uuid.UUID     `json:"tenant_id"`
-	SeriesID  uuid.UUID     `json:"series_id"`
-	EpisodeID uuid.NullUUID `json:"episode_id"`
-}
-
-type ListLatestContentRatingsByEntityRow struct {
-	ActorKey    uuid.NullUUID `json:"actor_key"`
-	RatingScore sql.NullInt16 `json:"rating_score"`
-	OccurredAt  time.Time     `json:"occurred_at"`
-}
-
-// The latest rating each actor currently stands by for one entity: the stock
-// view of an append-only log. `content_daily_stats.rating_count` /
-// `rating_sum` are the *flow* of a single day and cannot answer this,
-// because a member who rated 1 on Monday and 5 on Tuesday contributes to both
-// days. A stock average has to come from this DISTINCT ON, over the full
-// retained history, until a materialised current-rating table exists.
-//
-// The tie-break runs past occurred_at because two events from one actor can
-// share a timestamp; id is UUIDv7, so the later insert wins.
-func (q *Queries) ListLatestContentRatingsByEntity(ctx context.Context, arg ListLatestContentRatingsByEntityParams) ([]ListLatestContentRatingsByEntityRow, error) {
-	rows, err := q.db.QueryContext(ctx, listLatestContentRatingsByEntity, arg.TenantID, arg.SeriesID, arg.EpisodeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListLatestContentRatingsByEntityRow
-	for rows.Next() {
-		var i ListLatestContentRatingsByEntityRow
-		if err := rows.Scan(&i.ActorKey, &i.RatingScore, &i.OccurredAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

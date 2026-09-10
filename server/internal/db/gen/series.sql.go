@@ -712,7 +712,7 @@ SET synopsis = EXCLUDED.synopsis,
     status = EXCLUDED.status,
     schedule_weekdays = EXCLUDED.schedule_weekdays,
     age_rating = EXCLUDED.age_rating
-RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating
+RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode
 `
 
 type UpsertSeriesListingParams struct {
@@ -749,6 +749,7 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		&i.Status,
 		pq.Array(&i.ScheduleWeekdays),
 		&i.AgeRating,
+		&i.EpisodeRatingMode,
 	)
 	return i, err
 }

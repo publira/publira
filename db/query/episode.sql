@@ -256,7 +256,11 @@ SELECT e.id,
     -- does. Windows on one episode cannot overlap, so at most one row answers.
     -- A priced episode inside one reads as free until this moment, which is
     -- also what the response shows the reader as a countdown.
-    fw.ends_at AS free_until
+    fw.ends_at AS free_until,
+    -- How many readers have rated this episode. The stored tally, so the join
+    -- is one row rather than a scan of the ratings, and an episode nobody has
+    -- rated has no row at all and reads as 0.
+    COALESCE(erc.count, 0)::bigint AS rating_count
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -266,6 +270,8 @@ FROM episodes e
     LEFT JOIN episode_free_windows fw ON fw.episode_id = e.id
     AND fw.starts_at <= NOW()
     AND fw.ends_at > NOW()
+    LEFT JOIN episode_rating_counts erc ON erc.tenant_id = s.tenant_id
+    AND erc.episode_id = e.id
 WHERE s.tenant_id = $1
     AND e.public_id = $2
     AND s.is_published = true

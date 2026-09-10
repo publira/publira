@@ -84,6 +84,7 @@ func openReaderGuards() readerGuards {
 		rules: map[readerAction][]ratelimit.Rule{
 			actionPostComment:   {{Limit: 1000, Window: time.Minute}},
 			actionReportComment: {{Limit: 1000, Window: time.Minute}},
+			actionRateEpisode:   {{Limit: 1000, Window: time.Minute}},
 		},
 		duplicateCommentWindow: defaultDuplicateCommentWindow,
 	}

@@ -282,6 +282,18 @@ type Querier interface {
 	// publish or price gate.
 	GetEpisodeImageByIDForTenant(ctx context.Context, arg GetEpisodeImageByIDForTenantParams) (GetEpisodeImageByIDForTenantRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
+	// How many readers have rated the episode. Zero for one with no tally row,
+	// which is every episode until the first rating arrives. Read after the rating
+	// in the same transaction, so it carries whatever the trigger just made of it.
+	GetEpisodeRatingCount(ctx context.Context, arg GetEpisodeRatingCountParams) (int64, error)
+	// Which press mode governs this episode: the series' own answer when it has
+	// one, and the tenant's otherwise.
+	//
+	// Both joins are outer. A series carries no listing row until the console
+	// writes one, and a tenant carries no config row until it changes a setting;
+	// neither absence is a statement, so both fall through to the same default the
+	// column carries.
+	GetEpisodeRatingMode(ctx context.Context, arg GetEpisodeRatingModeParams) (string, error)
 	// The tenant-wide numerator and denominator for the same window. This is the
 	// headline metric rather than a page count, so it does not fall under the "no
 	// total for a cursor list" rule: it stays the same value on every page, and a
@@ -313,6 +325,9 @@ type Querier interface {
 	// The caller adds one to this to number the version it is about to create;
 	// COALESCE makes the first version of a page number 1.
 	GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error)
+	// The score this reader has given the episode, or no row when they have not
+	// rated it.
+	GetMyEpisodeRating(ctx context.Context, arg GetMyEpisodeRatingParams) (int16, error)
 	// The reader's position in one episode, gated on the same publication and body
 	// access the save is: an episode they may no longer open has no position to
 	// resume, and answering with one would tell them the row is still there.
@@ -464,8 +479,6 @@ type Querier interface {
 	//     -> idx_content_events_episode_view_debounce
 	//   InsertProjectedSourceEvent
 	//     -> idx_content_events_source_unique
-	//   ListLatestContentRatingsByEntity
-	//     -> idx_content_events_tenant_series_occurred_at
 	//   ListRecommendedSeriesIDs / ListRecommendedSeriesIDsReversed
 	//     -> no index; sorts one tenant's published series (see the note there)
 	//   ListRelatedSeriesIDs / ListRelatedSeriesIDsReversed
@@ -527,6 +540,14 @@ type Querier interface {
 	// episode_id NULL rates the series itself; set, it rates that episode, and
 	// series_id must still be the episode's own series. Both are resolved by the
 	// server from the catalog row, never taken from client input.
+	// One press of the rating control, carrying the points it added rather than
+	// the score the reader now stands at: the day's rating_sum is what readers gave
+	// that day, and episode_ratings is where the score they stand at lives.
+	//
+	// Append-only, so a reader who presses again files another event and the day
+	// keeps both. Nothing is ever taken back, which is why there is no query here
+	// reading the latest event per actor: the current score is a row, not a
+	// reduction over the log.
 	InsertRatingEvent(ctx context.Context, arg InsertRatingEventParams) (ContentEvent, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
@@ -790,16 +811,6 @@ type Querier interface {
 	// narrows the scan to one tenant's ranking key, and what is left is the periods
 	// purge-content-rankings has not yet dropped — a sort over days, not over rows.
 	ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error)
-	// The latest rating each actor currently stands by for one entity: the stock
-	// view of an append-only log. `content_daily_stats.rating_count` /
-	// `rating_sum` are the *flow* of a single day and cannot answer this,
-	// because a member who rated 1 on Monday and 5 on Tuesday contributes to both
-	// days. A stock average has to come from this DISTINCT ON, over the full
-	// retained history, until a materialised current-rating table exists.
-	//
-	// The tie-break runs past occurred_at because two events from one actor can
-	// share a timestamp; id is UUIDv7, so the later insert wins.
-	ListLatestContentRatingsByEntity(ctx context.Context, arg ListLatestContentRatingsByEntityParams) ([]ListLatestContentRatingsByEntityRow, error)
 	// The backward direction of ListMyEpisodeReadsDesc.
 	ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error)
 	// The episodes this reader has finished, most recently finished first.
@@ -1248,6 +1259,27 @@ type Querier interface {
 	// start, so a read that waited for the lock inside the same statement would
 	// still answer from before the wait.
 	LockEpisodeByPublicIDForTenant(ctx context.Context, arg LockEpisodeByPublicIDForTenantParams) (LockEpisodeByPublicIDForTenantRow, error)
+	// Episode ratings and the public tally kept beside them. Every statement here
+	// runs on the reader's own connection: episode_ratings is member-isolated, so a
+	// rating is written and read under the reader whose rating it is.
+	//
+	// Nothing here raises or lowers episode_rating_counts. That is the trigger's
+	// job (see the migration): a rating also goes when the reader's account does,
+	// and that delete is PostgreSQL's own, with no statement of ours to carry a
+	// matching decrement.
+	//
+	// Nothing here aggregates either. The points a rating is worth reach the daily
+	// stats through the 'rating' content event, which content_daily_stats has
+	// summed per episode since the engagement schema landed.
+	// Serialises one reader's presses on one episode for the rest of the
+	// transaction, so two arriving at once cannot both read the same starting score
+	// and each claim the whole difference as the points they added.
+	//
+	// A row lock cannot do it, because the first press has no row to lock: the two
+	// calls would race on the insert instead, and the loser would take the conflict
+	// path having seen no row at all. The advisory lock is taken on the identity of
+	// the rating rather than on a row, so it holds whether one exists yet or not.
+	LockEpisodeRating(ctx context.Context, arg LockEpisodeRatingParams) error
 	// Locks every genre of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers
@@ -1417,6 +1449,18 @@ type Querier interface {
 	// select bounds one chunk, so a tenant with a long backlog is drained over
 	// several statements instead of one long-running delete.
 	PurgeWithdrawnEpisodeComments(ctx context.Context, arg PurgeWithdrawnEpisodeCommentsParams) (int64, error)
+	// Records the rating, or raises the one already there, and answers with the
+	// score as it now stands. The caller holds LockEpisodeRating, so the score it
+	// read a moment ago is still the score this raises.
+	//
+	// `points` is what this call adds, already resolved from the press mode by the
+	// caller: the whole 5 in `single` mode, the presses reported in `multiple`. The
+	// score is clamped at 5, so a reader who is already there presses to no effect
+	// and the returned score tells the caller nothing was added.
+	//
+	// The caller resolves the episode through the published catalog query first, so
+	// publication and body access are settled before this runs.
+	RateEpisode(ctx context.Context, arg RateEpisodeParams) (EpisodeRating, error)
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error)
