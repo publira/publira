@@ -908,14 +908,14 @@ const Page = () => (
         </h2>
         {/* The whole list, because /series cannot yet be narrowed to the
             series with free episodes (#1739). */}
-        <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
-          href="/series"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-16" />}>
+          <LocaleLink
+            className="text-sm text-primary underline underline-offset-4"
+            href="/series"
+          >
             <Message message="host.top.view_all" />
-          </Suspense>
-        </LocaleLink>
+          </LocaleLink>
+        </Suspense>
       </div>
       <div className="mt-6">
         <SectionErrorBoundary

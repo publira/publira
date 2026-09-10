@@ -66,9 +66,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * `app/[tenant_id]/[locale]/error.tsx`: a tenant whose stored default cannot be
  * read now brings up that boundary instead of a bare 500 no boundary catches.
  */
-const TenantRootLayout = ({
-  children,
-}: LayoutProps<"/[tenant_id]/[locale]">) => (
+const RootLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
   <html suppressHydrationWarning>
     <head>
       <script dangerouslySetInnerHTML={{ __html: PATH_LOCALE_LANG_SCRIPT }} />
@@ -82,4 +80,4 @@ const TenantRootLayout = ({
   </html>
 );
 
-export default TenantRootLayout;
+export default RootLayout;

@@ -70,7 +70,7 @@ export const metadata: Metadata = {
  * and `export const instant = false` is not the way out of that
  * (`apps/AGENTS.md`).
  */
-const TenantLayout = async ({
+const AuthLayout = async ({
   children,
 }: LayoutProps<"/[tenant_id]/[locale]">) => {
   const locale = await getLocale();
@@ -85,4 +85,4 @@ const TenantLayout = async ({
   );
 };
 
-export default TenantLayout;
+export default AuthLayout;

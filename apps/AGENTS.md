@@ -342,6 +342,24 @@ The escape is the same in both: the error leaves the app render, and `base-serve
 
 The apps sit on the good side of that line by construction: every read crosses the network, so a failure that is left to throw lands after the flush, and the cached-read rule above keeps it from throwing at all. The bare 500 is what a bug that throws synchronously at the top of a component gets. That last row is a property of the tenant route structure, not something to work around per route — a minimal reproduction showed the same throw producing Next.js's `__next_error__` document only when the root layout sits above the top-level dynamic segment, which is not this app's shape. Do not add per-route escape hatches (a `connection()` call, a `try` / `catch` around a component body) to chase it.
 
+## A component with one call site lives beside it
+
+A component that only one route renders goes in that route's own `_components/`, reached with a relative import. `#components/` is for the ones more than one route uses — `<Message>`, `<LocaleLink>`, the notification bell.
+
+Where a component sits is what says how far a change to it reaches. Putting a single-use component in `#components/` claims an audience it does not have, so the next reader has to search for the call sites before touching it; putting a shared one under a route hides it from the routes that should have reused it. Move a component up when its second call site appears, not in anticipation of one.
+
+No lint covers this.
+
+## A layout is named after the segment it governs
+
+The default export of a `layout.tsx` takes the name of its own segment or route group — `RootLayout` for the root, `AuthLayout` under `(auth)`, `ProtectedLayout` under `(protected)`, `SettingsLayout` under `settings/` — because that name is the only thing that says which of an app's several layouts a reader is looking at.
+
+Do not prefix it with something every route in the app already is. `web-host` and `web-admin` are tenant-scoped end to end, so a `Tenant` in front of a layout's name distinguishes it from nothing, and the two it leaves behind — a `(site)` layout and an `(auth)` layout both called `TenantLayout` — are indistinguishable in a stack trace, in a Next.js overlay, and in the editor's symbol list.
+
+When the segment's name is already taken in that file — `(site)`'s layout wants to be `SiteLayout`, which is a `@publira/layouts` compound component it renders — move the chrome into a component of its own, in the segment's `_components/`, rather than inventing a longer name for the layout. The layout file is then the segment's providers and nothing else, which is the shape `web-admin`'s `(protected)/layout.tsx` already has.
+
+No lint covers this.
+
 ## Never use `instant = false`
 
 `export const instant = false` opts a segment out of Cache Components' static-shell validation. It is an escape hatch for codebases that cannot yet fix a blocking read, and it has no place in a product being built from scratch — **do not add it to any segment**, and do not treat an existing occurrence as licence to add another.
