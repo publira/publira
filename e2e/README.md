@@ -127,7 +127,7 @@ A spec that changes state the whole console reads gets an isolated project for t
 
 `tests/host.screenshots.spec.ts`, `admin.screenshots.spec.ts`, and `platform.screenshots.spec.ts` record what a screen looks like, so a change to it arrives for review as an image beside the image it replaces. Each screen is taken full-page at 390px, the width of a phone, and at 1280px, the width the two consoles are used at. The baselines are committed under `tests/__screenshots__/<project>/<screen>-<width>.png`; a run compares against them and fails with a diff image in `test-results/`.
 
-Screens covered: the public site's catalog top page, ranking, series list, label list, author list, series detail, an episode with a comic body and one with no body, search results, sign-in, and not-found; the tenant console's dashboard, series list, series edit form, and theme settings with the public site preview; the operator console's dashboard and tenant list.
+Screens covered: the public site's catalog top page, ranking, series list, label list, author list, series detail, label detail, author detail, an episode with a comic body and one with no body, search results, sign-in, and not-found; the tenant console's dashboard, series list, series edit form, and theme settings with the public site preview; the operator console's dashboard and tenant list.
 
 Two things make a shot on one machine comparable with the run on another:
 

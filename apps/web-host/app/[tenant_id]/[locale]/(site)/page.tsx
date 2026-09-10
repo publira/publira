@@ -288,7 +288,7 @@ const ContinueReadingSection = async () => {
                   <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                     <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
                       <Message
-                        message="host.top.episode_number"
+                        message="host.common.episode_number"
                         values={{ number: episode.orderIndex }}
                       />
                     </Suspense>
@@ -376,7 +376,7 @@ const FeaturedWorkSection = async () => {
             <span className="text-foreground tabular-nums">
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message
-                  message="host.top.episode_number"
+                  message="host.common.episode_number"
                   values={{ number: latestEpisode.orderIndex }}
                 />
               </Suspense>
@@ -600,7 +600,7 @@ const NewEpisodesSection = async () => {
                   <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                     <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
                       <Message
-                        message="host.top.episode_number"
+                        message="host.common.episode_number"
                         values={{ number: episode.episodeOrderIndex }}
                       />
                     </Suspense>
@@ -680,7 +680,7 @@ const UpdatedSeriesSection = async () => {
                   <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                     <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
                       <Message
-                        message="host.top.episode_number"
+                        message="host.common.episode_number"
                         values={{ number: item.latestEpisodeOrderIndex }}
                       />
                     </Suspense>

@@ -30,7 +30,22 @@ describe("getPublishedLabelDetail", () => {
       nextToken: "NEXT_SERIES",
       previousToken: "",
       series: [
-        { publicId: "SERIES_1", title: "Series 1" },
+        {
+          creators: [{ name: "Author A", publicId: "CREATOR_A" }],
+          eyeCatchImageVariants: [
+            {
+              contentType: "image/webp",
+              fileSizeBytes: 1024,
+              height: 1600,
+              label: "portrait_1200w",
+              url: "/images/series/series-1/portrait/1200",
+              variantType: "portrait",
+              width: 1200,
+            },
+          ],
+          publicId: "SERIES_1",
+          title: "Series 1",
+        },
         { publicId: "SERIES_2", title: "Series 2" },
       ],
     });
@@ -54,9 +69,43 @@ describe("getPublishedLabelDetail", () => {
         name: "Label A",
         nextToken: "NEXT_SERIES",
         previousToken: "",
+        // The shelf on the label page draws covers and creators, so the mapper
+        // hands back the whole series item rather than a name and an id.
         series: [
-          { publicId: "SERIES_1", title: "Series 1" },
-          { publicId: "SERIES_2", title: "Series 2" },
+          {
+            creatorNames: ["Author A"],
+            creators: [
+              {
+                iconImageUrl: "",
+                name: "Author A",
+                profileText: "",
+                publicId: "CREATOR_A",
+              },
+            ],
+            eyeCatchImageVariants: [
+              {
+                contentType: "image/webp",
+                fileSizeBytes: 1024,
+                height: 1600,
+                label: "portrait_1200w",
+                url: "/images/series/series-1/portrait/1200",
+                variantType: "portrait",
+                width: 1200,
+              },
+            ],
+            labelName: "",
+            labelPublicId: "",
+            publicId: "SERIES_1",
+            title: "Series 1",
+          },
+          {
+            creatorNames: [],
+            creators: [],
+            labelName: "",
+            labelPublicId: "",
+            publicId: "SERIES_2",
+            title: "Series 2",
+          },
         ],
         seriesCount: 3,
       },
@@ -82,9 +131,9 @@ describe("getPublishedLabelDetail", () => {
       locale: "en",
     });
 
-    expect(result.ok && result.value?.series).toEqual([
-      { publicId: "SERIES_1", title: "Series 1" },
-    ]);
+    expect(
+      result.ok && result.value?.series.map((series) => series.publicId)
+    ).toEqual(["SERIES_1"]);
   });
 
   it("Labels with empty publicId are null", async () => {

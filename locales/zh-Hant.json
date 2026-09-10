@@ -1810,7 +1810,6 @@
       "not_found_title": "找不到該作者",
       "page_empty": "本頁沒有可顯示的作者。",
       "pagination_aria": "作者列表分頁",
-      "profile": "簡介",
       "profile_empty": "尚未發布簡介。",
       "series_description": "署名這位作者的已發布系列。",
       "series_empty": "目前沒有已發布的系列。",
@@ -1821,6 +1820,7 @@
     "common": {
       "back_to_top": "返回首頁",
       "cancel": "取消",
+      "episode_number": "第 {$number} 章",
       "error_id": "錯誤 ID：",
       "find_series": "瀏覽系列",
       "free": "免費",
@@ -2112,7 +2112,9 @@
     },
     "series": {
       "back_to_list": "← 返回系列列表",
+      "continue_reading": "繼續閱讀",
       "detail_failed": "無法載入該系列。請稍後再試。",
+      "episode_count": "共 {$count} 章",
       "episode_finished": "已讀完",
       "episodes_empty": "尚未發布任何章節。",
       "episodes_heading": "章節",
@@ -2122,12 +2124,15 @@
       "list_error": "無法顯示系列列表",
       "list_failed": "無法載入系列列表。請稍後再試。",
       "list_title": "系列",
+      "next_to_read": "接下來閱讀",
       "page_empty": "本頁沒有可顯示的系列。",
       "pagination_aria": "系列列表分頁",
-      "progress_continue": "從第 {$number} 章繼續閱讀",
       "progress_error": "無法顯示您上次的閱讀位置",
       "progress_failed": "無法載入您上次的閱讀位置。請稍後再試。",
-      "progress_start": "閱讀第 {$number} 章"
+      "read_from_first": "從第 1 章開始閱讀",
+      "status_completed": "已完結",
+      "status_hiatus": "休載中",
+      "status_ongoing": "連載中"
     },
     "settings": {
       "cancel": "取消",
@@ -2196,7 +2201,6 @@
       "continue_failed": "無法載入您正在閱讀的作品。請稍後再試。",
       "continue_heading": "繼續閱讀",
       "description": "從推薦、最新與最近更新的作品中，找到您的下一本讀物。",
-      "episode_number": "第 {$number} 章",
       "featured_authors_empty": "還沒有作者署名於已發布的系列。",
       "featured_authors_error": "無法顯示推薦作者",
       "featured_authors_heading": "推薦作者",

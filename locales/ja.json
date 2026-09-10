@@ -1810,7 +1810,6 @@
       "not_found_title": "著者が見つかりません",
       "page_empty": "このページに表示できる著者がいません。",
       "pagination_aria": "著者一覧ページング",
-      "profile": "プロフィール",
       "profile_empty": "プロフィールはまだ公開されていません。",
       "series_description": "この著者が関わっている公開中シリーズ一覧です。",
       "series_empty": "まだ公開中シリーズはありません。",
@@ -1821,6 +1820,7 @@
     "common": {
       "back_to_top": "トップへ戻る",
       "cancel": "キャンセル",
+      "episode_number": "第{$number}話",
       "error_id": "エラー ID:",
       "find_series": "シリーズを探す",
       "free": "無料",
@@ -2112,7 +2112,9 @@
     },
     "series": {
       "back_to_list": "← シリーズ一覧に戻る",
+      "continue_reading": "続きを読む",
       "detail_failed": "シリーズを取得できませんでした。時間をおいて再試行してください。",
+      "episode_count": "全{$count}話",
       "episode_finished": "読了",
       "episodes_empty": "エピソードはまだ公開されていません。",
       "episodes_heading": "エピソード一覧",
@@ -2122,12 +2124,15 @@
       "list_error": "シリーズ一覧を表示できませんでした",
       "list_failed": "シリーズ一覧を取得できませんでした。時間をおいて再試行してください。",
       "list_title": "シリーズ一覧",
+      "next_to_read": "次に読む",
       "page_empty": "このページに表示できるシリーズがありません。",
       "pagination_aria": "シリーズ一覧ページング",
-      "progress_continue": "第{$number}話の続きから読む",
       "progress_error": "読みかけの位置を表示できませんでした",
       "progress_failed": "読みかけの位置を取得できませんでした。時間をおいて再試行してください。",
-      "progress_start": "第{$number}話を読む"
+      "read_from_first": "第1話から読む",
+      "status_completed": "完結",
+      "status_hiatus": "休載中",
+      "status_ongoing": "連載中"
     },
     "settings": {
       "cancel": "キャンセル",
@@ -2196,7 +2201,6 @@
       "continue_failed": "読みかけの作品を取得できませんでした。時間をおいて再試行してください。",
       "continue_heading": "読みかけの作品",
       "description": "おすすめ、新着、更新作品から気になる作品を見つけてください。",
-      "episode_number": "第{$number}話",
       "featured_authors_empty": "公開中シリーズに紐づく著者はまだいません。",
       "featured_authors_error": "注目の著者を表示できませんでした",
       "featured_authors_heading": "注目の著者",
