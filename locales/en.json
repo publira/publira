@@ -936,7 +936,9 @@
         "reading_period": "Reading period",
         "synopsis": "Synopsis",
         "status": "Status",
-        "actions": "Actions"
+        "actions": "Actions",
+        "serialization": "Serialization",
+        "age_rating": "Age rating"
       },
       "published": "Published",
       "draft": "Draft",
@@ -969,7 +971,26 @@
         "eye_catch_description": "Select a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px. Saving generates purpose-specific variants (3:4 / 1:1 / 16:9 / OG) and device sizes.",
         "eye_catch_update": "Update cover image",
         "creators_no_match": "No matching creators found.",
-        "creators_remove": "Remove creator"
+        "creators_remove": "Remove creator",
+        "status": "Serialization status",
+        "status_description": "Whether new episodes are still coming. Readers see this on the series page.",
+        "schedule": "Update schedule",
+        "schedule_description": "Check the weekdays a new episode is expected on.",
+        "schedule_irregular": "No weekday is checked, so this series is presented as irregular.",
+        "age_rating": "Age rating",
+        "age_rating_all_hint": "All ages: anyone can open the series.",
+        "age_rating_r15_hint": "R15: readers confirm they are 15 or over before the pages open.",
+        "age_rating_r18_hint": "R18: readers confirm they are 18 or over before the pages open.",
+        "genres": "Genres",
+        "genres_empty": "No genres are available. Create a genre first.",
+        "genres_search": "Search genres",
+        "genres_no_match": "No matching genres found.",
+        "genres_remove": "Remove genre",
+        "genres_description": "You can select more than one. Genres are shown in the order set on the genres page.",
+        "tags": "Tags",
+        "tags_add": "Add",
+        "tags_remove": "Remove {$name}",
+        "tags_description": "Press Enter or Add to write a tag. Up to {$count} tags. A name that matches a tag already in use is filed under that tag."
       },
       "validation": {
         "label_required": "A label is required.",
@@ -978,7 +999,10 @@
         "tenant_missing": "Tenant ID is missing.",
         "title_required": "Title is required.",
         "id_missing": "The series ID to update is missing.",
-        "published_at_invalid": "The publication date and time is invalid."
+        "published_at_invalid": "The publication date and time is invalid.",
+        "status_invalid": "Select a serialization status.",
+        "age_rating_invalid": "Select an age rating.",
+        "tags_too_many": "A series can carry at most {$count} tags."
       },
       "created": "Series created.",
       "updated": "Series updated.",
@@ -1101,7 +1125,18 @@
           "epub_invalid": "Select an ePub (.epub) file.",
           "pages_required": "Select page images to add."
         }
-      }
+      },
+      "status": {
+        "ongoing": "Ongoing",
+        "completed": "Completed",
+        "hiatus": "On hiatus"
+      },
+      "age_rating": {
+        "all": "All ages",
+        "r15": "R15",
+        "r18": "R18"
+      },
+      "tags_unavailable": "Could not load the tags already in use. You can still type a tag name."
     },
     "settings": {
       "email_error": "Could not display the email settings",

@@ -936,7 +936,9 @@
         "reading_period": "閱讀期限",
         "synopsis": "簡介",
         "status": "狀態",
-        "actions": "操作"
+        "actions": "操作",
+        "serialization": "連載狀態",
+        "age_rating": "年齡分級"
       },
       "published": "已發布",
       "draft": "草稿",
@@ -969,7 +971,26 @@
         "eye_catch_description": "請選擇不超過 10MB、尺寸至少為 2400x3200px 的 JPEG、PNG 或 WebP 圖片。儲存時會產生各用途的比例（3:4 / 1:1 / 16:9 / OG）與各裝置尺寸的圖片。",
         "eye_catch_update": "更新封面圖",
         "creators_no_match": "沒有相符的創作者。",
-        "creators_remove": "移除創作者"
+        "creators_remove": "移除創作者",
+        "status": "連載狀態",
+        "status_description": "表示是否仍會更新新話。會顯示在作品頁面上。",
+        "schedule": "更新週期",
+        "schedule_description": "請勾選發布新話的星期。",
+        "schedule_irregular": "未勾選任何星期，將顯示為不定期更新。",
+        "age_rating": "年齡分級",
+        "age_rating_all_hint": "全年齡：任何人都可以閱讀。",
+        "age_rating_r15_hint": "R15：讀者確認已滿 15 歲後才能閱讀。",
+        "age_rating_r18_hint": "R18：讀者確認已滿 18 歲後才能閱讀。",
+        "genres": "類型",
+        "genres_empty": "沒有可用的類型。請先建立類型。",
+        "genres_search": "搜尋類型",
+        "genres_no_match": "找不到符合的類型。",
+        "genres_remove": "移除類型",
+        "genres_description": "可以選擇多個。依類型管理頁面設定的順序顯示。",
+        "tags": "標籤",
+        "tags_add": "新增",
+        "tags_remove": "移除 {$name}",
+        "tags_description": "按 Enter 或 新增 寫入標籤。最多 {$count} 個。與正在使用的標籤同名時會歸入該標籤。"
       },
       "validation": {
         "label_required": "品牌為必填。",
@@ -978,7 +999,10 @@
         "tenant_missing": "缺少租戶 ID。",
         "title_required": "標題為必填。",
         "id_missing": "缺少要更新的系列 ID。",
-        "published_at_invalid": "發布日期與時間無效。"
+        "published_at_invalid": "發布日期與時間無效。",
+        "status_invalid": "請選擇連載狀態。",
+        "age_rating_invalid": "請選擇年齡分級。",
+        "tags_too_many": "標籤最多 {$count} 個。"
       },
       "created": "系列已建立。",
       "updated": "系列已更新。",
@@ -1101,7 +1125,18 @@
           "epub_invalid": "請選擇 ePub（.epub）檔案。",
           "pages_required": "請選擇要新增的頁面圖片。"
         }
-      }
+      },
+      "status": {
+        "ongoing": "連載中",
+        "completed": "已完結",
+        "hiatus": "休刊中"
+      },
+      "age_rating": {
+        "all": "全年齡",
+        "r15": "R15",
+        "r18": "R18"
+      },
+      "tags_unavailable": "無法載入正在使用的標籤。仍可直接輸入標籤名稱。"
     },
     "settings": {
       "email_error": "無法顯示郵件設定",

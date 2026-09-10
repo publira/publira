@@ -115,6 +115,36 @@ export const SeriesEyeCatchForm = ({
             type="hidden"
             value={effectiveSeries.eyeCatchImageUpdatedAt}
           />
+          <input name="status" type="hidden" value={initialSeries.status} />
+          <input
+            name="age_rating"
+            type="hidden"
+            value={initialSeries.ageRating}
+          />
+          {initialSeries.scheduleWeekdays.map((weekday) => (
+            <input
+              key={weekday}
+              name="schedule_weekdays"
+              type="hidden"
+              value={String(weekday)}
+            />
+          ))}
+          {initialSeries.genrePublicIds.map((publicId) => (
+            <input
+              key={publicId}
+              name="genre_public_ids"
+              type="hidden"
+              value={publicId}
+            />
+          ))}
+          {initialSeries.tagNames.map((tagName) => (
+            <input
+              key={tagName}
+              name="tag_names"
+              type="hidden"
+              value={tagName}
+            />
+          ))}
           {initialSeries.creatorPublicIds.map((publicId) => (
             <input
               key={publicId}

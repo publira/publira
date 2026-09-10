@@ -21,7 +21,6 @@ import {
 } from "../src/admin";
 import {
   applyScenarioSql,
-  assignGenreToSeries,
   deleteCreatorsByPublicIds,
   deleteGenresByNames,
   deleteLabelsByPublicIds,
@@ -451,13 +450,13 @@ test.describe("admin catalog masters", () => {
     const assigned = await trackGenre(page, `E2E Genre Used ${suffix}`);
     const unused = await trackGenre(page, `E2E Genre Unused ${suffix}`);
 
-    const seriesId = trackSeries(
+    trackSeries(
       await createSeriesViaUi(page, {
+        genreName: assigned,
         synopsis: `E2E genre series synopsis ${suffix}`,
         title: `E2E Genre Series ${suffix}`,
       })
     );
-    assignGenreToSeries(seriesId, assigned);
 
     await page.goto(adminUrl("/genres"));
     const assignedRow = genreRow(page, assigned);

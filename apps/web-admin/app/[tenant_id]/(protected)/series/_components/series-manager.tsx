@@ -33,6 +33,10 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import type {
+  SeriesAgeRatingValue,
+  SeriesStatusValue,
+} from "#lib/series-classification";
 
 import type { SeriesListItem } from "../series-types";
 
@@ -54,6 +58,39 @@ const getStatusLabel = (
   isPublished
     ? getMessage(messages, "admin.series.published")
     : getMessage(messages, "admin.series.draft");
+
+/**
+ * The serialization state, worded one branch at a time. Each branch names its
+ * key inside the `<Message>` it returns, so the key stays where anything
+ * reading this file for the strings the screen uses can see it.
+ */
+const SeriesSerializationMessage = ({
+  status,
+}: {
+  status: SeriesStatusValue;
+}) => {
+  if (status === "completed") {
+    return <Message message="admin.series.status.completed" />;
+  }
+  if (status === "hiatus") {
+    return <Message message="admin.series.status.hiatus" />;
+  }
+  return <Message message="admin.series.status.ongoing" />;
+};
+
+const SeriesAgeRatingMessage = ({
+  ageRating,
+}: {
+  ageRating: SeriesAgeRatingValue;
+}) => {
+  if (ageRating === "r15") {
+    return <Message message="admin.series.age_rating.r15" />;
+  }
+  if (ageRating === "r18") {
+    return <Message message="admin.series.age_rating.r18" />;
+  }
+  return <Message message="admin.series.age_rating.all" />;
+};
 
 const excerpt = (text: string, max = 56) => {
   const normalized = text.replaceAll(/\s+/gu, " ").trim();
@@ -126,6 +163,16 @@ const SeriesListBody = ({
             {getMessage(messages, "admin.series.columns.synopsis")}
           </TableHead>
           <TableHead className="w-32">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.series.columns.serialization" />
+            </Suspense>
+          </TableHead>
+          <TableHead className="w-28">
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.series.columns.age_rating" />
+            </Suspense>
+          </TableHead>
+          <TableHead className="w-32">
             {getMessage(messages, "admin.series.columns.status")}
           </TableHead>
           <TableHead className="w-56">
@@ -147,6 +194,16 @@ const SeriesListBody = ({
             </TableCell>
             <TableCell>{item.readingPeriodHours}</TableCell>
             <TableCell>{excerpt(item.synopsis)}</TableCell>
+            <TableCell>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <SeriesSerializationMessage status={item.status} />
+              </Suspense>
+            </TableCell>
+            <TableCell>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <SeriesAgeRatingMessage ageRating={item.ageRating} />
+              </Suspense>
+            </TableCell>
             <TableCell>
               <Badge tone={getStatusTone(item.isPublished)}>
                 {getStatusLabel(messages, item.isPublished)}

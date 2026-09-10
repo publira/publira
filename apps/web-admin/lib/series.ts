@@ -1,3 +1,4 @@
+import { SeriesAgeRating, SeriesStatus } from "@publira/api-client/admin/types";
 import type { Series } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
@@ -28,6 +29,16 @@ import {
   mentionsAspectImageRejection,
   mentionsImageRejection,
 } from "./image-rejection";
+import {
+  DEFAULT_SERIES_AGE_RATING,
+  DEFAULT_SERIES_STATUS,
+  SERIES_AGE_RATING_VALUES,
+  SERIES_STATUS_VALUES,
+} from "./series-classification";
+import type {
+  SeriesAgeRatingValue,
+  SeriesStatusValue,
+} from "./series-classification";
 import { getAccessToken } from "./session";
 
 /**
@@ -57,6 +68,17 @@ export interface SeriesItem {
   creatorNames: string[];
   creatorPublicIds: string[];
   isPublished: boolean;
+  status: SeriesStatusValue;
+  /**
+   * The weekdays a new episode is expected, as `EXTRACT(DOW)` numbers: 0 is
+   * Sunday and 6 is Saturday. Empty is the series keeping no weekly schedule,
+   * which is a statement rather than a gap.
+   */
+  scheduleWeekdays: number[];
+  ageRating: SeriesAgeRatingValue;
+  /** In the tenant's genre order, which is the order the picker offers. */
+  genrePublicIds: string[];
+  tagNames: string[];
   eyeCatchImageVariants: {
     variantType: string;
     label: string;
@@ -154,19 +176,61 @@ const mapErrorToMessage = (
  */
 type RawSeries = Pick<
   Series,
+  | "ageRating"
   | "creators"
   | "eyeCatchImageUpdatedAt"
   | "eyeCatchImageVariants"
+  | "genres"
   | "isPublished"
   | "label"
   | "publicId"
   | "publishedAt"
   | "readingPeriodHours"
+  | "scheduleWeekdays"
+  | "status"
   | "synopsis"
+  | "tags"
   | "title"
 >;
 
+/**
+ * The proto enum each stored value stands for. One table per field, read in
+ * both directions, so the two halves of the conversion cannot drift apart.
+ */
+const SERIES_STATUS_ENUM: Record<SeriesStatusValue, SeriesStatus> = {
+  completed: SeriesStatus.COMPLETED,
+  hiatus: SeriesStatus.HIATUS,
+  ongoing: SeriesStatus.ONGOING,
+};
+
+const SERIES_AGE_RATING_ENUM: Record<SeriesAgeRatingValue, SeriesAgeRating> = {
+  all: SeriesAgeRating.ALL,
+  r15: SeriesAgeRating.R15,
+  r18: SeriesAgeRating.R18,
+};
+
+/**
+ * Unspecified is the column default rather than a missing value — the API
+ * documents a save that names no status as storing the default — so it reads
+ * back as that default instead of as nothing.
+ */
+const toSeriesStatusValue = (
+  status: SeriesStatus | undefined
+): SeriesStatusValue =>
+  SERIES_STATUS_VALUES.find((value) => SERIES_STATUS_ENUM[value] === status) ??
+  DEFAULT_SERIES_STATUS;
+
+const toSeriesAgeRatingValue = (
+  ageRating: SeriesAgeRating | undefined
+): SeriesAgeRatingValue =>
+  SERIES_AGE_RATING_VALUES.find(
+    (value) => SERIES_AGE_RATING_ENUM[value] === ageRating
+  ) ?? DEFAULT_SERIES_AGE_RATING;
+
+const WEEKDAY_COUNT = 7;
+
 const mapSeries = (series: RawSeries): SeriesItem => ({
+  ageRating: toSeriesAgeRatingValue(series.ageRating),
   creatorNames: (series.creators ?? []).flatMap((creator) => {
     const name = creator.name.trim();
     return name.length > 0 ? [name] : [];
@@ -192,13 +256,26 @@ const mapSeries = (series: RawSeries): SeriesItem => ({
         : [];
     }
   ),
+  genrePublicIds: (series.genres ?? []).flatMap((genre) => {
+    const publicId = genre.publicId?.trim() ?? "";
+    return publicId.length > 0 ? [publicId] : [];
+  }),
   isPublished: series.isPublished ?? false,
   labelName: series.label?.name?.trim() ?? "",
   labelPublicId: series.label?.publicId?.trim() ?? "",
   publicId: series.publicId,
   publishedAt: series.publishedAt ?? "",
   readingPeriodHours: series.readingPeriodHours ?? 0,
+  scheduleWeekdays: (series.scheduleWeekdays ?? []).filter(
+    (weekday) =>
+      Number.isInteger(weekday) && weekday >= 0 && weekday < WEEKDAY_COUNT
+  ),
+  status: toSeriesStatusValue(series.status),
   synopsis: series.synopsis,
+  tagNames: (series.tags ?? []).flatMap((tag) => {
+    const name = tag.name?.trim() ?? "";
+    return name.length > 0 ? [name] : [];
+  }),
   title: series.title,
 });
 
@@ -488,6 +565,22 @@ const toUpdatedCreatorCredits = async (
   });
 };
 
+/**
+ * The classification every save carries.
+ *
+ * Not optional, because `UpdateSeries` writes the whole listing row: a field
+ * left out resets to the column default, so a form that omitted one would drop
+ * the series' status or its genres every time somebody fixed a typo in the
+ * title.
+ */
+interface SeriesClassificationInput {
+  status: SeriesStatusValue;
+  scheduleWeekdays: number[];
+  ageRating: SeriesAgeRatingValue;
+  genrePublicIds: string[];
+  tagNames: string[];
+}
+
 export const createSeries = async (
   input: {
     tenantId: string;
@@ -500,7 +593,7 @@ export const createSeries = async (
     publishedAt?: string;
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
-  },
+  } & SeriesClassificationInput,
   locale: Locale
 ): Promise<CreateSeriesResult> => {
   const messages = sharedCatalog(locale);
@@ -513,20 +606,26 @@ export const createSeries = async (
   }
 
   try {
+    const creatorCredits = await toNewCreatorCredits(
+      input.tenantId,
+      sessionId,
+      input.creatorPublicIds
+    );
     const response = await apiClient.series.createSeries(
       {
-        creatorCredits: await toNewCreatorCredits(
-          input.tenantId,
-          sessionId,
-          input.creatorPublicIds
-        ),
+        ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
+        creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
+        genrePublicIds: input.genrePublicIds,
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
         publishedAt: input.publishedAt,
         readingPeriodHours: input.readingPeriodHours,
+        scheduleWeekdays: input.scheduleWeekdays,
+        status: SERIES_STATUS_ENUM[input.status],
         synopsis: input.synopsis,
+        tagNames: input.tagNames,
         tenant: { tenantId: input.tenantId },
         title: input.title,
       },
@@ -571,7 +670,7 @@ export const updateSeries = async (
     clearEyeCatchImage?: boolean;
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
-  },
+  } & SeriesClassificationInput,
   locale: Locale
 ): Promise<UpdateSeriesResult> => {
   const messages = sharedCatalog(locale);
@@ -584,23 +683,29 @@ export const updateSeries = async (
   }
 
   try {
+    const creatorCredits = await toUpdatedCreatorCredits(
+      input.tenantId,
+      input.publicId,
+      sessionId,
+      input.creatorPublicIds
+    );
     const response = await apiClient.series.updateSeries(
       {
+        ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
         clearEyeCatchImage: input.clearEyeCatchImage,
-        creatorCredits: await toUpdatedCreatorCredits(
-          input.tenantId,
-          input.publicId,
-          sessionId,
-          input.creatorPublicIds
-        ),
+        creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
+        genrePublicIds: input.genrePublicIds,
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
         publicId: input.publicId,
         publishedAt: input.publishedAt,
         readingPeriodHours: input.readingPeriodHours,
+        scheduleWeekdays: input.scheduleWeekdays,
+        status: SERIES_STATUS_ENUM[input.status],
         synopsis: input.synopsis,
+        tagNames: input.tagNames,
         tenant: { tenantId: input.tenantId },
         title: input.title,
       },

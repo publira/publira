@@ -1,4 +1,8 @@
 import type { EyeCatchVariantItem } from "#components/eye-catch/types";
+import type {
+  SeriesAgeRatingValue,
+  SeriesStatusValue,
+} from "#lib/series-classification";
 
 export type SeriesEyeCatchVariantItem = EyeCatchVariantItem;
 
@@ -13,6 +17,11 @@ export interface SeriesListItem {
   creatorNames: string[];
   creatorPublicIds: string[];
   isPublished: boolean;
+  status: SeriesStatusValue;
+  scheduleWeekdays: number[];
+  ageRating: SeriesAgeRatingValue;
+  genrePublicIds: string[];
+  tagNames: string[];
   eyeCatchImageVariants: SeriesEyeCatchVariantItem[];
   eyeCatchImageUpdatedAt: string;
 }

@@ -17,9 +17,11 @@ import {
 import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
+import { listGenres } from "#lib/genre";
 import { listAllLabels } from "#lib/label";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { listSeries } from "#lib/series";
+import { listTagSuggestions } from "#lib/tag";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -51,22 +53,31 @@ const NewSeriesFormSkeleton = () => (
 const NewSeriesFormData = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const [listResult, creatorsResult, labelsResult, timeZone] =
-    await Promise.all([
-      // Only `defaultReadingPeriodHours` is read here, and that comes from the
-      // tenant rather than the page, so the smallest page the API allows is
-      // enough.
-      listSeries(tenantId, locale, { limit: 1 }),
-      // Walk every cursor page so the Combobox can search past the first 100.
-      listAllCreators(tenantId, locale),
-      listAllLabels(tenantId, locale),
-      getTenantDisplayTimeZone(tenantId),
-    ]);
+  const [
+    listResult,
+    creatorsResult,
+    labelsResult,
+    genresResult,
+    tagsResult,
+    timeZone,
+  ] = await Promise.all([
+    // Only `defaultReadingPeriodHours` is read here, and that comes from the
+    // tenant rather than the page, so the smallest page the API allows is
+    // enough.
+    listSeries(tenantId, locale, { limit: 1 }),
+    // Walk every cursor page so the Combobox can search past the first 100.
+    listAllCreators(tenantId, locale),
+    listAllLabels(tenantId, locale),
+    listGenres(tenantId, locale),
+    listTagSuggestions(tenantId, locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   await redirectToLoginIfSessionRejected(
     listResult,
     creatorsResult,
-    labelsResult
+    labelsResult,
+    genresResult
   );
 
   return (
@@ -77,9 +88,15 @@ const NewSeriesFormData = async () => {
         creatorsResult.ok ? undefined : creatorsResult.message
       }
       defaultReadingPeriodHours={listResult.defaultReadingPeriodHours}
+      genres={genresResult.genres}
+      genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
       labels={labelsResult.labels}
       labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="create"
+      tagSuggestions={tagsResult.tagNames}
+      tagSuggestionsErrorMessage={
+        tagsResult.ok ? undefined : tagsResult.message
+      }
       timeZone={timeZone}
     />
   );
