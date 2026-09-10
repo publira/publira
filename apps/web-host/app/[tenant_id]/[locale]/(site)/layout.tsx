@@ -35,6 +35,7 @@ import {
   SiteLayoutPrimaryAction,
   SiteLayoutSecondaryAction,
   SiteLayoutUserMenu,
+  SiteLayoutUserMenuAnnouncementsLink,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,
   SiteLayoutUserMenuLogoutButton,
@@ -265,6 +266,13 @@ const HeaderActions = async () => {
                 <Message message="host.nav.my_page" />
               </Suspense>
             </SiteLayoutUserMenuMyPageLink>
+            <SiteLayoutUserMenuAnnouncementsLink
+              href={withLocalePrefix(locale, defaultLocale, "/announcements")}
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="host.nav.announcements" />
+              </Suspense>
+            </SiteLayoutUserMenuAnnouncementsLink>
             <SiteLayoutUserMenuSeparator />
             <SiteLayoutUserMenuLogout
               action={logoutAction.bind(null, tenantId, locale)}

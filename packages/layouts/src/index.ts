@@ -40,6 +40,7 @@ export {
 } from "./site-layout-actions";
 export {
   SiteLayoutUserMenu,
+  SiteLayoutUserMenuAnnouncementsLink,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,
   SiteLayoutUserMenuLogoutButton,

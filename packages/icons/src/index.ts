@@ -12,6 +12,7 @@ export { DashboardIcon } from "./dashboard-icon";
 export { ImageIcon } from "./image-icon";
 export { LogoutIcon } from "./logout-icon";
 export { MaximizeIcon } from "./maximize-icon";
+export { MegaphoneIcon } from "./megaphone-icon";
 export { MenuIcon } from "./menu-icon";
 export { MinimizeIcon } from "./minimize-icon";
 export { SettingsIcon } from "./settings-icon";

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   SiteLayoutUserMenu,
+  SiteLayoutUserMenuAnnouncementsLink,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,
   SiteLayoutUserMenuLogoutButton,
@@ -33,6 +34,9 @@ const renderMenu = (logoutAction = () => {}) =>
         <SiteLayoutUserMenuMyPageLink href="/en/my">
           My Page
         </SiteLayoutUserMenuMyPageLink>
+        <SiteLayoutUserMenuAnnouncementsLink href="/en/announcements">
+          Announcements
+        </SiteLayoutUserMenuAnnouncementsLink>
         <SiteLayoutUserMenuSeparator />
         <SiteLayoutUserMenuLogout action={logoutAction}>
           <SiteLayoutUserMenuLogoutButton>
@@ -46,13 +50,18 @@ const renderMenu = (logoutAction = () => {}) =>
 afterEach(cleanup);
 
 describe("SiteLayoutUserMenu slots", () => {
-  it("opening it shows the my-page and sign-out links", () => {
+  it("opening it shows the my-page, announcements, and sign-out links", () => {
     renderMenu();
     fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
 
     expect(
       screen.getByRole("menuitem", { name: "My Page" }).getAttribute("href")
     ).toBe("/en/my");
+    expect(
+      screen
+        .getByRole("menuitem", { name: "Announcements" })
+        .getAttribute("href")
+    ).toBe("/en/announcements");
     expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeTruthy();
   });
 
