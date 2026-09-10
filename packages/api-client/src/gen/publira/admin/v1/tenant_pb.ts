@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/tenant.proto.
  */
 export const file_publira_admin_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCSJOChtHZXRUZW5hbnRDb21tZW50TW9kZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IlMKHEdldFRlbmFudENvbW1lbnRNb2RlUmVzcG9uc2USMwoMY29tbWVudF9tb2RlGAEgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZSKGAQoeVXBkYXRlVGVuYW50Q29tbWVudE1vZGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIzCgxjb21tZW50X21vZGUYAiABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlIlYKH1VwZGF0ZVRlbmFudENvbW1lbnRNb2RlUmVzcG9uc2USMwoMY29tbWVudF9tb2RlGAEgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZTKEBgoVVGVuYW50U2V0dGluZ3NTZXJ2aWNlEm4KEUdldFRlbmFudFRpbWV6b25lEioucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRpbWV6b25lUmVzcG9uc2UiABJ3ChRVcGRhdGVUZW5hbnRUaW1lem9uZRItLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlIgASfQoWR2V0VGVuYW50RGVmYXVsdExvY2FsZRIvLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZSIAEoYBChlVcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlEjIucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlUmVxdWVzdBozLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlc3BvbnNlIgASdwoUR2V0VGVuYW50Q29tbWVudE1vZGUSLS5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudENvbW1lbnRNb2RlUmVxdWVzdBouLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50Q29tbWVudE1vZGVSZXNwb25zZSIAEoABChdVcGRhdGVUZW5hbnRDb21tZW50TW9kZRIwLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50Q29tbWVudE1vZGVSZXF1ZXN0GjEucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRDb21tZW50TW9kZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCSJSCh9HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJ7CiBHZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXNwb25zZRIzCgxjb21tZW50X21vZGUYASABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAIgASgNIq4BCiJVcGRhdGVUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIzCgxjb21tZW50X21vZGUYAiABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAMgASgNIn4KI1VwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjMKDGNvbW1lbnRfbW9kZRgBIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSIgoaYXV0b19oaWRlX3JlcG9ydF90aHJlc2hvbGQYAiABKA0ynQYKFVRlbmFudFNldHRpbmdzU2VydmljZRJuChFHZXRUZW5hbnRUaW1lem9uZRIqLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGltZXpvbmVSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaW1lem9uZVJlc3BvbnNlIgASdwoUVXBkYXRlVGVuYW50VGltZXpvbmUSLS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFRpbWV6b25lUmVxdWVzdBouLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50VGltZXpvbmVSZXNwb25zZSIAEn0KFkdldFRlbmFudERlZmF1bHRMb2NhbGUSLy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2UiABKGAQoZVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZRIyLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QaMy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZSIAEoMBChhHZXRUZW5hbnRDb21tZW50U2V0dGluZ3MSMS5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudENvbW1lbnRTZXR0aW5nc1JlcXVlc3QaMi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgASjAEKG1VwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5ncxI0LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50Q29tbWVudFNldHRpbmdzUmVxdWVzdBo1LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50Q29tbWVudFNldHRpbmdzUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetTenantTimezoneRequest
@@ -171,9 +171,9 @@ export const UpdateTenantDefaultLocaleResponseSchema: GenMessage<UpdateTenantDef
   messageDesc(file_publira_admin_v1_tenant, 7);
 
 /**
- * @generated from message publira.admin.v1.GetTenantCommentModeRequest
+ * @generated from message publira.admin.v1.GetTenantCommentSettingsRequest
  */
-export type GetTenantCommentModeRequest = Message<"publira.admin.v1.GetTenantCommentModeRequest"> & {
+export type GetTenantCommentSettingsRequest = Message<"publira.admin.v1.GetTenantCommentSettingsRequest"> & {
   /**
    * @generated from field: publira.types.v1.TenantContext tenant = 1;
    */
@@ -181,16 +181,16 @@ export type GetTenantCommentModeRequest = Message<"publira.admin.v1.GetTenantCom
 };
 
 /**
- * Describes the message publira.admin.v1.GetTenantCommentModeRequest.
- * Use `create(GetTenantCommentModeRequestSchema)` to create a new message.
+ * Describes the message publira.admin.v1.GetTenantCommentSettingsRequest.
+ * Use `create(GetTenantCommentSettingsRequestSchema)` to create a new message.
  */
-export const GetTenantCommentModeRequestSchema: GenMessage<GetTenantCommentModeRequest> = /*@__PURE__*/
+export const GetTenantCommentSettingsRequestSchema: GenMessage<GetTenantCommentSettingsRequest> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_tenant, 8);
 
 /**
- * @generated from message publira.admin.v1.GetTenantCommentModeResponse
+ * @generated from message publira.admin.v1.GetTenantCommentSettingsResponse
  */
-export type GetTenantCommentModeResponse = Message<"publira.admin.v1.GetTenantCommentModeResponse"> & {
+export type GetTenantCommentSettingsResponse = Message<"publira.admin.v1.GetTenantCommentSettingsResponse"> & {
   /**
    * Never COMMENT_MODE_UNSPECIFIED: a tenant that has saved nothing is
    * disabled, and a stored value naming no mode fails this RPC.
@@ -198,19 +198,27 @@ export type GetTenantCommentModeResponse = Message<"publira.admin.v1.GetTenantCo
    * @generated from field: publira.types.v1.CommentMode comment_mode = 1;
    */
   commentMode: CommentMode;
+
+  /**
+   * How many distinct readers have to report one comment before it is hidden
+   * without waiting for staff. 0 is a tenant that wants no automatic removal.
+   *
+   * @generated from field: uint32 auto_hide_report_threshold = 2;
+   */
+  autoHideReportThreshold: number;
 };
 
 /**
- * Describes the message publira.admin.v1.GetTenantCommentModeResponse.
- * Use `create(GetTenantCommentModeResponseSchema)` to create a new message.
+ * Describes the message publira.admin.v1.GetTenantCommentSettingsResponse.
+ * Use `create(GetTenantCommentSettingsResponseSchema)` to create a new message.
  */
-export const GetTenantCommentModeResponseSchema: GenMessage<GetTenantCommentModeResponse> = /*@__PURE__*/
+export const GetTenantCommentSettingsResponseSchema: GenMessage<GetTenantCommentSettingsResponse> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_tenant, 9);
 
 /**
- * @generated from message publira.admin.v1.UpdateTenantCommentModeRequest
+ * @generated from message publira.admin.v1.UpdateTenantCommentSettingsRequest
  */
-export type UpdateTenantCommentModeRequest = Message<"publira.admin.v1.UpdateTenantCommentModeRequest"> & {
+export type UpdateTenantCommentSettingsRequest = Message<"publira.admin.v1.UpdateTenantCommentSettingsRequest"> & {
   /**
    * @generated from field: publira.types.v1.TenantContext tenant = 1;
    */
@@ -223,30 +231,44 @@ export type UpdateTenantCommentModeRequest = Message<"publira.admin.v1.UpdateTen
    * @generated from field: publira.types.v1.CommentMode comment_mode = 2;
    */
   commentMode: CommentMode;
+
+  /**
+   * 0 turns the automatic removal off. A value above the server's ceiling is
+   * rejected rather than clamped, so a mistyped threshold is not saved as a
+   * number the tenant did not choose.
+   *
+   * @generated from field: uint32 auto_hide_report_threshold = 3;
+   */
+  autoHideReportThreshold: number;
 };
 
 /**
- * Describes the message publira.admin.v1.UpdateTenantCommentModeRequest.
- * Use `create(UpdateTenantCommentModeRequestSchema)` to create a new message.
+ * Describes the message publira.admin.v1.UpdateTenantCommentSettingsRequest.
+ * Use `create(UpdateTenantCommentSettingsRequestSchema)` to create a new message.
  */
-export const UpdateTenantCommentModeRequestSchema: GenMessage<UpdateTenantCommentModeRequest> = /*@__PURE__*/
+export const UpdateTenantCommentSettingsRequestSchema: GenMessage<UpdateTenantCommentSettingsRequest> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_tenant, 10);
 
 /**
- * @generated from message publira.admin.v1.UpdateTenantCommentModeResponse
+ * @generated from message publira.admin.v1.UpdateTenantCommentSettingsResponse
  */
-export type UpdateTenantCommentModeResponse = Message<"publira.admin.v1.UpdateTenantCommentModeResponse"> & {
+export type UpdateTenantCommentSettingsResponse = Message<"publira.admin.v1.UpdateTenantCommentSettingsResponse"> & {
   /**
    * @generated from field: publira.types.v1.CommentMode comment_mode = 1;
    */
   commentMode: CommentMode;
+
+  /**
+   * @generated from field: uint32 auto_hide_report_threshold = 2;
+   */
+  autoHideReportThreshold: number;
 };
 
 /**
- * Describes the message publira.admin.v1.UpdateTenantCommentModeResponse.
- * Use `create(UpdateTenantCommentModeResponseSchema)` to create a new message.
+ * Describes the message publira.admin.v1.UpdateTenantCommentSettingsResponse.
+ * Use `create(UpdateTenantCommentSettingsResponseSchema)` to create a new message.
  */
-export const UpdateTenantCommentModeResponseSchema: GenMessage<UpdateTenantCommentModeResponse> = /*@__PURE__*/
+export const UpdateTenantCommentSettingsResponseSchema: GenMessage<UpdateTenantCommentSettingsResponse> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_tenant, 11);
 
 /**
@@ -289,20 +311,20 @@ export const TenantSettingsService: GenService<{
     output: typeof UpdateTenantDefaultLocaleResponseSchema;
   },
   /**
-   * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantCommentMode
+   * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantCommentSettings
    */
-  getTenantCommentMode: {
+  getTenantCommentSettings: {
     methodKind: "unary";
-    input: typeof GetTenantCommentModeRequestSchema;
-    output: typeof GetTenantCommentModeResponseSchema;
+    input: typeof GetTenantCommentSettingsRequestSchema;
+    output: typeof GetTenantCommentSettingsResponseSchema;
   },
   /**
-   * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantCommentMode
+   * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings
    */
-  updateTenantCommentMode: {
+  updateTenantCommentSettings: {
     methodKind: "unary";
-    input: typeof UpdateTenantCommentModeRequestSchema;
-    output: typeof UpdateTenantCommentModeResponseSchema;
+    input: typeof UpdateTenantCommentSettingsRequestSchema;
+    output: typeof UpdateTenantCommentSettingsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_tenant, 0);

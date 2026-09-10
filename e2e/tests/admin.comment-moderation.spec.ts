@@ -56,9 +56,7 @@ const postComment = async (page: Page, body: string): Promise<void> => {
 /** Choose one mode on the settings card and submit it. */
 const saveCommentMode = async (page: Page, option: string): Promise<void> => {
   await page.getByRole("radio", { exact: true, name: option }).click();
-  await page
-    .getByRole("button", { name: "Save how comments are published" })
-    .click();
+  await page.getByRole("button", { name: "Save the comment settings" }).click();
 };
 
 /** The console row for one comment, found by the text of the comment itself. */
@@ -490,7 +488,7 @@ test.describe("web-admin comment moderation", () => {
 
       await saveCommentMode(page, "Do not accept comments");
       await expect(
-        page.getByText("How comments are published was saved.")
+        page.getByText("The comment settings were saved.")
       ).toBeVisible();
       await pollCommentsSection(readerPage).toBe(0);
 

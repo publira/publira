@@ -165,7 +165,7 @@ Building requires libvips. For the details, see [cmd/image-server/README.md](cmd
 
 ## Internal URLs for Next.js revalidation
 
-With `PUBLIRA_REVALIDATE_TOKEN` set, admin-api, `batch publish-episodes`, and `batch apply-free-windows` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
+With `PUBLIRA_REVALIDATE_TOKEN` set, api, admin-api, `batch publish-episodes`, and `batch apply-free-windows` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)

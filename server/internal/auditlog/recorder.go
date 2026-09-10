@@ -20,6 +20,12 @@ import (
 const (
 	OutcomeSuccess = "success"
 	OutcomeFailure = "failure"
+
+	// RoleSystem is the actor role of an entry no member of the tenant
+	// produced: a setting the tenant saved earlier, applied by the platform
+	// when the condition it names is met. The tenant roles the console writes
+	// come from the session instead.
+	RoleSystem = "system"
 )
 
 // Querier is the minimal DB interface required by Recorder.
@@ -42,7 +48,11 @@ type PlatformEntry struct {
 
 // TenantEntry holds the data for a tenant audit log event.
 type TenantEntry struct {
-	TenantID    uuid.UUID
+	TenantID uuid.UUID
+	// The member who acted, or uuid.Nil for an action the platform took on the
+	// tenant's own standing instruction. Leaving it empty files the entry under
+	// RoleSystem, which is the only value the stored row accepts without an
+	// account beside it.
 	ActorUserID uuid.UUID
 	ActorRole   string
 	Action      string
@@ -137,7 +147,7 @@ func tenantEntryParams(e TenantEntry) (dbmodels.InsertAuditLogParams, error) {
 	return dbmodels.InsertAuditLogParams{
 		ID:          id,
 		TenantID:    e.TenantID,
-		ActorUserID: e.ActorUserID,
+		ActorUserID: uuid.NullUUID{UUID: e.ActorUserID, Valid: e.ActorUserID != uuid.Nil},
 		ActorRole:   e.ActorRole,
 		Action:      e.Action,
 		TargetType:  sql.NullString{String: e.TargetType, Valid: e.TargetType != ""},

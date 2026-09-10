@@ -5,8 +5,13 @@ import type { AdminMessageKey, AdminMessages } from "./messages";
 /**
  * Roles a tenant console can show. Platform roles never reach this console, so
  * a value outside the map is rendered as-is rather than mapped to a guess.
+ *
+ * `system` is not a role anyone holds: it is what an audit entry carries when
+ * the platform acted on a setting the tenant saved earlier, with no account
+ * behind it.
  */
 const tenantRoleKeys = {
+  system: "admin.common.roles.system",
   tenant_admin: "admin.common.roles.tenant_admin",
   tenant_auditor: "admin.common.roles.tenant_auditor",
   tenant_editor: "admin.common.roles.tenant_editor",

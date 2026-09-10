@@ -13,40 +13,47 @@ import {
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
-import type { TenantCommentMode } from "./tenant-comment-mode-shared";
+import type { TenantCommentMode } from "./tenant-comment-settings-shared";
 
-export type GetTenantCommentModeResult =
-  | { ok: true; commentMode: TenantCommentMode }
+/** What the tenant has decided about the comments its readers write. */
+export interface TenantCommentSettings {
+  commentMode: TenantCommentMode;
+  /** Open reports that remove a comment; 0 leaves every removal to staff. */
+  autoHideReportThreshold: number;
+}
+
+export type GetTenantCommentSettingsResult =
+  | ({ ok: true } & TenantCommentSettings)
   | {
       ok: false;
       message: string;
       /**
-       * No `commentMode`. A read that failed has no saved policy to report, and
-       * the settings screen would otherwise offer to save a mode nobody chose
-       * over the stored one — turning commenting off for a tenant that had it
-       * on, or on for one that had it off.
+       * No settings. A read that failed has no saved policy to report, and the
+       * settings screen would otherwise offer to save values nobody chose over
+       * the stored ones — turning commenting off for a tenant that had it on,
+       * or removing comments at a threshold the tenant never picked.
        */
       requiresSignIn: boolean;
     };
 
-export type UpdateTenantCommentModeResult =
-  | { ok: true; commentMode: TenantCommentMode }
+export type UpdateTenantCommentSettingsResult =
+  | ({ ok: true } & TenantCommentSettings)
   | { ok: false; message: string };
 
 const genericLoadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.comment_mode.load_failed");
+  getMessage(messages, "admin.settings.comments.load_failed");
 const genericUpdateErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.comment_mode.save_failed");
+  getMessage(messages, "admin.settings.comments.save_failed");
 const sessionErrorMessage = (messages: SharedMessages): string =>
   getMessage(messages, "errors.rpc.unauthenticated");
 
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in the Server
- * Action makes the saved value visible in the same session instead of leaving
- * the previous mode in the private cache.
+ * Action makes the saved values visible in the same session instead of leaving
+ * the previous ones in the private cache.
  */
-export const tenantCommentModeCacheTag = (tenantId: string): string =>
-  `tenant:${tenantId.trim()}:comment-mode`;
+export const tenantCommentSettingsCacheTag = (tenantId: string): string =>
+  `tenant:${tenantId.trim()}:comment-settings`;
 
 /**
  * `COMMENT_MODE_UNSPECIFIED` names no mode, so it resolves to nothing rather
@@ -87,10 +94,10 @@ const toCommentModeEnum = (mode: TenantCommentMode): CommentMode => {
   }
 };
 
-export const getTenantCommentMode = async (
+export const getTenantCommentSettings = async (
   tenantId: string,
   locale: Locale
-): Promise<GetTenantCommentModeResult> => {
+): Promise<GetTenantCommentSettingsResult> => {
   "use cache: private";
 
   const messages = sharedCatalog(locale);
@@ -104,10 +111,10 @@ export const getTenantCommentMode = async (
     };
   }
 
-  cacheTag(tenantCommentModeCacheTag(normalizedTenantId));
+  cacheTag(tenantCommentSettingsCacheTag(normalizedTenantId));
 
   try {
-    const response = await apiClient.tenantSettings.getTenantCommentMode(
+    const response = await apiClient.tenantSettings.getTenantCommentSettings(
       {
         tenant: { tenantId: normalizedTenantId },
       },
@@ -123,7 +130,11 @@ export const getTenantCommentMode = async (
       };
     }
 
-    return { commentMode, ok: true };
+    return {
+      autoHideReportThreshold: response.autoHideReportThreshold,
+      commentMode,
+      ok: true,
+    };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
@@ -136,13 +147,12 @@ export const getTenantCommentMode = async (
   }
 };
 
-export const updateTenantCommentMode = async (
+export const updateTenantCommentSettings = async (
   input: {
     tenantId: string;
-    commentMode: TenantCommentMode;
-  },
+  } & TenantCommentSettings,
   locale: Locale
-): Promise<UpdateTenantCommentModeResult> => {
+): Promise<UpdateTenantCommentSettingsResult> => {
   const messages = sharedCatalog(locale);
   const sessionId = await getAccessToken();
   const normalizedTenantId = input.tenantId.trim();
@@ -151,8 +161,9 @@ export const updateTenantCommentMode = async (
   }
 
   try {
-    const response = await apiClient.tenantSettings.updateTenantCommentMode(
+    const response = await apiClient.tenantSettings.updateTenantCommentSettings(
       {
+        autoHideReportThreshold: input.autoHideReportThreshold,
         commentMode: toCommentModeEnum(input.commentMode),
         tenant: { tenantId: normalizedTenantId },
       },
@@ -163,7 +174,11 @@ export const updateTenantCommentMode = async (
       return { message: genericUpdateErrorMessage(messages), ok: false };
     }
 
-    return { commentMode: saved, ok: true };
+    return {
+      autoHideReportThreshold: response.autoHideReportThreshold,
+      commentMode: saved,
+      ok: true,
+    };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);

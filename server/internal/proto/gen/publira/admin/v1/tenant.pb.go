@@ -396,27 +396,27 @@ func (x *UpdateTenantDefaultLocaleResponse) GetDefaultLocale() string {
 	return ""
 }
 
-type GetTenantCommentModeRequest struct {
+type GetTenantCommentSettingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetTenantCommentModeRequest) Reset() {
-	*x = GetTenantCommentModeRequest{}
+func (x *GetTenantCommentSettingsRequest) Reset() {
+	*x = GetTenantCommentSettingsRequest{}
 	mi := &file_publira_admin_v1_tenant_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetTenantCommentModeRequest) String() string {
+func (x *GetTenantCommentSettingsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetTenantCommentModeRequest) ProtoMessage() {}
+func (*GetTenantCommentSettingsRequest) ProtoMessage() {}
 
-func (x *GetTenantCommentModeRequest) ProtoReflect() protoreflect.Message {
+func (x *GetTenantCommentSettingsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_admin_v1_tenant_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -428,41 +428,44 @@ func (x *GetTenantCommentModeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetTenantCommentModeRequest.ProtoReflect.Descriptor instead.
-func (*GetTenantCommentModeRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetTenantCommentSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantCommentSettingsRequest) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *GetTenantCommentModeRequest) GetTenant() *v1.TenantContext {
+func (x *GetTenantCommentSettingsRequest) GetTenant() *v1.TenantContext {
 	if x != nil {
 		return x.Tenant
 	}
 	return nil
 }
 
-type GetTenantCommentModeResponse struct {
+type GetTenantCommentSettingsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Never COMMENT_MODE_UNSPECIFIED: a tenant that has saved nothing is
 	// disabled, and a stored value naming no mode fails this RPC.
-	CommentMode   v1.CommentMode `protobuf:"varint,1,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	CommentMode v1.CommentMode `protobuf:"varint,1,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
+	// How many distinct readers have to report one comment before it is hidden
+	// without waiting for staff. 0 is a tenant that wants no automatic removal.
+	AutoHideReportThreshold uint32 `protobuf:"varint,2,opt,name=auto_hide_report_threshold,json=autoHideReportThreshold,proto3" json:"auto_hide_report_threshold,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
-func (x *GetTenantCommentModeResponse) Reset() {
-	*x = GetTenantCommentModeResponse{}
+func (x *GetTenantCommentSettingsResponse) Reset() {
+	*x = GetTenantCommentSettingsResponse{}
 	mi := &file_publira_admin_v1_tenant_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetTenantCommentModeResponse) String() string {
+func (x *GetTenantCommentSettingsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetTenantCommentModeResponse) ProtoMessage() {}
+func (*GetTenantCommentSettingsResponse) ProtoMessage() {}
 
-func (x *GetTenantCommentModeResponse) ProtoReflect() protoreflect.Message {
+func (x *GetTenantCommentSettingsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_admin_v1_tenant_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -474,42 +477,53 @@ func (x *GetTenantCommentModeResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetTenantCommentModeResponse.ProtoReflect.Descriptor instead.
-func (*GetTenantCommentModeResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetTenantCommentSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantCommentSettingsResponse) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *GetTenantCommentModeResponse) GetCommentMode() v1.CommentMode {
+func (x *GetTenantCommentSettingsResponse) GetCommentMode() v1.CommentMode {
 	if x != nil {
 		return x.CommentMode
 	}
 	return v1.CommentMode(0)
 }
 
-type UpdateTenantCommentModeRequest struct {
+func (x *GetTenantCommentSettingsResponse) GetAutoHideReportThreshold() uint32 {
+	if x != nil {
+		return x.AutoHideReportThreshold
+	}
+	return 0
+}
+
+type UpdateTenantCommentSettingsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// COMMENT_MODE_UNSPECIFIED is rejected. Turning commenting off is
 	// COMMENT_MODE_DISABLED, which is a choice rather than the absence of one.
-	CommentMode   v1.CommentMode `protobuf:"varint,2,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	CommentMode v1.CommentMode `protobuf:"varint,2,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
+	// 0 turns the automatic removal off. A value above the server's ceiling is
+	// rejected rather than clamped, so a mistyped threshold is not saved as a
+	// number the tenant did not choose.
+	AutoHideReportThreshold uint32 `protobuf:"varint,3,opt,name=auto_hide_report_threshold,json=autoHideReportThreshold,proto3" json:"auto_hide_report_threshold,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
-func (x *UpdateTenantCommentModeRequest) Reset() {
-	*x = UpdateTenantCommentModeRequest{}
+func (x *UpdateTenantCommentSettingsRequest) Reset() {
+	*x = UpdateTenantCommentSettingsRequest{}
 	mi := &file_publira_admin_v1_tenant_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *UpdateTenantCommentModeRequest) String() string {
+func (x *UpdateTenantCommentSettingsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UpdateTenantCommentModeRequest) ProtoMessage() {}
+func (*UpdateTenantCommentSettingsRequest) ProtoMessage() {}
 
-func (x *UpdateTenantCommentModeRequest) ProtoReflect() protoreflect.Message {
+func (x *UpdateTenantCommentSettingsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_admin_v1_tenant_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -521,46 +535,54 @@ func (x *UpdateTenantCommentModeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UpdateTenantCommentModeRequest.ProtoReflect.Descriptor instead.
-func (*UpdateTenantCommentModeRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use UpdateTenantCommentSettingsRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTenantCommentSettingsRequest) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *UpdateTenantCommentModeRequest) GetTenant() *v1.TenantContext {
+func (x *UpdateTenantCommentSettingsRequest) GetTenant() *v1.TenantContext {
 	if x != nil {
 		return x.Tenant
 	}
 	return nil
 }
 
-func (x *UpdateTenantCommentModeRequest) GetCommentMode() v1.CommentMode {
+func (x *UpdateTenantCommentSettingsRequest) GetCommentMode() v1.CommentMode {
 	if x != nil {
 		return x.CommentMode
 	}
 	return v1.CommentMode(0)
 }
 
-type UpdateTenantCommentModeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CommentMode   v1.CommentMode         `protobuf:"varint,1,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+func (x *UpdateTenantCommentSettingsRequest) GetAutoHideReportThreshold() uint32 {
+	if x != nil {
+		return x.AutoHideReportThreshold
+	}
+	return 0
 }
 
-func (x *UpdateTenantCommentModeResponse) Reset() {
-	*x = UpdateTenantCommentModeResponse{}
+type UpdateTenantCommentSettingsResponse struct {
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	CommentMode             v1.CommentMode         `protobuf:"varint,1,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
+	AutoHideReportThreshold uint32                 `protobuf:"varint,2,opt,name=auto_hide_report_threshold,json=autoHideReportThreshold,proto3" json:"auto_hide_report_threshold,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *UpdateTenantCommentSettingsResponse) Reset() {
+	*x = UpdateTenantCommentSettingsResponse{}
 	mi := &file_publira_admin_v1_tenant_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *UpdateTenantCommentModeResponse) String() string {
+func (x *UpdateTenantCommentSettingsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UpdateTenantCommentModeResponse) ProtoMessage() {}
+func (*UpdateTenantCommentSettingsResponse) ProtoMessage() {}
 
-func (x *UpdateTenantCommentModeResponse) ProtoReflect() protoreflect.Message {
+func (x *UpdateTenantCommentSettingsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_admin_v1_tenant_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -572,16 +594,23 @@ func (x *UpdateTenantCommentModeResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UpdateTenantCommentModeResponse.ProtoReflect.Descriptor instead.
-func (*UpdateTenantCommentModeResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use UpdateTenantCommentSettingsResponse.ProtoReflect.Descriptor instead.
+func (*UpdateTenantCommentSettingsResponse) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *UpdateTenantCommentModeResponse) GetCommentMode() v1.CommentMode {
+func (x *UpdateTenantCommentSettingsResponse) GetCommentMode() v1.CommentMode {
 	if x != nil {
 		return x.CommentMode
 	}
 	return v1.CommentMode(0)
+}
+
+func (x *UpdateTenantCommentSettingsResponse) GetAutoHideReportThreshold() uint32 {
+	if x != nil {
+		return x.AutoHideReportThreshold
+	}
+	return 0
 }
 
 var File_publira_admin_v1_tenant_proto protoreflect.FileDescriptor
@@ -606,23 +635,26 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12%\n" +
 	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"J\n" +
 	"!UpdateTenantDefaultLocaleResponse\x12%\n" +
-	"\x0edefault_locale\x18\x01 \x01(\tR\rdefaultLocale\"V\n" +
-	"\x1bGetTenantCommentModeRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"`\n" +
-	"\x1cGetTenantCommentModeResponse\x12@\n" +
-	"\fcomment_mode\x18\x01 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\"\x9b\x01\n" +
-	"\x1eUpdateTenantCommentModeRequest\x127\n" +
+	"\x0edefault_locale\x18\x01 \x01(\tR\rdefaultLocale\"Z\n" +
+	"\x1fGetTenantCommentSettingsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xa1\x01\n" +
+	" GetTenantCommentSettingsResponse\x12@\n" +
+	"\fcomment_mode\x18\x01 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12;\n" +
+	"\x1aauto_hide_report_threshold\x18\x02 \x01(\rR\x17autoHideReportThreshold\"\xdc\x01\n" +
+	"\"UpdateTenantCommentSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12@\n" +
-	"\fcomment_mode\x18\x02 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\"c\n" +
-	"\x1fUpdateTenantCommentModeResponse\x12@\n" +
-	"\fcomment_mode\x18\x01 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode2\x84\x06\n" +
+	"\fcomment_mode\x18\x02 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12;\n" +
+	"\x1aauto_hide_report_threshold\x18\x03 \x01(\rR\x17autoHideReportThreshold\"\xa4\x01\n" +
+	"#UpdateTenantCommentSettingsResponse\x12@\n" +
+	"\fcomment_mode\x18\x01 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12;\n" +
+	"\x1aauto_hide_report_threshold\x18\x02 \x01(\rR\x17autoHideReportThreshold2\x9d\x06\n" +
 	"\x15TenantSettingsService\x12n\n" +
 	"\x11GetTenantTimezone\x12*.publira.admin.v1.GetTenantTimezoneRequest\x1a+.publira.admin.v1.GetTenantTimezoneResponse\"\x00\x12w\n" +
 	"\x14UpdateTenantTimezone\x12-.publira.admin.v1.UpdateTenantTimezoneRequest\x1a..publira.admin.v1.UpdateTenantTimezoneResponse\"\x00\x12}\n" +
 	"\x16GetTenantDefaultLocale\x12/.publira.admin.v1.GetTenantDefaultLocaleRequest\x1a0.publira.admin.v1.GetTenantDefaultLocaleResponse\"\x00\x12\x86\x01\n" +
-	"\x19UpdateTenantDefaultLocale\x122.publira.admin.v1.UpdateTenantDefaultLocaleRequest\x1a3.publira.admin.v1.UpdateTenantDefaultLocaleResponse\"\x00\x12w\n" +
-	"\x14GetTenantCommentMode\x12-.publira.admin.v1.GetTenantCommentModeRequest\x1a..publira.admin.v1.GetTenantCommentModeResponse\"\x00\x12\x80\x01\n" +
-	"\x17UpdateTenantCommentMode\x120.publira.admin.v1.UpdateTenantCommentModeRequest\x1a1.publira.admin.v1.UpdateTenantCommentModeResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x19UpdateTenantDefaultLocale\x122.publira.admin.v1.UpdateTenantDefaultLocaleRequest\x1a3.publira.admin.v1.UpdateTenantDefaultLocaleResponse\"\x00\x12\x83\x01\n" +
+	"\x18GetTenantCommentSettings\x121.publira.admin.v1.GetTenantCommentSettingsRequest\x1a2.publira.admin.v1.GetTenantCommentSettingsResponse\"\x00\x12\x8c\x01\n" +
+	"\x1bUpdateTenantCommentSettings\x124.publira.admin.v1.UpdateTenantCommentSettingsRequest\x1a5.publira.admin.v1.UpdateTenantCommentSettingsResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_tenant_proto_rawDescOnce sync.Once
@@ -638,43 +670,43 @@ func file_publira_admin_v1_tenant_proto_rawDescGZIP() []byte {
 
 var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_publira_admin_v1_tenant_proto_goTypes = []any{
-	(*GetTenantTimezoneRequest)(nil),          // 0: publira.admin.v1.GetTenantTimezoneRequest
-	(*GetTenantTimezoneResponse)(nil),         // 1: publira.admin.v1.GetTenantTimezoneResponse
-	(*UpdateTenantTimezoneRequest)(nil),       // 2: publira.admin.v1.UpdateTenantTimezoneRequest
-	(*UpdateTenantTimezoneResponse)(nil),      // 3: publira.admin.v1.UpdateTenantTimezoneResponse
-	(*GetTenantDefaultLocaleRequest)(nil),     // 4: publira.admin.v1.GetTenantDefaultLocaleRequest
-	(*GetTenantDefaultLocaleResponse)(nil),    // 5: publira.admin.v1.GetTenantDefaultLocaleResponse
-	(*UpdateTenantDefaultLocaleRequest)(nil),  // 6: publira.admin.v1.UpdateTenantDefaultLocaleRequest
-	(*UpdateTenantDefaultLocaleResponse)(nil), // 7: publira.admin.v1.UpdateTenantDefaultLocaleResponse
-	(*GetTenantCommentModeRequest)(nil),       // 8: publira.admin.v1.GetTenantCommentModeRequest
-	(*GetTenantCommentModeResponse)(nil),      // 9: publira.admin.v1.GetTenantCommentModeResponse
-	(*UpdateTenantCommentModeRequest)(nil),    // 10: publira.admin.v1.UpdateTenantCommentModeRequest
-	(*UpdateTenantCommentModeResponse)(nil),   // 11: publira.admin.v1.UpdateTenantCommentModeResponse
-	(*v1.TenantContext)(nil),                  // 12: publira.types.v1.TenantContext
-	(v1.CommentMode)(0),                       // 13: publira.types.v1.CommentMode
+	(*GetTenantTimezoneRequest)(nil),            // 0: publira.admin.v1.GetTenantTimezoneRequest
+	(*GetTenantTimezoneResponse)(nil),           // 1: publira.admin.v1.GetTenantTimezoneResponse
+	(*UpdateTenantTimezoneRequest)(nil),         // 2: publira.admin.v1.UpdateTenantTimezoneRequest
+	(*UpdateTenantTimezoneResponse)(nil),        // 3: publira.admin.v1.UpdateTenantTimezoneResponse
+	(*GetTenantDefaultLocaleRequest)(nil),       // 4: publira.admin.v1.GetTenantDefaultLocaleRequest
+	(*GetTenantDefaultLocaleResponse)(nil),      // 5: publira.admin.v1.GetTenantDefaultLocaleResponse
+	(*UpdateTenantDefaultLocaleRequest)(nil),    // 6: publira.admin.v1.UpdateTenantDefaultLocaleRequest
+	(*UpdateTenantDefaultLocaleResponse)(nil),   // 7: publira.admin.v1.UpdateTenantDefaultLocaleResponse
+	(*GetTenantCommentSettingsRequest)(nil),     // 8: publira.admin.v1.GetTenantCommentSettingsRequest
+	(*GetTenantCommentSettingsResponse)(nil),    // 9: publira.admin.v1.GetTenantCommentSettingsResponse
+	(*UpdateTenantCommentSettingsRequest)(nil),  // 10: publira.admin.v1.UpdateTenantCommentSettingsRequest
+	(*UpdateTenantCommentSettingsResponse)(nil), // 11: publira.admin.v1.UpdateTenantCommentSettingsResponse
+	(*v1.TenantContext)(nil),                    // 12: publira.types.v1.TenantContext
+	(v1.CommentMode)(0),                         // 13: publira.types.v1.CommentMode
 }
 var file_publira_admin_v1_tenant_proto_depIdxs = []int32{
 	12, // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
 	12, // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
 	12, // 2: publira.admin.v1.GetTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
 	12, // 3: publira.admin.v1.UpdateTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 4: publira.admin.v1.GetTenantCommentModeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 5: publira.admin.v1.GetTenantCommentModeResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	12, // 6: publira.admin.v1.UpdateTenantCommentModeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 7: publira.admin.v1.UpdateTenantCommentModeRequest.comment_mode:type_name -> publira.types.v1.CommentMode
-	13, // 8: publira.admin.v1.UpdateTenantCommentModeResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	12, // 4: publira.admin.v1.GetTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 5: publira.admin.v1.GetTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	12, // 6: publira.admin.v1.UpdateTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 7: publira.admin.v1.UpdateTenantCommentSettingsRequest.comment_mode:type_name -> publira.types.v1.CommentMode
+	13, // 8: publira.admin.v1.UpdateTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
 	0,  // 9: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
 	2,  // 10: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
 	4,  // 11: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
 	6,  // 12: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
-	8,  // 13: publira.admin.v1.TenantSettingsService.GetTenantCommentMode:input_type -> publira.admin.v1.GetTenantCommentModeRequest
-	10, // 14: publira.admin.v1.TenantSettingsService.UpdateTenantCommentMode:input_type -> publira.admin.v1.UpdateTenantCommentModeRequest
+	8,  // 13: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
+	10, // 14: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
 	1,  // 15: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
 	3,  // 16: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
 	5,  // 17: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
 	7,  // 18: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
-	9,  // 19: publira.admin.v1.TenantSettingsService.GetTenantCommentMode:output_type -> publira.admin.v1.GetTenantCommentModeResponse
-	11, // 20: publira.admin.v1.TenantSettingsService.UpdateTenantCommentMode:output_type -> publira.admin.v1.UpdateTenantCommentModeResponse
+	9,  // 19: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
+	11, // 20: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
 	15, // [15:21] is the sub-list for method output_type
 	9,  // [9:15] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name

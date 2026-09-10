@@ -39,10 +39,13 @@ import {
 } from "#lib/payment-settings";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import {
-  tenantCommentModeCacheTag,
-  updateTenantCommentMode,
-} from "#lib/tenant-comment-mode";
-import { TENANT_COMMENT_MODES } from "#lib/tenant-comment-mode-shared";
+  tenantCommentSettingsCacheTag,
+  updateTenantCommentSettings,
+} from "#lib/tenant-comment-settings";
+import {
+  MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD,
+  TENANT_COMMENT_MODES,
+} from "#lib/tenant-comment-settings-shared";
 import {
   tenantDefaultLocaleCacheTag,
   updateTenantDefaultLocale,
@@ -63,7 +66,7 @@ import {
 import type {
   EmailChangeActionState,
   SiteSettingsActionState,
-  TenantCommentModeActionState,
+  TenantCommentSettingsActionState,
   TenantDefaultLocaleActionState,
   TenantEmailSettingsFormState,
   TenantIconActionState,
@@ -285,18 +288,39 @@ const tenantDefaultLocaleSchema = (messages: SharedMessages) =>
   });
 
 /**
- * The Go server validates the mode it is sent and stays the authority; this
- * only gives the operator immediate feedback instead of a round trip.
+ * The Go server validates what it is sent and stays the authority; this only
+ * gives the operator immediate feedback instead of a round trip.
+ *
+ * The threshold arrives as the text of a number input, which a browser leaves
+ * as whatever was typed. It is parsed here rather than coerced, so "3.5" and
+ * "many" are told apart from a count and reported instead of being rounded or
+ * read as 0 — the value that turns the automatic removal off.
  */
-const tenantCommentModeSchema = (messages: SharedMessages) =>
-  z.object({
+const tenantCommentSettingsSchema = (messages: SharedMessages) => {
+  const thresholdError = getMessage(
+    messages,
+    "admin.settings.comments.validation.auto_hide_range",
+    { max: MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD }
+  );
+
+  return z.object({
+    autoHideReportThreshold: z
+      .string()
+      .trim()
+      .regex(/^\d+$/u, { error: thresholdError })
+      .transform(Number)
+      .refine(
+        (value) => value <= MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD,
+        { error: thresholdError }
+      ),
     commentMode: z.enum(TENANT_COMMENT_MODES, {
       error: getMessage(
         messages,
-        "admin.settings.comment_mode.validation.required"
+        "admin.settings.comments.validation.mode_required"
       ),
     }),
   });
+};
 
 const tenantThemeFormFieldMap = [
   ["accentColor", "accent_color"],
@@ -773,10 +797,10 @@ export const updateTenantDefaultLocaleAction = async (
   };
 };
 
-export const updateTenantCommentModeAction = async (
-  _prevState: TenantCommentModeActionState,
+export const updateTenantCommentSettingsAction = async (
+  _prevState: TenantCommentSettingsActionState,
   formData: FormData
-): Promise<TenantCommentModeActionState> => {
+): Promise<TenantCommentSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const messages = sharedCatalog(locale);
@@ -788,13 +812,16 @@ export const updateTenantCommentModeAction = async (
     };
   }
 
-  const parsed = tenantCommentModeSchema(messages).safeParse(
+  const parsed = tenantCommentSettingsSchema(messages).safeParse(
     toFormDataInput(formData, {
+      autoHideReportThreshold: {
+        kind: "value",
+        name: "auto_hide_report_threshold",
+      },
       commentMode: { kind: "value", name: "comment_mode" },
     })
   );
   if (!parsed.success) {
-    // One control, so the field message is the form message.
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
@@ -802,8 +829,9 @@ export const updateTenantCommentModeAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantCommentMode(
+    updateTenantCommentSettings(
       {
+        autoHideReportThreshold: parsed.data.autoHideReportThreshold,
         commentMode: parsed.data.commentMode,
         tenantId,
       },
@@ -818,14 +846,15 @@ export const updateTenantCommentModeAction = async (
     };
   }
 
-  // The settings screen reads the mode through a private cache, so without this
+  // The settings screen reads these through a private cache, so without this
   // the operator would keep seeing the previous choice in the same session. The
   // storefront's own cached copy is dropped by the API as the update lands.
-  updateTag(tenantCommentModeCacheTag(tenantId));
+  updateTag(tenantCommentSettingsCacheTag(tenantId));
 
   return {
+    autoHideReportThreshold: result.autoHideReportThreshold,
     commentMode: result.commentMode,
-    message: getMessage(messages, "admin.settings.comment_mode.saved"),
+    message: getMessage(messages, "admin.settings.comments.saved"),
     ok: true,
   };
 };

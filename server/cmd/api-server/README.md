@@ -38,6 +38,8 @@ task server:build
 - `PUBLIRA_COMMENT_REPORT_LIMIT_PER_MINUTE` (optional, `10` when unset. How many comments one reader may report in a minute)
 - `PUBLIRA_COMMENT_REPORT_LIMIT_PER_DAY` (optional, `50` when unset. How many comments one reader may report in a day)
 - `PUBLIRA_COMMENT_DUPLICATE_WINDOW_MINUTES` (optional, `10` when unset. How long the same body by the same reader on the same episode is refused)
+- `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
+- `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (all required when `PUBLIRA_REVALIDATE_TOKEN` is set. The private network URL of each Next.js app)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 

@@ -154,18 +154,53 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 	}), nil
 }
 
-// tenantCommentModeRevalidateTags names the public site cache that decides
+// tenantCommentSettingsRevalidateTags names the public site cache that decides
 // whether an episode page offers commenting at all. The mode rides on the
 // storefront's tenant read, so dropping the site entry is what carries a saved
-// change through to the reader.
-func tenantCommentModeRevalidateTags(tenantID string) []string {
+// change through to the reader. The threshold beside it never leaves this API,
+// and the card saves the pair, so one drop covers the save either way.
+func tenantCommentSettingsRevalidateTags(tenantID string) []string {
 	return []string{fmt.Sprintf("tenant:%s:site", strings.TrimSpace(tenantID))}
 }
 
-func (s *adminServer) GetTenantCommentMode(
+// maxCommentAutoHideReportThreshold is the largest automatic removal threshold
+// the console accepts.
+//
+// The setting exists to take an obviously bad comment down before staff are
+// awake, and a threshold no episode's readership could reach turns it off
+// while still reading as if it were on. A tenant that wants no automatic
+// removal says so with 0, which is the answer the card offers.
+const maxCommentAutoHideReportThreshold = uint32(1000)
+
+// defaultCommentAutoHideReportThreshold is what a tenant with no config row
+// yet is told its threshold is.
+//
+// It mirrors the column default of
+// `tenant_config.comment_auto_hide_report_threshold`, because the row this
+// console writes for such a tenant is the row that default would have
+// produced: reporting anything else would show a number the very next save
+// contradicts. TestDBTenantCommentSettingsDefaultsMatchTheColumnDefaults holds
+// the two together.
+const defaultCommentAutoHideReportThreshold = uint32(3)
+
+// commentAutoHideReportThresholdFromStored widens the stored count into the
+// unsigned one the API speaks.
+//
+// The column is CHECK-ed non-negative, so a negative value is a database no
+// longer holding what the schema says it holds. It fails the read rather than
+// being clamped to 0, which would quietly report the automatic removal as
+// turned off for a tenant that never turned it off.
+func commentAutoHideReportThresholdFromStored(stored int32) (uint32, error) {
+	if stored < 0 {
+		return 0, fmt.Errorf("stored comment auto hide report threshold is negative: %d", stored)
+	}
+	return uint32(stored), nil
+}
+
+func (s *adminServer) GetTenantCommentSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantCommentModeRequest],
-) (*connect.Response[publiraadminv1.GetTenantCommentModeResponse], error) {
+	req *connect.Request[publiraadminv1.GetTenantCommentSettingsRequest],
+) (*connect.Response[publiraadminv1.GetTenantCommentSettingsResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -175,28 +210,34 @@ func (s *adminServer) GetTenantCommentMode(
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// A tenant with no config row has chosen nothing about commenting,
-			// which is the answer the column's own default gives too.
-			return connect.NewResponse(&publiraadminv1.GetTenantCommentModeResponse{
-				CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED,
+			// which is the answer the columns' own defaults give too.
+			return connect.NewResponse(&publiraadminv1.GetTenantCommentSettingsResponse{
+				AutoHideReportThreshold: defaultCommentAutoHideReportThreshold,
+				CommentMode:             publirattypesv1.CommentMode_COMMENT_MODE_DISABLED,
 			}), nil
 		}
-		return nil, s.internalDBError(ctx, "failed to get tenant comment mode", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get tenant comment settings", err, "tenant_id", tenant.ID.String())
 	}
 
 	mode, err := protomapper.CommentModeFromStored(config.CommentMode)
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
 	}
+	threshold, err := commentAutoHideReportThresholdFromStored(config.CommentAutoHideReportThreshold)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant comment auto hide report threshold is out of range", err, "tenant_id", tenant.ID.String())
+	}
 
-	return connect.NewResponse(&publiraadminv1.GetTenantCommentModeResponse{
-		CommentMode: mode,
+	return connect.NewResponse(&publiraadminv1.GetTenantCommentSettingsResponse{
+		AutoHideReportThreshold: threshold,
+		CommentMode:             mode,
 	}), nil
 }
 
-func (s *adminServer) UpdateTenantCommentMode(
+func (s *adminServer) UpdateTenantCommentSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantCommentModeRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantCommentModeResponse], error) {
+	req *connect.Request[publiraadminv1.UpdateTenantCommentSettingsRequest],
+) (*connect.Response[publiraadminv1.UpdateTenantCommentSettingsResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -209,22 +250,26 @@ func (s *adminServer) UpdateTenantCommentMode(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if req.Msg.AutoHideReportThreshold > maxCommentAutoHideReportThreshold {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("auto hide report threshold must be at most %d", maxCommentAutoHideReportThreshold))
+	}
 
 	// An upsert rather than an update: commenting can be the first thing a
 	// tenant saves about itself, and a console that refused to turn it on until
 	// the site copy had been filled in would be tying together two decisions
 	// that have nothing to do with each other.
-	updated, err := s.queriesFor(ctx).UpsertTenantCommentMode(ctx, dbmodels.UpsertTenantCommentModeParams{
-		TenantID:    tenant.ID,
-		CommentMode: stored,
+	updated, err := s.queriesFor(ctx).UpsertTenantCommentSettings(ctx, dbmodels.UpsertTenantCommentSettingsParams{
+		CommentAutoHideReportThreshold: int32(req.Msg.AutoHideReportThreshold),
+		CommentMode:                    stored,
+		TenantID:                       tenant.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to update tenant comment mode", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update tenant comment settings", err, "tenant_id", tenant.ID.String())
 	}
 
 	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenantCommentModeRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after tenant comment mode update", "tenant_public_id", tenant.PublicID, "error", err)
+		if err := s.reval.RevalidateTags(ctx, tenantCommentSettingsRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after tenant comment settings update", "tenant_public_id", tenant.PublicID, "error", err)
 		}
 	}
 
@@ -234,8 +279,13 @@ func (s *adminServer) UpdateTenantCommentMode(
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
 	}
+	savedThreshold, err := commentAutoHideReportThresholdFromStored(updated.CommentAutoHideReportThreshold)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant comment auto hide report threshold is out of range", err, "tenant_id", tenant.ID.String())
+	}
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantCommentModeResponse{
-		CommentMode: saved,
+	return connect.NewResponse(&publiraadminv1.UpdateTenantCommentSettingsResponse{
+		AutoHideReportThreshold: savedThreshold,
+		CommentMode:             saved,
 	}), nil
 }

@@ -24,20 +24,20 @@ import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantSiteSettings } from "#lib/site-settings";
-import { getTenantCommentMode } from "#lib/tenant-comment-mode";
+import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
 import { SiteSettingsForm } from "./_components/site-settings-form";
-import { TenantCommentModeForm } from "./_components/tenant-comment-mode-form";
+import { TenantCommentSettingsForm } from "./_components/tenant-comment-settings-form";
 import { TenantDefaultLocaleForm } from "./_components/tenant-default-locale-form";
 import type { TenantDefaultLocaleFormOption } from "./_components/tenant-default-locale-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 import {
   updateSiteSettingsAction,
-  updateTenantCommentModeAction,
+  updateTenantCommentSettingsAction,
   updateTenantDefaultLocaleAction,
   updateTenantTimezoneAction,
 } from "./_lib/actions";
@@ -96,14 +96,14 @@ const SettingsForms = async () => {
     settingsResult,
     timezoneResult,
     defaultLocaleResult,
-    commentModeResult,
+    commentSettingsResult,
     currentUserResult,
     options,
   ] = await Promise.all([
     getTenantSiteSettings(tenantId, locale),
     getTenantTimezone(tenantId, locale),
     getTenantDefaultLocale(tenantId, locale),
-    getTenantCommentMode(tenantId, locale),
+    getTenantCommentSettings(tenantId, locale),
     getAdminCurrentUser(tenantId),
     tenantDefaultLocaleOptions(),
   ]);
@@ -112,7 +112,7 @@ const SettingsForms = async () => {
     settingsResult,
     timezoneResult,
     defaultLocaleResult,
-    commentModeResult,
+    commentSettingsResult,
     currentUserResult
   );
 
@@ -163,14 +163,14 @@ const SettingsForms = async () => {
         options={options}
       />
 
-      <TenantCommentModeForm
-        action={updateTenantCommentModeAction}
+      <TenantCommentSettingsForm
+        action={updateTenantCommentSettingsAction}
         canEdit={canEdit}
-        initialCommentMode={
-          commentModeResult.ok ? commentModeResult.commentMode : undefined
+        initialSettings={
+          commentSettingsResult.ok ? commentSettingsResult : undefined
         }
         loadErrorMessage={
-          commentModeResult.ok ? undefined : commentModeResult.message
+          commentSettingsResult.ok ? undefined : commentSettingsResult.message
         }
       />
     </>

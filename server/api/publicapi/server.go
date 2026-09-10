@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -18,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/health"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tenantconn"
@@ -40,6 +42,7 @@ type apiServer struct {
 	tokens            *auth.TokenManager
 	logger            *slog.Logger
 	guards            readerGuards
+	reval             *revalidate.Client
 	newStripeProvider func(secretKey string) stripeSessionCreator
 }
 
@@ -153,6 +156,14 @@ func newAPIServer(
 	if logger == nil {
 		logger = slog.Default()
 	}
+	// Disabled rather than fatal when the token or a target URL is missing, as
+	// the console's client is: every other RPC here answers a reader without
+	// invalidating anything, and the one removal that does is one the
+	// storefront catches up with when its cached list expires.
+	revalidator, revalidateErr := revalidate.NewClient(strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN")), logger)
+	if revalidateErr != nil {
+		logger.Warn("next revalidate is disabled", "reason", revalidateErr.Error())
+	}
 	return &apiServer{
 		db:        db,
 		queries:   queries,
@@ -161,6 +172,7 @@ func newAPIServer(
 		tokens:    tokens,
 		logger:    logger,
 		guards:    guards.withDefaults(),
+		reval:     revalidator,
 		newStripeProvider: func(secretKey string) stripeSessionCreator {
 			return newStripeCheckoutProvider(secretKey)
 		},

@@ -165,12 +165,19 @@ SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = 
 WHERE tenant_id = $1
 RETURNING *;
 
--- name: UpsertTenantCommentMode :one
--- The settings screen can save the comment mode for a tenant whose config row
--- does not exist yet, so the mode is written without disturbing the site copy
--- columns UpdateTenantConfig owns.
-INSERT INTO tenant_config (tenant_id, comment_mode)
-VALUES ($1, $2)
+-- name: UpsertTenantCommentSettings :one
+-- The settings screen can save what the tenant has decided about commenting
+-- for a tenant whose config row does not exist yet, so both columns are
+-- written without disturbing the site copy columns UpdateTenantConfig owns.
+--
+-- The mode and the automatic removal threshold are written together because
+-- the console offers them as one card: saving them separately would leave a
+-- tenant who changed both with one of the two stored when the second write
+-- failed.
+INSERT INTO tenant_config (tenant_id, comment_mode, comment_auto_hide_report_threshold)
+VALUES ($1, $2, $3)
 ON CONFLICT (tenant_id) DO UPDATE
-SET comment_mode = EXCLUDED.comment_mode, updated_at = NOW()
+SET comment_mode = EXCLUDED.comment_mode,
+    comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
+    updated_at = NOW()
 RETURNING *;

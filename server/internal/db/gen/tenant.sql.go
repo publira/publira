@@ -101,7 +101,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 const createTenantConfig = `-- name: CreateTenantConfig :one
 INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
 VALUES ($1, $2, $3, $4)
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold
 `
 
 type CreateTenantConfigParams struct {
@@ -127,6 +127,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 		&i.UpdatedAt,
 		&i.SiteTagline,
 		&i.CommentMode,
+		&i.CommentAutoHideReportThreshold,
 	)
 	return i, err
 }
@@ -273,7 +274,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 }
 
 const getTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
-SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode
+SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold
 FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -290,6 +291,7 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 		&i.UpdatedAt,
 		&i.SiteTagline,
 		&i.CommentMode,
+		&i.CommentAutoHideReportThreshold,
 	)
 	return i, err
 }
@@ -467,7 +469,7 @@ const updateTenantConfig = `-- name: UpdateTenantConfig :one
 UPDATE tenant_config
 SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
 WHERE tenant_id = $1
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold
 `
 
 type UpdateTenantConfigParams struct {
@@ -493,6 +495,7 @@ func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfig
 		&i.UpdatedAt,
 		&i.SiteTagline,
 		&i.CommentMode,
+		&i.CommentAutoHideReportThreshold,
 	)
 	return i, err
 }
@@ -627,24 +630,32 @@ func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTime
 	return i, err
 }
 
-const upsertTenantCommentMode = `-- name: UpsertTenantCommentMode :one
-INSERT INTO tenant_config (tenant_id, comment_mode)
-VALUES ($1, $2)
+const upsertTenantCommentSettings = `-- name: UpsertTenantCommentSettings :one
+INSERT INTO tenant_config (tenant_id, comment_mode, comment_auto_hide_report_threshold)
+VALUES ($1, $2, $3)
 ON CONFLICT (tenant_id) DO UPDATE
-SET comment_mode = EXCLUDED.comment_mode, updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode
+SET comment_mode = EXCLUDED.comment_mode,
+    comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
+    updated_at = NOW()
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold
 `
 
-type UpsertTenantCommentModeParams struct {
-	TenantID    uuid.UUID `json:"tenant_id"`
-	CommentMode string    `json:"comment_mode"`
+type UpsertTenantCommentSettingsParams struct {
+	TenantID                       uuid.UUID `json:"tenant_id"`
+	CommentMode                    string    `json:"comment_mode"`
+	CommentAutoHideReportThreshold int32     `json:"comment_auto_hide_report_threshold"`
 }
 
-// The settings screen can save the comment mode for a tenant whose config row
-// does not exist yet, so the mode is written without disturbing the site copy
-// columns UpdateTenantConfig owns.
-func (q *Queries) UpsertTenantCommentMode(ctx context.Context, arg UpsertTenantCommentModeParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantCommentMode, arg.TenantID, arg.CommentMode)
+// The settings screen can save what the tenant has decided about commenting
+// for a tenant whose config row does not exist yet, so both columns are
+// written without disturbing the site copy columns UpdateTenantConfig owns.
+//
+// The mode and the automatic removal threshold are written together because
+// the console offers them as one card: saving them separately would leave a
+// tenant who changed both with one of the two stored when the second write
+// failed.
+func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, upsertTenantCommentSettings, arg.TenantID, arg.CommentMode, arg.CommentAutoHideReportThreshold)
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -654,6 +665,7 @@ func (q *Queries) UpsertTenantCommentMode(ctx context.Context, arg UpsertTenantC
 		&i.UpdatedAt,
 		&i.SiteTagline,
 		&i.CommentMode,
+		&i.CommentAutoHideReportThreshold,
 	)
 	return i, err
 }

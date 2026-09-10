@@ -46,7 +46,7 @@ type AnnouncementRead struct {
 type AuditLog struct {
 	ID          uuid.UUID      `json:"id"`
 	TenantID    uuid.UUID      `json:"tenant_id"`
-	ActorUserID uuid.UUID      `json:"actor_user_id"`
+	ActorUserID uuid.NullUUID  `json:"actor_user_id"`
 	ActorRole   string         `json:"actor_role"`
 	Action      string         `json:"action"`
 	TargetType  sql.NullString `json:"target_type"`
@@ -598,13 +598,14 @@ type TenantAdminInvitation struct {
 }
 
 type TenantConfig struct {
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	CopyrightText   sql.NullString `json:"copyright_text"`
-	SiteDescription sql.NullString `json:"site_description"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
-	SiteTagline     sql.NullString `json:"site_tagline"`
-	CommentMode     string         `json:"comment_mode"`
+	TenantID                       uuid.UUID      `json:"tenant_id"`
+	CopyrightText                  sql.NullString `json:"copyright_text"`
+	SiteDescription                sql.NullString `json:"site_description"`
+	CreatedAt                      time.Time      `json:"created_at"`
+	UpdatedAt                      time.Time      `json:"updated_at"`
+	SiteTagline                    sql.NullString `json:"site_tagline"`
+	CommentMode                    string         `json:"comment_mode"`
+	CommentAutoHideReportThreshold int32          `json:"comment_auto_hide_report_threshold"`
 }
 
 type TenantImage struct {
