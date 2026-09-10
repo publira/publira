@@ -23,21 +23,30 @@ import {
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import {
+  SeriesFilterForm,
+  SeriesFilterFormSkeleton,
+} from "#components/series-filter-form";
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
-import { listPublishedSeries } from "#lib/catalog";
+import { listPublishedGenres, listPublishedSeries } from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
+  isNarrowedSeriesList,
   parseSeriesListSearchParams,
   seriesListHref,
 } from "./_lib/search-params";
+import type { SeriesListSearchParams } from "./_lib/search-params";
 
 const SERIES_PAGE_SIZE = 24;
 
 /** Half a page of covers: two shelves on a desktop, four rows on a phone. */
 const SERIES_SKELETON_COUNT = 12;
+
+type SeriesPageSearchParams =
+  PageProps<"/[tenant_id]/[locale]/series">["searchParams"];
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -67,6 +76,33 @@ const SeriesListDescription = async () => {
 };
 
 /**
+ * The genre options this screen's filter row offers. A tenant that curates no
+ * genre, and a read that could not answer, both leave the row its other three
+ * controls rather than holding the whole catalog behind one dropdown.
+ */
+const SeriesListFilters = async ({
+  searchParams,
+}: {
+  searchParams: SeriesPageSearchParams;
+}) => {
+  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+  const query = parseSeriesListSearchParams(resolvedSearchParams);
+  const genres = await listPublishedGenres(tenantId, locale);
+
+  return (
+    <SeriesFilterForm
+      basePath="/series"
+      genres={genres.ok ? genres.value : []}
+      query={query}
+    />
+  );
+};
+
+/**
  * The pagination's `<nav>`, and the one component on this screen that resolves
  * the catalog: an `aria-label` cannot be a node. The key stays written out
  * here, beside the `getMessage` that reads it.
@@ -88,20 +124,28 @@ const SeriesPaginationNav = async ({ children }: { children: ReactNode }) => {
 const SeriesPagination = ({
   nextToken,
   previousToken,
+  query,
 }: {
   nextToken: string;
   previousToken: string;
+  query: SeriesListSearchParams;
 }) => (
   <Suspense fallback={<ListPaginationSkeleton />}>
     <SeriesPaginationNav>
       <ListPaginationStep
-        href={previousToken ? seriesListHref(previousToken) : ""}
+        href={
+          previousToken
+            ? seriesListHref({ ...query, token: previousToken })
+            : ""
+        }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="host.common.previous_page" />
         </Suspense>
       </ListPaginationStep>
-      <ListPaginationStep href={nextToken ? seriesListHref(nextToken) : ""}>
+      <ListPaginationStep
+        href={nextToken ? seriesListHref({ ...query, token: nextToken }) : ""}
+      >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="host.common.next_page" />
         </Suspense>
@@ -113,19 +157,23 @@ const SeriesPagination = ({
 const SeriesListData = async ({
   searchParams,
 }: {
-  searchParams: PageProps<"/[tenant_id]/[locale]/series">["searchParams"];
+  searchParams: SeriesPageSearchParams;
 }) => {
   const [resolvedSearchParams, tenantId, locale] = await Promise.all([
     searchParams,
     getTenantId(),
     getLocale(),
   ]);
-  const { token } = parseSeriesListSearchParams(resolvedSearchParams);
+  const query = parseSeriesListSearchParams(resolvedSearchParams);
 
   const result = await listPublishedSeries(tenantId, {
+    genrePublicId: query.genre,
+    hasFreeEpisodes: query.free,
     limit: SERIES_PAGE_SIZE,
     locale,
-    token,
+    order: query.order,
+    status: query.status || undefined,
+    token: query.token,
   });
 
   if (!result.ok) {
@@ -146,8 +194,30 @@ const SeriesListData = async ({
   const { nextToken, previousToken, series } = result.value;
 
   if (series.length === 0) {
-    if (!token) {
-      return (
+    if (!query.token) {
+      // A narrowed list that came back empty is the filters answering, not the
+      // catalog being empty, and the way out of it is dropping them.
+      return isNarrowedSeriesList(query) ? (
+        <div className="grid gap-8">
+          <EmptyState>
+            <EmptyStateDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="host.series.filter_empty" />
+              </Suspense>
+            </EmptyStateDescription>
+          </EmptyState>
+          <p>
+            <LocaleLink
+              className="text-sm text-primary underline underline-offset-4"
+              href="/series"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="host.series.filter_clear" />
+              </Suspense>
+            </LocaleLink>
+          </p>
+        </div>
+      ) : (
         <EmptyState>
           <EmptyStateDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
@@ -174,12 +244,13 @@ const SeriesListData = async ({
           <SeriesPagination
             nextToken={nextToken}
             previousToken={previousToken}
+            query={query}
           />
         ) : (
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={seriesListHref("")}
+              href={seriesListHref({ ...query, token: "" })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="host.series.first_page" />
@@ -195,7 +266,11 @@ const SeriesListData = async ({
     <div className="grid gap-8">
       <SeriesShelf locale={locale} series={series} />
 
-      <SeriesPagination nextToken={nextToken} previousToken={previousToken} />
+      <SeriesPagination
+        nextToken={nextToken}
+        previousToken={previousToken}
+        query={query}
+      />
     </div>
   );
 };
@@ -216,6 +291,10 @@ const SeriesPage = ({
         </Suspense>
       </p>
     </div>
+
+    <Suspense fallback={<SeriesFilterFormSkeleton />}>
+      <SeriesListFilters searchParams={searchParams} />
+    </Suspense>
 
     <SectionErrorBoundary
       title={

@@ -19,11 +19,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { EyeCatchFrame } from "#components/eye-catch-frame";
+import { GenreChips } from "#components/genre-chips";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { RelativeTime } from "#components/relative-time";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
+import { listPublishedGenres } from "#lib/catalog";
 import type { SeriesListItem } from "#lib/catalog";
 import {
   getCatalogTopFeaturedAuthors,
@@ -105,6 +107,7 @@ const SECTION_TITLES = {
   continueReading: "host.top.continue_error",
   featuredWork: "host.top.featured_work_error",
   freeSeries: "host.top.free_error",
+  genres: "host.top.genres_error",
   labels: "host.top.featured_labels_error",
   newEpisodes: "host.top.new_episodes_error",
   recommended: "host.top.recommended_error",
@@ -309,6 +312,56 @@ const ContinueReadingSection = async () => {
           </li>
         ))}
       </ol>
+    </section>
+  );
+};
+
+/**
+ * The way into the catalogue that is neither a shelf nor a search box: the
+ * tenant's own classification, as one row of links.
+ *
+ * A tenant that curates no genre draws nothing at all, heading included, the
+ * way the continue-reading module does for a reader with no history: a heading
+ * over an empty row would announce a classification this site does not have.
+ */
+const GenresSection = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
+  const result = await listPublishedGenres(tenantId, locale);
+
+  if (!result.ok) {
+    return (
+      <SectionReadError
+        description={result.message}
+        title={SECTION_TITLES.genres}
+      />
+    );
+  }
+
+  if (result.value.length === 0) {
+    return null;
+  }
+
+  return (
+    <section aria-labelledby="browse-genres">
+      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+        <h2 className="font-serif text-xl leading-tight" id="browse-genres">
+          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+            <Message message="host.top.genres_heading" />
+          </Suspense>
+        </h2>
+        <LocaleLink
+          className="text-sm text-primary underline underline-offset-4"
+          href="/genres"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.top.view_all" />
+          </Suspense>
+        </LocaleLink>
+      </div>
+      <div className="mt-4">
+        <GenreChips genres={result.value} />
+      </div>
     </section>
   );
 };
@@ -864,6 +917,18 @@ const Page = () => (
       </Suspense>
     </SectionErrorBoundary>
 
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message={SECTION_TITLES.genres} />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={null}>
+        <GenresSection />
+      </Suspense>
+    </SectionErrorBoundary>
+
     <section aria-labelledby="new-episodes">
       <div className="border-b border-border pb-2">
         <h2 className="font-serif text-xl leading-tight" id="new-episodes">
@@ -906,12 +971,12 @@ const Page = () => (
             <Message message="host.top.free_heading" />
           </Suspense>
         </h2>
-        {/* The whole list, because /series cannot yet be narrowed to the
-            series with free episodes (#1739). */}
+        {/* The same shelf as a full list: the series a reader can start
+            without paying, which is what this module shows six of. */}
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-16" />}>
           <LocaleLink
             className="text-sm text-primary underline underline-offset-4"
-            href="/series"
+            href="/series?free=1"
           >
             <Message message="host.top.view_all" />
           </LocaleLink>

@@ -2,13 +2,17 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import {
   EpisodeAccess,
   RankingPeriod,
+  SeriesOrder,
 } from "@publira/api-client/public/catalog";
+import { SeriesStatus } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  findPublishedTagBySlug,
   getEpisodeDetail,
   getEpisodeViewer,
   isPublicEpisodeBody,
+  listPublishedGenres,
   listPublishedSeries,
   listRankedSeries,
   listRelatedSeries,
@@ -17,12 +21,16 @@ import {
 
 const {
   mockGetEpisodeDetail,
+  mockListPublishedGenres,
   mockListPublishedSeries,
+  mockListPublishedTags,
   mockListRankedSeries,
   mockListRelatedSeries,
 } = vi.hoisted(() => ({
   mockGetEpisodeDetail: vi.fn(),
+  mockListPublishedGenres: vi.fn(),
   mockListPublishedSeries: vi.fn(),
+  mockListPublishedTags: vi.fn(),
   mockListRankedSeries: vi.fn(),
   mockListRelatedSeries: vi.fn(),
 }));
@@ -31,7 +39,9 @@ vi.mock("./api-client", () => ({
   apiClient: {
     catalog: {
       getEpisodeDetail: mockGetEpisodeDetail,
+      listPublishedGenres: mockListPublishedGenres,
       listPublishedSeries: mockListPublishedSeries,
+      listPublishedTags: mockListPublishedTags,
       listRankedSeries: mockListRankedSeries,
       listRelatedSeries: mockListRelatedSeries,
     },
@@ -559,8 +569,12 @@ describe("catalog.listPublishedSeries", () => {
     });
 
     expect(mockListPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "",
       hasFreeEpisodes: false,
       limit: 24,
+      order: SeriesOrder.PUBLISHED_AT_DESC,
+      status: SeriesStatus.UNSPECIFIED,
+      tagSlug: "",
       tenant: { tenantId: "TENANT_001" },
       token: "",
     });
@@ -587,11 +601,165 @@ describe("catalog.listPublishedSeries", () => {
     });
 
     expect(mockListPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "",
       hasFreeEpisodes: true,
       limit: 6,
+      order: SeriesOrder.PUBLISHED_AT_DESC,
+      status: SeriesStatus.UNSPECIFIED,
+      tagSlug: "",
       tenant: { tenantId: "TENANT_001" },
       token: "",
     });
+  });
+
+  it("Translates the sort and the classification filters into the RPC enums", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", {
+      genrePublicId: "SeedGENRAAA1",
+      limit: 24,
+      locale: "en",
+      order: "updated",
+      status: "completed",
+      tagSlug: "time-travel",
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "SeedGENRAAA1",
+      hasFreeEpisodes: false,
+      limit: 24,
+      order: SeriesOrder.LATEST_EPISODE_AT_DESC,
+      status: SeriesStatus.COMPLETED,
+      tagSlug: "time-travel",
+      tenant: { tenantId: "TENANT_001" },
+      token: "",
+    });
+  });
+
+  it("Sorts by title ascending, which is the one direction the control offers", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", {
+      limit: 24,
+      locale: "en",
+      order: "title",
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ order: SeriesOrder.TITLE_ASC })
+    );
+  });
+});
+
+describe("catalog.listPublishedGenres", () => {
+  beforeEach(() => {
+    mockListPublishedGenres.mockReset();
+  });
+
+  it("Walks every page, because the classification is read whole", async () => {
+    mockListPublishedGenres
+      .mockResolvedValueOnce({
+        genres: [
+          {
+            name: " Fantasy ",
+            publicId: "SeedGENRAAA1",
+            publishedSeriesCount: 4,
+            slug: "fantasy",
+          },
+        ],
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        genres: [
+          {
+            name: "Romance",
+            publicId: "SeedGENRAAA2",
+            publishedSeriesCount: 0,
+            slug: "romance",
+          },
+        ],
+        nextToken: "",
+      });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(mockListPublishedGenres).toHaveBeenCalledTimes(2);
+    expect(result.ok && result.value).toEqual([
+      {
+        name: "Fantasy",
+        publicId: "SeedGENRAAA1",
+        publishedSeriesCount: 4,
+        slug: "fantasy",
+      },
+      {
+        name: "Romance",
+        publicId: "SeedGENRAAA2",
+        publishedSeriesCount: 0,
+        slug: "romance",
+      },
+    ]);
+  });
+
+  it("Reports a failed read as a value rather than throwing", async () => {
+    mockListPublishedGenres.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    await expect(listPublishedGenres("TENANT_001", "en")).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.findPublishedTagBySlug", () => {
+  beforeEach(() => {
+    mockListPublishedTags.mockReset();
+  });
+
+  it("Stops at the page the slug is on", async () => {
+    mockListPublishedTags
+      .mockResolvedValueOnce({
+        nextToken: "page-2",
+        tags: [
+          { name: "School life", publishedSeriesCount: 2, slug: "school-life" },
+        ],
+      })
+      .mockResolvedValueOnce({
+        nextToken: "page-3",
+        tags: [
+          { name: "Time travel", publishedSeriesCount: 5, slug: "time-travel" },
+        ],
+      });
+
+    const result = await findPublishedTagBySlug(
+      "TENANT_001",
+      "time-travel",
+      "en"
+    );
+
+    expect(mockListPublishedTags).toHaveBeenCalledTimes(2);
+    expect(result.ok && result.value).toEqual({
+      name: "Time travel",
+      publishedSeriesCount: 5,
+      slug: "time-travel",
+    });
+  });
+
+  it("A slug no published series carries is null, not a failure", async () => {
+    mockListPublishedTags.mockResolvedValueOnce({ nextToken: "", tags: [] });
+
+    await expect(
+      findPublishedTagBySlug("TENANT_001", "time-travel", "en")
+    ).resolves.toEqual({ ok: true, value: null });
   });
 });
 
