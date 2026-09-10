@@ -97,6 +97,16 @@ Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.
 
 `CLAUDE.md` imports this file with `@AGENTS.md`, so every line here is loaded in every session. A coding standard therefore keeps only its norm and its enforcement here; its decision flow, tables, and NG/OK examples belong to the `coding-standards` skill. Do not link to a skill's files from here — a skill reaches the agent through its own `name` and `description`, and a path in this file only makes the same content get read twice.
 
+## A credited creator: `creator` in code, "Author" on screen
+
+The person credited on a work is a `creator` in every identifier: proto messages, RPCs and enum values, Go files and query names, route segments, module names, catalog key namespaces, and test fixtures. The tables are already named that way, and the identifier stays `creator` whichever word the screen ends up showing.
+
+The word on screen is one per locale — 著者 (`ja`), Author (`en`), 작가 (`ko`), 作者 (`zh-Hans` and `zh-Hant`) — and it is the same word on the storefront and in both consoles. クリエイター, 크리에이터, and 创作者 / 創作者 name the same concept a second time, so they are not used.
+
+The writer of a comment is a reader, not one of these, and every locale gives them a word of their own: 投稿者, Commenter, 작성자, 评论者, 留言者. That concept keeps `author` in its identifiers (`Comment.author_public_id`), which is why the two must stay apart in the copy.
+
+No lint covers this. `git grep` cannot tell which of the two senses an `author` belongs to, and the displayed word is a translation judgement in five catalogs.
+
 ## Environment variables: `PUBLIRA_*`
 
 Every environment variable that **only this repository's own code reads** is named `PUBLIRA_*`. A variable keeps its outside name only when the software that consumes the value looks that name up itself — the AWS SDK, `NODE_ENV`, `PORT`. That test, who performs the lookup, is the whole rule: `S3_*`, `AUTH_SECRET`, `REDIS_URL`, and the cache-related `NEXT_*` names are all ours, so all of them carry the prefix.
