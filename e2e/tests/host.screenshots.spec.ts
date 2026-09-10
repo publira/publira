@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { freezeClock } from "../src/clock";
 import { MISSING_PUBLIC_ID, SEED_TENANT } from "../src/scenarios/multi-tenant";
+import { RANKING_ENTRY_COUNT } from "../src/scenarios/ranking";
 import {
   VIEWER_EPISODE_PATH,
   viewerPageLabel,
@@ -58,7 +59,7 @@ const NEWEST_ROW_RELATIVE_TIME = "3 days ago";
  */
 const TOP_PAGE_SECTIONS = [
   { href: "/series/", name: "New episodes" },
-  { href: "/series/", name: "Recommended" },
+  { href: "/series/", name: "Top 10 this week" },
   { href: "/series/", name: "Recently updated" },
   { href: "/labels/", name: "Featured labels" },
   { href: "/authors/", name: "Featured authors" },
@@ -105,6 +106,25 @@ test.describe("web-host screenshots", () => {
         ).toBeVisible();
 
         await expectScreenshot(page, viewport, "series-list");
+      });
+
+      /**
+       * The daily chart, which is what `/ranking` shows without a period in
+       * the URL. Its positions and its computed time come from
+       * `db/seeds/scenarios/170_ranking.sql`, which `task e2e:db` applies, so
+       * the page draws the same chart on every run.
+       */
+      test("the ranking page", async ({ page }) => {
+        await page.goto(hostPath("/ranking"));
+
+        await expect(
+          page.getByRole("heading", { exact: true, level: 1, name: "Ranking" })
+        ).toBeVisible();
+        await expect(page.locator("main ol > li")).toHaveCount(
+          RANKING_ENTRY_COUNT
+        );
+
+        await expectScreenshot(page, viewport, "ranking");
       });
 
       test("a series detail page", async ({ page }) => {

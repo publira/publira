@@ -135,8 +135,8 @@ const RankMovementMarker = ({
 const RankingRowsSkeleton = ({ count = 10 }: { count?: number }) => (
   <div className="divide-y divide-border">
     {Array.from({ length: count }, (_, index) => (
-      <div className="flex items-center gap-4 py-3" key={index}>
-        <Skeleton className="h-6 w-12 shrink-0" />
+      <div className="flex items-center gap-3 py-3 sm:gap-4" key={index}>
+        <Skeleton className="h-6 w-16 shrink-0" />
         <Skeleton className="size-14 shrink-0 rounded-control" />
         <div className="flex-1">
           <Skeleton className="h-4 w-2/3" />
@@ -352,11 +352,13 @@ const RankingList = async ({
         {rankedSeries.map(({ previousRank, rank, series }) => (
           <li key={series.publicId}>
             <LocaleLink
-              className="group flex items-center gap-4 py-3"
+              className="group flex items-center gap-3 py-3 sm:gap-4"
               href={`/series/${series.publicId}`}
             >
-              <span className="w-12 shrink-0 font-serif text-lg leading-tight tabular-nums">
-                <Suspense fallback={<SkeletonLine className="h-5 w-10" />}>
+              {/* Wide enough for two digits: "No. 10" wrapping would put the
+                  column out of line with every row above it. */}
+              <span className="w-16 shrink-0 font-serif text-lg leading-tight whitespace-nowrap tabular-nums">
+                <Suspense fallback={<SkeletonLine className="h-5 w-14" />}>
                   <Message
                     message="host.ranking.rank_position"
                     values={{ rank }}

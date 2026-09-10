@@ -29,9 +29,12 @@ test.describe("web-host catalog browsing", () => {
       page.getByRole("link", { name: /^Read episode \d+$/u })
     ).toBeVisible();
 
-    const recommended = page.getByRole("region", { name: "Recommended" });
+    // The popularity module. The seed tenant carries a ranking snapshot
+    // (`170_ranking.sql`), so it is the week's chart rather than the
+    // recommendation shelf a tenant sees before the batch has run.
+    const ranking = page.getByRole("region", { name: "Top 10 this week" });
     await expect(
-      recommended.locator(`a[href^="${hostPath("/series/")}"]`).first()
+      ranking.locator(`a[href^="${hostPath("/series/")}"]`).first()
     ).toBeVisible();
 
     const newEpisodes = page.getByRole("region", { name: "New episodes" });
@@ -69,8 +72,10 @@ test.describe("web-host catalog browsing", () => {
     page,
   }) => {
     await page.goto(hostPath("/"));
+    // "Recently updated" rather than the popularity module above it: that one
+    // leads to `/ranking` while the seed tenant carries a snapshot.
     await page
-      .getByRole("region", { name: "Recommended" })
+      .getByRole("region", { name: "Recently updated" })
       .getByRole("link", { name: "View all" })
       .click();
 
