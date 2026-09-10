@@ -611,6 +611,50 @@
       "list_failed": "無法載入作者。請稍後再試。",
       "save_failed": "無法儲存該作者。請稍後再試。"
     },
+    "creator_roles": {
+      "title": "作者角色",
+      "page_description": "維護署名作者時使用的角色，並依署名的顯示順序排列。",
+      "create_card_title": "新增角色",
+      "create_description": "新建的角色會加到顯示順序末尾。",
+      "create_action": "建立角色",
+      "created": "角色已建立。",
+      "list_title": "作者角色",
+      "list_description": "重新命名角色、調整它在顯示順序中的位置，或刪除沒有署名使用的角色。",
+      "list_error": "無法顯示作者角色",
+      "empty_title": "該租戶沒有作者角色。",
+      "empty_description": "請用上方的表單建立。沒有角色就無法為任何人署名。",
+      "priority_hint": "順序 {$position}",
+      "save_action": "儲存",
+      "saving": "正在儲存…",
+      "updated": "角色已更新。",
+      "delete_action": "刪除",
+      "deleting": "正在刪除…",
+      "deleted": "角色已刪除。",
+      "delete_confirm_title": "要刪除這個角色嗎？",
+      "delete_confirm_description": "{$name} 將從顯示順序中移除。仍被系列或話次署名使用的角色無法刪除。",
+      "delete_confirm_action": "刪除",
+      "move_up_action": "將 {$name} 上移",
+      "move_down_action": "將 {$name} 下移",
+      "name_field_label": "{$name} 的名稱",
+      "form": {
+        "name": "角色名稱",
+        "name_placeholder": "範例：原作"
+      },
+      "validation": {
+        "name_required": "角色名稱為必填。",
+        "name_too_long": "角色名稱請控制在 {$count} 個字元以內。",
+        "tenant_missing": "缺少租戶 ID。",
+        "id_missing": "缺少要更新的角色 ID。"
+      },
+      "name_taken": "同名的角色已存在。",
+      "name_invalid": "請輸入至多 {$count} 個字元的角色名稱。",
+      "list_failed": "無法載入作者角色。請稍後再試。",
+      "save_failed": "無法儲存該角色。請稍後再試。",
+      "delete_failed": "無法刪除該角色。請稍後再試。",
+      "delete_in_use": "仍有系列或話次以該角色署名。請先重新指定署名，然後再刪除。",
+      "reorder_failed": "無法調整角色順序。請稍後再試。",
+      "reorder_conflict": "角色順序已在別處發生變動。請重新載入頁面後再試。"
+    },
     "dashboard": {
       "section_error": "無法顯示儀表板",
       "title": "儀表板",
@@ -1290,6 +1334,7 @@
       "delete_action": "刪除",
       "tabs": {
         "basic": "一般",
+        "creator_roles": "作者角色",
         "theme": "主題",
         "email": "郵件",
         "payment": "付款"

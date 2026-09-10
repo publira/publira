@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 
 interface SettingsTabNavProps {
-  current: "basic" | "email" | "payment" | "theme";
+  current: "basic" | "creator-roles" | "email" | "payment" | "theme";
 }
 
 export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
@@ -17,6 +17,14 @@ export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
     >
       <Suspense fallback={<SkeletonLine className="h-5 w-16" />}>
         <Message message="admin.settings.tabs.basic" />
+      </Suspense>
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/creator-roles" />}
+      variant={current === "creator-roles" ? "default" : "outline"}
+    >
+      <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+        <Message message="admin.settings.tabs.creator_roles" />
       </Suspense>
     </LinkButton>
     <LinkButton
