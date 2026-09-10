@@ -2,7 +2,6 @@ package platformapi
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,8 +11,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-
-	"github.com/publira/publira/server/internal/testutil"
 )
 
 // An inbound RPC must continue the caller's trace instead of starting its
@@ -37,7 +34,7 @@ func TestConnectHandlerContinuesTheCallersTrace(t *testing.T) {
 
 	// NewHandler builds the interceptor, so it has to run after the
 	// globals above are in place.
-	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil, testutil.TokenManager()))
+	ts := httptest.NewServer(newTestHandler(nil, nil))
 	t.Cleanup(ts.Close)
 
 	const procedure = "/publira.platform.v1.PlatformTenantService/ListTenants"

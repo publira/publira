@@ -20,6 +20,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
+	"github.com/publira/publira/server/internal/mailguard"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/revalidate"
@@ -57,6 +58,8 @@ type adminServer struct {
 	// commentRetentionDays is how long a withdrawn comment survives before the
 	// purge batch deletes it, which is what the console counts down to.
 	commentRetentionDays int
+	// mail bounds how much mail the console's own forms may cause.
+	mail *mailguard.Guard
 }
 
 // mfaRequiredForTenantAdminFromEnv reads the deployment's stance on the
@@ -220,19 +223,30 @@ func (s *adminServer) authenticateSession(
 // AdminSeriesService and AdminAuthService, and none of the public API
 // (CatalogService, AuthService).
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (http.Handler, error) {
-	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, nil)
+	mail, err := mailguard.NewFromEnv(logger)
+	if err != nil {
+		return nil, err
+	}
+	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, nil, mail)
 }
 
 // NewHandlerWithAsyncRecorder creates an admin API handler with an
 // AsyncRecorder. The asynchronous writer acquires a fresh tenant-scoped
 // connection for every tenant audit entry.
 func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (http.Handler, error) {
-	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder)
+	mail, err := mailguard.NewFromEnv(logger)
+	if err != nil {
+		return nil, err
+	}
+	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder, mail)
 }
 
-func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder) (http.Handler, error) {
+func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard) (http.Handler, error) {
 	if logger == nil {
 		logger = slog.Default()
+	}
+	if mail == nil {
+		mail = mailguard.NewDefault()
 	}
 	requestScopedRecorder := recorder == nil
 	if recorder == nil {
@@ -267,6 +281,7 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 
 		mfaRequiredForTenantAdmin: mfaRequiredForTenantAdminFromEnv(),
 		commentRetentionDays:      commentRetentionDays,
+		mail:                      mail,
 	}
 	traced := tracing.ConnectHandlerOption()
 

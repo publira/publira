@@ -86,7 +86,11 @@ func main() {
 	}
 
 	recorder := auditlog.NewAsync(dbmodels.New(db), nil, logger)
-	handler := platformapi.NewHandlerWithAsyncRecorder(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
+	handler, err := platformapi.NewHandlerWithAsyncRecorder(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient(), tokens, recorder)
+	if err != nil {
+		logger.Error("failed to initialize platform api handler", "error", err)
+		os.Exit(1)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

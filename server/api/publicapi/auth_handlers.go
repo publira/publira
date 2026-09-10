@@ -364,6 +364,14 @@ func (s *apiServer) CreateUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
 
+	// Charged before the address is looked up, so a caller out of allowance is
+	// refused the same way whether or not the address has an account, and
+	// neither the account nor the notice below is written on the way there.
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "rate_limited")
+		return nil, err
+	}
+
 	// Hashing before the lookup on purpose. Both addresses are answered the same
 	// way, so the work behind the answer must not be what separates them, and
 	// the hash is the one expensive step in this handler.
@@ -606,6 +614,10 @@ func (s *apiServer) RequestEmailVerification(
 		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "rate_limited")
+		return nil, err
+	}
 
 	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -750,6 +762,14 @@ func (s *apiServer) RequestEmailChange(
 	if !errors.Is(err, sql.ErrNoRows) {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	// The session says who is asking, not that the address they named is
+	// theirs, so the mail this queues for it is bounded like any other mail to
+	// an address nobody has confirmed.
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), newEmail); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		return nil, err
 	}
 
 	rawToken := make([]byte, 32)
@@ -952,6 +972,10 @@ func (s *apiServer) RequestPasswordReset(
 	if _, err := mail.ParseAddress(email); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "rate_limited")
+		return nil, err
 	}
 
 	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{

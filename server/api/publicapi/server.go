@@ -17,6 +17,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
+	"github.com/publira/publira/server/internal/mailguard"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/revalidate"
@@ -42,6 +43,7 @@ type apiServer struct {
 	tokens            *auth.TokenManager
 	logger            *slog.Logger
 	guards            readerGuards
+	mail              *mailguard.Guard
 	reval             *revalidate.Client
 	newStripeProvider func(secretKey string) stripeSessionCreator
 }
@@ -132,16 +134,21 @@ func isSQLMockDB(db *sql.DB) bool {
 // CatalogService, AuthService, NotificationService, TenantService, and
 // DomainService, and none of the admin API.
 //
-// It fails rather than serves when the flood control the reader-writable RPCs
-// depend on is misconfigured, so a limit nobody can meet is caught at startup
-// instead of by the first reader who tries to post.
+// It fails rather than serves when either flood control is misconfigured — the
+// one the reader-writable RPCs depend on, and the one that bounds the mail a
+// form can cause — so a limit nobody can meet is caught at startup instead of
+// by the first reader who runs into it.
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (http.Handler, error) {
 	logger := slog.Default()
 	guards, err := newReaderGuardsFromEnv(logger)
 	if err != nil {
 		return nil, err
 	}
-	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, tokens, logger, guards)), nil
+	mail, err := mailguard.NewFromEnv(logger)
+	if err != nil {
+		return nil, err
+	}
+	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, tokens, logger, guards, mail)), nil
 }
 
 func newAPIServer(
@@ -152,9 +159,13 @@ func newAPIServer(
 	tokens *auth.TokenManager,
 	logger *slog.Logger,
 	guards readerGuards,
+	mail *mailguard.Guard,
 ) *apiServer {
 	if logger == nil {
 		logger = slog.Default()
+	}
+	if mail == nil {
+		mail = mailguard.NewDefault()
 	}
 	// Disabled rather than fatal when the token or a target URL is missing, as
 	// the console's client is: every other RPC here answers a reader without
@@ -172,6 +183,7 @@ func newAPIServer(
 		tokens:    tokens,
 		logger:    logger,
 		guards:    guards.withDefaults(),
+		mail:      mail,
 		reval:     revalidator,
 		newStripeProvider: func(secretKey string) stripeSessionCreator {
 			return newStripeCheckoutProvider(secretKey)

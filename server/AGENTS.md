@@ -66,6 +66,16 @@ The counters live in Redis when `PUBLIRA_REDIS_URL` names one and in this proces
 
 No lint covers this — nothing can tell an RPC that writes on a reader's behalf from one that does not.
 
+## A form that mails an address charges the mail guard
+
+An RPC that queues mail for an address the request has not authenticated spends two allowances first, through `internal/mailguard`: one held by the mailbox, one held by the request's origin. `CreateUser`, `RequestEmailVerification`, `RequestPasswordReset` and `RequestEmailChange` all do, on every API surface that has them, and a new form of the same shape is a `Guard.Allow` call with the tenant's id as its scope — `mailguard.PlatformScope` for the console that has no tenant.
+
+The charge goes **before the address is looked up and before anything is written**. Those forms answer a registered address exactly as they answer a free one, so a refusal that depended on the lookup would be the disclosure the whole handler is written to avoid; and an attempt refused after a write would leave the outbox an event the worker has to recognize and drop. A caller over either allowance gets `resource_exhausted` with `Retry-After` and nothing else.
+
+Mail a session-bearing RPC sends to the account's own confirmed address — a password-changed notice, an email-changed notice — is not this: there is an account to attribute it to and no arbitrary recipient to aim.
+
+No lint covers this — nothing can tell an RPC that queues mail for an address the caller chose from one that queues it for an address already on file.
+
 ## Verification after Go changes
 
 Run verification from the **repository root** unless noted. Prefer Task targets so commands stay consistent with CI.

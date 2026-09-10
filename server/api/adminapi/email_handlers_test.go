@@ -20,7 +20,6 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/secretcrypto"
-	"github.com/publira/publira/server/internal/testutil"
 )
 
 type adminSMTPTesterStub struct {
@@ -131,7 +130,7 @@ func TestSendTenantSmtpTestEmailUsesPlatformFallbackWhenOverrideDisabled(t *test
 	t.Cleanup(func() { _ = db.Close() })
 	encryptor := newAdminTestEncryptor(t)
 	tester := &adminSMTPTesterStub{}
-	handler, err := NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), encryptor, tester, testutil.TokenManager())
+	handler, err := newTestHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), encryptor, tester)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/mailguard"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -34,11 +35,19 @@ type adminDBEnv struct {
 func newAdminDBEnv(t *testing.T) *adminDBEnv {
 	t.Helper()
 
+	return newAdminDBEnvWithMailGuard(t, openMailGuard())
+}
+
+// newAdminDBEnvWithMailGuard is newAdminDBEnv for the cases that are about the
+// limit on the mail a form causes and need it tight enough to reach.
+func newAdminDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *adminDBEnv {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenAdminDB(t)
 
-	handler, err := NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager())
+	handler, err := newHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, mail)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
