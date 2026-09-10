@@ -79,8 +79,8 @@ test.describe("web-admin display language", () => {
     expect(await storedLocaleCookie(page)).toBe("ko");
   });
 
-  // `zh-Hans` is the only registry code with a subtag, so it is also what
-  // proves the cookie and `<html lang>` carry such a code unchanged.
+  // The two Chinese codes are the ones carrying a subtag, so they are also
+  // what proves the cookie and `<html lang>` carry such a code unchanged.
   test("the switcher serves Simplified Chinese as well", async ({ page }) => {
     await signInAsSeedAdmin(page, "/settings");
     await expect(
@@ -94,6 +94,24 @@ test.describe("web-admin display language", () => {
     ).toBeVisible();
     await expectDocumentLocale(page, "简体中文");
     expect(await storedLocaleCookie(page)).toBe("zh-Hans");
+  });
+
+  // The two Chinese catalogs share a language and differ only in script, so
+  // switching to this one is what proves the choice is carried at the whole
+  // code rather than at `zh`.
+  test("the switcher serves Traditional Chinese as well", async ({ page }) => {
+    await signInAsSeedAdmin(page, "/settings");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Settings" })
+    ).toBeVisible();
+
+    await switchConsoleLocale(page, "English", "繁體中文");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "設定" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "繁體中文");
+    expect(await storedLocaleCookie(page)).toBe("zh-Hant");
   });
 });
 

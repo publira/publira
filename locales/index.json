@@ -19,6 +19,11 @@
       "code": "zh-Hans",
       "intl": "zh-Hans-CN",
       "label": "简体中文"
+    },
+    {
+      "code": "zh-Hant",
+      "intl": "zh-Hant-TW",
+      "label": "繁體中文"
     }
   ]
 }

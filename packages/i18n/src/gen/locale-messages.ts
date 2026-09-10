@@ -14,6 +14,8 @@ const importers = {
   ko: () => import("../../../../locales/ko.json", { with: { type: "json" } }),
   "zh-Hans": () =>
     import("../../../../locales/zh-Hans.json", { with: { type: "json" } }),
+  "zh-Hant": () =>
+    import("../../../../locales/zh-Hant.json", { with: { type: "json" } }),
 } satisfies LocaleCatalogImporters<LocaleMessages>;
 
 export const loadLocaleMessages = (

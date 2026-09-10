@@ -6,8 +6,14 @@ import type ja from "../../../../locales/ja.json";
 import type en from "../../../../locales/en.json";
 import type ko from "../../../../locales/ko.json";
 import type zhHans from "../../../../locales/zh-Hans.json";
+import type zhHant from "../../../../locales/zh-Hant.json";
 
-export type SharedMessages = typeof ja | typeof en | typeof ko | typeof zhHans;
+export type SharedMessages =
+  | typeof ja
+  | typeof en
+  | typeof ko
+  | typeof zhHans
+  | typeof zhHant;
 
 export declare const sharedCatalog: (locale: Locale) => SharedMessages;
 
