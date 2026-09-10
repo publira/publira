@@ -17,6 +17,11 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { EyeCatchFrame } from "#components/eye-catch-frame";
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -34,10 +39,6 @@ const SERIES_PAGE_SIZE = 24;
 
 /** Half a page of covers: two shelves on a desktop, four rows on a phone. */
 const SERIES_SKELETON_COUNT = 12;
-
-/** The one style both pagination directions and the first-page link share. */
-const paginationLinkClassName =
-  "text-sm text-primary underline underline-offset-4";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -79,39 +80,24 @@ const SeriesListDescription = async () => {
 };
 
 /**
- * The pagination's own `<nav>`.
- *
- * `aria-label` cannot be a node, so this resolves the catalog for that one
- * attribute and nothing else. The words inside are the caller's, each behind a
- * boundary of its own, so the navigation is the largest thing one missing
- * string can hold up.
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the catalog: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the `getMessage` that reads it.
  */
 const SeriesPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
   return (
-    <nav
+    <ListPagination
       aria-label={getMessage(messages, "host.series.pagination_aria")}
-      className="flex items-baseline gap-6 border-t border-border pt-4"
     >
       {children}
-    </nav>
+    </ListPagination>
   );
 };
 
-const SeriesPaginationSkeleton = () => (
-  <div className="flex items-baseline gap-6 border-t border-border pt-4">
-    <SkeletonLine className="h-4 w-24" />
-    <SkeletonLine className="h-4 w-16" />
-  </div>
-);
-
-/**
- * A cursor list has no page numbers to set in ink, so the two directions are
- * all there is to render: the one that leads somewhere is an Ai text link, and
- * the end of the list is the same words without one.
- */
+/** The two directions, written once for both places this screen shows them. */
 const SeriesPagination = ({
   nextToken,
   previousToken,
@@ -119,41 +105,20 @@ const SeriesPagination = ({
   nextToken: string;
   previousToken: string;
 }) => (
-  <Suspense fallback={<SeriesPaginationSkeleton />}>
+  <Suspense fallback={<ListPaginationSkeleton />}>
     <SeriesPaginationNav>
-      {previousToken ? (
-        <LocaleLink
-          className={paginationLinkClassName}
-          href={seriesListHref(previousToken)}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.common.previous_page" />
-          </Suspense>
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.common.previous_page" />
-          </Suspense>
-        </span>
-      )}
-
-      {nextToken ? (
-        <LocaleLink
-          className={paginationLinkClassName}
-          href={seriesListHref(nextToken)}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.common.next_page" />
-          </Suspense>
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.common.next_page" />
-          </Suspense>
-        </span>
-      )}
+      <ListPaginationStep
+        href={previousToken ? seriesListHref(previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep href={nextToken ? seriesListHref(nextToken) : ""}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
     </SeriesPaginationNav>
   </Suspense>
 );
@@ -226,7 +191,7 @@ const SeriesListData = async ({
         ) : (
           <p>
             <LocaleLink
-              className={paginationLinkClassName}
+              className="text-sm text-primary underline underline-offset-4"
               href={seriesListHref("")}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>

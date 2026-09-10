@@ -21,6 +21,11 @@ import {
   CatalogSearchFormSkeleton,
 } from "#components/catalog-search-form";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -37,10 +42,6 @@ const SEARCH_PAGE_SIZE = 20;
 
 /** Enough rows to fill a phone screen while the read comes back. */
 const SEARCH_SKELETON_COUNT = 8;
-
-/** The one style both pagination directions and the first-page link share. */
-const paginationLinkClassName =
-  "text-sm text-primary underline underline-offset-4";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -81,83 +82,49 @@ const SearchRowsSkeleton = () => (
 );
 
 /**
- * The pagination's own `<nav>`.
- *
- * `aria-label` cannot be a node, so this resolves the catalog for that one
- * attribute and nothing else. The words inside are the caller's, each behind a
- * boundary of its own, so the navigation is the largest thing one missing
- * string can hold up.
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the catalog: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the `getMessage` that reads it.
  */
 const SearchPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
   return (
-    <nav
+    <ListPagination
       aria-label={getMessage(messages, "host.search.pagination_aria")}
-      className="flex items-baseline gap-6 border-t border-border pt-4"
     >
       {children}
-    </nav>
+    </ListPagination>
   );
 };
 
-const SearchPaginationSkeleton = () => (
-  <div className="flex items-baseline gap-6 border-t border-border pt-4">
-    <SkeletonLine className="h-4 w-24" />
-    <SkeletonLine className="h-4 w-16" />
-  </div>
-);
-
-/**
- * A cursor list has no page numbers to set in ink, so the two directions are
- * all there is to render: the one that leads somewhere is an Ai text link, and
- * the end of the list is the same words without one.
- */
+/** The two directions, written once for both places this screen shows them. */
 const SearchPagination = ({
+  query,
   nextToken,
   previousToken,
-  query,
 }: {
+  query: string;
   nextToken: string;
   previousToken: string;
-  query: string;
 }) => (
-  <Suspense fallback={<SearchPaginationSkeleton />}>
+  <Suspense fallback={<ListPaginationSkeleton />}>
     <SearchPaginationNav>
-      {previousToken ? (
-        <LocaleLink
-          className={paginationLinkClassName}
-          href={searchPageHref(query, previousToken)}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.common.previous_page" />
-          </Suspense>
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="host.common.previous_page" />
-          </Suspense>
-        </span>
-      )}
-
-      {nextToken ? (
-        <LocaleLink
-          className={paginationLinkClassName}
-          href={searchPageHref(query, nextToken)}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.common.next_page" />
-          </Suspense>
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="host.common.next_page" />
-          </Suspense>
-        </span>
-      )}
+      <ListPaginationStep
+        href={previousToken ? searchPageHref(query, previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep
+        href={nextToken ? searchPageHref(query, nextToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
     </SearchPaginationNav>
   </Suspense>
 );
@@ -244,7 +211,7 @@ const SearchResultsData = async ({
         ) : (
           <p>
             <LocaleLink
-              className={paginationLinkClassName}
+              className="text-sm text-primary underline underline-offset-4"
               href={searchPageHref(query, "")}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
