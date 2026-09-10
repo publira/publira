@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -129,6 +130,55 @@ func TestDBRateEpisodeClimbsAndCapsInMultipleMode(t *testing.T) {
 	if got := env.countRows(t, "SELECT score FROM episode_ratings WHERE tenant_id = $1 AND user_id = $2 AND episode_id = $3",
 		tenant.ID, member.ID, episode.ID); got != 5 {
 		t.Fatalf("stored score = %d, want 5", got)
+	}
+}
+
+// Presses that arrive at once must not each claim the whole difference they
+// see. Whatever order they land in, the points filed for the day add up to the
+// score the reader ended at.
+func TestDBConcurrentPressesFileExactlyThePointsTheyAdded(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTRATEI", "rate-i.example.com", "Rate I")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEN", "member-rate-n@example.com", "Member N", "tenant_member")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEI", Title: "Public series", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEN", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
+	env.setEpisodeRatingMode(t, tenant.ID, "multiple")
+	client := env.ratingClient()
+	token := tokenFor(t, tenant, member)
+
+	var wg sync.WaitGroup
+	errs := make(chan error, 8)
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, token, 1)); err != nil {
+				errs <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Errorf("concurrent RateEpisode: %v", err)
+	}
+
+	// Eight presses of one point each, on a scale that stops at five.
+	score := env.countRows(t, "SELECT score FROM episode_ratings WHERE tenant_id = $1 AND user_id = $2 AND episode_id = $3",
+		tenant.ID, member.ID, episode.ID)
+	if score != 5 {
+		t.Fatalf("stored score = %d, want 5", score)
+	}
+	points := env.countRows(t,
+		"SELECT COALESCE(sum(rating_score), 0) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND episode_id = $2",
+		tenant.ID, episode.ID)
+	if points != score {
+		t.Fatalf("points filed = %d, want the %d the reader ended at", points, score)
+	}
+	if got := env.countRows(t,
+		"SELECT COALESCE((SELECT count FROM episode_rating_counts WHERE tenant_id = $1 AND episode_id = $2), -1)",
+		tenant.ID, episode.ID); got != 1 {
+		t.Fatalf("readers who rated = %d, want 1", got)
 	}
 }
 

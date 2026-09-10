@@ -90,8 +90,50 @@ func (q *Queries) GetMyEpisodeRating(ctx context.Context, arg GetMyEpisodeRating
 	return score, err
 }
 
-const rateEpisode = `-- name: RateEpisode :one
+const lockEpisodeRating = `-- name: LockEpisodeRating :exec
 
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        $1::uuid::text
+        || $2::uuid::text
+        || $3::uuid::text,
+        0
+    )
+)
+`
+
+type LockEpisodeRatingParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// Episode ratings and the public tally kept beside them. Every statement here
+// runs on the reader's own connection: episode_ratings is member-isolated, so a
+// rating is written and read under the reader whose rating it is.
+//
+// Nothing here raises or lowers episode_rating_counts. That is the trigger's
+// job (see the migration): a rating also goes when the reader's account does,
+// and that delete is PostgreSQL's own, with no statement of ours to carry a
+// matching decrement.
+//
+// Nothing here aggregates either. The points a rating is worth reach the daily
+// stats through the 'rating' content event, which content_daily_stats has
+// summed per episode since the engagement schema landed.
+// Serialises one reader's presses on one episode for the rest of the
+// transaction, so two arriving at once cannot both read the same starting score
+// and each claim the whole difference as the points they added.
+//
+// A row lock cannot do it, because the first press has no row to lock: the two
+// calls would race on the insert instead, and the loser would take the conflict
+// path having seen no row at all. The advisory lock is taken on the identity of
+// the rating rather than on a row, so it holds whether one exists yet or not.
+func (q *Queries) LockEpisodeRating(ctx context.Context, arg LockEpisodeRatingParams) error {
+	_, err := q.db.ExecContext(ctx, lockEpisodeRating, arg.TenantID, arg.UserID, arg.EpisodeID)
+	return err
+}
+
+const rateEpisode = `-- name: RateEpisode :one
 INSERT INTO episode_ratings (tenant_id, user_id, episode_id, score)
 VALUES (
     $1,
@@ -111,20 +153,9 @@ type RateEpisodeParams struct {
 	Points    int16     `json:"points"`
 }
 
-// Episode ratings and the public tally kept beside them. Every statement here
-// runs on the reader's own connection: episode_ratings is member-isolated, so a
-// rating is written and read under the reader whose rating it is.
-//
-// Nothing here raises or lowers episode_rating_counts. That is the trigger's
-// job (see the migration): a rating also goes when the reader's account does,
-// and that delete is PostgreSQL's own, with no statement of ours to carry a
-// matching decrement.
-//
-// Nothing here aggregates either. The points a rating is worth reach the daily
-// stats through the 'rating' content event, which content_daily_stats has
-// summed per episode since the engagement schema landed.
 // Records the rating, or raises the one already there, and answers with the
-// score as it now stands.
+// score as it now stands. The caller holds LockEpisodeRating, so the score it
+// read a moment ago is still the score this raises.
 //
 // `points` is what this call adds, already resolved from the press mode by the
 // caller: the whole 5 in `single` mode, the presses reported in `multiple`. The

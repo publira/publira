@@ -1259,6 +1259,27 @@ type Querier interface {
 	// start, so a read that waited for the lock inside the same statement would
 	// still answer from before the wait.
 	LockEpisodeByPublicIDForTenant(ctx context.Context, arg LockEpisodeByPublicIDForTenantParams) (LockEpisodeByPublicIDForTenantRow, error)
+	// Episode ratings and the public tally kept beside them. Every statement here
+	// runs on the reader's own connection: episode_ratings is member-isolated, so a
+	// rating is written and read under the reader whose rating it is.
+	//
+	// Nothing here raises or lowers episode_rating_counts. That is the trigger's
+	// job (see the migration): a rating also goes when the reader's account does,
+	// and that delete is PostgreSQL's own, with no statement of ours to carry a
+	// matching decrement.
+	//
+	// Nothing here aggregates either. The points a rating is worth reach the daily
+	// stats through the 'rating' content event, which content_daily_stats has
+	// summed per episode since the engagement schema landed.
+	// Serialises one reader's presses on one episode for the rest of the
+	// transaction, so two arriving at once cannot both read the same starting score
+	// and each claim the whole difference as the points they added.
+	//
+	// A row lock cannot do it, because the first press has no row to lock: the two
+	// calls would race on the insert instead, and the loser would take the conflict
+	// path having seen no row at all. The advisory lock is taken on the identity of
+	// the rating rather than on a row, so it holds whether one exists yet or not.
+	LockEpisodeRating(ctx context.Context, arg LockEpisodeRatingParams) error
 	// Locks every genre of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers
@@ -1428,20 +1449,9 @@ type Querier interface {
 	// select bounds one chunk, so a tenant with a long backlog is drained over
 	// several statements instead of one long-running delete.
 	PurgeWithdrawnEpisodeComments(ctx context.Context, arg PurgeWithdrawnEpisodeCommentsParams) (int64, error)
-	// Episode ratings and the public tally kept beside them. Every statement here
-	// runs on the reader's own connection: episode_ratings is member-isolated, so a
-	// rating is written and read under the reader whose rating it is.
-	//
-	// Nothing here raises or lowers episode_rating_counts. That is the trigger's
-	// job (see the migration): a rating also goes when the reader's account does,
-	// and that delete is PostgreSQL's own, with no statement of ours to carry a
-	// matching decrement.
-	//
-	// Nothing here aggregates either. The points a rating is worth reach the daily
-	// stats through the 'rating' content event, which content_daily_stats has
-	// summed per episode since the engagement schema landed.
 	// Records the rating, or raises the one already there, and answers with the
-	// score as it now stands.
+	// score as it now stands. The caller holds LockEpisodeRating, so the score it
+	// read a moment ago is still the score this raises.
 	//
 	// `points` is what this call adds, already resolved from the press mode by the
 	// caller: the whole 5 in `single` mode, the presses reported in `multiple`. The

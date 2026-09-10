@@ -260,6 +260,22 @@ func (s *apiServer) storeEpisodeRating(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
+	// Taken before the score is read, because the event this files carries the
+	// difference the press made. Two presses arriving at once would otherwise
+	// each read the same starting score and each claim the whole difference,
+	// and the day would count more points than the reader gave.
+	// Taken before the score is read, because the event this files carries the
+	// difference the press made. Two presses arriving at once would otherwise
+	// each read the same starting score and each claim the whole difference,
+	// and the day would count more points than the reader gave.
+	if err := txq.LockEpisodeRating(ctx, dbmodels.LockEpisodeRatingParams{
+		TenantID:  tenantID,
+		UserID:    userID,
+		EpisodeID: episode.ID,
+	}); err != nil {
+		return storedRating{}, err
+	}
+
 	before, err := txq.GetMyEpisodeRating(ctx, dbmodels.GetMyEpisodeRatingParams{
 		TenantID:  tenantID,
 		UserID:    userID,

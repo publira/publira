@@ -11,9 +11,28 @@
 -- stats through the 'rating' content event, which content_daily_stats has
 -- summed per episode since the engagement schema landed.
 
+-- name: LockEpisodeRating :exec
+-- Serialises one reader's presses on one episode for the rest of the
+-- transaction, so two arriving at once cannot both read the same starting score
+-- and each claim the whole difference as the points they added.
+--
+-- A row lock cannot do it, because the first press has no row to lock: the two
+-- calls would race on the insert instead, and the loser would take the conflict
+-- path having seen no row at all. The advisory lock is taken on the identity of
+-- the rating rather than on a row, so it holds whether one exists yet or not.
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        sqlc.arg('tenant_id')::uuid::text
+        || sqlc.arg('user_id')::uuid::text
+        || sqlc.arg('episode_id')::uuid::text,
+        0
+    )
+);
+
 -- name: RateEpisode :one
 -- Records the rating, or raises the one already there, and answers with the
--- score as it now stands.
+-- score as it now stands. The caller holds LockEpisodeRating, so the score it
+-- read a moment ago is still the score this raises.
 --
 -- `points` is what this call adds, already resolved from the press mode by the
 -- caller: the whole 5 in `single` mode, the presses reported in `multiple`. The
