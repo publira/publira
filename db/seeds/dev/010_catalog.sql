@@ -111,23 +111,46 @@ SET tenant_id = EXCLUDED.tenant_id,
     published_at = EXCLUDED.published_at,
     updated_at = NOW();
 
+-- Every tenth series has ended and every tenth-but-five is paused, so the
+-- storefront's status filter has all three states to select between and each
+-- of the two narrow ones answers with a page rather than an empty state.
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
     WHERE t.domain = 'localhost'
+),
+seed_series AS (
+    SELECT
+        s.id,
+        s.public_id,
+        s.tenant_id,
+        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+    FROM series s
+    JOIN tenant_scope ts ON ts.id = s.tenant_id
+    WHERE s.title LIKE 'Seed Series %'
 )
-INSERT INTO series_listings (series_id, synopsis, reading_period_hours, tenant_id)
+INSERT INTO series_listings (
+    series_id,
+    synopsis,
+    reading_period_hours,
+    status,
+    tenant_id
+)
 SELECT
-    s.id,
-    FORMAT('Seed series synopsis for %s', s.public_id),
+    ss.id,
+    FORMAT('Seed series synopsis for %s', ss.public_id),
     72,
-    s.tenant_id
-FROM series s
-JOIN tenant_scope ts ON ts.id = s.tenant_id
-WHERE s.title LIKE 'Seed Series %'
+    CASE ss.series_no % 10
+        WHEN 0 THEN 'completed'
+        WHEN 5 THEN 'hiatus'
+        ELSE 'ongoing'
+    END,
+    ss.tenant_id
+FROM seed_series ss
 ON CONFLICT (series_id) DO UPDATE
 SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours,
+    status = EXCLUDED.status,
     tenant_id = EXCLUDED.tenant_id;
 
 WITH tenant_scope AS (
@@ -264,3 +287,141 @@ JOIN tenants t ON t.id = s.tenant_id
 WHERE el.episode_id = e.id
     AND t.domain = 'localhost'
     AND e.title = 'Seed Episode 001-10';
+
+-- The two ways into the catalogue other than the alphabet. Genres are the
+-- classification the tenant curates, so they are fixed rows in a fixed order;
+-- tags exist because a series carries one, so they are seeded through the
+-- assignments below and nowhere else.
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.domain = 'localhost'
+),
+genre_seed (n, name, slug) AS (
+    VALUES
+        (1, 'Fantasy', 'fantasy'),
+        (2, 'Romance', 'romance'),
+        (3, 'Mystery', 'mystery'),
+        (4, 'Science fiction', 'science-fiction'),
+        (5, 'Slice of life', 'slice-of-life'),
+        (6, 'Action', 'action')
+)
+INSERT INTO genres (id, tenant_id, public_id, name, slug, display_order)
+SELECT
+    (
+        '018f0e74-'
+        || LPAD(TO_HEX(gs.n), 4, '0')
+        || '-7000-8000-'
+        || LPAD(TO_HEX(gs.n), 12, '0')
+    )::uuid,
+    ts.id,
+    'SeedGENR' || TRANSLATE(LPAD(gs.n::text, 4, '0'), '0', 'A'),
+    gs.name,
+    gs.slug,
+    gs.n
+FROM genre_seed gs
+CROSS JOIN tenant_scope ts
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    name = EXCLUDED.name,
+    slug = EXCLUDED.slug,
+    display_order = EXCLUDED.display_order;
+
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.domain = 'localhost'
+),
+tag_seed (n, name, slug) AS (
+    VALUES
+        (1, 'Time travel', 'time-travel'),
+        (2, 'School life', 'school-life'),
+        (3, 'Found family', 'found-family'),
+        (4, 'Slow burn', 'slow-burn')
+)
+INSERT INTO tags (id, tenant_id, name, slug)
+SELECT
+    (
+        '018f0e75-'
+        || LPAD(TO_HEX(tg.n), 4, '0')
+        || '-7000-8000-'
+        || LPAD(TO_HEX(tg.n), 12, '0')
+    )::uuid,
+    ts.id,
+    tg.name,
+    tg.slug
+FROM tag_seed tg
+CROSS JOIN tenant_scope ts
+ON CONFLICT (tenant_id, slug) DO UPDATE
+SET name = EXCLUDED.name;
+
+-- One genre and one tag each, dealt round-robin over the series in title
+-- order, so every genre and every tag holds a page of series and the filtered
+-- lists stay the same between runs.
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.domain = 'localhost'
+),
+seed_series AS (
+    SELECT
+        s.id,
+        s.tenant_id,
+        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+    FROM series s
+    JOIN tenant_scope ts ON ts.id = s.tenant_id
+    WHERE s.title LIKE 'Seed Series %'
+),
+seed_genres AS (
+    SELECT
+        g.id,
+        g.tenant_id,
+        g.display_order AS genre_no
+    FROM genres g
+    JOIN tenant_scope ts ON ts.id = g.tenant_id
+    WHERE g.public_id LIKE 'SeedGENR%'
+)
+INSERT INTO series_genres (tenant_id, series_id, genre_id)
+SELECT
+    ss.tenant_id,
+    ss.id,
+    sg.id
+FROM seed_series ss
+JOIN seed_genres sg
+    ON sg.tenant_id = ss.tenant_id
+    AND sg.genre_no = ((ss.series_no - 1) % 6) + 1
+ON CONFLICT (series_id, genre_id) DO NOTHING;
+
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.domain = 'localhost'
+),
+seed_series AS (
+    SELECT
+        s.id,
+        s.tenant_id,
+        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+    FROM series s
+    JOIN tenant_scope ts ON ts.id = s.tenant_id
+    WHERE s.title LIKE 'Seed Series %'
+),
+seed_tags AS (
+    SELECT
+        tg.id,
+        tg.tenant_id,
+        ROW_NUMBER() OVER (ORDER BY tg.slug) AS tag_no
+    FROM tags tg
+    JOIN tenant_scope ts ON ts.id = tg.tenant_id
+    WHERE tg.slug IN ('found-family', 'school-life', 'slow-burn', 'time-travel')
+)
+INSERT INTO series_tags (tenant_id, series_id, tag_id)
+SELECT
+    ss.tenant_id,
+    ss.id,
+    st.id
+FROM seed_series ss
+JOIN seed_tags st
+    ON st.tenant_id = ss.tenant_id
+    AND st.tag_no = ((ss.series_no - 1) % 4) + 1
+ON CONFLICT (series_id, tag_id) DO NOTHING;
