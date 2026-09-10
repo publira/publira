@@ -107,8 +107,13 @@ type CreateSeriesRequest struct {
 	// Who the series is credited to. The order given is the order within a role,
 	// so an editor decides which of two artists is named first.
 	CreatorCredits []*SeriesCreatorCredit `protobuf:"bytes,18,rep,name=creator_credits,json=creatorCredits,proto3" json:"creator_credits,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The mode this series publishes comments under, overriding the tenant's.
+	// COMMENT_MODE_UNSPECIFIED is the series stating nothing of its own, which
+	// is what leaves it following the tenant setting — including afterwards,
+	// when that setting changes.
+	CommentMode   v1.CommentMode `protobuf:"varint,19,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateSeriesRequest) Reset() {
@@ -246,9 +251,20 @@ func (x *CreateSeriesRequest) GetCreatorCredits() []*SeriesCreatorCredit {
 	return nil
 }
 
+func (x *CreateSeriesRequest) GetCommentMode() v1.CommentMode {
+	if x != nil {
+		return x.CommentMode
+	}
+	return v1.CommentMode(0)
+}
+
 type CreateSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Series *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	// The series' own mode, as it was stored. It rides beside Series rather than
+	// in it because Series is what the storefront reads too, and there the
+	// answer a page needs is the tenant and the series resolved together.
+	CommentMode   v1.CommentMode `protobuf:"varint,2,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -290,6 +306,13 @@ func (x *CreateSeriesResponse) GetSeries() *v1.Series {
 	return nil
 }
 
+func (x *CreateSeriesResponse) GetCommentMode() v1.CommentMode {
+	if x != nil {
+		return x.CommentMode
+	}
+	return v1.CommentMode(0)
+}
+
 type UpdateSeriesRequest struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -319,8 +342,13 @@ type UpdateSeriesRequest struct {
 	TagNames []string `protobuf:"bytes,17,rep,name=tag_names,json=tagNames,proto3" json:"tag_names,omitempty"`
 	// Likewise the whole credit list, replacing every credit the series had.
 	CreatorCredits []*SeriesCreatorCredit `protobuf:"bytes,18,rep,name=creator_credits,json=creatorCredits,proto3" json:"creator_credits,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The mode this series publishes comments under, overriding the tenant's.
+	// COMMENT_MODE_UNSPECIFIED is the series stating nothing of its own, which
+	// is what leaves it following the tenant setting — including afterwards,
+	// when that setting changes.
+	CommentMode   v1.CommentMode `protobuf:"varint,19,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateSeriesRequest) Reset() {
@@ -472,9 +500,18 @@ func (x *UpdateSeriesRequest) GetCreatorCredits() []*SeriesCreatorCredit {
 	return nil
 }
 
+func (x *UpdateSeriesRequest) GetCommentMode() v1.CommentMode {
+	if x != nil {
+		return x.CommentMode
+	}
+	return v1.CommentMode(0)
+}
+
 type UpdateSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Series *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	// The series' own mode, as it was stored.
+	CommentMode   v1.CommentMode `protobuf:"varint,2,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -514,6 +551,13 @@ func (x *UpdateSeriesResponse) GetSeries() *v1.Series {
 		return x.Series
 	}
 	return nil
+}
+
+func (x *UpdateSeriesResponse) GetCommentMode() v1.CommentMode {
+	if x != nil {
+		return x.CommentMode
+	}
+	return v1.CommentMode(0)
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -702,8 +746,12 @@ func (x *GetSeriesRequest) GetPublicId() string {
 }
 
 type GetSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Series *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	// The series' own mode, and COMMENT_MODE_UNSPECIFIED while it follows the
+	// tenant's. The form offers the tenant setting as one of its options, so it
+	// needs the two apart.
+	CommentMode   v1.CommentMode `protobuf:"varint,2,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -743,6 +791,13 @@ func (x *GetSeriesResponse) GetSeries() *v1.Series {
 		return x.Series
 	}
 	return nil
+}
+
+func (x *GetSeriesResponse) GetCommentMode() v1.CommentMode {
+	if x != nil {
+		return x.CommentMode
+	}
+	return v1.CommentMode(0)
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -2567,7 +2622,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"g\n" +
 	"\x13SeriesCreatorCredit\x12*\n" +
 	"\x11creator_public_id\x18\x01 \x01(\tR\x0fcreatorPublicId\x12$\n" +
-	"\x0erole_public_id\x18\x02 \x01(\tR\frolePublicId\"\xe9\x05\n" +
+	"\x0erole_public_id\x18\x02 \x01(\tR\frolePublicId\"\xab\x06\n" +
 	"\x13CreateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -2584,9 +2639,11 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12(\n" +
 	"\x10genre_public_ids\x18\x10 \x03(\tR\x0egenrePublicIds\x12\x1b\n" +
 	"\ttag_names\x18\x11 \x03(\tR\btagNames\x12N\n" +
-	"\x0fcreator_credits\x18\x12 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCreditsJ\x04\b\a\x10\bR\x12creator_public_ids\"H\n" +
+	"\x0fcreator_credits\x18\x12 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\x12@\n" +
+	"\fcomment_mode\x18\x13 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentModeJ\x04\b\a\x10\bR\x12creator_public_ids\"\x8a\x01\n" +
 	"\x14CreateSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xb9\x06\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x12@\n" +
+	"\fcomment_mode\x18\x02 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\"\xfb\x06\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -2606,9 +2663,11 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12(\n" +
 	"\x10genre_public_ids\x18\x10 \x03(\tR\x0egenrePublicIds\x12\x1b\n" +
 	"\ttag_names\x18\x11 \x03(\tR\btagNames\x12N\n" +
-	"\x0fcreator_credits\x18\x12 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCreditsJ\x04\b\a\x10\bR\x12creator_public_ids\"H\n" +
+	"\x0fcreator_credits\x18\x12 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\x12@\n" +
+	"\fcomment_mode\x18\x13 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentModeJ\x04\b\a\x10\bR\x12creator_public_ids\"\x8a\x01\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\x86\x01\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x12@\n" +
+	"\fcomment_mode\x18\x02 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\"\x86\x01\n" +
 	"\x11ListSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -2621,9 +2680,10 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"next_token\x18\x04 \x01(\tR\tnextToken\"h\n" +
 	"\x10GetSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"E\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x87\x01\n" +
 	"\x11GetSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xa4\x01\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x12@\n" +
+	"\fcomment_mode\x18\x02 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\"\xa4\x01\n" +
 	"\x13ListEpisodesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12\x14\n" +
@@ -2821,98 +2881,104 @@ var file_publira_admin_v1_series_proto_goTypes = []any{
 	(*v1.TenantContext)(nil),                        // 40: publira.types.v1.TenantContext
 	(v1.SeriesStatus)(0),                            // 41: publira.types.v1.SeriesStatus
 	(v1.SeriesAgeRating)(0),                         // 42: publira.types.v1.SeriesAgeRating
-	(*v1.Series)(nil),                               // 43: publira.types.v1.Series
-	(*v1.Episode)(nil),                              // 44: publira.types.v1.Episode
-	(*v1.EpisodeImage)(nil),                         // 45: publira.types.v1.EpisodeImage
-	(*v1.Creator)(nil),                              // 46: publira.types.v1.Creator
-	(*v1.ImageCropRect)(nil),                        // 47: publira.types.v1.ImageCropRect
+	(v1.CommentMode)(0),                             // 43: publira.types.v1.CommentMode
+	(*v1.Series)(nil),                               // 44: publira.types.v1.Series
+	(*v1.Episode)(nil),                              // 45: publira.types.v1.Episode
+	(*v1.EpisodeImage)(nil),                         // 46: publira.types.v1.EpisodeImage
+	(*v1.Creator)(nil),                              // 47: publira.types.v1.Creator
+	(*v1.ImageCropRect)(nil),                        // 48: publira.types.v1.ImageCropRect
 }
 var file_publira_admin_v1_series_proto_depIdxs = []int32{
 	40, // 0: publira.admin.v1.CreateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	41, // 1: publira.admin.v1.CreateSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
 	42, // 2: publira.admin.v1.CreateSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
 	0,  // 3: publira.admin.v1.CreateSeriesRequest.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
-	43, // 4: publira.admin.v1.CreateSeriesResponse.series:type_name -> publira.types.v1.Series
-	40, // 5: publira.admin.v1.UpdateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	41, // 6: publira.admin.v1.UpdateSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	42, // 7: publira.admin.v1.UpdateSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	0,  // 8: publira.admin.v1.UpdateSeriesRequest.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
-	43, // 9: publira.admin.v1.UpdateSeriesResponse.series:type_name -> publira.types.v1.Series
-	40, // 10: publira.admin.v1.ListSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	43, // 11: publira.admin.v1.ListSeriesResponse.series:type_name -> publira.types.v1.Series
-	40, // 12: publira.admin.v1.GetSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	43, // 13: publira.admin.v1.GetSeriesResponse.series:type_name -> publira.types.v1.Series
-	40, // 14: publira.admin.v1.ListEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	44, // 15: publira.admin.v1.ListEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
-	40, // 16: publira.admin.v1.GetEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	44, // 17: publira.admin.v1.GetEpisodeResponse.episode:type_name -> publira.types.v1.Episode
-	40, // 18: publira.admin.v1.ReorderEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	44, // 19: publira.admin.v1.ReorderEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
-	40, // 20: publira.admin.v1.CreateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	44, // 21: publira.admin.v1.CreateEpisodeResponse.episode:type_name -> publira.types.v1.Episode
-	40, // 22: publira.admin.v1.UploadEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	17, // 23: publira.admin.v1.UploadEpisodeImagesRequest.images:type_name -> publira.admin.v1.EpisodeImageUpload
-	45, // 24: publira.admin.v1.UploadEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	40, // 25: publira.admin.v1.ListEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	45, // 26: publira.admin.v1.ListEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	40, // 27: publira.admin.v1.ReorderEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	45, // 28: publira.admin.v1.ReorderEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
-	40, // 29: publira.admin.v1.UpdateEpisodePublishScheduleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	44, // 30: publira.admin.v1.UpdateEpisodePublishScheduleResponse.episode:type_name -> publira.types.v1.Episode
-	40, // 31: publira.admin.v1.ListEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	46, // 32: publira.admin.v1.ListEpisodeCreditsResponse.creators:type_name -> publira.types.v1.Creator
-	40, // 33: publira.admin.v1.ReplaceEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 34: publira.admin.v1.ReplaceEpisodeCreditsRequest.creator_credits:type_name -> publira.admin.v1.EpisodeCreatorCredit
-	46, // 35: publira.admin.v1.ReplaceEpisodeCreditsResponse.creators:type_name -> publira.types.v1.Creator
-	40, // 36: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	47, // 37: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
-	43, // 38: publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse.series:type_name -> publira.types.v1.Series
-	40, // 39: publira.admin.v1.CreateEpisodeFreeWindowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 40: publira.admin.v1.CreateEpisodeFreeWindowResponse.free_window:type_name -> publira.admin.v1.AdminEpisodeFreeWindow
-	40, // 41: publira.admin.v1.CreateSeriesFreeWindowsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 42: publira.admin.v1.CreateSeriesFreeWindowsResponse.free_windows:type_name -> publira.admin.v1.AdminEpisodeFreeWindow
-	40, // 43: publira.admin.v1.DeleteEpisodeFreeWindowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 44: publira.admin.v1.AdminSeriesService.CreateSeries:input_type -> publira.admin.v1.CreateSeriesRequest
-	3,  // 45: publira.admin.v1.AdminSeriesService.UpdateSeries:input_type -> publira.admin.v1.UpdateSeriesRequest
-	5,  // 46: publira.admin.v1.AdminSeriesService.ListSeries:input_type -> publira.admin.v1.ListSeriesRequest
-	7,  // 47: publira.admin.v1.AdminSeriesService.GetSeries:input_type -> publira.admin.v1.GetSeriesRequest
-	9,  // 48: publira.admin.v1.AdminSeriesService.ListEpisodes:input_type -> publira.admin.v1.ListEpisodesRequest
-	11, // 49: publira.admin.v1.AdminSeriesService.GetEpisode:input_type -> publira.admin.v1.GetEpisodeRequest
-	13, // 50: publira.admin.v1.AdminSeriesService.ReorderEpisodes:input_type -> publira.admin.v1.ReorderEpisodesRequest
-	15, // 51: publira.admin.v1.AdminSeriesService.CreateEpisode:input_type -> publira.admin.v1.CreateEpisodeRequest
-	18, // 52: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:input_type -> publira.admin.v1.UploadEpisodeImagesRequest
-	20, // 53: publira.admin.v1.AdminSeriesService.ListEpisodeImages:input_type -> publira.admin.v1.ListEpisodeImagesRequest
-	22, // 54: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:input_type -> publira.admin.v1.ReorderEpisodeImagesRequest
-	24, // 55: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.admin.v1.UpdateEpisodePublishScheduleRequest
-	27, // 56: publira.admin.v1.AdminSeriesService.ListEpisodeCredits:input_type -> publira.admin.v1.ListEpisodeCreditsRequest
-	29, // 57: publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits:input_type -> publira.admin.v1.ReplaceEpisodeCreditsRequest
-	31, // 58: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:input_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest
-	34, // 59: publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow:input_type -> publira.admin.v1.CreateEpisodeFreeWindowRequest
-	36, // 60: publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows:input_type -> publira.admin.v1.CreateSeriesFreeWindowsRequest
-	38, // 61: publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow:input_type -> publira.admin.v1.DeleteEpisodeFreeWindowRequest
-	2,  // 62: publira.admin.v1.AdminSeriesService.CreateSeries:output_type -> publira.admin.v1.CreateSeriesResponse
-	4,  // 63: publira.admin.v1.AdminSeriesService.UpdateSeries:output_type -> publira.admin.v1.UpdateSeriesResponse
-	6,  // 64: publira.admin.v1.AdminSeriesService.ListSeries:output_type -> publira.admin.v1.ListSeriesResponse
-	8,  // 65: publira.admin.v1.AdminSeriesService.GetSeries:output_type -> publira.admin.v1.GetSeriesResponse
-	10, // 66: publira.admin.v1.AdminSeriesService.ListEpisodes:output_type -> publira.admin.v1.ListEpisodesResponse
-	12, // 67: publira.admin.v1.AdminSeriesService.GetEpisode:output_type -> publira.admin.v1.GetEpisodeResponse
-	14, // 68: publira.admin.v1.AdminSeriesService.ReorderEpisodes:output_type -> publira.admin.v1.ReorderEpisodesResponse
-	16, // 69: publira.admin.v1.AdminSeriesService.CreateEpisode:output_type -> publira.admin.v1.CreateEpisodeResponse
-	19, // 70: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:output_type -> publira.admin.v1.UploadEpisodeImagesResponse
-	21, // 71: publira.admin.v1.AdminSeriesService.ListEpisodeImages:output_type -> publira.admin.v1.ListEpisodeImagesResponse
-	23, // 72: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:output_type -> publira.admin.v1.ReorderEpisodeImagesResponse
-	25, // 73: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.admin.v1.UpdateEpisodePublishScheduleResponse
-	28, // 74: publira.admin.v1.AdminSeriesService.ListEpisodeCredits:output_type -> publira.admin.v1.ListEpisodeCreditsResponse
-	30, // 75: publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits:output_type -> publira.admin.v1.ReplaceEpisodeCreditsResponse
-	32, // 76: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:output_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse
-	35, // 77: publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow:output_type -> publira.admin.v1.CreateEpisodeFreeWindowResponse
-	37, // 78: publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows:output_type -> publira.admin.v1.CreateSeriesFreeWindowsResponse
-	39, // 79: publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow:output_type -> publira.admin.v1.DeleteEpisodeFreeWindowResponse
-	62, // [62:80] is the sub-list for method output_type
-	44, // [44:62] is the sub-list for method input_type
-	44, // [44:44] is the sub-list for extension type_name
-	44, // [44:44] is the sub-list for extension extendee
-	0,  // [0:44] is the sub-list for field type_name
+	43, // 4: publira.admin.v1.CreateSeriesRequest.comment_mode:type_name -> publira.types.v1.CommentMode
+	44, // 5: publira.admin.v1.CreateSeriesResponse.series:type_name -> publira.types.v1.Series
+	43, // 6: publira.admin.v1.CreateSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	40, // 7: publira.admin.v1.UpdateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	41, // 8: publira.admin.v1.UpdateSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	42, // 9: publira.admin.v1.UpdateSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
+	0,  // 10: publira.admin.v1.UpdateSeriesRequest.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
+	43, // 11: publira.admin.v1.UpdateSeriesRequest.comment_mode:type_name -> publira.types.v1.CommentMode
+	44, // 12: publira.admin.v1.UpdateSeriesResponse.series:type_name -> publira.types.v1.Series
+	43, // 13: publira.admin.v1.UpdateSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	40, // 14: publira.admin.v1.ListSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	44, // 15: publira.admin.v1.ListSeriesResponse.series:type_name -> publira.types.v1.Series
+	40, // 16: publira.admin.v1.GetSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	44, // 17: publira.admin.v1.GetSeriesResponse.series:type_name -> publira.types.v1.Series
+	43, // 18: publira.admin.v1.GetSeriesResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	40, // 19: publira.admin.v1.ListEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	45, // 20: publira.admin.v1.ListEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
+	40, // 21: publira.admin.v1.GetEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	45, // 22: publira.admin.v1.GetEpisodeResponse.episode:type_name -> publira.types.v1.Episode
+	40, // 23: publira.admin.v1.ReorderEpisodesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	45, // 24: publira.admin.v1.ReorderEpisodesResponse.episodes:type_name -> publira.types.v1.Episode
+	40, // 25: publira.admin.v1.CreateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	45, // 26: publira.admin.v1.CreateEpisodeResponse.episode:type_name -> publira.types.v1.Episode
+	40, // 27: publira.admin.v1.UploadEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 28: publira.admin.v1.UploadEpisodeImagesRequest.images:type_name -> publira.admin.v1.EpisodeImageUpload
+	46, // 29: publira.admin.v1.UploadEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	40, // 30: publira.admin.v1.ListEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	46, // 31: publira.admin.v1.ListEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	40, // 32: publira.admin.v1.ReorderEpisodeImagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	46, // 33: publira.admin.v1.ReorderEpisodeImagesResponse.images:type_name -> publira.types.v1.EpisodeImage
+	40, // 34: publira.admin.v1.UpdateEpisodePublishScheduleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	45, // 35: publira.admin.v1.UpdateEpisodePublishScheduleResponse.episode:type_name -> publira.types.v1.Episode
+	40, // 36: publira.admin.v1.ListEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	47, // 37: publira.admin.v1.ListEpisodeCreditsResponse.creators:type_name -> publira.types.v1.Creator
+	40, // 38: publira.admin.v1.ReplaceEpisodeCreditsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 39: publira.admin.v1.ReplaceEpisodeCreditsRequest.creator_credits:type_name -> publira.admin.v1.EpisodeCreatorCredit
+	47, // 40: publira.admin.v1.ReplaceEpisodeCreditsResponse.creators:type_name -> publira.types.v1.Creator
+	40, // 41: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	48, // 42: publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
+	44, // 43: publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse.series:type_name -> publira.types.v1.Series
+	40, // 44: publira.admin.v1.CreateEpisodeFreeWindowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	33, // 45: publira.admin.v1.CreateEpisodeFreeWindowResponse.free_window:type_name -> publira.admin.v1.AdminEpisodeFreeWindow
+	40, // 46: publira.admin.v1.CreateSeriesFreeWindowsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	33, // 47: publira.admin.v1.CreateSeriesFreeWindowsResponse.free_windows:type_name -> publira.admin.v1.AdminEpisodeFreeWindow
+	40, // 48: publira.admin.v1.DeleteEpisodeFreeWindowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 49: publira.admin.v1.AdminSeriesService.CreateSeries:input_type -> publira.admin.v1.CreateSeriesRequest
+	3,  // 50: publira.admin.v1.AdminSeriesService.UpdateSeries:input_type -> publira.admin.v1.UpdateSeriesRequest
+	5,  // 51: publira.admin.v1.AdminSeriesService.ListSeries:input_type -> publira.admin.v1.ListSeriesRequest
+	7,  // 52: publira.admin.v1.AdminSeriesService.GetSeries:input_type -> publira.admin.v1.GetSeriesRequest
+	9,  // 53: publira.admin.v1.AdminSeriesService.ListEpisodes:input_type -> publira.admin.v1.ListEpisodesRequest
+	11, // 54: publira.admin.v1.AdminSeriesService.GetEpisode:input_type -> publira.admin.v1.GetEpisodeRequest
+	13, // 55: publira.admin.v1.AdminSeriesService.ReorderEpisodes:input_type -> publira.admin.v1.ReorderEpisodesRequest
+	15, // 56: publira.admin.v1.AdminSeriesService.CreateEpisode:input_type -> publira.admin.v1.CreateEpisodeRequest
+	18, // 57: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:input_type -> publira.admin.v1.UploadEpisodeImagesRequest
+	20, // 58: publira.admin.v1.AdminSeriesService.ListEpisodeImages:input_type -> publira.admin.v1.ListEpisodeImagesRequest
+	22, // 59: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:input_type -> publira.admin.v1.ReorderEpisodeImagesRequest
+	24, // 60: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.admin.v1.UpdateEpisodePublishScheduleRequest
+	27, // 61: publira.admin.v1.AdminSeriesService.ListEpisodeCredits:input_type -> publira.admin.v1.ListEpisodeCreditsRequest
+	29, // 62: publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits:input_type -> publira.admin.v1.ReplaceEpisodeCreditsRequest
+	31, // 63: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:input_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageRequest
+	34, // 64: publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow:input_type -> publira.admin.v1.CreateEpisodeFreeWindowRequest
+	36, // 65: publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows:input_type -> publira.admin.v1.CreateSeriesFreeWindowsRequest
+	38, // 66: publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow:input_type -> publira.admin.v1.DeleteEpisodeFreeWindowRequest
+	2,  // 67: publira.admin.v1.AdminSeriesService.CreateSeries:output_type -> publira.admin.v1.CreateSeriesResponse
+	4,  // 68: publira.admin.v1.AdminSeriesService.UpdateSeries:output_type -> publira.admin.v1.UpdateSeriesResponse
+	6,  // 69: publira.admin.v1.AdminSeriesService.ListSeries:output_type -> publira.admin.v1.ListSeriesResponse
+	8,  // 70: publira.admin.v1.AdminSeriesService.GetSeries:output_type -> publira.admin.v1.GetSeriesResponse
+	10, // 71: publira.admin.v1.AdminSeriesService.ListEpisodes:output_type -> publira.admin.v1.ListEpisodesResponse
+	12, // 72: publira.admin.v1.AdminSeriesService.GetEpisode:output_type -> publira.admin.v1.GetEpisodeResponse
+	14, // 73: publira.admin.v1.AdminSeriesService.ReorderEpisodes:output_type -> publira.admin.v1.ReorderEpisodesResponse
+	16, // 74: publira.admin.v1.AdminSeriesService.CreateEpisode:output_type -> publira.admin.v1.CreateEpisodeResponse
+	19, // 75: publira.admin.v1.AdminSeriesService.UploadEpisodeImages:output_type -> publira.admin.v1.UploadEpisodeImagesResponse
+	21, // 76: publira.admin.v1.AdminSeriesService.ListEpisodeImages:output_type -> publira.admin.v1.ListEpisodeImagesResponse
+	23, // 77: publira.admin.v1.AdminSeriesService.ReorderEpisodeImages:output_type -> publira.admin.v1.ReorderEpisodeImagesResponse
+	25, // 78: publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.admin.v1.UpdateEpisodePublishScheduleResponse
+	28, // 79: publira.admin.v1.AdminSeriesService.ListEpisodeCredits:output_type -> publira.admin.v1.ListEpisodeCreditsResponse
+	30, // 80: publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits:output_type -> publira.admin.v1.ReplaceEpisodeCreditsResponse
+	32, // 81: publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage:output_type -> publira.admin.v1.UploadSeriesEyeCatchAspectImageResponse
+	35, // 82: publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow:output_type -> publira.admin.v1.CreateEpisodeFreeWindowResponse
+	37, // 83: publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows:output_type -> publira.admin.v1.CreateSeriesFreeWindowsResponse
+	39, // 84: publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow:output_type -> publira.admin.v1.DeleteEpisodeFreeWindowResponse
+	67, // [67:85] is the sub-list for method output_type
+	49, // [49:67] is the sub-list for method input_type
+	49, // [49:49] is the sub-list for extension type_name
+	49, // [49:49] is the sub-list for extension extendee
+	0,  // [0:49] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_series_proto_init() }

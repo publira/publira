@@ -252,6 +252,10 @@ SELECT e.id,
     -- The rating a client interposes its confirmation on. Reading it here
     -- keeps the episode detail one round trip.
     sl.age_rating AS series_age_rating,
+    -- The series' own comment mode, and NULL when it follows the tenant's.
+    -- Posting resolves the two, and reads the episode either way, so the
+    -- override travels with the episode rather than costing a query of its own.
+    sl.comment_mode AS series_comment_mode,
     -- The end of the free window covering this instant, or NULL when none
     -- does. Windows on one episode cannot overlap, so at most one row answers.
     -- A priced episode inside one reads as free until this moment, which is

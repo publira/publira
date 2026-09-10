@@ -31,14 +31,16 @@ type Querier interface {
 	// statement is not removed a second time under a reason that would rewrite
 	// theirs.
 	//
-	// The join to tenant_config is inner rather than outer, and needs no default
-	// for a missing row: a comment cannot exist without one. Posting reads
-	// comment_mode, a tenant with no config row reads as 'disabled', and a disabled
-	// tenant stores no comment at all — so the row is written before the first
-	// comment is, and nothing deletes it afterwards except the tenant going away
-	// with its comments. Coming back empty here would mean a comment on a tenant
-	// that never enabled commenting, and inventing a threshold for that is
-	// inventing the tenant's policy.
+	// The threshold is read through a sub-select with a fallback rather than by
+	// joining tenant_config in, because a comment can exist on a tenant that has
+	// no config row: a series overriding series_listings.comment_mode turns
+	// commenting on by itself, and nothing about that write creates the tenant's
+	// own comment settings. A join would answer that comment with no row at all
+	// and leave it the one comment on the site the threshold never reaches.
+	//
+	// The fallback is the default tenant_config.comment_auto_hide_report_threshold
+	// carries, so a tenant that has saved nothing is protected by the same number
+	// as one that saved the default; change the two together.
 	AutoHideEpisodeCommentAtReportThreshold(ctx context.Context, arg AutoHideEpisodeCommentAtReportThresholdParams) (string, error)
 	// The copy that makes the episode the unit that is credited. It runs in the
 	// transaction that creates the episode, so an episode never exists without the

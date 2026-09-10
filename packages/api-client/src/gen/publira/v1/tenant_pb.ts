@@ -98,9 +98,11 @@ export type GetTenantResponse = Message<"publira.v1.GetTenantResponse"> & {
   acceptsPayments: boolean;
 
   /**
-   * How reader comments on this tenant's episodes are published. The public
-   * site reads it to decide whether an episode page offers a comment section
-   * at all, so it is answered here rather than only where a comment is posted.
+   * How reader comments on this tenant's episodes are published, for every
+   * series that states nothing of its own. A series carrying its own mode
+   * overrides this one, and CatalogService.GetSeriesDetail carries the two
+   * already resolved, so a page about one series reads the mode there rather
+   * than here.
    *
    * @generated from field: publira.types.v1.CommentMode comment_mode = 11;
    */

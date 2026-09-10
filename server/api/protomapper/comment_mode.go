@@ -1,6 +1,7 @@
 package protomapper
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/publira/publira/server/internal/commentmode"
@@ -47,4 +48,34 @@ func CommentModeToStored(mode publirattypesv1.CommentMode) (string, error) {
 	default:
 		return "", fmt.Errorf("%w: %s", commentmode.ErrInvalid, mode)
 	}
+}
+
+// CommentModeOverrideFromStored maps series_listings.comment_mode — the mode
+// one series states instead of following its tenant's — onto the same enum.
+//
+// A NULL column is not a fault here the way an unknown value is: it is the
+// series stating nothing, which COMMENT_MODE_UNSPECIFIED reports so the form
+// can offer "follow the tenant" as the choice it is.
+func CommentModeOverrideFromStored(stored sql.NullString) (publirattypesv1.CommentMode, error) {
+	if !stored.Valid {
+		return publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED, nil
+	}
+	return CommentModeFromStored(stored.String)
+}
+
+// CommentModeOverrideToStored maps a requested override onto the value to
+// store.
+//
+// COMMENT_MODE_UNSPECIFIED is the one place that value names something: a
+// series that goes back to following its tenant, stored as no value at all so
+// it keeps following that setting when the tenant changes it.
+func CommentModeOverrideToStored(mode publirattypesv1.CommentMode) (sql.NullString, error) {
+	if mode == publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED {
+		return sql.NullString{}, nil
+	}
+	stored, err := CommentModeToStored(mode)
+	if err != nil {
+		return sql.NullString{}, err
+	}
+	return sql.NullString{String: stored, Valid: true}, nil
 }

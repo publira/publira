@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"net/http/httptest"
 	"testing"
@@ -38,6 +39,22 @@ func (e *publicDBEnv) setCommentMode(t *testing.T, tenantID uuid.UUID, mode stri
 		ON CONFLICT (tenant_id) DO UPDATE SET comment_mode = EXCLUDED.comment_mode
 	`, tenantID, mode); err != nil {
 		t.Fatalf("set comment_mode = %s: %v", mode, err)
+	}
+}
+
+// setSeriesCommentMode writes one series' own publishing policy, which is what
+// the tenant's setting answers for while it is empty. An empty mode clears the
+// override again.
+func (e *publicDBEnv) setSeriesCommentMode(t *testing.T, seriesID uuid.UUID, mode string) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	override := sql.NullString{String: mode, Valid: mode != ""}
+	if _, err := e.PG.DB.ExecContext(ctx, `
+		UPDATE series_listings SET comment_mode = $2 WHERE series_id = $1
+	`, seriesID, override); err != nil {
+		t.Fatalf("set series comment_mode = %q: %v", mode, err)
 	}
 }
 
@@ -208,6 +225,7 @@ type commentFixture struct {
 	env     *publicDBEnv
 	tenant  testutil.Tenant
 	member  testutil.TenantUser
+	series  testutil.Series
 	episode testutil.Episode
 }
 
@@ -229,7 +247,7 @@ func newCommentFixtureWithGuards(t *testing.T, prefix string, guards readerGuard
 		Title:    "Commented episode",
 		Status:   testutil.EpisodeStatusPublished,
 	})
-	return commentFixture{env: env, tenant: tenant, member: member, episode: episode}
+	return commentFixture{env: env, tenant: tenant, member: member, series: series, episode: episode}
 }
 
 func TestDBPostEpisodeCommentFollowsTheTenantCommentMode(t *testing.T) {
@@ -273,6 +291,62 @@ func TestDBPostEpisodeCommentFollowsTheTenantCommentMode(t *testing.T) {
 	}
 	if got := myCommentPublicIDs(env.listMyComments(t, tenant, member, episode.PublicID)); len(got) != 1 || got[0] != awaiting.PublicId {
 		t.Fatalf("own comments = %v, want the unapproved %s rendered back to its author", got, awaiting.PublicId)
+	}
+}
+
+// A series states its own mode or it states none, and the tenant answers only
+// for the ones that state none. Every pairing is here, because the pairing is
+// the whole feature: a tenant with commenting on everywhere but one title, and
+// a tenant with it off everywhere but one.
+func TestDBPostEpisodeCommentFollowsTheSeriesModeBeforeTheTenants(t *testing.T) {
+	fixture := newCommentFixture(t, "SOV")
+	env, tenant, member, series, episode := fixture.env, fixture.tenant, fixture.member, fixture.series, fixture.episode
+
+	// A tenant that has never opened its comment settings has no config row at
+	// all, and a series that overrides it needs none: the override is what
+	// decides.
+	env.setSeriesCommentMode(t, series.ID, "immediate")
+	published := env.mustPostComment(t, tenant, member, episode.PublicID, "The series opened commenting on its own.")
+	if published.AwaitingApproval {
+		t.Fatalf("comment under a series override of immediate = awaiting approval, want published")
+	}
+
+	env.setCommentMode(t, tenant.ID, "disabled")
+	env.setSeriesCommentMode(t, series.ID, "approval_required")
+	awaiting := env.mustPostComment(t, tenant, member, episode.PublicID, "This one waits for a moderator.")
+	if !awaiting.AwaitingApproval {
+		t.Fatalf("comment under a series override of approval_required = published, want awaiting approval")
+	}
+
+	// The other direction, and the case the override exists for: commenting is
+	// on across the tenant and off on this one series.
+	env.setCommentMode(t, tenant.ID, "immediate")
+	env.setSeriesCommentMode(t, series.ID, "disabled")
+	if _, err := env.postComment(t, tenant, member, episode.PublicID, "Not on this series."); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("PostEpisodeComment on a series that turned commenting off error = %v, want failed_precondition", err)
+	}
+
+	// A second series of the same tenant states nothing, so the tenant setting
+	// is what answers for it — while the first stays closed.
+	openSeries := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SOVOPENSER", Title: "Open series", Published: true})
+	openEpisode := env.PG.SeedEpisode(t, tenant.ID, openSeries.ID, testutil.EpisodeSeed{
+		PublicID: "SOVOPENEPS",
+		Title:    "Open episode",
+		Status:   testutil.EpisodeStatusPublished,
+	})
+	env.mustPostComment(t, tenant, member, openEpisode.PublicID, "This series follows the tenant.")
+
+	// Clearing the override puts the series back under the tenant, including
+	// the changes the tenant makes afterwards.
+	env.setSeriesCommentMode(t, series.ID, "")
+	inherited := env.mustPostComment(t, tenant, member, episode.PublicID, "Back under the tenant.")
+	if inherited.AwaitingApproval {
+		t.Fatalf("comment under an inherited immediate = awaiting approval, want published")
+	}
+	env.setCommentMode(t, tenant.ID, "approval_required")
+	inheritedPending := env.mustPostComment(t, tenant, member, episode.PublicID, "And under what it chose next.")
+	if !inheritedPending.AwaitingApproval {
+		t.Fatalf("comment under an inherited approval_required = published, want awaiting approval")
 	}
 }
 

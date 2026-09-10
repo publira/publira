@@ -115,6 +115,15 @@ message GetSeriesDetailResponse {
   // same bytes for everyone: whether a particular reader clears the number is
   // decided where the body is asked for, by GetEpisodeDetail.
   int32 required_minimum_age = 3;
+  // How comments on this series' episodes are published: the series' own mode
+  // when it states one, and the tenant's when it does not. It is the resolved
+  // answer rather than the override, so a client hides or shows the comment
+  // section from this field alone.
+  //
+  // Never COMMENT_MODE_UNSPECIFIED: a series that states nothing follows a
+  // tenant setting that always names a mode, and a stored value naming none
+  // fails this RPC.
+  publira.types.v1.CommentMode comment_mode = 4;
 }
 
 message GetEpisodeDetailRequest {

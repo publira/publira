@@ -86,9 +86,11 @@ type GetTenantResponse struct {
 	// Whether the tenant can currently accept episode payments. This never
 	// exposes payment-provider credentials or their configuration details.
 	AcceptsPayments bool `protobuf:"varint,10,opt,name=accepts_payments,json=acceptsPayments,proto3" json:"accepts_payments,omitempty"`
-	// How reader comments on this tenant's episodes are published. The public
-	// site reads it to decide whether an episode page offers a comment section
-	// at all, so it is answered here rather than only where a comment is posted.
+	// How reader comments on this tenant's episodes are published, for every
+	// series that states nothing of its own. A series carrying its own mode
+	// overrides this one, and CatalogService.GetSeriesDetail carries the two
+	// already resolved, so a page about one series reads the mode there rather
+	// than here.
 	CommentMode v1.CommentMode `protobuf:"varint,11,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
 	// Which of this tenant's age ratings a reader has to prove an age for. The
 	// public site reads it to decide whether the sign-up form asks for a birth

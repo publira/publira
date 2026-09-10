@@ -47,10 +47,19 @@ message CreateSeriesRequest {
   // Who the series is credited to. The order given is the order within a role,
   // so an editor decides which of two artists is named first.
   repeated SeriesCreatorCredit creator_credits = 18;
+  // The mode this series publishes comments under, overriding the tenant's.
+  // COMMENT_MODE_UNSPECIFIED is the series stating nothing of its own, which
+  // is what leaves it following the tenant setting — including afterwards,
+  // when that setting changes.
+  publira.types.v1.CommentMode comment_mode = 19;
 }
 
 message CreateSeriesResponse {
   publira.types.v1.Series series = 1;
+  // The series' own mode, as it was stored. It rides beside Series rather than
+  // in it because Series is what the storefront reads too, and there the
+  // answer a page needs is the tenant and the series resolved together.
+  publira.types.v1.CommentMode comment_mode = 2;
 }
 
 message UpdateSeriesRequest {
@@ -85,10 +94,17 @@ message UpdateSeriesRequest {
   repeated string tag_names = 17;
   // Likewise the whole credit list, replacing every credit the series had.
   repeated SeriesCreatorCredit creator_credits = 18;
+  // The mode this series publishes comments under, overriding the tenant's.
+  // COMMENT_MODE_UNSPECIFIED is the series stating nothing of its own, which
+  // is what leaves it following the tenant setting — including afterwards,
+  // when that setting changes.
+  publira.types.v1.CommentMode comment_mode = 19;
 }
 
 message UpdateSeriesResponse {
   publira.types.v1.Series series = 1;
+  // The series' own mode, as it was stored.
+  publira.types.v1.CommentMode comment_mode = 2;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -120,6 +136,10 @@ message GetSeriesRequest {
 
 message GetSeriesResponse {
   publira.types.v1.Series series = 1;
+  // The series' own mode, and COMMENT_MODE_UNSPECIFIED while it follows the
+  // tenant's. The form offers the tenant setting as one of its options, so it
+  // needs the two apart.
+  publira.types.v1.CommentMode comment_mode = 2;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

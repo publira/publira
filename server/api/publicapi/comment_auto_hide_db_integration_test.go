@@ -135,6 +135,35 @@ func TestDBReportThresholdHidesTheCommentOnlyOnceItIsReached(t *testing.T) {
 	}
 }
 
+// A series that turns commenting on by itself can collect comments on a tenant
+// that never opened its comment settings, so the threshold cannot be read out
+// of a tenant_config row that may not exist. The default the column carries is
+// what protects such a comment.
+func TestDBReportThresholdRunsWithoutATenantConfigRow(t *testing.T) {
+	fixture := newCommentFixture(t, "ANC")
+	env, tenant, member, series, episode := fixture.env, fixture.tenant, fixture.member, fixture.series, fixture.episode
+	env.setSeriesCommentMode(t, series.ID, "immediate")
+
+	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
+	if got := env.countRows(t, "SELECT COUNT(*) FROM tenant_config WHERE tenant_id = $1", tenant.ID); got != 0 {
+		t.Fatalf("tenant_config rows = %d, want the tenant to have saved nothing", got)
+	}
+
+	env.reportUntil(t, tenant, comment.PublicId, "ANCRDR", 2)
+	if got := env.commentRemoval(t, tenant, comment.PublicId); got.status != "published" {
+		t.Fatalf("comment status one report short of the default threshold = %q, want published", got.status)
+	}
+
+	env.reportUntil(t, tenant, comment.PublicId, "ANCLAST", 1)
+	removal := env.commentRemoval(t, tenant, comment.PublicId)
+	if removal.status != "hidden" {
+		t.Fatalf("comment status at the default threshold = %q, want hidden", removal.status)
+	}
+	if removal.hiddenReason != "auto_reports" {
+		t.Fatalf("hidden_reason = %q, want auto_reports", removal.hiddenReason)
+	}
+}
+
 // The removal is the tenant's own setting running, so the audit entry names no
 // account: the readers who reported only pressed "report".
 func TestDBReportThresholdRecordsAnAuditEntryWithNoActor(t *testing.T) {

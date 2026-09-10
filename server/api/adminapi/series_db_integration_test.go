@@ -212,6 +212,68 @@ func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
 	}
 }
 
+// The comment mode is the one listing field a save may leave unstated on
+// purpose: unspecified is the series following its tenant, and it has to be
+// storable both ways round, because a series that overrode the tenant must be
+// able to go back.
+func TestDBSeriesCommentModeOverrideRoundTrips(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTC", "tenant-c.example.com", "Tenant C", "TCUSER01", "admin@tenant-c.example.com")
+	client := env.seriesClient()
+
+	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		Tenant:      tenant.tenantContext(),
+		Title:       "Quiet Story",
+		IsPublished: true,
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	publicID := created.Msg.Series.PublicId
+	if created.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED {
+		t.Fatalf("created comment_mode = %s, want UNSPECIFIED so a new series follows its tenant", created.Msg.CommentMode)
+	}
+
+	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:      tenant.tenantContext(),
+		PublicId:    publicID,
+		Title:       "Quiet Story",
+		IsPublished: true,
+		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED,
+	}))
+	if err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+	if updated.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("updated comment_mode = %s, want DISABLED", updated.Msg.CommentMode)
+	}
+
+	got, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: publicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeries: %v", err)
+	}
+	if got.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("reloaded comment_mode = %s, want DISABLED", got.Msg.CommentMode)
+	}
+
+	// Back to following the tenant, which is the same field left unstated.
+	cleared, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:      tenant.tenantContext(),
+		PublicId:    publicID,
+		Title:       "Quiet Story",
+		IsPublished: true,
+	}))
+	if err != nil {
+		t.Fatalf("UpdateSeries clearing the override: %v", err)
+	}
+	if cleared.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED {
+		t.Fatalf("cleared comment_mode = %s, want UNSPECIFIED", cleared.Msg.CommentMode)
+	}
+}
+
 // A weekday outside the week never reaches the CHECK constraint: the RPC
 // refuses it, and the series keeps the schedule it had.
 func TestDBUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
