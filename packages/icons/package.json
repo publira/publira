@@ -67,6 +67,10 @@
       "types": "./dist/maximize-icon.d.mts",
       "default": "./dist/maximize-icon.mjs"
     },
+    "./megaphone-icon": {
+      "types": "./dist/megaphone-icon.d.mts",
+      "default": "./dist/megaphone-icon.mjs"
+    },
     "./menu-icon": {
       "types": "./dist/menu-icon.d.mts",
       "default": "./dist/menu-icon.mjs"

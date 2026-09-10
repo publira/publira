@@ -18,6 +18,7 @@ export default defineConfig({
     "src/image-icon.tsx",
     "src/logout-icon.tsx",
     "src/maximize-icon.tsx",
+    "src/megaphone-icon.tsx",
     "src/menu-icon.tsx",
     "src/minimize-icon.tsx",
     "src/settings-icon.tsx",

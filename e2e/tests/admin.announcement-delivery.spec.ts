@@ -8,6 +8,7 @@ import {
 } from "../src/admin";
 import { applyScenarioSql, runSql } from "../src/db";
 import {
+  openHostUserMenu,
   signInAsNotificationInboxMember,
   signInAsSeedMember,
 } from "../src/host";
@@ -119,7 +120,14 @@ test.describe("admin announcement delivery", () => {
       page.getByRole("cell", { exact: true, name: title })
     ).toBeVisible();
 
-    await signInAsNotificationInboxMember(page, "/announcements");
+    // The reader lands on another screen and reaches the inbox through the
+    // header account menu, which is the navigation that points at it. Going
+    // straight to `/announcements` would assert delivery to a page nothing
+    // leads to.
+    await signInAsNotificationInboxMember(page);
+    await openHostUserMenu(page);
+    await page.getByRole("menuitem", { name: "Announcements" }).click();
+    await expect(page).toHaveURL(/\/announcements\/?$/u);
     await expectLeadingAnnouncement(page, title);
 
     const delivered = announcementArticle(page, title);

@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu } from "@base-ui/react/menu";
-import { LogoutIcon, UserIcon } from "@publira/icons";
+import { LogoutIcon, MegaphoneIcon, UserIcon } from "@publira/icons";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -54,6 +54,26 @@ export const SiteLayoutUserMenuMyPageLink = ({
     render={<Link href={href} />}
   >
     <UserIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+    {children}
+  </Menu.LinkItem>
+);
+
+export const SiteLayoutUserMenuAnnouncementsLink = ({
+  children,
+  href,
+}: {
+  children: ReactNode;
+  href: string;
+}) => (
+  <Menu.LinkItem
+    className={itemClassName}
+    closeOnClick
+    render={<Link href={href} />}
+  >
+    <MegaphoneIcon
+      aria-hidden="true"
+      className="size-4 text-muted-foreground"
+    />
     {children}
   </Menu.LinkItem>
 );
