@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY idx_series_follows_tenant_series_user;

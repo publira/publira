@@ -1,11 +1,11 @@
 -- Scenario: a tenant whose notification inbox stays empty
 --
 -- The bell's accessible name carries the unread count, and publishing an
--- episode fans a notification out to every member and every admin of that
--- episode's tenant. A spec that asserts the empty bell therefore cannot share
--- a tenant with the publish flow: `admin.publish-flow` publishes into the dev
--- seed tenant while `host.notifications` / `admin.notifications` are reading
--- the same accounts' inboxes.
+-- episode fans a notification out to every admin of that episode's tenant and
+-- to the readers who follow it. A spec that asserts the empty bell therefore
+-- cannot share a tenant with the publish flow: `admin.publish-flow` publishes
+-- into the dev seed tenant while `host.notifications` / `admin.notifications`
+-- are reading the same accounts' inboxes.
 --
 -- This tenant owns no series, so no spec in the suite can deliver a
 -- notification into it. Password hashes match the dev seed (`adminpass` /

@@ -319,3 +319,46 @@ SELECT EXISTS (
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
 ) AS follows_published_series;
+
+-- name: ListEpisodeFollowerIDs :many
+-- Worker fan-out: who is told about a new episode. The union of the follows
+-- that point at the episode, at the series it belongs to, and at a creator
+-- credited on it. UNION rather than UNION ALL, so a reader who follows both
+-- the series and its author is one recipient and gets one notification.
+--
+-- The credits come from episode_creators rather than series_creators because
+-- the episode is the unit that is credited: a guest who appears on this
+-- episode alone reaches their followers, and someone who has since left the
+-- series team is not announced with an episode they were not on.
+--
+-- Keyset paging on user_id, because the result grows with the tenant's
+-- readership and the caller writes one row per recipient. The cursor is
+-- pushed into each branch rather than applied to the union, so every branch
+-- still drives its own index. The nil UUID sorts below every UUID, so it is
+-- what the first page asks for.
+SELECT user_id
+FROM (
+    SELECT sf.user_id
+    FROM series_follows sf
+        JOIN episodes e ON e.tenant_id = sf.tenant_id
+            AND e.series_id = sf.series_id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND e.id = sqlc.arg('episode_id')
+        AND sf.user_id > sqlc.arg('after_user_id')
+    UNION
+    SELECT cf.user_id
+    FROM creator_follows cf
+        JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
+            AND ec.creator_id = cf.creator_id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND ec.episode_id = sqlc.arg('episode_id')
+        AND cf.user_id > sqlc.arg('after_user_id')
+    UNION
+    SELECT ef.user_id
+    FROM episode_follows ef
+    WHERE ef.tenant_id = sqlc.arg('tenant_id')
+        AND ef.episode_id = sqlc.arg('episode_id')
+        AND ef.user_id > sqlc.arg('after_user_id')
+) AS followers
+ORDER BY user_id
+LIMIT sqlc.arg('limit');

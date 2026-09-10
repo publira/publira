@@ -2,9 +2,10 @@
  * Records created by `db/seeds/scenarios/060_notification_inbox.sql`.
  *
  * The bell's accessible name carries the unread count, and publishing an
- * episode notifies every member and every admin of that episode's tenant. The
- * empty-inbox specs therefore run on a tenant of their own, which owns no
- * series, instead of on the dev seed accounts `admin.publish-flow` delivers to.
+ * episode notifies every admin of that episode's tenant along with the readers
+ * who follow it. The empty-inbox specs therefore run on a tenant of their own,
+ * which owns no series, instead of on the dev seed accounts
+ * `admin.publish-flow` delivers to.
  */
 
 export const NOTIFICATION_INBOX_SCENARIO = "060_notification_inbox";

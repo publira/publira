@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY idx_episode_follows_tenant_episode_user;

@@ -14,9 +14,9 @@ const inboxUrl = (pathname: string): string =>
  * this suite can take without waiting on a delivery path that fills the inbox.
  * `/announcements` stays the delivery list.
  *
- * The member is the inbox tenant's own: publishing an episode notifies
- * every member and admin of that episode's tenant, so the dev seed member's
- * bell stops being empty the moment `admin.publish-flow` runs beside this file.
+ * The member is the inbox tenant's own: publishing an episode notifies every
+ * admin of that episode's tenant, so the dev seed admin's bell stops being
+ * empty the moment `admin.publish-flow` runs beside this file.
  */
 
 test.describe("web-host notification bell", () => {

@@ -143,8 +143,9 @@ export const WEB_ADMIN_OTHER_TENANT_BASE_URL = envUrl(
  * `db/seeds/scenarios/060_notification_inbox.sql`.
  *
  * Its accounts exist so the empty-bell specs cannot see a publish notification
- * another spec delivered — publish fans out to every member and admin of the
- * published episode's tenant.
+ * another spec delivered — publish fans out to every admin of the published
+ * episode's tenant, and to every reader following it, its series, or one of
+ * its creators.
  */
 export const WEB_HOST_NOTIFICATION_INBOX_BASE_URL = envUrl(
   "E2E_WEB_HOST_NOTIFICATION_INBOX_BASE_URL",

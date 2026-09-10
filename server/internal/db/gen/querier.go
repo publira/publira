@@ -686,6 +686,22 @@ type Querier interface {
 	// existed states none, and it is still a credit. Those come last, which is
 	// where a name with nothing said about it belongs.
 	ListEpisodeCreatorsByEpisodeIDs(ctx context.Context, episodeIds []uuid.UUID) ([]ListEpisodeCreatorsByEpisodeIDsRow, error)
+	// Worker fan-out: who is told about a new episode. The union of the follows
+	// that point at the episode, at the series it belongs to, and at a creator
+	// credited on it. UNION rather than UNION ALL, so a reader who follows both
+	// the series and its author is one recipient and gets one notification.
+	//
+	// The credits come from episode_creators rather than series_creators because
+	// the episode is the unit that is credited: a guest who appears on this
+	// episode alone reaches their followers, and someone who has since left the
+	// series team is not announced with an episode they were not on.
+	//
+	// Keyset paging on user_id, because the result grows with the tenant's
+	// readership and the caller writes one row per recipient. The cursor is
+	// pushed into each branch rather than applied to the union, so every branch
+	// still drives its own index. The nil UUID sorts below every UUID, so it is
+	// what the first page asks for.
+	ListEpisodeFollowerIDs(ctx context.Context, arg ListEpisodeFollowerIDsParams) ([]uuid.UUID, error)
 	// Every window with a boundary the apply-free-windows batch has not dropped
 	// the site caches for yet. A window whose start and end both passed while the
 	// batch was down comes back with both flags set, and one revalidation answers
@@ -1173,8 +1189,6 @@ type Querier interface {
 	// The theme carries the icon and the logo together, so both images' variants
 	// are read in one statement rather than one query per slot.
 	ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error)
-	// Worker fan-out: members are tenant users that do not hold a tenant role.
-	ListTenantMemberIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	ListTenantMembersAsc(ctx context.Context, arg ListTenantMembersAscParams) ([]ListTenantMembersAscRow, error)
 	// Platform ListTenantMembers lists the administrative and editorial users of
 	// a tenant in (created_at, id) DESC. It stays a separate query from admin's
