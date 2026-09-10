@@ -17,20 +17,50 @@ export const SCREENSHOT_VIEWPORTS = [
 export type ScreenshotViewport = (typeof SCREENSHOT_VIEWPORTS)[number];
 
 /**
+ * Every loading placeholder on a screen, whichever component drew it.
+ *
+ * `Skeleton` and `SkeletonLine` word the utility as `motion-safe:animate-pulse`
+ * and the placeholders written inline as plain `animate-pulse`, so the match is
+ * on the substring both spell. That one utility is the whole vocabulary this
+ * repository has for "the copy or the data here has not arrived yet" — nothing
+ * in `apps/` or `packages/` pulses as decoration — which is what lets one
+ * selector stand for a placeholder a screen has not named.
+ */
+const LOADING_PLACEHOLDER = '[class*="animate-pulse"]';
+
+/**
  * Record one screen, or compare it with what was recorded before.
  *
  * Full-page rather than the viewport alone: a section below the fold is as
  * much of the design as the header, and a redesign that moved one would
- * otherwise pass unseen. `toHaveScreenshot` takes shots until two of them
- * agree, so a page still streaming a section in is waited out rather than
- * photographed half-drawn — but only content that arrives on its own. A test
- * asserts the screen is the one it means before calling this.
+ * otherwise pass unseen.
+ *
+ * `toHaveScreenshot` waits for the page to stop changing, not for it to be
+ * finished, and it freezes CSS animations for the shot — so a skeleton that is
+ * still standing where a string belongs stops pulsing, holds perfectly still,
+ * and photographs as readily as the copy that replaces it. Every string on
+ * these screens sits behind a `Suspense` boundary of its own, which makes the
+ * outcome a race: the same screen records with the label or with the skeleton
+ * depending on which side of the boundary the render happened to be on. So the
+ * placeholders are waited out first, and only then is the screen recorded. A
+ * test still asserts the screen is the one it means before calling this.
+ *
+ * The quiet network is what makes that wait mean anything. A string a Client
+ * Component resolves is drawn twice: the server render puts it straight into
+ * the HTML, and then hydration asks the browser for the catalog chunk, suspends
+ * on it, and takes the copy back out again until the chunk arrives. Counting
+ * placeholders in the first of those two moments finds none, and the shot then
+ * lands in the second. Once nothing is in flight there is no chunk left to
+ * suspend on, so a screen with no placeholder is a screen that is finished.
  */
 export const expectScreenshot = async (
   page: Page,
   viewport: ScreenshotViewport,
   name: string
 ): Promise<void> => {
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
+
   await expect(page).toHaveScreenshot(`${name}-${viewport.label}.png`, {
     fullPage: true,
   });
