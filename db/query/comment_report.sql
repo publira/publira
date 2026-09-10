@@ -126,6 +126,15 @@ RETURNING c.open_report_count;
 -- comment moves from, so a comment staff removed between the report and this
 -- statement is not removed a second time under a reason that would rewrite
 -- theirs.
+--
+-- The join to tenant_config is inner rather than outer, and needs no default
+-- for a missing row: a comment cannot exist without one. Posting reads
+-- comment_mode, a tenant with no config row reads as 'disabled', and a disabled
+-- tenant stores no comment at all — so the row is written before the first
+-- comment is, and nothing deletes it afterwards except the tenant going away
+-- with its comments. Coming back empty here would mean a comment on a tenant
+-- that never enabled commenting, and inventing a threshold for that is
+-- inventing the tenant's policy.
 UPDATE episode_comments c
 SET status = 'hidden',
     hidden_at = NOW(),
