@@ -289,3 +289,93 @@ func (s *adminServer) UpdateTenantCommentSettings(
 		CommentMode:             saved,
 	}), nil
 }
+
+// tenantAgeVerificationRevalidateTags names the public site caches that decide
+// whether the sign-up form asks for a birth date and how a rated series page
+// gates itself. The rule rides on the storefront's tenant read and on its
+// series reads, so both are dropped: a tenant that starts verifying ages has
+// to reach the readers already looking at a rated series, not only the ones
+// who arrive next.
+func tenantAgeVerificationRevalidateTags(tenantID string) []string {
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	return []string{
+		fmt.Sprintf("tenant:%s:site", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:list", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
+	}
+}
+
+func (s *adminServer) GetTenantAgeVerification(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.GetTenantAgeVerificationRequest],
+) (*connect.Response[publiraadminv1.GetTenantAgeVerificationResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenant.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// A tenant with no config row has chosen nothing about age
+			// verification, which is the answer the column's own default gives
+			// too.
+			return connect.NewResponse(&publiraadminv1.GetTenantAgeVerificationResponse{
+				AgeVerification: publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE,
+			}), nil
+		}
+		return nil, s.internalDBError(ctx, "failed to get tenant age verification", err, "tenant_id", tenant.ID.String())
+	}
+
+	rule, err := protomapper.AgeVerificationFromStored(config.AgeVerification)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant age verification is not a supported rule", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publiraadminv1.GetTenantAgeVerificationResponse{
+		AgeVerification: rule,
+	}), nil
+}
+
+func (s *adminServer) UpdateTenantAgeVerification(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateTenantAgeVerificationRequest],
+) (*connect.Response[publiraadminv1.UpdateTenantAgeVerificationResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	stored, err := protomapper.AgeVerificationToStored(req.Msg.AgeVerification)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	updated, err := s.queriesFor(ctx).UpsertTenantAgeVerification(ctx, dbmodels.UpsertTenantAgeVerificationParams{
+		AgeVerification: stored,
+		TenantID:        tenant.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to update tenant age verification", err, "tenant_id", tenant.ID.String())
+	}
+
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, tenantAgeVerificationRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after tenant age verification update", "tenant_public_id", tenant.PublicID, "error", err)
+		}
+	}
+
+	// The stored row rather than the request: what the console renders next is
+	// what the update actually persisted.
+	saved, err := protomapper.AgeVerificationFromStored(updated.AgeVerification)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant age verification is not a supported rule", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publiraadminv1.UpdateTenantAgeVerificationResponse{
+		AgeVerification: saved,
+	}), nil
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -344,12 +345,16 @@ func TestUpdateTenantDefaultLocaleRequiresSession(t *testing.T) {
 }
 
 func tenantConfigColumns() []string {
-	return []string{"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode", "comment_auto_hide_report_threshold", "episode_rating_mode"}
+	return []string{"tenant_id", "copyright_text", "site_description", "created_at", "updated_at", "site_tagline", "comment_mode", "comment_auto_hide_report_threshold", "episode_rating_mode", "age_verification"}
 }
 
 func tenantConfigRow(tenantID uuid.UUID, now time.Time, mode string, threshold int32) *sqlmock.Rows {
+	return tenantConfigRowWithAgeVerification(tenantID, now, mode, threshold, ageverification.None)
+}
+
+func tenantConfigRowWithAgeVerification(tenantID uuid.UUID, now time.Time, mode string, threshold int32, rule string) *sqlmock.Rows {
 	return sqlmock.NewRows(tenantConfigColumns()).
-		AddRow(tenantID, nil, nil, now, now, nil, mode, threshold, "single")
+		AddRow(tenantID, nil, nil, now, now, nil, mode, threshold, "single", rule)
 }
 
 func expectTenantConfigWithCommentSettings(
@@ -601,6 +606,189 @@ func TestUpdateTenantCommentSettingsRequiresSession(t *testing.T) {
 	}
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestGetTenantAgeVerificationReturnsTheStoredRule(t *testing.T) {
+	tests := []struct {
+		name   string
+		stored string
+		want   publirattypesv1.AgeVerification
+	}{
+		{name: "none", stored: ageverification.None, want: publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE},
+		{name: "r18", stored: ageverification.R18, want: publirattypesv1.AgeVerification_AGE_VERIFICATION_R18},
+		{name: "r15 and r18", stored: ageverification.R15AndR18, want: publirattypesv1.AgeVerification_AGE_VERIFICATION_R15_AND_R18},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, mock := newTestAdminServer(t)
+			now := time.Now()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+			expectTenantLookup(mock, tenantID, "TENANT001", now)
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+			mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+				WithArgs(tenantID).
+				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.stored))
+
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+			resp, err := client.GetTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantAgeVerificationRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			}, sessionToken))
+			if err != nil {
+				t.Fatalf("GetTenantAgeVerification: %v", err)
+			}
+			if resp.Msg.AgeVerification != tt.want {
+				t.Fatalf("age_verification = %v, want %v", resp.Msg.AgeVerification, tt.want)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+// A tenant with no config row has chosen nothing, which is the answer the
+// column's own default gives too.
+func TestGetTenantAgeVerificationReportsNoneWithoutAConfigRow(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+	resp, err := client.GetTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantAgeVerificationRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, sessionToken))
+	if err != nil {
+		t.Fatalf("GetTenantAgeVerification: %v", err)
+	}
+	if resp.Msg.AgeVerification != publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE {
+		t.Fatalf("age_verification = %v, want AGE_VERIFICATION_NONE", resp.Msg.AgeVerification)
+	}
+	assertExpectations(t, mock)
+}
+
+// A stored rule this build cannot act on is reported rather than answered with
+// a stand-in: either stand-in is a policy the tenant did not choose, applied to
+// its whole catalogue.
+func TestGetTenantAgeVerificationFailsOnAnUnsupportedStoredRule(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, "everything"))
+
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantAgeVerificationRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, sessionToken))
+	if err == nil {
+		t.Fatal("GetTenantAgeVerification: expected error")
+	}
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateTenantAgeVerificationPersistsTheChosenRule(t *testing.T) {
+	tests := []struct {
+		name string
+		rule publirattypesv1.AgeVerification
+		want string
+	}{
+		{name: "none", rule: publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE, want: ageverification.None},
+		{name: "r18", rule: publirattypesv1.AgeVerification_AGE_VERIFICATION_R18, want: ageverification.R18},
+		{name: "r15 and r18", rule: publirattypesv1.AgeVerification_AGE_VERIFICATION_R15_AND_R18, want: ageverification.R15AndR18},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, mock := newTestAdminServer(t)
+			now := time.Now()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+			expectTenantLookup(mock, tenantID, "TENANT001", now)
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+			mock.ExpectQuery(regexp.QuoteMeta(upsertTenantAgeVerificationQuery)).
+				WithArgs(tenantID, tt.want).
+				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.want))
+
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+			resp, err := client.UpdateTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantAgeVerificationRequest{
+				AgeVerification: tt.rule,
+				Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			}, sessionToken))
+			if err != nil {
+				t.Fatalf("UpdateTenantAgeVerification: %v", err)
+			}
+			if resp.Msg.AgeVerification != tt.rule {
+				t.Fatalf("age_verification = %v, want %v", resp.Msg.AgeVerification, tt.rule)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+// An unspecified rule is a caller that chose nothing. Turning verification off
+// is AGE_VERIFICATION_NONE, so an empty field writes nothing at all.
+func TestUpdateTenantAgeVerificationRejectsUnspecified(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+	_, err := client.UpdateTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantAgeVerificationRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, sessionToken))
+	if err == nil {
+		t.Fatal("UpdateTenantAgeVerification: expected error")
+	}
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertExpectations(t, mock)
+}
+
+// Who a tenant lets read its rated work is a tenant admin's decision, the way
+// every other tenant setting is.
+func TestUpdateTenantAgeVerificationRequiresTenantAdmin(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+	_, err := client.UpdateTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantAgeVerificationRequest{
+		AgeVerification: publirattypesv1.AgeVerification_AGE_VERIFICATION_R18,
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, sessionToken))
+	if err == nil {
+		t.Fatal("UpdateTenantAgeVerification: expected error")
+	}
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodePermissionDenied)
 	}
 	assertExpectations(t, mock)
 }

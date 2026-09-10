@@ -33,6 +33,11 @@ message GetTenantResponse {
   // site reads it to decide whether an episode page offers a comment section
   // at all, so it is answered here rather than only where a comment is posted.
   publira.types.v1.CommentMode comment_mode = 11;
+  // Which of this tenant's age ratings a reader has to prove an age for. The
+  // public site reads it to decide whether the sign-up form asks for a birth
+  // date at all, so it is answered here rather than only where a body is
+  // opened.
+  publira.types.v1.AgeVerification age_verification = 12;
 }
 
 service TenantService {

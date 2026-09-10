@@ -165,6 +165,17 @@ SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = 
 WHERE tenant_id = $1
 RETURNING *;
 
+-- name: UpsertTenantAgeVerification :one
+-- An upsert for the reason UpsertTenantCommentSettings gives: deciding to
+-- verify ages is not a decision a tenant should have to fill in its site copy
+-- to reach.
+INSERT INTO tenant_config (tenant_id, age_verification)
+VALUES ($1, $2)
+ON CONFLICT (tenant_id) DO UPDATE
+SET age_verification = EXCLUDED.age_verification,
+    updated_at = NOW()
+RETURNING *;
+
 -- name: UpsertTenantCommentSettings :one
 -- The settings screen can save what the tenant has decided about commenting
 -- for a tenant whose config row does not exist yet, so both columns are

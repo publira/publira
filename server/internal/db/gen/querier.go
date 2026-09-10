@@ -1539,6 +1539,11 @@ type Querier interface {
 	// tenant can upload a logo before it has ever saved a color, and the colors
 	// then keep their column defaults.
 	SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThemeLogoImageParams) (TenantTheme, error)
+	// Written once. The IS NULL guard is what makes that true of two requests that
+	// race as well as of two a reader sends in turn: the second matches no row and
+	// comes back as no rows, which the caller reports as a refusal rather than as
+	// a missing account.
+	SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDateByIDParams) (User, error)
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchLabelImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
@@ -1613,6 +1618,10 @@ type Querier interface {
 	// tag saved as "Fantasy" — the slug says they are the same tag, and the name
 	// the tenant first wrote is the one every other series keeps showing.
 	UpsertTagForTenant(ctx context.Context, arg UpsertTagForTenantParams) (Tag, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives: deciding to
+	// verify ages is not a decision a tenant should have to fill in its site copy
+	// to reach.
+	UpsertTenantAgeVerification(ctx context.Context, arg UpsertTenantAgeVerificationParams) (TenantConfig, error)
 	// The settings screen can save what the tenant has decided about commenting
 	// for a tenant whose config row does not exist yet, so both columns are
 	// written without disturbing the site copy columns UpdateTenantConfig owns.

@@ -100,6 +100,12 @@ const (
 	EpisodeAccess_EPISODE_ACCESS_LOCKED EpisodeAccess = 2
 	// valid purchase or active access ticket.
 	EpisodeAccess_EPISODE_ACCESS_ENTITLED EpisodeAccess = 3
+	// The tenant makes a reader prove an age for this series' rating and this
+	// reader has not: they are reading as a guest, have given no birth date, or
+	// are younger than the rating asks for. It outranks the three above, so a
+	// free body and a purchased one are both withheld, and it is answered the
+	// same way as EPISODE_ACCESS_LOCKED — no images and no media token.
+	EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED EpisodeAccess = 4
 )
 
 // Enum value maps for EpisodeAccess.
@@ -109,12 +115,14 @@ var (
 		1: "EPISODE_ACCESS_FREE",
 		2: "EPISODE_ACCESS_LOCKED",
 		3: "EPISODE_ACCESS_ENTITLED",
+		4: "EPISODE_ACCESS_AGE_RESTRICTED",
 	}
 	EpisodeAccess_value = map[string]int32{
-		"EPISODE_ACCESS_UNSPECIFIED": 0,
-		"EPISODE_ACCESS_FREE":        1,
-		"EPISODE_ACCESS_LOCKED":      2,
-		"EPISODE_ACCESS_ENTITLED":    3,
+		"EPISODE_ACCESS_UNSPECIFIED":    0,
+		"EPISODE_ACCESS_FREE":           1,
+		"EPISODE_ACCESS_LOCKED":         2,
+		"EPISODE_ACCESS_ENTITLED":       3,
+		"EPISODE_ACCESS_AGE_RESTRICTED": 4,
 	}
 )
 
@@ -788,11 +796,21 @@ func (x *GetSeriesDetailRequest) GetPublicId() string {
 }
 
 type GetSeriesDetailResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
-	Episodes      []*v1.Episode          `protobuf:"bytes,2,rep,name=episodes,proto3" json:"episodes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Series   *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	Episodes []*v1.Episode          `protobuf:"bytes,2,rep,name=episodes,proto3" json:"episodes,omitempty"`
+	// How old the tenant's age rule makes a reader prove they are before it will
+	// open this series' bodies, and 0 when the rule asks nothing of it. It is
+	// the rating and the tenant setting resolved together, so a client applies
+	// one number to the reader in front of it instead of carrying its own copy
+	// of which rule covers which rating.
+	//
+	// It says nothing about the reader, which is what keeps this response the
+	// same bytes for everyone: whether a particular reader clears the number is
+	// decided where the body is asked for, by GetEpisodeDetail.
+	RequiredMinimumAge int32 `protobuf:"varint,3,opt,name=required_minimum_age,json=requiredMinimumAge,proto3" json:"required_minimum_age,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GetSeriesDetailResponse) Reset() {
@@ -837,6 +855,13 @@ func (x *GetSeriesDetailResponse) GetEpisodes() []*v1.Episode {
 		return x.Episodes
 	}
 	return nil
+}
+
+func (x *GetSeriesDetailResponse) GetRequiredMinimumAge() int32 {
+	if x != nil {
+		return x.RequiredMinimumAge
+	}
+	return 0
 }
 
 type GetEpisodeDetailRequest struct {
@@ -5365,10 +5390,11 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"next_token\x18\x03 \x01(\tR\tnextToken\"n\n" +
 	"\x16GetSeriesDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x82\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xb4\x01\n" +
 	"\x17GetSeriesDetailResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x125\n" +
-	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"o\n" +
+	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\x120\n" +
+	"\x14required_minimum_age\x18\x03 \x01(\x05R\x12requiredMinimumAge\"o\n" +
 	"\x17GetEpisodeDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xcb\x01\n" +
@@ -5684,12 +5710,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x1dSERIES_ORDER_PUBLISHED_AT_ASC\x10\x02\x12\x1a\n" +
 	"\x16SERIES_ORDER_TITLE_ASC\x10\x03\x12\x1b\n" +
 	"\x17SERIES_ORDER_TITLE_DESC\x10\x04\x12'\n" +
-	"#SERIES_ORDER_LATEST_EPISODE_AT_DESC\x10\x05*\x80\x01\n" +
+	"#SERIES_ORDER_LATEST_EPISODE_AT_DESC\x10\x05*\xa3\x01\n" +
 	"\rEpisodeAccess\x12\x1e\n" +
 	"\x1aEPISODE_ACCESS_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13EPISODE_ACCESS_FREE\x10\x01\x12\x19\n" +
 	"\x15EPISODE_ACCESS_LOCKED\x10\x02\x12\x1b\n" +
-	"\x17EPISODE_ACCESS_ENTITLED\x10\x03*\x88\x01\n" +
+	"\x17EPISODE_ACCESS_ENTITLED\x10\x03\x12!\n" +
+	"\x1dEPISODE_ACCESS_AGE_RESTRICTED\x10\x04*\x88\x01\n" +
 	"\x14RecommendationSource\x12%\n" +
 	"!RECOMMENDATION_SOURCE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dRECOMMENDATION_SOURCE_RANKING\x10\x01\x12&\n" +

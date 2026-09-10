@@ -89,9 +89,14 @@ type GetTenantResponse struct {
 	// How reader comments on this tenant's episodes are published. The public
 	// site reads it to decide whether an episode page offers a comment section
 	// at all, so it is answered here rather than only where a comment is posted.
-	CommentMode   v1.CommentMode `protobuf:"varint,11,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	CommentMode v1.CommentMode `protobuf:"varint,11,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
+	// Which of this tenant's age ratings a reader has to prove an age for. The
+	// public site reads it to decide whether the sign-up form asks for a birth
+	// date at all, so it is answered here rather than only where a body is
+	// opened.
+	AgeVerification v1.AgeVerification `protobuf:"varint,12,opt,name=age_verification,json=ageVerification,proto3,enum=publira.types.v1.AgeVerification" json:"age_verification,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -201,6 +206,13 @@ func (x *GetTenantResponse) GetCommentMode() v1.CommentMode {
 	return v1.CommentMode(0)
 }
 
+func (x *GetTenantResponse) GetAgeVerification() v1.AgeVerification {
+	if x != nil {
+		return x.AgeVerification
+	}
+	return v1.AgeVerification(0)
+}
+
 var File_publira_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_v1_tenant_proto_rawDesc = "" +
@@ -208,7 +220,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x17publira/v1/tenant.proto\x12\n" +
 	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"K\n" +
 	"\x10GetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xdd\x03\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xab\x04\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -222,7 +234,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x0edefault_locale\x18\t \x01(\tR\rdefaultLocale\x12)\n" +
 	"\x10accepts_payments\x18\n" +
 	" \x01(\bR\x0facceptsPayments\x12@\n" +
-	"\fcomment_mode\x18\v \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode2[\n" +
+	"\fcomment_mode\x18\v \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12L\n" +
+	"\x10age_verification\x18\f \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification2[\n" +
 	"\rTenantService\x12J\n" +
 	"\tGetTenant\x12\x1c.publira.v1.GetTenantRequest\x1a\x1d.publira.v1.GetTenantResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
@@ -245,18 +258,20 @@ var file_publira_v1_tenant_proto_goTypes = []any{
 	(*v1.TenantContext)(nil),  // 2: publira.types.v1.TenantContext
 	(*v1.TenantTheme)(nil),    // 3: publira.types.v1.TenantTheme
 	(v1.CommentMode)(0),       // 4: publira.types.v1.CommentMode
+	(v1.AgeVerification)(0),   // 5: publira.types.v1.AgeVerification
 }
 var file_publira_v1_tenant_proto_depIdxs = []int32{
 	2, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3, // 1: publira.v1.GetTenantResponse.theme:type_name -> publira.types.v1.TenantTheme
 	4, // 2: publira.v1.GetTenantResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	0, // 3: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
-	1, // 4: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 3: publira.v1.GetTenantResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	0, // 4: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
+	1, // 5: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_tenant_proto_init() }

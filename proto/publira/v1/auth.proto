@@ -22,6 +22,12 @@ message CreateUserRequest {
   string name = 2;
   string email = 3;
   string password = 4;
+  // The reader's birth date as YYYY-MM-DD, and empty from a form that did not
+  // ask. It is accepted here rather than only after the first sign-in because
+  // a tenant that verifies ages asks for it on the sign-up form: collecting it
+  // later would leave the account that just agreed to give it unable to open
+  // the work it signed up for until it has verified an address and signed in.
+  string birth_date = 5;
 }
 
 message CreateUserResponse {
@@ -126,6 +132,13 @@ message GetMeResponse {
 message UpdateMeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
+  // The reader's birth date as YYYY-MM-DD. Empty leaves the stored one alone,
+  // which is what the profile form sends when it is only renaming the account.
+  //
+  // It is written once. A reader who gives a date and then wants it changed
+  // goes through support, because a date a reader can rewrite at will proves
+  // nothing about their age: the second write is refused rather than applied.
+  string birth_date = 3;
 }
 
 message UpdateMeResponse {

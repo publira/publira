@@ -5,18 +5,22 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
-// The stored values, matching the CHECK constraints on series_listings.
+// The stored values, matching the CHECK constraints on series_listings. The
+// ratings come from ageverification, which decides what each of them demands
+// of a reader: a second spelling of them here would be a second vocabulary the
+// gate and the catalogue could drift apart on.
 const (
 	seriesStatusOngoing   = "ongoing"
 	seriesStatusCompleted = "completed"
 	seriesStatusHiatus    = "hiatus"
 
-	seriesAgeRatingAll = "all"
-	seriesAgeRatingR15 = "r15"
-	seriesAgeRatingR18 = "r18"
+	seriesAgeRatingAll = ageverification.RatingAll
+	seriesAgeRatingR15 = ageverification.RatingR15
+	seriesAgeRatingR18 = ageverification.RatingR18
 )
 
 // weekdayCount is how many values series_listings.schedule_weekdays accepts:

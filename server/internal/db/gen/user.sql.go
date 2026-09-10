@@ -18,7 +18,7 @@ const bumpUserCredentialsVersion = `-- name: BumpUserCredentialsVersion :one
 UPDATE users
 SET credentials_version = credentials_version + 1
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error) {
@@ -35,6 +35,7 @@ func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) 
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -89,9 +90,9 @@ func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUser
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 type CreateUserParams struct {
@@ -101,6 +102,7 @@ type CreateUserParams struct {
 	Email        string        `json:"email"`
 	PasswordHash string        `json:"password_hash"`
 	Name         string        `json:"name"`
+	BirthDate    sql.NullTime  `json:"birth_date"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -111,6 +113,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Email,
 		arg.PasswordHash,
 		arg.Name,
+		arg.BirthDate,
 	)
 	var i User
 	err := row.Scan(
@@ -124,6 +127,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -150,7 +154,7 @@ func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 }
 
 const getUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users
 WHERE tenant_id = $1
     AND email = $2
@@ -176,12 +180,13 @@ func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmai
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users
 WHERE id = $1
 `
@@ -200,12 +205,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
 
 const getUserByIDForUpdate = `-- name: GetUserByIDForUpdate :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users
 WHERE id = $1
 FOR UPDATE
@@ -225,6 +231,7 @@ func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -1031,11 +1038,47 @@ func (q *Queries) ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDe
 	return items, nil
 }
 
+const setUserBirthDateByID = `-- name: SetUserBirthDateByID :one
+UPDATE users
+SET birth_date = $2
+WHERE id = $1
+    AND birth_date IS NULL
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
+`
+
+type SetUserBirthDateByIDParams struct {
+	ID        uuid.UUID    `json:"id"`
+	BirthDate sql.NullTime `json:"birth_date"`
+}
+
+// Written once. The IS NULL guard is what makes that true of two requests that
+// race as well as of two a reader sends in turn: the second matches no row and
+// comes back as no rows, which the caller reports as a refusal rather than as
+// a missing account.
+func (q *Queries) SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDateByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, setUserBirthDateByID, arg.ID, arg.BirthDate)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
+		&i.BirthDate,
+	)
+	return i, err
+}
+
 const updateUserEmailByID = `-- name: UpdateUserEmailByID :one
 UPDATE users
 SET email = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 type UpdateUserEmailByIDParams struct {
@@ -1057,6 +1100,7 @@ func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailBy
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -1065,7 +1109,7 @@ const updateUserEmailVerifiedAtByID = `-- name: UpdateUserEmailVerifiedAtByID :o
 UPDATE users
 SET email_verified_at = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 type UpdateUserEmailVerifiedAtByIDParams struct {
@@ -1087,6 +1131,7 @@ func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateU
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -1095,7 +1140,7 @@ const updateUserNameByID = `-- name: UpdateUserNameByID :one
 UPDATE users
 SET name = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 type UpdateUserNameByIDParams struct {
@@ -1117,6 +1162,7 @@ func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByID
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -1125,7 +1171,7 @@ const updateUserPasswordHashByID = `-- name: UpdateUserPasswordHashByID :one
 UPDATE users
 SET password_hash = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 type UpdateUserPasswordHashByIDParams struct {
@@ -1147,6 +1193,7 @@ func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUser
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -1155,7 +1202,7 @@ const updateUserStatus = `-- name: UpdateUserStatus :one
 UPDATE users
 SET status = $2
 WHERE public_id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 type UpdateUserStatusParams struct {
@@ -1177,6 +1224,7 @@ func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusPara
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -1185,7 +1233,7 @@ const updateUserStatusByID = `-- name: UpdateUserStatusByID :one
 UPDATE users
 SET status = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 type UpdateUserStatusByIDParams struct {
@@ -1207,6 +1255,7 @@ func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatus
 		&i.TenantID,
 		&i.EmailVerifiedAt,
 		&i.CredentialsVersion,
+		&i.BirthDate,
 	)
 	return i, err
 }

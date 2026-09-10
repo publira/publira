@@ -16,6 +16,12 @@ message User {
   string public_id = 1;
   string name = 2;
   string role = 3;
+  // The reader's own birth date as YYYY-MM-DD, empty when they have given
+  // none. Set where a User stands for the account the request authenticated
+  // as, which is GetMe and UpdateMe; empty everywhere a User names someone the
+  // caller is merely looking at, so a console listing accounts never carries
+  // it.
+  string birth_date = 4;
 }
 
 // AccessToken is a JWT issued by Login. Clients send it as Authorization: Bearer.
@@ -292,4 +298,21 @@ enum CommentMode {
   // A posted comment waits for a staff approval before anyone but its author
   // can read it.
   COMMENT_MODE_APPROVAL_REQUIRED = 3;
+}
+
+// Which of a tenant's age ratings a reader has to prove an age for
+// (tenant_config.age_verification). The values are the rungs of one ladder
+// rather than a switch per rating: a tenant that gated `r15` while leaving
+// `r18` open would be stating a policy nobody means.
+enum AgeVerification {
+  AGE_VERIFICATION_UNSPECIFIED = 0;
+  // Nothing is proven. A rated series still carries its rating, and a client
+  // still interposes its own confirmation on one, but no birth date is asked
+  // for and none is checked. This is what a tenant that has never chosen gets.
+  AGE_VERIFICATION_NONE = 1;
+  // `r18` series demand a proven 18. `r15` series are left to the client's
+  // confirmation.
+  AGE_VERIFICATION_R18 = 2;
+  // `r15` series demand a proven 15 and `r18` series a proven 18.
+  AGE_VERIFICATION_R15_AND_R18 = 3;
 }

@@ -45,6 +45,12 @@ func (s *apiServer) GetTenant(
 	// A tenant with no config row, and one whose config could not be read, have
 	// chosen nothing about commenting. That is the column's own default too.
 	commentMode := publirattypesv1.CommentMode_COMMENT_MODE_DISABLED
+	// The same for the age rule, whose column defaults to asking for no proof.
+	// What this field decides is whether the sign-up form asks for a birth date
+	// at all; every body a rated series holds is gated by GetEpisodeDetail,
+	// which reads the rule itself and refuses the read rather than answering
+	// around it.
+	ageVerification := publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE
 
 	if err == nil {
 		if config.CopyrightText.Valid {
@@ -59,6 +65,10 @@ func (s *apiServer) GetTenant(
 		commentMode, err = protomapper.CommentModeFromStored(config.CommentMode)
 		if err != nil {
 			return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
+		}
+		ageVerification, err = protomapper.AgeVerificationFromStored(config.AgeVerification)
+		if err != nil {
+			return nil, s.internalError(ctx, "tenant age verification is not a supported rule", err, "tenant_id", tenant.ID.String())
 		}
 	} else if err != sql.ErrNoRows {
 		// Log error but don't fail the request
@@ -87,6 +97,7 @@ func (s *apiServer) GetTenant(
 		Timezone:        tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:   defaultLocale,
 		AcceptsPayments: acceptsPayments,
+		AgeVerification: ageVerification,
 		CommentMode:     commentMode,
 	}), nil
 }

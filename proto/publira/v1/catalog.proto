@@ -105,6 +105,16 @@ message GetSeriesDetailRequest {
 message GetSeriesDetailResponse {
   publira.types.v1.Series series = 1;
   repeated publira.types.v1.Episode episodes = 2;
+  // How old the tenant's age rule makes a reader prove they are before it will
+  // open this series' bodies, and 0 when the rule asks nothing of it. It is
+  // the rating and the tenant setting resolved together, so a client applies
+  // one number to the reader in front of it instead of carrying its own copy
+  // of which rule covers which rating.
+  //
+  // It says nothing about the reader, which is what keeps this response the
+  // same bytes for everyone: whether a particular reader clears the number is
+  // decided where the body is asked for, by GetEpisodeDetail.
+  int32 required_minimum_age = 3;
 }
 
 message GetEpisodeDetailRequest {
@@ -121,6 +131,12 @@ enum EpisodeAccess {
   EPISODE_ACCESS_LOCKED = 2;
   // valid purchase or active access ticket.
   EPISODE_ACCESS_ENTITLED = 3;
+  // The tenant makes a reader prove an age for this series' rating and this
+  // reader has not: they are reading as a guest, have given no birth date, or
+  // are younger than the rating asks for. It outranks the three above, so a
+  // free body and a purchased one are both withheld, and it is answered the
+  // same way as EPISODE_ACCESS_LOCKED — no images and no media token.
+  EPISODE_ACCESS_AGE_RESTRICTED = 4;
 }
 
 // A published episode next to the one being read, in its own series. It holds

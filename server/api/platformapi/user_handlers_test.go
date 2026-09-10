@@ -35,7 +35,7 @@ func getTenantByUserIDColumns() []string {
 
 // The columns UpdateUserStatus returns.
 func updateUserStatusResultColumns() []string {
-	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version"}
+	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date"}
 }
 
 // TestListEndUsers asserts the success path of listing end users.
@@ -172,13 +172,13 @@ func TestSuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
 		WithArgs("EUSER00001", "suspended").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1)))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1), nil))
 
 	// Invalidate the sessions.
 	mock.ExpectQuery(regexp.QuoteMeta(testBumpUserCredentialsVersionQuery)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(2)))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(2), nil))
 
 	// Read the tenant, of which there is none.
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
@@ -245,7 +245,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
 		WithArgs("EUSER00001", "active").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1)))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
 		WithArgs(endUserID).

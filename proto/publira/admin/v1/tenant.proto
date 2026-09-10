@@ -75,6 +75,27 @@ message UpdateTenantCommentSettingsResponse {
   uint32 auto_hide_report_threshold = 2;
 }
 
+message GetTenantAgeVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantAgeVerificationResponse {
+  // Never AGE_VERIFICATION_UNSPECIFIED: a tenant that has saved nothing
+  // verifies no age, and a stored value naming no rule fails this RPC.
+  publira.types.v1.AgeVerification age_verification = 1;
+}
+
+message UpdateTenantAgeVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // AGE_VERIFICATION_UNSPECIFIED is rejected. Asking for no proof is
+  // AGE_VERIFICATION_NONE, which is a choice rather than the absence of one.
+  publira.types.v1.AgeVerification age_verification = 2;
+}
+
+message UpdateTenantAgeVerificationResponse {
+  publira.types.v1.AgeVerification age_verification = 1;
+}
+
 // Per-tenant operational settings, separate from TenantConfig (site copy) and
 // TenantTheme (colors).
 service TenantSettingsService {
@@ -84,4 +105,6 @@ service TenantSettingsService {
   rpc UpdateTenantDefaultLocale(UpdateTenantDefaultLocaleRequest) returns (UpdateTenantDefaultLocaleResponse) {}
   rpc GetTenantCommentSettings(GetTenantCommentSettingsRequest) returns (GetTenantCommentSettingsResponse) {}
   rpc UpdateTenantCommentSettings(UpdateTenantCommentSettingsRequest) returns (UpdateTenantCommentSettingsResponse) {}
+  rpc GetTenantAgeVerification(GetTenantAgeVerificationRequest) returns (GetTenantAgeVerificationResponse) {}
+  rpc UpdateTenantAgeVerification(UpdateTenantAgeVerificationRequest) returns (UpdateTenantAgeVerificationResponse) {}
 }

@@ -425,8 +425,8 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByEmailForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "alice@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version"}).
-			AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, nil, int32(1)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date"}).
+			AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, nil, int32(1), nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
 		WithArgs(targetUserID).
