@@ -17,6 +17,7 @@ abstract class AppMessages {
     Locale('ja'),
     Locale('en'),
     Locale('ko'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
   ];
 
   /// The script a locale that names none is likeliest written in, keyed
@@ -30,6 +31,40 @@ abstract class AppMessages {
     'ja': 'Jpan',
     'en': 'Latn',
     'ko': 'Kore',
+    'zh': 'Hans',
+    'zh-AU': 'Hant',
+    'zh-BN': 'Hant',
+    'zh-GB': 'Hant',
+    'zh-GF': 'Hant',
+    'zh-HK': 'Hant',
+    'zh-ID': 'Hant',
+    'zh-MO': 'Hant',
+    'zh-PA': 'Hant',
+    'zh-PF': 'Hant',
+    'zh-PH': 'Hant',
+    'zh-PZ': 'Hant',
+    'zh-SR': 'Hant',
+    'zh-TH': 'Hant',
+    'zh-TW': 'Hant',
+    'zh-UK': 'Hant',
+    'zh-US': 'Hant',
+    'zh-VD': 'Hant',
+    'zh-VN': 'Hant',
+    'zh-036': 'Hant',
+    'zh-096': 'Hant',
+    'zh-158': 'Hant',
+    'zh-254': 'Hant',
+    'zh-258': 'Hant',
+    'zh-344': 'Hant',
+    'zh-360': 'Hant',
+    'zh-446': 'Hant',
+    'zh-591': 'Hant',
+    'zh-608': 'Hant',
+    'zh-704': 'Hant',
+    'zh-740': 'Hant',
+    'zh-764': 'Hant',
+    'zh-826': 'Hant',
+    'zh-840': 'Hant',
   };
 
   /// The catalog whose code is [locale]'s language tag, or `null` when
@@ -39,6 +74,7 @@ abstract class AppMessages {
       'ja' => const _AppMessagesJa(),
       'en' => const _AppMessagesEn(),
       'ko' => const _AppMessagesKo(),
+      'zh-Hans' => const _AppMessagesZhHans(),
       _ => null,
     };
   }
@@ -2215,5 +2251,608 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get viewerTitle {
     return '에피소드';
+  }
+}
+
+class _AppMessagesZhHans extends AppMessages {
+  const _AppMessagesZhHans();
+
+  @override
+  String get intlLocale {
+    return 'zh-Hans-CN';
+  }
+
+  @override
+  String get errorsDisallowedValue {
+    return '这个值不被允许。';
+  }
+
+  @override
+  String get errorsRpcConflict {
+    return '该数据已存在，无法保存。';
+  }
+
+  @override
+  String get errorsRpcForbidden {
+    return '您没有执行此操作的权限。';
+  }
+
+  @override
+  String get errorsRpcInvalidArgument {
+    return '提交的内容有误。';
+  }
+
+  @override
+  String get errorsRpcNotFound {
+    return '找不到目标对象。';
+  }
+
+  @override
+  String get errorsRpcRateLimited {
+    return '短时间内的请求过多。请稍后再试。';
+  }
+
+  @override
+  String get errorsRpcUnauthenticated {
+    return '会话已失效。请重新登录。';
+  }
+
+  @override
+  String get errorsRpcUnavailable {
+    return '无法连接到服务器。请稍后再试。';
+  }
+
+  @override
+  String get errorsSmtpTestAuthentication {
+    return 'SMTP 认证失败。';
+  }
+
+  @override
+  String get errorsSmtpTestConnection {
+    return '无法连接到 SMTP 服务器。';
+  }
+
+  @override
+  String get errorsSmtpTestRecipient {
+    return 'SMTP 服务器拒绝了收件人邮箱地址。';
+  }
+
+  @override
+  String get errorsSmtpTestStarttls {
+    return '无法建立 STARTTLS。';
+  }
+
+  @override
+  String get errorsSmtpTestTimeout {
+    return '连接 SMTP 服务器超时。';
+  }
+
+  @override
+  String get errorsSmtpTestTls {
+    return '无法建立 TLS 连接。';
+  }
+
+  @override
+  String get errorsSmtpTestUnknown {
+    return 'SMTP 连接测试失败。';
+  }
+
+  @override
+  String get errorsValidation {
+    return '请检查您输入的内容。';
+  }
+
+  @override
+  String get accountName {
+    return '昵称';
+  }
+
+  @override
+  String get accountNameUnset {
+    return '未设置';
+  }
+
+  @override
+  String get accountNotifications {
+    return '新章节通知';
+  }
+
+  @override
+  String get accountNotificationsDenied {
+    return '此应用的通知已关闭。请在设备的系统设置中开启。';
+  }
+
+  @override
+  String get accountNotificationsDescription {
+    return '有新章节发布时通知您。';
+  }
+
+  @override
+  String get accountNotificationsUnavailable {
+    return '无法开启通知。请重试。';
+  }
+
+  @override
+  String get accountSignOut {
+    return '退出登录';
+  }
+
+  @override
+  String get accountSignedOut {
+    return '您尚未登录。';
+  }
+
+  @override
+  String get accountTitle {
+    return '账户';
+  }
+
+  @override
+  String get catalogContinueHeading {
+    return '继续阅读';
+  }
+
+  @override
+  String get catalogEmpty {
+    return '还没有发布任何系列。';
+  }
+
+  @override
+  String get catalogLoadFailed {
+    return '无法显示作品目录。';
+  }
+
+  @override
+  String get catalogOfflineNotSaved {
+    return '您当前处于离线状态，且此设备上没有保存的作品目录。';
+  }
+
+  @override
+  String get commentsApprovalNotice {
+    return '评论经审核通过后会显示在这里。';
+  }
+
+  @override
+  String get commentsAwaitingApproval {
+    return '等待审核';
+  }
+
+  @override
+  String get commentsBodyLabel {
+    return '您的评论';
+  }
+
+  @override
+  String get commentsBodyPlaceholder {
+    return '分享您对这一章的感想';
+  }
+
+  @override
+  String get commentsBodyRequired {
+    return '请先输入内容再发表。';
+  }
+
+  @override
+  String commentsBodyTooLong({required String max}) {
+    return '评论最多 $max 个字符。';
+  }
+
+  @override
+  String get commentsDelete {
+    return '删除';
+  }
+
+  @override
+  String commentsDeleteAria({required String date}) {
+    return '删除您在 $date 发表的评论';
+  }
+
+  @override
+  String get commentsDeleteFailed {
+    return '无法删除评论。请稍后再试。';
+  }
+
+  @override
+  String get commentsDeleted {
+    return '您的评论已删除。';
+  }
+
+  @override
+  String get commentsDeleting {
+    return '正在删除…';
+  }
+
+  @override
+  String get commentsDisabled {
+    return '本站点未开放评论。';
+  }
+
+  @override
+  String get commentsEmpty {
+    return '还没有评论。';
+  }
+
+  @override
+  String get commentsListFailed {
+    return '无法加载评论。请稍后再试。';
+  }
+
+  @override
+  String get commentsNewer {
+    return '更新的评论';
+  }
+
+  @override
+  String get commentsOlder {
+    return '更早的评论';
+  }
+
+  @override
+  String get commentsOwnFailed {
+    return '无法加载您自己的评论。请稍后再试。';
+  }
+
+  @override
+  String get commentsPageEmpty {
+    return '本页没有评论。';
+  }
+
+  @override
+  String get commentsPostFailed {
+    return '无法发表评论。请稍后再试。';
+  }
+
+  @override
+  String get commentsPosted {
+    return '您的评论已发表。';
+  }
+
+  @override
+  String get commentsPostedAwaitingApproval {
+    return '您的评论已提交审核。审核通过后会显示在这里。';
+  }
+
+  @override
+  String get commentsPosting {
+    return '正在发表…';
+  }
+
+  @override
+  String get commentsReport {
+    return '举报';
+  }
+
+  @override
+  String commentsReportAria({required String author, required String date}) {
+    return '举报 $author 在 $date 发表的评论';
+  }
+
+  @override
+  String get commentsReportConfirm {
+    return '提交举报';
+  }
+
+  @override
+  String get commentsReportDescription {
+    return '请告诉审核人员这条评论违反规则的原因。只有审核人员能看到您的举报，评论作者不会收到通知。';
+  }
+
+  @override
+  String get commentsReportFailed {
+    return '无法提交举报。请稍后再试。';
+  }
+
+  @override
+  String get commentsReportNoteLabel {
+    return '补充说明';
+  }
+
+  @override
+  String get commentsReportNotePlaceholder {
+    return '选填。请描述这条评论有什么问题。';
+  }
+
+  @override
+  String commentsReportNoteTooLong({required String max}) {
+    return '补充说明最多 $max 个字符。';
+  }
+
+  @override
+  String get commentsReportReasonAbuse {
+    return '辱骂或骚扰';
+  }
+
+  @override
+  String get commentsReportReasonLabel {
+    return '您举报这条评论的原因是什么？';
+  }
+
+  @override
+  String get commentsReportReasonOther {
+    return '其他原因';
+  }
+
+  @override
+  String get commentsReportReasonSpam {
+    return '垃圾信息或广告';
+  }
+
+  @override
+  String get commentsReportReasonSpoiler {
+    return '剧透';
+  }
+
+  @override
+  String get commentsReportTitle {
+    return '举报这条评论？';
+  }
+
+  @override
+  String get commentsReported {
+    return '谢谢。您的举报已提交给审核人员。';
+  }
+
+  @override
+  String get commentsReporting {
+    return '正在提交…';
+  }
+
+  @override
+  String get commentsSignInPrompt {
+    return '登录后即可发表评论。';
+  }
+
+  @override
+  String get commentsSubmit {
+    return '发表评论';
+  }
+
+  @override
+  String get commentsTitle {
+    return '评论';
+  }
+
+  @override
+  String get commonBackToCatalog {
+    return '返回作品目录';
+  }
+
+  @override
+  String get commonCancel {
+    return '取消';
+  }
+
+  @override
+  String get commonFree {
+    return '免费';
+  }
+
+  @override
+  String commonListEnd({required String first, required String rest}) {
+    return '$first和$rest';
+  }
+
+  @override
+  String commonListMiddle({required String first, required String rest}) {
+    return '$first、$rest';
+  }
+
+  @override
+  String commonListStart({required String first, required String rest}) {
+    return '$first、$rest';
+  }
+
+  @override
+  String commonListTwo({required String first, required String rest}) {
+    return '$first和$rest';
+  }
+
+  @override
+  String get commonRetry {
+    return '重试';
+  }
+
+  @override
+  String get commonSignIn {
+    return '登录';
+  }
+
+  @override
+  String notFoundMessage({required String uri}) {
+    return '“$uri”不存在。';
+  }
+
+  @override
+  String get notFoundTitle {
+    return '找不到页面';
+  }
+
+  @override
+  String get pushOpen {
+    return '打开';
+  }
+
+  @override
+  String seriesEpisodeCount({required String count}) {
+    return '$count 章';
+  }
+
+  @override
+  String get seriesEpisodesEmpty {
+    return '还没有发布任何章节。';
+  }
+
+  @override
+  String get seriesEpisodesHeading {
+    return '章节';
+  }
+
+  @override
+  String get seriesLoadFailed {
+    return '无法显示该系列。';
+  }
+
+  @override
+  String seriesNotFound({required String id}) {
+    return '找不到系列（$id）';
+  }
+
+  @override
+  String get seriesOfflineNotSaved {
+    return '您当前处于离线状态，且此设备上没有保存该系列的内容。';
+  }
+
+  @override
+  String get seriesSavedOffline {
+    return '已保存到此设备';
+  }
+
+  @override
+  String get seriesTitle {
+    return '系列';
+  }
+
+  @override
+  String get signInEmailLabel {
+    return '邮箱地址';
+  }
+
+  @override
+  String get signInEmailNotVerified {
+    return '您的邮箱地址尚未确认。请打开确认邮件中的链接。';
+  }
+
+  @override
+  String get signInEmailRequired {
+    return '请输入邮箱地址。';
+  }
+
+  @override
+  String get signInFailed {
+    return '无法登录。';
+  }
+
+  @override
+  String get signInInvalidCredentials {
+    return '邮箱地址或密码不正确。';
+  }
+
+  @override
+  String get signInPasswordLabel {
+    return '密码';
+  }
+
+  @override
+  String get signInPasswordRequired {
+    return '请输入密码。';
+  }
+
+  @override
+  String get signInWebsiteNote {
+    return '请在网站上创建账户或重设密码。';
+  }
+
+  @override
+  String get viewerBackToSeries {
+    return '返回系列';
+  }
+
+  @override
+  String get viewerEndUpNext {
+    return '接下来';
+  }
+
+  @override
+  String viewerEndUpToDateDescription({required String title}) {
+    return '《$title》还没有下一章。';
+  }
+
+  @override
+  String get viewerEndUpToDateTitle {
+    return '已看到最新一章';
+  }
+
+  @override
+  String get viewerLoadFailed {
+    return '无法显示该章节。';
+  }
+
+  @override
+  String get viewerLocked {
+    return '购买后即可阅读本章。';
+  }
+
+  @override
+  String get viewerLockedSignedOut {
+    return '购买后即可阅读本章。如果您已经购买，请登录。';
+  }
+
+  @override
+  String get viewerNextEpisode {
+    return '下一章';
+  }
+
+  @override
+  String get viewerNextPage {
+    return '下一页';
+  }
+
+  @override
+  String get viewerNoPages {
+    return '本章还没有页面。';
+  }
+
+  @override
+  String viewerNotFound({required String id}) {
+    return '找不到章节（$id）';
+  }
+
+  @override
+  String get viewerOfflineNotSaved {
+    return '您当前处于离线状态，只能阅读已保存到此设备的章节。';
+  }
+
+  @override
+  String get viewerPageFailed {
+    return '无法加载本页。';
+  }
+
+  @override
+  String viewerPageStatus({required String page, required String total}) {
+    return '$page / $total';
+  }
+
+  @override
+  String viewerPageStatusRange({
+    required String first,
+    required String last,
+    required String total,
+  }) {
+    return '$first–$last / $total';
+  }
+
+  @override
+  String get viewerPreviousEpisode {
+    return '上一章';
+  }
+
+  @override
+  String get viewerPreviousPage {
+    return '上一页';
+  }
+
+  @override
+  String get viewerReload {
+    return '重新加载';
+  }
+
+  @override
+  String get viewerSaveExpired {
+    return '本章保存的副本已过期。请在联网状态下重新打开。';
+  }
+
+  @override
+  String get viewerTitle {
+    return '章节';
   }
 }
