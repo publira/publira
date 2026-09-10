@@ -250,9 +250,16 @@ test.describe("admin published pages", () => {
     const titleField = page.getByRole("textbox", { name: "Title" });
     await fillField(titleField, editedTitle);
     await page.getByRole("button", { name: "Update title" }).click();
-    // FlashToast strips `?updated=1` via a client replace; assert on the value
-    // rather than waiting for a load event that may never re-fire.
-    await expect(titleField).toHaveValue(editedTitle, { timeout: 30_000 });
+    // The toast is what says the Action finished. The field cannot say it —
+    // `fillField` already put the text there, so asserting on it passes while
+    // the request is still in flight, and the navigation below would then
+    // cancel the very save it is meant to read back on the public page.
+    // FlashToast strips `?updated=1` via a client replace, so the URL cannot
+    // say it either.
+    await expect(page.getByText("Page details updated.")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(titleField).toHaveValue(editedTitle);
 
     await expectPublicPageHeading(page, slug, editedTitle);
 
