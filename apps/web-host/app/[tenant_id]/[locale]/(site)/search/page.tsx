@@ -13,6 +13,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import {
@@ -36,6 +37,10 @@ const SEARCH_PAGE_SIZE = 20;
 
 /** Enough rows to fill a phone screen while the read comes back. */
 const SEARCH_SKELETON_COUNT = 8;
+
+/** The one style both pagination directions and the first-page link share. */
+const paginationLinkClassName =
+  "text-sm text-primary underline underline-offset-4";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -76,19 +81,14 @@ const SearchRowsSkeleton = () => (
 );
 
 /**
- * A cursor list has no page numbers to set in ink, so the two directions are
- * all there is to render: the one that leads somewhere is an Ai text link, and
- * the end of the list is the same words without one.
+ * The pagination's own `<nav>`.
+ *
+ * `aria-label` cannot be a node, so this resolves the catalog for that one
+ * attribute and nothing else. The words inside are the caller's, each behind a
+ * boundary of its own, so the navigation is the largest thing one missing
+ * string can hold up.
  */
-const SearchPagination = async ({
-  nextToken,
-  previousToken,
-  query,
-}: {
-  nextToken: string;
-  previousToken: string;
-  query: string;
-}) => {
+const SearchPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
@@ -97,34 +97,70 @@ const SearchPagination = async ({
       aria-label={getMessage(messages, "host.search.pagination_aria")}
       className="flex items-baseline gap-6 border-t border-border pt-4"
     >
+      {children}
+    </nav>
+  );
+};
+
+const SearchPaginationSkeleton = () => (
+  <div className="flex items-baseline gap-6 border-t border-border pt-4">
+    <SkeletonLine className="h-4 w-24" />
+    <SkeletonLine className="h-4 w-16" />
+  </div>
+);
+
+/**
+ * A cursor list has no page numbers to set in ink, so the two directions are
+ * all there is to render: the one that leads somewhere is an Ai text link, and
+ * the end of the list is the same words without one.
+ */
+const SearchPagination = ({
+  nextToken,
+  previousToken,
+  query,
+}: {
+  nextToken: string;
+  previousToken: string;
+  query: string;
+}) => (
+  <Suspense fallback={<SearchPaginationSkeleton />}>
+    <SearchPaginationNav>
       {previousToken ? (
         <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
+          className={paginationLinkClassName}
           href={searchPageHref(query, previousToken)}
         >
-          {getMessage(messages, "host.common.previous_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.common.previous_page" />
+          </Suspense>
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.common.previous_page" />
+          </Suspense>
         </span>
       )}
 
       {nextToken ? (
         <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
+          className={paginationLinkClassName}
           href={searchPageHref(query, nextToken)}
         >
-          {getMessage(messages, "host.common.next_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.common.next_page" />
+          </Suspense>
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.common.next_page" />
+          </Suspense>
         </span>
       )}
-    </nav>
-  );
-};
+    </SearchPaginationNav>
+  </Suspense>
+);
 
 const SearchResultsData = async ({
   searchParams,
@@ -137,13 +173,14 @@ const SearchResultsData = async ({
     getLocale(),
   ]);
   const { query, token } = parseSearchPageSearchParams(resolvedSearchParams);
-  const messages = await loadHostMessages(locale);
 
   if (!query) {
     return (
       <EmptyState>
         <EmptyStateDescription>
-          {getMessage(messages, "host.search.prompt")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="host.search.prompt" />
+          </Suspense>
         </EmptyStateDescription>
       </EmptyState>
     );
@@ -178,7 +215,9 @@ const SearchResultsData = async ({
       return (
         <EmptyState>
           <EmptyStateDescription>
-            {getMessage(messages, "host.search.no_results", { query })}
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.search.no_results" values={{ query }} />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyState>
       );
@@ -191,7 +230,9 @@ const SearchResultsData = async ({
       <div className="grid gap-8">
         <EmptyState>
           <EmptyStateDescription>
-            {getMessage(messages, "host.series.page_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.series.page_empty" />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyState>
         {previousToken || nextToken ? (
@@ -203,10 +244,12 @@ const SearchResultsData = async ({
         ) : (
           <p>
             <LocaleLink
-              className="text-sm text-primary underline underline-offset-4"
+              className={paginationLinkClassName}
               href={searchPageHref(query, "")}
             >
-              {getMessage(messages, "host.search.first_page")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="host.search.first_page" />
+              </Suspense>
             </LocaleLink>
           </p>
         )}

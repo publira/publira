@@ -14,6 +14,7 @@ import {
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
@@ -33,6 +34,10 @@ const AUTHORS_PAGE_SIZE = 12;
 
 /** Enough rows to fill a phone screen while the read comes back. */
 const AUTHORS_SKELETON_COUNT = 8;
+
+/** The one style both pagination directions and the first-page link share. */
+const paginationLinkClassName =
+  "text-sm text-primary underline underline-offset-4";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -76,17 +81,14 @@ const AuthorsListDescription = async () => {
 };
 
 /**
- * A cursor list has no page numbers to set in ink, so the two directions are
- * all there is to render: the one that leads somewhere is an Ai text link, and
- * the end of the list is the same words without one.
+ * The pagination's own `<nav>`.
+ *
+ * `aria-label` cannot be a node, so this resolves the catalog for that one
+ * attribute and nothing else. The words inside are the caller's, each behind a
+ * boundary of its own, so the navigation is the largest thing one missing
+ * string can hold up.
  */
-const AuthorsPagination = async ({
-  nextToken,
-  previousToken,
-}: {
-  nextToken: string;
-  previousToken: string;
-}) => {
+const AuthorsPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
@@ -95,34 +97,68 @@ const AuthorsPagination = async ({
       aria-label={getMessage(messages, "host.authors.pagination_aria")}
       className="flex items-baseline gap-6 border-t border-border pt-4"
     >
+      {children}
+    </nav>
+  );
+};
+
+const AuthorsPaginationSkeleton = () => (
+  <div className="flex items-baseline gap-6 border-t border-border pt-4">
+    <SkeletonLine className="h-4 w-24" />
+    <SkeletonLine className="h-4 w-16" />
+  </div>
+);
+
+/**
+ * A cursor list has no page numbers to set in ink, so the two directions are
+ * all there is to render: the one that leads somewhere is an Ai text link, and
+ * the end of the list is the same words without one.
+ */
+const AuthorsPagination = ({
+  nextToken,
+  previousToken,
+}: {
+  nextToken: string;
+  previousToken: string;
+}) => (
+  <Suspense fallback={<AuthorsPaginationSkeleton />}>
+    <AuthorsPaginationNav>
       {previousToken ? (
         <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
+          className={paginationLinkClassName}
           href={authorsListHref(previousToken)}
         >
-          {getMessage(messages, "host.common.previous_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.common.previous_page" />
+          </Suspense>
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.common.previous_page" />
+          </Suspense>
         </span>
       )}
 
       {nextToken ? (
         <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
+          className={paginationLinkClassName}
           href={authorsListHref(nextToken)}
         >
-          {getMessage(messages, "host.common.next_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.common.next_page" />
+          </Suspense>
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.common.next_page" />
+          </Suspense>
         </span>
       )}
-    </nav>
-  );
-};
+    </AuthorsPaginationNav>
+  </Suspense>
+);
 
 const AuthorsListData = async ({
   searchParams,
@@ -136,14 +172,11 @@ const AuthorsListData = async ({
   ]);
   const { token } = parseAuthorsListSearchParams(resolvedSearchParams);
 
-  const [result, messages] = await Promise.all([
-    listPublishedAuthors(tenantId, {
-      limit: AUTHORS_PAGE_SIZE,
-      locale,
-      token,
-    }),
-    loadHostMessages(locale),
-  ]);
+  const result = await listPublishedAuthors(tenantId, {
+    limit: AUTHORS_PAGE_SIZE,
+    locale,
+    token,
+  });
 
   if (!result.ok) {
     return (
@@ -168,10 +201,14 @@ const AuthorsListData = async ({
         <EmptyState>
           <EmptyStateHeading>
             <EmptyStateTitle>
-              {getMessage(messages, "host.authors.list_empty_title")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <Message message="host.authors.list_empty_title" />
+              </Suspense>
             </EmptyStateTitle>
             <EmptyStateDescription>
-              {getMessage(messages, "host.authors.list_empty_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                <Message message="host.authors.list_empty_description" />
+              </Suspense>
             </EmptyStateDescription>
           </EmptyStateHeading>
         </EmptyState>
@@ -185,7 +222,9 @@ const AuthorsListData = async ({
       <div className="grid gap-8">
         <EmptyState>
           <EmptyStateDescription>
-            {getMessage(messages, "host.authors.page_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.authors.page_empty" />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyState>
         {previousToken || nextToken ? (
@@ -196,10 +235,12 @@ const AuthorsListData = async ({
         ) : (
           <p>
             <LocaleLink
-              className="text-sm text-primary underline underline-offset-4"
+              className={paginationLinkClassName}
               href={authorsListHref("")}
             >
-              {getMessage(messages, "host.authors.first_page")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="host.authors.first_page" />
+              </Suspense>
             </LocaleLink>
           </p>
         )}
@@ -220,9 +261,12 @@ const AuthorsListData = async ({
                 {author.name}
               </span>
               <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                {getMessage(messages, "host.common.series_count", {
-                  count: author.seriesCount,
-                })}
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message
+                    message="host.common.series_count"
+                    values={{ count: author.seriesCount }}
+                  />
+                </Suspense>
               </span>
             </LocaleLink>
           </li>

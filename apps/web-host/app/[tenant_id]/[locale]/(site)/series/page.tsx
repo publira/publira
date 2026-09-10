@@ -13,6 +13,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatList } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { EyeCatchFrame } from "#components/eye-catch-frame";
@@ -33,6 +34,10 @@ const SERIES_PAGE_SIZE = 24;
 
 /** Half a page of covers: two shelves on a desktop, four rows on a phone. */
 const SERIES_SKELETON_COUNT = 12;
+
+/** The one style both pagination directions and the first-page link share. */
+const paginationLinkClassName =
+  "text-sm text-primary underline underline-offset-4";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -74,21 +79,14 @@ const SeriesListDescription = async () => {
 };
 
 /**
- * Resolves the catalog itself rather than taking it as a prop: the labels are
- * three fixed strings and the `aria-label` cannot stream, and every caller
- * already sits inside the section's own boundary.
+ * The pagination's own `<nav>`.
  *
- * A cursor list has no page numbers to set in ink, so the two directions are
- * all there is to render: the one that leads somewhere is an Ai text link, and
- * the end of the list is the same words without one.
+ * `aria-label` cannot be a node, so this resolves the catalog for that one
+ * attribute and nothing else. The words inside are the caller's, each behind a
+ * boundary of its own, so the navigation is the largest thing one missing
+ * string can hold up.
  */
-const SeriesPagination = async ({
-  nextToken,
-  previousToken,
-}: {
-  nextToken: string;
-  previousToken: string;
-}) => {
+const SeriesPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
@@ -97,34 +95,68 @@ const SeriesPagination = async ({
       aria-label={getMessage(messages, "host.series.pagination_aria")}
       className="flex items-baseline gap-6 border-t border-border pt-4"
     >
+      {children}
+    </nav>
+  );
+};
+
+const SeriesPaginationSkeleton = () => (
+  <div className="flex items-baseline gap-6 border-t border-border pt-4">
+    <SkeletonLine className="h-4 w-24" />
+    <SkeletonLine className="h-4 w-16" />
+  </div>
+);
+
+/**
+ * A cursor list has no page numbers to set in ink, so the two directions are
+ * all there is to render: the one that leads somewhere is an Ai text link, and
+ * the end of the list is the same words without one.
+ */
+const SeriesPagination = ({
+  nextToken,
+  previousToken,
+}: {
+  nextToken: string;
+  previousToken: string;
+}) => (
+  <Suspense fallback={<SeriesPaginationSkeleton />}>
+    <SeriesPaginationNav>
       {previousToken ? (
         <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
+          className={paginationLinkClassName}
           href={seriesListHref(previousToken)}
         >
-          {getMessage(messages, "host.common.previous_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.common.previous_page" />
+          </Suspense>
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.common.previous_page" />
+          </Suspense>
         </span>
       )}
 
       {nextToken ? (
         <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
+          className={paginationLinkClassName}
           href={seriesListHref(nextToken)}
         >
-          {getMessage(messages, "host.common.next_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.common.next_page" />
+          </Suspense>
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.common.next_page" />
+          </Suspense>
         </span>
       )}
-    </nav>
-  );
-};
+    </SeriesPaginationNav>
+  </Suspense>
+);
 
 const SeriesListData = async ({
   searchParams,
@@ -138,14 +170,11 @@ const SeriesListData = async ({
   ]);
   const { token } = parseSeriesListSearchParams(resolvedSearchParams);
 
-  const [result, messages] = await Promise.all([
-    listPublishedSeries(tenantId, {
-      limit: SERIES_PAGE_SIZE,
-      locale,
-      token,
-    }),
-    loadHostMessages(locale),
-  ]);
+  const result = await listPublishedSeries(tenantId, {
+    limit: SERIES_PAGE_SIZE,
+    locale,
+    token,
+  });
 
   if (!result.ok) {
     return (
@@ -169,7 +198,9 @@ const SeriesListData = async ({
       return (
         <EmptyState>
           <EmptyStateDescription>
-            {getMessage(messages, "host.series.list_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.series.list_empty" />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyState>
       );
@@ -182,7 +213,9 @@ const SeriesListData = async ({
       <div className="grid gap-8">
         <EmptyState>
           <EmptyStateDescription>
-            {getMessage(messages, "host.series.page_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.series.page_empty" />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyState>
         {previousToken || nextToken ? (
@@ -193,10 +226,12 @@ const SeriesListData = async ({
         ) : (
           <p>
             <LocaleLink
-              className="text-sm text-primary underline underline-offset-4"
+              className={paginationLinkClassName}
               href={seriesListHref("")}
             >
-              {getMessage(messages, "host.series.first_page")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="host.series.first_page" />
+              </Suspense>
             </LocaleLink>
           </p>
         )}

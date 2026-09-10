@@ -12,6 +12,7 @@ import {
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { EyeCatchFrame } from "#components/eye-catch-frame";
@@ -32,6 +33,10 @@ const LABELS_PAGE_SIZE = 24;
 
 /** Enough rows to fill a phone screen while the read comes back. */
 const LABELS_SKELETON_COUNT = 8;
+
+/** The one style both pagination directions and the first-page link share. */
+const paginationLinkClassName =
+  "text-sm text-primary underline underline-offset-4";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -72,17 +77,14 @@ const LabelsListDescription = async () => {
 };
 
 /**
- * A cursor list has no page numbers to set in ink, so the two directions are
- * all there is to render: the one that leads somewhere is an Ai text link, and
- * the end of the list is the same words without one.
+ * The pagination's own `<nav>`.
+ *
+ * `aria-label` cannot be a node, so this resolves the catalog for that one
+ * attribute and nothing else. The words inside are the caller's, each behind a
+ * boundary of its own, so the navigation is the largest thing one missing
+ * string can hold up.
  */
-const LabelsPagination = async ({
-  nextToken,
-  previousToken,
-}: {
-  nextToken: string;
-  previousToken: string;
-}) => {
+const LabelsPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
@@ -91,34 +93,68 @@ const LabelsPagination = async ({
       aria-label={getMessage(messages, "host.labels.pagination_aria")}
       className="flex items-baseline gap-6 border-t border-border pt-4"
     >
+      {children}
+    </nav>
+  );
+};
+
+const LabelsPaginationSkeleton = () => (
+  <div className="flex items-baseline gap-6 border-t border-border pt-4">
+    <SkeletonLine className="h-4 w-24" />
+    <SkeletonLine className="h-4 w-16" />
+  </div>
+);
+
+/**
+ * A cursor list has no page numbers to set in ink, so the two directions are
+ * all there is to render: the one that leads somewhere is an Ai text link, and
+ * the end of the list is the same words without one.
+ */
+const LabelsPagination = ({
+  nextToken,
+  previousToken,
+}: {
+  nextToken: string;
+  previousToken: string;
+}) => (
+  <Suspense fallback={<LabelsPaginationSkeleton />}>
+    <LabelsPaginationNav>
       {previousToken ? (
         <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
+          className={paginationLinkClassName}
           href={labelsListHref(previousToken)}
         >
-          {getMessage(messages, "host.common.previous_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.common.previous_page" />
+          </Suspense>
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.common.previous_page" />
+          </Suspense>
         </span>
       )}
 
       {nextToken ? (
         <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
+          className={paginationLinkClassName}
           href={labelsListHref(nextToken)}
         >
-          {getMessage(messages, "host.common.next_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.common.next_page" />
+          </Suspense>
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.common.next_page" />
+          </Suspense>
         </span>
       )}
-    </nav>
-  );
-};
+    </LabelsPaginationNav>
+  </Suspense>
+);
 
 const LabelsListData = async ({
   searchParams,
@@ -131,14 +167,12 @@ const LabelsListData = async ({
     getLocale(),
   ]);
   const { token } = parseLabelsListSearchParams(resolvedSearchParams);
-  const [result, messages] = await Promise.all([
-    listPublishedLabels(tenantId, {
-      limit: LABELS_PAGE_SIZE,
-      locale,
-      token,
-    }),
-    loadHostMessages(locale),
-  ]);
+
+  const result = await listPublishedLabels(tenantId, {
+    limit: LABELS_PAGE_SIZE,
+    locale,
+    token,
+  });
 
   if (!result.ok) {
     return (
@@ -162,7 +196,9 @@ const LabelsListData = async ({
       return (
         <EmptyState>
           <EmptyStateDescription>
-            {getMessage(messages, "host.labels.list_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.labels.list_empty" />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyState>
       );
@@ -175,7 +211,9 @@ const LabelsListData = async ({
       <div className="grid gap-8">
         <EmptyState>
           <EmptyStateDescription>
-            {getMessage(messages, "host.labels.page_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="host.labels.page_empty" />
+            </Suspense>
           </EmptyStateDescription>
         </EmptyState>
         {previousToken || nextToken ? (
@@ -186,10 +224,12 @@ const LabelsListData = async ({
         ) : (
           <p>
             <LocaleLink
-              className="text-sm text-primary underline underline-offset-4"
+              className={paginationLinkClassName}
               href={labelsListHref("")}
             >
-              {getMessage(messages, "host.labels.first_page")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="host.labels.first_page" />
+              </Suspense>
             </LocaleLink>
           </p>
         )}
