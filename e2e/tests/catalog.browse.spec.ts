@@ -10,7 +10,7 @@ const SERIES_PAGE_SIZE = 24;
 const SEED_LABEL_COUNT = 10;
 
 /** Keep in sync with `RELATED_SERIES_COUNT` in the web-host series detail page. */
-const RELATED_SERIES_COUNT = 4;
+const RELATED_SERIES_COUNT = 6;
 
 /**
  * Main public catalog journeys for the dev-seed tenant (Host `localhost`):
@@ -159,7 +159,7 @@ test.describe("web-host catalog browsing", () => {
     // db/seeds/dev/010_catalog.sql publishes more series than one page holds.
     // A series detail page this test opens stays in the document behind the
     // list it returns to — Next.js keeps the tree it navigated away from — and
-    // it carries links of both shapes: its episode rows, and the four covers of
+    // it carries links of both shapes: its episode rows, and the covers of
     // "You may also like". `:not([href*="/episodes/"])` drops the first, and
     // `:visible` drops what the reader is no longer looking at.
     const seriesCards = page.locator(

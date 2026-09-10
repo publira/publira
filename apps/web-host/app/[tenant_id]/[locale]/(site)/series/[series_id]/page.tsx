@@ -54,11 +54,11 @@ const seriesDetailParamsSchema = z.object({
 const EPISODE_SKELETON_COUNT = 5;
 
 /**
- * Four covers of what to read next. The page has the width for a full shelf,
- * but the episode list above is what a reader came here for, so the suggestions
- * stay a strip rather than a second catalogue.
+ * Six covers of what to read next: one full shelf on a desktop, and two full
+ * rows on a phone. The shelf is three across at that width, so a count that is
+ * not a multiple of three leaves the last row short.
  */
-const RELATED_SERIES_COUNT = 4;
+const RELATED_SERIES_COUNT = 6;
 
 const SeriesDetailSkeleton = () => (
   <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
