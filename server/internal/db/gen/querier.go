@@ -86,6 +86,9 @@ type Querier interface {
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
 	CountUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error)
+	// How much of one tenant's backlog the retention purge is about to take. It
+	// answers that batch's dry run, which reports the total and deletes nothing.
+	CountWithdrawnEpisodeCommentsBefore(ctx context.Context, arg CountWithdrawnEpisodeCommentsBeforeParams) (int64, error)
 	CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error)
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
@@ -112,6 +115,8 @@ type Querier interface {
 	//   CountPendingEpisodeCommentsForTenant
 	//     -> idx_episode_comments_tenant_status_created_at
 	//   PurgeWithdrawnEpisodeComments
+	//     -> idx_episode_comments_tenant_withdrawn_at
+	//   CountWithdrawnEpisodeCommentsBefore
 	//     -> idx_episode_comments_tenant_withdrawn_at
 	// status and published_at come from the tenant's comment_mode: 'published' with
 	// a timestamp under immediate, 'pending' with NULL under approval_required.

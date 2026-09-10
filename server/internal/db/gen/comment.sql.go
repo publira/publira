@@ -75,6 +75,28 @@ func (q *Queries) CountPendingEpisodeCommentsForTenant(ctx context.Context, tena
 	return pending_count, err
 }
 
+const countWithdrawnEpisodeCommentsBefore = `-- name: CountWithdrawnEpisodeCommentsBefore :one
+SELECT count(*)
+FROM episode_comments
+WHERE tenant_id = $1
+    AND status = 'withdrawn'
+    AND withdrawn_at < $2::timestamptz
+`
+
+type CountWithdrawnEpisodeCommentsBeforeParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Cutoff   time.Time `json:"cutoff"`
+}
+
+// How much of one tenant's backlog the retention purge is about to take. It
+// answers that batch's dry run, which reports the total and deletes nothing.
+func (q *Queries) CountWithdrawnEpisodeCommentsBefore(ctx context.Context, arg CountWithdrawnEpisodeCommentsBeforeParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countWithdrawnEpisodeCommentsBefore, arg.TenantID, arg.Cutoff)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createEpisodeComment = `-- name: CreateEpisodeComment :one
 
 INSERT INTO episode_comments (
@@ -129,6 +151,8 @@ type CreateEpisodeCommentParams struct {
 //	CountPendingEpisodeCommentsForTenant
 //	  -> idx_episode_comments_tenant_status_created_at
 //	PurgeWithdrawnEpisodeComments
+//	  -> idx_episode_comments_tenant_withdrawn_at
+//	CountWithdrawnEpisodeCommentsBefore
 //	  -> idx_episode_comments_tenant_withdrawn_at
 //
 // status and published_at come from the tenant's comment_mode: 'published' with

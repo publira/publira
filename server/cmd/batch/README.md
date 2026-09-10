@@ -7,7 +7,7 @@ task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the ten below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the eleven below, the binary prints its usage to stderr and exits non-zero.
 
 | Subcommand | Lifetime | What it does |
 | --- | --- | --- |
@@ -19,6 +19,7 @@ Without an argument, or with a name that is not one of the ten below, the binary
 | `purge-content-events` | One-shot | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | One-shot | Deletes `content_ranking_snapshots` rows past their retention window |
 | `purge-mfa-challenges` | One-shot | Deletes the spent admin MFA challenges whose tokens have expired |
+| `purge-withdrawn-comments` | One-shot | Deletes the comments their authors withdrew past the retention window |
 | `purge-orphan-images` | One-shot | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | One-shot | Rebuilds the daily user and item recommend feature snapshots |
 
@@ -248,6 +249,34 @@ Environment variables:
 - `PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
 The structured log records the cutoff, the chunk size, the rows deleted, the chunk count, and the elapsed time.
+
+## purge-withdrawn-comments
+
+Deletes the `episode_comments` rows whose authors withdrew them longer ago than the retention window allows, one tenant at a time, in chunked `DELETE`s. The reports filed on a deleted comment go with it, through the foreign key from `episode_comment_reports`.
+
+A withdrawal is the author's own deletion, and the row outlives it only so staff can still read the comment while a report or a dispute about it is open. The cutoff is the run's UTC timestamp minus `PUBLIRA_COMMENT_WITHDRAWN_RETENTION_DAYS`, compared exclusively (`withdrawn_at < cutoff`).
+
+**A `hidden` comment is never deleted, whatever its age**: a removal by staff or by the report threshold is the record of a moderation decision, and nothing here takes it away.
+
+The admin console reads the same retention variable to show staff the `purge_due_at` of a withdrawn comment, so a value set for this batch has to be set for `admin-api-server` too, or the console counts down to a deadline this batch does not keep.
+
+One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero with every failure in its log.
+
+For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+
+```bash
+eval "$(task --silent dev-env:env)"
+PUBLIRA_COMMENT_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-withdrawn-comments
+```
+
+Environment variables:
+
+- `PUBLIRA_COMMENT_PURGE_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_COMMENT_WITHDRAWN_RETENTION_DAYS`: how long a withdrawn comment is kept. Defaults to `180`. Anything below `1` or non-numeric fails at startup, because the cutoff would land at or after now and take every withdrawn comment with it.
+- `PUBLIRA_COMMENT_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `1000`, below the `content_events` chunk because deleting a comment cascades into the reports filed on it.
+- `PUBLIRA_COMMENT_PURGE_DRY_RUN`: `true` counts the comments that would be deleted, logs the total, and exits without deleting anything.
+
+The structured log records the cutoff, the retention, the chunk size, the tenants drained, the rows deleted, the chunk count, and the elapsed time.
 
 ## purge-orphan-images
 

@@ -17,6 +17,8 @@
 --     -> idx_episode_comments_tenant_status_created_at
 --   PurgeWithdrawnEpisodeComments
 --     -> idx_episode_comments_tenant_withdrawn_at
+--   CountWithdrawnEpisodeCommentsBefore
+--     -> idx_episode_comments_tenant_withdrawn_at
 
 -- name: CreateEpisodeComment :one
 -- status and published_at come from the tenant's comment_mode: 'published' with
@@ -396,3 +398,12 @@ WHERE id IN (
     ORDER BY expired.withdrawn_at
     LIMIT sqlc.arg('limit')
 );
+
+-- name: CountWithdrawnEpisodeCommentsBefore :one
+-- How much of one tenant's backlog the retention purge is about to take. It
+-- answers that batch's dry run, which reports the total and deletes nothing.
+SELECT count(*)
+FROM episode_comments
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND status = 'withdrawn'
+    AND withdrawn_at < sqlc.arg('cutoff')::timestamptz;
