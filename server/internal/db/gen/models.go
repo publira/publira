@@ -666,6 +666,13 @@ type TenantPaymentConfig struct {
 	UpdatedAt              time.Time      `json:"updated_at"`
 }
 
+type TenantRatingTotal struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	Points         int64     `json:"points"`
+	CompletedReads int64     `json:"completed_reads"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 type TenantSmtpConfig struct {
 	TenantID            uuid.UUID      `json:"tenant_id"`
 	SmtpOverrideEnabled bool           `json:"smtp_override_enabled"`

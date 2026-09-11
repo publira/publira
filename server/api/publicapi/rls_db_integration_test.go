@@ -82,11 +82,13 @@ var publicDataTables = []struct {
 	// pair a storefront shows to everybody, so a missing policy here would hand
 	// every tenant's rating counts to every other one.
 	{name: "episode_rating_counts", count: "SELECT count(*) FROM episode_rating_counts"},
-	// The series page reads both of these to say what a series is rated: the
-	// headcount behind the figure, and the daily aggregates the figure itself
-	// is derived from.
+	// The series page reads all three of these to say what a series is rated:
+	// the headcount behind the figure, the daily aggregates the figure itself
+	// is derived from, and the tenant mean a series with few finished reads is
+	// rated against.
 	{name: "series_rating_counts", count: "SELECT count(*) FROM series_rating_counts"},
 	{name: "content_daily_stats", count: "SELECT count(*) FROM content_daily_stats"},
+	{name: "tenant_rating_totals", count: "SELECT count(*) FROM tenant_rating_totals"},
 	{name: "users", count: "SELECT count(*) FROM users"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
@@ -139,6 +141,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, complete_count, rating_count, rating_sum) VALUES ($1, $2, CURRENT_DATE, 'series', $3, 1, 1, 5)", uuid.Must(uuid.NewV7()), first.ID, series.ID); err != nil {
 		t.Fatalf("seed content daily stats: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads) VALUES ($1, 5, 1)", first.ID); err != nil {
+		t.Fatalf("seed tenant rating totals: %v", err)
 	}
 	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 

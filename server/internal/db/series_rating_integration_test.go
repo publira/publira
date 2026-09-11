@@ -22,6 +22,11 @@ const seriesRatingPriorReads = 20.0
 // the figure a series is rated at comes from. Reaction points and completed
 // reads are the only two columns it reads, so the rest of the row stays at
 // zero.
+//
+// It restates the tenant's totals afterwards, because that is what
+// aggregate-content-stats does in the transaction that writes the day: a test
+// that wrote only the day would be asking what a series is rated between two
+// runs of the batch rather than after one.
 func seedSeriesDailyStats(
 	t *testing.T,
 	ctx context.Context,
@@ -39,6 +44,16 @@ func seedSeriesDailyStats(
 		VALUES ($1, $2, $3::date, 'series', $4, $5, $6, $7)
 	`, uuid.Must(uuid.NewV7()), tenantID, day, seriesID, completedReads, points, points); err != nil {
 		t.Fatalf("seed daily stats for %s: %v", day, err)
+	}
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads)
+		SELECT $1, COALESCE(sum(cds.rating_sum), 0), COALESCE(sum(cds.complete_count), 0)
+		FROM content_daily_stats cds
+		WHERE cds.tenant_id = $1 AND cds.entity_type = 'series'
+		ON CONFLICT (tenant_id) DO UPDATE
+		SET points = EXCLUDED.points, completed_reads = EXCLUDED.completed_reads
+	`, tenantID); err != nil {
+		t.Fatalf("restate the tenant rating totals: %v", err)
 	}
 }
 
@@ -322,6 +337,49 @@ func TestSeriesRatingCountFallsByOneWhenAReaderLeaves(t *testing.T) {
 	}
 	if got := seriesRatingCount(t, ctx, pg.DB, tenantID, seriesID); got != 0 {
 		t.Fatalf("series rating count after every reader left = %d, want 0", got)
+	}
+}
+
+// A removed episode takes its reactions with it, and the series loses the
+// readers whose only reaction to it was on that episode while keeping the ones
+// who reacted elsewhere in the series.
+//
+// The episode's own reactions go before the episode does, because the tally
+// resolves a series through the episode: were they left to the foreign key's
+// cascade they would arrive after the episode row was gone, and the series
+// would go on counting readers who no longer have a reaction to it.
+func TestSeriesRatingCountFollowsARemovedEpisode(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "TSRL", "series-rating-l.example.com", "admin-series-rating-l.example.com", "Tenant Series Rating L")
+	seriesID, firstEpisodeID := mustInsertSeriesAndEpisode(t, ctx, pg.DB, tenantID, "SDROP00001", "EDROP00001")
+	secondEpisodeID := mustInsertEpisodeOfSeries(t, ctx, pg.DB, tenantID, seriesID, "EDROP00002", 2)
+
+	throughout := mustInsertUser(t, ctx, pg.DB, tenantID, "USRO", "reader-o@example.com", "Reader O")
+	onlyFirst := mustInsertUser(t, ctx, pg.DB, tenantID, "USRP", "reader-p@example.com", "Reader P")
+	seedRating(t, ctx, pg.DB, tenantID, throughout, firstEpisodeID, 5)
+	seedRating(t, ctx, pg.DB, tenantID, throughout, secondEpisodeID, 4)
+	seedRating(t, ctx, pg.DB, tenantID, onlyFirst, firstEpisodeID, 3)
+	if got := seriesRatingCount(t, ctx, pg.DB, tenantID, seriesID); got != 2 {
+		t.Fatalf("series rating count = %d, want 2", got)
+	}
+
+	if _, err := pg.DB.ExecContext(ctx, "DELETE FROM episodes WHERE id = $1", firstEpisodeID); err != nil {
+		t.Fatalf("delete the first episode: %v", err)
+	}
+	if got := seriesRatingCount(t, ctx, pg.DB, tenantID, seriesID); got != 1 {
+		t.Fatalf("series rating count after the episode was removed = %d, want the reader who reacted elsewhere", got)
+	}
+
+	if _, err := pg.DB.ExecContext(ctx, "DELETE FROM episodes WHERE id = $1", secondEpisodeID); err != nil {
+		t.Fatalf("delete the second episode: %v", err)
+	}
+	if got := seriesRatingCount(t, ctx, pg.DB, tenantID, seriesID); got != 0 {
+		t.Fatalf("series rating count after every episode was removed = %d, want 0", got)
 	}
 }
 

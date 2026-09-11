@@ -453,6 +453,13 @@ type Querier interface {
 	// them. Twenty is roughly where a tenant's catalogue stops being the better
 	// estimate of a series nobody has finished yet.
 	//
+	// The tenant's mean comes from tenant_rating_totals rather than from a sum
+	// taken here. Its inputs are every series row the tenant has for every day it
+	// has ever had, and those rows are never purged, so summing them per request
+	// would put a scan that grows with the tenant's whole history on the series
+	// page. aggregate-content-stats leaves the totals behind on the run that
+	// changes them, which is the only time they move.
+	//
 	// The result is then held to the 1-5 scale the reaction is given on. It can
 	// fall below 1 on its own, because a reader who finishes an episode without
 	// reacting counts in the divisor and gives no points, and a figure under the

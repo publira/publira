@@ -158,6 +158,10 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 		return 0, fmt.Errorf("aggregate produced no rows from %d source rows", sources.total())
 	}
 
+	if _, err := tx.ExecContext(ctx, upsertRatingTotalsSQL, tenantID); err != nil {
+		return 0, fmt.Errorf("store rebuilt rating totals: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
@@ -374,4 +378,32 @@ WHERE view_count > 0
 	OR rating_sum > 0
 	OR favorite_count > 0
 	OR comment_count > 0
+`
+
+// upsertRatingTotalsSQL restates one tenant's all-time reaction points and
+// completed reads, which is the mean a series with few finished reads is rated
+// against.
+//
+// It runs in the same transaction as the day it follows, so the totals never
+// describe a day that was rolled back. It re-sums rather than adding the day's
+// difference because the day it replaced is already gone by this point, and a
+// full sum is also what repairs a total that drifted for any other reason.
+//
+// The series rows alone: the episode rows hold the same reactions, and the
+// series rows are the rollup of them, so counting both would double every
+// point and every completed read.
+const upsertRatingTotalsSQL = `
+INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads, updated_at)
+SELECT
+	$1,
+	COALESCE(sum(cds.rating_sum), 0),
+	COALESCE(sum(cds.complete_count), 0),
+	now()
+FROM content_daily_stats cds
+WHERE cds.tenant_id = $1
+	AND cds.entity_type = 'series'
+ON CONFLICT (tenant_id) DO UPDATE
+SET points = EXCLUDED.points,
+	completed_reads = EXCLUDED.completed_reads,
+	updated_at = EXCLUDED.updated_at
 `

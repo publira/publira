@@ -68,14 +68,17 @@ CREATE POLICY series_rating_counts_tenant_isolation ON series_rating_counts
 -- for on episode_ratings, and search_path is fixed so the body cannot be
 -- pointed at another schema's tables.
 --
--- An episode that is already gone leaves its series unresolved and its readers
--- out of the sums below, which is the correct no-op: a series is only ever
--- removed with its episodes, and its tally cascades with it.
+-- Every path into this function resolves the series through the episode the
+-- reaction names, so the episode row has to still be there when it runs.
+-- episode_ratings_follow_episode_deletes below is what guarantees that for the
+-- one delete that would otherwise arrive too late.
 CREATE FUNCTION series_rating_counts_follow_ratings() RETURNS trigger
     LANGUAGE plpgsql
     SECURITY DEFINER
     SET search_path = pg_catalog, public
     AS $$
+DECLARE
+    reader record;
 BEGIN
     IF TG_OP = 'INSERT' THEN
         -- One reader arriving at one series is serialised against themselves,
@@ -83,15 +86,26 @@ BEGIN
         -- find themselves to be the first and count the reader twice. The lock
         -- is taken after the per-rating lock the handler already holds and
         -- never before it, so the two orders cannot cross.
-        PERFORM pg_advisory_xact_lock(
-            hashtextextended(t.tenant_id::text || t.user_id::text || t.series_id::text, 0)
-        )
-        FROM (
+        --
+        -- The loop is what puts the locks of one statement in a fixed order.
+        -- Ordering the rows a single PERFORM reads would not: the order a
+        -- target-list function is evaluated in is undefined, and PostgreSQL is
+        -- free to call it before the sort, which would let two statements
+        -- covering the same pair of series take their locks the opposite way
+        -- round and deadlock.
+        FOR reader IN
             SELECT DISTINCT a.tenant_id, a.user_id, e.series_id
             FROM added a
                 JOIN episodes e ON e.tenant_id = a.tenant_id AND e.id = a.episode_id
-        ) t
-        ORDER BY t.tenant_id, t.user_id, t.series_id;
+            ORDER BY 1, 2, 3
+        LOOP
+            PERFORM pg_advisory_xact_lock(
+                hashtextextended(
+                    reader.tenant_id::text || reader.user_id::text || reader.series_id::text,
+                    0
+                )
+            );
+        END LOOP;
 
         INSERT INTO series_rating_counts (tenant_id, series_id, count)
         SELECT t.tenant_id, t.series_id, count(*)
@@ -123,15 +137,19 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    PERFORM pg_advisory_xact_lock(
-        hashtextextended(t.tenant_id::text || t.user_id::text || t.series_id::text, 0)
-    )
-    FROM (
+    FOR reader IN
         SELECT DISTINCT r.tenant_id, r.user_id, e.series_id
         FROM removed r
             JOIN episodes e ON e.tenant_id = r.tenant_id AND e.id = r.episode_id
-    ) t
-    ORDER BY t.tenant_id, t.user_id, t.series_id;
+        ORDER BY 1, 2, 3
+    LOOP
+        PERFORM pg_advisory_xact_lock(
+            hashtextextended(
+                reader.tenant_id::text || reader.user_id::text || reader.series_id::text,
+                0
+            )
+        );
+    END LOOP;
 
     UPDATE series_rating_counts src
     SET count = src.count - departed.readers
@@ -173,6 +191,42 @@ CREATE TRIGGER episode_ratings_lower_series_count
     REFERENCING OLD TABLE AS removed
     FOR EACH STATEMENT
     EXECUTE FUNCTION series_rating_counts_follow_ratings();
+
+-- FUNCTION: episode_ratings_follow_episode_deletes
+-- Takes a removed episode's reactions away while the episode is still there to
+-- name the series they belong to.
+--
+-- Without this the reactions would go by the foreign key's own cascade, which
+-- PostgreSQL runs after the episode row is gone. The tally trigger resolves the
+-- series by joining episodes, so it would find nothing, leave the count where
+-- it was, and the series would keep counting readers whose only reaction to it
+-- had just been deleted — with no path left to bring the number back down.
+-- Deleting the rows here instead leaves the cascade nothing to do.
+--
+-- The episode tally needs no such help: episode_rating_counts is keyed by the
+-- episode and cascades with it.
+--
+-- SECURITY DEFINER for the reason the tally trigger is: episode_ratings is
+-- member-isolated, and this delete has to reach every reader's rows rather than
+-- the caller's own.
+CREATE FUNCTION episode_ratings_follow_episode_deletes() RETURNS trigger
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = pg_catalog, public
+    AS $$
+BEGIN
+    DELETE FROM episode_ratings
+    WHERE tenant_id = OLD.tenant_id
+        AND episode_id = OLD.id;
+    RETURN OLD;
+END;
+$$;
+
+-- TRIGGER: episodes episodes_release_ratings
+CREATE TRIGGER episodes_release_ratings
+    BEFORE DELETE ON episodes
+    FOR EACH ROW
+    EXECUTE FUNCTION episode_ratings_follow_episode_deletes();
 
 -- The tally is derived, so it opens holding the reactions already stored rather
 -- than zero. This is the one moment nothing else can compute it: from here the

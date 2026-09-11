@@ -18,8 +18,9 @@ func mySeriesRatingRequest(tenant testutil.Tenant, seriesPublicID, token string)
 	}, token)
 }
 
-// seedSeriesDailyStats writes one day of a series' aggregates, standing in for
-// the nightly rebuild the figure is derived from.
+// seedSeriesDailyStats writes one day of a series' aggregates and the tenant
+// totals that follow it, standing in for one run of the nightly rebuild the
+// figure is derived from.
 func (e *publicDBEnv) seedSeriesDailyStats(t *testing.T, tenantID, seriesID uuid.UUID, day string, points, completedReads int64) {
 	t.Helper()
 	if _, err := e.PG.DB.ExecContext(context.Background(), `
@@ -30,6 +31,16 @@ func (e *publicDBEnv) seedSeriesDailyStats(t *testing.T, tenantID, seriesID uuid
 		VALUES ($1, $2, $3::date, 'series', $4, $5, $6, $7)
 	`, uuid.Must(uuid.NewV7()), tenantID, day, seriesID, completedReads, points, points); err != nil {
 		t.Fatalf("seed series daily stats: %v", err)
+	}
+	if _, err := e.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads)
+		SELECT $1, COALESCE(sum(cds.rating_sum), 0), COALESCE(sum(cds.complete_count), 0)
+		FROM content_daily_stats cds
+		WHERE cds.tenant_id = $1 AND cds.entity_type = 'series'
+		ON CONFLICT (tenant_id) DO UPDATE
+		SET points = EXCLUDED.points, completed_reads = EXCLUDED.completed_reads
+	`, tenantID); err != nil {
+		t.Fatalf("restate the tenant rating totals: %v", err)
 	}
 }
 

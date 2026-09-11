@@ -463,7 +463,7 @@ A series is rated by the episodes it is made of. `CatalogService.GetSeriesDetail
 | --- | --- |
 | Source | The `series` rows of `content_daily_stats`, which already roll up every episode of the series |
 | Rate | `rating_sum / complete_count`, so a long or widely read series does not outrank a beloved one on volume |
-| Prior | Twenty imagined completed reads at the tenant's own mean, which a series with few finished reads is pulled towards |
+| Prior | Twenty imagined completed reads at the tenant's own mean, which a series with few finished reads is pulled towards. The mean comes from `tenant_rating_totals`, which `aggregate-content-stats` restates on the run that changes it |
 | Scale | Held to 1–5, the scale the reaction itself is given on |
 | `rating_count` | `series_rating_counts`, a trigger-maintained tally of the readers who reacted, counting each reader once per series |
 

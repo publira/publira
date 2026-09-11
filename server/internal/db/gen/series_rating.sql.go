@@ -62,11 +62,16 @@ WITH prior AS (
         AND cds.entity_id = $2
 ), tenant_totals AS (
     SELECT
-        COALESCE(sum(cds.rating_sum), 0)::numeric AS points,
-        COALESCE(sum(cds.complete_count), 0)::numeric AS completed_reads
-    FROM content_daily_stats cds
-    WHERE cds.tenant_id = $1
-        AND cds.entity_type = 'series'
+        COALESCE((
+            SELECT trt.points
+            FROM tenant_rating_totals trt
+            WHERE trt.tenant_id = $1
+        ), 0)::numeric AS points,
+        COALESCE((
+            SELECT trt.completed_reads
+            FROM tenant_rating_totals trt
+            WHERE trt.tenant_id = $1
+        ), 0)::numeric AS completed_reads
 ), readers AS (
     SELECT COALESCE((
         SELECT src.count
@@ -131,6 +136,13 @@ type GetSeriesRatingRow struct {
 // mostly the tenant's, and it becomes the series' own as real reads outweigh
 // them. Twenty is roughly where a tenant's catalogue stops being the better
 // estimate of a series nobody has finished yet.
+//
+// The tenant's mean comes from tenant_rating_totals rather than from a sum
+// taken here. Its inputs are every series row the tenant has for every day it
+// has ever had, and those rows are never purged, so summing them per request
+// would put a scan that grows with the tenant's whole history on the series
+// page. aggregate-content-stats leaves the totals behind on the run that
+// changes them, which is the only time they move.
 //
 // The result is then held to the 1-5 scale the reaction is given on. It can
 // fall below 1 on its own, because a reader who finishes an episode without
