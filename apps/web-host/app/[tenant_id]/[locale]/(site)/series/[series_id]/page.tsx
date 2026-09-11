@@ -1,10 +1,12 @@
 import { toIntlLocale } from "@publira/i18n";
+import { Badge } from "@publira/ui-components/badge";
+import type { BadgeTone } from "@publira/ui-components/badge";
 import {
   EmptyState,
   EmptyStateDescription,
 } from "@publira/ui-components/empty-state";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDate, formatList } from "@publira/utils";
+import { formatDate, formatList, formatWeekdayName } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -14,6 +16,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { CHIP, TAG_CHIP } from "#components/chip";
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { FollowControlSkeleton } from "#components/follow-button";
@@ -112,6 +115,17 @@ const SeriesStatusText = ({
   }
 };
 
+/**
+ * What each state looks like at a glance, before the word is read: a series
+ * still running is the ordinary case, one that has ended is settled, and a
+ * pause is the state a reader waiting for the next episode has to notice.
+ */
+const SERIES_STATUS_TONES = {
+  completed: "muted",
+  hiatus: "warning",
+  ongoing: "info",
+} as const satisfies Record<SeriesSerializationStatus, BadgeTone>;
+
 const SeriesDetailContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]">
 ) => {
@@ -190,9 +204,30 @@ const SeriesDetailContent = async (
                   <span>{series.labelName}</span>
                 ))}
               {series.status && (
-                <span>
+                <Badge tone={SERIES_STATUS_TONES[series.status]}>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <SeriesStatusText status={series.status} />
+                  </Suspense>
+                </Badge>
+              )}
+              {series.scheduleWeekdays.length > 0 && (
+                <span>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                    <Message
+                      message="host.series.schedule"
+                      values={{
+                        // The days are named by `Intl` and joined the way the
+                        // reader's language joins a list, so the sentence the
+                        // catalog holds is the wording around them and nothing
+                        // else.
+                        weekdays: formatList(
+                          series.scheduleWeekdays.map((weekday) =>
+                            formatWeekdayName(weekday, { locale })
+                          ),
+                          { locale }
+                        ),
+                      }}
+                    />
                   </Suspense>
                 </span>
               )}
@@ -206,6 +241,32 @@ const SeriesDetailContent = async (
               </span>
             </p>
           </div>
+
+          {/* Where a reader goes next when this work is not the one: the
+              tenant's own genres first, then the words an editor wrote on the
+              series itself. Both are links out of the page rather than labels,
+              so the row is a list. */}
+          {(series.genres.length > 0 || series.tags.length > 0) && (
+            <ul className="flex flex-wrap gap-2">
+              {series.genres.map((genre) => (
+                <li key={genre.publicId}>
+                  <LocaleLink
+                    className={CHIP}
+                    href={`/genres/${genre.publicId}`}
+                  >
+                    {genre.name}
+                  </LocaleLink>
+                </li>
+              ))}
+              {series.tags.map((tag) => (
+                <li key={tag.slug}>
+                  <LocaleLink className={TAG_CHIP} href={`/tags/${tag.slug}`}>
+                    {tag.name}
+                  </LocaleLink>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {series.synopsis && <Prose locale={locale}>{series.synopsis}</Prose>}
 

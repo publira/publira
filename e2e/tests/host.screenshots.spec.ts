@@ -49,6 +49,12 @@ const SCREENSHOT_CLOCK = "2026-04-20T00:00:00.000Z";
  */
 const NEWEST_ROW_RELATIVE_TIME = "3 days ago";
 
+/** The weekday module, whose open day the shot below settles for itself. */
+const SCREENSHOT_WEEKDAY_SECTION = "Browse by weekday";
+
+/** The day that shot opens it on: the first of the strip, whatever today is. */
+const SCREENSHOT_WEEKDAY = "Sun";
+
 /**
  * The streamed sections of the top page, each with a link it only holds once
  * its read has come back.
@@ -59,6 +65,7 @@ const NEWEST_ROW_RELATIVE_TIME = "3 days ago";
  */
 const TOP_PAGE_SECTIONS = [
   { href: "/genres/", name: "Browse by genre" },
+  { href: "/series/", name: SCREENSHOT_WEEKDAY_SECTION },
   { href: "/series/", name: "New episodes" },
   { href: "/series/", name: "Top 10 this week" },
   { href: "/series/", name: "Recently updated" },
@@ -92,6 +99,22 @@ test.describe("web-host screenshots", () => {
         await expect(
           page.getByText(NEWEST_ROW_RELATIVE_TIME).first()
         ).toBeVisible();
+
+        // The weekday module opens on the day it is where the tenant
+        // publishes, and the server decides that — `freezeClock` reaches the
+        // browser's clock, not the one behind this module. Left alone it would
+        // photograph a different day every morning, so the shot picks one: a
+        // reader's own click settles both the underline and the shelf under
+        // it, and the module is then recorded as designed rather than masked.
+        // Which day it opens on by default is `catalog.filters.spec.ts`.
+        await page.waitForLoadState("networkidle");
+        const schedule = page.getByRole("region", {
+          name: SCREENSHOT_WEEKDAY_SECTION,
+        });
+        await schedule.getByRole("tab", { name: SCREENSHOT_WEEKDAY }).click();
+        await expect(
+          schedule.getByRole("tab", { name: SCREENSHOT_WEEKDAY })
+        ).toHaveAttribute("aria-selected", "true");
 
         await expectScreenshot(page, viewport, "top-page");
       });

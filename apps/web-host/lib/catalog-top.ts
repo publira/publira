@@ -1,5 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import { parseInstant } from "@publira/utils";
+import { parseInstant, WEEKDAY_NUMBERS } from "@publira/utils";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
@@ -83,6 +83,7 @@ interface CatalogTopDataOptions {
   maxNewEpisodes?: number;
   maxRanked?: number;
   maxRecommended?: number;
+  maxScheduledSeries?: number;
   maxUpdatedSeries?: number;
   seriesLimit?: number;
 }
@@ -226,6 +227,62 @@ export const getCatalogTopFreeSeries = async (
   }
 
   return { ok: true, value: page.value.series };
+};
+
+/** One day of the weekly schedule module, with the series expected on it. */
+export interface CatalogTopScheduledDay {
+  /** `EXTRACT(DOW)`: 0 is Sunday and 6 is Saturday. */
+  weekday: number;
+  /** Empty where the tenant publishes nothing that day. */
+  series: SeriesListItem[];
+}
+
+/**
+ * The weekly schedule module: the whole week at once, each day holding the
+ * series that expect an episode on it, the most recently updated first.
+ *
+ * All seven days rather than the one being shown, because the module has to
+ * answer two questions with one read. Which day is open is decided per request
+ * from the tenant's clock, and whether the module exists at all is decided by
+ * whether any series keeps a schedule — and a day-by-day read would have to
+ * ask the server six more times to find that out.
+ *
+ * Which weekday it currently is deliberately does not enter here: this read is
+ * cached, and a "today" resolved inside a cache scope would be pinned to
+ * whenever the entry was filled. The caller reads the clock and passes the day
+ * to the tab strip.
+ */
+export const getCatalogTopWeeklySchedule = async (
+  tenantId: string,
+  { locale, maxScheduledSeries = 6 }: CatalogTopDataOptions
+): Promise<CachedReadResult<CatalogTopScheduledDay[]>> => {
+  "use cache";
+
+  const pages = await Promise.all(
+    WEEKDAY_NUMBERS.map(async (weekday) => ({
+      page: await listPublishedSeries(tenantId, {
+        limit: maxScheduledSeries,
+        locale,
+        order: "updated",
+        weekday,
+      }),
+      weekday,
+    }))
+  );
+
+  const days: CatalogTopScheduledDay[] = [];
+  for (const { page, weekday } of pages) {
+    // One unreadable day makes the whole strip wrong: the reader would page
+    // through a week with a silent hole in it and read the gap as "nothing
+    // published that day".
+    if (!page.ok) {
+      return cachedReadFailure(page.message);
+    }
+
+    days.push({ series: page.value.series, weekday });
+  }
+
+  return { ok: true, value: days };
 };
 
 /**

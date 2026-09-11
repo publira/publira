@@ -9,6 +9,7 @@ import {
   getCatalogTopPopularSeries,
   getCatalogTopRecommendedSeries,
   getCatalogTopUpdatedSeries,
+  getCatalogTopWeeklySchedule,
 } from "./catalog-top";
 
 const { mockListPublishedAuthors } = vi.hoisted(() => ({
@@ -632,6 +633,63 @@ describe("catalog-top section loaders", () => {
     ).resolves.toEqual({
       ok: true,
       value: [expect.objectContaining({ seriesId: "SERIES_2" })],
+    });
+  });
+
+  it("getCatalogTopWeeklySchedule asks the server for each day of the week in turn", async () => {
+    mockListPublishedSeries.mockImplementation(
+      (_tenantId: string, { weekday }: { weekday: number }) =>
+        Promise.resolve({
+          ok: true,
+          value: {
+            nextToken: "",
+            previousToken: "",
+            series: weekday === 4 ? [seriesFixture[0]] : [],
+          },
+        })
+    );
+
+    const result = await getCatalogTopWeeklySchedule("TENANT_001", {
+      locale: "en",
+      maxScheduledSeries: 6,
+    });
+
+    expect(
+      mockListPublishedSeries.mock.calls.map(([, options]) => options.weekday)
+    ).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(mockListPublishedSeries).toHaveBeenCalledWith("TENANT_001", {
+      limit: 6,
+      locale: "en",
+      order: "updated",
+      weekday: 0,
+    });
+    expect(result.ok && result.value.map((day) => day.series.length)).toEqual([
+      0, 0, 0, 0, 1, 0, 0,
+    ]);
+  });
+
+  /**
+   * A silent hole in the strip would read as "nothing publishes that day",
+   * which is a different statement from "this could not be loaded".
+   */
+  it("getCatalogTopWeeklySchedule reports the whole week as unavailable when one day fails", async () => {
+    mockListPublishedSeries.mockImplementation(
+      (_tenantId: string, { weekday }: { weekday: number }) =>
+        Promise.resolve(
+          weekday === 3
+            ? { message: "The catalog is unavailable.", ok: false }
+            : {
+                ok: true,
+                value: { nextToken: "", previousToken: "", series: [] },
+              }
+        )
+    );
+
+    await expect(
+      getCatalogTopWeeklySchedule("TENANT_001", { locale: "en" })
+    ).resolves.toMatchObject({
+      message: "The catalog is unavailable.",
+      ok: false,
     });
   });
 });

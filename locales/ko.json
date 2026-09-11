@@ -2266,6 +2266,7 @@
       "progress_error": "읽던 위치를 표시할 수 없습니다",
       "progress_failed": "읽던 위치를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "read_from_first": "1화부터 읽기",
+      "schedule": "{$weekdays}에 업데이트",
       "status_completed": "완결",
       "status_hiatus": "휴재 중",
       "status_ongoing": "연재 중"
@@ -2368,6 +2369,10 @@
       "recommended_error": "추천 작품을 표시할 수 없습니다",
       "recommended_failed": "추천 작품을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "recommended_heading": "추천 작품",
+      "schedule_day_empty": "이 요일에 업데이트되는 작품이 없습니다.",
+      "schedule_days_aria": "업데이트 요일",
+      "schedule_error": "요일별 업데이트 작품을 표시할 수 없습니다",
+      "schedule_heading": "요일로 찾기",
       "updated_empty": "아직 업데이트된 작품이 없습니다.",
       "updated_error": "업데이트된 작품을 표시할 수 없습니다",
       "updated_heading": "최근 업데이트",

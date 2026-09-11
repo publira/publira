@@ -1,3 +1,4 @@
+import "temporal-polyfill/global";
 import { expect, test } from "@playwright/test";
 
 import { hostPath } from "../src/urls";
@@ -56,6 +57,49 @@ const SEED_TAG = {
 
 /** Carries the first tag round, so a Time travel page must not show it. */
 const OTHER_TAG_SERIES_PUBLIC_ID = "SeedSERSAAA1";
+
+/** The first tag round in slug order, which `Seed Series 001` carries. */
+const SEED_TAG_OF_FIRST_SERIES = "Found family";
+
+/**
+ * `Seed Series 001`, as `db/seeds/dev/010_catalog.sql` classifies it: running,
+ * expecting an episode every Monday, carrying the first genre and the first
+ * tag of each round.
+ */
+const SCHEDULED_SERIES = {
+  publicId: "SeedSERSAAA1",
+  schedule: "Updates on Monday",
+  status: "Ongoing",
+} as const;
+
+/** `Seed Series 009`, of the round the seed gives two days a week. */
+const TWICE_WEEKLY_SERIES = {
+  publicId: "SeedSERSAAA9",
+  schedule: "Updates on Monday and Thursday",
+} as const;
+
+/**
+ * `Seed Series 098`, of the round the seed puts on Sunday.
+ *
+ * That round holds ten series and the module shows six of them, most recently
+ * updated first — which is this one, because the seed publishes the later
+ * series last.
+ */
+const SUNDAY_SERIES_PUBLIC_ID = "SeedSERSAA98";
+
+/** The seed tenant's display zone, which is the column default (`tenants`). */
+const TENANT_TIME_ZONE = "Asia/Tokyo";
+
+/**
+ * The short weekday name the weekday module opens on: the day it is in the
+ * tenant's own time zone, which is what the module follows rather than the
+ * reader's clock or the server's.
+ */
+const tenantWeekdayName = (): string =>
+  new Intl.DateTimeFormat("en", {
+    timeZone: TENANT_TIME_ZONE,
+    weekday: "short",
+  }).format(Temporal.Now.instant().epochMilliseconds);
 
 /**
  * The covers of a series list. `:not([href*="/episodes/"])`: the route the
@@ -161,5 +205,56 @@ test.describe("web-host catalog filters", () => {
 
     await genres.getByRole("link", { name: "View all" }).click();
     await expect(page).toHaveURL(hostPath("/genres"));
+  });
+
+  test("a series page states its classification and steps into a genre", async ({
+    page,
+  }) => {
+    const response = await page.goto(
+      hostPath(`/series/${SCHEDULED_SERIES.publicId}`)
+    );
+    expect(response?.status(), await page.content()).toBe(200);
+
+    await expect(page.getByText(SCHEDULED_SERIES.status)).toBeVisible();
+    await expect(page.getByText(SCHEDULED_SERIES.schedule)).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: SEED_TAG_OF_FIRST_SERIES })
+    ).toBeVisible();
+
+    await page.getByRole("link", { name: SEED_GENRE.name }).click();
+    await expect(page).toHaveURL(hostPath(`/genres/${SEED_GENRE.publicId}`));
+  });
+
+  /**
+   * One round of the seed keeps two weekdays, and it is the only one where the
+   * schedule is worded as a list of days rather than as a single name.
+   */
+  test("a series expecting two episodes a week names both days", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(`/series/${TWICE_WEEKLY_SERIES.publicId}`));
+
+    await expect(page.getByText(TWICE_WEEKLY_SERIES.schedule)).toBeVisible();
+  });
+
+  test("the home page opens the weekday module on the tenant's own day", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/"));
+
+    const schedule = page.getByRole("region", { name: "Browse by weekday" });
+    await expect(
+      schedule.getByRole("tab", { name: tenantWeekdayName() })
+    ).toHaveAttribute("aria-selected", "true");
+
+    // A day is a tab rather than a link, so what it switches is the shelf
+    // under it: Sunday holds the series the seed deals that day and not the
+    // one it deals to Monday.
+    await schedule.getByRole("tab", { name: "Sun" }).click();
+    const panel = schedule.getByRole("tabpanel");
+    const onSunday = hostPath(`/series/${SUNDAY_SERIES_PUBLIC_ID}`);
+    const onMonday = hostPath(`/series/${SCHEDULED_SERIES.publicId}`);
+    await expect(panel.locator(`a[href="${onSunday}"]`)).toBeVisible();
+    await expect(panel.locator(`a[href="${onMonday}"]`)).toHaveCount(0);
   });
 });
