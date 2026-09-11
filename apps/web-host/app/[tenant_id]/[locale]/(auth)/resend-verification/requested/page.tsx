@@ -1,4 +1,14 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenFooter,
+  AuthScreenHeader,
+  AuthScreenNote,
+  AuthScreenTagline,
+  AuthScreenText,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -44,9 +54,9 @@ const ResendVerificationRequestedHeader = async () => {
         )}
         siteLabel={siteLabel}
       />
-      <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
+      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
       {siteTagline ? (
-        <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
+        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
       ) : null}
     </>
   );
@@ -54,66 +64,58 @@ const ResendVerificationRequestedHeader = async () => {
 
 /** The address is only known once the flash cookie is read, so it blocks. */
 const ResendVerificationRequestedRecipient = async () => {
-  const locale = await getLocale();
-  const [email, messages] = await Promise.all([
-    readEmailFlashCookie(RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE),
-    loadHostMessages(locale),
-  ]);
+  const email = await readEmailFlashCookie(
+    RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE
+  );
 
   if (!email) {
     return null;
   }
 
   return (
-    <p className="text-muted-foreground">
-      {getMessage(messages, "host.auth.fields.sent_to", { email })}
-    </p>
+    <AuthScreenNote>
+      <Message message="host.auth.fields.sent_to" values={{ email }} />
+    </AuthScreenNote>
   );
 };
 
 const ResendVerificationRequestedPage = () => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <header className="text-center">
-        <Suspense
-          fallback={
-            <div className="flex justify-center">
-              <Skeleton className="h-8 w-40" />
-            </div>
-          }
-        >
-          <ResendVerificationRequestedHeader />
-        </Suspense>
-      </header>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+        <ResendVerificationRequestedHeader />
+      </Suspense>
+    </AuthScreenHeader>
 
-      <section className="space-y-3 text-sm leading-6">
-        <p>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="host.auth.resend_verification_requested.sent" />
-          </Suspense>
-        </p>
-        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-          <ResendVerificationRequestedRecipient />
+    <AuthScreenBody>
+      <AuthScreenText>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="host.auth.resend_verification_requested.sent" />
         </Suspense>
-        <p className="text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="host.auth.fields.check_spam" />
-          </Suspense>
-        </p>
-      </section>
+      </AuthScreenText>
+      <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+        <ResendVerificationRequestedRecipient />
+      </Suspense>
+      <AuthScreenNote>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="host.auth.fields.check_spam" />
+        </Suspense>
+      </AuthScreenNote>
+    </AuthScreenBody>
 
-      <div className="text-center text-sm">
+    <AuthScreenFooter>
+      <p>
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
           <LocaleLink
             href="/login"
-            className="font-medium text-primary hover:underline"
+            className="text-primary underline underline-offset-4"
           >
             <Message message="host.auth.fields.to_login" />
           </LocaleLink>
         </Suspense>
-      </div>
-    </div>
-  </main>
+      </p>
+    </AuthScreenFooter>
+  </AuthScreen>
 );
 
 export default ResendVerificationRequestedPage;

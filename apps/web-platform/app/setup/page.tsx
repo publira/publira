@@ -1,4 +1,12 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenHeader,
+  AuthScreenNote,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -39,11 +47,11 @@ const SetupContent = async () => {
 
   return (
     <>
-      <p className="text-sm text-muted-foreground">
+      <AuthScreenNote>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <SetupMessage message="platform.auth.setup.description" />
         </Suspense>
-      </p>
+      </AuthScreenNote>
 
       <Suspense fallback={<Skeleton className="h-10 w-full" />}>
         <SetupForm />
@@ -53,7 +61,7 @@ const SetupContent = async () => {
 };
 
 const SetupContentSkeleton = () => (
-  <div className="space-y-4">
+  <div className="grid gap-4">
     <Skeleton className="h-5 w-3/4" />
     <Skeleton className="h-5 w-1/2" />
     <Skeleton className="h-5 w-1/2" />
@@ -64,24 +72,22 @@ const SetupContentSkeleton = () => (
 );
 
 const SetupPage = () => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-sm">
-      <div className="mb-8 text-center">
-        <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <SetupMessage message="platform.auth.setup.title" />
-          </Suspense>
-        </p>
-      </div>
-
-      <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <Suspense fallback={<SetupContentSkeleton />}>
-          <SetupContent />
+  <AuthScreen>
+    <AuthScreenHeader>
+      <AuthScreenTitle>Publira</AuthScreenTitle>
+      <AuthScreenTagline>
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <SetupMessage message="platform.auth.setup.title" />
         </Suspense>
-      </div>
-    </div>
-  </main>
+      </AuthScreenTagline>
+    </AuthScreenHeader>
+
+    <AuthScreenBody>
+      <Suspense fallback={<SetupContentSkeleton />}>
+        <SetupContent />
+      </Suspense>
+    </AuthScreenBody>
+  </AuthScreen>
 );
 
 export default SetupPage;

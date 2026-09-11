@@ -1,3 +1,4 @@
+import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -11,8 +12,8 @@ import { requestPasswordResetAction } from "../_lib/actions";
 
 export const ResetPasswordForm = () => (
   <>
-    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <ActionForm action={requestPasswordResetAction} className="space-y-4">
+    <AuthScreenBody>
+      <ActionForm action={requestPasswordResetAction} className="grid gap-4">
         <Field>
           <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
@@ -29,20 +30,25 @@ export const ResetPasswordForm = () => (
             />
           </FieldContent>
         </Field>
-        <ActionFormSubmit className="mt-2 w-full">
+        <ActionFormSubmit className="justify-self-start">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.auth.reset_password.submit" />
           </Suspense>
         </ActionFormSubmit>
       </ActionForm>
-    </div>
+    </AuthScreenBody>
 
-    <div className="mt-4 text-center text-sm">
-      <Link className="font-medium text-primary hover:underline" href="/login">
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <Message message="platform.auth.reset_password.to_login" />
-        </Suspense>
-      </Link>
-    </div>
+    <AuthScreenFooter>
+      <p>
+        <Link
+          className="text-primary underline underline-offset-4"
+          href="/login"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.auth.reset_password.to_login" />
+          </Suspense>
+        </Link>
+      </p>
+    </AuthScreenFooter>
   </>
 );

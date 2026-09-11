@@ -1,4 +1,13 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenFooter,
+  AuthScreenHeader,
+  AuthScreenNote,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -33,10 +42,10 @@ interface ForgotPasswordPageProps {
 }
 
 const ForgotPasswordFallback = () => (
-  <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-    <Skeleton className="h-11 w-full" />
-    <Skeleton className="h-10 w-full" />
-  </div>
+  <AuthScreenBody>
+    <Skeleton className="h-16 w-full" />
+    <Skeleton className="h-9 w-48" />
+  </AuthScreenBody>
 );
 
 const ForgotPasswordPageContent = async ({
@@ -48,80 +57,80 @@ const ForgotPasswordPageContent = async ({
     parseForgotPasswordSearchParams(await searchParams);
 
   return requested ? (
-    <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+    <AuthScreenBody>
       <FormMessage variant="success">
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="admin.auth.forgot_password.requested_sent" />
         </Suspense>
       </FormMessage>
-      <p className="text-sm text-muted-foreground">
+      <AuthScreenNote>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="admin.auth.forgot_password.requested_help" />
         </Suspense>
-      </p>
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <LinkButton className="flex-1" render={<Link href="/login" />}>
+      </AuthScreenNote>
+      <div className="flex flex-wrap gap-3">
+        <LinkButton render={<Link href="/login" />}>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="admin.auth.forgot_password.to_login" />
           </Suspense>
         </LinkButton>
-        <LinkButton
-          className="flex-1"
-          render={<Link href="/forgot-password" />}
-          variant="outline"
-        >
+        <LinkButton render={<Link href="/forgot-password" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="admin.auth.forgot_password.try_another_email" />
           </Suspense>
         </LinkButton>
       </div>
-    </div>
+    </AuthScreenBody>
   ) : (
-    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <form action={requestPasswordResetAction} className="space-y-4">
-        <input name="tenant_id" type="hidden" value={tenantId} />
+    <>
+      <AuthScreenBody>
+        <form action={requestPasswordResetAction} className="grid gap-4">
+          <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <Field>
-          <FieldLabel htmlFor="email" required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-              <Message message="admin.auth.fields.email_label" />
+          <Field>
+            <FieldLabel htmlFor="email" required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.auth.fields.email_label" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                autoComplete="email"
+                defaultValue={defaultEmail}
+                id="email"
+                name="email"
+                placeholder="admin@example.com"
+                required
+                type="email"
+              />
+            </FieldContent>
+          </Field>
+
+          {errorMessage ? (
+            <FormMessage variant="destructive">{errorMessage}</FormMessage>
+          ) : null}
+
+          <Button className="justify-self-start" type="submit">
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="admin.auth.forgot_password.submit" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="email"
-              defaultValue={defaultEmail}
-              id="email"
-              name="email"
-              placeholder="admin@example.com"
-              required
-              type="email"
-            />
-          </FieldContent>
-        </Field>
+          </Button>
+        </form>
+      </AuthScreenBody>
 
-        {errorMessage ? (
-          <FormMessage variant="destructive">{errorMessage}</FormMessage>
-        ) : null}
-
-        <Button className="w-full" type="submit">
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <Message message="admin.auth.forgot_password.submit" />
-          </Suspense>
-        </Button>
-      </form>
-
-      <div className="text-center text-sm">
-        <Link
-          className="font-medium text-primary hover:underline"
-          href="/login"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="admin.auth.forgot_password.to_login" />
-          </Suspense>
-        </Link>
-      </div>
-    </div>
+      <AuthScreenFooter>
+        <p>
+          <Link
+            className="text-primary underline underline-offset-4"
+            href="/login"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.auth.forgot_password.to_login" />
+            </Suspense>
+          </Link>
+        </p>
+      </AuthScreenFooter>
+    </>
   );
 };
 
@@ -129,29 +138,24 @@ const ForgotPasswordPage = ({
   params,
   searchParams,
 }: ForgotPasswordPageProps) => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6">
-      <div className="text-center">
-        <h1 className="font-serif text-2xl font-semibold">
-          <Suspense fallback={<SkeletonLine className="mx-auto h-7 w-40" />}>
-            <Message message="admin.auth.forgot_password.title" />
-          </Suspense>
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="admin.auth.forgot_password.description" />
-          </Suspense>
-        </p>
-      </div>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <AuthScreenTitle>
+        <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+          <Message message="admin.auth.forgot_password.title" />
+        </Suspense>
+      </AuthScreenTitle>
+      <AuthScreenTagline>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="admin.auth.forgot_password.description" />
+        </Suspense>
+      </AuthScreenTagline>
+    </AuthScreenHeader>
 
-      <Suspense fallback={<ForgotPasswordFallback />}>
-        <ForgotPasswordPageContent
-          params={params}
-          searchParams={searchParams}
-        />
-      </Suspense>
-    </div>
-  </main>
+    <Suspense fallback={<ForgotPasswordFallback />}>
+      <ForgotPasswordPageContent params={params} searchParams={searchParams} />
+    </Suspense>
+  </AuthScreen>
 );
 
 export default ForgotPasswordPage;

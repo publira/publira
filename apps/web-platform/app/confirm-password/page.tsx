@@ -1,4 +1,12 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenHeader,
+  AuthScreenNote,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -9,7 +17,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import type { PlatformMessageKey } from "#components/message";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { confirmPasswordAction } from "./_lib/actions";
@@ -24,44 +31,48 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-const FailureState = ({ reason }: { reason: PlatformMessageKey }) => (
-  <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+/** Why the link cannot be used, each reason carrying its own key. */
+const FailureReason = ({ reason }: { reason: "expired" | "invalid" }) =>
+  reason === "expired" ? (
+    <Message message="platform.auth.confirm_password.expired" />
+  ) : (
+    <Message message="platform.auth.confirm_password.invalid" />
+  );
+
+const FailureState = ({ reason }: { reason: "expired" | "invalid" }) => (
+  <AuthScreenBody>
     <FormMessage variant="destructive">
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-        <Message message={reason} />
+        <FailureReason reason={reason} />
       </Suspense>
     </FormMessage>
-    <p className="text-sm text-muted-foreground">
+    <AuthScreenNote>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
         <Message message="platform.auth.confirm_password.failure_help" />
       </Suspense>
-    </p>
-    <div className="flex flex-col gap-3 sm:flex-row">
-      <LinkButton className="flex-1" render={<Link href="/reset-password" />}>
+    </AuthScreenNote>
+    <div className="flex flex-wrap gap-3">
+      <LinkButton render={<Link href="/reset-password" />}>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           <Message message="platform.auth.confirm_password.request_again" />
         </Suspense>
       </LinkButton>
-      <LinkButton
-        className="flex-1"
-        render={<Link href="/login" />}
-        variant="outline"
-      >
+      <LinkButton render={<Link href="/login" />} variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
           <Message message="platform.auth.confirm_password.to_login" />
         </Suspense>
       </LinkButton>
     </div>
-  </div>
+  </AuthScreenBody>
 );
 
 const ConfirmPasswordFallback = () => (
-  <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+  <AuthScreenBody>
     <Skeleton className="h-5 w-full" />
-    <Skeleton className="h-11 w-full" />
-    <Skeleton className="h-11 w-full" />
-    <Skeleton className="h-10 w-full" />
-  </div>
+    <Skeleton className="h-16 w-full" />
+    <Skeleton className="h-16 w-full" />
+    <Skeleton className="h-9 w-40" />
+  </AuthScreenBody>
 );
 
 /** The query decides between the form and the two failure states. */
@@ -79,21 +90,21 @@ const ConfirmPasswordPageContent = async ({
   );
 
   if (status === "expired") {
-    return <FailureState reason="platform.auth.confirm_password.expired" />;
+    return <FailureState reason="expired" />;
   }
   if (status === "invalid" || token === "") {
-    return <FailureState reason="platform.auth.confirm_password.invalid" />;
+    return <FailureState reason="invalid" />;
   }
 
   return (
-    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <p className="text-sm text-muted-foreground">
+    <AuthScreenBody>
+      <AuthScreenNote>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="platform.auth.confirm_password.description" />
         </Suspense>
-      </p>
+      </AuthScreenNote>
 
-      <form action={confirmPasswordAction} className="space-y-4">
+      <form action={confirmPasswordAction} className="grid gap-4">
         <input name="token" type="hidden" value={token} />
 
         <Field>
@@ -134,13 +145,13 @@ const ConfirmPasswordPageContent = async ({
           <FormMessage variant="destructive">{errorMessage}</FormMessage>
         ) : null}
 
-        <Button className="w-full" type="submit">
+        <Button className="justify-self-start" type="submit">
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="platform.auth.confirm_password.submit" />
           </Suspense>
         </Button>
       </form>
-    </div>
+    </AuthScreenBody>
   );
 };
 
@@ -153,22 +164,20 @@ const ConfirmPasswordPage = ({
     token?: string | string[];
   }>;
 }) => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6">
-      <div className="text-center">
-        <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-            <Message message="platform.auth.confirm_password.title" />
-          </Suspense>
-        </p>
-      </div>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <AuthScreenTitle>Publira</AuthScreenTitle>
+      <AuthScreenTagline>
+        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+          <Message message="platform.auth.confirm_password.title" />
+        </Suspense>
+      </AuthScreenTagline>
+    </AuthScreenHeader>
 
-      <Suspense fallback={<ConfirmPasswordFallback />}>
-        <ConfirmPasswordPageContent searchParams={searchParams} />
-      </Suspense>
-    </div>
-  </main>
+    <Suspense fallback={<ConfirmPasswordFallback />}>
+      <ConfirmPasswordPageContent searchParams={searchParams} />
+    </Suspense>
+  </AuthScreen>
 );
 
 export default ConfirmPasswordPage;

@@ -19,8 +19,8 @@ const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
   }
 
   return (
-    <footer className="border-t border-border/70 bg-surface">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-6 py-6 text-center text-sm text-muted-foreground">
+    <footer className="border-t border-border bg-surface">
+      <div className="mx-auto flex w-full max-w-(--measure-prose) flex-col gap-4 px-6 py-6 text-sm text-muted-foreground">
         <p>{normalizedCopyrightText}</p>
       </div>
     </footer>

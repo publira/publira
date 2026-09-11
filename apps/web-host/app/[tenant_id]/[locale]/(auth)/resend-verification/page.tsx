@@ -1,4 +1,10 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenHeader,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -32,32 +38,24 @@ const ResendVerificationHeader = async () => {
         pageTitle={getMessage(messages, "host.auth.resend_verification.title")}
         siteLabel={siteLabel}
       />
-      <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
+      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
       {siteTagline ? (
-        <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
+        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
       ) : null}
     </>
   );
 };
 
 const ResendVerificationPage = () => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-sm">
-      <div className="mb-8 text-center">
-        <Suspense
-          fallback={
-            <div className="flex justify-center">
-              <Skeleton className="h-8 w-40" />
-            </div>
-          }
-        >
-          <ResendVerificationHeader />
-        </Suspense>
-      </div>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+        <ResendVerificationHeader />
+      </Suspense>
+    </AuthScreenHeader>
 
-      <ResendVerificationForm />
-    </div>
-  </main>
+    <ResendVerificationForm />
+  </AuthScreen>
 );
 
 export default ResendVerificationPage;

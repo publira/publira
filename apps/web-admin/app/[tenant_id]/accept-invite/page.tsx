@@ -1,12 +1,23 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenFooter,
+  AuthScreenHeader,
+  AuthScreenNote,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { getTenantAdminInvitationState } from "#lib/admin-auth";
+import type { TenantAdminInvitationState } from "#lib/admin-auth";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -28,65 +39,87 @@ interface AcceptInvitePageProps {
   }>;
 }
 
+/**
+ * An invitation that cannot be used, and the one way on from it. Every such
+ * ending on this screen — no invitation, a spent or cancelled one, a link with
+ * no token at all — reads the same way, so they share one body.
+ */
+const AcceptInviteDeadEnd = ({ children }: { children: ReactNode }) => (
+  <>
+    <AuthScreenBody>
+      <FormMessage variant="destructive">{children}</FormMessage>
+    </AuthScreenBody>
+    <AuthScreenFooter>
+      <p>
+        <Link
+          className="text-primary underline underline-offset-4"
+          href="/login"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="admin.auth.confirm_email.to_login" />
+          </Suspense>
+        </Link>
+      </p>
+    </AuthScreenFooter>
+  </>
+);
+
+/**
+ * Why an invitation cannot be used. The status decides which sentence is
+ * rendered; each branch carries its own key, so none of them is assembled.
+ */
+const AcceptInviteUnusable = ({
+  status,
+}: {
+  status: TenantAdminInvitationState["status"];
+}) => {
+  switch (status) {
+    case "accepted": {
+      return <Message message="admin.auth.accept_invite.accepted" />;
+    }
+    case "canceled": {
+      return <Message message="admin.auth.accept_invite.canceled" />;
+    }
+    default: {
+      return <Message message="admin.auth.accept_invite.expired" />;
+    }
+  }
+};
+
 const AcceptInviteFormContent = async ({ token }: { token: string }) => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
   const invitation = await getTenantAdminInvitationState(tenantId, token);
 
   if (!invitation) {
     return (
-      <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <FormMessage variant="destructive">
-          {getMessage(messages, "admin.auth.accept_invite.not_found")}
-        </FormMessage>
-        <div className="text-center text-sm">
-          <Link
-            className="font-medium text-primary hover:underline"
-            href="/login"
-          >
-            {getMessage(messages, "admin.auth.confirm_email.to_login")}
-          </Link>
-        </div>
-      </div>
+      <AcceptInviteDeadEnd>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="admin.auth.accept_invite.not_found" />
+        </Suspense>
+      </AcceptInviteDeadEnd>
     );
   }
 
   if (invitation.status !== "pending") {
-    let statusMessage:
-      | "admin.auth.accept_invite.accepted"
-      | "admin.auth.accept_invite.canceled"
-      | "admin.auth.accept_invite.expired" = "admin.auth.accept_invite.expired";
-    if (invitation.status === "canceled") {
-      statusMessage = "admin.auth.accept_invite.canceled";
-    } else if (invitation.status === "accepted") {
-      statusMessage = "admin.auth.accept_invite.accepted";
-    }
-
     return (
-      <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <FormMessage variant="destructive">
-          {getMessage(messages, statusMessage)}
-        </FormMessage>
-        <div className="text-center text-sm">
-          <Link
-            className="font-medium text-primary hover:underline"
-            href="/login"
-          >
-            {getMessage(messages, "admin.auth.confirm_email.to_login")}
-          </Link>
-        </div>
-      </div>
+      <AcceptInviteDeadEnd>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <AcceptInviteUnusable status={invitation.status} />
+        </Suspense>
+      </AcceptInviteDeadEnd>
     );
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <p className="text-sm text-muted-foreground">
-        {getMessage(messages, "admin.auth.accept_invite.email_invited", {
-          email: invitation.email,
-        })}
-      </p>
+    <AuthScreenBody>
+      <AuthScreenNote>
+        <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+          <Message
+            message="admin.auth.accept_invite.email_invited"
+            values={{ email: invitation.email }}
+          />
+        </Suspense>
+      </AuthScreenNote>
 
       <AcceptInviteForm
         accountExists={invitation.accountExists}
@@ -94,7 +127,7 @@ const AcceptInviteFormContent = async ({ token }: { token: string }) => {
         tenantId={tenantId}
         token={token}
       />
-    </div>
+    </AuthScreenBody>
   );
 };
 
@@ -105,52 +138,42 @@ const AcceptInvitePageContent = async ({
 
   if (!token) {
     return (
-      <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <FormMessage variant="destructive">
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="admin.auth.accept_invite.invalid_token" />
-          </Suspense>
-        </FormMessage>
-        <div className="text-center text-sm">
-          <Link
-            className="font-medium text-primary hover:underline"
-            href="/login"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-              <Message message="admin.auth.confirm_email.to_login" />
-            </Suspense>
-          </Link>
-        </div>
-      </div>
+      <AcceptInviteDeadEnd>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="admin.auth.accept_invite.invalid_token" />
+        </Suspense>
+      </AcceptInviteDeadEnd>
     );
   }
 
   return <AcceptInviteFormContent token={token} />;
 };
 
-const AcceptInviteFallback = () => <Skeleton className="h-40 w-full" />;
+const AcceptInviteFallback = () => (
+  <AuthScreenBody>
+    <Skeleton className="h-40 w-full" />
+  </AuthScreenBody>
+);
 
 const AcceptInvitePage = ({ searchParams }: AcceptInvitePageProps) => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6">
-      <div className="text-center">
-        <h1 className="font-serif text-2xl font-semibold">
-          <Suspense fallback={<SkeletonLine className="mx-auto h-7 w-48" />}>
-            <Message message="admin.auth.accept_invite.title" />
-          </Suspense>
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="admin.auth.accept_invite.description" />
-          </Suspense>
-        </p>
-      </div>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <AuthScreenTitle>
+        <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+          <Message message="admin.auth.accept_invite.title" />
+        </Suspense>
+      </AuthScreenTitle>
+      <AuthScreenTagline>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="admin.auth.accept_invite.description" />
+        </Suspense>
+      </AuthScreenTagline>
+    </AuthScreenHeader>
 
-      <Suspense fallback={<AcceptInviteFallback />}>
-        <AcceptInvitePageContent searchParams={searchParams} />
-      </Suspense>
-    </div>
-  </main>
+    <Suspense fallback={<AcceptInviteFallback />}>
+      <AcceptInvitePageContent searchParams={searchParams} />
+    </Suspense>
+  </AuthScreen>
 );
 
 export default AcceptInvitePage;

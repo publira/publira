@@ -1,3 +1,4 @@
+import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -18,8 +19,8 @@ import { requestPasswordResetAction } from "../_lib/actions";
 
 export const ResetPasswordForm = () => (
   <>
-    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <ActionForm action={requestPasswordResetAction} className="space-y-4">
+    <AuthScreenBody>
+      <ActionForm action={requestPasswordResetAction} className="grid gap-4">
         <LocaleField />
         <TenantIdField />
 
@@ -40,7 +41,7 @@ export const ResetPasswordForm = () => (
             />
           </FieldContent>
         </Field>
-        <ActionFormSubmit className="mt-2 w-full">
+        <ActionFormSubmit className="justify-self-start">
           <ActionFormIdle>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="host.auth.reset_password.submit" />
@@ -53,17 +54,19 @@ export const ResetPasswordForm = () => (
           </ActionFormPending>
         </ActionFormSubmit>
       </ActionForm>
-    </div>
+    </AuthScreenBody>
 
-    <div className="mt-4 text-center text-sm">
-      <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
-        <LocaleLink
-          href="/login"
-          className="font-medium text-primary hover:underline"
-        >
-          <Message message="host.auth.fields.to_login" />
-        </LocaleLink>
-      </Suspense>
-    </div>
+    <AuthScreenFooter>
+      <p>
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
+          <LocaleLink
+            href="/login"
+            className="text-primary underline underline-offset-4"
+          >
+            <Message message="host.auth.fields.to_login" />
+          </LocaleLink>
+        </Suspense>
+      </p>
+    </AuthScreenFooter>
   </>
 );

@@ -1,3 +1,4 @@
+import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -13,6 +14,10 @@ import { Message } from "#components/message";
  * footer. URLs that match no route at all are handled by
  * `app/global-not-found.tsx`, not this boundary.
  *
+ * The screen is the heading, the explanation, and one way back: a reader who
+ * asked for a page that is not there needs somewhere to go next, not a second
+ * choice to make.
+ *
  * No `<main>` here: `SiteLayoutMain` already provides one.
  *
  * Known limitation, pre-existing and not introduced by this file: because the
@@ -24,37 +29,23 @@ import { Message } from "#components/message";
  * render a full HTML document without this shell.
  */
 const NotFound = () => (
-  <div className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
-    <p className="text-sm tracking-wide text-muted-foreground uppercase">
-      404 Not Found
-    </p>
-    <h1 className="mt-4 font-serif text-4xl font-bold">
-      <Suspense fallback={<SkeletonLine className="h-9 w-72" />}>
+  <div className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
+    <h1 className="font-serif text-3xl leading-tight">
+      <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
         <Message message="host.errors.not_found_title" />
       </Suspense>
     </h1>
-    <p className="mt-4 text-muted-foreground">
+    <p className="text-foreground">
       <Suspense fallback={<SkeletonLine className="h-5 w-full max-w-md" />}>
         <Message message="host.errors.not_found_description" />
       </Suspense>
     </p>
-    <div className="mt-8 flex flex-wrap justify-center gap-3">
-      <LocaleLink
-        className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition hover:opacity-90"
-        href="/"
-      >
+    <div className="mt-2">
+      <LinkButton render={<LocaleLink href="/" />} variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="host.common.back_to_top" />
         </Suspense>
-      </LocaleLink>
-      <LocaleLink
-        className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-        href="/series"
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <Message message="host.top.to_series" />
-        </Suspense>
-      </LocaleLink>
+      </LinkButton>
     </div>
   </div>
 );

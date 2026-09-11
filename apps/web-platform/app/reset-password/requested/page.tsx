@@ -1,4 +1,12 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenHeader,
+  AuthScreenNote,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -37,14 +45,14 @@ const SentTo = async ({
   }
 
   return (
-    <p className="text-muted-foreground">
+    <AuthScreenNote>
       <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
         <Message
           message="platform.auth.reset_password_requested.sent_to"
           values={{ email }}
         />
       </Suspense>
-    </p>
+    </AuthScreenNote>
   );
 };
 
@@ -53,53 +61,47 @@ const ResetPasswordRequestedPage = ({
 }: {
   searchParams: Promise<{ email?: string | string[] }>;
 }) => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <header className="text-center">
-        <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-            <Message message="platform.auth.reset_password_requested.title" />
-          </Suspense>
-        </p>
-      </header>
-
-      <section className="space-y-3 text-sm leading-6">
-        <FormMessage variant="success">
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="platform.auth.reset_password_requested.sent" />
-          </Suspense>
-        </FormMessage>
-
-        <Suspense fallback={null}>
-          <SentTo searchParams={searchParams} />
+  <AuthScreen>
+    <AuthScreenHeader>
+      <AuthScreenTitle>Publira</AuthScreenTitle>
+      <AuthScreenTagline>
+        <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+          <Message message="platform.auth.reset_password_requested.title" />
         </Suspense>
+      </AuthScreenTagline>
+    </AuthScreenHeader>
 
-        <p className="text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="platform.auth.reset_password_requested.check_spam" />
-          </Suspense>
-        </p>
-      </section>
+    <AuthScreenBody>
+      <FormMessage variant="success">
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="platform.auth.reset_password_requested.sent" />
+        </Suspense>
+      </FormMessage>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <LinkButton className="flex-1" render={<Link href="/login" />}>
+      <Suspense fallback={null}>
+        <SentTo searchParams={searchParams} />
+      </Suspense>
+
+      <AuthScreenNote>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="platform.auth.reset_password_requested.check_spam" />
+        </Suspense>
+      </AuthScreenNote>
+
+      <div className="flex flex-wrap gap-3">
+        <LinkButton render={<Link href="/login" />}>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.auth.reset_password_requested.to_login" />
           </Suspense>
         </LinkButton>
-        <LinkButton
-          className="flex-1"
-          render={<Link href="/reset-password" />}
-          variant="outline"
-        >
+        <LinkButton render={<Link href="/reset-password" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="platform.auth.reset_password_requested.try_another_email" />
           </Suspense>
         </LinkButton>
       </div>
-    </div>
-  </main>
+    </AuthScreenBody>
+  </AuthScreen>
 );
 
 export default ResetPasswordRequestedPage;

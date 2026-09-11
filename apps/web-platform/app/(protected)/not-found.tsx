@@ -10,7 +10,6 @@ import {
   PlatformPageDescription,
   PlatformPageHeader,
   PlatformPageHeading,
-  PlatformPageTitle,
 } from "#components/platform-page";
 
 /**
@@ -57,11 +56,13 @@ const NotFound = () => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
-        <PlatformPageTitle>
+        {/* The one heading this screen leads with is set in the serif face:
+            a 404 is a statement, not one of the console's workbench pages. */}
+        <h1 className="font-serif text-2xl font-semibold text-foreground">
           <Suspense fallback={<SkeletonLine className="h-8 w-56" />}>
             <Message message="platform.not_found.title" />
           </Suspense>
-        </PlatformPageTitle>
+        </h1>
         <PlatformPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="platform.not_found.description" />

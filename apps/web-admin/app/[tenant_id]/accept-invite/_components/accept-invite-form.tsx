@@ -1,4 +1,5 @@
 import { getMessage } from "@publira/i18n";
+import { AuthScreenNote } from "@publira/layouts/auth-screen";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -51,18 +52,18 @@ export const AcceptInviteForm = ({
   tenantId: string;
   accountExists: boolean;
 }) => (
-  <ActionForm action={acceptInviteAction} className="space-y-4">
+  <ActionForm action={acceptInviteAction} className="grid gap-4">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="token" type="hidden" value={token} />
     <input name="account_exists" type="hidden" value={String(accountExists)} />
     <input name="email" type="hidden" value={email} />
 
     {accountExists ? (
-      <p className="rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+      <AuthScreenNote>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="admin.auth.accept_invite.account_exists" />
         </Suspense>
-      </p>
+      </AuthScreenNote>
     ) : (
       <>
         <Suspense fallback={<Skeleton className="h-11 w-full" />}>
@@ -107,7 +108,7 @@ export const AcceptInviteForm = ({
       </>
     )}
 
-    <ActionFormSubmit className="w-full" variant="outline">
+    <ActionFormSubmit className="justify-self-start">
       <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
         <Message message="admin.auth.accept_invite.submit" />
       </Suspense>

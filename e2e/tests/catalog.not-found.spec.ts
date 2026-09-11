@@ -29,8 +29,9 @@ test.describe("web-host catalog not found", () => {
     await expect(
       page.getByRole("link", { exact: true, name: "Series" })
     ).toBeVisible();
+    // And the screen itself offers the one way on.
     await expect(
-      page.getByRole("link", { exact: true, name: "Browse series" })
+      page.getByRole("link", { exact: true, name: "Back to home" })
     ).toBeVisible();
   });
 

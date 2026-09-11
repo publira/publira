@@ -15,6 +15,10 @@
       "types": "./dist/site-layout.d.mts",
       "default": "./dist/site-layout.mjs"
     },
+    "./auth-screen": {
+      "types": "./dist/auth-screen.d.mts",
+      "default": "./dist/auth-screen.mjs"
+    },
     "./admin": {
       "types": "./dist/admin/index.d.mts",
       "default": "./dist/admin/index.mjs"

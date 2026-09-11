@@ -1,12 +1,17 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
+import {
+  AuthScreenBody,
+  AuthScreenFooter,
+  AuthScreenNote,
+} from "@publira/layouts/auth-screen";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { MfaCodeField } from "#components/mfa-code-field";
 
 import { verifyMfaAction } from "../_lib/actions";
@@ -17,8 +22,15 @@ interface MfaVerifyFormProps {
   tenantId: string;
 }
 
+/** The submit label names the state the form is in, so each state has a key. */
+const MfaVerifySubmitLabel = ({ isPending }: { isPending: boolean }) =>
+  isPending ? (
+    <ClientMessage message="admin.auth.mfa.verify_submitting" />
+  ) : (
+    <ClientMessage message="admin.auth.mfa.verify_submit" />
+  );
+
 export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
-  const messages = useAdminMessages();
   const [state, formAction, isPending] = useActionState(verifyMfaAction, null);
 
   // Only a recovery code answers here: a code from the authenticator finishes
@@ -26,55 +38,74 @@ export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
   // now spent and the operator should know how many are left.
   if (state?.ok) {
     return (
-      <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+      <AuthScreenBody>
         <h2 className="font-medium text-foreground">
-          {getMessage(messages, "admin.auth.mfa.recovery_used_title")}
+          <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
+            <ClientMessage message="admin.auth.mfa.recovery_used_title" />
+          </Suspense>
         </h2>
-        <p className="text-sm text-muted-foreground">
-          {getMessage(messages, "admin.auth.mfa.recovery_used_description", {
-            count: String(state.remainingRecoveryCodes),
-          })}
-        </p>
-        <LinkButton className="w-full" render={<Link href={nextPath} />}>
-          {getMessage(messages, "admin.auth.mfa.continue_to_console")}
+        <AuthScreenNote>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <ClientMessage
+              message="admin.auth.mfa.recovery_used_description"
+              values={{ count: String(state.remainingRecoveryCodes) }}
+            />
+          </Suspense>
+        </AuthScreenNote>
+        <LinkButton
+          className="justify-self-start"
+          render={<Link href={nextPath} />}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <ClientMessage message="admin.auth.mfa.continue_to_console" />
+          </Suspense>
         </LinkButton>
-      </div>
+      </AuthScreenBody>
     );
   }
 
   return (
-    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <p className="text-sm text-muted-foreground">
-        {getMessage(messages, "admin.auth.mfa.verify_description")}
-      </p>
+    <>
+      <AuthScreenBody>
+        <AuthScreenNote>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <ClientMessage message="admin.auth.mfa.verify_description" />
+          </Suspense>
+        </AuthScreenNote>
 
-      <form action={formAction} className="space-y-4">
-        <input name="tenant_id" type="hidden" value={tenantId} />
+        <form action={formAction} className="grid gap-4">
+          <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <MfaCodeField allowRecoveryCode disabled={isPending} />
+          <MfaCodeField allowRecoveryCode disabled={isPending} />
 
-        {state && !state.ok ? (
-          <FormMessage variant="destructive">{state.message}</FormMessage>
-        ) : null}
+          {state && !state.ok ? (
+            <FormMessage variant="destructive">{state.message}</FormMessage>
+          ) : null}
 
-        <Button className="mt-2 w-full" disabled={isPending} type="submit">
-          {getMessage(
-            messages,
-            isPending
-              ? "admin.auth.mfa.verify_submitting"
-              : "admin.auth.mfa.verify_submit"
-          )}
-        </Button>
-      </form>
+          <Button
+            className="justify-self-start"
+            disabled={isPending}
+            type="submit"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <MfaVerifySubmitLabel isPending={isPending} />
+            </Suspense>
+          </Button>
+        </form>
+      </AuthScreenBody>
 
-      <div className="text-center text-sm">
-        <Link
-          className="font-medium text-primary hover:underline"
-          href="/login"
-        >
-          {getMessage(messages, "admin.auth.mfa.back_to_login")}
-        </Link>
-      </div>
-    </div>
+      <AuthScreenFooter>
+        <p>
+          <Link
+            className="text-primary underline underline-offset-4"
+            href="/login"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.auth.mfa.back_to_login" />
+            </Suspense>
+          </Link>
+        </p>
+      </AuthScreenFooter>
+    </>
   );
 };

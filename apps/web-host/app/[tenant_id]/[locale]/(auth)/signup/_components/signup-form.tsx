@@ -1,4 +1,7 @@
 import { getMessage } from "@publira/i18n";
+import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -16,86 +19,97 @@ import { getLocale, loadHostMessages } from "#lib/locale";
 
 import { signupAction } from "../_lib/actions";
 
-const fieldClassName =
-  "mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none";
-
-/** The only localized attribute in this form needs a string rather than a node. */
-const NameField = async () => {
+/**
+ * The one control in this form whose copy cannot be a node: `placeholder` is
+ * an attribute, so this input resolves the catalog itself. Its label does not
+ * — that is a `<Message>` at the call site — so the wait is the input alone.
+ */
+const NameInput = async () => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
   return (
-    <div>
-      <label htmlFor="name" className="block text-sm font-medium">
-        {getMessage(messages, "host.auth.signup.name_label")}
-      </label>
-      <input
-        id="name"
-        name="name"
-        type="text"
-        placeholder={getMessage(messages, "host.auth.signup.name_placeholder")}
-        className={fieldClassName}
-      />
-    </div>
+    <Input
+      id="name"
+      name="name"
+      placeholder={getMessage(messages, "host.auth.signup.name_placeholder")}
+      type="text"
+    />
   );
 };
 
 export const SignupForm = () => (
   <>
-    <div className="space-y-6 rounded-lg border border-border/70 bg-card p-8">
-      <ActionForm action={signupAction} className="space-y-4">
+    <AuthScreenBody>
+      <ActionForm action={signupAction} className="grid gap-4">
         <LocaleField />
         <TenantIdField />
 
-        <Suspense fallback={<Skeleton className="h-16 w-full" />}>
-          <NameField />
-        </Suspense>
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium">
+        <Field>
+          <FieldLabel htmlFor="name">
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="host.auth.signup.name_label" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+              <NameInput />
+            </Suspense>
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="email">
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="host.auth.fields.email_label" />
             </Suspense>
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="your@email.com"
-            className={fieldClassName}
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium">
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="email"
+              id="email"
+              name="email"
+              placeholder="your@email.com"
+              type="email"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="password">
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="host.auth.fields.password_label" />
             </Suspense>
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="••••••••"
-            className={fieldClassName}
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="confirmPassword"
-            className="block text-sm font-medium"
-          >
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="new-password"
+              id="password"
+              name="password"
+              placeholder="••••••••"
+              type="password"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="confirmPassword">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="host.auth.signup.password_confirm_label" />
             </Suspense>
-          </label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            placeholder="••••••••"
-            className={fieldClassName}
-          />
-        </div>
-        <ActionFormSubmit className="mt-6 w-full">
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="new-password"
+              id="confirmPassword"
+              name="confirmPassword"
+              placeholder="••••••••"
+              type="password"
+            />
+          </FieldContent>
+        </Field>
+
+        <ActionFormSubmit className="justify-self-start">
           <ActionFormIdle>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="host.auth.signup.submit" />
@@ -108,22 +122,22 @@ export const SignupForm = () => (
           </ActionFormPending>
         </ActionFormSubmit>
       </ActionForm>
-    </div>
+    </AuthScreenBody>
 
-    <div className="mt-4 text-center text-sm">
-      <span className="text-muted-foreground">
+    <AuthScreenFooter>
+      <p className="text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
           <Message message="host.auth.signup.have_account" />
+        </Suspense>{" "}
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-12" />}>
+          <LocaleLink
+            href="/login"
+            className="text-primary underline underline-offset-4"
+          >
+            <Message message="host.auth.signup.login" />
+          </LocaleLink>
         </Suspense>
-      </span>{" "}
-      <Suspense fallback={<SkeletonLine className="inline-block h-4 w-12" />}>
-        <LocaleLink
-          href="/login"
-          className="font-medium text-primary hover:underline"
-        >
-          <Message message="host.auth.signup.login" />
-        </LocaleLink>
-      </Suspense>
-    </div>
+      </p>
+    </AuthScreenFooter>
   </>
 );

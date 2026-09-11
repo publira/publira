@@ -1,14 +1,24 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenFooter,
+  AuthScreenHeader,
+  AuthScreenTagline,
+  AuthScreenText,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
+import { Message } from "#components/message";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { confirmPublicEmailChange } from "#lib/auth";
 import { getLocale, loadHostMessages } from "#lib/locale";
-import type { HostMessageKey } from "#lib/locale";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -21,93 +31,122 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return { title: getMessage(messages, "host.auth.confirm_email.title") };
 };
 
+const CONFIRM_EMAIL_LINK_CLASS_NAME = cn(
+  "text-primary underline underline-offset-4"
+);
+
 /**
- * The outcome picks a key rather than a sentence, so the branch stays a
- * decision about what happened and the copy still comes from the catalog.
+ * What the confirmation link turned out to be. The branch is a decision about
+ * what happened; the copy for each outcome is written, key and all, in the two
+ * components below.
  */
-const confirmationMessageKey = (
+type ConfirmEmailOutcome =
+  | "changed"
+  | "failed"
+  | "invalid_link"
+  | "pending_current_email"
+  | "pending_new_email";
+
+const confirmEmailOutcome = (
   result: Awaited<ReturnType<typeof confirmPublicEmailChange>>
-): HostMessageKey => {
+): ConfirmEmailOutcome => {
   if (result?.changed) {
-    return "host.auth.confirm_email.changed";
+    return "changed";
   }
   if (result?.confirmed) {
     return result.pendingConfirmationFor === "current_email"
-      ? "host.auth.confirm_email.pending_current_email"
-      : "host.auth.confirm_email.pending_new_email";
+      ? "pending_current_email"
+      : "pending_new_email";
   }
-  return "host.auth.confirm_email.failed";
+  return "failed";
 };
 
-const ConfirmationResult = async ({ token }: { token: string }) => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const messages = await loadHostMessages(locale);
+const ConfirmEmailSentence = ({
+  outcome,
+}: {
+  outcome: ConfirmEmailOutcome;
+}) => {
+  switch (outcome) {
+    case "changed": {
+      return <Message message="host.auth.confirm_email.changed" />;
+    }
+    case "invalid_link": {
+      return <Message message="host.auth.fields.invalid_token" />;
+    }
+    case "pending_current_email": {
+      return (
+        <Message message="host.auth.confirm_email.pending_current_email" />
+      );
+    }
+    case "pending_new_email": {
+      return <Message message="host.auth.confirm_email.pending_new_email" />;
+    }
+    default: {
+      return <Message message="host.auth.confirm_email.failed" />;
+    }
+  }
+};
 
+/**
+ * Where the outcome leaves the reader: the address really changed, so their
+ * own page is the useful next screen; anything else sends them back to the
+ * settings screen the change was started from.
+ */
+const ConfirmEmailLink = ({ outcome }: { outcome: ConfirmEmailOutcome }) =>
+  outcome === "changed" ? (
+    <LocaleLink className={CONFIRM_EMAIL_LINK_CLASS_NAME} href="/my">
+      <Message message="host.auth.confirm_email.to_my" />
+    </LocaleLink>
+  ) : (
+    <LocaleLink className={CONFIRM_EMAIL_LINK_CLASS_NAME} href="/settings">
+      <Message message="host.auth.confirm_email.to_settings" />
+    </LocaleLink>
+  );
+
+const ConfirmationOutcome = ({ outcome }: { outcome: ConfirmEmailOutcome }) => (
+  <>
+    <AuthScreenBody>
+      <AuthScreenText>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <ConfirmEmailSentence outcome={outcome} />
+        </Suspense>
+      </AuthScreenText>
+    </AuthScreenBody>
+    <AuthScreenFooter>
+      <p>
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-40" />}>
+          <ConfirmEmailLink outcome={outcome} />
+        </Suspense>
+      </p>
+    </AuthScreenFooter>
+  </>
+);
+
+const ConfirmationResult = async ({ token }: { token: string }) => {
   if (!token) {
-    return (
-      <>
-        <section className="space-y-3 text-sm leading-6">
-          <p>{getMessage(messages, "host.auth.fields.invalid_token")}</p>
-        </section>
-        <div className="text-center text-sm">
-          <LocaleLink
-            href="/settings"
-            className="font-medium text-primary hover:underline"
-          >
-            {getMessage(messages, "host.auth.confirm_email.to_settings")}
-          </LocaleLink>
-        </div>
-      </>
-    );
+    return <ConfirmationOutcome outcome="invalid_link" />;
   }
 
+  const tenantId = await getTenantId();
   const result = await confirmPublicEmailChange(token, tenantId);
 
-  return (
-    <>
-      <section className="space-y-3 text-sm leading-6">
-        <p>{getMessage(messages, confirmationMessageKey(result))}</p>
-      </section>
-      <div className="text-center text-sm">
-        <LocaleLink
-          href={result?.changed ? "/my" : "/settings"}
-          className="font-medium text-primary hover:underline"
-        >
-          {getMessage(
-            messages,
-            result?.changed
-              ? "host.auth.confirm_email.to_my"
-              : "host.auth.confirm_email.to_settings"
-          )}
-        </LocaleLink>
-      </div>
-    </>
-  );
+  return <ConfirmationOutcome outcome={confirmEmailOutcome(result)} />;
 };
 
 const ConfirmationFallback = () => (
   <>
-    <header className="flex justify-center">
-      <Skeleton className="h-8 w-40" />
-    </header>
-    <section className="space-y-3">
+    <AuthScreenBody>
       <SkeletonLine className="h-4 w-full" />
       <SkeletonLine className="h-4 w-3/4" />
-    </section>
-    <div className="flex justify-center">
+    </AuthScreenBody>
+    <AuthScreenFooter>
       <SkeletonLine className="h-4 w-28" />
-    </div>
+    </AuthScreenFooter>
   </>
 );
 
-const ConfirmEmailPageContent = async ({
-  searchParams,
-}: {
-  params: Promise<{ tenant_id: string }>;
-  searchParams: Promise<{ token?: string | string[] }>;
-}) => {
-  await connection();
-
+/** The tenant's own name and tagline, which only the site read can supply. */
+const ConfirmEmailHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [info, siteLabel, messages] = await Promise.all([
     getTenantSiteInfo(tenantId),
@@ -116,40 +155,53 @@ const ConfirmEmailPageContent = async ({
   ]);
   const siteTagline = info?.siteTagline?.trim();
 
-  const { token } = parseConfirmEmailSearchParams(await searchParams);
-
   return (
     <>
-      <header className="text-center">
-        <TenantDocumentTitle
-          pageTitle={getMessage(messages, "host.auth.confirm_email.title")}
-          siteLabel={siteLabel}
-        />
-        <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
-        {siteTagline ? (
-          <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
-        ) : null}
-      </header>
-
-      <ConfirmationResult token={token} />
+      <TenantDocumentTitle
+        pageTitle={getMessage(messages, "host.auth.confirm_email.title")}
+        siteLabel={siteLabel}
+      />
+      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      {siteTagline ? (
+        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+      ) : null}
     </>
   );
 };
 
+/**
+ * `connection()` keeps the confirmation itself out of a prerender: it spends
+ * the token, so it has to run once per reader rather than once per build.
+ */
+const ConfirmationContent = async ({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string | string[] }>;
+}) => {
+  await connection();
+
+  const { token } = parseConfirmEmailSearchParams(await searchParams);
+
+  return <ConfirmationResult token={token} />;
+};
+
 const ConfirmEmailPage = ({
-  params,
   searchParams,
 }: {
   params: Promise<{ tenant_id: string }>;
   searchParams: Promise<{ token?: string | string[] }>;
 }) => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <Suspense fallback={<ConfirmationFallback />}>
-        <ConfirmEmailPageContent params={params} searchParams={searchParams} />
+  <AuthScreen>
+    <AuthScreenHeader>
+      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+        <ConfirmEmailHeader />
       </Suspense>
-    </div>
-  </main>
+    </AuthScreenHeader>
+
+    <Suspense fallback={<ConfirmationFallback />}>
+      <ConfirmationContent searchParams={searchParams} />
+    </Suspense>
+  </AuthScreen>
 );
 
 export default ConfirmEmailPage;

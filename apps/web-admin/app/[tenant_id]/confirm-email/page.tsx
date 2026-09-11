@@ -1,4 +1,12 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenHeader,
+  AuthScreenNote,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -7,7 +15,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import type { AdminMessageKey } from "#components/message";
 import { confirmAdminEmailChange } from "#lib/admin-auth";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
@@ -29,99 +36,120 @@ interface ConfirmEmailPageProps {
   }>;
 }
 
-const ConfirmationBody = ({
-  help,
-  message,
-  variant,
+/**
+ * What the confirmation link turned out to be. The branch is a decision about
+ * what happened; the sentences for each outcome are written, key and all, in
+ * the two components below.
+ */
+type ConfirmEmailOutcome =
+  | "changed"
+  | "failed"
+  | "invalid_link"
+  | "pending_current_email"
+  | "pending_new_email";
+
+/** Whether the link did what it was sent to do, which decides the tone. */
+const isGoodOutcome = (outcome: ConfirmEmailOutcome): boolean =>
+  outcome === "changed" ||
+  outcome === "pending_current_email" ||
+  outcome === "pending_new_email";
+
+/** What happened, in the tone the outcome deserves. */
+const ConfirmEmailHeadline = ({
+  outcome,
 }: {
-  help: AdminMessageKey;
-  message: AdminMessageKey;
-  variant: "destructive" | "success";
-}) => (
-  <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-    <FormMessage variant={variant}>
+  outcome: ConfirmEmailOutcome;
+}) => {
+  switch (outcome) {
+    case "changed": {
+      return <Message message="admin.auth.confirm_email.changed" />;
+    }
+    case "invalid_link": {
+      return <Message message="admin.auth.confirm_email.invalid_link" />;
+    }
+    case "pending_current_email":
+    case "pending_new_email": {
+      return <Message message="admin.auth.confirm_email.pending" />;
+    }
+    default: {
+      return <Message message="admin.auth.confirm_email.failed" />;
+    }
+  }
+};
+
+/** What the operator does next, which the two pending outcomes differ on. */
+const ConfirmEmailHelp = ({ outcome }: { outcome: ConfirmEmailOutcome }) => {
+  switch (outcome) {
+    case "changed": {
+      return <Message message="admin.auth.confirm_email.changed_help" />;
+    }
+    case "pending_current_email": {
+      return (
+        <Message message="admin.auth.confirm_email.pending_current_email" />
+      );
+    }
+    case "pending_new_email": {
+      return <Message message="admin.auth.confirm_email.pending_new_email" />;
+    }
+    default: {
+      return <Message message="admin.auth.confirm_email.failure_help" />;
+    }
+  }
+};
+
+const ConfirmationBody = ({ outcome }: { outcome: ConfirmEmailOutcome }) => (
+  <AuthScreenBody>
+    <FormMessage variant={isGoodOutcome(outcome) ? "success" : "destructive"}>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-        <Message message={message} />
+        <ConfirmEmailHeadline outcome={outcome} />
       </Suspense>
     </FormMessage>
-    <p className="text-sm text-muted-foreground">
+    <AuthScreenNote>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-        <Message message={help} />
+        <ConfirmEmailHelp outcome={outcome} />
       </Suspense>
-    </p>
-    <div className="flex flex-col gap-3 sm:flex-row">
-      <LinkButton className="flex-1" render={<Link href="/login" />}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-          <Message message="admin.auth.confirm_email.to_login" />
-        </Suspense>
-      </LinkButton>
-    </div>
-  </div>
+    </AuthScreenNote>
+    <LinkButton className="justify-self-start" render={<Link href="/login" />}>
+      <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+        <Message message="admin.auth.confirm_email.to_login" />
+      </Suspense>
+    </LinkButton>
+  </AuthScreenBody>
 );
 
 const ConfirmationResult = async ({ token }: { token: string }) => {
-  const tenantId = await getTenantId();
   if (!token) {
-    return (
-      <ConfirmationBody
-        help="admin.auth.confirm_email.failure_help"
-        message="admin.auth.confirm_email.invalid_link"
-        variant="destructive"
-      />
-    );
+    return <ConfirmationBody outcome="invalid_link" />;
   }
 
+  const tenantId = await getTenantId();
   const result = await confirmAdminEmailChange(tenantId, token);
 
-  if (!result) {
-    return (
-      <ConfirmationBody
-        help="admin.auth.confirm_email.failure_help"
-        message="admin.auth.confirm_email.failed"
-        variant="destructive"
-      />
-    );
+  if (result?.changed) {
+    return <ConfirmationBody outcome="changed" />;
   }
 
-  if (result.changed) {
+  if (result?.confirmed) {
     return (
       <ConfirmationBody
-        help="admin.auth.confirm_email.changed_help"
-        message="admin.auth.confirm_email.changed"
-        variant="success"
-      />
-    );
-  }
-
-  if (result.confirmed) {
-    return (
-      <ConfirmationBody
-        help={
+        outcome={
           result.pendingConfirmationFor === "current_email"
-            ? "admin.auth.confirm_email.pending_current_email"
-            : "admin.auth.confirm_email.pending_new_email"
+            ? "pending_current_email"
+            : "pending_new_email"
         }
-        message="admin.auth.confirm_email.pending"
-        variant="success"
       />
     );
   }
 
-  return (
-    <ConfirmationBody
-      help="admin.auth.confirm_email.failure_help"
-      message="admin.auth.confirm_email.failed"
-      variant="destructive"
-    />
-  );
+  return <ConfirmationBody outcome="failed" />;
 };
 
 const ConfirmEmailFallback = () => (
-  <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+  <AuthScreenBody>
     <Skeleton className="h-5 w-full" />
     <Skeleton className="h-5 w-full" />
-    <Skeleton className="h-10 w-full" />
-  </div>
+    <Skeleton className="h-9 w-32" />
+  </AuthScreenBody>
 );
 
 const ConfirmEmailPageContent = async ({
@@ -133,26 +161,24 @@ const ConfirmEmailPageContent = async ({
 };
 
 const ConfirmEmailPage = ({ params, searchParams }: ConfirmEmailPageProps) => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6">
-      <div className="text-center">
-        <h1 className="font-serif text-2xl font-semibold">
-          <Suspense fallback={<SkeletonLine className="mx-auto h-7 w-48" />}>
-            <Message message="admin.auth.confirm_email.title" />
-          </Suspense>
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-            <Message message="admin.auth.confirm_email.processing" />
-          </Suspense>
-        </p>
-      </div>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <AuthScreenTitle>
+        <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+          <Message message="admin.auth.confirm_email.title" />
+        </Suspense>
+      </AuthScreenTitle>
+      <AuthScreenTagline>
+        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+          <Message message="admin.auth.confirm_email.processing" />
+        </Suspense>
+      </AuthScreenTagline>
+    </AuthScreenHeader>
 
-      <Suspense fallback={<ConfirmEmailFallback />}>
-        <ConfirmEmailPageContent params={params} searchParams={searchParams} />
-      </Suspense>
-    </div>
-  </main>
+    <Suspense fallback={<ConfirmEmailFallback />}>
+      <ConfirmEmailPageContent params={params} searchParams={searchParams} />
+    </Suspense>
+  </AuthScreen>
 );
 
 export default ConfirmEmailPage;
