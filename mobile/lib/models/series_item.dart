@@ -105,3 +105,21 @@ class RecentSeriesItem {
   /// have not bought is the episode they are sent to buy.
   final EpisodeItem episode;
 }
+
+/// The window one ranking snapshot covers, as `publira.v1.RankingPeriod` names
+/// them. The batch writes a snapshot per window on every run, so a tenant it
+/// has ranked has both.
+enum RankingPeriod { daily, weekly }
+
+/// One series at the position a ranking snapshot gave it, as
+/// `publira.v1.RankedSeries` describes it.
+class RankedSeriesItem {
+  const RankedSeriesItem({required this.rank, required this.series});
+
+  /// The position in the snapshot, counting from 1. The positions are the
+  /// snapshot's own, so a series unpublished since it was written leaves a gap
+  /// and a page can run 1, 2, 4.
+  final int rank;
+
+  final SeriesItem series;
+}

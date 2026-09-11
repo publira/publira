@@ -5,11 +5,36 @@ import 'package:publira/models/series_item.dart';
 
 /// Public catalog reads. Implementations talk to the Connect API or a fake.
 abstract class CatalogRepository {
-  /// Published series for the configured tenant, first page.
+  /// Published series for the configured tenant by title, first page.
+  ///
+  /// It is the whole catalog to browse, which is why it is ordered by title
+  /// rather than by date: the newest of it stands above as its own shelf, and
+  /// a list in the same order would be that shelf again.
   ///
   /// Returns an empty list when the tenant has no published series.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<List<SeriesItem>> listSeries();
+
+  /// The newest published series, at most [limit] of them.
+  ///
+  /// A read of its own rather than a slice of [listSeries]: the new-arrivals
+  /// shelf is in another order, and it loads, fails, and retries on its own.
+  /// What a device keeps for reading without a network is the catalog page
+  /// rather than this shelf.
+  ///
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<List<SeriesItem>> listNewestSeries({required int limit});
+
+  /// One page of the tenant's latest ranking snapshot for [period], in the
+  /// positions that snapshot recorded.
+  ///
+  /// Empty for a tenant the ranking batch has not run for yet, which is an
+  /// answer rather than a failure: nothing has been computed.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<List<RankedSeriesItem>> listRankedSeries({
+    required int limit,
+    required RankingPeriod period,
+  });
 
   /// Detail for [publicId]. Returns `null` when the series is missing,
   /// unpublished, or not in this tenant (same 404 policy as web-host).

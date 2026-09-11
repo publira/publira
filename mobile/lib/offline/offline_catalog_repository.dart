@@ -68,6 +68,25 @@ class OfflineCatalogRepository implements CatalogRepository {
     }
   }
 
+  /// The new-arrivals shelf, which only the API can answer.
+  ///
+  /// It is another order over the same series, and keeping it too would
+  /// replace the catalog page the device holds with its own few rows. The
+  /// shelf stands above that page, so a reader without a network still has the
+  /// catalog itself.
+  @override
+  Future<List<SeriesItem>> listNewestSeries({required int limit}) =>
+      _origin.listNewestSeries(limit: limit);
+
+  /// The ranking shelf, which only the API can answer: a snapshot describes a
+  /// window that has closed, and a stale one would name positions the tenant
+  /// has moved on from.
+  @override
+  Future<List<RankedSeriesItem>> listRankedSeries({
+    required int limit,
+    required RankingPeriod period,
+  }) => _origin.listRankedSeries(limit: limit, period: period);
+
   @override
   Future<SeriesDetail?> getSeries(String publicId) async {
     try {

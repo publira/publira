@@ -2377,10 +2377,16 @@
       "title": "Account"
     },
     "catalog": {
+      "all_series_heading": "All series",
+      "continue_failed": "Could not show what you were reading.",
       "continue_heading": "Continue reading",
       "empty": "No series have been published yet.",
       "load_failed": "Could not show the catalog.",
-      "offline_not_saved": "You are offline, and this device holds no saved catalog."
+      "new_arrivals_failed": "Could not show the new arrivals.",
+      "new_arrivals_heading": "New arrivals",
+      "offline_not_saved": "You are offline, and this device holds no saved catalog.",
+      "ranking_failed": "Could not show this week's ranking.",
+      "ranking_heading": "Top 10 this week"
     },
     "common": {
       "back_to_catalog": "Back to the catalog",

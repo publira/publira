@@ -33,6 +33,7 @@ class HttpCatalogRepository implements CatalogRepository {
 
   static const _listProcedure =
       '/publira.v1.CatalogService/ListPublishedSeries';
+  static const _rankedProcedure = '/publira.v1.CatalogService/ListRankedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
   static const _episodeProcedure =
       '/publira.v1.CatalogService/GetEpisodeDetail';
@@ -47,18 +48,77 @@ class HttpCatalogRepository implements CatalogRepository {
   final ConnectClient _client;
   final TenantResolver _tenants;
 
+  /// How many series one catalog page holds, which is also the API's own
+  /// fallback for a request naming no limit.
+  static const seriesPageLimit = 20;
+
   @override
-  Future<List<SeriesItem>> listSeries() async {
+  Future<List<SeriesItem>> listSeries() =>
+      _listPublishedSeries(seriesPageLimit, 'SERIES_ORDER_TITLE_ASC');
+
+  @override
+  Future<List<SeriesItem>> listNewestSeries({required int limit}) =>
+      _listPublishedSeries(limit, 'SERIES_ORDER_PUBLISHED_AT_DESC');
+
+  /// One page of `ListPublishedSeries`, in [order] as the enum names it.
+  ///
+  /// The order is always stated rather than left to the API's default, because
+  /// the catalog screen shows two pages of this list at once — the newest few
+  /// above the whole of it — and it is the orders that tell them apart.
+  Future<List<SeriesItem>> _listPublishedSeries(int limit, String order) async {
     try {
       final tenantId = await _tenants.resolve();
       final body = await _client.unary(_listProcedure, {
-        'limit': 20,
+        'limit': limit,
+        'order': order,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
       return _parseSeriesList(body['series']);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<List<RankedSeriesItem>> listRankedSeries({
+    required int limit,
+    required RankingPeriod period,
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_rankedProcedure, {
+        'limit': limit,
+        'period': switch (period) {
+          RankingPeriod.daily => 'RANKING_PERIOD_DAILY',
+          RankingPeriod.weekly => 'RANKING_PERIOD_WEEKLY',
+        },
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      return _parseRankedSeries(body['rankedSeries']);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  List<RankedSeriesItem> _parseRankedSeries(Object? raw) {
+    // protojson omits an empty repeated field, which is how a tenant the
+    // ranking batch has not run for yet arrives.
+    if (raw == null) {
+      return const [];
+    }
+    final items = _expectList(raw, 'rankedSeries')
+        .map((item) => _expectMap(item, 'rankedSeries[]'))
+        .map((json) {
+          return RankedSeriesItem(
+            rank: _readInt(json, 'rank', 'rankedSeries[]'),
+            series: _seriesFromJson(
+              _expectMap(json['series'], 'rankedSeries[].series'),
+              'rankedSeries[].series',
+            ),
+          );
+        })
+        .toList();
+    return List<RankedSeriesItem>.unmodifiable(items);
   }
 
   @override

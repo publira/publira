@@ -2377,10 +2377,16 @@
       "title": "계정"
     },
     "catalog": {
+      "all_series_heading": "전체 시리즈",
+      "continue_failed": "읽던 작품을 표시할 수 없습니다",
       "continue_heading": "이어서 읽기",
       "empty": "아직 공개된 시리즈가 없습니다",
       "load_failed": "카탈로그를 표시할 수 없습니다",
-      "offline_not_saved": "오프라인 상태이며, 이 기기에 저장된 카탈로그가 없습니다."
+      "new_arrivals_failed": "새로 나온 시리즈를 표시할 수 없습니다",
+      "new_arrivals_heading": "새로 나온 시리즈",
+      "offline_not_saved": "오프라인 상태이며, 이 기기에 저장된 카탈로그가 없습니다.",
+      "ranking_failed": "이번 주 랭킹을 표시할 수 없습니다",
+      "ranking_heading": "이번 주 톱 10"
     },
     "common": {
       "back_to_catalog": "카탈로그로 돌아가기",
