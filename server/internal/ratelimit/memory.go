@@ -70,11 +70,12 @@ func (s *MemoryStore) Add(_ context.Context, key string, ttl time.Duration) (boo
 	return true, nil
 }
 
-func (s *MemoryStore) Forget(_ context.Context, key string) {
+func (s *MemoryStore) Forget(_ context.Context, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	delete(s.entries, key)
+	return nil
 }
 
 // sweep drops the counters whose window has passed. The caller holds the lock.

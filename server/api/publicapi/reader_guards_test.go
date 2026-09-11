@@ -26,6 +26,8 @@ func clearReaderGuardEnv(t *testing.T) {
 		duplicateCommentWindowEnv,
 		rateEpisodePerMinuteEnv,
 		rateEpisodePerDayEnv,
+		verifyPasswordPerMinuteEnv,
+		verifyPasswordPerDayEnv,
 	} {
 		t.Setenv(name, "")
 	}
@@ -62,6 +64,10 @@ func TestNewReaderGuardsFromEnvDefaults(t *testing.T) {
 			{Limit: defaultRateEpisodePerMinute, Window: time.Minute},
 			{Limit: defaultRateEpisodePerDay, Window: 24 * time.Hour},
 		},
+		actionVerifyPassword: {
+			{Limit: defaultVerifyPasswordPerMinute, Window: time.Minute},
+			{Limit: defaultVerifyPasswordPerDay, Window: 24 * time.Hour},
+		},
 	}
 	for action, rules := range want {
 		got := guards.rules[action]
@@ -88,6 +94,8 @@ func TestNewReaderGuardsFromEnvTakesTheConfiguredLimits(t *testing.T) {
 	t.Setenv(duplicateCommentWindowEnv, "30")
 	t.Setenv(rateEpisodePerMinuteEnv, "4")
 	t.Setenv(rateEpisodePerDayEnv, "9")
+	t.Setenv(verifyPasswordPerMinuteEnv, "6")
+	t.Setenv(verifyPasswordPerDayEnv, "8")
 
 	guards := guardsFromEnv(t)
 
@@ -99,6 +107,9 @@ func TestNewReaderGuardsFromEnvTakesTheConfiguredLimits(t *testing.T) {
 	}
 	if got := guards.rules[actionRateEpisode]; got[0].Limit != 4 || got[1].Limit != 9 {
 		t.Fatalf("rating rules = %+v, want 4 per minute and 9 per day", got)
+	}
+	if got := guards.rules[actionVerifyPassword]; got[0].Limit != 6 || got[1].Limit != 8 {
+		t.Fatalf("step-up password rules = %+v, want 6 per minute and 8 per day", got)
 	}
 	if guards.duplicateCommentWindow != 30*time.Minute {
 		t.Fatalf("duplicate window = %s, want 30m", guards.duplicateCommentWindow)
@@ -128,7 +139,7 @@ func TestReaderGuardsWithDefaultsFillsInAMissingPolicy(t *testing.T) {
 	if guards.limiter == nil {
 		t.Fatal("limiter = nil, want the in-process default")
 	}
-	if len(guards.rules[actionPostComment]) == 0 || len(guards.rules[actionReportComment]) == 0 || len(guards.rules[actionRateEpisode]) == 0 {
+	if len(guards.rules[actionPostComment]) == 0 || len(guards.rules[actionReportComment]) == 0 || len(guards.rules[actionRateEpisode]) == 0 || len(guards.rules[actionVerifyPassword]) == 0 {
 		t.Fatalf("rules = %v, want the default policy", guards.rules)
 	}
 	if guards.duplicateCommentWindow != defaultDuplicateCommentWindow {

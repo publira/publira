@@ -54,6 +54,6 @@ func (s *redisStore) Add(ctx context.Context, key string, ttl time.Duration) (bo
 	return s.client.SetNX(ctx, redisKeyPrefix+key, "", max(ttl, minRedisTTL)).Result()
 }
 
-func (s *redisStore) Forget(ctx context.Context, key string) {
-	_ = s.client.Del(ctx, redisKeyPrefix+key).Err()
+func (s *redisStore) Forget(ctx context.Context, key string) error {
+	return s.client.Del(ctx, redisKeyPrefix+key).Err()
 }

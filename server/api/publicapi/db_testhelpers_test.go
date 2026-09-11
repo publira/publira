@@ -85,6 +85,9 @@ func openReaderGuards() readerGuards {
 			actionPostComment:   {{Limit: 1000, Window: time.Minute}},
 			actionReportComment: {{Limit: 1000, Window: time.Minute}},
 			actionRateEpisode:   {{Limit: 1000, Window: time.Minute}},
+			// Wide enough that the cases driving the account RPCs with a wrong
+			// password on purpose never reach the step-up limit.
+			actionVerifyPassword: {{Limit: 1000, Window: time.Minute}},
 		},
 		duplicateCommentWindow: defaultDuplicateCommentWindow,
 	}

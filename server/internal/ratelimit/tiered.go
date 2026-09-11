@@ -67,14 +67,26 @@ func (s *tieredStore) Add(ctx context.Context, key string, ttl time.Duration) (b
 		// Another instance holds the claim, and it started theirs first. Keeping
 		// the entry this call just created would outlive the shared one by the
 		// difference between them and go on refusing a caller nothing else does.
-		s.memory.Forget(ctx, key)
+		_ = s.memory.Forget(ctx, key)
 	}
 	return shared, nil
 }
 
-func (s *tieredStore) Forget(ctx context.Context, key string) {
-	s.memory.Forget(ctx, key)
-	s.remote.Forget(ctx, key)
+// Forget drops the key from both stores. A Redis that will not delete is the
+// same outage the other two methods fall back around, and it is recorded the
+// same way: the shared counter then stands until its own expiry, so a caller
+// that had earned its removal keeps whatever it had spent rather than being
+// refused outright.
+func (s *tieredStore) Forget(ctx context.Context, key string) error {
+	if err := s.memory.Forget(ctx, key); err != nil {
+		return err
+	}
+	if err := s.remote.Forget(ctx, key); err != nil {
+		s.degraded(ctx, "failed to drop the shared rate limit counter", err)
+		return err
+	}
+	s.recovered(ctx)
+	return nil
 }
 
 // degraded reports that Redis did not answer. The key is deliberately left out

@@ -198,6 +198,55 @@ func TestReleaseGivesBackAClaim(t *testing.T) {
 	}
 }
 
+func TestResetGivesBackEveryRulesCount(t *testing.T) {
+	limiter, _ := newTestLimiter(t)
+	burst := Rule{Limit: 2, Window: time.Minute}
+	budget := Rule{Limit: 3, Window: time.Hour}
+
+	for attempt := 1; attempt <= burst.Limit; attempt++ {
+		if decision := mustAllow(t, limiter, "reader", burst, budget); !decision.Allowed {
+			t.Fatalf("attempt %d = refused, want the first %d allowed", attempt, burst.Limit)
+		}
+	}
+	if decision := mustAllow(t, limiter, "reader", burst, budget); decision.Allowed {
+		t.Fatal("the attempt past the burst rule = allowed, want refused")
+	}
+
+	limiter.Reset(context.Background(), "reader", burst, budget)
+
+	// The rule that did the refusing is back. Charged on its own, so that the
+	// assertion below still starts from the hourly counter the reset left.
+	if decision := mustAllow(t, limiter, "reader", burst); !decision.Allowed {
+		t.Fatal("the burst rule after the reset = refused, want its counter back")
+	}
+
+	// And so is the hourly one, which the burst rule stopped the last attempt
+	// from ever reaching: two of its three were spent before the reset, so a
+	// reset that missed it would refuse the third attempt here.
+	for attempt := 1; attempt <= budget.Limit; attempt++ {
+		if decision := mustAllow(t, limiter, "reader", budget); !decision.Allowed {
+			t.Fatalf("attempt %d after the reset = refused, want the whole budget back", attempt)
+		}
+	}
+}
+
+func TestResetLeavesOtherSubjectsAlone(t *testing.T) {
+	limiter, _ := newTestLimiter(t)
+	rule := Rule{Limit: 1, Window: time.Minute}
+
+	mustAllow(t, limiter, "reader", rule)
+	mustAllow(t, limiter, "another reader", rule)
+
+	limiter.Reset(context.Background(), "reader", rule)
+
+	if decision := mustAllow(t, limiter, "reader", rule); !decision.Allowed {
+		t.Fatal("the reset subject = refused, want their allowance back")
+	}
+	if decision := mustAllow(t, limiter, "another reader", rule); decision.Allowed {
+		t.Fatal("another subject = allowed, want the reset to have left their count where it was")
+	}
+}
+
 func TestClaimRejectsAnUnusableWindow(t *testing.T) {
 	limiter, _ := newTestLimiter(t)
 
@@ -243,7 +292,7 @@ func (s *failingStore) Add(context.Context, string, time.Duration) (bool, error)
 	return false, s.err
 }
 
-func (s *failingStore) Forget(context.Context, string) {}
+func (s *failingStore) Forget(context.Context, string) error { return nil }
 
 func TestTieredStoreKeepsLimitingWhenTheSharedCounterIsGone(t *testing.T) {
 	clock := &fakeClock{now: testStart}
@@ -284,7 +333,7 @@ func (s *takenStore) Add(context.Context, string, time.Duration) (bool, error) {
 	return !s.now().Before(s.freeAfter), nil
 }
 
-func (s *takenStore) Forget(context.Context, string) {}
+func (s *takenStore) Forget(context.Context, string) error { return nil }
 
 func TestTieredStoreDoesNotOutlastTheSharedClaim(t *testing.T) {
 	clock := &fakeClock{now: testStart}
@@ -325,7 +374,7 @@ func (s *sharedStore) Add(context.Context, string, time.Duration) (bool, error) 
 	return true, nil
 }
 
-func (s *sharedStore) Forget(context.Context, string) {}
+func (s *sharedStore) Forget(context.Context, string) error { return nil }
 
 func TestTieredStoreChargesWhatEveryInstanceSpentTogether(t *testing.T) {
 	clock := &fakeClock{now: testStart}
