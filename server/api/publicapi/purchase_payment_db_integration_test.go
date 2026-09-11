@@ -183,6 +183,10 @@ func TestDBProcessStripeWebhookProjectsPurchaseEventIdempotently(t *testing.T) {
 		"amount_total":   500,
 		"currency":       "jpy",
 		"payment_status": "paid",
+		// The payment intent is stored alongside the session and carries a
+		// unique index of its own, so the redelivery below also proves the
+		// second insert conflicts on the session rather than on that index.
+		"payment_intent": "pi_purchase_projection",
 		"metadata": map[string]string{
 			stripeMetadataTenantID:  tenant.ID.String(),
 			stripeMetadataUserID:    user.ID.String(),

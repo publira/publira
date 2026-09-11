@@ -442,7 +442,19 @@ func (s *apiServer) recordRefundFromStripeCharge(
 		RefundedAmount:        refundedAmount,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		s.logger.WarnContext(ctx, "Stripe refund names no purchase of this tenant",
+		// The purchase may simply not exist yet: Stripe orders neither its
+		// events nor its retries, so a refund can overtake the Checkout event
+		// that creates the sale. Holding it lets that event apply it, and a
+		// refund that belongs to no purchase of ours costs one row instead of
+		// three days of retries.
+		if err := queries.HoldUnappliedStripeRefund(ctx, dbmodels.HoldUnappliedStripeRefundParams{
+			TenantID:              tenantID,
+			StripePaymentIntentID: paymentIntentID,
+			RefundedAmount:        refundedAmount,
+		}); err != nil {
+			return s.internalDBError(ctx, "failed to hold an unmatched Stripe refund", err, "event_id", event.ID, "payment_intent_id", paymentIntentID)
+		}
+		s.logger.WarnContext(ctx, "Stripe refund matches no purchase yet and is held",
 			"tenant_id", tenantID,
 			"event_id", event.ID,
 			"payment_intent_id", paymentIntentID,
@@ -521,6 +533,12 @@ func (s *apiServer) createPurchaseFromStripeSession(
 		}
 	}
 
+	if paymentIntentID.Valid {
+		if err := s.applyHeldRefund(ctx, queries, expectedTenantID, paymentIntentID.String); err != nil {
+			return err
+		}
+	}
+
 	_, err = queries.ProjectPurchaseContentEvent(ctx, dbmodels.ProjectPurchaseContentEventParams{
 		ID:                      uuid.Must(uuid.NewV7()),
 		TenantID:                expectedTenantID,
@@ -532,6 +550,40 @@ func (s *apiServer) createPurchaseFromStripeSession(
 	if err != nil {
 		return fmt.Errorf("project purchase content event: %w", err)
 	}
+	return nil
+}
+
+// applyHeldRefund writes onto the purchase any refund that reached us before it
+// existed. Ordinarily nothing is held and this costs one lookup.
+func (s *apiServer) applyHeldRefund(
+	ctx context.Context,
+	queries Querier,
+	tenantID uuid.UUID,
+	paymentIntentID string,
+) error {
+	purchase, err := queries.ApplyUnappliedStripeRefundToPurchase(ctx, dbmodels.ApplyUnappliedStripeRefundToPurchaseParams{
+		TenantID:              tenantID,
+		StripePaymentIntentID: paymentIntentID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("apply held refund: %w", err)
+	}
+	if err := queries.ReleaseUnappliedStripeRefund(ctx, dbmodels.ReleaseUnappliedStripeRefundParams{
+		TenantID:              tenantID,
+		StripePaymentIntentID: paymentIntentID,
+	}); err != nil {
+		return fmt.Errorf("release held refund: %w", err)
+	}
+	s.logger.InfoContext(ctx, "applied a Stripe refund that arrived before its purchase",
+		"tenant_id", tenantID,
+		"purchase_id", purchase.ID,
+		"payment_intent_id", paymentIntentID,
+		"refunded_amount", purchase.RefundedAmount.Int32,
+		"fully_refunded", purchase.RefundedAt.Valid,
+	)
 	return nil
 }
 

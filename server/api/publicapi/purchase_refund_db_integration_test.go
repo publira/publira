@@ -33,6 +33,15 @@ type refundWebhookEnv struct {
 
 func newRefundWebhookEnv(t *testing.T, slug, domain, paymentIntentID string) refundWebhookEnv {
 	t.Helper()
+	env := newUnpaidRefundWebhookEnv(t, slug, domain)
+	env.deliverCheckout(t, paymentIntentID)
+	return env
+}
+
+// newUnpaidRefundWebhookEnv is the same tenant, buyer, and episode with no
+// purchase yet, for the deliveries that arrive before one exists.
+func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookEnv {
+	t.Helper()
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -64,7 +73,7 @@ func newRefundWebhookEnv(t *testing.T, slug, domain, paymentIntentID string) ref
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 
-	env := refundWebhookEnv{
+	return refundWebhookEnv{
 		pg:      pg,
 		client:  publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL),
 		tenant:  tenant,
@@ -72,7 +81,11 @@ func newRefundWebhookEnv(t *testing.T, slug, domain, paymentIntentID string) ref
 		episode: episode,
 		queries: dbmodels.New(pg.DB),
 	}
-	env.deliver(t, string(stripe.EventTypeCheckoutSessionCompleted), map[string]any{
+}
+
+func (e refundWebhookEnv) deliverCheckout(t *testing.T, paymentIntentID string) {
+	t.Helper()
+	e.deliver(t, string(stripe.EventTypeCheckoutSessionCompleted), map[string]any{
 		"id":             "cs_" + paymentIntentID,
 		"object":         "checkout.session",
 		"amount_total":   500,
@@ -80,13 +93,26 @@ func newRefundWebhookEnv(t *testing.T, slug, domain, paymentIntentID string) ref
 		"payment_status": "paid",
 		"payment_intent": paymentIntentID,
 		"metadata": map[string]string{
-			stripeMetadataTenantID:  tenant.ID.String(),
-			stripeMetadataUserID:    user.ID.String(),
-			stripeMetadataEpisodeID: episode.ID.String(),
+			stripeMetadataTenantID:  e.tenant.ID.String(),
+			stripeMetadataUserID:    e.user.ID.String(),
+			stripeMetadataEpisodeID: e.episode.ID.String(),
 			stripeMetadataPrice:     "500",
 		},
 	})
-	return env
+}
+
+// heldRefundCount is how many refunds are still waiting for a purchase.
+func (e refundWebhookEnv) heldRefundCount(t *testing.T) int {
+	t.Helper()
+	var count int
+	if err := e.pg.DB.QueryRowContext(context.Background(), `
+		SELECT count(*)
+		FROM unapplied_stripe_refunds
+		WHERE tenant_id = $1
+	`, e.tenant.ID).Scan(&count); err != nil {
+		t.Fatalf("count held refunds: %v", err)
+	}
+	return count
 }
 
 func (e refundWebhookEnv) deliver(t *testing.T, eventType string, object map[string]any) {
@@ -213,15 +239,78 @@ func TestDBProcessStripeWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
 	}
 }
 
-func TestDBProcessStripeWebhookIgnoresRefundOfAnUnknownCharge(t *testing.T) {
+func TestDBProcessStripeWebhookHoldsARefundOfAnUnknownCharge(t *testing.T) {
 	env := newRefundWebhookEnv(t, "REFUNDUNK", "refund-unknown.example.com", "pi_refund_known")
 
 	env.deliver(t, string(stripe.EventTypeChargeRefunded), refundedCharge("pi_refund_stranger", 500, 500))
 	amount, at := env.refundState(t)
 	if amount.Valid || at.Valid {
-		t.Fatalf("a refund naming no purchase wrote amount = %v at = %v", amount, at)
+		t.Fatalf("a refund naming another charge wrote amount = %v at = %v on this purchase", amount, at)
 	}
 	if !env.hasContentAccess(t) {
-		t.Fatal("a refund naming no purchase revoked access")
+		t.Fatal("a refund naming another charge revoked access")
+	}
+	if held := env.heldRefundCount(t); held != 1 {
+		t.Fatalf("held refunds = %d, want the unmatched one kept", held)
+	}
+}
+
+// Stripe orders neither its events nor its retries, so the refund of a payment
+// whose Checkout event is still being retried can arrive first. It has to
+// survive until that event lands, or the purchase it creates would open the
+// episode for money the reader already has back.
+func TestDBProcessStripeWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *testing.T) {
+	env := newUnpaidRefundWebhookEnv(t, "REFUNDPRE", "refund-early.example.com")
+
+	env.deliver(t, string(stripe.EventTypeChargeRefunded), refundedCharge("pi_refund_early", 500, 500))
+	if held := env.heldRefundCount(t); held != 1 {
+		t.Fatalf("held refunds = %d, want the early refund kept", held)
+	}
+	if env.hasContentAccess(t) {
+		t.Fatal("an episode with no purchase already opens")
+	}
+
+	env.deliverCheckout(t, "pi_refund_early")
+	amount, at := env.refundState(t)
+	if amount.Int32 != 500 || !at.Valid {
+		t.Fatalf("amount = %v at = %v, want the early refund written onto the new purchase", amount, at)
+	}
+	if env.hasContentAccess(t) {
+		t.Fatal("a purchase created after its refund still opens the episode")
+	}
+	if held := env.heldRefundCount(t); held != 0 {
+		t.Fatalf("held refunds = %d, want the applied one released", held)
+	}
+
+	// A redelivery of the Checkout event finds nothing held and changes
+	// nothing.
+	env.deliverCheckout(t, "pi_refund_early")
+	repeatAmount, repeatAt := env.refundState(t)
+	if repeatAmount != amount || !repeatAt.Time.Equal(at.Time) {
+		t.Fatalf("a repeated Checkout delivery changed the refund: amount %v -> %v, at %v -> %v",
+			amount, repeatAmount, at.Time, repeatAt.Time)
+	}
+}
+
+// A partial refund that arrives first leaves the purchase readable, the same
+// as one that arrives after.
+func TestDBProcessStripeWebhookAppliesAnEarlyPartialRefundWithoutRevokingAccess(t *testing.T) {
+	env := newUnpaidRefundWebhookEnv(t, "REFUNDPRP", "refund-early-partial.example.com")
+
+	env.deliver(t, string(stripe.EventTypeChargeRefunded), refundedCharge("pi_refund_early_partial", 500, 200))
+	env.deliverCheckout(t, "pi_refund_early_partial")
+
+	amount, at := env.refundState(t)
+	if amount.Int32 != 200 {
+		t.Fatalf("refunded_amount = %v, want 200", amount)
+	}
+	if at.Valid {
+		t.Fatalf("refunded_at = %v, want unset while the refund is partial", at.Time)
+	}
+	if !env.hasContentAccess(t) {
+		t.Fatal("a partially refunded purchase no longer opens the episode")
+	}
+	if held := env.heldRefundCount(t); held != 0 {
+		t.Fatalf("held refunds = %d, want the applied one released", held)
 	}
 }

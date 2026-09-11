@@ -720,6 +720,13 @@ type TenantUserRole struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 }
 
+type UnappliedStripeRefund struct {
+	TenantID              uuid.UUID     `json:"tenant_id"`
+	StripePaymentIntentID string        `json:"stripe_payment_intent_id"`
+	RefundedAmount        sql.NullInt32 `json:"refunded_amount"`
+	ReceivedAt            time.Time     `json:"received_at"`
+}
+
 type User struct {
 	ID                 uuid.UUID     `json:"id"`
 	PublicID           string        `json:"public_id"`

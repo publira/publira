@@ -9,16 +9,12 @@
 -- session a payment intent belongs to, would put a synchronous call to another
 -- service inside the webhook path.
 --
--- Nullable and unique for the same reasons stripe_checkout_session_id is:
--- admin-issued grants pay through no provider and leave it empty, while a
--- session that did pay has exactly one payment intent behind it.
+-- Nullable because an admin-issued grant pays through no provider and leaves
+-- it empty. Its uniqueness is enforced by an index built concurrently in the
+-- next migration, since building it here would hold an ACCESS EXCLUSIVE lock
+-- on the table for the length of the build.
 ALTER TABLE purchases
     ADD COLUMN stripe_payment_intent_id text;
-
--- CONSTRAINT: purchases purchases_stripe_payment_intent_id_key
--- Its index is also the lookup a refund arrives by.
-ALTER TABLE ONLY purchases
-    ADD CONSTRAINT purchases_stripe_payment_intent_id_key UNIQUE (stripe_payment_intent_id);
 
 -- COLUMN: purchases refunded_amount
 -- The cumulative amount Stripe has refunded against the purchase, in the same
@@ -29,7 +25,7 @@ ALTER TABLE purchases
 
 -- CONSTRAINT: purchases purchases_refunded_amount_check
 ALTER TABLE ONLY purchases
-    ADD CONSTRAINT purchases_refunded_amount_check CHECK (refunded_amount >= 0);
+    ADD CONSTRAINT purchases_refunded_amount_check CHECK ((refunded_amount >= 0));
 
 -- COLUMN: purchases refunded_at
 -- Set once the refunded amount reaches the price paid, and left NULL while it

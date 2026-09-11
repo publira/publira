@@ -84,6 +84,10 @@ var publicDataTables = []struct {
 	{name: "episode_rating_counts", count: "SELECT count(*) FROM episode_rating_counts"},
 	{name: "users", count: "SELECT count(*) FROM users"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
+	// Written by the Stripe webhook rather than read by a page, and on the same
+	// connection: a row names one tenant's payment intent and the money behind
+	// it, so it needs the isolation purchases has.
+	{name: "unapplied_stripe_refunds", count: "SELECT count(*) FROM unapplied_stripe_refunds"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
 	{name: "page_versions", count: "SELECT count(*) FROM page_versions"},
 }
@@ -120,6 +124,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	env.PG.SeedSeriesTag(t, first.ID, series.ID, tag.ID)
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO unapplied_stripe_refunds (tenant_id, stripe_payment_intent_id, refunded_amount) VALUES ($1, $2, $3)", first.ID, "pi_rls_held", 500); err != nil {
+		t.Fatalf("seed held refund: %v", err)
+	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID); err != nil {
 		t.Fatalf("seed episode read: %v", err)
 	}
