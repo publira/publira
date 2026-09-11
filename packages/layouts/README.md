@@ -5,6 +5,7 @@ The package that provides the layout components reused across several web apps.
 ## What it provides
 
 - `SiteLayout` and its parts — `SiteLayoutHeader`, `SiteLayoutBrand`, `SiteLayoutMain`, `SiteLayoutFooter`, `SiteLayoutFooterContent`, `SiteLayoutFooterNote`
+- `@publira/layouts/auth-screen`: `AuthScreen` and its parts — `AuthScreenHeader`, `AuthScreenTitle`, `AuthScreenTagline`, `AuthScreenBody`, `AuthScreenText`, `AuthScreenNote`, `AuthScreenFooter`. The column the sign-in, sign-up, password, verification, and invitation screens of all three apps are laid out in
 - `styles.css`
 
 ## Usage

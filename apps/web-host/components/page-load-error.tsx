@@ -1,17 +1,10 @@
 "use client";
 
-import { Button } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 import { ClientMessage } from "#components/client-message";
+import { ErrorScreen } from "#components/error-screen";
 
 /**
  * Failure body for a route whose **whole** content is one read — the detail
@@ -22,8 +15,10 @@ import { ClientMessage } from "#components/client-message";
  * the page. Both come from the same `ok: false` value, because a cached read
  * reports failure as a value rather than throwing.
  *
- * The title matches `(site)/error.tsx` on purpose — a reader who loses a whole
- * page should see the same thing whichever renderer produced it.
+ * It renders `ErrorScreen`, the same body `(site)/error.tsx` does. A reader who
+ * loses a whole page sees one screen whichever renderer produced it, and the
+ * copy it leads with is that boundary's own title. There is no digest here: a
+ * classified `ok: false` never reached a boundary, so no identifier was caught.
  */
 export const PageLoadError = ({ description }: { description: string }) => {
   const router = useRouter();
@@ -35,20 +30,11 @@ export const PageLoadError = ({ description }: { description: string }) => {
   }, [router]);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-24">
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
-            <ClientMessage message="host.errors.page_title" />
-          </SectionErrorTitle>
-          <SectionErrorDescription>{description}</SectionErrorDescription>
-        </SectionErrorHeading>
-        <SectionErrorActions>
-          <Button onClick={onRetry} size="sm" variant="outline">
-            <ClientMessage message="host.common.retry" />
-          </Button>
-        </SectionErrorActions>
-      </SectionError>
-    </div>
+    <ErrorScreen
+      description={description}
+      retry={onRetry}
+      retryLabel={<ClientMessage message="host.common.retry" />}
+      title={<ClientMessage message="host.errors.page_title" />}
+    />
   );
 };

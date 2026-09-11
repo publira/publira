@@ -1,4 +1,14 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenFooter,
+  AuthScreenHeader,
+  AuthScreenNote,
+  AuthScreenTagline,
+  AuthScreenText,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -36,9 +46,9 @@ const SignupPendingHeader = async () => {
         pageTitle={getMessage(messages, "host.auth.signup_pending.title")}
         siteLabel={siteLabel}
       />
-      <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
+      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
       {siteTagline ? (
-        <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
+        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
       ) : null}
     </>
   );
@@ -46,82 +56,66 @@ const SignupPendingHeader = async () => {
 
 /** The address is only known once the flash cookie is read, so it blocks. */
 const SignupPendingRecipient = async () => {
-  const locale = await getLocale();
-  const [email, messages] = await Promise.all([
-    readEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE),
-    loadHostMessages(locale),
-  ]);
+  const email = await readEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE);
 
   if (!email) {
     return null;
   }
 
   return (
-    <p className="text-muted-foreground">
-      {getMessage(messages, "host.auth.fields.sent_to", { email })}
-    </p>
+    <AuthScreenNote>
+      <Message message="host.auth.fields.sent_to" values={{ email }} />
+    </AuthScreenNote>
   );
 };
 
 const SignupPendingPage = () => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <header className="text-center">
-        <Suspense
-          fallback={
-            <div className="flex justify-center">
-              <Skeleton className="h-8 w-40" />
-            </div>
-          }
-        >
-          <SignupPendingHeader />
-        </Suspense>
-      </header>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+        <SignupPendingHeader />
+      </Suspense>
+    </AuthScreenHeader>
 
-      <section className="space-y-3 text-sm leading-6">
-        <p>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="host.auth.signup_pending.sent" />
-          </Suspense>
-        </p>
-        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-          <SignupPendingRecipient />
+    <AuthScreenBody>
+      <AuthScreenText>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="host.auth.signup_pending.sent" />
         </Suspense>
-        <p className="text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="host.auth.fields.check_spam" />
-          </Suspense>
-        </p>
-      </section>
+      </AuthScreenText>
+      <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+        <SignupPendingRecipient />
+      </Suspense>
+      <AuthScreenNote>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message="host.auth.fields.check_spam" />
+        </Suspense>
+      </AuthScreenNote>
+    </AuthScreenBody>
 
-      <div className="space-y-2 text-center text-sm">
-        <p>
-          <Suspense
-            fallback={<SkeletonLine className="inline-block h-4 w-40" />}
+    <AuthScreenFooter>
+      <p>
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-40" />}>
+          <LocaleLink
+            href="/resend-verification"
+            className="text-primary underline underline-offset-4"
           >
-            <LocaleLink
-              href="/resend-verification"
-              className="font-medium text-primary hover:underline"
-            >
-              <Message message="host.auth.signup_pending.to_resend_verification" />
-            </LocaleLink>
-          </Suspense>
-        </p>
-        <p>
-          <Suspense
-            fallback={<SkeletonLine className="inline-block h-4 w-32" />}
+            <Message message="host.auth.signup_pending.to_resend_verification" />
+          </LocaleLink>
+        </Suspense>
+      </p>
+      <p>
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
+          <LocaleLink
+            href="/login"
+            className="text-primary underline underline-offset-4"
           >
-            <LocaleLink
-              href="/login"
-              className="font-medium text-primary hover:underline"
-            >
-              <Message message="host.auth.fields.to_login" />
-            </LocaleLink>
-          </Suspense>
-        </p>
-      </div>
-    </div>
-  </main>
+            <Message message="host.auth.fields.to_login" />
+          </LocaleLink>
+        </Suspense>
+      </p>
+    </AuthScreenFooter>
+  </AuthScreen>
 );
 
 export default SignupPendingPage;

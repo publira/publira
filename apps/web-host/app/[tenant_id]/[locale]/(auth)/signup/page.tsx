@@ -1,4 +1,10 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenHeader,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -17,7 +23,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return { title: getMessage(messages, "host.auth.signup.title") };
 };
 
-const SignupPageContent = async () => {
+const SignupPageHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [info, siteLabel, messages] = await Promise.all([
     getTenantSiteInfo(tenantId),
@@ -27,35 +33,29 @@ const SignupPageContent = async () => {
   const siteTagline = info?.siteTagline?.trim();
 
   return (
-    <div className="mb-8 text-center">
+    <>
       <TenantDocumentTitle
         pageTitle={getMessage(messages, "host.auth.signup.title")}
         siteLabel={siteLabel}
       />
-      <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
+      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
       {siteTagline ? (
-        <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
+        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
       ) : null}
-    </div>
+    </>
   );
 };
 
 const SignupPage = () => (
-  <main className="flex min-h-dvh items-center justify-center px-4">
-    <div className="w-full max-w-sm">
-      <Suspense
-        fallback={
-          <div className="mb-8 flex justify-center">
-            <Skeleton className="h-8 w-40" />
-          </div>
-        }
-      >
-        <SignupPageContent />
+  <AuthScreen>
+    <AuthScreenHeader>
+      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+        <SignupPageHeader />
       </Suspense>
+    </AuthScreenHeader>
 
-      <SignupForm />
-    </div>
-  </main>
+    <SignupForm />
+  </AuthScreen>
 );
 
 export default SignupPage;

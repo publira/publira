@@ -7,7 +7,8 @@ interface ErrorScreenProps {
   /** Extra navigation shown next to the retry button. */
   actions?: ReactNode;
   description: ReactNode;
-  digestLabel: ReactNode;
+  /** Only a boundary catches a digest, so a caller without one omits both. */
+  digestLabel?: ReactNode;
   retryLabel: ReactNode;
   /**
    * `error.digest` from the boundary. Server Component errors are stripped of
@@ -23,6 +24,15 @@ interface ErrorScreenProps {
  * Shared body of the route-level error boundaries (`error.tsx`). Those must be
  * Client Components, so this is one too.
  *
+ * One left-aligned column, like every other screen on the site: what went wrong
+ * in ink, what to do next as a plain sentence under it, and the controls in a
+ * row below. Nothing is centred and nothing is wrapped in a surface — a failure
+ * is a page the reader landed on, not a notice pinned to the middle of one.
+ *
+ * Retry is an outline button rather than a filled one. The reading action is
+ * what the site's one filled button is for, and a screen that has lost its
+ * content has nothing to read.
+ *
  * Retry is wired to `retry()` rather than `reset()`: `reset()` only clears the
  * error state, while `retry()` re-fetches and re-renders the boundary's
  * children, which is what a reader means by Try again.
@@ -36,15 +46,17 @@ export const ErrorScreen = ({
   retryLabel,
   title,
 }: ErrorScreenProps) => (
-  <div className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
-    <h1 className="font-serif text-3xl font-bold">{title}</h1>
-    <p className="mt-4 text-muted-foreground">{description}</p>
-    <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-      <Button onClick={() => retry()}>{retryLabel}</Button>
+  <div className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
+    <h1 className="font-serif text-3xl leading-tight">{title}</h1>
+    <p className="text-foreground">{description}</p>
+    <div className="mt-2 flex flex-wrap items-center gap-3">
+      <Button onClick={() => retry()} variant="outline">
+        {retryLabel}
+      </Button>
       {actions}
     </div>
     {digest ? (
-      <p className="mt-8 text-xs text-muted-foreground">
+      <p className="mt-4 text-xs text-muted-foreground">
         {digestLabel} <code className="font-mono">{digest}</code>
       </p>
     ) : null}

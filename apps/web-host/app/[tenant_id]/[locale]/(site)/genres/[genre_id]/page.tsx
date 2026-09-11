@@ -4,6 +4,12 @@ import {
   EmptyState,
   EmptyStateDescription,
 } from "@publira/ui-components/empty-state";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -183,8 +189,21 @@ const GenreSeries = async ({
     token: query.token,
   });
 
+  // The series list is one section of this page, so a failed read replaces
+  // that section and leaves the heading and the filters above it standing.
   if (!result.ok) {
-    return <PageLoadError description={result.message} />;
+    return (
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.series.list_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
+    );
   }
 
   const { nextToken, previousToken, series } = result.value;

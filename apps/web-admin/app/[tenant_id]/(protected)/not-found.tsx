@@ -9,7 +9,6 @@ import {
   AdminPageDescription,
   AdminPageHeader,
   AdminPageHeading,
-  AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
 
@@ -59,11 +58,13 @@ const NotFound = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
-        <AdminPageTitle>
+        {/* The one heading this screen leads with is set in the serif face:
+            a 404 is a statement, not one of the console's workbench pages. */}
+        <h1 className="font-serif text-2xl font-semibold text-foreground">
           <Suspense fallback={<SkeletonLine className="h-8 w-56" />}>
             <Message message="admin.not_found.title" />
           </Suspense>
-        </AdminPageTitle>
+        </h1>
         <AdminPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="admin.not_found.description" />

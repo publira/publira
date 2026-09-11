@@ -1,3 +1,8 @@
+import {
+  AuthScreenBody,
+  AuthScreenFooter,
+  AuthScreenNote,
+} from "@publira/layouts/auth-screen";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -18,14 +23,17 @@ import { requestEmailVerificationAction } from "../_lib/actions";
 
 export const ResendVerificationForm = () => (
   <>
-    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <p className="text-sm leading-6 text-muted-foreground">
+    <AuthScreenBody>
+      <AuthScreenNote>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="host.auth.resend_verification.description" />
         </Suspense>
-      </p>
+      </AuthScreenNote>
 
-      <ActionForm action={requestEmailVerificationAction} className="space-y-4">
+      <ActionForm
+        action={requestEmailVerificationAction}
+        className="grid gap-4"
+      >
         <LocaleField />
         <TenantIdField />
 
@@ -46,7 +54,7 @@ export const ResendVerificationForm = () => (
             />
           </FieldContent>
         </Field>
-        <ActionFormSubmit className="mt-2 w-full">
+        <ActionFormSubmit className="justify-self-start">
           <ActionFormIdle>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="host.auth.resend_verification.submit" />
@@ -59,17 +67,19 @@ export const ResendVerificationForm = () => (
           </ActionFormPending>
         </ActionFormSubmit>
       </ActionForm>
-    </div>
+    </AuthScreenBody>
 
-    <div className="mt-4 text-center text-sm">
-      <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
-        <LocaleLink
-          href="/login"
-          className="font-medium text-primary hover:underline"
-        >
-          <Message message="host.auth.fields.to_login" />
-        </LocaleLink>
-      </Suspense>
-    </div>
+    <AuthScreenFooter>
+      <p>
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
+          <LocaleLink
+            href="/login"
+            className="text-primary underline underline-offset-4"
+          >
+            <Message message="host.auth.fields.to_login" />
+          </LocaleLink>
+        </Suspense>
+      </p>
+    </AuthScreenFooter>
   </>
 );

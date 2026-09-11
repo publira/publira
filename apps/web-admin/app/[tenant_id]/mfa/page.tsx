@@ -1,4 +1,11 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenHeader,
+  AuthScreenTagline,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -23,11 +30,11 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const MfaPageFallback = () => (
-  <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+  <AuthScreenBody>
     <SkeletonLine className="h-4 w-full" />
-    <Skeleton className="h-11 w-full" />
-    <Skeleton className="h-10 w-full" />
-  </div>
+    <Skeleton className="h-16 w-full" />
+    <Skeleton className="h-9 w-32" />
+  </AuthScreenBody>
 );
 
 /**
@@ -39,8 +46,10 @@ const MfaPageFallback = () => (
  * at `/login`.
  *
  * The locale provider is here because the console's own layout is behind the
- * session this screen exists to issue — the forms below are Client Components
- * and still have to speak the tenant's language.
+ * session this screen exists to issue, and the shared MFA controls the forms
+ * render — the code field, the enrollment secret, the recovery codes — still
+ * resolve their copy through it. The two forms themselves do not: their strings
+ * are `<ClientMessage>`, one `<Suspense>` boundary each.
  */
 const MfaPageContent = async () => {
   const [tenantId, challenge] = await Promise.all([
@@ -65,22 +74,20 @@ const MfaPageContent = async () => {
 };
 
 const MfaPage = () => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-sm">
-      <div className="mb-8 text-center">
-        <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <Message message="admin.auth.mfa.title" />
-          </Suspense>
-        </p>
-      </div>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <AuthScreenTitle>Publira</AuthScreenTitle>
+      <AuthScreenTagline>
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="admin.auth.mfa.title" />
+        </Suspense>
+      </AuthScreenTagline>
+    </AuthScreenHeader>
 
-      <Suspense fallback={<MfaPageFallback />}>
-        <MfaPageContent />
-      </Suspense>
-    </div>
-  </main>
+    <Suspense fallback={<MfaPageFallback />}>
+      <MfaPageContent />
+    </Suspense>
+  </AuthScreen>
 );
 
 export default MfaPage;

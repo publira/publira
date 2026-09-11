@@ -1,15 +1,28 @@
 import { getMessage } from "@publira/i18n";
+import {
+  AuthScreen,
+  AuthScreenBody,
+  AuthScreenFooter,
+  AuthScreenHeader,
+  AuthScreenTagline,
+  AuthScreenText,
+  AuthScreenTitle,
+} from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import type { PlatformMessageKey } from "#components/message";
 import { confirmPlatformEmailChange } from "#lib/email-change";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
+
+const CONFIRM_EMAIL_LINK_CLASS_NAME = cn(
+  "text-primary underline underline-offset-4"
+);
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
@@ -18,42 +31,89 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return { title: getMessage(messages, "platform.auth.confirm_email.title") };
 };
 
-const ConfirmationBody = ({
-  href,
-  link,
-  message,
+/**
+ * What the confirmation link turned out to be. The branch is a decision about
+ * what happened; the sentence and the link for each outcome are written, key
+ * and all, in the two components below.
+ */
+type ConfirmEmailOutcome =
+  | "changed"
+  | "failed"
+  | "invalid_link"
+  | "pending_current_email"
+  | "pending_new_email";
+
+const ConfirmEmailSentence = ({
+  outcome,
 }: {
-  href: string;
-  link: PlatformMessageKey;
-  message: PlatformMessageKey;
-}) => (
+  outcome: ConfirmEmailOutcome;
+}) => {
+  switch (outcome) {
+    case "changed": {
+      return <Message message="platform.auth.confirm_email.changed" />;
+    }
+    case "invalid_link": {
+      return <Message message="platform.auth.confirm_email.invalid_link" />;
+    }
+    case "pending_current_email": {
+      return (
+        <Message message="platform.auth.confirm_email.pending_current_email" />
+      );
+    }
+    case "pending_new_email": {
+      return (
+        <Message message="platform.auth.confirm_email.pending_new_email" />
+      );
+    }
+    default: {
+      return <Message message="platform.auth.confirm_email.failed" />;
+    }
+  }
+};
+
+/**
+ * Where the outcome leaves the operator: a completed change has nothing left
+ * to do on the settings screen, so the dashboard is the useful next one.
+ */
+const ConfirmEmailLink = ({ outcome }: { outcome: ConfirmEmailOutcome }) =>
+  outcome === "changed" ? (
+    <Link className={CONFIRM_EMAIL_LINK_CLASS_NAME} href="/">
+      <Message message="platform.auth.confirm_email.to_dashboard" />
+    </Link>
+  ) : (
+    <Link className={CONFIRM_EMAIL_LINK_CLASS_NAME} href="/settings/account">
+      <Message message="platform.auth.confirm_email.back_to_settings" />
+    </Link>
+  );
+
+const ConfirmationBody = ({ outcome }: { outcome: ConfirmEmailOutcome }) => (
   <>
-    <section className="space-y-3 text-sm leading-6">
-      <p>
+    <AuthScreenBody>
+      <AuthScreenText>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message={message} />
+          <ConfirmEmailSentence outcome={outcome} />
+        </Suspense>
+      </AuthScreenText>
+    </AuthScreenBody>
+    <AuthScreenFooter>
+      <p>
+        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-28" />}>
+          <ConfirmEmailLink outcome={outcome} />
         </Suspense>
       </p>
-    </section>
-    <div className="text-center text-sm">
-      <Link className="font-medium text-primary hover:underline" href={href}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-          <Message message={link} />
-        </Suspense>
-      </Link>
-    </div>
+    </AuthScreenFooter>
   </>
 );
 
 const ConfirmationSkeleton = () => (
   <>
-    <section className="space-y-3">
+    <AuthScreenBody>
       <Skeleton className="h-5 w-full" />
       <Skeleton className="h-5 w-2/3" />
-    </section>
-    <div className="text-center">
-      <Skeleton className="mx-auto h-5 w-28" />
-    </div>
+    </AuthScreenBody>
+    <AuthScreenFooter>
+      <Skeleton className="h-5 w-28" />
+    </AuthScreenFooter>
   </>
 );
 
@@ -66,42 +126,28 @@ const ConfirmationResult = async ({
   const { token } = parseConfirmEmailSearchParams(await searchParams);
 
   if (!token) {
-    return (
-      <ConfirmationBody
-        href="/settings/account"
-        link="platform.auth.confirm_email.back_to_settings"
-        message="platform.auth.confirm_email.invalid_link"
-      />
-    );
+    return <ConfirmationBody outcome="invalid_link" />;
   }
 
   const result = await confirmPlatformEmailChange(token);
 
   if (result?.changed) {
+    return <ConfirmationBody outcome="changed" />;
+  }
+
+  if (result?.confirmed) {
     return (
       <ConfirmationBody
-        href="/"
-        link="platform.auth.confirm_email.to_dashboard"
-        message="platform.auth.confirm_email.changed"
+        outcome={
+          result.pendingConfirmationFor === "current_email"
+            ? "pending_current_email"
+            : "pending_new_email"
+        }
       />
     );
   }
 
-  let message: PlatformMessageKey = "platform.auth.confirm_email.failed";
-  if (result?.confirmed) {
-    message =
-      result.pendingConfirmationFor === "current_email"
-        ? "platform.auth.confirm_email.pending_current_email"
-        : "platform.auth.confirm_email.pending_new_email";
-  }
-
-  return (
-    <ConfirmationBody
-      href="/settings/account"
-      link="platform.auth.confirm_email.back_to_settings"
-      message={message}
-    />
-  );
+  return <ConfirmationBody outcome="failed" />;
 };
 
 const ConfirmEmailPage = ({
@@ -109,22 +155,20 @@ const ConfirmEmailPage = ({
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) => (
-  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <header className="text-center">
-        <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-            <Message message="platform.auth.confirm_email.title" />
-          </Suspense>
-        </p>
-      </header>
+  <AuthScreen>
+    <AuthScreenHeader>
+      <AuthScreenTitle>Publira</AuthScreenTitle>
+      <AuthScreenTagline>
+        <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+          <Message message="platform.auth.confirm_email.title" />
+        </Suspense>
+      </AuthScreenTagline>
+    </AuthScreenHeader>
 
-      <Suspense fallback={<ConfirmationSkeleton />}>
-        <ConfirmationResult searchParams={searchParams} />
-      </Suspense>
-    </div>
-  </main>
+    <Suspense fallback={<ConfirmationSkeleton />}>
+      <ConfirmationResult searchParams={searchParams} />
+    </Suspense>
+  </AuthScreen>
 );
 
 export default ConfirmEmailPage;

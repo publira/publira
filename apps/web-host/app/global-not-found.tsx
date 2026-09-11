@@ -1,5 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
+import { buttonVariants } from "@publira/ui-components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -19,7 +20,11 @@ const NOT_FOUND_LOCALE: Locale = "en";
  * Requires `experimental.globalNotFound` in `next.config.ts`. Styles and brand
  * tokens are imported here because this file bypasses the tenant root layout.
  * Tenant-specific `/theme.css` is intentionally omitted: there is no tenant
- * context on an unmatched URL.
+ * context on an unmatched URL, so the screen renders in the brand defaults.
+ *
+ * The link back is styled from `buttonVariants` rather than rendered as
+ * `LinkButton`, which is a client component: this document is static and has
+ * nothing else to hydrate.
  *
  * The locale is a constant rather than the `[locale]` segment every other page
  * follows. An unmatched URL never reached `proxy.ts`'s rewrite, so there is no
@@ -40,21 +45,15 @@ export const metadata: Metadata = {
 const GlobalNotFound = () => (
   <html lang={NOT_FOUND_LOCALE}>
     <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
-      <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
-        <p className="text-sm tracking-wide text-muted-foreground uppercase">
-          404 Not Found
-        </p>
-        <h1 className="mt-4 font-serif text-4xl font-bold">
+      <main className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
+        <h1 className="font-serif text-3xl leading-tight">
           {sharedMessage("host.errors.not_found_title", NOT_FOUND_LOCALE)}
         </h1>
-        <p className="mt-4 text-muted-foreground">
+        <p className="text-foreground">
           {sharedMessage("host.errors.not_found_description", NOT_FOUND_LOCALE)}
         </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link
-            className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition hover:opacity-90"
-            href="/"
-          >
+        <div className="mt-2">
+          <Link className={buttonVariants({ variant: "outline" })} href="/">
             {sharedMessage("host.common.back_to_top", NOT_FOUND_LOCALE)}
           </Link>
         </div>

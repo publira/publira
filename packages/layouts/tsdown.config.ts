@@ -9,6 +9,7 @@ export default defineConfig({
     // module tsdown merges into a shared chunk loses it, and the drawer's
     // `useState` then lands in the server graph.
     "src/site-layout-client.tsx",
+    "src/auth-screen.tsx",
     "src/admin/index.ts",
     "src/admin/console-layout-client.tsx",
     "src/admin/console-user-menu.tsx",

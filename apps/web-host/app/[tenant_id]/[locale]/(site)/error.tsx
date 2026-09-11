@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -52,14 +53,11 @@ const SiteError = ({
 }) => (
   <ErrorScreen
     actions={
-      <LocaleLink
-        className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-        href="/"
-      >
+      <LinkButton render={<LocaleLink href="/" />} variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <ClientMessage message="host.common.back_to_top" />
         </Suspense>
-      </LocaleLink>
+      </LinkButton>
     }
     description={
       <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>

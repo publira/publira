@@ -1,5 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
+import { buttonVariants } from "@publira/ui-components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -17,6 +18,10 @@ const NOT_FOUND_LOCALE: Locale = "en";
  *
  * Requires `experimental.globalNotFound` in `next.config.ts`. Styles and brand
  * tokens are imported here because this file bypasses `app/layout.tsx`.
+ *
+ * The link back is styled from `buttonVariants` rather than rendered as
+ * `LinkButton`, which is a client component: this document is static and has
+ * nothing else to hydrate.
  *
  * The locale is a constant rather than the cookie the console layout follows.
  * This document has no layout to resolve a locale in and renders as a static
@@ -36,21 +41,15 @@ export const metadata: Metadata = {
 const GlobalNotFound = () => (
   <html lang={NOT_FOUND_LOCALE}>
     <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
-      <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
-        <p className="text-sm tracking-wide text-muted-foreground uppercase">
-          404 Not Found
-        </p>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight">
+      <main className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
+        <h1 className="font-serif text-3xl leading-tight">
           {sharedMessage("platform.not_found.title", NOT_FOUND_LOCALE)}
         </h1>
-        <p className="mt-4 text-muted-foreground">
+        <p className="text-foreground">
           {sharedMessage("platform.not_found.description", NOT_FOUND_LOCALE)}
         </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link
-            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted"
-            href="/"
-          >
+        <div className="mt-2">
+          <Link className={buttonVariants({ variant: "outline" })} href="/">
             {sharedMessage(
               "platform.common.back_to_dashboard",
               NOT_FOUND_LOCALE
