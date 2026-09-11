@@ -2686,7 +2686,6 @@
         "target": "Target"
       },
       "empty_events": "No recent events yet.",
-      "empty_events_pending": "Events will appear here once they are loaded.",
       "events": {
         "end_user_created": "End user created",
         "operator_role_granted": "Operator role granted",
@@ -2697,30 +2696,14 @@
       "heading": "Cross-tenant operations hub",
       "list_failed": "Could not load the dashboard. Please try again later.",
       "load_failed": "Could not display the dashboard",
-      "next_actions_description": "Jump to the screens you use most after checking status.",
-      "next_actions_title": "Next actions",
-      "not_fetched": "Not loaded",
-      "open_audit": "Review audit logs",
-      "open_operators": "Manage operators",
-      "open_tenants": "Open tenant list",
-      "open_tenants_new": "Create a tenant",
       "page_description": "Check tenant status, pending counts, and recent events across the platform.",
       "stats": {
-        "active_detail": "of {$count} total",
-        "active_detail_empty": "Tenants that are currently running",
         "active_label": "Active tenants",
-        "pending_detail": "Invited or inactive users",
-        "pending_detail_empty": "Users waiting for confirmation",
         "pending_label": "Pending users",
-        "suspended_detail": "Need resume or investigation",
-        "suspended_detail_empty": "Tenants that are currently suspended",
         "suspended_label": "Suspended tenants",
-        "total_detail": "{$active} active / {$suspended} suspended",
-        "total_detail_empty": "Latest status across all tenants",
         "total_label": "Total tenants"
       },
       "title": "Dashboard",
-      "updated_count": "{$count} updates",
       "view_audit": "View audit logs",
       "view_tenants": "Go to tenants"
     },

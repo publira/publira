@@ -2686,7 +2686,6 @@
         "target": "対象"
       },
       "empty_events": "直近イベントはまだありません。",
-      "empty_events_pending": "イベント取得後にここへ表示されます。",
       "events": {
         "end_user_created": "エンドユーザー作成",
         "operator_role_granted": "オペレーター権限付与",
@@ -2697,30 +2696,14 @@
       "heading": "横断オペレーションの基準点",
       "list_failed": "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。",
       "load_failed": "ダッシュボードを表示できませんでした",
-      "next_actions_description": "状況確認のあとに利用頻度の高い画面へすぐ移動できます。",
-      "next_actions_title": "次アクション",
-      "not_fetched": "未取得",
-      "open_audit": "監査ログを確認する",
-      "open_operators": "オペレーター管理へ",
-      "open_tenants": "テナント一覧を開く",
-      "open_tenants_new": "新規テナントを作成する",
       "page_description": "プラットフォーム全体のテナント状態、保留件数、直近イベントを最初に確認するためのダッシュボードです。",
       "stats": {
-        "active_detail": "全体の {$count} 件中",
-        "active_detail_empty": "現在稼働しているテナント数です",
         "active_label": "稼働中テナント",
-        "pending_detail": "招待未完了 / inactive 扱いのユーザー",
-        "pending_detail_empty": "確認待ちのユーザー数を表示します",
         "pending_label": "保留ユーザー",
-        "suspended_detail": "再開・原因確認が必要な件数",
-        "suspended_detail_empty": "停止中のテナント数を表示します",
         "suspended_label": "停止中テナント",
-        "total_detail": "稼働中 {$active} / 停止中 {$suspended}",
-        "total_detail_empty": "全テナントの最新状況を表示します",
         "total_label": "総テナント数"
       },
       "title": "ダッシュボード",
-      "updated_count": "更新 {$count} 件",
       "view_audit": "監査ログを見る",
       "view_tenants": "テナント一覧へ"
     },

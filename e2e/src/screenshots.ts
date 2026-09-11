@@ -29,6 +29,49 @@ export type ScreenshotViewport = (typeof SCREENSHOT_VIEWPORTS)[number];
 const LOADING_PLACEHOLDER = '[class*="animate-pulse"]';
 
 /**
+ * The width a screen actually laid its content out at, against the width it
+ * was given.
+ *
+ * A full-page shot is taken at the document's own scroll width, so a screen
+ * whose content is laid out wider than that photographs as a screen with its
+ * right-hand side missing rather than as an obviously broken one — which is
+ * how a `white-space: nowrap` deep inside one component, propagated upward as
+ * the min-content width of the console's page grid, reached a committed
+ * baseline unnoticed. `<main>` is where that shows: it is the column the page
+ * body fills in all three apps, and its scroll width is the width its content
+ * demanded. The document's own scroll width covers the other ending, where
+ * nothing clips and the window scrolls sideways instead.
+ *
+ * A box that scrolls sideways on purpose does not register here: `Table` wraps
+ * itself in an `overflow-auto` container precisely so that a wide table
+ * scrolls inside the page rather than widening it.
+ */
+const expectNoHorizontalOverflow = async (page: Page): Promise<void> => {
+  const measured = await page.evaluate(() => {
+    const main = document.querySelector("main");
+    if (!main) {
+      throw new Error("the page has no <main> to measure");
+    }
+
+    return {
+      column: main.clientWidth,
+      content: main.scrollWidth,
+      page: document.documentElement.scrollWidth,
+      viewport: document.documentElement.clientWidth,
+    };
+  });
+
+  expect(
+    measured.content,
+    "the page content is laid out wider than the column it sits in"
+  ).toBeLessThanOrEqual(measured.column + 1);
+  expect(
+    measured.page,
+    "the document scrolls sideways at this width"
+  ).toBeLessThanOrEqual(measured.viewport + 1);
+};
+
+/**
  * Record one screen, or compare it with what was recorded before.
  *
  * Full-page rather than the viewport alone: a section below the fold is as
@@ -60,6 +103,7 @@ export const expectScreenshot = async (
 ): Promise<void> => {
   await page.waitForLoadState("networkidle");
   await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
 
   await expect(page).toHaveScreenshot(`${name}-${viewport.label}.png`, {
     fullPage: true,

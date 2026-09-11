@@ -2686,7 +2686,6 @@
         "target": "對象"
       },
       "empty_events": "目前沒有最近的事件。",
-      "empty_events_pending": "事件載入完成後會顯示在這裡。",
       "events": {
         "end_user_created": "建立了終端使用者",
         "operator_role_granted": "授予了營運角色",
@@ -2697,30 +2696,14 @@
       "heading": "跨租戶營運中心",
       "list_failed": "無法載入儀表板。請稍後再試。",
       "load_failed": "無法顯示儀表板",
-      "next_actions_description": "確認狀態後，快速前往最常用的頁面。",
-      "next_actions_title": "後續操作",
-      "not_fetched": "未載入",
-      "open_audit": "查看稽核記錄",
-      "open_operators": "管理營運人員",
-      "open_tenants": "開啟租戶列表",
-      "open_tenants_new": "建立租戶",
       "page_description": "查看整個平台的租戶狀態、待處理數量與最近事件。",
       "stats": {
-        "active_detail": "共 {$count} 個",
-        "active_detail_empty": "目前正在運作的租戶",
         "active_label": "運作中的租戶",
-        "pending_detail": "已邀請或未啟用的使用者",
-        "pending_detail_empty": "等待確認的使用者",
         "pending_label": "待處理的使用者",
-        "suspended_detail": "需要恢復或調查",
-        "suspended_detail_empty": "目前已暫停的租戶",
         "suspended_label": "已暫停的租戶",
-        "total_detail": "{$active} 個運作中 / {$suspended} 個已暫停",
-        "total_detail_empty": "全部租戶的最新狀態",
         "total_label": "租戶總數"
       },
       "title": "儀表板",
-      "updated_count": "{$count} 項更新",
       "view_audit": "查看稽核記錄",
       "view_tenants": "前往租戶列表"
     },

@@ -2686,7 +2686,6 @@
         "target": "대상"
       },
       "empty_events": "아직 최근 이벤트가 없습니다.",
-      "empty_events_pending": "이벤트를 불러오면 여기에 표시됩니다.",
       "events": {
         "end_user_created": "엔드 유저 생성",
         "operator_role_granted": "운영자 권한 부여",
@@ -2697,30 +2696,14 @@
       "heading": "테넌트 전체 운영의 기준점",
       "list_failed": "대시보드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "load_failed": "대시보드를 표시할 수 없습니다",
-      "next_actions_description": "상태를 확인한 뒤 자주 쓰는 화면으로 바로 이동합니다.",
-      "next_actions_title": "다음 작업",
-      "not_fetched": "불러오지 않음",
-      "open_audit": "감사 로그 확인하기",
-      "open_operators": "운영자 관리로 이동",
-      "open_tenants": "테넌트 목록 열기",
-      "open_tenants_new": "테넌트 만들기",
       "page_description": "플랫폼 전체의 테넌트 상태, 대기 건수, 최근 이벤트를 확인합니다.",
       "stats": {
-        "active_detail": "전체 {$count}건 중",
-        "active_detail_empty": "현재 가동 중인 테넌트 수입니다",
         "active_label": "가동 중 테넌트",
-        "pending_detail": "초대 중이거나 비활성인 사용자",
-        "pending_detail_empty": "확인을 기다리는 사용자 수입니다",
         "pending_label": "대기 사용자",
-        "suspended_detail": "재개나 원인 확인이 필요한 건수",
-        "suspended_detail_empty": "정지 중인 테넌트 수입니다",
         "suspended_label": "정지 중 테넌트",
-        "total_detail": "가동 중 {$active} / 정지 중 {$suspended}",
-        "total_detail_empty": "전체 테넌트의 최신 상태입니다",
         "total_label": "전체 테넌트 수"
       },
       "title": "대시보드",
-      "updated_count": "업데이트 {$count}건",
       "view_audit": "감사 로그 보기",
       "view_tenants": "테넌트 목록으로 이동"
     },

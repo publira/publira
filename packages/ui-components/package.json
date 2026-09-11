@@ -47,6 +47,10 @@
       "types": "./dist/field/index.d.mts",
       "default": "./dist/field/index.mjs"
     },
+    "./figure-line": {
+      "types": "./dist/figure-line/index.d.mts",
+      "default": "./dist/figure-line/index.mjs"
+    },
     "./form-actions": {
       "types": "./dist/form-actions/index.d.mts",
       "default": "./dist/form-actions/index.mjs"

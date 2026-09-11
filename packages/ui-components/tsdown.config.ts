@@ -13,6 +13,7 @@ export default defineConfig({
     "src/dialog/index.ts",
     "src/empty-state/index.ts",
     "src/field/index.ts",
+    "src/figure-line/index.ts",
     "src/form-actions/index.ts",
     "src/form-message/index.ts",
     "src/input/index.ts",
