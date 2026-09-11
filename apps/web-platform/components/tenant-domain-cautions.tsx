@@ -11,7 +11,9 @@ export const TenantDomainCautions = ({
   className?: string;
   showUpdateCaution?: boolean;
 }) => (
-  <section className={cn("grid gap-2 rounded-md border px-3 py-2", className)}>
+  <section
+    className={cn("grid gap-2 rounded-control border px-3 py-2", className)}
+  >
     <p className="text-sm font-medium">
       <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
         <Message message="platform.tenants.caution_title" />

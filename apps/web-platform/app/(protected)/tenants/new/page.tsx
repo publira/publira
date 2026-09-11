@@ -1,11 +1,4 @@
 import { getMessage } from "@publira/i18n";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -47,23 +40,7 @@ const TenantNewPage = () => (
       </PlatformPageHeading>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-              <Message message="platform.tenants.create_form_title" />
-            </Suspense>
-          </CardTitle>
-          <CardDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <Message message="platform.tenants.create_form_description" />
-            </Suspense>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CreateTenantForm />
-        </CardContent>
-      </Card>
+      <CreateTenantForm />
     </PlatformPageContent>
   </PlatformPage>
 );

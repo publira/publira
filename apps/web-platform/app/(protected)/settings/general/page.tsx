@@ -1,6 +1,5 @@
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -13,6 +12,7 @@ import {
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
+  PlatformSection,
 } from "#components/platform-page";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
@@ -39,17 +39,12 @@ const tabLabel = (
   </Suspense>
 );
 
-const SettingsFormCardSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <Skeleton className="h-6 w-32" />
-      <Skeleton className="h-4 w-3/4" />
-    </CardHeader>
-    <CardContent className="grid gap-4 sm:max-w-lg">
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-9 w-40 justify-self-end" />
-    </CardContent>
-  </Card>
+const SettingsFormSkeleton = () => (
+  <PlatformSection>
+    <SkeletonLine className="h-5 w-40" />
+    <Skeleton className="h-9 w-full" />
+    <Skeleton className="h-9 w-40 justify-self-end" />
+  </PlatformSection>
 );
 
 interface DefaultLocaleSectionProps {
@@ -103,7 +98,7 @@ const GeneralSettingsContent = async () => {
         emailLabel={tabLabel("platform.settings.email_tab", "h-4 w-20")}
         generalLabel={tabLabel("platform.settings.general_tab", "h-4 w-8")}
       />
-      <Suspense fallback={<SettingsFormCardSkeleton />}>
+      <Suspense fallback={<SettingsFormSkeleton />}>
         <DefaultLocaleSection
           initialDefaultLocale={
             settingsResult.ok ? settingsResult.defaultLocale : undefined
@@ -113,7 +108,7 @@ const GeneralSettingsContent = async () => {
           }
         />
       </Suspense>
-      <Suspense fallback={<SettingsFormCardSkeleton />}>
+      <Suspense fallback={<SettingsFormSkeleton />}>
         <TimezoneSection
           initialTimezone={settingsResult.defaultTimezone}
           loadErrorMessage={
@@ -131,8 +126,8 @@ const GeneralSettingsContentSkeleton = () => (
       <Skeleton className="h-9 w-16" />
       <Skeleton className="h-9 w-24" />
     </div>
-    <SettingsFormCardSkeleton />
-    <SettingsFormCardSkeleton />
+    <SettingsFormSkeleton />
+    <SettingsFormSkeleton />
   </div>
 );
 

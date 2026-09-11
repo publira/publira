@@ -3,7 +3,6 @@
 import { getMessage, toIntlLocale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
-import { Card, CardContent } from "@publira/ui-components/card";
 import {
   Combobox,
   ComboboxEmpty,
@@ -338,12 +337,12 @@ const EyeCatchImageField = ({
         {getMessage(messages, "admin.series.form.eye_catch")}
       </FieldLabel>
       <FieldContent>
-        <div className="grid gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
-          <div className="rounded-xl border border-border/60 bg-background p-3">
+        <div className="grid gap-4 border border-border bg-muted/20 p-4">
+          <div className="border border-border bg-background p-3">
             <p className="mb-2 text-sm font-medium">
               {getMessage(messages, "admin.series.form.eye_catch_preview")}
             </p>
-            <div className="relative aspect-[3/4] max-w-52 overflow-hidden rounded-lg border border-border/60 bg-muted/50">
+            <div className="relative aspect-[3/4] max-w-52 overflow-hidden rounded-surface border border-border bg-muted/50">
               {hasPreviewImage ? (
                 <Image
                   alt={getMessage(
@@ -563,176 +562,167 @@ export const SeriesForm = ({
   );
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <form
-          action={formAction}
-          className="grid gap-4"
-          onSubmit={handleSubmit}
-        >
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input
-            name="public_id"
-            type="hidden"
-            value={initialSeries?.publicId ?? ""}
-          />
+    <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input
+        name="public_id"
+        type="hidden"
+        value={initialSeries?.publicId ?? ""}
+      />
 
-          <div className="grid gap-4">
-            <Field>
-              <FieldLabel required>
-                {getMessage(messages, "admin.series.form.title")}
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  defaultValue={initialSeries?.title ?? ""}
-                  name="title"
-                  placeholder={getMessage(
-                    messages,
-                    "admin.series.form.title_placeholder"
-                  )}
-                  required
-                  type="text"
-                />
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel required>
-                {getMessage(messages, "admin.series.form.reading_period")}
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  defaultValue={
-                    initialSeries?.readingPeriodHours ??
-                    defaultReadingPeriodHours
-                  }
-                  min={0}
-                  name="reading_period_hours"
-                  required
-                  type="number"
-                />
-                <FieldDescription>
-                  {getMessage(
-                    messages,
-                    "admin.series.form.reading_period_description"
-                  )}
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel required>
-                {getMessage(messages, "admin.series.form.synopsis")}
-              </FieldLabel>
-              <FieldContent>
-                <Textarea
-                  defaultValue={initialSeries?.synopsis ?? ""}
-                  name="synopsis"
-                  placeholder={getMessage(
-                    messages,
-                    "admin.series.form.synopsis_placeholder"
-                  )}
-                  required
-                  rows={5}
-                />
-              </FieldContent>
-            </Field>
-
-            <CreatorField
-              creatorItems={creatorItems}
-              creatorsErrorMessage={creatorsErrorMessage}
-              onChange={setSelectedCreatorPublicIds}
-              selectedCreatorPublicIds={selectedCreatorPublicIds}
+      <div className="grid gap-4">
+        <Field>
+          <FieldLabel required>
+            {getMessage(messages, "admin.series.form.title")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSeries?.title ?? ""}
+              name="title"
+              placeholder={getMessage(
+                messages,
+                "admin.series.form.title_placeholder"
+              )}
+              required
+              type="text"
             />
+          </FieldContent>
+        </Field>
 
-            <LabelField
-              labelItems={labelItems}
-              labelsErrorMessage={labelsErrorMessage}
-              onComboboxChange={setSelectedLabelPublicId}
-              onFallbackChange={handleLabelFallbackInputChange}
-              selectedLabelPublicId={selectedLabelPublicId}
-              useLabelFallbackInput={useLabelFallbackInput}
+        <Field>
+          <FieldLabel required>
+            {getMessage(messages, "admin.series.form.reading_period")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={
+                initialSeries?.readingPeriodHours ?? defaultReadingPeriodHours
+              }
+              min={0}
+              name="reading_period_hours"
+              required
+              type="number"
             />
+            <FieldDescription>
+              {getMessage(
+                messages,
+                "admin.series.form.reading_period_description"
+              )}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-            <Field>
-              <FieldLabel>
-                {getMessage(messages, "admin.series.form.published_at")}
-              </FieldLabel>
-              <FieldContent>
-                <input defaultValue="" name="published_at" type="hidden" />
-                <Input
-                  // Wall clock shown in the zone this form was rendered in.
-                  // Submit writes the matching instant into `published_at`.
-                  defaultValue={toDateTimeLocalValue(
-                    initialSeries?.publishedAt ?? "",
-                    timeZone
-                  )}
-                  name="published_at_local"
-                  type="datetime-local"
-                />
-                <FieldDescription>
-                  {getMessage(
-                    messages,
-                    "admin.series.form.published_at_description",
-                    {
-                      time_zone: timeZone,
-                    }
-                  )}
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-
-            <SeriesStatusField onChange={setStatus} value={status} />
-
-            <SeriesScheduleField
-              onChange={setScheduleWeekdays}
-              value={scheduleWeekdays}
+        <Field>
+          <FieldLabel required>
+            {getMessage(messages, "admin.series.form.synopsis")}
+          </FieldLabel>
+          <FieldContent>
+            <Textarea
+              defaultValue={initialSeries?.synopsis ?? ""}
+              name="synopsis"
+              placeholder={getMessage(
+                messages,
+                "admin.series.form.synopsis_placeholder"
+              )}
+              required
+              rows={5}
             />
+          </FieldContent>
+        </Field>
 
-            <SeriesAgeRatingField onChange={setAgeRating} value={ageRating} />
+        <CreatorField
+          creatorItems={creatorItems}
+          creatorsErrorMessage={creatorsErrorMessage}
+          onChange={setSelectedCreatorPublicIds}
+          selectedCreatorPublicIds={selectedCreatorPublicIds}
+        />
 
-            <SeriesGenreField
-              genres={genres}
-              genresErrorMessage={genresErrorMessage}
-              onChange={setSelectedGenrePublicIds}
-              value={selectedGenrePublicIds}
+        <LabelField
+          labelItems={labelItems}
+          labelsErrorMessage={labelsErrorMessage}
+          onComboboxChange={setSelectedLabelPublicId}
+          onFallbackChange={handleLabelFallbackInputChange}
+          selectedLabelPublicId={selectedLabelPublicId}
+          useLabelFallbackInput={useLabelFallbackInput}
+        />
+
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.series.form.published_at")}
+          </FieldLabel>
+          <FieldContent>
+            <input defaultValue="" name="published_at" type="hidden" />
+            <Input
+              // Wall clock shown in the zone this form was rendered in.
+              // Submit writes the matching instant into `published_at`.
+              defaultValue={toDateTimeLocalValue(
+                initialSeries?.publishedAt ?? "",
+                timeZone
+              )}
+              name="published_at_local"
+              type="datetime-local"
             />
+            <FieldDescription>
+              {getMessage(
+                messages,
+                "admin.series.form.published_at_description",
+                {
+                  time_zone: timeZone,
+                }
+              )}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-            <SeriesTagField
-              onChange={setTagNames}
-              suggestions={tagSuggestions}
-              suggestionsErrorMessage={tagSuggestionsErrorMessage}
-              value={tagNames}
-            />
+        <SeriesStatusField onChange={setStatus} value={status} />
 
-            <SeriesCommentModeField
-              onChange={setCommentMode}
-              tenantCommentMode={tenantCommentMode}
-              value={commentMode}
-            />
-          </div>
+        <SeriesScheduleField
+          onChange={setScheduleWeekdays}
+          value={scheduleWeekdays}
+        />
 
-          {!isUpdate && (
-            <EyeCatchImageField
-              clearEyeCatchImage={false}
-              onImageFileChange={handleEyeCatchImageFileChange}
-              previewImageUrl={eyeCatchPreviewUrl}
-            />
-          )}
+        <SeriesAgeRatingField onChange={setAgeRating} value={ageRating} />
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+        <SeriesGenreField
+          genres={genres}
+          genresErrorMessage={genresErrorMessage}
+          onChange={setSelectedGenrePublicIds}
+          value={selectedGenrePublicIds}
+        />
 
-          <div className="flex justify-end">
-            <Button disabled={isPending} type="submit">
-              {submitLabel}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <SeriesTagField
+          onChange={setTagNames}
+          suggestions={tagSuggestions}
+          suggestionsErrorMessage={tagSuggestionsErrorMessage}
+          value={tagNames}
+        />
+
+        <SeriesCommentModeField
+          onChange={setCommentMode}
+          tenantCommentMode={tenantCommentMode}
+          value={commentMode}
+        />
+      </div>
+
+      {!isUpdate && (
+        <EyeCatchImageField
+          clearEyeCatchImage={false}
+          onImageFileChange={handleEyeCatchImageFileChange}
+          previewImageUrl={eyeCatchPreviewUrl}
+        />
+      )}
+
+      {state ? (
+        <FormMessage variant={state.ok ? "success" : "destructive"}>
+          {state.message}
+        </FormMessage>
+      ) : null}
+
+      <div className="flex justify-end">
+        <Button disabled={isPending} type="submit">
+          {submitLabel}
+        </Button>
+      </div>
+    </form>
   );
 };

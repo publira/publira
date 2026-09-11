@@ -1,11 +1,15 @@
 import { getMessage } from "@publira/i18n";
+import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { TableSkeleton } from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import {
   AdminPage,
+  AdminPageActions,
   AdminPageContent,
   AdminPageDescription,
   AdminPageHeader,
@@ -38,17 +42,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
-
-const TicketManagerSkeleton = () => (
-  <div className="rounded-2xl border border-border/70 bg-card p-6">
-    <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
-    <div className="grid gap-3">
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-    </div>
-  </div>
-);
 
 const accessTicketFilterQuery = (
   filters: ReturnType<typeof parseAccessTicketFilters>,
@@ -118,10 +111,20 @@ const AccessTicketsPage = ({ searchParams }: AccessTicketsPageProps) => (
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton
+          render={<Link href="/access-tickets/new" />}
+          variant="outline"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="admin.access_tickets.new_action" />
+          </Suspense>
+        </LinkButton>
+      </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
       <FlashToast message="admin.access_tickets.issued" />
-      <Suspense fallback={<TicketManagerSkeleton />}>
+      <Suspense fallback={<TableSkeleton />}>
         <TicketManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>

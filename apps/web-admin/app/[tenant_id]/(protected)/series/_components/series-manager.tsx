@@ -4,13 +4,6 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -205,7 +198,7 @@ const SeriesListBody = ({
               </Suspense>
             </TableCell>
             <TableCell>
-              <Badge tone={getStatusTone(item.isPublished)}>
+              <Badge tone={getStatusTone(item.isPublished)} variant="outline">
                 {getStatusLabel(messages, item.isPublished)}
               </Badge>
             </TableCell>
@@ -246,44 +239,29 @@ export const SeriesManager = ({
     !listErrorMessage && (series.length > 0 || hasPageLinks);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1">
-          <CardTitle>
-            {getMessage(messages, "admin.series.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.series.list_description")}
-          </CardDescription>
-        </div>
-        <LinkButton href="/series/new" variant="outline">
-          {getMessage(messages, "admin.series.new_action")}
-        </LinkButton>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <SeriesListBody
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          locale={locale}
-          series={series}
-          timeZone={timeZone}
-        />
+    <div className="grid gap-6">
+      <SeriesListBody
+        hasPageLinks={hasPageLinks}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+        series={series}
+        timeZone={timeZone}
+      />
 
-        {showPagination ? (
-          <PaginationFooter
-            ariaLabel={getMessage(messages, "admin.series.pagination_aria")}
-            description={getMessage(
-              messages,
-              "admin.series.pagination_description",
-              {
-                count: pageSize,
-              }
-            )}
-            nextHref={nextHref}
-            previousHref={previousHref}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(messages, "admin.series.pagination_aria")}
+          description={getMessage(
+            messages,
+            "admin.series.pagination_description",
+            {
+              count: pageSize,
+            }
+          )}
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
+      ) : null}
+    </div>
   );
 };

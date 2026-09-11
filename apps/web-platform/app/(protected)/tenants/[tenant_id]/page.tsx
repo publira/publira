@@ -1,13 +1,6 @@
 import { getMessage } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import {
@@ -17,7 +10,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import {
   parseRouteParams,
@@ -45,6 +38,12 @@ import {
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSections,
+  PlatformSectionTitle,
 } from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
@@ -95,31 +94,19 @@ export const generateMetadata = async ({
 const TenantDetailSkeleton = () => (
   <PlatformPageContent>
     <div className="grid gap-6">
-      <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <div className="h-16 animate-pulse rounded bg-muted/70" />
-              <div className="h-16 animate-pulse rounded bg-muted/70" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <div className="h-5 w-32 animate-pulse rounded bg-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <div className="h-16 animate-pulse rounded bg-muted/70" />
-              <div className="h-16 animate-pulse rounded bg-muted/70" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Skeleton className="h-10 w-64" />
+      <PlatformSections>
+        <PlatformSection>
+          <SkeletonLine className="h-5 w-40" />
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+        </PlatformSection>
+        <PlatformSection>
+          <SkeletonLine className="h-5 w-40" />
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+        </PlatformSection>
+      </PlatformSections>
     </div>
   </PlatformPageContent>
 );
@@ -230,149 +217,136 @@ const TenantDetailContent = async ({
         <div className="grid gap-6">
           <TenantSectionNav current="detail" tenantId={tenant.publicId} />
 
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {getMessage(messages, "platform.tenants.basic_title")}
-                </CardTitle>
-                <CardDescription>
-                  {getMessage(messages, "platform.tenants.basic_description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <ActionForm action={updateTenantNameAction}>
-                  <input
-                    name="tenant_id"
-                    type="hidden"
-                    value={tenant.publicId}
-                  />
-                  <input
-                    name="tenant_current_domain"
-                    type="hidden"
-                    value={tenant.domain}
-                  />
-                  <div className="grid gap-4">
-                    <Field>
-                      <FieldLabel required>
-                        {getMessage(messages, "platform.tenants.name")}
-                      </FieldLabel>
-                      <Input
-                        key={tenant.name}
-                        defaultValue={tenant.name}
-                        name="tenant_name"
-                        required
-                        type="text"
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel>
-                        {getMessage(messages, "platform.common.created_at")}
-                      </FieldLabel>
-                      <p className="text-sm">
-                        {formatDateTime(tenant.createdAt, {
-                          fallback: getMessage(
-                            messages,
-                            "platform.common.unset"
-                          ),
-                          locale,
-                          timeZone,
-                        })}
-                      </p>
-                    </Field>
-                    <Field>
-                      <FieldLabel>
-                        {getMessage(messages, "platform.common.status")}
-                      </FieldLabel>
-                      <p>
-                        <Badge tone={tenantStatusTone}>
-                          {tenantStatusLabel}
-                        </Badge>
-                      </p>
-                    </Field>
-                  </div>
-                  <ActionFormSubmit
-                    className="mt-4 ml-auto block"
-                    variant="outline"
-                  >
-                    <ActionFormIdle>{saveLabel}</ActionFormIdle>
-                    <ActionFormPending>{savingLabel}</ActionFormPending>
-                  </ActionFormSubmit>
-                </ActionForm>
-              </CardContent>
-            </Card>
+          <PlatformSections>
+            <PlatformSection>
+              <PlatformSectionHeader>
+                <PlatformSectionHeading>
+                  <PlatformSectionTitle>
+                    {getMessage(messages, "platform.tenants.basic_title")}
+                  </PlatformSectionTitle>
+                  <PlatformSectionDescription>
+                    {getMessage(messages, "platform.tenants.basic_description")}
+                  </PlatformSectionDescription>
+                </PlatformSectionHeading>
+              </PlatformSectionHeader>
+              <ActionForm action={updateTenantNameAction}>
+                <input name="tenant_id" type="hidden" value={tenant.publicId} />
+                <input
+                  name="tenant_current_domain"
+                  type="hidden"
+                  value={tenant.domain}
+                />
+                <div className="grid gap-4">
+                  <Field>
+                    <FieldLabel required>
+                      {getMessage(messages, "platform.tenants.name")}
+                    </FieldLabel>
+                    <Input
+                      key={tenant.name}
+                      defaultValue={tenant.name}
+                      name="tenant_name"
+                      required
+                      type="text"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>
+                      {getMessage(messages, "platform.common.created_at")}
+                    </FieldLabel>
+                    <p className="text-sm">
+                      {formatDateTime(tenant.createdAt, {
+                        fallback: getMessage(messages, "platform.common.unset"),
+                        locale,
+                        timeZone,
+                      })}
+                    </p>
+                  </Field>
+                  <Field>
+                    <FieldLabel>
+                      {getMessage(messages, "platform.common.status")}
+                    </FieldLabel>
+                    <p>
+                      <Badge tone={tenantStatusTone}>{tenantStatusLabel}</Badge>
+                    </p>
+                  </Field>
+                </div>
+                <ActionFormSubmit
+                  className="mt-4 ml-auto block"
+                  variant="outline"
+                >
+                  <ActionFormIdle>{saveLabel}</ActionFormIdle>
+                  <ActionFormPending>{savingLabel}</ActionFormPending>
+                </ActionFormSubmit>
+              </ActionForm>
+            </PlatformSection>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {getMessage(
-                    messages,
-                    "platform.tenants.domain_settings_title"
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  {getMessage(
-                    messages,
-                    "platform.tenants.domain_settings_description"
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <TenantDomainCautions showUpdateCaution />
-                <ActionForm action={updateTenantDomainAction}>
-                  <input
-                    name="tenant_id"
-                    type="hidden"
-                    value={tenant.publicId}
-                  />
-                  <input
-                    name="tenant_current_name"
-                    type="hidden"
-                    value={tenant.name}
-                  />
-                  <div className="grid gap-4">
-                    <Field>
-                      <FieldLabel required>
-                        {getMessage(messages, "platform.tenants.domain")}
-                      </FieldLabel>
-                      <Input
-                        key={tenant.domain}
-                        defaultValue={tenant.domain}
-                        name="tenant_domain"
-                        placeholder="tenant-example.example.com"
-                        required
-                        type="text"
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel>
-                        {getMessage(messages, "platform.tenants.admin_domain")}
-                      </FieldLabel>
-                      <Input
-                        key={tenant.adminDomain}
-                        defaultValue={tenant.adminDomain}
-                        name="tenant_admin_domain"
-                        placeholder={`admin.${tenant.domain}`}
-                        type="text"
-                      />
-                      <AdminDomainPreview
-                        adminDomain={tenant.adminDomain}
-                        domain={tenant.domain}
-                        showCurrentDomain
-                      />
-                    </Field>
-                  </div>
-                  <ActionFormSubmit
-                    className="mt-4 ml-auto block"
-                    variant="outline"
-                  >
-                    <ActionFormIdle>{saveLabel}</ActionFormIdle>
-                    <ActionFormPending>{savingLabel}</ActionFormPending>
-                  </ActionFormSubmit>
-                </ActionForm>
-              </CardContent>
-            </Card>
-          </div>
+            <PlatformSection>
+              <PlatformSectionHeader>
+                <PlatformSectionHeading>
+                  <PlatformSectionTitle>
+                    {getMessage(
+                      messages,
+                      "platform.tenants.domain_settings_title"
+                    )}
+                  </PlatformSectionTitle>
+                  <PlatformSectionDescription>
+                    {getMessage(
+                      messages,
+                      "platform.tenants.domain_settings_description"
+                    )}
+                  </PlatformSectionDescription>
+                </PlatformSectionHeading>
+              </PlatformSectionHeader>
+              <TenantDomainCautions showUpdateCaution />
+              <ActionForm action={updateTenantDomainAction}>
+                <input name="tenant_id" type="hidden" value={tenant.publicId} />
+                <input
+                  name="tenant_current_name"
+                  type="hidden"
+                  value={tenant.name}
+                />
+                <div className="grid gap-4">
+                  <Field>
+                    <FieldLabel required>
+                      {getMessage(messages, "platform.tenants.domain")}
+                    </FieldLabel>
+                    <Input
+                      key={tenant.domain}
+                      defaultValue={tenant.domain}
+                      name="tenant_domain"
+                      placeholder="tenant-example.example.com"
+                      required
+                      type="text"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>
+                      {getMessage(messages, "platform.tenants.admin_domain")}
+                    </FieldLabel>
+                    <Input
+                      key={tenant.adminDomain}
+                      defaultValue={tenant.adminDomain}
+                      name="tenant_admin_domain"
+                      placeholder={`admin.${tenant.domain}`}
+                      type="text"
+                    />
+                    <AdminDomainPreview
+                      adminDomain={tenant.adminDomain}
+                      domain={tenant.domain}
+                      showCurrentDomain
+                    />
+                  </Field>
+                </div>
+                <ActionFormSubmit
+                  className="mt-4 ml-auto block"
+                  variant="outline"
+                >
+                  <ActionFormIdle>{saveLabel}</ActionFormIdle>
+                  <ActionFormPending>{savingLabel}</ActionFormPending>
+                </ActionFormSubmit>
+              </ActionForm>
+            </PlatformSection>
+          </PlatformSections>
         </div>
       </PlatformPageContent>
     </>

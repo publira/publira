@@ -61,7 +61,7 @@ export const EyeCatchImageField = ({
           {!hasVariants || clearEyeCatchImage ? (
             <button
               aria-label={getMessage(messages, "admin.eye_catch.select_aria")}
-              className="relative aspect-[3/4] overflow-hidden rounded-md border-2 border-dashed border-border/60 bg-muted/40 transition-colors hover:border-blue-300"
+              className="relative aspect-[3/4] overflow-hidden rounded-surface border-2 border-dashed border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary"
               onClick={onVariantImageClick}
               type="button"
             >

@@ -14,6 +14,7 @@ export default defineConfig({
     "src/close-icon.tsx",
     "src/collection-icon.tsx",
     "src/comment-icon.tsx",
+    "src/copy-icon.tsx",
     "src/dashboard-icon.tsx",
     "src/image-icon.tsx",
     "src/logout-icon.tsx",

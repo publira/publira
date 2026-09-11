@@ -21,7 +21,7 @@ export const QrCode = ({ label, path, size }: QrCodeProps) => (
   <div>
     <svg
       aria-hidden="true"
-      className="h-44 w-44 rounded-md"
+      className="h-44 w-44 rounded-control"
       viewBox={`0 0 ${size} ${size}`}
       xmlns="http://www.w3.org/2000/svg"
     >

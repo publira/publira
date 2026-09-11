@@ -2,13 +2,6 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import {
@@ -18,7 +11,7 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -26,6 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeleton,
 } from "@publira/ui-components/table";
 import {
   endOfDayIsoString,
@@ -79,25 +73,15 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const UsersTableSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <div className="h-5 w-32 animate-pulse rounded bg-muted" />
-      <div className="h-4 w-80 animate-pulse rounded bg-muted/70" />
-    </CardHeader>
-    <CardContent className="grid gap-4">
-      <div className="flex flex-wrap gap-3">
-        <div className="h-10 w-44 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 w-56 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 w-44 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 w-44 animate-pulse rounded bg-muted/70" />
-      </div>
-      <div className="grid gap-3">
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-      </div>
-    </CardContent>
-  </Card>
+  <div className="grid gap-4">
+    <div className="flex flex-wrap gap-3">
+      <Skeleton className="h-10 w-44" />
+      <Skeleton className="h-10 w-56" />
+      <Skeleton className="h-10 w-44" />
+      <Skeleton className="h-10 w-44" />
+    </div>
+    <TableSkeleton />
+  </div>
 );
 
 /**
@@ -352,7 +336,7 @@ const UsersFilterForm = async ({
         </Button>
         {hasFilter ? (
           <Link
-            className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+            className="flex h-10 items-center rounded-control px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
             href="/users"
           >
             {getMessage(messages, "platform.common.clear")}
@@ -390,9 +374,6 @@ const UsersTableSection = async ({
       <TableHeader>
         <TableRow>
           <TableHead>
-            {getMessage(messages, "platform.users.columns_public_id")}
-          </TableHead>
-          <TableHead>
             {getMessage(messages, "platform.users.columns_name")}
           </TableHead>
           <TableHead>
@@ -410,7 +391,7 @@ const UsersTableSection = async ({
       <TableBody>
         {result.ok && users.length === 0 && !hideEmptyMessage ? (
           <TableRow>
-            <TableCell className="text-muted-foreground" colSpan={6}>
+            <TableCell className="text-muted-foreground" colSpan={5}>
               {buildEmptyMessage(hasFilter, messages)}
             </TableCell>
           </TableRow>
@@ -418,10 +399,7 @@ const UsersTableSection = async ({
         {result.ok
           ? users.map((user) => (
               <TableRow key={user.publicId}>
-                <TableCell className="font-mono text-xs">
-                  {user.publicId}
-                </TableCell>
-                <TableCell>
+                <TableCell className="font-medium">
                   {user.name || getMessage(messages, "platform.common.unset")}
                 </TableCell>
                 <TableCell>
@@ -444,7 +422,10 @@ const UsersTableSection = async ({
                   })}
                 </TableCell>
                 <TableCell>
-                  <Badge tone={getEndUserStatusTone(user.status)}>
+                  <Badge
+                    tone={getEndUserStatusTone(user.status)}
+                    variant="outline"
+                  >
                     {getEndUserStatusLabel(user.status, messages)}
                   </Badge>
                 </TableCell>
@@ -546,64 +527,52 @@ const UsersContent = async ({
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "platform.users.list_card_title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "platform.users.list_card_description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <UsersFilterForm
-          filters={filters}
-          hasFilter={hasFilter}
-          tenantId={tenantId}
-          tenantItems={tenantItems}
-          tenantMessages={tenantMessages}
+    <div className="grid gap-4">
+      <UsersFilterForm
+        filters={filters}
+        hasFilter={hasFilter}
+        tenantId={tenantId}
+        tenantItems={tenantItems}
+        tenantMessages={tenantMessages}
+      />
+
+      {result.ok ? null : (
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="platform.users.load_failed" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>{result.message}</SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
+      )}
+
+      <UsersTableSection
+        hasFilter={hasFilter}
+        hideEmptyMessage={pendingTenantPick}
+        locale={locale}
+        result={result}
+        timeZone={timeZone}
+        users={users}
+      />
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          {pendingTenantPick
+            ? "-"
+            : buildSummaryText(result, users.length, messages)}
+        </p>
+        <PaginationControls
+          ariaLabel={getMessage(messages, "platform.users.pagination_aria")}
+          nextHref={nextHref}
+          nextLabel={getMessage(messages, "platform.common.next")}
+          previousHref={previousHref}
+          previousLabel={getMessage(messages, "platform.common.previous")}
         />
-
-        {result.ok ? null : (
-          <SectionError>
-            <SectionErrorHeading>
-              <SectionErrorTitle>
-                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                  <Message message="platform.users.load_failed" />
-                </Suspense>
-              </SectionErrorTitle>
-              <SectionErrorDescription>
-                {result.message}
-              </SectionErrorDescription>
-            </SectionErrorHeading>
-          </SectionError>
-        )}
-
-        <UsersTableSection
-          hasFilter={hasFilter}
-          hideEmptyMessage={pendingTenantPick}
-          locale={locale}
-          result={result}
-          timeZone={timeZone}
-          users={users}
-        />
-
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            {pendingTenantPick
-              ? "-"
-              : buildSummaryText(result, users.length, messages)}
-          </p>
-          <PaginationControls
-            ariaLabel={getMessage(messages, "platform.users.pagination_aria")}
-            nextHref={nextHref}
-            nextLabel={getMessage(messages, "platform.common.next")}
-            previousHref={previousHref}
-            previousLabel={getMessage(messages, "platform.common.previous")}
-          />
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

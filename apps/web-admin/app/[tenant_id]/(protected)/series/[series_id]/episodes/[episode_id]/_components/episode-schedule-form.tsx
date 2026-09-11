@@ -3,18 +3,18 @@
 import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { toDateTimeLocalValue } from "@publira/utils";
 import { useActionState, useCallback, useContext } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -59,50 +59,42 @@ export const EpisodeScheduleForm = ({
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.series.episodes.schedule_title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.series.episodes.schedule_description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          action={formAction}
-          className="grid gap-4"
-          onSubmit={handleSubmit}
-        >
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="series_public_id" type="hidden" value={seriesPublicId} />
-          <input
-            name="episode_public_id"
-            type="hidden"
-            value={episodePublicId}
-          />
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.series.episodes.schedule_title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.series.episodes.schedule_description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="series_public_id" type="hidden" value={seriesPublicId} />
+        <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-          <PublishAtInput
-            defaultValue={toDateTimeLocalValue(scheduledAt, timeZone)}
-            name="publish_at"
-            timeZone={timeZone}
-          />
+        <PublishAtInput
+          defaultValue={toDateTimeLocalValue(scheduledAt, timeZone)}
+          name="publish_at"
+          timeZone={timeZone}
+        />
 
-          {state && state.mode === "schedule" ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+        {state && state.mode === "schedule" ? (
+          <FormMessage variant={state.ok ? "success" : "destructive"}>
+            {state.message}
+          </FormMessage>
+        ) : null}
 
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={isPending} type="submit">
-              {isPending
-                ? getMessage(messages, "admin.series.episodes.updating")
-                : getMessage(messages, "admin.series.episodes.schedule_update")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button disabled={isPending} type="submit">
+            {isPending
+              ? getMessage(messages, "admin.series.episodes.updating")
+              : getMessage(messages, "admin.series.episodes.schedule_update")}
+          </Button>
+        </div>
+      </form>
+    </AdminSection>
   );
 };

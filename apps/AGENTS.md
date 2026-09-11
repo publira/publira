@@ -529,6 +529,18 @@ Reading the locale, by context:
 - **`returnTo` and other stored paths stay locale-less.** `sanitizeRedirectPath` strips the segment, so whoever performs the redirect decides the language and `/en/login?returnTo=/ja/my` cannot throw a reader back into the other one
 - **A path that a Server Action redirects to needs the prefix applied at the `redirect()` call**, from the locale the action was given — including an operator-authored internal link, where `withLocalePrefix` leaves external URLs untouched
 
+## Radius, shadow, and the face data is set in
+
+Three of the design's decisions are a class away from being undone on any screen, so `apps/` and `packages/` are checked for them.
+
+- **Two radii.** `rounded-control` (0.25rem) on inputs, buttons, chips, and small thumbnails; `rounded-surface` (0.5rem) on artwork and on floating layers — covers, dialogs, popovers, toasts. Nothing has a larger one, and an in-flow surface such as a card or a table has none unless it holds artwork.
+- **One shadow.** `shadow-floating`, on a layer that floats above the page. An in-flow surface is separated from the page by a hairline or by a step from `background` to `card`, never by a shadow, and nothing lifts on hover.
+- **One face for data.** The console's sans face sets every identifier, with `tabular-nums` where figures have to line up, and `Identifier` from `@publira/ui-components` puts a copy control beside the value where an operator needs it exactly. `font-mono` is for text that is code, and is allowed only on a `<code>` or a `<pre>`. An identifier belongs on a detail screen; a list column shows the name a person recognises.
+
+Two more go with them and have no replacement: an all-caps eyebrow (`uppercase`) and per-screen letter-spacing (`tracking-[`). A label appears only when the content underneath needs the distinction, and it is set in sentence case.
+
+`node scripts/check-design-tokens.ts` fails on `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>`, anywhere under `apps/` or `packages/`. CI runs it in the `Check` job, beside the `<svg>` grep; run it before pushing, because the fix is a class name. Test files are outside it: a test names a class in order to assert about it.
+
 ## Icons: `@publira/icons`, never inline `<svg>`
 
 Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and package code must not hand-write `<svg>` in JSX, and must not import `lucide-react` directly — `packages/icons` is the only place allowed to.

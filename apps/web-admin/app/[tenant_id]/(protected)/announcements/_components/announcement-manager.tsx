@@ -2,14 +2,6 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import {
   SectionError,
   SectionErrorDescription,
@@ -26,7 +18,6 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
-import Link from "next/link";
 import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
@@ -180,49 +171,30 @@ export const AnnouncementManager = ({
     !listErrorMessage && (announcements.length > 0 || hasPageLinks);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1">
-          <CardTitle>
-            {getMessage(messages, "admin.announcements.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.announcements.list_description")}
-          </CardDescription>
-        </div>
-        <LinkButton
-          render={<Link href="/announcements/new" />}
-          variant="outline"
-        >
-          {getMessage(messages, "admin.announcements.new_action")}
-        </LinkButton>
-      </CardHeader>
+    <div className="grid gap-6">
+      <AnnouncementListBody
+        hasPageLinks={hasPageLinks}
+        listErrorMessage={listErrorMessage}
+        announcements={announcements}
+        locale={locale}
+        timeZone={timeZone}
+      />
 
-      <CardContent className="grid gap-4">
-        <AnnouncementListBody
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          announcements={announcements}
-          locale={locale}
-          timeZone={timeZone}
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(
+            messages,
+            "admin.announcements.pagination_aria"
+          )}
+          description={getMessage(
+            messages,
+            "admin.announcements.pagination_description",
+            { count: pageSize }
+          )}
+          nextHref={nextHref}
+          previousHref={previousHref}
         />
-
-        {showPagination ? (
-          <PaginationFooter
-            ariaLabel={getMessage(
-              messages,
-              "admin.announcements.pagination_aria"
-            )}
-            description={getMessage(
-              messages,
-              "admin.announcements.pagination_description",
-              { count: pageSize }
-            )}
-            nextHref={nextHref}
-            previousHref={previousHref}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+      ) : null}
+    </div>
   );
 };

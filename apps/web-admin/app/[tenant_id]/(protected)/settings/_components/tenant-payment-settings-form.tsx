@@ -6,13 +6,6 @@ import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -30,6 +23,13 @@ import {
 } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import type { AdminMessageKey } from "#lib/locale";
 import {
   paymentSettingsStatus,
@@ -336,34 +336,34 @@ export const TenantPaymentSettingsForm = ({
   const settings = saveState?.ok ? saveState.settings : initialSettings;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.settings.payment.title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.settings.payment.description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <PaymentSettingsFields
-          canEdit={canEdit}
-          isSaving={isSaving}
-          key={[
-            settings.enabled,
-            settings.ready,
-            settings.secretKeyConfigured,
-            settings.secretKeyHint,
-            settings.webhookSecretConfigured,
-            settings.webhookSecretHint,
-          ].join(":")}
-          loadErrorMessage={loadErrorMessage}
-          saveFormAction={saveFormAction}
-          saveState={saveState}
-          settings={settings}
-          webhookUrl={webhookUrl}
-        />
-      </CardContent>
-    </Card>
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.settings.payment.title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.settings.payment.description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <PaymentSettingsFields
+        canEdit={canEdit}
+        isSaving={isSaving}
+        key={[
+          settings.enabled,
+          settings.ready,
+          settings.secretKeyConfigured,
+          settings.secretKeyHint,
+          settings.webhookSecretConfigured,
+          settings.webhookSecretHint,
+        ].join(":")}
+        loadErrorMessage={loadErrorMessage}
+        saveFormAction={saveFormAction}
+        saveState={saveState}
+        settings={settings}
+        webhookUrl={webhookUrl}
+      />
+    </AdminSection>
   );
 };

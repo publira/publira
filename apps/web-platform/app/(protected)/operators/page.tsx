@@ -1,13 +1,6 @@
 import { getMessage } from "@publira/i18n";
-import { Badge, StatusChip } from "@publira/ui-components/badge";
+import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import {
   SectionError,
   SectionErrorDescription,
@@ -22,6 +15,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeleton,
 } from "@publira/ui-components/table";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -61,22 +55,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 const pageSize = 20;
 
-const OperatorsTableSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <div className="h-5 w-36 animate-pulse rounded bg-muted" />
-      <div className="h-4 w-80 animate-pulse rounded bg-muted/70" />
-    </CardHeader>
-    <CardContent>
-      <div className="grid gap-3">
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-      </div>
-    </CardContent>
-  </Card>
-);
-
 type OperatorsPageProps = PageProps<"/operators">;
 
 const OperatorsContent = async ({
@@ -106,108 +84,86 @@ const OperatorsContent = async ({
     : undefined;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "platform.operators.list_card_title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "platform.operators.list_card_description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        {result.ok ? null : (
-          <SectionError>
-            <SectionErrorHeading>
-              <SectionErrorTitle>
-                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                  <Message message="platform.operators.load_failed" />
-                </Suspense>
-              </SectionErrorTitle>
-              <SectionErrorDescription>
-                {result.message}
-              </SectionErrorDescription>
-            </SectionErrorHeading>
-          </SectionError>
-        )}
+    <div className="grid gap-4">
+      {result.ok ? null : (
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="platform.operators.load_failed" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>{result.message}</SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
+      )}
 
-        <Table>
-          <TableHeader>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>
+              {getMessage(messages, "platform.operators.columns_name")}
+            </TableHead>
+            <TableHead>
+              {getMessage(messages, "platform.operators.columns_email")}
+            </TableHead>
+            <TableHead className="w-48">
+              {getMessage(messages, "platform.operators.columns_role")}
+            </TableHead>
+            <TableHead className="w-36">
+              {getMessage(messages, "platform.operators.columns_status")}
+            </TableHead>
+            <TableHead className="w-24" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {result.ok && result.operators.length === 0 ? (
             <TableRow>
-              <TableHead>
-                {getMessage(messages, "platform.operators.columns_name")}
-              </TableHead>
-              <TableHead>
-                {getMessage(messages, "platform.operators.columns_email")}
-              </TableHead>
-              <TableHead className="w-48">
-                {getMessage(messages, "platform.operators.columns_role")}
-              </TableHead>
-              <TableHead className="w-36">
-                {getMessage(messages, "platform.operators.columns_status")}
-              </TableHead>
-              <TableHead className="w-24" />
+              <TableCell className="text-muted-foreground" colSpan={5}>
+                {getMessage(messages, "platform.operators.empty")}
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {result.ok && result.operators.length === 0 ? (
-              <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={5}>
-                  {getMessage(messages, "platform.operators.empty")}
+          ) : null}
+          {result.ok &&
+            result.operators.map((operator) => (
+              <TableRow key={operator.publicId || operator.email}>
+                <TableCell className="font-medium">{operator.name}</TableCell>
+                <TableCell>{operator.email}</TableCell>
+                <TableCell>
+                  {getOperatorRoleLabel(operator.role, messages)}
+                </TableCell>
+                <TableCell>
+                  <StatusChip
+                    status={
+                      operator.status === "active" ? "success" : "warning"
+                    }
+                    variant="outline"
+                  >
+                    {getOperatorStatusLabel(operator.status, messages)}
+                  </StatusChip>
+                </TableCell>
+                <TableCell>
+                  <LinkButton
+                    render={<Link href={`/operators/${operator.publicId}`} />}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {getMessage(messages, "platform.common.detail")}
+                  </LinkButton>
                 </TableCell>
               </TableRow>
-            ) : null}
-            {result.ok &&
-              result.operators.map((operator) => (
-                <TableRow key={operator.publicId || operator.email}>
-                  <TableCell>
-                    <div className="grid gap-1">
-                      <p className="font-medium text-foreground">
-                        {operator.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {operator.publicId}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{operator.email}</TableCell>
-                  <TableCell>
-                    <Badge tone="info">
-                      {getOperatorRoleLabel(operator.role, messages)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <StatusChip
-                      status={
-                        operator.status === "active" ? "success" : "warning"
-                      }
-                    >
-                      {getOperatorStatusLabel(operator.status, messages)}
-                    </StatusChip>
-                  </TableCell>
-                  <TableCell>
-                    <LinkButton
-                      render={<Link href={`/operators/${operator.publicId}`} />}
-                      size="sm"
-                      variant="outline"
-                    >
-                      {getMessage(messages, "platform.common.detail")}
-                    </LinkButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
+            ))}
+        </TableBody>
+      </Table>
 
-        <PaginationControls
-          ariaLabel={getMessage(messages, "platform.operators.pagination_aria")}
-          nextHref={nextHref}
-          nextLabel={getMessage(messages, "platform.common.next")}
-          previousHref={previousHref}
-          previousLabel={getMessage(messages, "platform.common.previous")}
-        />
-      </CardContent>
-    </Card>
+      <PaginationControls
+        ariaLabel={getMessage(messages, "platform.operators.pagination_aria")}
+        nextHref={nextHref}
+        nextLabel={getMessage(messages, "platform.common.next")}
+        previousHref={previousHref}
+        previousLabel={getMessage(messages, "platform.common.previous")}
+      />
+    </div>
   );
 };
 
@@ -242,7 +198,7 @@ const OperatorsPage = ({ searchParams }: OperatorsPageProps) => (
           </Suspense>
         }
       >
-        <Suspense fallback={<OperatorsTableSkeleton />}>
+        <Suspense fallback={<TableSkeleton />}>
           <OperatorsContent searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>

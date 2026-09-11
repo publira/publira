@@ -3,13 +3,6 @@ import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -131,43 +124,28 @@ export const LabelManager = ({
     !listErrorMessage && (labels.length > 0 || hasPageLinks);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1">
-          <CardTitle>
-            {getMessage(messages, "admin.labels.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.labels.list_description")}
-          </CardDescription>
-        </div>
-        <LinkButton render={<Link href="/labels/new" />} variant="outline">
-          {getMessage(messages, "admin.labels.new_action")}
-        </LinkButton>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <LabelListBody
-          hasPageLinks={hasPageLinks}
-          labels={labels}
-          listErrorMessage={listErrorMessage}
-          locale={locale}
-        />
+    <div className="grid gap-6">
+      <LabelListBody
+        hasPageLinks={hasPageLinks}
+        labels={labels}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+      />
 
-        {showPagination ? (
-          <PaginationFooter
-            ariaLabel={getMessage(messages, "admin.labels.pagination_aria")}
-            description={getMessage(
-              messages,
-              "admin.labels.pagination_description",
-              {
-                count: pageSize,
-              }
-            )}
-            nextHref={nextHref}
-            previousHref={previousHref}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(messages, "admin.labels.pagination_aria")}
+          description={getMessage(
+            messages,
+            "admin.labels.pagination_description",
+            {
+              count: pageSize,
+            }
+          )}
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
+      ) : null}
+    </div>
   );
 };

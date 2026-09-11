@@ -209,7 +209,7 @@ export const ImageCropFrame = ({
   };
 
   return (
-    <div className="relative mx-auto w-fit overflow-hidden rounded-md bg-muted/40">
+    <div className="relative mx-auto w-fit overflow-hidden rounded-surface bg-muted/40">
       {/* The picked file is a blob of unknown size, so next/image cannot carry
           it, and this element's box is what the frame is measured against. */}
       {/* oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element */}

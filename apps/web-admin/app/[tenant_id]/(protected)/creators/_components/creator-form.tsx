@@ -4,13 +4,6 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -272,96 +265,77 @@ export const CreatorForm = ({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {isUpdate
-            ? getMessage(messages, "admin.creators.form.update_card_title")
-            : getMessage(messages, "admin.creators.form.create_card_title")}
-        </CardTitle>
-        <CardDescription>
-          {isUpdate
-            ? getMessage(messages, "admin.creators.form.update_description")
-            : getMessage(messages, "admin.creators.form.create_description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input
-            name="public_id"
-            type="hidden"
-            value={initialCreator?.publicId ?? ""}
+    <form action={formAction} className="grid gap-4">
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input
+        name="public_id"
+        type="hidden"
+        value={initialCreator?.publicId ?? ""}
+      />
+
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.creators.form.name")}
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            name="name"
+            onChange={handleNameChange}
+            placeholder={getMessage(
+              messages,
+              "admin.creators.form.name_placeholder"
+            )}
+            required
+            type="text"
+            value={name}
           />
+        </FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel required>
-              {getMessage(messages, "admin.creators.form.name")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="name"
-                onChange={handleNameChange}
-                placeholder={getMessage(
-                  messages,
-                  "admin.creators.form.name_placeholder"
-                )}
-                required
-                type="text"
-                value={name}
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.creators.form.profile")}
-            </FieldLabel>
-            <FieldContent>
-              <Textarea
-                name="profile_text"
-                onChange={handleProfileTextChange}
-                placeholder={getMessage(
-                  messages,
-                  "admin.creators.form.profile_placeholder"
-                )}
-                rows={5}
-                value={profileText}
-              />
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.creators.form.profile_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          {/*
-            The saved icon's timestamp keys the field, so a save that replaced
-            or removed the icon remounts it: the picked file, its frame, and the
-            deletion checkbox all belong to that save and none of them mean
-            anything afterwards.
-          */}
-          <IconImageField
-            initialCreator={initialCreator}
-            isUpdate={isUpdate}
-            key={initialCreator?.iconImageUpdatedAt ?? ""}
+      <Field>
+        <FieldLabel>
+          {getMessage(messages, "admin.creators.form.profile")}
+        </FieldLabel>
+        <FieldContent>
+          <Textarea
+            name="profile_text"
+            onChange={handleProfileTextChange}
+            placeholder={getMessage(
+              messages,
+              "admin.creators.form.profile_placeholder"
+            )}
+            rows={5}
+            value={profileText}
           />
+          <FieldDescription>
+            {getMessage(messages, "admin.creators.form.profile_description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+      {/*
+        The saved icon's timestamp keys the field, so a save that replaced
+        or removed the icon remounts it: the picked file, its frame, and the
+        deletion checkbox all belong to that save and none of them mean
+        anything afterwards.
+      */}
+      <IconImageField
+        initialCreator={initialCreator}
+        isUpdate={isUpdate}
+        key={initialCreator?.iconImageUpdatedAt ?? ""}
+      />
 
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={isPending} type="submit">
-              {submitLabel}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      {state ? (
+        <FormMessage variant={state.ok ? "success" : "destructive"}>
+          {state.message}
+        </FormMessage>
+      ) : null}
+
+      <div className="mt-2 flex justify-end gap-2">
+        <Button disabled={isPending} type="submit">
+          {submitLabel}
+        </Button>
+      </div>
+    </form>
   );
 };

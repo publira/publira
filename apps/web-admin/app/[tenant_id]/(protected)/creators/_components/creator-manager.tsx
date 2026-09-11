@@ -3,13 +3,6 @@ import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -165,43 +158,28 @@ export const CreatorManager = ({
     !listErrorMessage && (creators.length > 0 || hasPageLinks);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1">
-          <CardTitle>
-            {getMessage(messages, "admin.creators.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.creators.list_description")}
-          </CardDescription>
-        </div>
-        <LinkButton render={<Link href="/creators/new" />} variant="outline">
-          {getMessage(messages, "admin.creators.new_action")}
-        </LinkButton>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <CreatorListBody
-          creators={creators}
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          locale={locale}
-        />
+    <div className="grid gap-6">
+      <CreatorListBody
+        creators={creators}
+        hasPageLinks={hasPageLinks}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+      />
 
-        {showPagination ? (
-          <PaginationFooter
-            ariaLabel={getMessage(messages, "admin.creators.pagination_aria")}
-            description={getMessage(
-              messages,
-              "admin.creators.pagination_description",
-              {
-                count: pageSize,
-              }
-            )}
-            nextHref={nextHref}
-            previousHref={previousHref}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(messages, "admin.creators.pagination_aria")}
+          description={getMessage(
+            messages,
+            "admin.creators.pagination_description",
+            {
+              count: pageSize,
+            }
+          )}
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
+      ) : null}
+    </div>
   );
 };

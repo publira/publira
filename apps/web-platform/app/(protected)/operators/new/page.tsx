@@ -1,12 +1,5 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -57,25 +50,9 @@ const OperatorNewPage = () => (
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-36" />}>
-              <Message message="platform.operators.form_title" />
-            </Suspense>
-          </CardTitle>
-          <CardDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <Message message="platform.operators.form_description" />
-            </Suspense>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-            <CreateOperatorForm />
-          </Suspense>
-        </CardContent>
-      </Card>
+      <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+        <CreateOperatorForm />
+      </Suspense>
     </PlatformPageContent>
   </PlatformPage>
 );

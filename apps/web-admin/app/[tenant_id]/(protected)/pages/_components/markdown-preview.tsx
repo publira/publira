@@ -54,7 +54,7 @@ const parseInline = (text: string): ReactNode[] => {
     if (token.startsWith("`")) {
       nodes.push(
         <code
-          className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.95em]"
+          className="rounded-control bg-muted px-1.5 py-0.5 font-mono text-[0.95em]"
           key={key}
         >
           {token.slice(1, -1)}
@@ -371,12 +371,9 @@ export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
         }
 
         return (
-          <div
-            className="rounded-xl border border-border/70 bg-muted/30"
-            key={block.key}
-          >
+          <div className="border border-border bg-muted/30" key={block.key}>
             {block.language ? (
-              <div className="border-b border-border/70 px-4 py-2 text-xs tracking-wide text-muted-foreground uppercase">
+              <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
                 {block.language}
               </div>
             ) : null}

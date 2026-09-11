@@ -1,5 +1,6 @@
 import { getMessage } from "@publira/i18n";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { TableSkeleton } from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -11,6 +12,8 @@ import {
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
+  AdminSection,
+  AdminSections,
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -43,33 +46,24 @@ export const generateMetadata = async (): Promise<Metadata> => {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
+/** The three parts of the screen, in the geometry they arrive in. */
 const CommentsSkeleton = () => (
-  <div className="grid gap-6">
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-44 animate-pulse rounded bg-muted" />
-      <div className="grid gap-3">
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-      </div>
+  <AdminSections>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-48" />
+      <TableSkeleton rows={2} />
+    </AdminSection>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <Skeleton className="h-16" />
+      <Skeleton className="h-16" />
+      <Skeleton className="h-16" />
+      <Skeleton className="h-16" />
     </div>
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-      </div>
-    </div>
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
-      <div className="grid gap-3">
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-      </div>
-    </div>
-  </div>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-40" />
+      <TableSkeleton />
+    </AdminSection>
+  </AdminSections>
 );
 
 /**
@@ -137,7 +131,7 @@ const CommentsContent = async ({
   await redirectToLoginIfSessionRejected(reportResult);
 
   return (
-    <div className="grid gap-6">
+    <AdminSections>
       {/*
         The reports come first because they are the work that arrived from
         outside the console: a reader flagged something, and nobody has looked
@@ -188,7 +182,7 @@ const CommentsContent = async ({
         }
         timeZone={timeZone}
       />
-    </div>
+    </AdminSections>
   );
 };
 

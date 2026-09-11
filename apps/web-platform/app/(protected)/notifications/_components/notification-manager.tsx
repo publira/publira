@@ -2,13 +2,6 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   EmptyState,
   EmptyStateDescription,
   EmptyStateHeading,
@@ -231,73 +224,59 @@ export const NotificationManager = async ({
     unreadCount > 0 || notifications.some((item) => !item.isRead);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1">
-          <CardTitle>
-            <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
-              <Message message="platform.notifications.card_title" />
-            </Suspense>
-          </CardTitle>
-          <CardDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <Message message="platform.notifications.card_description" />
-            </Suspense>
-          </CardDescription>
-        </div>
-        {hasUnread && !listErrorMessage ? (
+    <div className="grid gap-4">
+      {hasUnread && !listErrorMessage ? (
+        <div className="flex justify-end">
           <MarkAllNotificationsAsReadButton>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.notifications.mark_all_read" />
             </Suspense>
           </MarkAllNotificationsAsReadButton>
-        ) : null}
-      </CardHeader>
+        </div>
+      ) : null}
 
-      <CardContent className="grid gap-4">
-        {renderNotificationListBody({
-          hasPageLinks,
-          listErrorMessage,
-          locale,
-          markReadAriaLabel: (title) =>
-            getMessage(messages, "platform.notifications.mark_read_aria", {
-              title,
-            }),
-          notifications,
-          timeZone,
-        })}
+      {renderNotificationListBody({
+        hasPageLinks,
+        listErrorMessage,
+        locale,
+        markReadAriaLabel: (title) =>
+          getMessage(messages, "platform.notifications.mark_read_aria", {
+            title,
+          }),
+        notifications,
+        timeZone,
+      })}
 
-        {showPagination ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-                <Message
-                  message="platform.notifications.per_page"
-                  values={{ count: defaultNotificationsPageSize }}
-                />
+      {showPagination ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message
+                message="platform.notifications.per_page"
+                values={{ count: defaultNotificationsPageSize }}
+              />
+            </Suspense>
+          </p>
+          <PaginationControls
+            ariaLabel={getMessage(
+              messages,
+              "platform.notifications.pagination_aria"
+            )}
+            nextHref={nextHref}
+            nextLabel={
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="platform.common.next" />
               </Suspense>
-            </p>
-            <PaginationControls
-              ariaLabel={getMessage(
-                messages,
-                "platform.notifications.pagination_aria"
-              )}
-              nextHref={nextHref}
-              nextLabel={
-                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                  <Message message="platform.common.next" />
-                </Suspense>
-              }
-              previousHref={previousHref}
-              previousLabel={
-                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                  <Message message="platform.common.previous" />
-                </Suspense>
-              }
-            />
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
+            }
+            previousHref={previousHref}
+            previousLabel={
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="platform.common.previous" />
+              </Suspense>
+            }
+          />
+        </div>
+      ) : null}
+    </div>
   );
 };

@@ -1,19 +1,12 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -84,13 +77,11 @@ const SeriesEpisodesPageSkeleton = () => (
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="rounded-2xl border border-border/70 bg-card p-6">
-        <div className="grid gap-4">
-          <SkeletonLine className="h-6 w-48" />
-          <SkeletonLine className="h-4 w-72" />
-          <div className="h-16 animate-pulse rounded bg-muted/70" />
-          <div className="h-16 animate-pulse rounded bg-muted/70" />
-        </div>
+      <div className="grid gap-4">
+        <SkeletonLine className="h-6 w-48" />
+        <SkeletonLine className="h-4 w-72" />
+        <Skeleton className="h-16" />
+        <Skeleton className="h-16" />
       </div>
     </AdminPageContent>
   </AdminPage>
@@ -165,94 +156,82 @@ const SeriesEpisodesPage = async ({
             title={getMessage(messages, "admin.series.episodes.reorder_error")}
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <Message message="admin.series.episodes.manage_title" />
-              </CardTitle>
-              <CardDescription>
-                <Message message="admin.series.episodes.manage_description" />
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              {/*
-              A failed read hands back an empty `episodes`, so the empty state
-              has to stay behind `result.ok`. Otherwise the card says the list
-              could not be displayed and that nothing is registered at once, and
-              offers a create button for a list nobody managed to read.
-            */}
-              {result.ok ? (
-                <>
-                  {result.episodes.length === 0 ? (
-                    <CursorPageEmptyState
-                      actions={
-                        <LinkButton
-                          render={
-                            <Link href={`/series/${series_id}/episodes/new`} />
-                          }
-                        >
-                          <Message message="admin.series.episodes.create_action" />
-                        </LinkButton>
+          {/*
+            A failed read hands back an empty `episodes`, so the empty state
+            has to stay behind `result.ok`. Otherwise the screen says the list
+            could not be displayed and that nothing is registered at once, and
+            offers a create button for a list nobody managed to read.
+          */}
+          {result.ok ? (
+            <>
+              {result.episodes.length === 0 ? (
+                <CursorPageEmptyState
+                  actions={
+                    <LinkButton
+                      render={
+                        <Link href={`/series/${series_id}/episodes/new`} />
                       }
-                      description={
-                        <Message message="admin.series.episodes.empty_description" />
-                      }
-                      hasPageLinks={hasPageLinks}
-                      itemLabel={getMessage(
-                        messages,
-                        "admin.series.episodes.title"
-                      )}
-                      title={getMessage(
-                        messages,
-                        "admin.series.episodes.empty_title"
-                      )}
-                    />
-                  ) : (
-                    <div className="grid gap-3">
-                      <p className="text-xs text-muted-foreground">
-                        <Message message="admin.series.episodes.drag_description" />
-                        {hasPageLinks ? (
-                          <Message message="admin.series.episodes.drag_page_description" />
-                        ) : null}
-                      </p>
-                      <EpisodesSortableList
-                        episodes={result.episodes}
-                        reorderAction={reorderEpisodesAction}
-                        seriesPublicId={series_id}
-                        timeZone={timeZone}
-                      />
-                    </div>
+                    >
+                      <Message message="admin.series.episodes.create_action" />
+                    </LinkButton>
+                  }
+                  description={
+                    <Message message="admin.series.episodes.empty_description" />
+                  }
+                  hasPageLinks={hasPageLinks}
+                  itemLabel={getMessage(
+                    messages,
+                    "admin.series.episodes.title"
                   )}
-
-                  {result.episodes.length > 0 || hasPageLinks ? (
-                    <PaginationFooter
-                      {...pageHrefs}
-                      ariaLabel={getMessage(
-                        messages,
-                        "admin.series.episodes.pagination_aria"
-                      )}
-                      description={getMessage(
-                        messages,
-                        "admin.series.episodes.pagination_description",
-                        { count: DEFAULT_PAGE_SIZE }
-                      )}
-                    />
-                  ) : null}
-                </>
+                  title={getMessage(
+                    messages,
+                    "admin.series.episodes.empty_title"
+                  )}
+                />
               ) : (
-                <SectionError>
-                  <SectionErrorHeading>
-                    <SectionErrorTitle>
-                      <Message message="admin.series.episodes.list_error" />
-                    </SectionErrorTitle>
-                    <SectionErrorDescription>
-                      {result.message}
-                    </SectionErrorDescription>
-                  </SectionErrorHeading>
-                </SectionError>
+                <div className="grid gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    <Message message="admin.series.episodes.drag_description" />
+                    {hasPageLinks ? (
+                      <Message message="admin.series.episodes.drag_page_description" />
+                    ) : null}
+                  </p>
+                  <EpisodesSortableList
+                    episodes={result.episodes}
+                    reorderAction={reorderEpisodesAction}
+                    seriesPublicId={series_id}
+                    timeZone={timeZone}
+                  />
+                </div>
               )}
-            </CardContent>
-          </Card>
+
+              {result.episodes.length > 0 || hasPageLinks ? (
+                <PaginationFooter
+                  {...pageHrefs}
+                  ariaLabel={getMessage(
+                    messages,
+                    "admin.series.episodes.pagination_aria"
+                  )}
+                  description={getMessage(
+                    messages,
+                    "admin.series.episodes.pagination_description",
+                    { count: DEFAULT_PAGE_SIZE }
+                  )}
+                />
+              ) : null}
+            </>
+          ) : (
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  <Message message="admin.series.episodes.list_error" />
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {result.message}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
+          )}
         </AdminPageContent>
       </AdminPage>
     </Suspense>

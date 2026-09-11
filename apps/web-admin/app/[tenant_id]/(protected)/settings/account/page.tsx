@@ -5,7 +5,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -41,9 +41,9 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const MfaSectionSkeleton = () => (
-  <div className="rounded-2xl border border-border/70 bg-card p-6">
-    <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
-    <div className="h-10 animate-pulse rounded bg-muted/70" />
+  <div className="grid gap-4">
+    <SkeletonLine className="h-5 w-40" />
+    <Skeleton className="h-10" />
   </div>
 );
 

@@ -46,9 +46,14 @@ export const MfaEnrollmentSecret = ({
         <p className="text-sm font-medium text-foreground">
           {getMessage(messages, "admin.auth.mfa.enroll_secret_label")}
         </p>
-        <p className="font-mono text-sm tracking-wider break-all text-foreground">
+        {/*
+          The secret is typed into an authenticator by hand when the QR code
+          cannot be scanned, so it is set in the monospace face that keeps its
+          ambiguous characters apart.
+        */}
+        <code className="block font-mono text-sm tracking-wider break-all text-foreground">
           {secret}
-        </p>
+        </code>
         <p className="text-xs text-muted-foreground">
           {getMessage(messages, "admin.auth.mfa.enroll_secret_help")}
         </p>

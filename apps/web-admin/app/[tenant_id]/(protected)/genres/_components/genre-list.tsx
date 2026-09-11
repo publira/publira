@@ -98,7 +98,7 @@ export const GenreList = ({ genres }: GenreListProps) => {
       >
         {optimisticGenres.map((genre, index) => (
           <li
-            className="grid gap-3 rounded-lg border border-border/70 bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
+            className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
             key={genre.publicId}
           >
             <GenreRenameForm genre={genre} />

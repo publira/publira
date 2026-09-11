@@ -61,7 +61,7 @@ export const NotificationBellTrigger = ({
   const count = Math.max(0, unreadCount);
 
   return (
-    <PopoverTrigger className="relative inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted data-popup-open:bg-muted">
+    <PopoverTrigger className="relative inline-flex size-9 items-center justify-center rounded-control text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted">
       <BellIcon aria-hidden="true" className="size-5" />
       <span className="sr-only">{children}</span>
       {count > 0 ? (
@@ -169,14 +169,14 @@ export const NotificationBellItem = ({
 
   return href ? (
     <Link
-      className="block cursor-default rounded-xl px-2.5 py-2.5 text-left outline-hidden select-none data-highlighted:bg-muted/70"
+      className="block cursor-default rounded-control px-2.5 py-2.5 text-left outline-hidden select-none data-highlighted:bg-muted"
       href={href}
       onClick={close}
     >
       {content}
     </Link>
   ) : (
-    <div className="rounded-xl px-2.5 py-2.5 text-left">{content}</div>
+    <div className="px-2.5 py-2.5 text-left">{content}</div>
   );
 };
 
@@ -215,7 +215,7 @@ export const NotificationBellMore = ({
     <>
       <div className="my-1.5 h-px bg-border/70" />
       <Link
-        className="flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium text-foreground underline underline-offset-4 outline-hidden hover:bg-muted"
+        className="flex items-center justify-center rounded-control px-3 py-2 text-sm font-medium text-foreground underline underline-offset-4 outline-hidden hover:bg-muted"
         href={href}
         onClick={close}
       >

@@ -3,13 +3,6 @@ import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -196,47 +189,37 @@ export const NotificationManager = ({
     unreadCount > 0 || notifications.some((item) => !item.isRead);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1">
-          <CardTitle>
-            {getMessage(messages, "admin.notifications.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.notifications.list_description")}
-          </CardDescription>
-        </div>
-        {hasUnread && !listErrorMessage ? (
+    <div className="grid gap-4">
+      {hasUnread && !listErrorMessage ? (
+        <div className="flex justify-end">
           <MarkAllNotificationsAsReadButton tenantId={tenantId} />
-        ) : null}
-      </CardHeader>
+        </div>
+      ) : null}
 
-      <CardContent className="grid gap-4">
-        <NotificationListBody
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          locale={locale}
-          notifications={notifications}
-          tenantId={tenantId}
-          timeZone={timeZone}
+      <NotificationListBody
+        hasPageLinks={hasPageLinks}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+        notifications={notifications}
+        tenantId={tenantId}
+        timeZone={timeZone}
+      />
+
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(
+            messages,
+            "admin.notifications.pagination_aria"
+          )}
+          description={getMessage(
+            messages,
+            "admin.notifications.pagination_description",
+            { count: pageSize }
+          )}
+          nextHref={nextHref}
+          previousHref={previousHref}
         />
-
-        {showPagination ? (
-          <PaginationFooter
-            ariaLabel={getMessage(
-              messages,
-              "admin.notifications.pagination_aria"
-            )}
-            description={getMessage(
-              messages,
-              "admin.notifications.pagination_description",
-              { count: pageSize }
-            )}
-            nextHref={nextHref}
-            previousHref={previousHref}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+      ) : null}
+    </div>
   );
 };

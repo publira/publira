@@ -121,6 +121,7 @@ jobs:
               - 'oxlint.config.ts'
               - 'oxfmt.config.ts'
               - '.github/workflows/ci.yml'
+              - 'scripts/check-design-tokens.ts'
               - 'scripts/ci-plan-jobs.sh'
             # Narrower than test_go on purpose: golangci-lint only reads Go
             # sources and server/.golangci.yml, and `task gen` writes its output
@@ -443,6 +444,9 @@ jobs:
             echo "::error::Use an icon from @publira/icons instead of writing <svg> in JSX. See apps/AGENTS.md."
             exit 1
           fi
+
+      - name: Validate / Design tokens
+        run: node scripts/check-design-tokens.ts
 
       - name: Validate / Typecheck
         run: pnpm typecheck

@@ -4,7 +4,6 @@ import { getMessage } from "@publira/i18n";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
-import { Card, CardContent } from "@publira/ui-components/card";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
   Combobox,
@@ -175,213 +174,202 @@ export const TicketForm = ({
   );
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <form
-          action={formAction}
-          className="grid gap-5"
-          onSubmit={handleSubmit}
-        >
-          <input name="tenant_id" type="hidden" value={tenantId} />
+    <form action={formAction} className="grid gap-5" onSubmit={handleSubmit}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.access_tickets.form.user")}
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            name="user_public_id"
+            placeholder={getMessage(
+              messages,
+              "admin.access_tickets.form.user_placeholder"
+            )}
+            required
+            type="text"
+          />
+          <FieldDescription>
+            {getMessage(messages, "admin.access_tickets.form.user_description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+
+      {useEpisodeFallbackInput ? (
+        <Field>
+          <FieldLabel required>
+            {getMessage(messages, "admin.access_tickets.form.episode_id")}
+          </FieldLabel>
+          <FieldContent>
+            {seriesErrorMessage ? (
+              <FormMessage variant="destructive">
+                {seriesErrorMessage}
+              </FormMessage>
+            ) : null}
+            <Input
+              name="episode_public_id"
+              placeholder={getMessage(
+                messages,
+                "admin.access_tickets.form.episode_id_placeholder"
+              )}
+              required
+              type="text"
+            />
+            <FieldDescription>
+              {getMessage(
+                messages,
+                seriesItems.length === 0 && !seriesErrorMessage
+                  ? "admin.access_tickets.form.episode_id_no_series"
+                  : "admin.access_tickets.form.episode_id_description"
+              )}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+      ) : (
+        <>
+          <Field>
+            <FieldLabel required>
+              {getMessage(messages, "admin.access_tickets.form.series")}
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                items={seriesItems}
+                onValueChange={handleSeriesChange}
+                value={seriesPublicId}
+              >
+                <ComboboxInput
+                  placeholder={getMessage(
+                    messages,
+                    "admin.access_tickets.form.series_placeholder"
+                  )}
+                />
+                <ComboboxPopup>
+                  <ComboboxEmpty>
+                    {getMessage(
+                      messages,
+                      "admin.access_tickets.form.series_empty"
+                    )}
+                  </ComboboxEmpty>
+                  <ComboboxItems />
+                </ComboboxPopup>
+              </Combobox>
+              <FieldDescription>
+                {getMessage(
+                  messages,
+                  "admin.access_tickets.form.series_description"
+                )}
+              </FieldDescription>
+            </FieldContent>
+          </Field>
 
           <Field>
             <FieldLabel required>
-              {getMessage(messages, "admin.access_tickets.form.user")}
+              {getMessage(messages, "admin.access_tickets.form.episode")}
             </FieldLabel>
             <FieldContent>
-              <Input
-                name="user_public_id"
-                placeholder={getMessage(
-                  messages,
-                  "admin.access_tickets.form.user_placeholder"
-                )}
-                required
-                type="text"
-              />
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.access_tickets.form.user_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          {useEpisodeFallbackInput ? (
-            <Field>
-              <FieldLabel required>
-                {getMessage(messages, "admin.access_tickets.form.episode_id")}
-              </FieldLabel>
-              <FieldContent>
-                {seriesErrorMessage ? (
-                  <FormMessage variant="destructive">
-                    {seriesErrorMessage}
-                  </FormMessage>
-                ) : null}
-                <Input
-                  name="episode_public_id"
+              <Combobox
+                disabled={isEpisodePending || seriesPublicId === ""}
+                items={episodeItems}
+                onValueChange={setEpisodePublicId}
+                value={episodePublicId}
+              >
+                <ComboboxInput
                   placeholder={getMessage(
                     messages,
-                    "admin.access_tickets.form.episode_id_placeholder"
+                    isEpisodePending
+                      ? "admin.access_tickets.form.episode_loading"
+                      : "admin.access_tickets.form.episode_placeholder"
                   )}
-                  required
-                  type="text"
                 />
-                <FieldDescription>
-                  {getMessage(
-                    messages,
-                    seriesItems.length === 0 && !seriesErrorMessage
-                      ? "admin.access_tickets.form.episode_id_no_series"
-                      : "admin.access_tickets.form.episode_id_description"
-                  )}
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-          ) : (
-            <>
-              <Field>
-                <FieldLabel required>
-                  {getMessage(messages, "admin.access_tickets.form.series")}
-                </FieldLabel>
-                <FieldContent>
-                  <Combobox
-                    items={seriesItems}
-                    onValueChange={handleSeriesChange}
-                    value={seriesPublicId}
-                  >
-                    <ComboboxInput
-                      placeholder={getMessage(
-                        messages,
-                        "admin.access_tickets.form.series_placeholder"
-                      )}
-                    />
-                    <ComboboxPopup>
-                      <ComboboxEmpty>
-                        {getMessage(
-                          messages,
-                          "admin.access_tickets.form.series_empty"
-                        )}
-                      </ComboboxEmpty>
-                      <ComboboxItems />
-                    </ComboboxPopup>
-                  </Combobox>
-                  <FieldDescription>
+                <ComboboxPopup>
+                  <ComboboxEmpty>
                     {getMessage(
                       messages,
-                      "admin.access_tickets.form.series_description"
+                      "admin.access_tickets.form.episode_empty"
                     )}
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
-
-              <Field>
-                <FieldLabel required>
-                  {getMessage(messages, "admin.access_tickets.form.episode")}
-                </FieldLabel>
-                <FieldContent>
-                  <Combobox
-                    disabled={isEpisodePending || seriesPublicId === ""}
-                    items={episodeItems}
-                    onValueChange={setEpisodePublicId}
-                    value={episodePublicId}
+                  </ComboboxEmpty>
+                  <ComboboxItems />
+                </ComboboxPopup>
+              </Combobox>
+              <input
+                name="episode_public_id"
+                type="hidden"
+                value={episodePublicId}
+              />
+              {episodesErrorMessage ? (
+                <>
+                  <FormMessage variant="destructive">
+                    {episodesErrorMessage}
+                  </FormMessage>
+                  <Button
+                    onClick={handleRetryEpisodes}
+                    type="button"
+                    variant="outline"
                   >
-                    <ComboboxInput
-                      placeholder={getMessage(
-                        messages,
-                        isEpisodePending
-                          ? "admin.access_tickets.form.episode_loading"
-                          : "admin.access_tickets.form.episode_placeholder"
-                      )}
-                    />
-                    <ComboboxPopup>
-                      <ComboboxEmpty>
-                        {getMessage(
-                          messages,
-                          "admin.access_tickets.form.episode_empty"
-                        )}
-                      </ComboboxEmpty>
-                      <ComboboxItems />
-                    </ComboboxPopup>
-                  </Combobox>
-                  <input
-                    name="episode_public_id"
-                    type="hidden"
-                    value={episodePublicId}
-                  />
-                  {episodesErrorMessage ? (
-                    <>
-                      <FormMessage variant="destructive">
-                        {episodesErrorMessage}
-                      </FormMessage>
-                      <Button
-                        onClick={handleRetryEpisodes}
-                        type="button"
-                        variant="outline"
-                      >
-                        {getMessage(messages, "admin.common.retry")}
-                      </Button>
-                    </>
-                  ) : null}
-                  <FieldDescription>
-                    {getMessage(
-                      messages,
-                      seriesPublicId === ""
-                        ? "admin.access_tickets.form.episode_needs_series"
-                        : "admin.access_tickets.form.episode_description"
-                    )}
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
-            </>
-          )}
-
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.access_tickets.form.expires_at")}
-            </FieldLabel>
-            <FieldContent>
-              <Input name="expires_at_local" type="datetime-local" />
-              <input defaultValue="" name="expires_at" type="hidden" />
+                    {getMessage(messages, "admin.common.retry")}
+                  </Button>
+                </>
+              ) : null}
               <FieldDescription>
                 {getMessage(
                   messages,
-                  "admin.access_tickets.form.expires_at_description",
-                  { time_zone: timeZone }
+                  seriesPublicId === ""
+                    ? "admin.access_tickets.form.episode_needs_series"
+                    : "admin.access_tickets.form.episode_description"
                 )}
               </FieldDescription>
             </FieldContent>
           </Field>
+        </>
+      )}
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.access_tickets.form.note")}
-            </FieldLabel>
-            <FieldContent>
-              <Textarea
-                maxLength={1000}
-                name="note"
-                placeholder={getMessage(
-                  messages,
-                  "admin.access_tickets.form.note_placeholder"
-                )}
-                rows={3}
-              />
-            </FieldContent>
-          </Field>
+      <Field>
+        <FieldLabel>
+          {getMessage(messages, "admin.access_tickets.form.expires_at")}
+        </FieldLabel>
+        <FieldContent>
+          <Input name="expires_at_local" type="datetime-local" />
+          <input defaultValue="" name="expires_at" type="hidden" />
+          <FieldDescription>
+            {getMessage(
+              messages,
+              "admin.access_tickets.form.expires_at_description",
+              { time_zone: timeZone }
+            )}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
 
-          {state && !state.ok ? (
-            <FormMessage variant="destructive">{state.message}</FormMessage>
-          ) : null}
+      <Field>
+        <FieldLabel>
+          {getMessage(messages, "admin.access_tickets.form.note")}
+        </FieldLabel>
+        <FieldContent>
+          <Textarea
+            maxLength={1000}
+            name="note"
+            placeholder={getMessage(
+              messages,
+              "admin.access_tickets.form.note_placeholder"
+            )}
+            rows={3}
+          />
+        </FieldContent>
+      </Field>
 
-          <div className="flex justify-end">
-            <Button disabled={!canSubmit} type="submit">
-              {isPending
-                ? getMessage(messages, "admin.access_tickets.form.submitting")
-                : getMessage(messages, "admin.access_tickets.form.submit")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      {state && !state.ok ? (
+        <FormMessage variant="destructive">{state.message}</FormMessage>
+      ) : null}
+
+      <div className="flex justify-end">
+        <Button disabled={!canSubmit} type="submit">
+          {isPending
+            ? getMessage(messages, "admin.access_tickets.form.submitting")
+            : getMessage(messages, "admin.access_tickets.form.submit")}
+        </Button>
+      </div>
+    </form>
   );
 };

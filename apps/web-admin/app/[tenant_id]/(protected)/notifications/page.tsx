@@ -1,5 +1,6 @@
 import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { TableSkeleton } from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -38,17 +39,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
-
-const NotificationManagerSkeleton = () => (
-  <div className="rounded-2xl border border-border/70 bg-card p-6">
-    <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
-    <div className="grid gap-3">
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-    </div>
-  </div>
-);
 
 const NotificationManagerData = async ({
   searchParams,
@@ -95,7 +85,7 @@ const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <Suspense fallback={<NotificationManagerSkeleton />}>
+      <Suspense fallback={<TableSkeleton />}>
         <NotificationManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>

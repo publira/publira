@@ -1,14 +1,8 @@
 import { getMessage } from "@publira/i18n";
 import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import {
   parseRouteParams,
@@ -28,6 +22,11 @@ import {
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSectionTitle,
 } from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
@@ -68,28 +67,17 @@ const operatorDetailParamsSchema = z.object({
 
 const OperatorDetailSkeleton = () => (
   <PlatformPageContent>
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
-      <Card>
-        <CardHeader>
-          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <div className="h-16 animate-pulse rounded bg-muted/70" />
-            <div className="h-16 animate-pulse rounded bg-muted/70" />
-            <div className="h-16 animate-pulse rounded bg-muted/70" />
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-        </CardHeader>
-        <CardContent>
-          <div className="h-20 animate-pulse rounded bg-muted/70" />
-        </CardContent>
-      </Card>
+    <div className="grid gap-10 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
+      <PlatformSection>
+        <SkeletonLine className="h-5 w-28" />
+        <Skeleton className="h-16" />
+        <Skeleton className="h-16" />
+        <Skeleton className="h-16" />
+      </PlatformSection>
+      <PlatformSection>
+        <SkeletonLine className="h-5 w-28" />
+        <Skeleton className="h-20" />
+      </PlatformSection>
     </div>
   </PlatformPageContent>
 );
@@ -215,99 +203,99 @@ const OperatorDetailContent = async ({
         </PlatformPageActions>
       </PlatformPageHeader>
       <PlatformPageContent>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {getMessage(messages, "platform.operators.info_title")}
-              </CardTitle>
-              <CardDescription>
-                {getMessage(messages, "platform.operators.info_description")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-4">
-                <Field>
-                  <FieldLabel>
-                    {getMessage(messages, "platform.common.name")}
-                  </FieldLabel>
-                  <p className="text-sm">{operator.name}</p>
-                </Field>
-                <Field>
-                  <FieldLabel>
-                    {getMessage(messages, "platform.common.email")}
-                  </FieldLabel>
-                  <p className="text-sm">{operator.email}</p>
-                </Field>
-                <Field>
-                  <FieldLabel>
-                    {getMessage(messages, "platform.operators.current_role")}
-                  </FieldLabel>
-                  <p>
-                    <Badge tone="info">
-                      {getOperatorRoleLabel(operator.role, messages)}
-                    </Badge>
-                  </p>
-                </Field>
-                <Field>
-                  <FieldLabel>
-                    {getMessage(messages, "platform.common.status")}
-                  </FieldLabel>
-                  <p>
-                    <StatusChip
-                      status={
-                        operator.status === "active" ? "success" : "warning"
-                      }
-                    >
-                      {getOperatorStatusLabel(operator.status, messages)}
-                    </StatusChip>
-                  </p>
-                </Field>
-                <Field>
-                  <FieldLabel>
-                    {getMessage(messages, "platform.common.created_at")}
-                  </FieldLabel>
-                  <p className="text-sm">
-                    {formatDateTime(operator.createdAt, {
-                      fallback: getMessage(messages, "platform.common.unset"),
-                      locale,
-                      timeZone,
-                    })}
-                  </p>
-                </Field>
-                <Field>
-                  <FieldLabel>
-                    {getMessage(messages, "platform.operators.last_login")}
-                  </FieldLabel>
-                  <p className="text-sm text-muted-foreground">
-                    {getMessage(messages, "platform.operators.not_fetched")}
-                  </p>
-                </Field>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-10 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
+          <PlatformSection>
+            <PlatformSectionHeader>
+              <PlatformSectionHeading>
+                <PlatformSectionTitle>
+                  {getMessage(messages, "platform.operators.info_title")}
+                </PlatformSectionTitle>
+                <PlatformSectionDescription>
+                  {getMessage(messages, "platform.operators.info_description")}
+                </PlatformSectionDescription>
+              </PlatformSectionHeading>
+            </PlatformSectionHeader>
+            <div className="grid gap-4">
+              <Field>
+                <FieldLabel>
+                  {getMessage(messages, "platform.common.name")}
+                </FieldLabel>
+                <p className="text-sm">{operator.name}</p>
+              </Field>
+              <Field>
+                <FieldLabel>
+                  {getMessage(messages, "platform.common.email")}
+                </FieldLabel>
+                <p className="text-sm">{operator.email}</p>
+              </Field>
+              <Field>
+                <FieldLabel>
+                  {getMessage(messages, "platform.operators.current_role")}
+                </FieldLabel>
+                <p>
+                  <Badge tone="info">
+                    {getOperatorRoleLabel(operator.role, messages)}
+                  </Badge>
+                </p>
+              </Field>
+              <Field>
+                <FieldLabel>
+                  {getMessage(messages, "platform.common.status")}
+                </FieldLabel>
+                <p>
+                  <StatusChip
+                    status={
+                      operator.status === "active" ? "success" : "warning"
+                    }
+                  >
+                    {getOperatorStatusLabel(operator.status, messages)}
+                  </StatusChip>
+                </p>
+              </Field>
+              <Field>
+                <FieldLabel>
+                  {getMessage(messages, "platform.common.created_at")}
+                </FieldLabel>
+                <p className="text-sm">
+                  {formatDateTime(operator.createdAt, {
+                    fallback: getMessage(messages, "platform.common.unset"),
+                    locale,
+                    timeZone,
+                  })}
+                </p>
+              </Field>
+              <Field>
+                <FieldLabel>
+                  {getMessage(messages, "platform.operators.last_login")}
+                </FieldLabel>
+                <p className="text-sm text-muted-foreground">
+                  {getMessage(messages, "platform.operators.not_fetched")}
+                </p>
+              </Field>
+            </div>
+          </PlatformSection>
 
           {isDeactivated ? null : (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {getMessage(messages, "platform.operators.change_role")}
-                </CardTitle>
-                <CardDescription>
-                  {getOperatorRoleCardDescription(
-                    { isSelf, isSuperAdmin },
-                    messages
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <OperatorRoleForm
-                  currentRole={operator.role}
-                  disabled={!canModify}
-                  operatorPublicId={operator.publicId}
-                />
-              </CardContent>
-            </Card>
+            <PlatformSection>
+              <PlatformSectionHeader>
+                <PlatformSectionHeading>
+                  <PlatformSectionTitle>
+                    {getMessage(messages, "platform.operators.change_role")}
+                  </PlatformSectionTitle>
+                  <PlatformSectionDescription>
+                    {getOperatorRoleCardDescription(
+                      { isSelf, isSuperAdmin },
+                      messages
+                    )}
+                  </PlatformSectionDescription>
+                </PlatformSectionHeading>
+              </PlatformSectionHeader>
+              <OperatorRoleForm
+                currentRole={operator.role}
+                disabled={!canModify}
+                operatorPublicId={operator.publicId}
+              />
+            </PlatformSection>
           )}
         </div>
       </PlatformPageContent>

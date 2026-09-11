@@ -1,6 +1,5 @@
 import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import {
   SectionError,
   SectionErrorActions,
@@ -8,6 +7,8 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { TableSkeleton } from "@publira/ui-components/table";
 import {
   parseRouteParams,
   routeParamString,
@@ -27,6 +28,7 @@ import {
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
+  PlatformSection,
 } from "#components/platform-page";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
@@ -88,19 +90,11 @@ export const generateMetadata = async ({
 const TenantMembersSkeleton = () => (
   <PlatformPageContent>
     <div className="grid gap-6">
-      <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
-      <Card>
-        <CardHeader>
-          <div className="h-5 w-36 animate-pulse rounded bg-muted" />
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3">
-            <div className="h-10 animate-pulse rounded bg-muted/70" />
-            <div className="h-10 animate-pulse rounded bg-muted/70" />
-            <div className="h-10 animate-pulse rounded bg-muted/70" />
-          </div>
-        </CardContent>
-      </Card>
+      <Skeleton className="h-10 w-64" />
+      <PlatformSection>
+        <SkeletonLine className="h-5 w-40" />
+        <TableSkeleton />
+      </PlatformSection>
     </div>
   </PlatformPageContent>
 );

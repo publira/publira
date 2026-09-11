@@ -5,13 +5,6 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Dialog,
   DialogBackdrop,
   DialogClose,
@@ -43,6 +36,13 @@ import {
 } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
@@ -367,214 +367,211 @@ export const TenantEmailSettingsForm = ({
   }, []);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.settings.email.title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.settings.email.description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          action={saveFormAction}
-          className="grid gap-5 sm:max-w-3xl"
-          id={formId}
-        >
-          <input name="tenant_id" type="hidden" value={tenantId} />
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.settings.email.title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.settings.email.description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <form
+        action={saveFormAction}
+        className="grid gap-5 sm:max-w-3xl"
+        id={formId}
+      >
+        <input name="tenant_id" type="hidden" value={tenantId} />
 
-          <Field>
-            <FieldLabel htmlFor={smtpOverrideId}>
-              {getMessage(messages, "admin.settings.email.override")}
-            </FieldLabel>
-            <FieldContent>
-              <label className="inline-flex items-center gap-2 text-sm text-foreground">
-                <input
-                  checked={smtpOverrideEnabled}
-                  disabled={!canEdit}
-                  id={smtpOverrideId}
-                  name="smtp_override_enabled"
-                  onChange={handleOverrideChange}
-                  type="checkbox"
-                />
-                {getMessage(messages, "admin.settings.email.override_checkbox")}
-              </label>
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.settings.email.override_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              {getMessage(messages, "admin.settings.email.host")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.host}
-                disabled={!fieldsInteractive}
-                name="host"
-                placeholder="smtp.example.com"
-                required={fieldsInteractive}
-                type="text"
+        <Field>
+          <FieldLabel htmlFor={smtpOverrideId}>
+            {getMessage(messages, "admin.settings.email.override")}
+          </FieldLabel>
+          <FieldContent>
+            <label className="inline-flex items-center gap-2 text-sm text-foreground">
+              <input
+                checked={smtpOverrideEnabled}
+                disabled={!canEdit}
+                id={smtpOverrideId}
+                name="smtp_override_enabled"
+                onChange={handleOverrideChange}
+                type="checkbox"
               />
-            </FieldContent>
-          </Field>
+              {getMessage(messages, "admin.settings.email.override_checkbox")}
+            </label>
+            <FieldDescription>
+              {getMessage(
+                messages,
+                "admin.settings.email.override_description"
+              )}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              {getMessage(messages, "admin.settings.email.port")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={String(initialSettings.port || 587)}
-                disabled={!fieldsInteractive}
-                max={65_535}
-                min={1}
-                name="port"
-                required={fieldsInteractive}
-                type="number"
-              />
-            </FieldContent>
-          </Field>
+        <Field>
+          <FieldLabel required={fieldsInteractive}>
+            {getMessage(messages, "admin.settings.email.host")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.host}
+              disabled={!fieldsInteractive}
+              name="host"
+              placeholder="smtp.example.com"
+              required={fieldsInteractive}
+              type="text"
+            />
+          </FieldContent>
+        </Field>
 
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              {getMessage(messages, "admin.settings.email.username")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.username}
-                disabled={!fieldsInteractive}
-                name="username"
-                required={fieldsInteractive}
-                type="text"
-              />
-            </FieldContent>
-          </Field>
+        <Field>
+          <FieldLabel required={fieldsInteractive}>
+            {getMessage(messages, "admin.settings.email.port")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={String(initialSettings.port || 587)}
+              disabled={!fieldsInteractive}
+              max={65_535}
+              min={1}
+              name="port"
+              required={fieldsInteractive}
+              type="number"
+            />
+          </FieldContent>
+        </Field>
 
-          <PasswordFieldSection
-            fieldsInteractive={fieldsInteractive}
-            hasStoredPassword={hasStoredPassword}
-            isPasswordEditing={isPasswordEditing}
-            onCancelPasswordEdit={handleCancelPasswordEdit}
-            onStartPasswordEdit={handleStartPasswordEdit}
+        <Field>
+          <FieldLabel required={fieldsInteractive}>
+            {getMessage(messages, "admin.settings.email.username")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.username}
+              disabled={!fieldsInteractive}
+              name="username"
+              required={fieldsInteractive}
+              type="text"
+            />
+          </FieldContent>
+        </Field>
+
+        <PasswordFieldSection
+          fieldsInteractive={fieldsInteractive}
+          hasStoredPassword={hasStoredPassword}
+          isPasswordEditing={isPasswordEditing}
+          onCancelPasswordEdit={handleCancelPasswordEdit}
+          onStartPasswordEdit={handleStartPasswordEdit}
+        />
+
+        <Field>
+          <FieldLabel required={fieldsInteractive}>
+            {getMessage(messages, "admin.settings.email.encryption")}
+          </FieldLabel>
+          <FieldContent>
+            <Select
+              defaultValue={initialSettings.encryption || "starttls"}
+              disabled={!fieldsInteractive}
+              items={encryptionOptions(messages)}
+              name="encryption"
+              required={fieldsInteractive}
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.email.from_name")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.fromName}
+              disabled={!fieldsInteractive}
+              name="from_name"
+              placeholder={
+                tenantName ||
+                getMessage(messages, "admin.settings.email.from_name_fallback")
+              }
+              type="text"
+            />
+            <FieldDescription>
+              {getMessage(
+                messages,
+                "admin.settings.email.from_name_description"
+              )}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel required={fieldsInteractive}>
+            {getMessage(messages, "admin.settings.email.from_address")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.fromAddress}
+              disabled={!fieldsInteractive}
+              name="from_address"
+              placeholder="noreply@example.com"
+              required={fieldsInteractive}
+              type="email"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.email.reply_to")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.replyTo}
+              disabled={!fieldsInteractive}
+              name="reply_to"
+              placeholder="support@example.com"
+              type="email"
+            />
+          </FieldContent>
+        </Field>
+
+        {canEdit ? null : (
+          <FormMessage variant="destructive">
+            {getMessage(messages, "admin.settings.admin_only")}
+          </FormMessage>
+        )}
+
+        {loadErrorMessage ? (
+          <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
+        ) : null}
+
+        {saveState ? (
+          <FormMessage variant={saveState.ok ? "success" : "destructive"}>
+            {saveState.message}
+          </FormMessage>
+        ) : null}
+
+        <div className="flex flex-wrap gap-3">
+          <SmtpTestDialog
+            canEdit={canEdit}
+            dialogOpen={dialogOpen}
+            formId={formId}
+            isTesting={isTesting}
+            onDialogOpenChange={setDialogOpen}
+            onSendToSelfChange={setSendToSelf}
+            sendToSelf={sendToSelf}
+            testFormAction={testFormAction}
+            testState={testState}
           />
 
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              {getMessage(messages, "admin.settings.email.encryption")}
-            </FieldLabel>
-            <FieldContent>
-              <Select
-                defaultValue={initialSettings.encryption || "starttls"}
-                disabled={!fieldsInteractive}
-                items={encryptionOptions(messages)}
-                name="encryption"
-                required={fieldsInteractive}
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.settings.email.from_name")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.fromName}
-                disabled={!fieldsInteractive}
-                name="from_name"
-                placeholder={
-                  tenantName ||
-                  getMessage(
-                    messages,
-                    "admin.settings.email.from_name_fallback"
-                  )
-                }
-                type="text"
-              />
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.settings.email.from_name_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              {getMessage(messages, "admin.settings.email.from_address")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.fromAddress}
-                disabled={!fieldsInteractive}
-                name="from_address"
-                placeholder="noreply@example.com"
-                required={fieldsInteractive}
-                type="email"
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.settings.email.reply_to")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.replyTo}
-                disabled={!fieldsInteractive}
-                name="reply_to"
-                placeholder="support@example.com"
-                type="email"
-              />
-            </FieldContent>
-          </Field>
-
-          {canEdit ? null : (
-            <FormMessage variant="destructive">
-              {getMessage(messages, "admin.settings.admin_only")}
-            </FormMessage>
-          )}
-
-          {loadErrorMessage ? (
-            <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
-          ) : null}
-
-          {saveState ? (
-            <FormMessage variant={saveState.ok ? "success" : "destructive"}>
-              {saveState.message}
-            </FormMessage>
-          ) : null}
-
-          <div className="flex flex-wrap gap-3">
-            <SmtpTestDialog
-              canEdit={canEdit}
-              dialogOpen={dialogOpen}
-              formId={formId}
-              isTesting={isTesting}
-              onDialogOpenChange={setDialogOpen}
-              onSendToSelfChange={setSendToSelf}
-              sendToSelf={sendToSelf}
-              testFormAction={testFormAction}
-              testState={testState}
-            />
-
-            <Button disabled={!canEdit || isSaving} type="submit">
-              {isSaving
-                ? getMessage(messages, "admin.settings.saving")
-                : getMessage(messages, "admin.settings.save")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+          <Button disabled={!canEdit || isSaving} type="submit">
+            {isSaving
+              ? getMessage(messages, "admin.settings.saving")
+              : getMessage(messages, "admin.settings.save")}
+          </Button>
+        </div>
+      </form>
+    </AdminSection>
   );
 };

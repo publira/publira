@@ -29,7 +29,7 @@ export const TicketFilterActiveSelect = ({
       </FieldLabel>
       <FieldContent>
         <select
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs"
+          className="flex h-10 w-full rounded-control border border-input bg-background px-3 py-2 text-sm text-foreground"
           defaultValue={defaultValue}
           id={activeSelectId}
           name="active"

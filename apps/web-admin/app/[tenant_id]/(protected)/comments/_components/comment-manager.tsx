@@ -4,13 +4,6 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -29,6 +22,13 @@ import { formatDateTime, parseInstant } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
@@ -316,38 +316,38 @@ export const CommentManager = ({
     !listErrorMessage && (comments.length > 0 || hasPageLinks);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.comments.list_title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.comments.list_description")}
-        </CardDescription>
-      </CardHeader>
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.comments.list_title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.comments.list_description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
 
-      <CardContent className="grid gap-4">
-        <CommentListBody
-          comments={comments}
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          locale={locale}
-          timeZone={timeZone}
+      <CommentListBody
+        comments={comments}
+        hasPageLinks={hasPageLinks}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+        timeZone={timeZone}
+      />
+
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(messages, "admin.comments.pagination_aria")}
+          description={getMessage(
+            messages,
+            "admin.comments.pagination_description",
+            { count: pageSize }
+          )}
+          nextHref={nextHref}
+          previousHref={previousHref}
         />
-
-        {showPagination ? (
-          <PaginationFooter
-            ariaLabel={getMessage(messages, "admin.comments.pagination_aria")}
-            description={getMessage(
-              messages,
-              "admin.comments.pagination_description",
-              { count: pageSize }
-            )}
-            nextHref={nextHref}
-            previousHref={previousHref}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+      ) : null}
+    </AdminSection>
   );
 };
