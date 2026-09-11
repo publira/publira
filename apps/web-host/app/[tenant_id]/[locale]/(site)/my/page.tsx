@@ -31,7 +31,7 @@ const ProfileSection = async ({ me }: { me: MeInfo }) => {
   const messages = await loadHostMessages(locale);
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <h2 className="mb-4 text-lg font-semibold">
         {getMessage(messages, "host.my.profile_heading")}
       </h2>
@@ -64,7 +64,7 @@ const ProfileSection = async ({ me }: { me: MeInfo }) => {
 };
 
 const SectionSkeleton = ({ bodyClassName }: { bodyClassName: string }) => (
-  <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-32" />
     <div className={bodyClassName} />
   </section>
@@ -99,7 +99,7 @@ const SubscriptionSection = async ({ returnTo }: { returnTo: string }) => {
   ]);
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <h2 className="mb-4 text-lg font-semibold">
         {getMessage(messages, "host.my.subscription_heading")}
       </h2>
@@ -160,7 +160,7 @@ const MyContent = async ({
         {me ? (
           <ProfileSection me={me} />
         ) : (
-          <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+          <section className="border border-border bg-card p-6">
             <h2 className="mb-3 text-lg font-semibold">
               {getMessage(messages, "host.my.profile_heading")}
             </h2>
@@ -210,7 +210,7 @@ const MyContentFallback = () => (
 
 const MyPage = ({ searchParams }: MyPageProps) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold">

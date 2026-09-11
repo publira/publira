@@ -46,7 +46,7 @@ export const DeleteAccountModal = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <dialog
             aria-labelledby="delete-account-modal-title"
-            className="relative m-0 w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl open:flex open:flex-col"
+            className="relative m-0 w-full max-w-md rounded-surface border border-border bg-card p-6 shadow-floating open:flex open:flex-col"
             open
           >
             <h3

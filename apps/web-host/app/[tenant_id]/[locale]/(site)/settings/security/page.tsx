@@ -30,7 +30,7 @@ const EmailChangeSection = async () => {
   return (
     <section
       aria-labelledby={EMAIL_CHANGE_HEADING_ID}
-      className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+      className="border border-border bg-card p-6"
     >
       <h2 className="mb-4 text-lg font-semibold" id={EMAIL_CHANGE_HEADING_ID}>
         {getMessage(messages, "host.settings.email_change_heading")}
@@ -98,7 +98,7 @@ const EmailChangeSection = async () => {
 };
 
 const EmailChangeSectionFallback = () => (
-  <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-40" />
     <div className="h-64 w-full animate-pulse rounded-md bg-muted" />
   </section>
@@ -111,7 +111,7 @@ const PasswordChangeSection = async () => {
   return (
     <section
       aria-labelledby={PASSWORD_CHANGE_HEADING_ID}
-      className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+      className="border border-border bg-card p-6"
     >
       <h2
         className="mb-4 text-lg font-semibold"
@@ -185,7 +185,7 @@ const PasswordChangeSection = async () => {
 };
 
 const PasswordChangeSectionFallback = () => (
-  <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-36" />
     <div className="h-56 w-full animate-pulse rounded-md bg-muted" />
   </section>

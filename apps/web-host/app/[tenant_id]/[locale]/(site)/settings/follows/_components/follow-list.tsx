@@ -127,7 +127,7 @@ export const FollowList = async ({
   );
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <div className="mb-4">
         <h2 className="text-lg font-semibold">
           {getMessage(messages, "host.settings.follows_heading")}

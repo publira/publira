@@ -93,7 +93,7 @@ const ProfileSection = async () => {
   const displayName = me?.name?.trim() ?? "";
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <h2 className="mb-4 text-lg font-semibold">
         {getMessage(messages, "host.settings.profile_heading")}
       </h2>
@@ -135,7 +135,7 @@ const ProfileSection = async () => {
 };
 
 const ProfileSectionFallback = () => (
-  <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-32" />
     <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
   </section>
@@ -170,7 +170,7 @@ const DeleteSectionCopy = async () => {
 };
 
 const DeleteSection = () => (
-  <section className="rounded-2xl border border-destructive/40 bg-destructive/5 p-6 shadow-sm">
+  <section className="border border-destructive/40 bg-destructive/5 p-6">
     <h2 className="mb-2 text-lg font-semibold text-destructive">
       <Suspense fallback={<SkeletonLine className="h-6 w-16" />}>
         <Message message="host.settings.delete_heading" />

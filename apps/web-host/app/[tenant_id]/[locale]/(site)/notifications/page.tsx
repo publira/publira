@@ -28,7 +28,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 type NotificationsPageProps = PageProps<"/[tenant_id]/[locale]/notifications">;
 
 const NotificationListSkeleton = () => (
-  <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-28" />
     <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
   </section>
@@ -73,7 +73,7 @@ const NotificationListData = async ({
 
 const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <h1 className="text-xl font-semibold">
         <Suspense fallback={<SkeletonLine className="h-6 w-20" />}>
           <Message message="host.notifications.title" />

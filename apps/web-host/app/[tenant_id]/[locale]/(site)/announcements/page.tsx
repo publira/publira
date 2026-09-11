@@ -173,7 +173,7 @@ const AnnouncementsSection = async ({
   ).length;
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">
           {getMessage(messages, "host.announcements.list_heading")}
@@ -346,7 +346,7 @@ const AnnouncementsSection = async ({
 };
 
 const AnnouncementsSectionFallback = () => (
-  <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-32" />
     <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
   </section>
@@ -356,7 +356,7 @@ const AnnouncementsPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/announcements">) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <h1 className="text-xl font-semibold">
         <Suspense fallback={<SkeletonLine className="h-6 w-24" />}>
           <Message message="host.announcements.title" />

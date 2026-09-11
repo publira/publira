@@ -28,7 +28,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 type PurchaseLibraryPageProps = PageProps<"/[tenant_id]/[locale]/my/library">;
 
 const PurchaseLibrarySkeleton = () => (
-  <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="border border-border bg-card p-6">
     <div className="h-6 w-24 animate-pulse rounded bg-muted" />
     <div className="mt-4 h-44 w-full animate-pulse rounded-xl bg-muted" />
   </section>
@@ -69,7 +69,7 @@ const PurchaseLibraryData = async ({
 
 const PurchaseLibraryPage = ({ searchParams }: PurchaseLibraryPageProps) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <h1 className="text-xl font-semibold">
         <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
           <Message message="host.library.title" />
