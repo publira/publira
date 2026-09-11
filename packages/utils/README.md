@@ -99,6 +99,15 @@ WEEKDAY_NUMBERS.map((weekday) => formatWeekdayName(weekday, { locale }));
 
 `formatWeekdayName` takes no time zone: there is no instant behind a weekday, so the number is resolved against a fixed reference Sunday and formatted in UTC on both sides. The name comes from `Intl` rather than from the message catalog, for the same reason the month names in `formatDate` do — every locale already carries it. A number outside 0 to 6 returns `fallback` (default: the number itself).
 
+```ts
+import { currentWeekday } from "@publira/utils";
+
+// Which weekday it is right now where the tenant publishes
+currentWeekday(tenantTimeZone); // 0 to 6, Sunday first
+```
+
+`currentWeekday` requires the zone because the answer is a calendar day rather than an instant: the tenant and its reader are on different days for part of every one, and a schedule belongs to the tenant. It also answers differently depending on when it is called, so a Server Component that renders one under Cache Components has to be request-time — a weekday resolved during a prerender is written into the shell and keeps pointing at the day that shell was built on. `now` takes the moment to read, so a test states one instead of moving with the clock.
+
 ### Picking and validating a time zone
 
 These are for a screen that lets someone choose an IANA name and saves it, such as the tenant time zone settings.

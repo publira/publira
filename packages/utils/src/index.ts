@@ -9,6 +9,7 @@
 export { cn } from "./cn";
 export { decodeBase64Url } from "./base64";
 export {
+  currentWeekday,
   DEFAULT_TIME_ZONE,
   endOfDayIsoString,
   formatDate,
@@ -22,6 +23,7 @@ export {
   toDateTimeLocalValue,
   toInstantIsoString,
   WEEKDAY_NUMBERS,
+  type CurrentWeekdayOptions,
   type FormatDateTimeOptions,
   type FormatPlainDateOptions,
   type FormatRelativeTimeOptions,
