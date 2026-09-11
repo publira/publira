@@ -1,6 +1,6 @@
--- The cursor pagination of the published author list runs in two stages.
+-- The cursor pagination of the published creator list runs in two stages.
 --
--- Stage one is ListPublishedAuthorIDsByName*, which settles nothing but the
+-- Stage one is ListPublishedCreatorIDsByName*, which settles nothing but the
 -- ids of the creators that hold at least one published series. The sort key
 -- is (name, id); id is a UUIDv7, so the order stays unique even when two
 -- creators share a name.
@@ -14,14 +14,14 @@
 --
 -- The EXISTS published predicate is the one
 -- ListActiveSeriesIDsByPublishedAtDesc uses. Once the two drift apart, the
--- series list and the author page disagree about which works are visible.
+-- series list and the creator page disagree about which works are visible.
 -- Every direction gets its own query with a fixed ORDER BY, because branching
 -- with CASE stops idx_creators_tenant_name from being read in index order.
 -- Backward calls the DESC query, and the caller sorts the rows back.
 --
--- Stage two is ListPublishedAuthorsByIDs, which builds the display data and
+-- Stage two is ListPublishedCreatorsByIDs, which builds the display data and
 -- the published series count for the ids stage one settled on.
--- name: ListPublishedAuthorIDsByNameAsc :many
+-- name: ListPublishedCreatorIDsByNameAsc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
@@ -56,7 +56,7 @@ ORDER BY c.name ASC,
     c.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: ListPublishedAuthorIDsByNameDesc :many
+-- name: ListPublishedCreatorIDsByNameDesc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
@@ -91,11 +91,11 @@ ORDER BY c.name DESC,
     c.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListPublishedAuthorIDsBySearchNameAsc :many
--- SearchPublishedAuthors. Stage one of the same two-stage shape
--- ListPublishedAuthorIDsByNameAsc uses, narrowed to the creators whose name
--- ILIKE-matches query_pattern. Stage two is ListPublishedAuthorsByIDs again:
--- the search shows an author exactly as the list does.
+-- name: ListPublishedCreatorIDsBySearchNameAsc :many
+-- SearchPublishedCreators. Stage one of the same two-stage shape
+-- ListPublishedCreatorIDsByNameAsc uses, narrowed to the creators whose name
+-- ILIKE-matches query_pattern. Stage two is ListPublishedCreatorsByIDs again:
+-- the search shows a creator exactly as the list does.
 -- The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
 -- with ESCAPE '!'.
 -- Only name is matched. profile_text would answer a creator-name search with
@@ -138,8 +138,8 @@ ORDER BY c.name ASC,
     c.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: ListPublishedAuthorIDsBySearchNameDesc :many
--- The backward direction of ListPublishedAuthorIDsBySearchNameAsc.
+-- name: ListPublishedCreatorIDsBySearchNameDesc :many
+-- The backward direction of ListPublishedCreatorIDsBySearchNameAsc.
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
@@ -175,7 +175,7 @@ ORDER BY c.name DESC,
     c.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListPublishedAuthorsByIDs :many
+-- name: ListPublishedCreatorsByIDs :many
 -- No ORDER BY: the caller sorts the rows into the id order stage one settled
 -- on.
 SELECT c.id,
@@ -207,10 +207,10 @@ FROM creators c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.id = ANY(sqlc.arg('ids')::uuid []);
 
--- name: GetPublishedAuthorByPublicID :one
+-- name: GetPublishedCreatorByPublicID :one
 -- Returns only the creators that hold at least one published series. The
 -- caller turns an empty result into not_found exactly as it does a missing
--- row, so the existence of an unpublished author does not leak.
+-- row, so the existence of an unpublished creator does not leak.
 SELECT c.id,
     c.public_id,
     c.name,

@@ -1359,7 +1359,7 @@ func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 func TestCreatorRevalidateTags(t *testing.T) {
 	tags := creatorRevalidateTags(" tenant-id ")
 	want := []string{
-		"tenant:tenant-id:authors",
+		"tenant:tenant-id:creators",
 		"tenant:tenant-id:series:detail",
 	}
 	if !slices.Equal(tags, want) {
@@ -1369,12 +1369,12 @@ func TestCreatorRevalidateTags(t *testing.T) {
 
 func wantCreatorRevalidateTags(tenantID uuid.UUID) []string {
 	return []string{
-		"tenant:" + tenantID.String() + ":authors",
+		"tenant:" + tenantID.String() + ":creators",
 		"tenant:" + tenantID.String() + ":series:detail",
 	}
 }
 
-func TestCreateCreatorRevalidatesTheAuthorAndSeriesCaches(t *testing.T) {
+func TestCreateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 	revalidations := newRevalidateRecorder(t)
 	testServer, mock := newTestAdminServer(t)
 
@@ -1411,7 +1411,7 @@ func TestCreateCreatorRevalidatesTheAuthorAndSeriesCaches(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestUpdateCreatorRevalidatesTheAuthorAndSeriesCaches(t *testing.T) {
+func TestUpdateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 	revalidations := newRevalidateRecorder(t)
 	testServer, mock := newTestAdminServer(t)
 

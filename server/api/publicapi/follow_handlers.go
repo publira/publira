@@ -58,8 +58,8 @@ func (s *apiServer) resolveFollowTarget(
 			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
 		}
 		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow episode target", err, "tenant_id", tenantID.String())
-	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_AUTHOR:
-		row, err := queries.GetPublishedAuthorByPublicID(ctx, dbmodels.GetPublishedAuthorByPublicIDParams{
+	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR:
+		row, err := queries.GetPublishedCreatorByPublicID(ctx, dbmodels.GetPublishedCreatorByPublicIDParams{
 			TenantID: tenantID,
 			PublicID: strings.TrimSpace(target.PublicId),
 		})
@@ -69,7 +69,7 @@ func (s *apiServer) resolveFollowTarget(
 		if errors.Is(err, sql.ErrNoRows) {
 			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
 		}
-		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow author target", err, "tenant_id", tenantID.String())
+		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow creator target", err, "tenant_id", tenantID.String())
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES:
 		row, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 			TenantID: tenantID,
@@ -379,7 +379,7 @@ func followTargetTypeFromRow(typeName string) (publirav1.FollowTargetType, bool)
 	case followTargetEpisode:
 		return publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE, true
 	case followTargetCreator:
-		return publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_AUTHOR, true
+		return publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR, true
 	case followTargetSeries:
 		return publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES, true
 	default:

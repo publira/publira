@@ -166,7 +166,7 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 	return Series{ID: seriesID, PublicID: publicID, Title: title}
 }
 
-// Creator is a seeded creators row. The public catalog addresses an author by
+// Creator is a seeded creators row. The public catalog addresses a creator by
 // public ID; the UUID is what series_creators hangs off.
 type Creator struct {
 	ID       uuid.UUID
@@ -175,7 +175,7 @@ type Creator struct {
 }
 
 // CreatorSeed describes one creator to insert. The zero value is a nameless
-// unpublished author: they stay out of the public catalog until a published
+// unpublished creator: they stay out of the public catalog until a published
 // series credits them.
 type CreatorSeed struct {
 	PublicID    string

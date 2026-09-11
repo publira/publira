@@ -79,7 +79,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 
 // publishedLabelSeriesPage is the related-series half of GetPublishedLabelDetail.
 // Title ascending is the only order; the scan direction and the page direction
-// fold the same way GetPublishedAuthorDetail does.
+// fold the same way GetPublishedCreatorDetail does.
 func (s *apiServer) publishedLabelSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,

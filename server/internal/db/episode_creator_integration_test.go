@@ -75,9 +75,9 @@ func TestEpisodeCreatorsMigrationBackFillsFromTheSeries(t *testing.T) {
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	credited := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Credited Series", Published: true})
 	uncredited := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00002", Title: "Uncredited Series", Published: true})
-	author := pg.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})
+	originalAuthor := pg.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})
 	artist := pg.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0002", Name: "Ren Takahashi"})
-	pg.SeedSeriesCreator(t, tenant.ID, credited.ID, author.ID, creatorroles.Defaults[0].Name)
+	pg.SeedSeriesCreator(t, tenant.ID, credited.ID, originalAuthor.ID, creatorroles.Defaults[0].Name)
 	pg.SeedSeriesCreator(t, tenant.ID, credited.ID, artist.ID, creatorroles.Defaults[1].Name)
 
 	first := pg.SeedEpisode(t, tenant.ID, credited.ID, testutil.EpisodeSeed{
@@ -104,7 +104,7 @@ func TestEpisodeCreatorsMigrationBackFillsFromTheSeries(t *testing.T) {
 	t.Cleanup(func() { pg.MigrateUp(t) })
 
 	want := [][2]string{
-		{author.Name, creatorroles.Defaults[0].Name},
+		{originalAuthor.Name, creatorroles.Defaults[0].Name},
 		{artist.Name, creatorroles.Defaults[1].Name},
 	}
 	for _, episode := range []testutil.Episode{first, second} {

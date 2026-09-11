@@ -34,7 +34,7 @@ func TestDBGetEpisodeDetailCreditsEachEpisodeWithItsOwnTeam(t *testing.T) {
 		Title:     "Serialized Story",
 		Published: true,
 	})
-	author := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})
+	originalAuthor := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})
 	firstArtist := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0002", Name: "Ren Takahashi"})
 	secondArtist := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0003", Name: "Hana Kubo"})
 
@@ -51,7 +51,7 @@ func TestDBGetEpisodeDetailCreditsEachEpisodeWithItsOwnTeam(t *testing.T) {
 		Status:     testutil.EpisodeStatusPublished,
 	})
 	for _, episode := range []testutil.Episode{early, late} {
-		env.PG.SeedEpisodeCreator(t, tenant.ID, episode.ID, author.ID, creatorroles.Defaults[0].Name)
+		env.PG.SeedEpisodeCreator(t, tenant.ID, episode.ID, originalAuthor.ID, creatorroles.Defaults[0].Name)
 	}
 	env.PG.SeedEpisodeCreator(t, tenant.ID, early.ID, firstArtist.ID, creatorroles.Defaults[1].Name)
 	env.PG.SeedEpisodeCreator(t, tenant.ID, late.ID, secondArtist.ID, creatorroles.Defaults[1].Name)
@@ -91,8 +91,8 @@ func TestDBGetEpisodeDetailDoesNotFallBackToTheSeriesCredits(t *testing.T) {
 		Title:     "Serialized Story",
 		Published: true,
 	})
-	author := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, author.ID, creatorroles.Defaults[0].Name)
+	originalAuthor := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, originalAuthor.ID, creatorroles.Defaults[0].Name)
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
 		PublicID:   "EPISODEONE01",
 		Title:      "Chapter One",

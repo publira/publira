@@ -40,14 +40,14 @@ const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 describe("toFollowTargetType", () => {
   it("maps author and series kinds onto the Follow API enum", () => {
-    expect(toFollowTargetType("author")).toBe(FollowTargetType.AUTHOR);
+    expect(toFollowTargetType("author")).toBe(FollowTargetType.CREATOR);
     expect(toFollowTargetType("series")).toBe(FollowTargetType.SERIES);
   });
 });
 
 describe("toFollowTargetKind", () => {
   it("maps author and series enums back onto the app kinds", () => {
-    expect(toFollowTargetKind(FollowTargetType.AUTHOR)).toBe("author");
+    expect(toFollowTargetKind(FollowTargetType.CREATOR)).toBe("author");
     expect(toFollowTargetKind(FollowTargetType.SERIES)).toBe("series");
   });
 
@@ -93,7 +93,7 @@ describe("getMyFollowStatus", () => {
 
     expect(mockGetMyFollowStatus).toHaveBeenCalledWith(
       {
-        target: { publicId: "AUTHOR01", type: FollowTargetType.AUTHOR },
+        target: { publicId: "AUTHOR01", type: FollowTargetType.CREATOR },
         tenant: { tenantId },
       },
       { headers: { Authorization: "Bearer session-token" } }

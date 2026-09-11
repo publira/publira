@@ -587,7 +587,7 @@ type ListPublishedLabelsBySearchNameAscRow struct {
 // SearchPublishedLabels orders by name instead of creation, so it takes its
 // own pair of queries rather than the ListLabelsByTenant* pair above. It is
 // one stage: a label row is a name and its eye catch, so there is nothing
-// heavy to defer to a second query the way the author search does.
+// heavy to defer to a second query the way the creator search does.
 // Unlike GetPublishedLabelDetail, which answers for a label whose last series
 // was taken down so a shared URL stays valid, a search hit has to have
 // something behind it, hence the EXISTS.

@@ -3,30 +3,30 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPublishedAuthorDetail, listPublishedAuthors } from "./authors";
 
-const { mockGetPublishedAuthorDetail, mockListPublishedAuthors } = vi.hoisted(
+const { mockGetPublishedCreatorDetail, mockListPublishedCreators } = vi.hoisted(
   () => ({
-    mockGetPublishedAuthorDetail: vi.fn(),
-    mockListPublishedAuthors: vi.fn(),
+    mockGetPublishedCreatorDetail: vi.fn(),
+    mockListPublishedCreators: vi.fn(),
   })
 );
 
 vi.mock("./api-client", () => ({
   apiClient: {
     catalog: {
-      getPublishedAuthorDetail: mockGetPublishedAuthorDetail,
-      listPublishedAuthors: mockListPublishedAuthors,
+      getPublishedCreatorDetail: mockGetPublishedCreatorDetail,
+      listPublishedCreators: mockListPublishedCreators,
     },
   },
 }));
 
 describe("listPublishedAuthors", () => {
   beforeEach(() => {
-    mockListPublishedAuthors.mockReset();
+    mockListPublishedCreators.mockReset();
   });
 
   it("Format public author and return cursor token", async () => {
-    mockListPublishedAuthors.mockResolvedValueOnce({
-      authors: [
+    mockListPublishedCreators.mockResolvedValueOnce({
+      creators: [
         {
           iconImageUrl: "/images/creators/creator-yamada",
           name: "Jane Doe",
@@ -50,7 +50,7 @@ describe("listPublishedAuthors", () => {
       token: "abc",
     });
 
-    expect(mockListPublishedAuthors).toHaveBeenCalledWith({
+    expect(mockListPublishedCreators).toHaveBeenCalledWith({
       limit: 12,
       tenant: { tenantId: "TENANT_1" },
       token: "abc",
@@ -79,15 +79,15 @@ describe("listPublishedAuthors", () => {
   });
 
   it("If token is omitted, get the first page", async () => {
-    mockListPublishedAuthors.mockResolvedValueOnce({
-      authors: [],
+    mockListPublishedCreators.mockResolvedValueOnce({
+      creators: [],
       nextToken: "",
       previousToken: "",
     });
 
     await listPublishedAuthors("TENANT_1", { locale: "en" });
 
-    expect(mockListPublishedAuthors).toHaveBeenCalledWith({
+    expect(mockListPublishedCreators).toHaveBeenCalledWith({
       limit: 20,
       tenant: { tenantId: "TENANT_1" },
       token: "",
@@ -97,7 +97,7 @@ describe("listPublishedAuthors", () => {
   // A `"use cache"` function must not throw: the fill would fail the whole
   // request instead of reaching the awaiting page.
   it("If acquisition fails, return the failure value without throwing", async () => {
-    mockListPublishedAuthors.mockRejectedValueOnce(
+    mockListPublishedCreators.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
 
@@ -112,12 +112,12 @@ describe("listPublishedAuthors", () => {
 
 describe("getPublishedAuthorDetail", () => {
   beforeEach(() => {
-    mockGetPublishedAuthorDetail.mockReset();
+    mockGetPublishedCreatorDetail.mockReset();
   });
 
   it("Return 1 page of author details and related series", async () => {
-    mockGetPublishedAuthorDetail.mockResolvedValueOnce({
-      author: {
+    mockGetPublishedCreatorDetail.mockResolvedValueOnce({
+      creator: {
         iconImageUrl: "/images/creators/creator-a",
         name: "Author A",
         profileText: "Author A profile",
@@ -153,7 +153,7 @@ describe("getPublishedAuthorDetail", () => {
       token: "",
     });
 
-    expect(mockGetPublishedAuthorDetail).toHaveBeenCalledWith({
+    expect(mockGetPublishedCreatorDetail).toHaveBeenCalledWith({
       limit: 12,
       publicId: "CREATOR_A",
       tenant: { tenantId: "TENANT_1" },
@@ -214,8 +214,8 @@ describe("getPublishedAuthorDetail", () => {
   });
 
   it("Drop series lines without publicId", async () => {
-    mockGetPublishedAuthorDetail.mockResolvedValueOnce({
-      author: {
+    mockGetPublishedCreatorDetail.mockResolvedValueOnce({
+      creator: {
         iconImageUrl: "",
         name: "Author A",
         profileText: "",
@@ -240,8 +240,8 @@ describe("getPublishedAuthorDetail", () => {
   });
 
   it("null if author is missing", async () => {
-    mockGetPublishedAuthorDetail.mockResolvedValueOnce({
-      author: undefined,
+    mockGetPublishedCreatorDetail.mockResolvedValueOnce({
+      creator: undefined,
       nextToken: "",
       previousToken: "",
       series: [],
@@ -253,7 +253,7 @@ describe("getPublishedAuthorDetail", () => {
   });
 
   it("null if the API returns not_found", async () => {
-    mockGetPublishedAuthorDetail.mockRejectedValueOnce(
+    mockGetPublishedCreatorDetail.mockRejectedValueOnce(
       new ConnectError("author not found", Code.NotFound)
     );
 
@@ -267,7 +267,7 @@ describe("getPublishedAuthorDetail", () => {
   it("ConnectError regenerated at cache boundaries will also be null", async () => {
     const rehydrated = new Error("[not_found] author not found");
     rehydrated.name = "ConnectError";
-    mockGetPublishedAuthorDetail.mockRejectedValueOnce(rehydrated);
+    mockGetPublishedCreatorDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
       getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
@@ -276,7 +276,7 @@ describe("getPublishedAuthorDetail", () => {
 
   // Another tenant's author comes back as permission_denied, not not_found.
   it("null if the API returns permission_denied", async () => {
-    mockGetPublishedAuthorDetail.mockRejectedValueOnce(
+    mockGetPublishedCreatorDetail.mockRejectedValueOnce(
       new ConnectError("author is not published", Code.PermissionDenied)
     );
 
@@ -286,7 +286,7 @@ describe("getPublishedAuthorDetail", () => {
   });
 
   it("Errors other than not_found are not thrown and return a failure value.", async () => {
-    mockGetPublishedAuthorDetail.mockRejectedValueOnce(
+    mockGetPublishedCreatorDetail.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
 

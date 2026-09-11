@@ -11,18 +11,18 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func TestDBSearchPublishedAuthorsMatchesPartOfTheName(t *testing.T) {
+func TestDBSearchPublishedCreatorsMatchesPartOfTheName(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
 	matching := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{
-		PublicID: "AUTHORMATCH",
+		PublicID: "CREATORMATCH",
 		Name:     "Aoi Sakura",
 	})
 	// The name search must not answer with a creator whose biography happens
 	// to mention the one being looked for.
 	profileOnly := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{
-		PublicID:    "AUTHORPROF1",
+		PublicID:    "CREATORPROF1",
 		Name:        "Kenji Mori",
 		ProfileText: "Assisted by Aoi Sakura on an earlier work",
 	})
@@ -30,63 +30,63 @@ func TestDBSearchPublishedAuthorsMatchesPartOfTheName(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, matching.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, profileOnly.ID, "Artist")
 
-	resp, err := env.catalogClient().SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "saku",
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors: %v", err)
+		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := authorPublicIDs(resp.Msg.Authors); len(got) != 1 || got[0] != "AUTHORMATCH" {
-		t.Fatalf("authors = %v, want only the name match", got)
+	if got := creatorPublicIDs(resp.Msg.Creators); len(got) != 1 || got[0] != "CREATORMATCH" {
+		t.Fatalf("creators = %v, want only the name match", got)
 	}
 }
 
-func TestDBSearchPublishedAuthorsMatchesNonASCIINameCaseInsensitively(t *testing.T) {
+func TestDBSearchPublishedCreatorsMatchesNonASCIINameCaseInsensitively(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
 	// The query and the stored name are compared by PostgreSQL's ILIKE, so
 	// this is the case where a multibyte name and an ASCII case change have to
 	// survive the same '%q%' pattern.
-	japanese := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORJP001", Name: "夏目 漱石"})
-	recased := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORUP001", Name: "NATSUME Soseki"})
+	japanese := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORJP001", Name: "夏目 漱石"})
+	recased := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORUP001", Name: "NATSUME Soseki"})
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Title: "Published Story", Published: true})
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, japanese.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, recased.ID, "")
 
 	client := env.catalogClient()
-	japaneseHit, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	japaneseHit, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "漱石",
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors for a Japanese name: %v", err)
+		t.Fatalf("SearchPublishedCreators for a Japanese name: %v", err)
 	}
-	if got := authorPublicIDs(japaneseHit.Msg.Authors); len(got) != 1 || got[0] != "AUTHORJP001" {
-		t.Fatalf("authors = %v, want the Japanese name found by part of it", got)
+	if got := creatorPublicIDs(japaneseHit.Msg.Creators); len(got) != 1 || got[0] != "CREATORJP001" {
+		t.Fatalf("creators = %v, want the Japanese name found by part of it", got)
 	}
 
-	recasedHit, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	recasedHit, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "natsume",
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors for a recased name: %v", err)
+		t.Fatalf("SearchPublishedCreators for a recased name: %v", err)
 	}
-	if got := authorPublicIDs(recasedHit.Msg.Authors); len(got) != 1 || got[0] != "AUTHORUP001" {
-		t.Fatalf("authors = %v, want the uppercase name found by a lowercase query", got)
+	if got := creatorPublicIDs(recasedHit.Msg.Creators); len(got) != 1 || got[0] != "CREATORUP001" {
+		t.Fatalf("creators = %v, want the uppercase name found by a lowercase query", got)
 	}
 }
 
-func TestDBSearchPublishedAuthorsRequiresAPublishedSeries(t *testing.T) {
+func TestDBSearchPublishedCreatorsRequiresAPublishedSeries(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
-	published := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORPUB01", Name: "Sakura Published"})
-	onlyDraft := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORDRAFT", Name: "Sakura Draft"})
-	onlyFuture := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORFUTUR", Name: "Sakura Tomorrow"})
-	_ = env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORNONE1", Name: "Sakura Uncredited"})
+	published := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORPUB01", Name: "Sakura Published"})
+	onlyDraft := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORDRAFT", Name: "Sakura Draft"})
+	onlyFuture := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORFUTUR", Name: "Sakura Tomorrow"})
+	_ = env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORNONE1", Name: "Sakura Uncredited"})
 
 	visible := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Title: "Published Story", Published: true})
 	draft := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Still A Draft"})
@@ -100,114 +100,114 @@ func TestDBSearchPublishedAuthorsRequiresAPublishedSeries(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, onlyDraft.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, onlyFuture.ID, "")
 
-	resp, err := env.catalogClient().SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Sakura",
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors: %v", err)
+		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := authorPublicIDs(resp.Msg.Authors); len(got) != 1 || got[0] != "AUTHORPUB01" {
-		t.Fatalf("authors = %v, want only the author of a currently published series", got)
+	if got := creatorPublicIDs(resp.Msg.Creators); len(got) != 1 || got[0] != "CREATORPUB01" {
+		t.Fatalf("creators = %v, want only the creator of a currently published series", got)
 	}
 }
 
-func TestDBSearchPublishedAuthorsEscapesIlikeMetacharacters(t *testing.T) {
+func TestDBSearchPublishedCreatorsEscapesIlikeMetacharacters(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
-	literal := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORPCT01", Name: "100% Studio"})
-	other := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHOROTH01", Name: "100 Studio"})
+	literal := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORPCT01", Name: "100% Studio"})
+	other := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATOROTH01", Name: "100 Studio"})
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Title: "Published Story", Published: true})
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, literal.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, other.ID, "Artist")
 
-	resp, err := env.catalogClient().SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "100%",
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors: %v", err)
+		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := authorPublicIDs(resp.Msg.Authors); len(got) != 1 || got[0] != "AUTHORPCT01" {
-		t.Fatalf("authors = %v, want only the literal 100%% name", got)
+	if got := creatorPublicIDs(resp.Msg.Creators); len(got) != 1 || got[0] != "CREATORPCT01" {
+		t.Fatalf("creators = %v, want only the literal 100%% name", got)
 	}
 }
 
-func TestDBSearchPublishedAuthorsExcludesAnotherTenant(t *testing.T) {
+func TestDBSearchPublishedCreatorsExcludesAnotherTenant(t *testing.T) {
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
-	mine := env.PG.SeedCreator(t, first.ID, testutil.CreatorSeed{PublicID: "AUTHORA0001", Name: "Shared Name Writer"})
-	theirs := env.PG.SeedCreator(t, second.ID, testutil.CreatorSeed{PublicID: "AUTHORB0001", Name: "Shared Name Artist"})
+	mine := env.PG.SeedCreator(t, first.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Shared Name Writer"})
+	theirs := env.PG.SeedCreator(t, second.ID, testutil.CreatorSeed{PublicID: "CREATORB0001", Name: "Shared Name Artist"})
 	mineSeries := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Tenant A Series", Published: true})
 	theirSeries := env.PG.SeedSeries(t, second.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Tenant B Series", Published: true})
 	env.PG.SeedSeriesCreator(t, first.ID, mineSeries.ID, mine.ID, "")
 	env.PG.SeedSeriesCreator(t, second.ID, theirSeries.ID, theirs.ID, "")
 
-	resp, err := env.catalogClient().SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(first),
 		Query:  "Shared Name",
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors: %v", err)
+		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := authorPublicIDs(resp.Msg.Authors); len(got) != 1 || got[0] != "AUTHORA0001" {
-		t.Fatalf("authors = %v, want only tenant A's hit", got)
+	if got := creatorPublicIDs(resp.Msg.Creators); len(got) != 1 || got[0] != "CREATORA0001" {
+		t.Fatalf("creators = %v, want only tenant A's hit", got)
 	}
 }
 
-func TestDBSearchPublishedAuthorsPagesForwardAndBack(t *testing.T) {
+func TestDBSearchPublishedCreatorsPagesForwardAndBack(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPUB001", Title: "Published Story", Published: true})
-	akira := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORAKIRA", Name: "Akira Ink"})
-	mika := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORMIKA0", Name: "Mika Ink"})
-	yuki := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORYUKI0", Name: "Yuki Ink"})
+	akira := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORAKIRA", Name: "Akira Ink"})
+	mika := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORMIKA0", Name: "Mika Ink"})
+	yuki := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORYUKI0", Name: "Yuki Ink"})
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, akira.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, mika.ID, "Artist")
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, yuki.ID, "")
 
 	client := env.catalogClient()
-	firstPage, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	firstPage, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Ink",
 		Limit:  2,
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors page 1: %v", err)
+		t.Fatalf("SearchPublishedCreators page 1: %v", err)
 	}
-	if got := authorPublicIDs(firstPage.Msg.Authors); len(got) != 2 || got[0] != "AUTHORAKIRA" || got[1] != "AUTHORMIKA0" {
+	if got := creatorPublicIDs(firstPage.Msg.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
 		t.Fatalf("page 1 = %v, want Akira then Mika", got)
 	}
 	if firstPage.Msg.NextToken == "" {
-		t.Fatal("page 1 next_token is empty, want a token for the remaining author")
+		t.Fatal("page 1 next_token is empty, want a token for the remaining creator")
 	}
 
-	secondPage, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	secondPage, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Ink",
 		Limit:  2,
 		Token:  firstPage.Msg.NextToken,
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors page 2: %v", err)
+		t.Fatalf("SearchPublishedCreators page 2: %v", err)
 	}
-	if got := authorPublicIDs(secondPage.Msg.Authors); len(got) != 1 || got[0] != "AUTHORYUKI0" {
+	if got := creatorPublicIDs(secondPage.Msg.Creators); len(got) != 1 || got[0] != "CREATORYUKI0" {
 		t.Fatalf("page 2 = %v, want Yuki alone", got)
 	}
 
-	backAgain, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	backAgain, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Ink",
 		Limit:  2,
 		Token:  secondPage.Msg.PreviousToken,
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors back to page 1: %v", err)
+		t.Fatalf("SearchPublishedCreators back to page 1: %v", err)
 	}
-	if got := authorPublicIDs(backAgain.Msg.Authors); len(got) != 2 || got[0] != "AUTHORAKIRA" || got[1] != "AUTHORMIKA0" {
+	if got := creatorPublicIDs(backAgain.Msg.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
 		t.Fatalf("page 1 revisited = %v, want Akira then Mika again", got)
 	}
 }
@@ -238,7 +238,7 @@ func TestDBSearchPublishedLabelsMatchesNonASCIINameCaseInsensitively(t *testing.
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
 	// A multibyte label name and an ASCII case change have to survive the same
-	// '%q%' ILIKE pattern, as they do for the author search.
+	// '%q%' ILIKE pattern, as they do for the creator search.
 	japanese := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELJP0001", Name: "月刊コミック"})
 	recased := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELUP0001", Name: "MONTHLY COMICS"})
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESJP0001", Title: "Japanese Label Story", Published: true, LabelID: japanese.ID})

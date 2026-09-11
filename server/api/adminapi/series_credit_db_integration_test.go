@@ -62,7 +62,7 @@ func creatorCreditRoleNames(creators []*publirattypesv1.Creator) []string {
 	return names
 }
 
-// One person can be both the original author and the artist, which is two
+// One person can be both the "Original Author" and the "Artist", which is two
 // credits rather than one row that has to choose. They read back in role
 // priority order however the save listed them.
 func TestDBSeriesCreditsOnePersonInTwoRoles(t *testing.T) {
@@ -76,7 +76,7 @@ func TestDBSeriesCreditsOnePersonInTwoRoles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
-	author := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name)
+	originalAuthor := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name)
 	artist := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[1].Name)
 
 	created, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
@@ -86,13 +86,13 @@ func TestDBSeriesCreditsOnePersonInTwoRoles(t *testing.T) {
 		// first is the role rather than the order of the save.
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
 			{CreatorPublicId: creator.Msg.Creator.PublicId, RolePublicId: artist.PublicID},
-			{CreatorPublicId: creator.Msg.Creator.PublicId, RolePublicId: author.PublicID},
+			{CreatorPublicId: creator.Msg.Creator.PublicId, RolePublicId: originalAuthor.PublicID},
 		},
 	}))
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
-	want := []string{author.Name, artist.Name}
+	want := []string{originalAuthor.Name, artist.Name}
 	if got := creatorCreditRoleNames(created.Msg.Series.Creators); !slices.Equal(got, want) {
 		t.Fatalf("credit roles = %v, want %v", got, want)
 	}

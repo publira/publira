@@ -445,34 +445,34 @@ func labelPublicIDs(items []*publirattypesv1.Label) []string {
 	return ids
 }
 
-func TestCatalogSearchPublishedAuthorsSuccess(t *testing.T) {
+func TestCatalogSearchPublishedCreatorsSuccess(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
-	authorID := uuid.Must(uuid.NewV7())
+	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorIDsBySearchNameAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsBySearchNameAscQuery)).
 		WithArgs(tenantID, "%sakura%", nil, false, nil, int32(21)).
-		WillReturnRows(seriesIDRows(authorID))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorsByIDsQuery)).
+		WillReturnRows(seriesIDRows(creatorID))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorsByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
-		WillReturnRows(authorListColumns().
-			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", "Draws things", nil, nil, int64(0), int32(2)))
+		WillReturnRows(creatorListColumns().
+			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", "Draws things", nil, nil, int64(0), int32(2)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	resp, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "  Sakura  ",
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors: %v", err)
+		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if len(resp.Msg.Authors) != 1 || resp.Msg.Authors[0].PublicId != "AUTHOR00001" {
-		t.Fatalf("authors = %+v, want AUTHOR00001", resp.Msg.Authors)
+	if len(resp.Msg.Creators) != 1 || resp.Msg.Creators[0].PublicId != "CREATOR00001" {
+		t.Fatalf("creators = %+v, want CREATOR00001", resp.Msg.Creators)
 	}
-	if resp.Msg.Authors[0].PublishedSeriesCount != 2 {
-		t.Fatalf("published_series_count = %d, want 2", resp.Msg.Authors[0].PublishedSeriesCount)
+	if resp.Msg.Creators[0].PublishedSeriesCount != 2 {
+		t.Fatalf("published_series_count = %d, want 2", resp.Msg.Creators[0].PublishedSeriesCount)
 	}
 	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
 		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.Msg.PreviousToken, resp.Msg.NextToken)
@@ -480,14 +480,14 @@ func TestCatalogSearchPublishedAuthorsSuccess(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-func TestCatalogSearchPublishedAuthorsRejectsEmptyQuery(t *testing.T) {
+func TestCatalogSearchPublishedCreatorsRejectsEmptyQuery(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	_, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "   ",
 	}))
@@ -497,7 +497,7 @@ func TestCatalogSearchPublishedAuthorsRejectsEmptyQuery(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-func TestCatalogSearchPublishedAuthorsRejectsQueryMismatchOnToken(t *testing.T) {
+func TestCatalogSearchPublishedCreatorsRejectsQueryMismatchOnToken(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
@@ -506,7 +506,7 @@ func TestCatalogSearchPublishedAuthorsRejectsQueryMismatchOnToken(t *testing.T) 
 	token := pagination.Encode(pagination.Forward, "akira", "Akira", boundaryID.String())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	_, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Sakura",
 		Token:  token,
@@ -517,7 +517,7 @@ func TestCatalogSearchPublishedAuthorsRejectsQueryMismatchOnToken(t *testing.T) 
 	assertPublicExpectations(t, mock)
 }
 
-func TestCatalogSearchPublishedAuthorsFirstPageReportsNextToken(t *testing.T) {
+func TestCatalogSearchPublishedCreatorsFirstPageReportsNextToken(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
@@ -526,26 +526,26 @@ func TestCatalogSearchPublishedAuthorsFirstPageReportsNextToken(t *testing.T) {
 	akiraID := uuid.Must(uuid.NewV7())
 	mikaID := uuid.Must(uuid.NewV7())
 	overFetchedID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorIDsBySearchNameAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsBySearchNameAscQuery)).
 		WithArgs(tenantID, "%a%", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(akiraID, mikaID, overFetchedID))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorsByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorsByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
-		WillReturnRows(authorListColumns().
-			AddRow(akiraID, "AUTHORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
-			AddRow(mikaID, "AUTHORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
+		WillReturnRows(creatorListColumns().
+			AddRow(akiraID, "CREATORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
+			AddRow(mikaID, "CREATORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	resp, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "A",
 		Limit:  2,
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors: %v", err)
+		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := len(resp.Msg.Authors); got != 2 {
-		t.Fatalf("author count = %d, want the over-fetched row dropped", got)
+	if got := len(resp.Msg.Creators); got != 2 {
+		t.Fatalf("creator count = %d, want the over-fetched row dropped", got)
 	}
 	wantToken := pagination.Encode(pagination.Forward, "a", "Mika", mikaID.String())
 	if resp.Msg.NextToken != wantToken {
@@ -557,7 +557,7 @@ func TestCatalogSearchPublishedAuthorsFirstPageReportsNextToken(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-func TestCatalogSearchPublishedAuthorsFollowsPreviousTokenBackwards(t *testing.T) {
+func TestCatalogSearchPublishedCreatorsFollowsPreviousTokenBackwards(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
@@ -570,27 +570,27 @@ func TestCatalogSearchPublishedAuthorsFollowsPreviousTokenBackwards(t *testing.T
 	mikaID := uuid.Must(uuid.NewV7())
 	// A backward page scans descending names, so Yuki's predecessor Mika comes
 	// first, then Akira. pagination.Page flips that back to name ascending.
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorIDsBySearchNameDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsBySearchNameDescQuery)).
 		WithArgs(tenantID, "%a%", boundaryID, false, "Yuki", int32(3)).
 		WillReturnRows(seriesIDRows(mikaID, akiraID))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedAuthorsByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorsByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
-		WillReturnRows(authorListColumns().
-			AddRow(akiraID, "AUTHORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
-			AddRow(mikaID, "AUTHORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
+		WillReturnRows(creatorListColumns().
+			AddRow(akiraID, "CREATORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
+			AddRow(mikaID, "CREATORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedAuthors(context.Background(), connect.NewRequest(&publirav1.SearchPublishedAuthorsRequest{
+	resp, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "A",
 		Limit:  2,
 		Token:  token,
 	}))
 	if err != nil {
-		t.Fatalf("SearchPublishedAuthors: %v", err)
+		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := authorPublicIDs(resp.Msg.Authors); !slices.Equal(got, []string{"AUTHORAKIRA", "AUTHORMIKA0"}) {
-		t.Fatalf("authors = %v, want the backward page flipped back to name ascending", got)
+	if got := creatorPublicIDs(resp.Msg.Creators); !slices.Equal(got, []string{"CREATORAKIRA", "CREATORMIKA0"}) {
+		t.Fatalf("creators = %v, want the backward page flipped back to name ascending", got)
 	}
 	if resp.Msg.PreviousToken != "" {
 		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)

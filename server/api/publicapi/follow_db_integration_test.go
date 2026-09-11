@@ -18,9 +18,9 @@ func episodeFollowTarget(publicID string) *publirav1.FollowTarget {
 	}
 }
 
-func authorFollowTarget(publicID string) *publirav1.FollowTarget {
+func creatorFollowTarget(publicID string) *publirav1.FollowTarget {
 	return &publirav1.FollowTarget{
-		Type:     publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_AUTHOR,
+		Type:     publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR,
 		PublicId: publicID,
 	}
 }
@@ -38,8 +38,8 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERFOLA", "member-follow-a@example.com", "Member A", "tenant_member")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESFOLA1", Title: "Public series", Published: true})
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEFOLA", Title: "Public episode", Status: testutil.EpisodeStatusPublished})
-	author := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORFOLA1", Name: "Public author"})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, author.ID, "")
+	creator := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORFOLA1", Name: "Public creator"})
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, creator.ID, "")
 	client := env.followClient()
 
 	request := func(target *publirav1.FollowTarget) *connect.Request[publirav1.GetMyFollowStatusRequest] {
@@ -79,8 +79,8 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 	if otherStatus.Msg.IsFollowing {
 		t.Fatal("other member can see the first member's follow")
 	}
-	if !follow(authorFollowTarget(author.PublicID)).Msg.IsFollowing {
-		t.Fatal("author Follow is_following = false")
+	if !follow(creatorFollowTarget(creator.PublicID)).Msg.IsFollowing {
+		t.Fatal("creator Follow is_following = false")
 	}
 	if !follow(seriesFollowTarget(series.PublicID)).Msg.IsFollowing {
 		t.Fatal("series Follow is_following = false")
@@ -120,8 +120,8 @@ func TestDBFollowServiceListsOnlyPublicTargetsWithCursor(t *testing.T) {
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERFOLB", "member-follow-b@example.com", "Member B", "tenant_member")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESFOLB1", Title: "Public series", Published: true})
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEFOLB", Title: "Public episode", Status: testutil.EpisodeStatusPublished})
-	author := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "AUTHORFOLB1", Name: "Public author"})
-	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, author.ID, "")
+	creator := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORFOLB1", Name: "Public creator"})
+	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, creator.ID, "")
 	draftSeries := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT", Title: "Draft series"})
 	draftEpisode := env.PG.SeedEpisode(t, tenant.ID, draftSeries.ID, testutil.EpisodeSeed{PublicID: "EPISODEDRFT", Title: "Draft episode", Status: testutil.EpisodeStatusPublished})
 
@@ -131,8 +131,8 @@ func TestDBFollowServiceListsOnlyPublicTargetsWithCursor(t *testing.T) {
 	if _, err := env.PG.DB.ExecContext(ctx, "INSERT INTO episode_follows (tenant_id, user_id, episode_id, created_at) VALUES ($1, $2, $3, $4)", tenant.ID, member.ID, episode.ID, time.Now().Add(-2*time.Minute)); err != nil {
 		t.Fatalf("insert public episode follow: %v", err)
 	}
-	if _, err := env.PG.DB.ExecContext(ctx, "INSERT INTO creator_follows (tenant_id, user_id, creator_id, created_at) VALUES ($1, $2, $3, $4)", tenant.ID, member.ID, author.ID, time.Now().Add(-time.Minute)); err != nil {
-		t.Fatalf("insert public author follow: %v", err)
+	if _, err := env.PG.DB.ExecContext(ctx, "INSERT INTO creator_follows (tenant_id, user_id, creator_id, created_at) VALUES ($1, $2, $3, $4)", tenant.ID, member.ID, creator.ID, time.Now().Add(-time.Minute)); err != nil {
+		t.Fatalf("insert public creator follow: %v", err)
 	}
 	if _, err := env.PG.DB.ExecContext(ctx, "INSERT INTO episode_follows (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)", tenant.ID, member.ID, draftEpisode.ID); err != nil {
 		t.Fatalf("insert draft episode follow: %v", err)
@@ -143,8 +143,8 @@ func TestDBFollowServiceListsOnlyPublicTargetsWithCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListMyFollows page 1: %v", err)
 	}
-	if len(first.Msg.Follows) != 1 || first.Msg.Follows[0].TargetType != publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_AUTHOR || first.Msg.Follows[0].TargetPublicId != author.PublicID {
-		t.Fatalf("page 1 = %#v, want author follow only", first.Msg.Follows)
+	if len(first.Msg.Follows) != 1 || first.Msg.Follows[0].TargetType != publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR || first.Msg.Follows[0].TargetPublicId != creator.PublicID {
+		t.Fatalf("page 1 = %#v, want creator follow only", first.Msg.Follows)
 	}
 	if first.Msg.NextToken == "" || first.Msg.PreviousToken != "" {
 		t.Fatalf("page 1 tokens = (%q, %q), want empty previous and non-empty next", first.Msg.PreviousToken, first.Msg.NextToken)
@@ -165,8 +165,8 @@ func TestDBFollowServiceListsOnlyPublicTargetsWithCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListMyFollows previous page: %v", err)
 	}
-	if len(back.Msg.Follows) != 1 || back.Msg.Follows[0].TargetPublicId != author.PublicID {
-		t.Fatalf("previous page = %#v, want author follow", back.Msg.Follows)
+	if len(back.Msg.Follows) != 1 || back.Msg.Follows[0].TargetPublicId != creator.PublicID {
+		t.Fatalf("previous page = %#v, want creator follow", back.Msg.Follows)
 	}
 }
 
