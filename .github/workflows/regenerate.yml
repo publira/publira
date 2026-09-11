@@ -8,7 +8,7 @@ env:
   # renovate: datasource=github-releases depName=sqlc-dev/sqlc versioning=semver-coerced
   SQLC_VERSION: 1.31.1
   # renovate: datasource=github-releases depName=bufbuild/buf versioning=semver-coerced
-  BUF_VERSION: 1.72.0
+  BUF_VERSION: 1.73.0
 
 on:
   pull_request:
