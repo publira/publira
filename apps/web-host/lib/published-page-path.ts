@@ -14,9 +14,9 @@ import type { Locale } from "@publira/i18n";
  */
 const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "announcements",
-  "authors",
   "confirm-email",
   "confirm-password",
+  "creators",
   "genres",
   "labels",
   "login",

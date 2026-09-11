@@ -30,7 +30,7 @@ const SiteNavLabels = () => (
     </span>
     <span>
       <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
-        <ClientMessage message="host.nav.authors" />
+        <ClientMessage message="host.nav.creators" />
       </Suspense>
     </span>
     <span>

@@ -1,7 +1,7 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getPublishedAuthorDetail, listPublishedAuthors } from "./authors";
+import { getPublishedCreatorDetail, listPublishedCreators } from "./creators";
 
 const { mockGetPublishedCreatorDetail, mockListPublishedCreators } = vi.hoisted(
   () => ({
@@ -19,12 +19,12 @@ vi.mock("./api-client", () => ({
   },
 }));
 
-describe("listPublishedAuthors", () => {
+describe("listPublishedCreators", () => {
   beforeEach(() => {
     mockListPublishedCreators.mockReset();
   });
 
-  it("Format public author and return cursor token", async () => {
+  it("Format public creator and return cursor token", async () => {
     mockListPublishedCreators.mockResolvedValueOnce({
       creators: [
         {
@@ -44,7 +44,7 @@ describe("listPublishedAuthors", () => {
       previousToken: "PREV",
     });
 
-    const result = await listPublishedAuthors(" TENANT_1 ", {
+    const result = await listPublishedCreators(" TENANT_1 ", {
       limit: 12,
       locale: "en",
       token: "abc",
@@ -58,7 +58,7 @@ describe("listPublishedAuthors", () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        authors: [
+        creators: [
           {
             iconImageUrl: "/images/creators/creator-yamada",
             id: "CREATOR_YAMADA",
@@ -85,7 +85,7 @@ describe("listPublishedAuthors", () => {
       previousToken: "",
     });
 
-    await listPublishedAuthors("TENANT_1", { locale: "en" });
+    await listPublishedCreators("TENANT_1", { locale: "en" });
 
     expect(mockListPublishedCreators).toHaveBeenCalledWith({
       limit: 20,
@@ -102,7 +102,7 @@ describe("listPublishedAuthors", () => {
     );
 
     await expect(
-      listPublishedAuthors("TENANT_1", { locale: "en" })
+      listPublishedCreators("TENANT_1", { locale: "en" })
     ).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,
@@ -110,17 +110,17 @@ describe("listPublishedAuthors", () => {
   });
 });
 
-describe("getPublishedAuthorDetail", () => {
+describe("getPublishedCreatorDetail", () => {
   beforeEach(() => {
     mockGetPublishedCreatorDetail.mockReset();
   });
 
-  it("Return 1 page of author details and related series", async () => {
+  it("Return 1 page of creator details and related series", async () => {
     mockGetPublishedCreatorDetail.mockResolvedValueOnce({
       creator: {
         iconImageUrl: "/images/creators/creator-a",
-        name: "Author A",
-        profileText: "Author A profile",
+        name: "Creator A",
+        profileText: "Creator A profile",
         publicId: "CREATOR_A",
         publishedSeriesCount: 3,
       },
@@ -128,7 +128,7 @@ describe("getPublishedAuthorDetail", () => {
       previousToken: "",
       series: [
         {
-          creators: [{ name: "Author A", publicId: "CREATOR_A" }],
+          creators: [{ name: "Creator A", publicId: "CREATOR_A" }],
           eyeCatchImageVariants: [
             {
               contentType: "image/webp",
@@ -147,11 +147,15 @@ describe("getPublishedAuthorDetail", () => {
       ],
     });
 
-    const result = await getPublishedAuthorDetail(" TENANT_1 ", " CREATOR_A ", {
-      limit: 12,
-      locale: "en",
-      token: "",
-    });
+    const result = await getPublishedCreatorDetail(
+      " TENANT_1 ",
+      " CREATOR_A ",
+      {
+        limit: 12,
+        locale: "en",
+        token: "",
+      }
+    );
 
     expect(mockGetPublishedCreatorDetail).toHaveBeenCalledWith({
       limit: 12,
@@ -164,19 +168,19 @@ describe("getPublishedAuthorDetail", () => {
       value: {
         iconImageUrl: "/images/creators/creator-a",
         id: "CREATOR_A",
-        name: "Author A",
+        name: "Creator A",
         nextToken: "NEXT_SERIES",
         previousToken: "",
-        profileText: "Author A profile",
-        // The shelf on the author page draws covers and creators, so the
+        profileText: "Creator A profile",
+        // The shelf on the creator page draws covers and creators, so the
         // mapper hands back the whole series item rather than a name and an id.
         series: [
           {
-            creatorNames: ["Author A"],
+            creatorNames: ["Creator A"],
             creators: [
               {
                 iconImageUrl: "",
-                name: "Author A",
+                name: "Creator A",
                 profileText: "",
                 publicId: "CREATOR_A",
               },
@@ -217,7 +221,7 @@ describe("getPublishedAuthorDetail", () => {
     mockGetPublishedCreatorDetail.mockResolvedValueOnce({
       creator: {
         iconImageUrl: "",
-        name: "Author A",
+        name: "Creator A",
         profileText: "",
         publicId: "CREATOR_A",
         publishedSeriesCount: 1,
@@ -230,7 +234,7 @@ describe("getPublishedAuthorDetail", () => {
       ],
     });
 
-    const result = await getPublishedAuthorDetail("TENANT_1", "CREATOR_A", {
+    const result = await getPublishedCreatorDetail("TENANT_1", "CREATOR_A", {
       locale: "en",
     });
 
@@ -239,7 +243,7 @@ describe("getPublishedAuthorDetail", () => {
     ).toEqual(["SERIES_1"]);
   });
 
-  it("null if author is missing", async () => {
+  it("null if creator is missing", async () => {
     mockGetPublishedCreatorDetail.mockResolvedValueOnce({
       creator: undefined,
       nextToken: "",
@@ -248,40 +252,40 @@ describe("getPublishedAuthorDetail", () => {
     });
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
+      getPublishedCreatorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
   it("null if the API returns not_found", async () => {
     mockGetPublishedCreatorDetail.mockRejectedValueOnce(
-      new ConnectError("author not found", Code.NotFound)
+      new ConnectError("creator not found", Code.NotFound)
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "UNKNOWN_CREATOR", { locale: "en" })
+      getPublishedCreatorDetail("TENANT_1", "UNKNOWN_CREATOR", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
   // `"use cache"` re-creates a thrown error from name + message, dropping
   // `code`; classification has to survive on the message prefix alone.
   it("ConnectError regenerated at cache boundaries will also be null", async () => {
-    const rehydrated = new Error("[not_found] author not found");
+    const rehydrated = new Error("[not_found] creator not found");
     rehydrated.name = "ConnectError";
     mockGetPublishedCreatorDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
+      getPublishedCreatorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
-  // Another tenant's author comes back as permission_denied, not not_found.
+  // Another tenant's creator comes back as permission_denied, not not_found.
   it("null if the API returns permission_denied", async () => {
     mockGetPublishedCreatorDetail.mockRejectedValueOnce(
-      new ConnectError("author is not published", Code.PermissionDenied)
+      new ConnectError("creator is not published", Code.PermissionDenied)
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
+      getPublishedCreatorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
     ).resolves.toEqual({ ok: true, value: null });
   });
 
@@ -291,7 +295,7 @@ describe("getPublishedAuthorDetail", () => {
     );
 
     await expect(
-      getPublishedAuthorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
+      getPublishedCreatorDetail("TENANT_1", "CREATOR_A", { locale: "en" })
     ).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,

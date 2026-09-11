@@ -1086,7 +1086,7 @@ describe("catalog.listRankedSeries", () => {
           previousRank: 4,
           rank: 1,
           series: {
-            creators: [{ name: "Author A", publicId: "AUTHOR_1" }],
+            creators: [{ name: "Creator A", publicId: "CREATOR_1" }],
             publicId: "SERIES_1",
             synopsis: "S1",
             title: "Series 1",
@@ -1129,13 +1129,13 @@ describe("catalog.listRankedSeries", () => {
             previousRank: 4,
             rank: 1,
             series: {
-              creatorNames: ["Author A"],
+              creatorNames: ["Creator A"],
               creators: [
                 {
                   iconImageUrl: "",
-                  name: "Author A",
+                  name: "Creator A",
                   profileText: "",
-                  publicId: "AUTHOR_1",
+                  publicId: "CREATOR_1",
                 },
               ],
               eyeCatchImageUpdatedAt: undefined,

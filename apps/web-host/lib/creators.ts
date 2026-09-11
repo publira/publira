@@ -13,14 +13,14 @@ import { toSeriesListItem } from "./catalog";
 import type { SeriesListItem } from "./catalog";
 import { localizedReadFailure } from "./read-failure";
 
-export interface PublishedAuthorListItem {
+export interface PublishedCreatorListItem {
   id: string;
   name: string;
   iconImageUrl: string;
   seriesCount: number;
 }
 
-export interface PublishedAuthorDetail {
+export interface PublishedCreatorDetail {
   id: string;
   name: string;
   iconImageUrl: string;
@@ -33,8 +33,8 @@ export interface PublishedAuthorDetail {
   nextToken: string;
 }
 
-export interface PublishedAuthorListResult {
-  authors: PublishedAuthorListItem[];
+export interface PublishedCreatorListResult {
+  creators: PublishedCreatorListItem[];
   /** Token for the previous page. Empty on the first page. */
   previousToken: string;
   /** Token for the next page. Empty on the last page. */
@@ -42,24 +42,24 @@ export interface PublishedAuthorListResult {
 }
 
 /**
- * The generated `PublishedCreator` fields {@link mapPublishedAuthor} reads.
+ * The generated `PublishedCreator` fields {@link mapPublishedCreator} reads.
  * Naming them against the message type is what makes a proto rename fail here —
- * a restated structural type keeps compiling, and the author page then renders
- * a nameless author with no profile text and nothing pointing at the cause.
+ * a restated structural type keeps compiling, and the creator page then renders
+ * a nameless creator with no profile text and nothing pointing at the cause.
  */
-type RawPublishedAuthor = Pick<
+type RawPublishedCreator = Pick<
   PublishedCreator,
   "iconImageUrl" | "name" | "profileText" | "publicId" | "publishedSeriesCount"
 >;
 
-const mapPublishedAuthor = (
-  author: RawPublishedAuthor
-): Omit<PublishedAuthorDetail, "nextToken" | "previousToken" | "series"> => ({
-  iconImageUrl: author.iconImageUrl?.trim() ?? "",
-  id: author.publicId ?? "",
-  name: (author.name ?? "").trim(),
-  profileText: (author.profileText ?? "").trim(),
-  seriesCount: author.publishedSeriesCount ?? 0,
+const mapPublishedCreator = (
+  creator: RawPublishedCreator
+): Omit<PublishedCreatorDetail, "nextToken" | "previousToken" | "series"> => ({
+  iconImageUrl: creator.iconImageUrl?.trim() ?? "",
+  id: creator.publicId ?? "",
+  name: (creator.name ?? "").trim(),
+  profileText: (creator.profileText ?? "").trim(),
+  seriesCount: creator.publishedSeriesCount ?? 0,
 });
 
 /**
@@ -67,14 +67,14 @@ const mapPublishedAuthor = (
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
  * `proto/README.md`.
  */
-export const listPublishedAuthors = async (
+export const listPublishedCreators = async (
   tenantId: string,
   {
     limit = 20,
     locale,
     token = "",
   }: { limit?: number; locale: Locale; token?: string }
-): Promise<CachedReadResult<PublishedAuthorListResult>> => {
+): Promise<CachedReadResult<PublishedCreatorListResult>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -90,14 +90,14 @@ export const listPublishedAuthors = async (
       token,
     });
   } catch (error) {
-    return localizedReadFailure(error, locale, "host.authors.list_failed");
+    return localizedReadFailure(error, locale, "host.creators.list_failed");
   }
 
   return {
     ok: true,
     value: {
-      authors: (response.creators ?? []).map((author) => {
-        const mapped = mapPublishedAuthor(author);
+      creators: (response.creators ?? []).map((creator) => {
+        const mapped = mapPublishedCreator(creator);
         return {
           iconImageUrl: mapped.iconImageUrl,
           id: mapped.id,
@@ -113,17 +113,17 @@ export const listPublishedAuthors = async (
 
 /**
  * Creators whose name matches, narrowed to the ones credited on a currently
- * published series — the population {@link listPublishedAuthors} shows. A
+ * published series — the population {@link listPublishedCreators} shows. A
  * publish therefore changes the answer, so the series list tag invalidates it
- * alongside the author tag.
+ * alongside the creator tag.
  *
  * Only the name is matched: a biography that mentions another creator would
  * otherwise answer a name search with someone the reader did not ask for.
  *
- * Cursor pagination as {@link listPublishedAuthors}, plus the rule that a token
+ * Cursor pagination as {@link listPublishedCreators}, plus the rule that a token
  * belongs to the query it was built for.
  */
-export const searchPublishedAuthors = async (
+export const searchPublishedCreators = async (
   tenantId: string,
   {
     limit = 20,
@@ -131,7 +131,7 @@ export const searchPublishedAuthors = async (
     query,
     token = "",
   }: { limit?: number; locale: Locale; query: string; token?: string }
-): Promise<CachedReadResult<PublishedAuthorListResult>> => {
+): Promise<CachedReadResult<PublishedCreatorListResult>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -149,14 +149,14 @@ export const searchPublishedAuthors = async (
       token,
     });
   } catch (error) {
-    return localizedReadFailure(error, locale, "host.search.authors_failed");
+    return localizedReadFailure(error, locale, "host.search.creators_failed");
   }
 
   return {
     ok: true,
     value: {
-      authors: (response.creators ?? []).map((author) => {
-        const mapped = mapPublishedAuthor(author);
+      creators: (response.creators ?? []).map((creator) => {
+        const mapped = mapPublishedCreator(creator);
         return {
           iconImageUrl: mapped.iconImageUrl,
           id: mapped.id,
@@ -171,7 +171,7 @@ export const searchPublishedAuthors = async (
 };
 
 /**
- * `ok: true` with a `null` value when the author does not exist, has no
+ * `ok: true` with a `null` value when the creator does not exist, has no
  * currently published series, or belongs to another tenant — the server
  * returns `not_found` or `permission_denied` for those and the public site
  * must not tell them apart.
@@ -180,21 +180,21 @@ export const searchPublishedAuthors = async (
  * fill that throws fails the whole request.
  *
  * Related series are one cursor page. Pass the previous response's token to
- * move; the first call (empty token) is enough to render the author.
+ * move; the first call (empty token) is enough to render the creator.
  */
-export const getPublishedAuthorDetail = async (
+export const getPublishedCreatorDetail = async (
   tenantId: string,
-  authorId: string,
+  creatorId: string,
   {
     limit = 20,
     locale,
     token = "",
   }: { limit?: number; locale: Locale; token?: string }
-): Promise<CachedReadResult<PublishedAuthorDetail | null>> => {
+): Promise<CachedReadResult<PublishedCreatorDetail | null>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
-  const normalizedAuthorId = authorId.trim();
+  const normalizedCreatorId = creatorId.trim();
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: Awaited<
@@ -203,7 +203,7 @@ export const getPublishedAuthorDetail = async (
   try {
     response = await apiClient.catalog.getPublishedCreatorDetail({
       limit,
-      publicId: normalizedAuthorId,
+      publicId: normalizedCreatorId,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -211,7 +211,7 @@ export const getPublishedAuthorDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
-    return localizedReadFailure(error, locale, "host.authors.detail_failed");
+    return localizedReadFailure(error, locale, "host.creators.detail_failed");
   }
 
   if (!response.creator) {
@@ -221,7 +221,7 @@ export const getPublishedAuthorDetail = async (
   return {
     ok: true,
     value: {
-      ...mapPublishedAuthor(response.creator),
+      ...mapPublishedCreator(response.creator),
       nextToken: response.nextToken ?? "",
       previousToken: response.previousToken ?? "",
       series: (response.series ?? []).flatMap((series) =>

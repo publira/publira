@@ -333,10 +333,10 @@ const SiteNav = async () => {
   return (
     <SiteLayoutNav>
       <SiteLayoutNavLink
-        href={withLocalePrefix(locale, defaultLocale, "/authors")}
+        href={withLocalePrefix(locale, defaultLocale, "/creators")}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
-          <Message message="host.nav.authors" />
+          <Message message="host.nav.creators" />
         </Suspense>
       </SiteLayoutNavLink>
       <SiteLayoutNavLink
@@ -469,10 +469,10 @@ const MobileNavigationLinks = async () => {
   return (
     <SiteLayoutMobileNavigationLinks>
       <SiteLayoutMobileNavigationLink
-        href={withLocalePrefix(locale, defaultLocale, "/authors")}
+        href={withLocalePrefix(locale, defaultLocale, "/creators")}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
-          <Message message="host.nav.authors" />
+          <Message message="host.nav.creators" />
         </Suspense>
       </SiteLayoutMobileNavigationLink>
       <SiteLayoutMobileNavigationLink

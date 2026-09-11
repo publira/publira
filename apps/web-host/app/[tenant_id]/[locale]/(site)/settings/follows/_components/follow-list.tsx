@@ -20,7 +20,7 @@ import { followsListHref } from "../_lib/search-params";
 import { UnfollowButton } from "./unfollow-button";
 
 const kindLabelKey: Record<FollowTargetKind, HostMessageKey> = {
-  author: "host.settings.follows_kind_author",
+  creator: "host.settings.follows_kind_creator",
   series: "host.settings.follows_kind_series",
 };
 

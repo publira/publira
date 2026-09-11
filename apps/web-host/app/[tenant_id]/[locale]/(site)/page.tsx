@@ -30,7 +30,7 @@ import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { listPublishedGenres } from "#lib/catalog";
 import type { SeriesListItem } from "#lib/catalog";
 import {
-  getCatalogTopFeaturedAuthors,
+  getCatalogTopFeaturedCreators,
   getCatalogTopFeaturedLabels,
   getCatalogTopFeaturedWork,
   getCatalogTopFreeSeries,
@@ -113,8 +113,8 @@ const resolveUpdatedSeriesLinkIds = (
  * the read reported a failure or something threw unexpectedly.
  */
 const SECTION_TITLES = {
-  authors: "host.top.featured_authors_error",
   continueReading: "host.top.continue_error",
+  creators: "host.top.featured_creators_error",
   featuredWork: "host.top.featured_work_error",
   freeSeries: "host.top.free_error",
   genres: "host.top.genres_error",
@@ -976,42 +976,42 @@ const FeaturedLabelsSection = async () => {
   );
 };
 
-const FeaturedAuthorsSection = async () => {
+const FeaturedCreatorsSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const result = await getCatalogTopFeaturedAuthors(tenantId, { locale });
+  const result = await getCatalogTopFeaturedCreators(tenantId, { locale });
 
   if (!result.ok) {
     return (
       <SectionReadError
         description={result.message}
-        title={SECTION_TITLES.authors}
+        title={SECTION_TITLES.creators}
       />
     );
   }
 
-  const featuredAuthors = result.value;
+  const featuredCreators = result.value;
 
-  if (featuredAuthors.length === 0) {
-    return <SectionEmpty message="host.top.featured_authors_empty" />;
+  if (featuredCreators.length === 0) {
+    return <SectionEmpty message="host.top.featured_creators_empty" />;
   }
 
   return (
     <ul className="divide-y divide-border">
-      {featuredAuthors.map((author) => (
-        <li key={author.id}>
+      {featuredCreators.map((creator) => (
+        <li key={creator.id}>
           <LocaleLink
             className="group flex items-baseline justify-between gap-4 py-3"
-            href={`/authors/${author.id}`}
+            href={`/creators/${creator.id}`}
           >
             <span className="truncate underline-offset-4 group-hover:underline">
-              {author.name}
+              {creator.name}
             </span>
             <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message
                   message="host.common.series_count"
-                  values={{ count: author.seriesCount }}
+                  values={{ count: creator.seriesCount }}
                 />
               </Suspense>
             </span>
@@ -1205,14 +1205,14 @@ const Page = () => (
         </div>
       </section>
 
-      <section aria-labelledby="featured-authors">
+      <section aria-labelledby="featured-creators">
         <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
           <h2
             className="font-serif text-xl leading-tight"
-            id="featured-authors"
+            id="featured-creators"
           >
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
-              <Message message="host.top.featured_authors_heading" />
+              <Message message="host.top.featured_creators_heading" />
             </Suspense>
           </h2>
           <Suspense
@@ -1220,7 +1220,7 @@ const Page = () => (
           >
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href="/authors"
+              href="/creators"
             >
               <Message message="host.top.view_all" />
             </LocaleLink>
@@ -1230,12 +1230,12 @@ const Page = () => (
           <SectionErrorBoundary
             title={
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                <Message message={SECTION_TITLES.authors} />
+                <Message message={SECTION_TITLES.creators} />
               </Suspense>
             }
           >
             <Suspense fallback={<NameListSkeleton />}>
-              <FeaturedAuthorsSection />
+              <FeaturedCreatorsSection />
             </Suspense>
           </SectionErrorBoundary>
         </div>

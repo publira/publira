@@ -37,12 +37,12 @@ describe("parseSearchPageSearchParams", () => {
   it("discards a token that is not base64url", () => {
     expect(
       parseSearchPageSearchParams({
-        kind: "authors",
+        kind: "creators",
         q: "Seed",
         token: "djF8Zg==",
       })
     ).toEqual({
-      kind: "authors",
+      kind: "creators",
       query: "Seed",
       token: "",
     });
@@ -81,8 +81,8 @@ describe("searchPageHref", () => {
   });
 
   it("leaves only q and kind when the token is empty", () => {
-    expect(searchPageHref("Seed", "authors")).toBe(
-      "/search?q=Seed&kind=authors"
+    expect(searchPageHref("Seed", "creators")).toBe(
+      "/search?q=Seed&kind=creators"
     );
   });
 

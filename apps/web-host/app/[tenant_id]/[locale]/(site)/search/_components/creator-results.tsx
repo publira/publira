@@ -20,25 +20,25 @@ import {
 } from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { searchPublishedAuthors } from "#lib/authors";
+import { searchPublishedCreators } from "#lib/creators";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import type { SearchGroupView } from "../_lib/search-group";
 import { searchPageHref } from "../_lib/search-params";
 
-/** One cursor page of the author group's own view. */
-const AUTHORS_PAGE_SIZE = 20;
+/** One cursor page of the creator group's own view. */
+const CREATORS_PAGE_SIZE = 20;
 
-/** How many authors the overview shows before the link into that view. */
-const AUTHORS_OVERVIEW_SIZE = 5;
+/** How many creators the overview shows before the link into that view. */
+const CREATORS_OVERVIEW_SIZE = 5;
 
 /** Enough rows to fill a phone screen while the read comes back. */
-const AUTHORS_SKELETON_COUNT = 5;
+const CREATORS_SKELETON_COUNT = 5;
 
-export const AuthorResultsSkeleton = () => (
+export const CreatorResultsSkeleton = () => (
   <div className="divide-y divide-border border-t border-border">
-    {Array.from({ length: AUTHORS_SKELETON_COUNT }, (_, index) => (
+    {Array.from({ length: CREATORS_SKELETON_COUNT }, (_, index) => (
       <div
         className="flex items-baseline justify-between gap-4 py-3"
         key={index}
@@ -55,13 +55,13 @@ export const AuthorResultsSkeleton = () => (
  * for a value that cannot be a node: an `aria-label`. The key stays written out
  * here, beside the `getMessage` that reads it.
  */
-const AuthorPaginationNav = async ({ children }: { children: ReactNode }) => {
+const CreatorPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
   return (
     <ListPagination
-      aria-label={getMessage(messages, "host.search.authors_pagination_aria")}
+      aria-label={getMessage(messages, "host.search.creators_pagination_aria")}
     >
       {children}
     </ListPagination>
@@ -69,7 +69,7 @@ const AuthorPaginationNav = async ({ children }: { children: ReactNode }) => {
 };
 
 /** The two directions, written once for both places this group shows them. */
-const AuthorPagination = ({
+const CreatorPagination = ({
   nextToken,
   previousToken,
   query,
@@ -79,10 +79,10 @@ const AuthorPagination = ({
   query: string;
 }) => (
   <Suspense fallback={<ListPaginationSkeleton />}>
-    <AuthorPaginationNav>
+    <CreatorPaginationNav>
       <ListPaginationStep
         href={
-          previousToken ? searchPageHref(query, "authors", previousToken) : ""
+          previousToken ? searchPageHref(query, "creators", previousToken) : ""
         }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
@@ -90,27 +90,27 @@ const AuthorPagination = ({
         </Suspense>
       </ListPaginationStep>
       <ListPaginationStep
-        href={nextToken ? searchPageHref(query, "authors", nextToken) : ""}
+        href={nextToken ? searchPageHref(query, "creators", nextToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="host.common.next_page" />
         </Suspense>
       </ListPaginationStep>
-    </AuthorPaginationNav>
+    </CreatorPaginationNav>
   </Suspense>
 );
 
 /**
  * The credited creators whose name matches the keyword. This is the group that
  * answers a reader who typed a name rather than a title, so it stands on its
- * own: a keyword that matches no series at all still brings the author back.
+ * own: a keyword that matches no series at all still brings the creator back.
  *
  * In `page` view this is the whole group, one cursor page at a time. In
  * `overview` view it is the first few rows, and the link under them appears
  * only when the server hands back a next token — a "show all" that leads to the
  * same rows the reader is already looking at is a dead end.
  */
-export const AuthorResults = async ({
+export const CreatorResults = async ({
   query,
   token,
   view,
@@ -122,8 +122,8 @@ export const AuthorResults = async ({
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const overview = view === "overview";
 
-  const result = await searchPublishedAuthors(tenantId, {
-    limit: overview ? AUTHORS_OVERVIEW_SIZE : AUTHORS_PAGE_SIZE,
+  const result = await searchPublishedCreators(tenantId, {
+    limit: overview ? CREATORS_OVERVIEW_SIZE : CREATORS_PAGE_SIZE,
     locale,
     query,
     token,
@@ -135,7 +135,7 @@ export const AuthorResults = async ({
         <SectionErrorHeading>
           <SectionErrorTitle>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="host.search.authors_error" />
+              <Message message="host.search.creators_error" />
             </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>{result.message}</SectionErrorDescription>
@@ -144,16 +144,16 @@ export const AuthorResults = async ({
     );
   }
 
-  const { authors, nextToken, previousToken } = result.value;
+  const { creators, nextToken, previousToken } = result.value;
 
-  if (authors.length === 0) {
+  if (creators.length === 0) {
     if (!token) {
       return (
         <EmptyState>
           <EmptyStateDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message
-                message="host.search.authors_no_results"
+                message="host.search.creators_no_results"
                 values={{ query }}
               />
             </Suspense>
@@ -170,12 +170,12 @@ export const AuthorResults = async ({
         <EmptyState>
           <EmptyStateDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <Message message="host.authors.page_empty" />
+              <Message message="host.creators.page_empty" />
             </Suspense>
           </EmptyStateDescription>
         </EmptyState>
         {previousToken || nextToken ? (
-          <AuthorPagination
+          <CreatorPagination
             nextToken={nextToken}
             previousToken={previousToken}
             query={query}
@@ -184,10 +184,10 @@ export const AuthorResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "authors")}
+              href={searchPageHref(query, "creators")}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                <Message message="host.search.authors_first_page" />
+                <Message message="host.search.creators_first_page" />
               </Suspense>
             </LocaleLink>
           </p>
@@ -199,20 +199,20 @@ export const AuthorResults = async ({
   return (
     <div className="grid gap-8">
       <ul className="divide-y divide-border border-t border-border">
-        {authors.map((author) => (
-          <li key={author.id}>
+        {creators.map((creator) => (
+          <li key={creator.id}>
             <LocaleLink
               className="group flex items-baseline justify-between gap-4 py-3"
-              href={`/authors/${author.id}`}
+              href={`/creators/${creator.id}`}
             >
               <span className="truncate underline-offset-4 group-hover:underline">
-                {author.name}
+                {creator.name}
               </span>
               <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <Message
                     message="host.common.series_count"
-                    values={{ count: author.seriesCount }}
+                    values={{ count: creator.seriesCount }}
                   />
                 </Suspense>
               </span>
@@ -226,16 +226,16 @@ export const AuthorResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "authors")}
+              href={searchPageHref(query, "creators")}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="host.search.authors_show_all" />
+                <Message message="host.search.creators_show_all" />
               </Suspense>
             </LocaleLink>
           </p>
         )
       ) : (
-        <AuthorPagination
+        <CreatorPagination
           nextToken={nextToken}
           previousToken={previousToken}
           query={query}

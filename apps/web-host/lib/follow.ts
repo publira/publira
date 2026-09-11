@@ -18,18 +18,18 @@ import { applyCacheTag, tenantFollowsTag } from "./cache-tags";
 import { loadHostMessages } from "./messages";
 
 /** Public catalog follow targets this app exposes on detail pages. */
-export const followTargetKinds = ["author", "series"] as const;
+export const followTargetKinds = ["creator", "series"] as const;
 export type FollowTargetKind = (typeof followTargetKinds)[number];
 
 const followTargetTypeByKind: Record<FollowTargetKind, FollowTargetType> = {
-  author: FollowTargetType.CREATOR,
+  creator: FollowTargetType.CREATOR,
   series: FollowTargetType.SERIES,
 };
 
 const followTargetKindByType: Partial<
   Record<FollowTargetType, FollowTargetKind>
 > = {
-  [FollowTargetType.CREATOR]: "author",
+  [FollowTargetType.CREATOR]: "creator",
   [FollowTargetType.SERIES]: "series",
 };
 
@@ -58,7 +58,7 @@ const followMessage = async (
 /**
  * Tag the private follow-status and follow-list reads carry, so `updateTag`
  * in the Server Action refreshes only this member's follow island and list —
- * not the public series or author catalog cache.
+ * not the public series or creator catalog cache.
  */
 export const followsCacheTag = tenantFollowsTag;
 

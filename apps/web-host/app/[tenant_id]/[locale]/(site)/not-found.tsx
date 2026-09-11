@@ -7,7 +7,7 @@ import { Message } from "#components/message";
 
 /**
  * 404 for everything under the tenant site. `getTenantId()` /
- * `guardPlaceholders()` and the catalog / author / published-page routes all
+ * `guardPlaceholders()` and the catalog / creator / published-page routes all
  * reach here through `notFound()`, so the copy stays resource-agnostic.
  *
  * Rendered inside `(site)/layout.tsx`, which keeps the tenant header and
@@ -24,7 +24,7 @@ import { Message } from "#components/message";
  * root layout sits under a top-level dynamic segment, Next.js answers a
  * `notFound()` with its `__next_error__` document — status 404 and the right
  * flight payload, but an empty SSR `<body>`, so this UI paints only after
- * hydration. `/authors/[author_id]` already behaved this way before there was
+ * hydration. `/creators/[creator_id]` already behaved this way before there was
  * any `not-found.tsx`. Truly unmatched URLs use `global-not-found` instead and
  * render a full HTML document without this shell.
  */

@@ -14,9 +14,9 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
-import { getPublishedAuthorDetail } from "./authors";
 import { applyCacheTag } from "./cache-tags";
 import { getSeriesDetail } from "./catalog";
+import { getPublishedCreatorDetail } from "./creators";
 import { followsCacheTag, toFollowTargetKind } from "./follow";
 import type { FollowTargetKind } from "./follow";
 import { loadHostMessages } from "./messages";
@@ -119,7 +119,7 @@ const mapMyFollow = (item: RawMyFollow): FollowListEntry | null => {
 };
 
 const followHref = (kind: FollowTargetKind, publicId: string): string =>
-  kind === "author" ? `/authors/${publicId}` : `/series/${publicId}`;
+  kind === "creator" ? `/creators/${publicId}` : `/series/${publicId}`;
 
 const unavailableItem = (
   follow: FollowListEntry,
@@ -231,8 +231,8 @@ export const resolveFollowListItems = async (
 
   return Promise.all(
     follows.map(async (follow) => {
-      if (follow.targetKind === "author") {
-        const result = await getPublishedAuthorDetail(
+      if (follow.targetKind === "creator") {
+        const result = await getPublishedCreatorDetail(
           tenantId,
           follow.publicId,
           { limit: 1, locale }

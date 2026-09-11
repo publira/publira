@@ -33,7 +33,7 @@ describe("cursorTokenSchema", () => {
     expect(cursorTokenSchema.parse("a".repeat(8196))).toBe("");
   });
 
-  it("accepts a token built from non-ASCII author names and titles at the length limit", () => {
+  it("accepts a token built from non-ASCII creator names and titles at the length limit", () => {
     const name = "あ".repeat(255);
     const emojiTitle = "😀".repeat(255);
     const id = "00000000-0000-0000-0000-000000000000";

@@ -347,6 +347,75 @@ describe("web-host proxy locale routing", () => {
   });
 });
 
+describe("web-host proxy retired paths", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Send /authors to /creators permanently", async () => {
+    const { proxy } = await import("./proxy");
+
+    const list = await proxy(request("https://shop.example.com/authors"));
+    const detail = await proxy(
+      request("https://shop.example.com/authors/CR01?token=djF8Zg")
+    );
+
+    expect(list.status).toBe(308);
+    expect(new URL(list.headers.get("location") ?? "").pathname).toBe(
+      "/creators"
+    );
+    expect(detail.status).toBe(308);
+    const detailLocation = new URL(detail.headers.get("location") ?? "");
+    expect(detailLocation.pathname).toBe("/creators/CR01");
+    expect(detailLocation.search).toBe("?token=djF8Zg");
+  });
+
+  // The move is permanent; the locale prefix is a tenant setting, so the
+  // request the reader made is answered in the language it named and the
+  // redundant default prefix is dropped by the temporary redirect afterwards.
+  it("Keep the locale prefix on the moved path", async () => {
+    const { proxy } = await import("./proxy");
+
+    const prefixed = await proxy(
+      request("https://shop.example.com/en/authors/CR01")
+    );
+    const defaultPrefixed = await proxy(
+      request("https://shop.example.com/ja/authors")
+    );
+
+    expect(prefixed.status).toBe(308);
+    expect(new URL(prefixed.headers.get("location") ?? "").pathname).toBe(
+      "/en/creators/CR01"
+    );
+    expect(defaultPrefixed.status).toBe(308);
+    expect(
+      new URL(defaultPrefixed.headers.get("location") ?? "").pathname
+    ).toBe("/ja/creators");
+  });
+
+  it("Leave /creators and a slug that merely starts with the old name alone", async () => {
+    const { proxy } = await import("./proxy");
+
+    const moved = await proxy(request("https://shop.example.com/creators"));
+    const slug = await proxy(
+      request("https://shop.example.com/authors-wanted")
+    );
+
+    expect(moved.headers.get("location")).toBeNull();
+    expect(moved.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/creators`
+    );
+    expect(slug.headers.get("location")).toBeNull();
+    expect(slug.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/authors-wanted`
+    );
+  });
+});
+
 describe("web-host proxy internal revalidation", () => {
   it("Exclude revalidation paths from proxy matcher", async () => {
     const { config } = await import("./proxy");

@@ -30,26 +30,26 @@ import { PageLoadError } from "#components/page-load-error";
 import { Prose } from "#components/prose";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
-import { getPublishedAuthorDetail } from "#lib/authors";
-import type { PublishedAuthorDetail } from "#lib/authors";
+import { getPublishedCreatorDetail } from "#lib/creators";
+import type { PublishedCreatorDetail } from "#lib/creators";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
-  authorDetailHref,
-  parseAuthorDetailSearchParams,
+  creatorDetailHref,
+  parseCreatorDetailSearchParams,
 } from "./_lib/search-params";
 
-const AUTHOR_SERIES_PAGE_SIZE = 20;
+const CREATOR_SERIES_PAGE_SIZE = 20;
 
-/** The author's portrait, at the size the page draws it. */
-const AUTHOR_ICON_SIZE = 96;
+/** The creator's portrait, at the size the page draws it. */
+const CREATOR_ICON_SIZE = 96;
 
-type AuthorDetailPageProps =
-  PageProps<"/[tenant_id]/[locale]/authors/[author_id]">;
+type CreatorDetailPageProps =
+  PageProps<"/[tenant_id]/[locale]/creators/[creator_id]">;
 
-const authorDetailParamsSchema = z.object({
-  author_id: routeParamString(),
+const creatorDetailParamsSchema = z.object({
+  creator_id: routeParamString(),
 });
 
 /**
@@ -57,63 +57,63 @@ const authorDetailParamsSchema = z.object({
  * body have to pass the same `{ limit, token }` or one request fills two
  * entries and hits the RPC twice.
  */
-const loadPublishedAuthorDetail = (
+const loadPublishedCreatorDetail = (
   tenantId: string,
-  authorId: string,
+  creatorId: string,
   locale: Locale,
   token: string
 ) =>
-  getPublishedAuthorDetail(tenantId, authorId, {
-    limit: AUTHOR_SERIES_PAGE_SIZE,
+  getPublishedCreatorDetail(tenantId, creatorId, {
+    limit: CREATOR_SERIES_PAGE_SIZE,
     locale,
     token,
   });
 
 export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_id", "author_id");
+  createPlaceholderStaticParams("tenant_id", "creator_id");
 
 export const generateMetadata = async ({
   params,
   searchParams,
-}: AuthorDetailPageProps): Promise<Metadata> => {
+}: CreatorDetailPageProps): Promise<Metadata> => {
   const [rawParams, tenantId, resolvedSearchParams, locale] = await Promise.all(
     [params, getTenantId(), searchParams, getLocale()]
   );
-  const parsedParams = parseRouteParams(authorDetailParamsSchema, rawParams);
+  const parsedParams = parseRouteParams(creatorDetailParamsSchema, rawParams);
   if (!parsedParams) {
     notFound();
   }
-  const { author_id } = parsedParams;
+  const { creator_id } = parsedParams;
 
-  const { token } = parseAuthorDetailSearchParams(resolvedSearchParams);
+  const { token } = parseCreatorDetailSearchParams(resolvedSearchParams);
 
   const [result, messages] = await Promise.all([
-    loadPublishedAuthorDetail(tenantId, author_id, locale, token),
+    loadPublishedCreatorDetail(tenantId, creator_id, locale, token),
     loadHostMessages(locale),
   ]);
 
-  // An unavailable author reads as "not found" for the `<title>` alone; the
+  // An unavailable creator reads as "not found" for the `<title>` alone; the
   // page body below says what actually happened.
-  const author = result.ok ? result.value : null;
+  const creator = result.ok ? result.value : null;
 
-  if (!author) {
+  if (!creator) {
     return {
-      title: getMessage(messages, "host.authors.not_found_title"),
+      title: getMessage(messages, "host.creators.not_found_title"),
     };
   }
 
   return {
     description:
-      author.profileText ||
-      getMessage(messages, "host.authors.detail_description", {
-        count: author.seriesCount,
-        name: author.name,
+      creator.profileText ||
+      getMessage(messages, "host.creators.detail_description", {
+        count: creator.seriesCount,
+        name: creator.name,
       }),
-    title: author.name,
+    title: creator.name,
   };
 };
 
-const AuthorDetailSkeleton = () => (
+const CreatorDetailSkeleton = () => (
   <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
     <div className="grid gap-4">
       <div className="flex items-start gap-5">
@@ -130,22 +130,22 @@ const AuthorDetailSkeleton = () => (
 );
 
 /**
- * The author's portrait. `alt` is an attribute rather than a node, so this is
+ * The creator's portrait. `alt` is an attribute rather than a node, so this is
  * the one piece of the header that has to wait for the catalog; it waits
  * behind a boundary of its own so the name beside it does not.
  */
-const AuthorIcon = async ({ name, url }: { name: string; url: string }) => {
+const CreatorIcon = async ({ name, url }: { name: string; url: string }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
   return (
     <Image
-      alt={getMessage(messages, "host.authors.icon_alt", { name })}
+      alt={getMessage(messages, "host.creators.icon_alt", { name })}
       className="size-24 shrink-0 rounded-surface object-cover"
       decoding="async"
-      height={AUTHOR_ICON_SIZE}
+      height={CREATOR_ICON_SIZE}
       src={url}
-      width={AUTHOR_ICON_SIZE}
+      width={CREATOR_ICON_SIZE}
     />
   );
 };
@@ -155,7 +155,7 @@ const AuthorIcon = async ({ name, url }: { name: string; url: string }) => {
  * the catalog for a string: an `aria-label` cannot be a node. The key stays
  * written out here, beside the `getMessage` that reads it.
  */
-const AuthorSeriesPaginationNav = async ({
+const CreatorSeriesPaginationNav = async ({
   children,
 }: {
   children: ReactNode;
@@ -165,58 +165,58 @@ const AuthorSeriesPaginationNav = async ({
 
   return (
     <ListPagination
-      aria-label={getMessage(messages, "host.authors.series_pagination_aria")}
+      aria-label={getMessage(messages, "host.creators.series_pagination_aria")}
     >
       {children}
     </ListPagination>
   );
 };
 
-const AuthorSeriesPagination = ({
-  authorId,
+const CreatorSeriesPagination = ({
+  creatorId,
   nextToken,
   previousToken,
 }: {
-  authorId: string;
+  creatorId: string;
   nextToken: string;
   previousToken: string;
 }) => (
   <Suspense fallback={<ListPaginationSkeleton />}>
-    <AuthorSeriesPaginationNav>
+    <CreatorSeriesPaginationNav>
       <ListPaginationStep
-        href={previousToken ? authorDetailHref(authorId, previousToken) : ""}
+        href={previousToken ? creatorDetailHref(creatorId, previousToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="host.common.previous_page" />
         </Suspense>
       </ListPaginationStep>
       <ListPaginationStep
-        href={nextToken ? authorDetailHref(authorId, nextToken) : ""}
+        href={nextToken ? creatorDetailHref(creatorId, nextToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="host.common.next_page" />
         </Suspense>
       </ListPaginationStep>
-    </AuthorSeriesPaginationNav>
+    </CreatorSeriesPaginationNav>
   </Suspense>
 );
 
-const AuthorRelatedSeries = async ({
-  author,
+const CreatorRelatedSeries = async ({
+  creator,
   token,
 }: {
-  author: PublishedAuthorDetail;
+  creator: PublishedCreatorDetail;
   token: string;
 }) => {
   const locale = await getLocale();
 
-  if (author.series.length === 0) {
+  if (creator.series.length === 0) {
     if (!token) {
       return (
         <EmptyState>
           <EmptyStateDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <Message message="host.authors.series_empty" />
+              <Message message="host.creators.series_empty" />
             </Suspense>
           </EmptyStateDescription>
         </EmptyState>
@@ -235,20 +235,20 @@ const AuthorRelatedSeries = async ({
             </Suspense>
           </EmptyStateDescription>
         </EmptyState>
-        {author.previousToken || author.nextToken ? (
-          <AuthorSeriesPagination
-            authorId={author.id}
-            nextToken={author.nextToken}
-            previousToken={author.previousToken}
+        {creator.previousToken || creator.nextToken ? (
+          <CreatorSeriesPagination
+            creatorId={creator.id}
+            nextToken={creator.nextToken}
+            previousToken={creator.previousToken}
           />
         ) : (
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={authorDetailHref(author.id, "")}
+              href={creatorDetailHref(creator.id, "")}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                <Message message="host.authors.series_first_page" />
+                <Message message="host.creators.series_first_page" />
               </Suspense>
             </LocaleLink>
           </p>
@@ -259,37 +259,37 @@ const AuthorRelatedSeries = async ({
 
   return (
     <div className="grid gap-8">
-      <SeriesShelf locale={locale} series={author.series} />
-      <AuthorSeriesPagination
-        authorId={author.id}
-        nextToken={author.nextToken}
-        previousToken={author.previousToken}
+      <SeriesShelf locale={locale} series={creator.series} />
+      <CreatorSeriesPagination
+        creatorId={creator.id}
+        nextToken={creator.nextToken}
+        previousToken={creator.previousToken}
       />
     </div>
   );
 };
 
-const AuthorDetailContent = async ({
+const CreatorDetailContent = async ({
   params,
   searchParams,
-}: AuthorDetailPageProps) => {
+}: CreatorDetailPageProps) => {
   const [rawParams, tenantId, resolvedSearchParams, locale] = await Promise.all(
     [params, getTenantId(), searchParams, getLocale()]
   );
-  const parsedParams = parseRouteParams(authorDetailParamsSchema, rawParams);
+  const parsedParams = parseRouteParams(creatorDetailParamsSchema, rawParams);
   if (!parsedParams) {
     notFound();
   }
-  const { author_id } = parsedParams;
+  const { creator_id } = parsedParams;
 
-  const { token } = parseAuthorDetailSearchParams(resolvedSearchParams);
+  const { token } = parseCreatorDetailSearchParams(resolvedSearchParams);
 
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything.
-  const result = await loadPublishedAuthorDetail(
+  const result = await loadPublishedCreatorDetail(
     tenantId,
-    author_id,
+    creator_id,
     locale,
     token
   );
@@ -298,9 +298,9 @@ const AuthorDetailContent = async ({
     return <PageLoadError description={result.message} />;
   }
 
-  const author = result.value;
+  const creator = result.value;
 
-  if (!author) {
+  if (!creator) {
     notFound();
   }
 
@@ -308,34 +308,36 @@ const AuthorDetailContent = async ({
     <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
       <div className="grid gap-4">
         <div className="flex items-start gap-5">
-          {author.iconImageUrl && (
+          {creator.iconImageUrl && (
             <Suspense
               fallback={
                 <Skeleton className="size-24 shrink-0 rounded-surface" />
               }
             >
-              <AuthorIcon name={author.name} url={author.iconImageUrl} />
+              <CreatorIcon name={creator.name} url={creator.iconImageUrl} />
             </Suspense>
           )}
           <div className="grid min-w-0 flex-1 gap-2">
-            <h1 className="font-serif text-3xl leading-tight">{author.name}</h1>
+            <h1 className="font-serif text-3xl leading-tight">
+              {creator.name}
+            </h1>
             <p className="text-sm text-muted-foreground tabular-nums">
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message
                   message="host.common.series_count"
-                  values={{ count: author.seriesCount }}
+                  values={{ count: creator.seriesCount }}
                 />
               </Suspense>
             </p>
           </div>
         </div>
 
-        {author.profileText ? (
-          <Prose locale={locale}>{author.profileText}</Prose>
+        {creator.profileText ? (
+          <Prose locale={locale}>{creator.profileText}</Prose>
         ) : (
           <p className="text-sm text-muted-foreground">
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-              <Message message="host.authors.profile_empty" />
+              <Message message="host.creators.profile_empty" />
             </Suspense>
           </p>
         )}
@@ -350,10 +352,10 @@ const AuthorDetailContent = async ({
           >
             <Suspense fallback={<FollowControlSkeleton />}>
               <FollowControl
-                publicId={author.id}
-                returnTo={`/authors/${author.id}`}
-                targetKind="author"
-                targetName={author.name}
+                publicId={creator.id}
+                returnTo={`/creators/${creator.id}`}
+                targetKind="creator"
+                targetName={creator.name}
                 tenantId={tenantId}
               />
             </Suspense>
@@ -365,28 +367,28 @@ const AuthorDetailContent = async ({
         <div className="grid gap-1 border-b border-border pb-2">
           <h2 className="font-serif text-xl leading-tight">
             <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-              <Message message="host.authors.series_heading" />
+              <Message message="host.creators.series_heading" />
             </Suspense>
           </h2>
           <p className="text-sm text-muted-foreground">
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <Message message="host.authors.series_description" />
+              <Message message="host.creators.series_description" />
             </Suspense>
           </p>
         </div>
 
         <Suspense fallback={<SeriesShelfSkeleton />}>
-          <AuthorRelatedSeries author={author} token={token} />
+          <CreatorRelatedSeries creator={creator} token={token} />
         </Suspense>
       </section>
 
       <p>
         <LocaleLink
           className="text-sm text-primary underline underline-offset-4"
-          href="/authors"
+          href="/creators"
         >
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <Message message="host.authors.back_to_list" />
+            <Message message="host.creators.back_to_list" />
           </Suspense>
         </LocaleLink>
       </p>
@@ -394,9 +396,9 @@ const AuthorDetailContent = async ({
   );
 };
 
-const Page = (props: AuthorDetailPageProps) => (
-  <Suspense fallback={<AuthorDetailSkeleton />}>
-    <AuthorDetailContent {...props} />
+const Page = (props: CreatorDetailPageProps) => (
+  <Suspense fallback={<CreatorDetailSkeleton />}>
+    <CreatorDetailContent {...props} />
   </Suspense>
 );
 

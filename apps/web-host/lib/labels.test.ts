@@ -31,7 +31,7 @@ describe("getPublishedLabelDetail", () => {
       previousToken: "",
       series: [
         {
-          creators: [{ name: "Author A", publicId: "CREATOR_A" }],
+          creators: [{ name: "Creator A", publicId: "CREATOR_A" }],
           eyeCatchImageVariants: [
             {
               contentType: "image/webp",
@@ -73,11 +73,11 @@ describe("getPublishedLabelDetail", () => {
         // hands back the whole series item rather than a name and an id.
         series: [
           {
-            creatorNames: ["Author A"],
+            creatorNames: ["Creator A"],
             creators: [
               {
                 iconImageUrl: "",
-                name: "Author A",
+                name: "Creator A",
                 profileText: "",
                 publicId: "CREATOR_A",
               },

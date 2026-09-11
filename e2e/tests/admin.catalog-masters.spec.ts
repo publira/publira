@@ -248,7 +248,7 @@ test.describe("admin catalog masters", () => {
     await expect(page.getByRole("option", { name })).toBeVisible();
   });
 
-  test("editing a creator reaches the author detail page on web-host", async ({
+  test("editing a creator reaches the creator detail page on web-host", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -259,7 +259,7 @@ test.describe("admin catalog masters", () => {
     );
 
     // A creator reaches the public site only through a published series: the
-    // author pages list creators that have at least one (see
+    // creator pages list creators that have at least one (see
     // GetPublishedCreatorByPublicID). Past wall clock → published on create.
     const seriesTitle = `E2E Author Series ${suffix}`;
     trackSeries(
@@ -273,7 +273,7 @@ test.describe("admin catalog masters", () => {
 
     // Brand-new public_id: this first host request misses cache and hits the
     // public API, so nothing older than the series can be served here.
-    const response = await page.goto(hostUrl(`/authors/${creatorId}`));
+    const response = await page.goto(hostUrl(`/creators/${creatorId}`));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await expect(page.getByText(profileText)).toBeVisible();
@@ -292,7 +292,7 @@ test.describe("admin catalog masters", () => {
     await expect(formMessage(page)).toContainText("Author updated.");
 
     // The saved edit reaches the public page without waiting for an expiry.
-    await pollHostPage(page, hostUrl(`/authors/${creatorId}`), () =>
+    await pollHostPage(page, hostUrl(`/creators/${creatorId}`), () =>
       mainHeadingText(page)
     ).toBe(renamed);
     await expect(page.getByText(editedProfileText)).toBeVisible();
@@ -542,7 +542,7 @@ test.describe("admin catalog masters", () => {
     applyScenarioSql(MULTI_TENANT_SCENARIO);
 
     const creatorResponse = await page.goto(
-      adminUrl(`/creators/${OTHER_TENANT.authorId}`)
+      adminUrl(`/creators/${OTHER_TENANT.creatorId}`)
     );
     // Cache Components commits the shell with 200. The resource itself is
     // either the console not-found page or an inline load error — never the
@@ -551,7 +551,7 @@ test.describe("admin catalog masters", () => {
     await expect(
       page.getByText(/Page not found|Could not display the author/u)
     ).toBeVisible();
-    await expect(page.getByText(OTHER_TENANT.authorName)).toHaveCount(0);
+    await expect(page.getByText(OTHER_TENANT.creatorName)).toHaveCount(0);
     await expect(creatorFormFields(page).name).toHaveCount(0);
 
     const labelResponse = await page.goto(

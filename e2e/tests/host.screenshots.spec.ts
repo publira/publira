@@ -70,7 +70,7 @@ const TOP_PAGE_SECTIONS = [
   { href: "/series/", name: "Top 10 this week" },
   { href: "/series/", name: "Recently updated" },
   { href: "/labels/", name: "Featured labels" },
-  { href: "/authors/", name: "Featured authors" },
+  { href: "/creators/", name: "Featured authors" },
 ] as const;
 
 test.describe("web-host screenshots", () => {
@@ -182,8 +182,8 @@ test.describe("web-host screenshots", () => {
         await expectScreenshot(page, viewport, "label-list");
       });
 
-      test("the author list", async ({ page }) => {
-        await page.goto(hostPath("/authors"));
+      test("the creator list", async ({ page }) => {
+        await page.goto(hostPath("/creators"));
 
         await expect(
           page.getByRole("heading", { level: 1, name: "Authors" })
@@ -192,7 +192,7 @@ test.describe("web-host screenshots", () => {
           page.getByRole("navigation", { name: "Author list pagination" })
         ).toBeVisible();
 
-        await expectScreenshot(page, viewport, "author-list");
+        await expectScreenshot(page, viewport, "creator-list");
       });
 
       test("a series detail page", async ({ page }) => {
@@ -227,20 +227,20 @@ test.describe("web-host screenshots", () => {
         await expectScreenshot(page, viewport, "label-detail");
       });
 
-      test("an author detail page", async ({ page }) => {
-        await page.goto(hostPath(`/authors/${SEED_TENANT.authorId}`));
+      test("a creator detail page", async ({ page }) => {
+        await page.goto(hostPath(`/creators/${SEED_TENANT.creatorId}`));
 
         await expect(
           page.getByRole("heading", {
             level: 1,
-            name: SEED_TENANT.authorName,
+            name: SEED_TENANT.creatorName,
           })
         ).toBeVisible();
         await expect(
           page.getByRole("navigation", { name: "Related series pagination" })
         ).toBeVisible();
 
-        await expectScreenshot(page, viewport, "author-detail");
+        await expectScreenshot(page, viewport, "creator-detail");
       });
 
       test("an episode with a comic body", async ({ page }) => {

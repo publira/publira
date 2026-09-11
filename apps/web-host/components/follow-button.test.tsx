@@ -82,17 +82,17 @@ describe("FollowButton", () => {
   it("If you are following, issue an unsubscribe operation", () => {
     render(
       <FollowButton
-        copy={copy("Published Author")}
+        copy={copy("Published Creator")}
         isFollowing
-        publicId="AUTHOR01"
-        returnTo="/authors/AUTHOR01"
-        targetKind="author"
+        publicId="CREATOR01"
+        returnTo="/creators/CREATOR01"
+        targetKind="creator"
         tenantId={tenantId}
       />
     );
 
     const button = screen.getByRole("button", {
-      name: "Unfollow Published Author",
+      name: "Unfollow Published Creator",
     });
     expect(button.getAttribute("aria-pressed")).toBe("true");
   });

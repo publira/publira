@@ -2,7 +2,7 @@ import type { Locale } from "@publira/i18n";
 import { cn } from "@publira/utils";
 
 /**
- * A paragraph of the catalogue's own writing: a synopsis, an author's profile.
+ * A paragraph of the catalogue's own writing: a synopsis, a creator's profile.
  *
  * It is set the way the design sets text meant to be read rather than scanned
  * — the serif face, one of the two reading line heights, and the forty-

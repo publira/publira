@@ -60,16 +60,33 @@ const serviceUnavailableResponse = () =>
   });
 
 /**
- * Remove an explicit tenant-default locale prefix. Public URLs use that locale
- * without a prefix, while the App Router still receives it after the rewrite.
+ * Send the reader to another path on this host, keeping the query.
+ *
+ * The status says how long the answer holds: 307 for a redirect that follows a
+ * setting, 308 for a URL that moved and is not coming back.
  */
-const redirectToCanonicalPath = (
+const redirectToPathname = (
   request: NextRequest,
-  pathname: string
+  pathname: string,
+  status: 307 | 308 = 307
 ): NextResponse => {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, status);
+};
+
+/**
+ * The `/creators` path a retired `/authors` URL now names, or `null` for a path
+ * that never moved. The storefront's own links point at `/creators` directly,
+ * so this only serves bookmarks and inbound links from before the move.
+ */
+const movedPublicPathname = (pathname: string): string | null => {
+  if (pathname === "/authors") {
+    return "/creators";
+  }
+  return pathname.startsWith("/authors/")
+    ? `/creators/${pathname.slice("/authors/".length)}`
+    : null;
 };
 
 /** The tenant this host resolves to, or the response that says why not. */
@@ -135,10 +152,26 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const withResolvedLocale = (response: NextResponse) =>
     applyResolvedLocaleCookie(request, response, tenant.defaultLocale);
 
+  // `/authors` moved to `/creators`, so it answers permanently — unlike the
+  // locale prefix below, which follows a tenant setting that can change. It is
+  // decided first so what a browser caches forever names the path alone: the
+  // prefix the reader asked for rides along, and whether that prefix is
+  // redundant stays the temporary redirect's decision.
+  const movedPathname = movedPublicPathname(publicPath);
+  if (movedPathname) {
+    return withResolvedLocale(
+      redirectToPathname(
+        request,
+        requestedLocale ? `/${requestedLocale}${movedPathname}` : movedPathname,
+        308
+      )
+    );
+  }
+
   // A prefix is only canonical for a locale other than this tenant's default.
   // Preserve the path and query while removing a redundant default prefix.
   if (requestedLocale === tenant.defaultLocale) {
-    return withResolvedLocale(redirectToCanonicalPath(request, publicPath));
+    return withResolvedLocale(redirectToPathname(request, publicPath));
   }
 
   // A prefix-less public path is served as the tenant's default locale. Unlike

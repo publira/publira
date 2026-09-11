@@ -4,7 +4,6 @@ import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import type { RestrictedAgeRating } from "./age-rating";
-import { listPublishedAuthors } from "./authors";
 import { applyCacheTag, tenantTodayTag } from "./cache-tags";
 import {
   getSeriesDetail,
@@ -19,6 +18,7 @@ import type {
   RankedSeriesItem,
   SeriesListItem,
 } from "./catalog";
+import { listPublishedCreators } from "./creators";
 
 export interface CatalogTopEpisodeItem {
   ageRating?: RestrictedAgeRating;
@@ -64,7 +64,7 @@ export interface CatalogTopFeaturedWork {
   seriesTitle: string;
 }
 
-export interface CatalogTopFeaturedAuthor {
+export interface CatalogTopFeaturedCreator {
   id: string;
   name: string;
   seriesCount: number;
@@ -82,7 +82,7 @@ interface CatalogTopDataOptions {
   detailFetchLimit?: number;
   /** Part of every cache key here, because the failure copy is worded in it. */
   locale: Locale;
-  maxAuthors?: number;
+  maxCreators?: number;
   maxFreeSeries?: number;
   maxLabels?: number;
   maxNewEpisodes?: number;
@@ -539,19 +539,19 @@ export const getCatalogTopFeaturedLabels = async (
   return { ok: true, value: labels.value.labels };
 };
 
-export const getCatalogTopFeaturedAuthors = async (
+export const getCatalogTopFeaturedCreators = async (
   tenantId: string,
-  { locale, maxAuthors = 6 }: CatalogTopDataOptions
-): Promise<CachedReadResult<CatalogTopFeaturedAuthor[]>> => {
+  { locale, maxCreators = 6 }: CatalogTopDataOptions
+): Promise<CachedReadResult<CatalogTopFeaturedCreator[]>> => {
   "use cache";
 
-  const authorsResult = await listPublishedAuthors(tenantId, {
-    limit: maxAuthors,
+  const creatorsResult = await listPublishedCreators(tenantId, {
+    limit: maxCreators,
     locale,
   });
-  if (!authorsResult.ok) {
-    return cachedReadFailure(authorsResult.message);
+  if (!creatorsResult.ok) {
+    return cachedReadFailure(creatorsResult.message);
   }
 
-  return { ok: true, value: authorsResult.value.authors };
+  return { ok: true, value: creatorsResult.value.creators };
 };

@@ -70,7 +70,7 @@ describe("POST /api/v1/views", () => {
 
   it("records nothing for a kind this app does not serve", async () => {
     const response = await POST(
-      beacon({ kind: "author", publicId: "AU_001" }),
+      beacon({ kind: "creator", publicId: "AU_001" }),
       params()
     );
 
