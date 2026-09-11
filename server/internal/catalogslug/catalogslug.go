@@ -5,7 +5,7 @@
 // differ by case or spacing alone, and a tag typed a second time resolves to
 // the tag that already exists rather than splitting the catalog in two.
 //
-// It is not the page slug of adminapi, which an author writes by hand as a URL
+// It is not the page slug of adminapi, which a console operator writes by hand as a URL
 // path and which therefore only accepts ASCII path segments. A genre named
 // "恋愛" has to keep an identity of its own, so letters of every script survive
 // here; a URL carrying one percent-encodes it like any other path.

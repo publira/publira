@@ -32,7 +32,7 @@ import { cacheLife } from "next/cache";
 import { apiClient, buildSessionHeaders } from "./api-client";
 import {
   applyCacheTag,
-  tenantAuthorsTag,
+  tenantCreatorsTag,
   tenantLabelsTag,
   tenantSeriesDetailTag,
   tenantSeriesListTag,
@@ -446,7 +446,7 @@ export const listPublishedSeries = async (
 
   const normalizedTenantId = tenantId.trim();
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
-  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.listPublishedSeries>
@@ -674,7 +674,7 @@ export const listRecommendedSeries = async (
   // that never calls back here, so a new snapshot arrives with the cache
   // profile's own revalidation rather than with a tag.
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
-  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: ListRecommendedSeriesResponse;
   try {
@@ -741,7 +741,7 @@ export const listRelatedSeries = async (
   // ties is replaced by a batch that never calls back here, so a new snapshot
   // arrives with the cache profile's own revalidation rather than with a tag.
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
-  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
   let response: ListRelatedSeriesResponse;
@@ -847,7 +847,7 @@ export const listRankedSeries = async (
   // replaced by a batch that never calls back here and therefore arrives with
   // the cache profile's own revalidation.
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
-  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: ListRankedSeriesResponse;
   try {
@@ -916,7 +916,7 @@ export const searchPublishedSeries = async (
 
   const normalizedTenantId = tenantId.trim();
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
-  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.searchPublishedSeries>

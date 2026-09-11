@@ -260,7 +260,7 @@ test.describe("admin catalog masters", () => {
 
     // A creator reaches the public site only through a published series: the
     // author pages list creators that have at least one (see
-    // GetPublishedAuthorByPublicID). Past wall clock → published on create.
+    // GetPublishedCreatorByPublicID). Past wall clock → published on create.
     const seriesTitle = `E2E Author Series ${suffix}`;
     trackSeries(
       await createSeriesViaUi(page, {

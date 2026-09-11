@@ -12,7 +12,7 @@ export type {
   MyEpisodeRead,
   MyFollow,
   MyPurchase,
-  PublishedAuthor,
+  PublishedCreator,
   RecentSeries,
   SeriesProgress,
 } from "../gen/publira/v1/catalog_pb.js";

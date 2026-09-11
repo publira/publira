@@ -529,7 +529,7 @@ func seriesRevalidateTags(tenantID, seriesPublicID string) []string {
 		fmt.Sprintf("tenant:%s:series:list", normalizedTenantID),
 		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
 		fmt.Sprintf("tenant:%s:series:%s", normalizedTenantID, normalizedSeriesPublicID),
-		fmt.Sprintf("tenant:%s:authors", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:creators", normalizedTenantID),
 	}
 }
 

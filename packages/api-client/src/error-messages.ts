@@ -85,7 +85,7 @@ export interface RpcErrorMessageOptions {
  * Shared rather than per-app on purpose: the same RPC error has to read the
  * same way in `web-host`, `web-admin`, and `web-platform`, in each locale.
  *
- * `fallback` is the operation-specific message ("Could not save the author. …")
+ * `fallback` is the operation-specific message ("Could not save the creator. …")
  * used when the category has no shared wording. Pass `overrides` to replace
  * the shared wording for individual categories.
  *

@@ -206,7 +206,7 @@ type ListEpisodeFollowerIDsParams struct {
 // Worker fan-out: who is told about a new episode. The union of the follows
 // that point at the episode, at the series it belongs to, and at a creator
 // credited on it. UNION rather than UNION ALL, so a reader who follows both
-// the series and its author is one recipient and gets one notification.
+// the series and its creator is one recipient and gets one notification.
 //
 // The credits come from episode_creators rather than series_creators because
 // the episode is the unit that is credited: a guest who appears on this
@@ -682,7 +682,7 @@ type UserFollowsPublishedCreatorParams struct {
 }
 
 // Creators are public when they have at least one active series, matching
-// GetPublishedAuthorByPublicID.
+// GetPublishedCreatorByPublicID.
 func (q *Queries) UserFollowsPublishedCreator(ctx context.Context, arg UserFollowsPublishedCreatorParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, userFollowsPublishedCreator, arg.TenantID, arg.UserID, arg.CreatorID)
 	var follows_published_creator bool

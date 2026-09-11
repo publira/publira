@@ -1,12 +1,12 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
-import type { PublishedAuthor } from "@publira/api-client/public/types";
+import type { PublishedCreator } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
 import {
   applyCacheTag,
-  tenantAuthorsTag,
+  tenantCreatorsTag,
   tenantSeriesListTag,
 } from "./cache-tags";
 import { toSeriesListItem } from "./catalog";
@@ -42,13 +42,13 @@ export interface PublishedAuthorListResult {
 }
 
 /**
- * The generated `PublishedAuthor` fields {@link mapPublishedAuthor} reads.
+ * The generated `PublishedCreator` fields {@link mapPublishedAuthor} reads.
  * Naming them against the message type is what makes a proto rename fail here —
  * a restated structural type keeps compiling, and the author page then renders
  * a nameless author with no profile text and nothing pointing at the cause.
  */
 type RawPublishedAuthor = Pick<
-  PublishedAuthor,
+  PublishedCreator,
   "iconImageUrl" | "name" | "profileText" | "publicId" | "publishedSeriesCount"
 >;
 
@@ -78,13 +78,13 @@ export const listPublishedAuthors = async (
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
-  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: Awaited<
-    ReturnType<typeof apiClient.catalog.listPublishedAuthors>
+    ReturnType<typeof apiClient.catalog.listPublishedCreators>
   >;
   try {
-    response = await apiClient.catalog.listPublishedAuthors({
+    response = await apiClient.catalog.listPublishedCreators({
       limit,
       tenant: { tenantId: normalizedTenantId },
       token,
@@ -96,7 +96,7 @@ export const listPublishedAuthors = async (
   return {
     ok: true,
     value: {
-      authors: (response.authors ?? []).map((author) => {
+      authors: (response.creators ?? []).map((author) => {
         const mapped = mapPublishedAuthor(author);
         return {
           iconImageUrl: mapped.iconImageUrl,
@@ -135,14 +135,14 @@ export const searchPublishedAuthors = async (
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
-  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
 
   let response: Awaited<
-    ReturnType<typeof apiClient.catalog.searchPublishedAuthors>
+    ReturnType<typeof apiClient.catalog.searchPublishedCreators>
   >;
   try {
-    response = await apiClient.catalog.searchPublishedAuthors({
+    response = await apiClient.catalog.searchPublishedCreators({
       limit,
       query,
       tenant: { tenantId: normalizedTenantId },
@@ -155,7 +155,7 @@ export const searchPublishedAuthors = async (
   return {
     ok: true,
     value: {
-      authors: (response.authors ?? []).map((author) => {
+      authors: (response.creators ?? []).map((author) => {
         const mapped = mapPublishedAuthor(author);
         return {
           iconImageUrl: mapped.iconImageUrl,
@@ -195,13 +195,13 @@ export const getPublishedAuthorDetail = async (
 
   const normalizedTenantId = tenantId.trim();
   const normalizedAuthorId = authorId.trim();
-  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: Awaited<
-    ReturnType<typeof apiClient.catalog.getPublishedAuthorDetail>
+    ReturnType<typeof apiClient.catalog.getPublishedCreatorDetail>
   >;
   try {
-    response = await apiClient.catalog.getPublishedAuthorDetail({
+    response = await apiClient.catalog.getPublishedCreatorDetail({
       limit,
       publicId: normalizedAuthorId,
       tenant: { tenantId: normalizedTenantId },
@@ -214,14 +214,14 @@ export const getPublishedAuthorDetail = async (
     return localizedReadFailure(error, locale, "host.authors.detail_failed");
   }
 
-  if (!response.author) {
+  if (!response.creator) {
     return { ok: true, value: null };
   }
 
   return {
     ok: true,
     value: {
-      ...mapPublishedAuthor(response.author),
+      ...mapPublishedAuthor(response.creator),
       nextToken: response.nextToken ?? "",
       previousToken: response.previousToken ?? "",
       series: (response.series ?? []).flatMap((series) =>

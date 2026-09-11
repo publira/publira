@@ -196,7 +196,7 @@ message GetEpisodeDetailResponse {
 }
 
 // A creator that currently has at least one published series.
-message PublishedAuthor {
+message PublishedCreator {
   string public_id = 1;
   string name = 2;
   string profile_text = 3;
@@ -210,7 +210,7 @@ message PublishedAuthor {
 // Sorted by creator name, then id. There is no order field: name order is the
 // only list the storefront needs, and a later selectable order would have to
 // carry its name in the token (see proto/README.md).
-message ListPublishedAuthorsRequest {
+message ListPublishedCreatorsRequest {
   publira.types.v1.TenantContext tenant = 1;
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 2;
@@ -218,19 +218,19 @@ message ListPublishedAuthorsRequest {
   string token = 3;
 }
 
-message ListPublishedAuthorsResponse {
-  repeated PublishedAuthor authors = 1;
+message ListPublishedCreatorsResponse {
+  repeated PublishedCreator creators = 1;
   // Token for the previous page. Empty on the first page.
   string previous_token = 2;
   // Token for the next page. Empty on the last page.
   string next_token = 3;
 }
 
-// Cursor pagination for the author's published series. Field shape and token
+// Cursor pagination for the creator's published series. Field shape and token
 // rules: proto/README.md. Sorted by title, then id. There is no order field:
-// title order is the only series list the author page needs, and a later
+// title order is the only series list the creator page needs, and a later
 // selectable order would have to carry its name in the token.
-message GetPublishedAuthorDetailRequest {
+message GetPublishedCreatorDetailRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
   // Max series in one page. <= 0 or > 100 falls back to 20.
@@ -239,9 +239,9 @@ message GetPublishedAuthorDetailRequest {
   string token = 4;
 }
 
-message GetPublishedAuthorDetailResponse {
-  PublishedAuthor author = 1;
-  // One page of published series credited to this author, title ascending.
+message GetPublishedCreatorDetailResponse {
+  PublishedCreator creator = 1;
+  // One page of published series credited to this creator, title ascending.
   repeated publira.types.v1.Series series = 2;
   // Token for the previous series page. Empty on the first page.
   string previous_token = 3;
@@ -380,14 +380,14 @@ message SearchPublishedSeriesResponse {
 // Cursor pagination. Field shape and token rules: proto/README.md.
 // Matches creators whose name contains `query` (case-insensitive substring)
 // and who hold at least one currently published series, the same population
-// ListPublishedAuthors shows. Sorted by name, then id. There is no order
-// field: name order is the only author list the storefront needs.
+// ListPublishedCreators shows. Sorted by name, then id. There is no order
+// field: name order is the only creator list the storefront needs.
 // Only the name is matched. A biography mentioning another creator answers a
 // name search with someone the reader did not ask for.
 // The token carries the Unicode-lowercased query it was built for, exactly as
 // SearchPublishedSeries does; sending it with a query that lowers to a
 // different string is invalid_argument.
-message SearchPublishedAuthorsRequest {
+message SearchPublishedCreatorsRequest {
   publira.types.v1.TenantContext tenant = 1;
   // Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
   // Not restricted to ASCII; Japanese names are the expected input.
@@ -398,8 +398,8 @@ message SearchPublishedAuthorsRequest {
   string token = 4;
 }
 
-message SearchPublishedAuthorsResponse {
-  repeated PublishedAuthor authors = 1;
+message SearchPublishedCreatorsResponse {
+  repeated PublishedCreator creators = 1;
   // Token for the previous page. Empty on the first page.
   string previous_token = 2;
   // Token for the next page. Empty on the last page.
@@ -572,12 +572,12 @@ service CatalogService {
   // Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
   // to prevent content existence leakage.
   rpc GetEpisodeDetail(GetEpisodeDetailRequest) returns (GetEpisodeDetailResponse) {}
-  rpc ListPublishedAuthors(ListPublishedAuthorsRequest) returns (ListPublishedAuthorsResponse) {}
+  rpc ListPublishedCreators(ListPublishedCreatorsRequest) returns (ListPublishedCreatorsResponse) {}
   // Returns a creator only when they have at least one currently published
   // series in the requested tenant. Cross-tenant, unpublished, and missing
-  // authors are all surfaced as NotFound so an unpublished author cannot be
+  // creators are all surfaced as NotFound so an unpublished creator cannot be
   // distinguished from one that does not exist.
-  rpc GetPublishedAuthorDetail(GetPublishedAuthorDetailRequest) returns (GetPublishedAuthorDetailResponse) {}
+  rpc GetPublishedCreatorDetail(GetPublishedCreatorDetailRequest) returns (GetPublishedCreatorDetailResponse) {}
   // Returns a label that belongs to the requested tenant. Cross-tenant and
   // missing labels are surfaced as NotFound so a foreign label cannot be
   // distinguished from one that does not exist.
@@ -595,7 +595,7 @@ service CatalogService {
   // Keyword search over the names of creators who hold at least one currently
   // published series. An empty query is invalid_argument, and the token rule
   // is the one SearchPublishedSeries states.
-  rpc SearchPublishedAuthors(SearchPublishedAuthorsRequest) returns (SearchPublishedAuthorsResponse) {}
+  rpc SearchPublishedCreators(SearchPublishedCreatorsRequest) returns (SearchPublishedCreatorsResponse) {}
   // Keyword search over the names of labels that hold at least one currently
   // published series. An empty query is invalid_argument, and the token rule
   // is the one SearchPublishedSeries states.
@@ -817,7 +817,7 @@ service EpisodeReadService {
 enum FollowTargetType {
   FOLLOW_TARGET_TYPE_UNSPECIFIED = 0;
   FOLLOW_TARGET_TYPE_EPISODE = 1;
-  FOLLOW_TARGET_TYPE_AUTHOR = 2;
+  FOLLOW_TARGET_TYPE_CREATOR = 2;
   FOLLOW_TARGET_TYPE_SERIES = 3;
 }
 
@@ -858,7 +858,7 @@ message UnfollowResponse {
 
 // One currently public target followed by the authenticated member.
 message MyFollow {
-  // Explicitly distinguishes episode, author, and series follows in a mixed timeline.
+  // Explicitly distinguishes episode, creator, and series follows in a mixed timeline.
   FollowTargetType target_type = 1;
   string target_public_id = 2;
   string followed_at = 3;

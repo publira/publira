@@ -245,7 +245,7 @@ func (q *Queries) GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreat
 	return i, err
 }
 
-const getPublishedAuthorByPublicID = `-- name: GetPublishedAuthorByPublicID :one
+const getPublishedCreatorByPublicID = `-- name: GetPublishedCreatorByPublicID :one
 SELECT c.id,
     c.public_id,
     c.name,
@@ -287,12 +287,12 @@ WHERE c.tenant_id = $1
 LIMIT 1
 `
 
-type GetPublishedAuthorByPublicIDParams struct {
+type GetPublishedCreatorByPublicIDParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	PublicID string    `json:"public_id"`
 }
 
-type GetPublishedAuthorByPublicIDRow struct {
+type GetPublishedCreatorByPublicIDRow struct {
 	ID                     uuid.UUID      `json:"id"`
 	PublicID               string         `json:"public_id"`
 	Name                   string         `json:"name"`
@@ -305,10 +305,10 @@ type GetPublishedAuthorByPublicIDRow struct {
 
 // Returns only the creators that hold at least one published series. The
 // caller turns an empty result into not_found exactly as it does a missing
-// row, so the existence of an unpublished author does not leak.
-func (q *Queries) GetPublishedAuthorByPublicID(ctx context.Context, arg GetPublishedAuthorByPublicIDParams) (GetPublishedAuthorByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedAuthorByPublicID, arg.TenantID, arg.PublicID)
-	var i GetPublishedAuthorByPublicIDRow
+// row, so the existence of an unpublished creator does not leak.
+func (q *Queries) GetPublishedCreatorByPublicID(ctx context.Context, arg GetPublishedCreatorByPublicIDParams) (GetPublishedCreatorByPublicIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getPublishedCreatorByPublicID, arg.TenantID, arg.PublicID)
+	var i GetPublishedCreatorByPublicIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.PublicID,
@@ -582,7 +582,7 @@ func (q *Queries) ListCreatorsByTenantDesc(ctx context.Context, arg ListCreators
 	return items, nil
 }
 
-const listPublishedAuthorIDsByNameAsc = `-- name: ListPublishedAuthorIDsByNameAsc :many
+const listPublishedCreatorIDsByNameAsc = `-- name: ListPublishedCreatorIDsByNameAsc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = $1
@@ -618,7 +618,7 @@ ORDER BY c.name ASC,
 LIMIT $5
 `
 
-type ListPublishedAuthorIDsByNameAscParams struct {
+type ListPublishedCreatorIDsByNameAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
@@ -626,9 +626,9 @@ type ListPublishedAuthorIDsByNameAscParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// The cursor pagination of the published author list runs in two stages.
+// The cursor pagination of the published creator list runs in two stages.
 //
-// Stage one is ListPublishedAuthorIDsByName*, which settles nothing but the
+// Stage one is ListPublishedCreatorIDsByName*, which settles nothing but the
 // ids of the creators that hold at least one published series. The sort key
 // is (name, id); id is a UUIDv7, so the order stays unique even when two
 // creators share a name.
@@ -642,15 +642,15 @@ type ListPublishedAuthorIDsByNameAscParams struct {
 //
 // The EXISTS published predicate is the one
 // ListActiveSeriesIDsByPublishedAtDesc uses. Once the two drift apart, the
-// series list and the author page disagree about which works are visible.
+// series list and the creator page disagree about which works are visible.
 // Every direction gets its own query with a fixed ORDER BY, because branching
 // with CASE stops idx_creators_tenant_name from being read in index order.
 // Backward calls the DESC query, and the caller sorts the rows back.
 //
-// Stage two is ListPublishedAuthorsByIDs, which builds the display data and
+// Stage two is ListPublishedCreatorsByIDs, which builds the display data and
 // the published series count for the ids stage one settled on.
-func (q *Queries) ListPublishedAuthorIDsByNameAsc(ctx context.Context, arg ListPublishedAuthorIDsByNameAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsByNameAsc,
+func (q *Queries) ListPublishedCreatorIDsByNameAsc(ctx context.Context, arg ListPublishedCreatorIDsByNameAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsByNameAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -678,7 +678,7 @@ func (q *Queries) ListPublishedAuthorIDsByNameAsc(ctx context.Context, arg ListP
 	return items, nil
 }
 
-const listPublishedAuthorIDsByNameDesc = `-- name: ListPublishedAuthorIDsByNameDesc :many
+const listPublishedCreatorIDsByNameDesc = `-- name: ListPublishedCreatorIDsByNameDesc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = $1
@@ -714,7 +714,7 @@ ORDER BY c.name DESC,
 LIMIT $5
 `
 
-type ListPublishedAuthorIDsByNameDescParams struct {
+type ListPublishedCreatorIDsByNameDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
@@ -722,8 +722,8 @@ type ListPublishedAuthorIDsByNameDescParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-func (q *Queries) ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg ListPublishedAuthorIDsByNameDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsByNameDesc,
+func (q *Queries) ListPublishedCreatorIDsByNameDesc(ctx context.Context, arg ListPublishedCreatorIDsByNameDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsByNameDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -751,7 +751,7 @@ func (q *Queries) ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg List
 	return items, nil
 }
 
-const listPublishedAuthorIDsBySearchNameAsc = `-- name: ListPublishedAuthorIDsBySearchNameAsc :many
+const listPublishedCreatorIDsBySearchNameAsc = `-- name: ListPublishedCreatorIDsBySearchNameAsc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = $1
@@ -788,7 +788,7 @@ ORDER BY c.name ASC,
 LIMIT $6
 `
 
-type ListPublishedAuthorIDsBySearchNameAscParams struct {
+type ListPublishedCreatorIDsBySearchNameAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	QueryPattern    string         `json:"query_pattern"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
@@ -797,10 +797,10 @@ type ListPublishedAuthorIDsBySearchNameAscParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// SearchPublishedAuthors. Stage one of the same two-stage shape
-// ListPublishedAuthorIDsByNameAsc uses, narrowed to the creators whose name
-// ILIKE-matches query_pattern. Stage two is ListPublishedAuthorsByIDs again:
-// the search shows an author exactly as the list does.
+// SearchPublishedCreators. Stage one of the same two-stage shape
+// ListPublishedCreatorIDsByNameAsc uses, narrowed to the creators whose name
+// ILIKE-matches query_pattern. Stage two is ListPublishedCreatorsByIDs again:
+// the search shows a creator exactly as the list does.
 // The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
 // with ESCAPE '!'.
 // Only name is matched. profile_text would answer a creator-name search with
@@ -808,8 +808,8 @@ type ListPublishedAuthorIDsBySearchNameAscParams struct {
 // Index plan: idx_creators_tenant_name carries the keyset half. ILIKE '%q%'
 // cannot ride a btree, so a sequential scan is enough while the LIMIT still
 // bites after narrowing by tenant, the same trade SearchPublishedSeries makes.
-func (q *Queries) ListPublishedAuthorIDsBySearchNameAsc(ctx context.Context, arg ListPublishedAuthorIDsBySearchNameAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsBySearchNameAsc,
+func (q *Queries) ListPublishedCreatorIDsBySearchNameAsc(ctx context.Context, arg ListPublishedCreatorIDsBySearchNameAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsBySearchNameAsc,
 		arg.TenantID,
 		arg.QueryPattern,
 		arg.CursorID,
@@ -838,7 +838,7 @@ func (q *Queries) ListPublishedAuthorIDsBySearchNameAsc(ctx context.Context, arg
 	return items, nil
 }
 
-const listPublishedAuthorIDsBySearchNameDesc = `-- name: ListPublishedAuthorIDsBySearchNameDesc :many
+const listPublishedCreatorIDsBySearchNameDesc = `-- name: ListPublishedCreatorIDsBySearchNameDesc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = $1
@@ -875,7 +875,7 @@ ORDER BY c.name DESC,
 LIMIT $6
 `
 
-type ListPublishedAuthorIDsBySearchNameDescParams struct {
+type ListPublishedCreatorIDsBySearchNameDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	QueryPattern    string         `json:"query_pattern"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
@@ -884,9 +884,9 @@ type ListPublishedAuthorIDsBySearchNameDescParams struct {
 	Limit           int32          `json:"limit"`
 }
 
-// The backward direction of ListPublishedAuthorIDsBySearchNameAsc.
-func (q *Queries) ListPublishedAuthorIDsBySearchNameDesc(ctx context.Context, arg ListPublishedAuthorIDsBySearchNameDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsBySearchNameDesc,
+// The backward direction of ListPublishedCreatorIDsBySearchNameAsc.
+func (q *Queries) ListPublishedCreatorIDsBySearchNameDesc(ctx context.Context, arg ListPublishedCreatorIDsBySearchNameDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsBySearchNameDesc,
 		arg.TenantID,
 		arg.QueryPattern,
 		arg.CursorID,
@@ -915,7 +915,7 @@ func (q *Queries) ListPublishedAuthorIDsBySearchNameDesc(ctx context.Context, ar
 	return items, nil
 }
 
-const listPublishedAuthorsByIDs = `-- name: ListPublishedAuthorsByIDs :many
+const listPublishedCreatorsByIDs = `-- name: ListPublishedCreatorsByIDs :many
 SELECT c.id,
     c.public_id,
     c.name,
@@ -946,12 +946,12 @@ WHERE c.tenant_id = $1
     AND c.id = ANY($2::uuid [])
 `
 
-type ListPublishedAuthorsByIDsParams struct {
+type ListPublishedCreatorsByIDsParams struct {
 	TenantID uuid.UUID   `json:"tenant_id"`
 	Ids      []uuid.UUID `json:"ids"`
 }
 
-type ListPublishedAuthorsByIDsRow struct {
+type ListPublishedCreatorsByIDsRow struct {
 	ID                     uuid.UUID      `json:"id"`
 	PublicID               string         `json:"public_id"`
 	Name                   string         `json:"name"`
@@ -964,15 +964,15 @@ type ListPublishedAuthorsByIDsRow struct {
 
 // No ORDER BY: the caller sorts the rows into the id order stage one settled
 // on.
-func (q *Queries) ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedAuthorsByIDs, arg.TenantID, pq.Array(arg.Ids))
+func (q *Queries) ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublishedCreatorsByIDsParams) ([]ListPublishedCreatorsByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedCreatorsByIDs, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListPublishedAuthorsByIDsRow
+	var items []ListPublishedCreatorsByIDsRow
 	for rows.Next() {
-		var i ListPublishedAuthorsByIDsRow
+		var i ListPublishedCreatorsByIDsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,

@@ -192,39 +192,39 @@ func (s *apiServer) SearchPublishedSeries(
 	return connect.NewResponse(res), nil
 }
 
-// The SearchPublishedAuthors cursor carries the query it was built for, then
-// the name + id sort keys ListPublishedAuthors orders by.
-func encodeSearchAuthorCursor(direction pagination.Direction, query string, row dbmodels.ListPublishedAuthorsByIDsRow) string {
+// The SearchPublishedCreators cursor carries the query it was built for, then
+// the name + id sort keys ListPublishedCreators orders by.
+func encodeSearchCreatorCursor(direction pagination.Direction, query string, row dbmodels.ListPublishedCreatorsByIDsRow) string {
 	return pagination.Encode(direction, searchQueryKey(query), row.Name, row.ID.String())
 }
 
-func encodeSearchAuthorRecoveryToken(direction pagination.Direction, query string, keys authorCursorKeys) string {
-	return pagination.Encode(direction, searchQueryKey(query), keys.name.String, keys.id.UUID.String(), authorInclusiveKey)
+func encodeSearchCreatorRecoveryToken(direction pagination.Direction, query string, keys creatorCursorKeys) string {
+	return pagination.Encode(direction, searchQueryKey(query), keys.name.String, keys.id.UUID.String(), creatorInclusiveKey)
 }
 
-func decodeSearchAuthorCursorKeys(cursor pagination.Cursor, query string) (authorCursorKeys, error) {
-	boundary, err := decodeSearchBoundary(cursor, query, authorInclusiveKey)
+func decodeSearchCreatorCursorKeys(cursor pagination.Cursor, query string) (creatorCursorKeys, error) {
+	boundary, err := decodeSearchBoundary(cursor, query, creatorInclusiveKey)
 	if err != nil {
-		return authorCursorKeys{}, err
+		return creatorCursorKeys{}, err
 	}
-	return authorCursorKeys{
+	return creatorCursorKeys{
 		name:      sql.NullString{String: boundary.sortKey, Valid: true},
 		id:        uuid.NullUUID{UUID: boundary.id, Valid: true},
 		inclusive: boundary.inclusive,
 	}, nil
 }
 
-func (s *apiServer) publishedSearchAuthorPageIDs(
+func (s *apiServer) publishedSearchCreatorPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	queryPattern string,
 	descending bool,
-	keys authorCursorKeys,
+	keys creatorCursorKeys,
 	limit int32,
 ) ([]uuid.UUID, error) {
 	queries := s.queriesFor(ctx)
 	if descending {
-		return queries.ListPublishedAuthorIDsBySearchNameDesc(ctx, dbmodels.ListPublishedAuthorIDsBySearchNameDescParams{
+		return queries.ListPublishedCreatorIDsBySearchNameDesc(ctx, dbmodels.ListPublishedCreatorIDsBySearchNameDescParams{
 			TenantID:        tenantID,
 			QueryPattern:    queryPattern,
 			CursorID:        keys.id,
@@ -233,7 +233,7 @@ func (s *apiServer) publishedSearchAuthorPageIDs(
 			Limit:           limit,
 		})
 	}
-	return queries.ListPublishedAuthorIDsBySearchNameAsc(ctx, dbmodels.ListPublishedAuthorIDsBySearchNameAscParams{
+	return queries.ListPublishedCreatorIDsBySearchNameAsc(ctx, dbmodels.ListPublishedCreatorIDsBySearchNameAscParams{
 		TenantID:        tenantID,
 		QueryPattern:    queryPattern,
 		CursorID:        keys.id,
@@ -243,10 +243,10 @@ func (s *apiServer) publishedSearchAuthorPageIDs(
 	})
 }
 
-func (s *apiServer) SearchPublishedAuthors(
+func (s *apiServer) SearchPublishedCreators(
 	ctx context.Context,
-	req *connect.Request[publirav1.SearchPublishedAuthorsRequest],
-) (*connect.Response[publirav1.SearchPublishedAuthorsResponse], error) {
+	req *connect.Request[publirav1.SearchPublishedCreatorsRequest],
+) (*connect.Response[publirav1.SearchPublishedCreatorsResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -255,48 +255,48 @@ func (s *apiServer) SearchPublishedAuthors(
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAuthorPageSize, maxAuthorPageSize)
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorPageSize, maxCreatorPageSize)
 	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	var keys authorCursorKeys
+	var keys creatorCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeSearchAuthorCursorKeys(cursor, query)
+		keys, err = decodeSearchCreatorCursorKeys(cursor, query)
 		if err != nil {
 			return nil, err
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedSearchAuthorPageIDs(ctx, tenant.ID, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
+	ids, err := s.publishedSearchCreatorPageIDs(ctx, tenant.ID, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to search published authors", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to search published creators", err, "tenant_id", tenant.ID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.publishedAuthorRowsInOrder(ctx, tenant.ID, ids)
+	rows, err := s.publishedCreatorRowsInOrder(ctx, tenant.ID, ids)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to search published authors", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to search published creators", err, "tenant_id", tenant.ID.String())
 	}
 
-	items := make([]*publirav1.PublishedAuthor, 0, len(rows))
+	items := make([]*publirav1.PublishedCreator, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, publishedAuthorFromListRow(row))
+		items = append(items, publishedCreatorFromListRow(row))
 	}
 
-	res := &publirav1.SearchPublishedAuthorsResponse{Authors: items}
+	res := &publirav1.SearchPublishedCreatorsResponse{Creators: items}
 	switch {
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = encodeSearchAuthorCursor(pagination.Backward, query, rows[0])
+			res.PreviousToken = encodeSearchCreatorCursor(pagination.Backward, query, rows[0])
 		}
 		if hasNext {
-			res.NextToken = encodeSearchAuthorCursor(pagination.Forward, query, rows[len(rows)-1])
+			res.NextToken = encodeSearchCreatorCursor(pagination.Forward, query, rows[len(rows)-1])
 		}
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeSearchAuthorRecoveryToken(pagination.Backward, query, keys)
+		res.PreviousToken = encodeSearchCreatorRecoveryToken(pagination.Backward, query, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeSearchAuthorRecoveryToken(pagination.Forward, query, keys)
+		res.NextToken = encodeSearchCreatorRecoveryToken(pagination.Forward, query, keys)
 	}
 	return connect.NewResponse(res), nil
 }

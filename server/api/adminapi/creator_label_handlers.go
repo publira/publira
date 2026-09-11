@@ -650,16 +650,16 @@ func (s *adminServer) GetLabel(
 	return connect.NewResponse(&publiraadminv1.GetLabelResponse{Label: protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants)}), nil
 }
 
-// creatorRevalidateTags names what web-host caches a creator under. The author
-// list and the author detail page read it under `:authors`, and so do the
+// creatorRevalidateTags names what web-host caches a creator under. The creator
+// list and the creator detail page read it under `:creators`, and so do the
 // series lists that print creator names on their cards; the series detail page
 // prints them too and is only reachable under `:series:detail`, so a rename
-// that stopped at `:authors` would leave the previous name on that page until
+// that stopped at `:creators` would leave the previous name on that page until
 // the entry expired on its own.
 func creatorRevalidateTags(tenantID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{
-		fmt.Sprintf("tenant:%s:authors", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:creators", normalizedTenantID),
 		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
 	}
 }

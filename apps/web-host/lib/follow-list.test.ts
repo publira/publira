@@ -47,7 +47,7 @@ const seriesFollow = {
 const authorFollow = {
   followedAt: "2026-06-01T00:00:00Z",
   targetPublicId: "AUTHOR01",
-  targetType: FollowTargetType.AUTHOR,
+  targetType: FollowTargetType.CREATOR,
 };
 
 describe("listMyFollows", () => {

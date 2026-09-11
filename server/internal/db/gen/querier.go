@@ -383,8 +383,8 @@ type Querier interface {
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
 	// Returns only the creators that hold at least one published series. The
 	// caller turns an empty result into not_found exactly as it does a missing
-	// row, so the existence of an unpublished author does not leak.
-	GetPublishedAuthorByPublicID(ctx context.Context, arg GetPublishedAuthorByPublicIDParams) (GetPublishedAuthorByPublicIDRow, error)
+	// row, so the existence of an unpublished creator does not leak.
+	GetPublishedCreatorByPublicID(ctx context.Context, arg GetPublishedCreatorByPublicIDParams) (GetPublishedCreatorByPublicIDRow, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
 	// Returns a label of the tenant. The row comes back even when the label has
 	// no published series, because a label has no unpublished state of its own. A
@@ -784,7 +784,7 @@ type Querier interface {
 	// Worker fan-out: who is told about a new episode. The union of the follows
 	// that point at the episode, at the series it belongs to, and at a creator
 	// credited on it. UNION rather than UNION ALL, so a reader who follows both
-	// the series and its author is one recipient and gets one notification.
+	// the series and its creator is one recipient and gets one notification.
 	//
 	// The credits come from episode_creators rather than series_creators because
 	// the episode is the unit that is credited: a guest who appears on this
@@ -976,9 +976,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
-	// The cursor pagination of the published author list runs in two stages.
+	ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error)
+	// The cursor pagination of the published creator list runs in two stages.
 	//
-	// Stage one is ListPublishedAuthorIDsByName*, which settles nothing but the
+	// Stage one is ListPublishedCreatorIDsByName*, which settles nothing but the
 	// ids of the creators that hold at least one published series. The sort key
 	// is (name, id); id is a UUIDv7, so the order stays unique even when two
 	// creators share a name.
@@ -992,19 +993,19 @@ type Querier interface {
 	//
 	// The EXISTS published predicate is the one
 	// ListActiveSeriesIDsByPublishedAtDesc uses. Once the two drift apart, the
-	// series list and the author page disagree about which works are visible.
+	// series list and the creator page disagree about which works are visible.
 	// Every direction gets its own query with a fixed ORDER BY, because branching
 	// with CASE stops idx_creators_tenant_name from being read in index order.
 	// Backward calls the DESC query, and the caller sorts the rows back.
 	//
-	// Stage two is ListPublishedAuthorsByIDs, which builds the display data and
+	// Stage two is ListPublishedCreatorsByIDs, which builds the display data and
 	// the published series count for the ids stage one settled on.
-	ListPublishedAuthorIDsByNameAsc(ctx context.Context, arg ListPublishedAuthorIDsByNameAscParams) ([]uuid.UUID, error)
-	ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg ListPublishedAuthorIDsByNameDescParams) ([]uuid.UUID, error)
-	// SearchPublishedAuthors. Stage one of the same two-stage shape
-	// ListPublishedAuthorIDsByNameAsc uses, narrowed to the creators whose name
-	// ILIKE-matches query_pattern. Stage two is ListPublishedAuthorsByIDs again:
-	// the search shows an author exactly as the list does.
+	ListPublishedCreatorIDsByNameAsc(ctx context.Context, arg ListPublishedCreatorIDsByNameAscParams) ([]uuid.UUID, error)
+	ListPublishedCreatorIDsByNameDesc(ctx context.Context, arg ListPublishedCreatorIDsByNameDescParams) ([]uuid.UUID, error)
+	// SearchPublishedCreators. Stage one of the same two-stage shape
+	// ListPublishedCreatorIDsByNameAsc uses, narrowed to the creators whose name
+	// ILIKE-matches query_pattern. Stage two is ListPublishedCreatorsByIDs again:
+	// the search shows a creator exactly as the list does.
 	// The caller builds query_pattern as '%q%' and makes the ILIKE %/_ literal
 	// with ESCAPE '!'.
 	// Only name is matched. profile_text would answer a creator-name search with
@@ -1012,13 +1013,12 @@ type Querier interface {
 	// Index plan: idx_creators_tenant_name carries the keyset half. ILIKE '%q%'
 	// cannot ride a btree, so a sequential scan is enough while the LIMIT still
 	// bites after narrowing by tenant, the same trade SearchPublishedSeries makes.
-	ListPublishedAuthorIDsBySearchNameAsc(ctx context.Context, arg ListPublishedAuthorIDsBySearchNameAscParams) ([]uuid.UUID, error)
-	// The backward direction of ListPublishedAuthorIDsBySearchNameAsc.
-	ListPublishedAuthorIDsBySearchNameDesc(ctx context.Context, arg ListPublishedAuthorIDsBySearchNameDescParams) ([]uuid.UUID, error)
+	ListPublishedCreatorIDsBySearchNameAsc(ctx context.Context, arg ListPublishedCreatorIDsBySearchNameAscParams) ([]uuid.UUID, error)
+	// The backward direction of ListPublishedCreatorIDsBySearchNameAsc.
+	ListPublishedCreatorIDsBySearchNameDesc(ctx context.Context, arg ListPublishedCreatorIDsBySearchNameDescParams) ([]uuid.UUID, error)
 	// No ORDER BY: the caller sorts the rows into the id order stage one settled
 	// on.
-	ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error)
-	ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error)
+	ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublishedCreatorsByIDsParams) ([]ListPublishedCreatorsByIDsRow, error)
 	// The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
 	// handler reverses the returned rows to preserve the newest-first display order.
 	ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtAscParams) ([]ListPublishedEpisodeCommentsByCreatedAtAscRow, error)
@@ -1064,7 +1064,7 @@ type Querier interface {
 	// SearchPublishedLabels orders by name instead of creation, so it takes its
 	// own pair of queries rather than the ListLabelsByTenant* pair above. It is
 	// one stage: a label row is a name and its eye catch, so there is nothing
-	// heavy to defer to a second query the way the author search does.
+	// heavy to defer to a second query the way the creator search does.
 	// Unlike GetPublishedLabelDetail, which answers for a label whose last series
 	// was taken down so a shared URL stays valid, a search hit has to have
 	// something behind it, hence the EXISTS.
@@ -1737,7 +1737,7 @@ type Querier interface {
 	UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDeviceParams) (UserPushDevice, error)
 	UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	// Creators are public when they have at least one active series, matching
-	// GetPublishedAuthorByPublicID.
+	// GetPublishedCreatorByPublicID.
 	UserFollowsPublishedCreator(ctx context.Context, arg UserFollowsPublishedCreatorParams) (bool, error)
 	// Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
 	// otherwise non-public episode is indistinguishable from an unfollowed one.

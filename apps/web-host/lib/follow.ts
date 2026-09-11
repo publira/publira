@@ -22,14 +22,14 @@ export const followTargetKinds = ["author", "series"] as const;
 export type FollowTargetKind = (typeof followTargetKinds)[number];
 
 const followTargetTypeByKind: Record<FollowTargetKind, FollowTargetType> = {
-  author: FollowTargetType.AUTHOR,
+  author: FollowTargetType.CREATOR,
   series: FollowTargetType.SERIES,
 };
 
 const followTargetKindByType: Partial<
   Record<FollowTargetType, FollowTargetKind>
 > = {
-  [FollowTargetType.AUTHOR]: "author",
+  [FollowTargetType.CREATOR]: "author",
   [FollowTargetType.SERIES]: "series",
 };
 
