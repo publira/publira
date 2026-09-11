@@ -47,8 +47,11 @@ type Store interface {
 	// that stored it. The entry expires after ttl.
 	Add(ctx context.Context, key string, ttl time.Duration) (bool, error)
 	// Forget removes key, so a claim whose action did not go through stops
-	// standing for the rest of its window.
-	Forget(ctx context.Context, key string)
+	// standing for the rest of its window. It reports whether the removal
+	// reached the counters: a store that could not drop the key leaves what it
+	// held standing until the key's own expiry, and a caller told nothing could
+	// not tell that apart from a removal that worked.
+	Forget(ctx context.Context, key string) error
 }
 
 // Limiter charges actions against a Store.
@@ -108,7 +111,10 @@ func (l *Limiter) Claim(ctx context.Context, key string, window time.Duration) (
 // Release gives up a claim whose action did not go through, so a write that
 // failed does not leave the caller refused for the rest of the window.
 func (l *Limiter) Release(ctx context.Context, key string) {
-	l.store.Forget(ctx, key)
+	// Best effort, like Reset below: the store records a removal it could not
+	// make, and there is nothing the caller of a give-back could do with the
+	// error that the key expiring on its own does not already do.
+	_ = l.store.Forget(ctx, key)
 }
 
 // Reset drops what subject has spent on every rule.
@@ -117,6 +123,12 @@ func (l *Limiter) Release(ctx context.Context, key string) {
 // caller can get right, where the count is there to bound the guessing rather
 // than the asking: reaching the answer proves the caller was not guessing, and
 // the attempts they made before it stop standing against them.
+//
+// A counter the store could not drop keeps what it held until the end of its
+// own window, which is the same state the subject was in a moment earlier and
+// no worse than it. So the store records such a failure and this reports none:
+// refusing the action whose success is what earned the reset would turn a Redis
+// that briefly would not delete into a password nobody can change.
 func (l *Limiter) Reset(ctx context.Context, subject string, rules ...Rule) {
 	now := l.now()
 	for _, rule := range rules {
@@ -124,7 +136,7 @@ func (l *Limiter) Reset(ctx context.Context, subject string, rules ...Rule) {
 			continue
 		}
 		key, _ := bucket(subject, rule, now)
-		l.store.Forget(ctx, key)
+		_ = l.store.Forget(ctx, key)
 	}
 }
 
