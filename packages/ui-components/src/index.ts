@@ -79,6 +79,7 @@ export type {
   FieldLabelProps,
   FieldProps,
 } from "./field";
+export { Figure, FigureLabel, FigureLine, FigureValue } from "./figure-line";
 export { FormMessage } from "./form-message";
 export type { FormMessageProps } from "./form-message";
 export { FormActions } from "./form-actions";

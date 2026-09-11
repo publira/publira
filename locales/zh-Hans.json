@@ -2686,7 +2686,6 @@
         "target": "对象"
       },
       "empty_events": "暂无最近的事件。",
-      "empty_events_pending": "事件加载完成后会显示在这里。",
       "events": {
         "end_user_created": "创建了终端用户",
         "operator_role_granted": "授予了运营角色",
@@ -2697,30 +2696,14 @@
       "heading": "跨租户运营中心",
       "list_failed": "无法加载仪表盘。请稍后再试。",
       "load_failed": "无法显示仪表盘",
-      "next_actions_description": "确认状态后，快速跳转到最常用的页面。",
-      "next_actions_title": "后续操作",
-      "not_fetched": "未加载",
-      "open_audit": "查看审计日志",
-      "open_operators": "管理运营人员",
-      "open_tenants": "打开租户列表",
-      "open_tenants_new": "创建租户",
       "page_description": "查看整个平台的租户状态、待处理数量和最近事件。",
       "stats": {
-        "active_detail": "共 {$count} 个",
-        "active_detail_empty": "当前正在运行的租户",
         "active_label": "运行中的租户",
-        "pending_detail": "已邀请或未启用的用户",
-        "pending_detail_empty": "等待确认的用户",
         "pending_label": "待处理用户",
-        "suspended_detail": "需要恢复或调查",
-        "suspended_detail_empty": "当前已暂停的租户",
         "suspended_label": "已暂停的租户",
-        "total_detail": "{$active} 个运行中 / {$suspended} 个已暂停",
-        "total_detail_empty": "全部租户的最新状态",
         "total_label": "租户总数"
       },
       "title": "仪表盘",
-      "updated_count": "{$count} 项更新",
       "view_audit": "查看审计日志",
       "view_tenants": "前往租户列表"
     },

@@ -1,25 +1,24 @@
 import { getMessage } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   EmptyState,
   EmptyStateDescription,
   EmptyStateHeading,
   EmptyStateTitle,
 } from "@publira/ui-components/empty-state";
 import {
+  Figure,
+  FigureLabel,
+  FigureLine,
+  FigureValue,
+} from "@publira/ui-components/figure-line";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -59,6 +58,9 @@ export const generateMetadata = async (): Promise<Metadata> => {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
+/** As many rows as the queue is likely to hold before it needs scrolling. */
+const QUEUE_SKELETON_ROWS = 3;
+
 const getQueueStatusTone = (status: "draft" | "scheduled") => {
   if (status === "scheduled") {
     return "info" as const;
@@ -66,37 +68,61 @@ const getQueueStatusTone = (status: "draft" | "scheduled") => {
   return "muted" as const;
 };
 
-const getQueueStatusKey = (status: "draft" | "scheduled") => {
+/**
+ * What an episode in the queue is waiting for. The branch is written out here
+ * so each key stays a literal at the point it is rendered.
+ */
+const QueueStatusMessage = ({ status }: { status: "draft" | "scheduled" }) => {
   if (status === "scheduled") {
-    return "admin.dashboard.status_scheduled" as const;
+    return <Message message="admin.dashboard.status_scheduled" />;
   }
-  return "admin.dashboard.status_draft" as const;
+  return <Message message="admin.dashboard.status_draft" />;
 };
 
+/** The heading of the section the queue is, whether or not the queue arrived. */
+const QueueHeading = () => (
+  <div className="grid gap-1">
+    <h2 className="text-xl leading-tight font-medium text-foreground">
+      <Suspense fallback={<SkeletonLine className="h-5 w-44" />}>
+        <Message message="admin.dashboard.queue_title" />
+      </Suspense>
+    </h2>
+    <p className="text-sm text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+        <Message message="admin.dashboard.queue_description" />
+      </Suspense>
+    </p>
+  </div>
+);
+
+/**
+ * The same geometry the figures and the queue land in, so nothing moves when
+ * the read returns: three pairs on one line, then rows under a rule.
+ */
 const DashboardSkeleton = () => (
-  <div className="grid gap-6">
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+  <div className="grid gap-10">
+    <FigureLine>
       {(["skeleton-1", "skeleton-2", "skeleton-3"] as const).map((key) => (
-        <Card key={key}>
-          <CardHeader className="gap-3">
-            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-            <div className="h-8 w-12 animate-pulse rounded bg-muted" />
-          </CardHeader>
-        </Card>
+        <Figure key={key}>
+          <FigureLabel>
+            <SkeletonLine className="h-4 w-28" />
+          </FigureLabel>
+          <FigureValue>
+            <SkeletonLine className="h-6 w-10" />
+          </FigureValue>
+        </Figure>
       ))}
-    </div>
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3">
-          <div className="h-10 animate-pulse rounded bg-muted/70" />
-          <div className="h-10 animate-pulse rounded bg-muted/70" />
-          <div className="h-10 animate-pulse rounded bg-muted/70" />
-        </div>
-      </CardContent>
-    </Card>
+    </FigureLine>
+    <section className="grid gap-4">
+      <QueueHeading />
+      <div className="divide-y divide-border border-t-2 border-border">
+        {Array.from({ length: QUEUE_SKELETON_ROWS }, (_, index) => (
+          <div className="py-3" key={index}>
+            <Skeleton className="h-5 w-full" />
+          </div>
+        ))}
+      </div>
+    </section>
   </div>
 );
 
@@ -106,7 +132,6 @@ const DashboardContent = async () => {
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
-  const messages = await loadAdminMessages(locale);
   const result = await getDashboard(tenantId, locale);
 
   if (!result.ok) {
@@ -128,84 +153,90 @@ const DashboardContent = async () => {
 
   const { stats, queue } = result;
 
-  const statsItems = [
-    {
-      label: "admin.dashboard.published_series",
-      value: stats.publishedSeriesCount,
-    },
-    {
-      label: "admin.dashboard.draft_episodes",
-      value: stats.draftEpisodeCount,
-    },
-    {
-      label: "admin.dashboard.scheduled_episodes",
-      value: stats.scheduledEpisodeCount,
-    },
-  ] as const;
-
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {statsItems.map((item) => (
-          <Card key={item.label}>
-            <CardHeader className="gap-3">
-              <CardDescription>
-                {getMessage(messages, item.label)}
-              </CardDescription>
-              <CardTitle className="text-3xl">{item.value}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
+    <div className="grid gap-10">
+      <FigureLine>
+        <Figure>
+          <FigureLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.dashboard.published_series" />
+            </Suspense>
+          </FigureLabel>
+          <FigureValue>{stats.publishedSeriesCount}</FigureValue>
+        </Figure>
+        <Figure>
+          <FigureLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.dashboard.draft_episodes" />
+            </Suspense>
+          </FigureLabel>
+          <FigureValue>{stats.draftEpisodeCount}</FigureValue>
+        </Figure>
+        <Figure>
+          <FigureLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.dashboard.scheduled_episodes" />
+            </Suspense>
+          </FigureLabel>
+          <FigureValue>{stats.scheduledEpisodeCount}</FigureValue>
+        </Figure>
+      </FigureLine>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {getMessage(messages, "admin.dashboard.queue_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.dashboard.queue_description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {queue.length === 0 ? (
-            <EmptyState>
-              <EmptyStateHeading>
-                <EmptyStateTitle>
-                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                    <Message message="admin.dashboard.queue_empty_title" />
+      <section className="grid gap-4">
+        <QueueHeading />
+        {queue.length === 0 ? (
+          <EmptyState>
+            <EmptyStateHeading>
+              <EmptyStateTitle>
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.dashboard.queue_empty_title" />
+                </Suspense>
+              </EmptyStateTitle>
+              <EmptyStateDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                  <Message message="admin.dashboard.queue_empty_description" />
+                </Suspense>
+              </EmptyStateDescription>
+            </EmptyStateHeading>
+          </EmptyState>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <Message message="admin.dashboard.columns.series" />
                   </Suspense>
-                </EmptyStateTitle>
-                <EmptyStateDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-                    <Message message="admin.dashboard.queue_empty_description" />
+                </TableHead>
+                <TableHead>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <Message message="admin.dashboard.columns.episode" />
                   </Suspense>
-                </EmptyStateDescription>
-              </EmptyStateHeading>
-            </EmptyState>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    {getMessage(messages, "admin.dashboard.columns.series")}
-                  </TableHead>
-                  <TableHead>
-                    {getMessage(messages, "admin.dashboard.columns.episode")}
-                  </TableHead>
-                  <TableHead className="w-36">
-                    {getMessage(messages, "admin.dashboard.columns.status")}
-                  </TableHead>
-                  <TableHead className="w-48">
-                    {getMessage(
-                      messages,
-                      "admin.dashboard.columns.scheduled_at"
-                    )}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {queue.map((item) => (
+                </TableHead>
+                <TableHead className="w-36">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
+                    <Message message="admin.dashboard.columns.status" />
+                  </Suspense>
+                </TableHead>
+                <TableHead className="w-48">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                    <Message message="admin.dashboard.columns.scheduled_at" />
+                  </Suspense>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {queue.map((item) => {
+                // An empty fallback rather than the raw value, so the cell can
+                // tell "no date set" from a date and say so in the operator's
+                // own language below.
+                const scheduledAt = formatDateTime(item.scheduledAt, {
+                  fallback: "",
+                  locale,
+                  timeZone,
+                });
+
+                return (
                   <TableRow
                     key={`${item.seriesPublicId}-${item.episodePublicId}`}
                   >
@@ -214,24 +245,33 @@ const DashboardContent = async () => {
                     </TableCell>
                     <TableCell>{item.episodeTitle}</TableCell>
                     <TableCell>
-                      <Badge tone={getQueueStatusTone(item.status)}>
-                        {getMessage(messages, getQueueStatusKey(item.status))}
+                      <Badge
+                        tone={getQueueStatusTone(item.status)}
+                        variant="outline"
+                      >
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-16" />}
+                        >
+                          <QueueStatusMessage status={item.status} />
+                        </Suspense>
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {formatDateTime(item.scheduledAt, {
-                        fallback: getMessage(messages, "admin.dashboard.unset"),
-                        locale,
-                        timeZone,
-                      })}
+                      {scheduledAt || (
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-16" />}
+                        >
+                          <Message message="admin.dashboard.unset" />
+                        </Suspense>
+                      )}
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </section>
     </div>
   );
 };
