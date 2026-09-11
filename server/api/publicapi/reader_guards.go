@@ -37,6 +37,19 @@ const (
 	// Every press of the rating control charges, because every press that adds
 	// a point files an event of its own.
 	actionRateEpisode readerAction = "episode.rate"
+	// The step-up password check ChangePassword, DeleteMe and RequestEmailChange
+	// make on top of the session. One action for all three: an allowance held
+	// per RPC would hand a guesser three budgets to rotate between.
+	//
+	// This one is charged before the password is verified rather than before the
+	// first write, so an attempt past the limit costs no bcrypt and reaches no
+	// row, and it is cleared once a password verifies — the count is there to
+	// bound guessing, and the caller who knows the password is not guessing.
+	// resource_exhausted is what distinguishes the refusal from the
+	// invalid_argument a wrong password gets, so a client can tell the reader to
+	// come back later instead of repeating "your password is wrong" at someone
+	// who typed it correctly.
+	actionVerifyPassword readerAction = "password.verify"
 )
 
 // The deployment settings, and the defaults a deployment that sets none of them
@@ -44,13 +57,15 @@ const (
 // a script cannot live within: nobody composes ten comments in a minute, and a
 // reader who has posted a hundred in a day is no longer reading.
 const (
-	postCommentPerMinuteEnv   = "PUBLIRA_COMMENT_POST_LIMIT_PER_MINUTE"
-	postCommentPerDayEnv      = "PUBLIRA_COMMENT_POST_LIMIT_PER_DAY"
-	reportCommentPerMinuteEnv = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_MINUTE"
-	reportCommentPerDayEnv    = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_DAY"
-	duplicateCommentWindowEnv = "PUBLIRA_COMMENT_DUPLICATE_WINDOW_MINUTES"
-	rateEpisodePerMinuteEnv   = "PUBLIRA_EPISODE_RATING_LIMIT_PER_MINUTE"
-	rateEpisodePerDayEnv      = "PUBLIRA_EPISODE_RATING_LIMIT_PER_DAY"
+	postCommentPerMinuteEnv    = "PUBLIRA_COMMENT_POST_LIMIT_PER_MINUTE"
+	postCommentPerDayEnv       = "PUBLIRA_COMMENT_POST_LIMIT_PER_DAY"
+	reportCommentPerMinuteEnv  = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_MINUTE"
+	reportCommentPerDayEnv     = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_DAY"
+	duplicateCommentWindowEnv  = "PUBLIRA_COMMENT_DUPLICATE_WINDOW_MINUTES"
+	rateEpisodePerMinuteEnv    = "PUBLIRA_EPISODE_RATING_LIMIT_PER_MINUTE"
+	rateEpisodePerDayEnv       = "PUBLIRA_EPISODE_RATING_LIMIT_PER_DAY"
+	verifyPasswordPerMinuteEnv = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_MINUTE"
+	verifyPasswordPerDayEnv    = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_DAY"
 
 	defaultPostCommentPerMinute   = 10
 	defaultPostCommentPerDay      = 100
@@ -64,6 +79,15 @@ const (
 	// than anyone reading makes.
 	defaultRateEpisodePerMinute = 30
 	defaultRateEpisodePerDay    = 300
+
+	// The password budget is the one a reader is meant to reach only by
+	// mistyping, so it is far narrower than the others: a handful of tries in a
+	// minute covers the typos, and a reader who cannot get it right after the
+	// day's worth has forgotten it and wants the reset form rather than another
+	// guess. Every try costs the API a bcrypt verification, which is the other
+	// reason the number is small.
+	defaultVerifyPasswordPerMinute = 5
+	defaultVerifyPasswordPerDay    = 50
 
 	// defaultDuplicateCommentWindow is long enough to cover a reader hammering
 	// the button and short enough that coming back to an episode hours later
@@ -87,24 +111,28 @@ type readerGuards struct {
 // struct rather than a widening list of ints so that adding an action cannot
 // silently swap two of them at a call site.
 type readerLimits struct {
-	postCommentPerMinute   int
-	postCommentPerDay      int
-	reportCommentPerMinute int
-	reportCommentPerDay    int
-	rateEpisodePerMinute   int
-	rateEpisodePerDay      int
+	postCommentPerMinute    int
+	postCommentPerDay       int
+	reportCommentPerMinute  int
+	reportCommentPerDay     int
+	rateEpisodePerMinute    int
+	rateEpisodePerDay       int
+	verifyPasswordPerMinute int
+	verifyPasswordPerDay    int
 }
 
 // defaultReaderLimits is the policy a deployment that sets none of the settings
 // gets.
 func defaultReaderLimits() readerLimits {
 	return readerLimits{
-		postCommentPerMinute:   defaultPostCommentPerMinute,
-		postCommentPerDay:      defaultPostCommentPerDay,
-		reportCommentPerMinute: defaultReportCommentPerMinute,
-		reportCommentPerDay:    defaultReportCommentPerDay,
-		rateEpisodePerMinute:   defaultRateEpisodePerMinute,
-		rateEpisodePerDay:      defaultRateEpisodePerDay,
+		postCommentPerMinute:    defaultPostCommentPerMinute,
+		postCommentPerDay:       defaultPostCommentPerDay,
+		reportCommentPerMinute:  defaultReportCommentPerMinute,
+		reportCommentPerDay:     defaultReportCommentPerDay,
+		rateEpisodePerMinute:    defaultRateEpisodePerMinute,
+		rateEpisodePerDay:       defaultRateEpisodePerDay,
+		verifyPasswordPerMinute: defaultVerifyPasswordPerMinute,
+		verifyPasswordPerDay:    defaultVerifyPasswordPerDay,
 	}
 }
 
@@ -125,6 +153,8 @@ func newReaderGuardsFromEnv(logger *slog.Logger) (readerGuards, error) {
 		{reportCommentPerDayEnv, defaultReportCommentPerDay, &limits.reportCommentPerDay},
 		{rateEpisodePerMinuteEnv, defaultRateEpisodePerMinute, &limits.rateEpisodePerMinute},
 		{rateEpisodePerDayEnv, defaultRateEpisodePerDay, &limits.rateEpisodePerDay},
+		{verifyPasswordPerMinuteEnv, defaultVerifyPasswordPerMinute, &limits.verifyPasswordPerMinute},
+		{verifyPasswordPerDayEnv, defaultVerifyPasswordPerDay, &limits.verifyPasswordPerDay},
 	} {
 		value, err := envLimit(setting.name, setting.fallback)
 		if err != nil {
@@ -159,6 +189,10 @@ func readerRules(limits readerLimits) map[readerAction][]ratelimit.Rule {
 		actionRateEpisode: {
 			{Limit: limits.rateEpisodePerMinute, Window: time.Minute},
 			{Limit: limits.rateEpisodePerDay, Window: 24 * time.Hour},
+		},
+		actionVerifyPassword: {
+			{Limit: limits.verifyPasswordPerMinute, Window: time.Minute},
+			{Limit: limits.verifyPasswordPerDay, Window: 24 * time.Hour},
 		},
 	}
 }
@@ -218,6 +252,22 @@ func (s *apiServer) chargeReaderAction(ctx context.Context, action readerAction,
 		return nil
 	}
 	return rpcerrors.NewRateLimitedError(decision.RetryAfter)
+}
+
+// clearReaderAction gives the reader back everything action has cost them.
+//
+// It is the counterpart the step-up password check needs and no other action
+// uses: a budget that bounds guessing has to be cleared by the attempt that was
+// not a guess. Holding the count past a password that verified would lock an
+// account out of its own settings over typos, and it would bound nothing —
+// what the limit is there for is the caller who does not know the password, and
+// that caller never gets this far.
+func (s *apiServer) clearReaderAction(ctx context.Context, action readerAction, tenantID, userID uuid.UUID) {
+	rules := s.guards.rules[action]
+	if len(rules) == 0 {
+		return
+	}
+	s.guards.limiter.Reset(ctx, readerActionSubject(action, tenantID, userID), rules...)
 }
 
 // duplicateCommentKey names one reader repeating themselves on one episode.

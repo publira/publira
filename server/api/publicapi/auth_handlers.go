@@ -766,10 +766,18 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
 	}
+	// Charged here rather than at the top: every check above refuses on what the
+	// caller typed instead of on the account's password, so none of them is a
+	// guess and none of them should cost an allowance.
+	if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		return nil, err
+	}
 	if !auth.VerifyPassword(currentPassword, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
+	s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
 
 	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -1179,6 +1187,14 @@ func (s *apiServer) ChangePassword(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("new password must be different from current password"), "new_password")
 	}
 
+	// Charged before the transaction, so a caller who is out of allowances is
+	// turned away without a bcrypt verification and without taking a row lock on
+	// the account they are guessing at.
+	if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		return nil, err
+	}
+
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
@@ -1206,6 +1222,7 @@ func (s *apiServer) ChangePassword(
 		// else — the account, its state, and the stored hash stay out of it.
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
+	s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
 
 	passwordHash, err := auth.HashPassword(newPassword)
 	if err != nil {
@@ -1399,6 +1416,10 @@ func (s *apiServer) DeleteMe(
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("password is required"))
 	}
+	if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		return nil, err
+	}
 	if !auth.VerifyPassword(password, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		// Not Unauthenticated: the session is fine, the confirmation field is
@@ -1406,6 +1427,7 @@ func (s *apiServer) DeleteMe(
 		// log the reader out for a typo.
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid password"), "password")
 	}
+	s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
 		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())

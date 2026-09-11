@@ -2,10 +2,12 @@
 //
 // It exists for the endpoints a stranger can reach without being vouched for:
 // the ones a signed-in reader writes through, which are the first places on
-// this platform where they can put text in front of everyone else, and the
-// forms that make a mail server send without having authenticated anyone. Each
-// of them needs an answer to "how often", and the answer has to be the same one
-// whichever instance of a server happens to take the request.
+// this platform where they can put text in front of everyone else, the forms
+// that make a mail server send without having authenticated anyone, and the
+// step-up checks that ask a caller already holding a session for the account's
+// password again. Each of them needs an answer to "how often", and the answer
+// has to be the same one whichever instance of a server happens to take the
+// request.
 //
 // The mechanism knows nothing about comments or about mail: a caller names the
 // subject it is charging and the rules to charge it against, so the next
@@ -107,6 +109,23 @@ func (l *Limiter) Claim(ctx context.Context, key string, window time.Duration) (
 // failed does not leave the caller refused for the rest of the window.
 func (l *Limiter) Release(ctx context.Context, key string) {
 	l.store.Forget(ctx, key)
+}
+
+// Reset drops what subject has spent on every rule.
+//
+// It is for the limits that count attempts at something only the rightful
+// caller can get right, where the count is there to bound the guessing rather
+// than the asking: reaching the answer proves the caller was not guessing, and
+// the attempts they made before it stop standing against them.
+func (l *Limiter) Reset(ctx context.Context, subject string, rules ...Rule) {
+	now := l.now()
+	for _, rule := range rules {
+		if rule.Limit < 1 || rule.Window <= 0 {
+			continue
+		}
+		key, _ := bucket(subject, rule, now)
+		l.store.Forget(ctx, key)
+	}
 }
 
 // bucket names the counter for the window rule is in at now, and reports how

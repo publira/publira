@@ -64,7 +64,9 @@ An RPC that stores something a reader can repeat verbatim also claims that text 
 
 The counters live in Redis when `PUBLIRA_REDIS_URL` names one and in this process when it does not, and a Redis that stops answering falls back to the in-process counters rather than to no limit: a rate limiter that fails open is one an outage turns into the flood it was there to stop.
 
-No lint covers this — nothing can tell an RPC that writes on a reader's behalf from one that does not.
+The step-up password check is one of those actions and is charged differently. `ChangePassword`, `DeleteMe` and `RequestEmailChange` ask for the account's password on top of the session, and every RPC that does spends `actionVerifyPassword` — one budget for all of them, because a budget per RPC would hand a guesser one of each to rotate between. The charge goes **before the verification**, so an attempt past the limit costs no bcrypt and reaches no row, and a verification that succeeds clears the count through `clearReaderAction`: the limit is there for the caller who does not know the password, and that caller never gets that far.
+
+No lint covers this — nothing can tell an RPC that writes on a reader's behalf from one that does not, or one that asks for a password from one that does not.
 
 ## A form that mails an address charges the mail guard
 
