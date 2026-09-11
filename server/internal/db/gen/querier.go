@@ -13,6 +13,14 @@ import (
 )
 
 type Querier interface {
+	// Writes a held refund onto the purchase that has since been created, by the
+	// same rules RecordStripeRefundOnPurchase uses. Nothing matches when no refund
+	// is held for the payment intent, which is the ordinary case.
+	//
+	// The held row is left for the caller to delete once this has committed. A
+	// crash in between costs a repeat of an update that is idempotent, whereas
+	// deleting here would lose the refund if the update never landed.
+	ApplyUnappliedStripeRefundToPurchase(ctx context.Context, arg ApplyUnappliedStripeRefundToPurchaseParams) (Purchase, error)
 	// Approval is what publishes a comment posted under approval_required, so it is
 	// also where published_at is first written.
 	ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
@@ -508,6 +516,15 @@ type Querier interface {
 	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 	// has no staff actor to name.
 	HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg HideEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
+	// Keeps a refund whose purchase is not here yet, so the Checkout event that
+	// creates the purchase can still apply it. The payment intent is the identity,
+	// so a repeated delivery updates the row rather than adding one.
+	//
+	// A NULL amount means the event reported none, which is applied as a refund of
+	// the whole price; it therefore outranks any number on a later merge, and
+	// between two numbers the larger wins, because Stripe reports the total
+	// refunded so far.
+	HoldUnappliedStripeRefund(ctx context.Context, arg HoldUnappliedStripeRefundParams) error
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// Engagement / recommend query skeleton.
 	// Later issues fill handlers and batches; these queries pin the index-backed
@@ -1518,6 +1535,18 @@ type Querier interface {
 	// The caller resolves the episode through the published catalog query first, so
 	// publication and body access are settled before this runs.
 	RateEpisode(ctx context.Context, arg RateEpisodeParams) (EpisodeRating, error)
+	// Records what Stripe has refunded against one purchase, matched by the
+	// payment intent the refund event names. Nothing matches when the payment
+	// intent belongs to another tenant or to no purchase here, and the caller
+	// reads that empty result as a delivery it has no sale for.
+	//
+	// The amount Stripe reports is cumulative over every refund against the
+	// charge, so GREATEST keeps an out-of-order delivery from walking it back, and
+	// an event that reports no amount at all is recorded as a refund of the whole
+	// price. refunded_at follows from the amount rather than from the event:
+	// it is set once the refunded total reaches what was paid, and a repeated
+	// delivery of the same refund leaves the instant already stored.
+	RecordStripeRefundOnPurchase(ctx context.Context, arg RecordStripeRefundOnPurchaseParams) (Purchase, error)
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error)
@@ -1551,6 +1580,7 @@ type Querier interface {
 	// reports against it do not; leaving them open would let the same reports carry
 	// the comment past the removal threshold again the moment it came back.
 	RejectOpenEpisodeCommentReportsForComment(ctx context.Context, arg RejectOpenEpisodeCommentReportsForCommentParams) (int64, error)
+	ReleaseUnappliedStripeRefund(ctx context.Context, arg ReleaseUnappliedStripeRefundParams) error
 	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
 	// Staff deciding one report, either way. It names 'open' as the state it moves
 	// from, so a report a second moderator decided in between returns no row and

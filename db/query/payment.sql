@@ -63,12 +63,14 @@ SELECT EXISTS (
         AND user_id = sqlc.arg('user_id')::uuid
         AND episode_id = sqlc.arg('episode_id')
         AND (expires_at IS NULL OR expires_at > NOW())
+        AND refunded_at IS NULL
 ) AS has_purchase;
 
 -- name: ListMyPurchasesDesc :many
 SELECT p.id,
     p.price_at_purchase,
     p.expires_at,
+    p.refunded_at,
     p.purchased_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -108,6 +110,7 @@ LIMIT sqlc.arg('limit');
 SELECT p.id,
     p.price_at_purchase,
     p.expires_at,
+    p.refunded_at,
     p.purchased_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -165,7 +168,8 @@ INSERT INTO purchases (
     episode_id,
     price_at_purchase,
     expires_at,
-    stripe_checkout_session_id
+    stripe_checkout_session_id,
+    stripe_payment_intent_id
 )
 SELECT
     sqlc.arg('id')::uuid,
@@ -174,7 +178,8 @@ SELECT
     sqlc.arg('episode_id')::uuid,
     sqlc.arg('price_at_purchase')::integer,
     sqlc.narg('expires_at')::timestamptz,
-    sqlc.narg('stripe_checkout_session_id')::text
+    sqlc.narg('stripe_checkout_session_id')::text,
+    sqlc.narg('stripe_payment_intent_id')::text
 FROM locked
 WHERE NOT EXISTS (
     SELECT 1
@@ -183,6 +188,108 @@ WHERE NOT EXISTS (
         AND user_id = sqlc.arg('user_id')::uuid
         AND episode_id = sqlc.arg('episode_id')::uuid
         AND (expires_at IS NULL OR expires_at > NOW())
+        AND refunded_at IS NULL
 )
 ON CONFLICT (stripe_checkout_session_id) DO NOTHING
 RETURNING *;
+
+-- name: RecordStripeRefundOnPurchase :one
+-- Records what Stripe has refunded against one purchase, matched by the
+-- payment intent the refund event names. Nothing matches when the payment
+-- intent belongs to another tenant or to no purchase here, and the caller
+-- reads that empty result as a delivery it has no sale for.
+--
+-- The amount Stripe reports is cumulative over every refund against the
+-- charge, so GREATEST keeps an out-of-order delivery from walking it back, and
+-- an event that reports no amount at all is recorded as a refund of the whole
+-- price. refunded_at follows from the amount rather than from the event:
+-- it is set once the refunded total reaches what was paid, and a repeated
+-- delivery of the same refund leaves the instant already stored.
+WITH refund AS (
+    SELECT p.id,
+        GREATEST(
+            COALESCE(p.refunded_amount, 0),
+            COALESCE(sqlc.narg('refunded_amount')::integer, p.price_at_purchase)
+        ) AS amount
+    FROM purchases p
+    WHERE p.tenant_id = sqlc.arg('tenant_id')
+        AND p.stripe_payment_intent_id = sqlc.arg('stripe_payment_intent_id')::text
+)
+UPDATE purchases p
+SET refunded_amount = refund.amount,
+    refunded_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
+        ELSE p.refunded_at
+    END
+FROM refund
+WHERE p.id = refund.id
+RETURNING p.*;
+
+-- name: HoldUnappliedStripeRefund :exec
+-- Keeps a refund whose purchase is not here yet, so the Checkout event that
+-- creates the purchase can still apply it. The payment intent is the identity,
+-- so a repeated delivery updates the row rather than adding one.
+--
+-- A NULL amount means the event reported none, which is applied as a refund of
+-- the whole price; it therefore outranks any number on a later merge, and
+-- between two numbers the larger wins, because Stripe reports the total
+-- refunded so far.
+INSERT INTO unapplied_stripe_refunds (
+    tenant_id,
+    stripe_payment_intent_id,
+    refunded_amount
+)
+VALUES (
+    sqlc.arg('tenant_id'),
+    sqlc.arg('stripe_payment_intent_id')::text,
+    sqlc.narg('refunded_amount')::integer
+)
+ON CONFLICT (tenant_id, stripe_payment_intent_id) DO
+UPDATE
+SET refunded_amount = CASE
+        WHEN unapplied_stripe_refunds.refunded_amount IS NULL
+            OR EXCLUDED.refunded_amount IS NULL THEN NULL
+        ELSE GREATEST(unapplied_stripe_refunds.refunded_amount, EXCLUDED.refunded_amount)
+    END,
+    received_at = NOW();
+
+-- name: ApplyUnappliedStripeRefundToPurchase :one
+-- Writes a held refund onto the purchase that has since been created, by the
+-- same rules RecordStripeRefundOnPurchase uses. Nothing matches when no refund
+-- is held for the payment intent, which is the ordinary case.
+--
+-- The held row is left for the caller to delete once this has committed. A
+-- crash in between costs a repeat of an update that is idempotent, whereas
+-- deleting here would lose the refund if the update never landed.
+WITH held AS (
+    SELECT r.tenant_id,
+        r.stripe_payment_intent_id,
+        r.refunded_amount
+    FROM unapplied_stripe_refunds r
+    WHERE r.tenant_id = sqlc.arg('tenant_id')
+        AND r.stripe_payment_intent_id = sqlc.arg('stripe_payment_intent_id')::text
+),
+refund AS (
+    SELECT p.id,
+        GREATEST(
+            COALESCE(p.refunded_amount, 0),
+            COALESCE(held.refunded_amount, p.price_at_purchase)
+        ) AS amount
+    FROM purchases p
+        JOIN held ON held.tenant_id = p.tenant_id
+            AND held.stripe_payment_intent_id = p.stripe_payment_intent_id
+)
+UPDATE purchases p
+SET refunded_amount = refund.amount,
+    refunded_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
+        ELSE p.refunded_at
+    END
+FROM refund
+WHERE p.id = refund.id
+RETURNING p.*;
+
+-- name: ReleaseUnappliedStripeRefund :exec
+DELETE FROM unapplied_stripe_refunds
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND stripe_payment_intent_id = sqlc.arg('stripe_payment_intent_id')::text;

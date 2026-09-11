@@ -53,6 +53,10 @@ func TestUserHasEpisodeContentAccess(t *testing.T) {
 	mustInsertPurchase(t, ctx, db, tenantA, userA, episodeA, &future)
 	assertContentAccess(t, ctx, q, tenantA, userA, episodeA, true)
 
+	// Refunded purchase → false
+	mustMarkPurchasesRefunded(t, ctx, db, tenantA)
+	assertContentAccess(t, ctx, q, tenantA, userA, episodeA, false)
+
 	// Clear purchases; valid ticket → true
 	mustDeletePurchases(t, ctx, db, tenantA)
 	ticketID := mustInsertAccessTicketWithTimes(t, ctx, db, tenantA, "TICKETVALID1", episodeA, userA, nil, nil)
@@ -124,6 +128,18 @@ func mustInsertPurchase(
 	`, id, tenantID, userID, episodeID, expires)
 	if err != nil {
 		t.Fatalf("insert purchase: %v", err)
+	}
+}
+
+func mustMarkPurchasesRefunded(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID) {
+	t.Helper()
+	if _, err := db.ExecContext(ctx, `
+		UPDATE purchases
+		SET refunded_amount = price_at_purchase,
+			refunded_at = NOW()
+		WHERE tenant_id = $1
+	`, tenantID); err != nil {
+		t.Fatalf("mark purchases refunded: %v", err)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -134,6 +135,7 @@ type purchasePageRow struct {
 	id                uuid.UUID
 	priceAtPurchase   int32
 	expiresAt         sql.NullTime
+	refundedAt        sql.NullTime
 	purchasedAt       time.Time
 	episodePublicID   string
 	episodeTitle      string
@@ -149,6 +151,7 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			id:                row.ID,
 			priceAtPurchase:   row.PriceAtPurchase,
 			expiresAt:         row.ExpiresAt,
+			refundedAt:        row.RefundedAt,
 			purchasedAt:       row.PurchasedAt,
 			episodePublicID:   row.EpisodePublicID,
 			episodeTitle:      row.EpisodeTitle,
@@ -167,6 +170,7 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			id:                row.ID,
 			priceAtPurchase:   row.PriceAtPurchase,
 			expiresAt:         row.ExpiresAt,
+			refundedAt:        row.RefundedAt,
 			purchasedAt:       row.PurchasedAt,
 			episodePublicID:   row.EpisodePublicID,
 			episodeTitle:      row.EpisodeTitle,
@@ -211,10 +215,12 @@ func (s *apiServer) purchasePage(
 
 func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurchase {
 	expiresAt := ""
-	isActive := true
+	// A refunded purchase opens nothing, so the library must not offer it as
+	// one the reader can still open.
+	isActive := !row.refundedAt.Valid
 	if row.expiresAt.Valid {
 		expiresAt = row.expiresAt.Time.UTC().Format(time.RFC3339)
-		isActive = row.expiresAt.Time.After(now)
+		isActive = isActive && row.expiresAt.Time.After(now)
 	}
 
 	return &publirav1.MyPurchase{
@@ -369,6 +375,12 @@ func (s *apiServer) ProcessStripeWebhook(
 		s.logger.WarnContext(ctx, "invalid Stripe webhook signature", "tenant_id", tenant.ID)
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe signature"))
 	}
+	if event.Type == stripe.EventTypeChargeRefunded {
+		if err := s.recordRefundFromStripeCharge(ctx, s.queriesFor(ctx), tenant.ID, &event); err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&publirav1.ProcessStripeWebhookResponse{}), nil
+	}
 	if event.Type != stripe.EventTypeCheckoutSessionCompleted && event.Type != stripe.EventTypeCheckoutSessionAsyncPaymentSucceeded {
 		return connect.NewResponse(&publirav1.ProcessStripeWebhookResponse{}), nil
 	}
@@ -389,6 +401,79 @@ func (s *apiServer) ProcessStripeWebhook(
 	return connect.NewResponse(&publirav1.ProcessStripeWebhookResponse{}), nil
 }
 
+func (s *apiServer) recordRefundFromStripeCharge(
+	ctx context.Context,
+	queries Querier,
+	tenantID uuid.UUID,
+	event *stripe.Event,
+) error {
+	var charge stripe.Charge
+	if err := json.Unmarshal(event.Data.Raw, &charge); err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe charge event"))
+	}
+	paymentIntentID := ""
+	if charge.PaymentIntent != nil {
+		paymentIntentID = strings.TrimSpace(charge.PaymentIntent.ID)
+	}
+	if paymentIntentID == "" {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("stripe charge names no payment intent"))
+	}
+
+	// An amount is only comparable to price_at_purchase when it arrives in the
+	// currency the checkout charged, and a refund of nothing is not a refund.
+	// Either way the purchase is recorded as refunded in full, which is what a
+	// charge.refunded delivery means when it says nothing more precise.
+	var refundedAmount sql.NullInt32
+	if charge.Currency == stripe.CurrencyJPY && charge.AmountRefunded > 0 && charge.AmountRefunded <= math.MaxInt32 {
+		refundedAmount = sql.NullInt32{Int32: int32(charge.AmountRefunded), Valid: true}
+	} else {
+		s.logger.WarnContext(ctx, "Stripe refund reported no comparable amount and is recorded as a full refund",
+			"tenant_id", tenantID,
+			"event_id", event.ID,
+			"payment_intent_id", paymentIntentID,
+			"currency", string(charge.Currency),
+			"amount_refunded", charge.AmountRefunded,
+		)
+	}
+
+	purchase, err := queries.RecordStripeRefundOnPurchase(ctx, dbmodels.RecordStripeRefundOnPurchaseParams{
+		TenantID:              tenantID,
+		StripePaymentIntentID: paymentIntentID,
+		RefundedAmount:        refundedAmount,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		// The purchase may simply not exist yet: Stripe orders neither its
+		// events nor its retries, so a refund can overtake the Checkout event
+		// that creates the sale. Holding it lets that event apply it, and a
+		// refund that belongs to no purchase of ours costs one row instead of
+		// three days of retries.
+		if err := queries.HoldUnappliedStripeRefund(ctx, dbmodels.HoldUnappliedStripeRefundParams{
+			TenantID:              tenantID,
+			StripePaymentIntentID: paymentIntentID,
+			RefundedAmount:        refundedAmount,
+		}); err != nil {
+			return s.internalDBError(ctx, "failed to hold an unmatched Stripe refund", err, "event_id", event.ID, "payment_intent_id", paymentIntentID)
+		}
+		s.logger.WarnContext(ctx, "Stripe refund matches no purchase yet and is held",
+			"tenant_id", tenantID,
+			"event_id", event.ID,
+			"payment_intent_id", paymentIntentID,
+		)
+		return nil
+	}
+	if err != nil {
+		return s.internalDBError(ctx, "failed to record Stripe refund", err, "event_id", event.ID, "payment_intent_id", paymentIntentID)
+	}
+	s.logger.InfoContext(ctx, "recorded a Stripe refund on a purchase",
+		"tenant_id", tenantID,
+		"event_id", event.ID,
+		"purchase_id", purchase.ID,
+		"refunded_amount", purchase.RefundedAmount.Int32,
+		"fully_refunded", purchase.RefundedAt.Valid,
+	)
+	return nil
+}
+
 func (s *apiServer) createPurchaseFromStripeSession(
 	ctx context.Context,
 	queries Querier,
@@ -407,6 +492,14 @@ func (s *apiServer) createPurchaseFromStripeSession(
 	}
 	if session.AmountTotal != int64(price) || strings.TrimSpace(session.ID) == "" {
 		return errors.New("checkout session amount or ID is invalid")
+	}
+	// The refund events this purchase may later receive name the payment
+	// intent and never the session, so the link has to be stored here.
+	var paymentIntentID sql.NullString
+	if session.PaymentIntent != nil {
+		if id := strings.TrimSpace(session.PaymentIntent.ID); id != "" {
+			paymentIntentID = sql.NullString{String: id, Valid: true}
+		}
 	}
 	hasPurchase, err := queries.UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
 		TenantID:  expectedTenantID,
@@ -433,9 +526,16 @@ func (s *apiServer) createPurchaseFromStripeSession(
 			PriceAtPurchase:         price,
 			ExpiresAt:               expiresAt,
 			StripeCheckoutSessionID: sql.NullString{String: session.ID, Valid: true},
+			StripePaymentIntentID:   paymentIntentID,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("create purchase: %w", err)
+		}
+	}
+
+	if paymentIntentID.Valid {
+		if err := s.applyHeldRefund(ctx, queries, expectedTenantID, paymentIntentID.String); err != nil {
+			return err
 		}
 	}
 
@@ -450,6 +550,40 @@ func (s *apiServer) createPurchaseFromStripeSession(
 	if err != nil {
 		return fmt.Errorf("project purchase content event: %w", err)
 	}
+	return nil
+}
+
+// applyHeldRefund writes onto the purchase any refund that reached us before it
+// existed. Ordinarily nothing is held and this costs one lookup.
+func (s *apiServer) applyHeldRefund(
+	ctx context.Context,
+	queries Querier,
+	tenantID uuid.UUID,
+	paymentIntentID string,
+) error {
+	purchase, err := queries.ApplyUnappliedStripeRefundToPurchase(ctx, dbmodels.ApplyUnappliedStripeRefundToPurchaseParams{
+		TenantID:              tenantID,
+		StripePaymentIntentID: paymentIntentID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("apply held refund: %w", err)
+	}
+	if err := queries.ReleaseUnappliedStripeRefund(ctx, dbmodels.ReleaseUnappliedStripeRefundParams{
+		TenantID:              tenantID,
+		StripePaymentIntentID: paymentIntentID,
+	}); err != nil {
+		return fmt.Errorf("release held refund: %w", err)
+	}
+	s.logger.InfoContext(ctx, "applied a Stripe refund that arrived before its purchase",
+		"tenant_id", tenantID,
+		"purchase_id", purchase.ID,
+		"payment_intent_id", paymentIntentID,
+		"refunded_amount", purchase.RefundedAmount.Int32,
+		"fully_refunded", purchase.RefundedAt.Valid,
+	)
 	return nil
 }
 

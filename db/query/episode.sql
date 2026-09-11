@@ -405,6 +405,7 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
                 AND p.user_id = sqlc.arg('user_id')
                 AND p.episode_id = e.id
                 AND (p.expires_at IS NULL OR p.expires_at > NOW())
+                AND p.refunded_at IS NULL
         )
         OR EXISTS (
             SELECT 1
