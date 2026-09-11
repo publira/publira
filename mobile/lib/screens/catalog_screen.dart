@@ -551,21 +551,25 @@ class _AllSeriesSection extends StatefulWidget {
 
 class _AllSeriesSectionState extends State<_AllSeriesSection> {
   late Future<List<SeriesItem>> _future;
-  var _started = false;
+  CatalogRepository? _catalog;
 
+  /// Reads again when the repository changes, the way every shelf above does:
+  /// a screen keeping the previous one's list under the shelves of the new one
+  /// would be showing two catalogs at once.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) {
+    final catalog = CatalogScope.of(context);
+    if (identical(catalog, _catalog)) {
       return;
     }
-    _started = true;
-    _future = CatalogScope.of(context).listSeries();
+    _catalog = catalog;
+    _future = catalog.listSeries();
   }
 
   void _reload() {
     setState(() {
-      _future = CatalogScope.of(context).listSeries();
+      _future = _catalog!.listSeries();
     });
   }
 
