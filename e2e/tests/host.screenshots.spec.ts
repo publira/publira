@@ -54,10 +54,11 @@ const NEWEST_ROW_RELATIVE_TIME = "3 days ago";
  * its read has come back.
  *
  * Every one of them has a `Suspense` boundary of its own and they resolve in
- * whatever order their reads return, so the shot waits for all five by name.
- * Waiting for the last one on the page would only say that one arrived.
+ * whatever order their reads return, so the shot waits for each of them by
+ * name. Waiting for the last one on the page would only say that one arrived.
  */
 const TOP_PAGE_SECTIONS = [
+  { href: "/genres/", name: "Browse by genre" },
   { href: "/series/", name: "New episodes" },
   { href: "/series/", name: "Top 10 this week" },
   { href: "/series/", name: "Recently updated" },
@@ -125,6 +126,24 @@ test.describe("web-host screenshots", () => {
         );
 
         await expectScreenshot(page, viewport, "ranking");
+      });
+
+      /**
+       * The genre browse page, whose chips are the tenant's own
+       * classification: the row is a link per genre with its published count,
+       * so a genre with no series still photographs as a chip reading zero.
+       */
+      test("the genre list", async ({ page }) => {
+        await page.goto(hostPath("/genres"));
+
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Genres" })
+        ).toBeVisible();
+        await expect(
+          page.locator(`main a[href^="${hostPath("/genres/")}"]`).first()
+        ).toBeVisible();
+
+        await expectScreenshot(page, viewport, "genre-list");
       });
 
       test("the label list", async ({ page }) => {

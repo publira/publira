@@ -16,7 +16,7 @@ Initial data for local development and UI checks is managed as SQL.
 - `creator_roles.sql`: The creator-role vocabulary a tenant starts with, for the tenants a seed created (included with `\ir` from every seed that inserts a tenant)
 - `dev/`: Data used only in development (referenced only by dev.sql)
   - `001_tenant_users.sql`: Tenants, users, and roles
-  - `010_catalog.sql`: Labels, creators, series, and episodes
+  - `010_catalog.sql`: Labels, creators, series, episodes, genres, and tags
   - `020_audit_logs.sql`: Audit logs
   - `030_smtp_config.sql`: SMTP configuration
 - `scenarios/`: Scenario-specific data (run as needed) — [scenarios/README.md](./scenarios/README.md)

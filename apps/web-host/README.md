@@ -107,6 +107,6 @@ The checkout button on a paid episode leads to Stripe Checkout. After the reader
 ## What it covers
 
 - Public pages (privacy policy, terms of service, and so on)
-- Catalog (series, episodes, creators, labels)
+- Catalog (series, episodes, creators, labels, genres, tags)
 - Authentication (sign in, sign up, password reset)
 - Member area (my page, announcements, settings)

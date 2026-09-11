@@ -17,6 +17,7 @@ const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "authors",
   "confirm-email",
   "confirm-password",
+  "genres",
   "labels",
   "login",
   "my",
@@ -29,6 +30,7 @@ const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "series",
   "settings",
   "signup",
+  "tags",
   "verify",
 ]);
 

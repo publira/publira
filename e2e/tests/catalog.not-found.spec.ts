@@ -80,6 +80,31 @@ test.describe("web-host catalog not found", () => {
     ).toBeVisible();
   });
 
+  test("a missing genre shows the not-found page", async ({ page }) => {
+    const response = await page.goto(hostPath(`/genres/${MISSING_PUBLIC_ID}`));
+
+    expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Page not found" })
+    ).toBeVisible();
+  });
+
+  /**
+   * A tag is addressed by a slug rather than a public ID, and one no published
+   * series carries has no page: the storefront answers a slug the tenant never
+   * coined and one nothing carries any more the same way.
+   */
+  test("a tag no published series carries shows the not-found page", async ({
+    page,
+  }) => {
+    const response = await page.goto(hostPath("/tags/no-such-tag"));
+
+    expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Page not found" })
+    ).toBeVisible();
+  });
+
   test("a missing author shows the not-found page", async ({ page }) => {
     const response = await page.goto(hostPath(`/authors/${MISSING_PUBLIC_ID}`));
 

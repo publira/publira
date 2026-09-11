@@ -3,14 +3,19 @@ import {
   isMissingResourceRpcError,
   isRpcError,
 } from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
+import type { CursorWalkStop } from "@publira/api-client/pagination";
 import {
   EpisodeAccess,
   RankingPeriod,
+  SeriesOrder,
 } from "@publira/api-client/public/catalog";
 import type {
   ListRankedSeriesResponse,
   ListRecommendedSeriesResponse,
   ListRelatedSeriesResponse,
+  PublishedGenre,
+  PublishedTag,
 } from "@publira/api-client/public/catalog";
 import { SeriesStatus } from "@publira/api-client/public/types";
 import type {
@@ -33,7 +38,7 @@ import {
   tenantSeriesListTag,
   tenantSeriesTag,
 } from "./cache-tags";
-import { localizedReadFailure } from "./read-failure";
+import { localizedReadFailure, localizedReadUnavailable } from "./read-failure";
 
 export interface EyeCatchImageVariant {
   variantType: string;
@@ -367,26 +372,71 @@ export interface SeriesListPage {
 }
 
 /**
+ * The sort a reader can pick, as the URL names it. Three of the five orders
+ * `SeriesOrder` defines: a storefront asks for the newest, for the ones that
+ * just gained an episode, and for the alphabet, and the reverse of each answers
+ * no question of its own.
+ */
+export type SeriesListOrder = "newest" | "title" | "updated";
+
+const seriesOrders: Record<SeriesListOrder, SeriesOrder> = {
+  newest: SeriesOrder.PUBLISHED_AT_DESC,
+  title: SeriesOrder.TITLE_ASC,
+  updated: SeriesOrder.LATEST_EPISODE_AT_DESC,
+};
+
+const seriesStatusFilters: Record<SeriesSerializationStatus, SeriesStatus> = {
+  completed: SeriesStatus.COMPLETED,
+  hiatus: SeriesStatus.HIATUS,
+  ongoing: SeriesStatus.ONGOING,
+};
+
+/**
+ * How a published series list is narrowed and ordered.
+ *
+ * Every one of these is the server's. The states and counts they select on are
+ * settled per read, so a list narrowed here would keep a series whose last free
+ * window closed, or whose genre was taken off it, since the page was filled.
+ *
+ * A cursor token carries the order and the filters it was built for, so a
+ * caller that changes any of them starts at page one again (`proto/README.md`).
+ */
+export interface SeriesListFilters {
+  /** Empty applies no genre filter. */
+  genrePublicId?: string;
+  /** Keep only the series a reader can start without paying. */
+  hasFreeEpisodes?: boolean;
+  order?: SeriesListOrder;
+  /** `undefined` applies no status filter, which is every state. */
+  status?: SeriesSerializationStatus;
+  /** Empty applies no tag filter. */
+  tagSlug?: string;
+}
+
+/**
  * Cursor pagination: `token` is whatever the previous response returned as
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
- * `proto/README.md`. Sort order (`order`) is left at the server default —
- * newest published first — because the public list does not offer a sort
- * control yet.
+ * `proto/README.md`.
  *
- * `hasFreeEpisodes` keeps only the series a reader can start without paying.
- * The filter is the server's, so a series whose last free window closes drops
- * out of the answer the moment it does; a token carries the filter it was
- * built for, so a caller that changes the filter starts at page one again.
+ * A `genrePublicId` or `tagSlug` naming nothing of this tenant is `not_found`
+ * on the RPC rather than an empty page, and arrives here as the read failure
+ * every other RPC error does. The two screens that fix one resolve it against
+ * {@link listPublishedGenres} / {@link findPublishedTagBySlug} first, so a URL
+ * naming a genre nobody curates answers `notFound()` instead of a sentence
+ * about the catalog being unavailable.
  */
 export const listPublishedSeries = async (
   tenantId: string,
   {
+    genrePublicId = "",
     hasFreeEpisodes = false,
     limit = 50,
     locale,
+    order = "newest",
+    status,
+    tagSlug = "",
     token = "",
-  }: {
-    hasFreeEpisodes?: boolean;
+  }: SeriesListFilters & {
     limit?: number;
     locale: Locale;
     token?: string;
@@ -403,8 +453,12 @@ export const listPublishedSeries = async (
   >;
   try {
     response = await apiClient.catalog.listPublishedSeries({
+      genrePublicId,
       hasFreeEpisodes,
       limit,
+      order: seriesOrders[order],
+      status: status ? seriesStatusFilters[status] : SeriesStatus.UNSPECIFIED,
+      tagSlug,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -422,6 +476,173 @@ export const listPublishedSeries = async (
       series,
     },
   };
+};
+
+/** One genre the tenant curates, beside how many of its series are published. */
+export interface PublishedGenreItem {
+  publicId: string;
+  name: string;
+  slug: string;
+  publishedSeriesCount: number;
+}
+
+/** The generated `PublishedGenre` fields {@link toPublishedGenreItem} reads. */
+type RawPublishedGenre = Pick<
+  PublishedGenre,
+  "name" | "publicId" | "publishedSeriesCount" | "slug"
+>;
+
+const toPublishedGenreItem = (
+  genre: RawPublishedGenre
+): PublishedGenreItem => ({
+  name: genre.name?.trim() ?? "",
+  publicId: genre.publicId ?? "",
+  publishedSeriesCount: genre.publishedSeriesCount ?? 0,
+  slug: genre.slug ?? "",
+});
+
+/**
+ * Every genre of the tenant, in the order the console put them in.
+ *
+ * The whole list rather than one page: a genre row is a name and a count, the
+ * set is curated small enough to browse, and the three places that read it —
+ * the browse page, the chips on the home page, and the filter on the series
+ * list — each want all of it. Paging it would give the reader a "next page" of
+ * a classification the tenant arranged to be seen at once.
+ *
+ * A genre no published series carries is still in it, because the URL of its
+ * page has to keep working after its last series is taken down. That is also
+ * what makes this the lookup the genre pages resolve their id against: a genre
+ * missing here is a genre the tenant does not have.
+ */
+export const listPublishedGenres = async (
+  tenantId: string,
+  locale: Locale
+): Promise<CachedReadResult<PublishedGenreItem[]>> => {
+  "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  // The tag the admin console drops when a genre is created, renamed, or
+  // reordered, and when a series changes the genres it carries.
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+
+  const genres: PublishedGenreItem[] = [];
+  let stop: CursorWalkStop;
+  try {
+    stop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.catalog.listPublishedGenres({
+          limit,
+          tenant: { tenantId: normalizedTenantId },
+          token,
+        });
+        return {
+          items: response.genres ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          genres.push(toPublishedGenreItem(item));
+        }
+      }
+    );
+  } catch (error) {
+    return localizedReadFailure(error, locale, "host.genres.list_failed");
+  }
+
+  // A walk that stopped on its own budget, or on a token it had already seen,
+  // read some of the classification rather than all of it. Every caller treats
+  // this list as the whole of it — the genre page decides a 404 on a genre
+  // being absent from it — so a partial answer is reported as a failed read
+  // instead of being passed off as the tenant's genres.
+  if (stop !== "completed") {
+    return localizedReadUnavailable(locale, "host.genres.list_failed");
+  }
+
+  return { ok: true, value: genres };
+};
+
+/** One tag at least one published series carries, beside how many carry it. */
+export interface PublishedTagItem {
+  name: string;
+  slug: string;
+  publishedSeriesCount: number;
+}
+
+/** The generated `PublishedTag` fields {@link toPublishedTagItem} reads. */
+type RawPublishedTag = Pick<
+  PublishedTag,
+  "name" | "publishedSeriesCount" | "slug"
+>;
+
+const toPublishedTagItem = (tag: RawPublishedTag): PublishedTagItem => ({
+  name: tag.name?.trim() ?? "",
+  publishedSeriesCount: tag.publishedSeriesCount ?? 0,
+  slug: tag.slug ?? "",
+});
+
+/**
+ * The tag a slug names, or `null` when no published series carries it.
+ *
+ * A tag is addressed by its slug, and the slug is the identity of a name
+ * rather than a second name, so the page a reader lands on has to read the tag
+ * back to say what it is called. There is no RPC that takes one slug —
+ * `ListPublishedTags` is the whole vocabulary — so the walk stops at the match
+ * instead of collecting a list nothing else on the page uses.
+ *
+ * `null` is the answer for a tag nothing published carries as well as for one
+ * that never existed, and the tag page answers both with `notFound()`: a tag
+ * exists because a series carries it, so one no published series carries has
+ * no page to keep working.
+ */
+export const findPublishedTagBySlug = async (
+  tenantId: string,
+  slug: string,
+  locale: Locale
+): Promise<CachedReadResult<PublishedTagItem | null>> => {
+  "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  const normalizedSlug = slug.trim();
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+
+  let match: PublishedTagItem | null = null;
+  let stop: CursorWalkStop;
+  try {
+    stop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.catalog.listPublishedTags({
+          limit,
+          tenant: { tenantId: normalizedTenantId },
+          token,
+        });
+        return {
+          items: response.tags ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        const found = items.find((item) => item.slug === normalizedSlug);
+        if (found) {
+          match = toPublishedTagItem(found);
+          return false;
+        }
+      }
+    );
+  } catch (error) {
+    return localizedReadFailure(error, locale, "host.tags.detail_failed");
+  }
+
+  // `stopped-by-callback` is the match, and `completed` is the whole
+  // vocabulary read without one. Every other stop means the walk gave up part
+  // way, and `null` would then send the tag page to `notFound()` for a tag
+  // that is only further down the list than the walk got.
+  if (stop !== "completed" && stop !== "stopped-by-callback") {
+    return localizedReadUnavailable(locale, "host.tags.detail_failed");
+  }
+
+  return { ok: true, value: match };
 };
 
 /**
