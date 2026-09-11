@@ -9,6 +9,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 
 import 'support/connect_fixture_server.dart';
 
@@ -21,6 +22,7 @@ void main() {
   setUp(() async {
     server = ConnectFixtureServer(
       series: ConnectFixtureServer.populatedSeries(),
+      rankedSeries: ConnectFixtureServer.populatedRankedSeries(),
       details: ConnectFixtureServer.populatedDetails(),
       episodes: ConnectFixtureServer.populatedEpisodes(),
       entitledEpisodes: ConnectFixtureServer.populatedEntitledEpisodes(),
@@ -46,6 +48,75 @@ void main() {
     expect(items.first.title, ConnectFixtureServer.seedSeriesTitle);
     expect(items.first.description, ConnectFixtureServer.seedSeriesSynopsis);
     expect(items.first.labelName, 'Seed Label 01');
+  });
+
+  test('listSeries asks for the catalog by title', () async {
+    await catalog.listSeries();
+
+    final request = server.requestsTo('ListPublishedSeries').single;
+    expect(request.body['order'], 'SERIES_ORDER_TITLE_ASC');
+    expect(request.body['limit'], 20);
+  });
+
+  test('listNewestSeries asks for one short page of the newest', () async {
+    final items = await catalog.listNewestSeries(limit: 10);
+
+    expect(items.first.id, ConnectFixtureServer.seedSeriesId);
+    final request = server.requestsTo('ListPublishedSeries').single;
+    expect(request.body['order'], 'SERIES_ORDER_PUBLISHED_AT_DESC');
+    expect(request.body['limit'], 10);
+  });
+
+  test('listRankedSeries maps a snapshot onto its positions', () async {
+    final ranked = await catalog.listRankedSeries(
+      limit: 10,
+      period: RankingPeriod.weekly,
+    );
+
+    expect(ranked, hasLength(2));
+    expect(ranked.first.rank, 1);
+    expect(ranked.first.series.id, ConnectFixtureServer.seedSeriesId);
+    expect(ranked.first.series.eyeCatchVariants, isNotEmpty);
+    // A snapshot keeps the positions it recorded, so a series unpublished
+    // since leaves the gap it was in.
+    expect(ranked.last.rank, 3);
+
+    final request = server.requestsTo('ListRankedSeries').single;
+    expect(request.body['period'], 'RANKING_PERIOD_WEEKLY');
+    expect(request.body['limit'], 10);
+  });
+
+  test('listRankedSeries names the day the daily chart asks for', () async {
+    await catalog.listRankedSeries(limit: 3, period: RankingPeriod.daily);
+
+    expect(
+      server.requestsTo('ListRankedSeries').single.body['period'],
+      'RANKING_PERIOD_DAILY',
+    );
+  });
+
+  test('a tenant with no snapshot reads as an empty chart', () async {
+    server.rankedSeries = const [];
+
+    expect(
+      await catalog.listRankedSeries(limit: 10, period: RankingPeriod.weekly),
+      isEmpty,
+    );
+  });
+
+  test('a ranking the API could not answer is a failure', () async {
+    server.rankedStatus = HttpStatus.serviceUnavailable;
+
+    expect(
+      () => catalog.listRankedSeries(limit: 10, period: RankingPeriod.weekly),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.network,
+        ),
+      ),
+    );
   });
 
   test('listSeries resolves cover renditions against the image base', () async {

@@ -155,11 +155,24 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/series/:seriesId/episodes/:episodeId` | Episode viewer |
 | `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
 
-The list displays loading, empty, and network-error-with-retry states. Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
+Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
 The catalog's app bar carries the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one.
 
-Above the list, a signed-in reader is offered the series they were in the middle of, each opening the episode `ListMyRecentSeries` names for it. A reader who is signed out, in the middle of nothing, or on a device that could not reach the API sees the catalog on its own.
+### The catalog screen
+
+The catalog is four sections, top to bottom. Each reads its own page of `CatalogRepository` and owns its loading, failure-with-retry, and empty states, so a section the API could not answer offers its retry where it stands and leaves the others alone.
+
+| Section | Read | Standing |
+| --- | --- | --- |
+| Continue reading | `ListMyRecentSeries` | A signed-in reader in the middle of something. Each card opens the episode the API names for its series |
+| Top 10 this week | `ListRankedSeries`, weekly | A tenant the ranking batch has written a snapshot for. Cards carry the snapshot's own positions, so a series unpublished since leaves a gap |
+| New arrivals | `ListPublishedSeries`, newest first | A tenant with a published series |
+| All series | `ListPublishedSeries`, by title | The whole catalog, as the list the screen ends in |
+
+The first three are horizontal shelves, and a shelf answered with nothing takes its heading with it: a reader in the middle of nothing and a tenant with no chart are offered no row rather than an empty one. The whole-catalog list is ordered by title because the newest of it already stands above it as a shelf of its own.
+
+Only the whole-catalog list is kept for reading without a network. The shelves above it are another order over the same series, a chart of a window that has closed, and one reader's own history — none of which the device can answer on its own, so each reports that it could not reach the API.
 
 ## Localization
 
@@ -291,6 +304,7 @@ flutter run -d android \
 `integration_test/` repeatedly checks the following:
 
 - App launch and initial catalog display
+- The ranking and new-arrival shelves above the catalog list
 - List → detail → back
 - Viewer display and paging for a free episode
 - Locked display for an unpurchased paid episode

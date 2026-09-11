@@ -14,6 +14,7 @@ class ConnectFixtureServer {
     this.tenantHost = 'localhost',
     this.defaultLocale = defaultTenantLocale,
     this.series = const [],
+    this.rankedSeries = const [],
     this.details = const {},
     this.episodes = const {},
     this.entitledEpisodes = const {},
@@ -23,6 +24,7 @@ class ConnectFixtureServer {
     this.episodeComments = const {},
     this.myEpisodeComments = const {},
     this.listStatus = HttpStatus.ok,
+    this.rankedStatus = HttpStatus.ok,
     this.detailStatus = HttpStatus.ok,
     this.episodeStatus = HttpStatus.ok,
     this.tenantStatus = HttpStatus.ok,
@@ -228,6 +230,32 @@ class ConnectFixtureServer {
     };
   }
 
+  /// A week's chart over [populatedSeries]. The positions run 1 and 3 because
+  /// they are a snapshot's own: a series ranked second and unpublished since
+  /// leaves the gap behind.
+  static List<Map<String, Object?>> populatedRankedSeries() {
+    return [
+      {
+        'rank': 1,
+        'series': {
+          'publicId': seedSeriesId,
+          'title': seedSeriesTitle,
+          'synopsis': seedSeriesSynopsis,
+          'creators': seedCreators(),
+          'eyeCatchImageVariants': seedEyeCatchVariants(),
+        },
+      },
+      {
+        'rank': 3,
+        'series': {
+          'publicId': 'series-kitchen',
+          'title': 'The Little Kitchen',
+          'synopsis': 'Everyday cooking, one plate at a time.',
+        },
+      },
+    ];
+  }
+
   /// One `RecentSeries`: the seed series, offering the free episode the member
   /// was last reading.
   static List<Map<String, Object?>> populatedRecentSeries() {
@@ -285,6 +313,11 @@ class ConnectFixtureServer {
   /// app renders in when the device asks for no supported language.
   final String defaultLocale;
   List<Map<String, Object?>> series;
+
+  /// `RankedSeries` entries `ListRankedSeries` answers with, whichever period
+  /// is asked for. Empty acts out a tenant the ranking batch has not run for.
+  List<Map<String, Object?>> rankedSeries;
+
   Map<String, Map<String, Object?>> details;
 
   /// `GetEpisodeDetail` bodies keyed by episode public id.
@@ -315,6 +348,7 @@ class ConnectFixtureServer {
   /// sent and see it in the next list.
   Map<String, List<Map<String, Object?>>> myEpisodeComments;
   int listStatus;
+  int rankedStatus;
   int detailStatus;
   int episodeStatus;
   int tenantStatus;
@@ -428,6 +462,18 @@ class ConnectFixtureServer {
               if (listStatus != HttpStatus.ok) 'message': 'unavailable',
             },
       );
+      return;
+    }
+
+    if (path.endsWith('/ListRankedSeries')) {
+      await _write(request, rankedStatus, {
+        // protojson omits an empty repeated field, which is how a tenant the
+        // ranking batch has not run for is answered.
+        if (rankedStatus == HttpStatus.ok && rankedSeries.isNotEmpty)
+          'rankedSeries': rankedSeries,
+        if (rankedStatus != HttpStatus.ok) 'code': 'unavailable',
+        if (rankedStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
       return;
     }
 

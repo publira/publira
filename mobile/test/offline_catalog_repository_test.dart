@@ -505,4 +505,55 @@ void main() {
     expect(items.single.episode.id, _episodeId);
     expect(origin.recentSeriesLimits, [10]);
   });
+
+  test('the new-arrivals shelf does not replace the saved catalog', () async {
+    final catalog = build();
+    await catalog.listSeries();
+    origin.newestSeries = const [
+      SeriesItem(
+        id: 'series-kitchen',
+        title: 'The Little Kitchen',
+        description: '',
+      ),
+    ];
+
+    final shelf = await catalog.listNewestSeries(limit: 10);
+
+    expect(shelf.single.id, 'series-kitchen');
+    expect(origin.newestSeriesLimits, [10]);
+    // The device still holds the catalog page rather than the few rows the
+    // shelf asked for.
+    expect((await library.readSeriesList())!.single.id, _seriesId);
+  });
+
+  test(
+    'a shelf the API cannot answer is not answered from the device',
+    () async {
+      final catalog = build();
+      await catalog.listSeries();
+      origin
+        ..newestSeriesError = _network
+        ..rankedSeriesError = _network;
+
+      expect(() => catalog.listNewestSeries(limit: 10), throwsA(_network));
+      expect(
+        () => catalog.listRankedSeries(limit: 10, period: RankingPeriod.weekly),
+        throwsA(_network),
+      );
+    },
+  );
+
+  test('the ranking shelf is answered by the API alone', () async {
+    origin.rankedSeries = [
+      RankedSeriesItem(rank: 1, series: origin.series.single),
+    ];
+
+    final ranked = await build().listRankedSeries(
+      limit: 10,
+      period: RankingPeriod.weekly,
+    );
+
+    expect(ranked.single.rank, 1);
+    expect(origin.rankedSeriesPeriods, [RankingPeriod.weekly]);
+  });
 }

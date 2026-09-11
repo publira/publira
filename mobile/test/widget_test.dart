@@ -311,7 +311,10 @@ void main() {
       find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
     );
 
-    expect(find.byKey(const ValueKey('continue-reading')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('continue-reading-error')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
   });
 

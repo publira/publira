@@ -96,16 +96,51 @@ void main() {
     ) async {
       await withFailureScreenshot(tester, 'fixture-launch', () async {
         await pumpApp(tester);
+        // The tile rather than the title: the shelves above the list name the
+        // same series, and they are answered by reads of their own.
         await pumpUntilFound(
           tester,
-          find.text(ConnectFixtureServer.seedSeriesTitle),
-        );
-        expect(find.text('Publira'), findsOneWidget);
-        expect(
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
-          findsOneWidget,
+        );
+        expect(find.text('Publira'), findsOneWidget);
+        expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsWidgets);
+      });
+    });
+
+    testWidgets('the shelves of the catalog stand above the whole of it', (
+      tester,
+    ) async {
+      server.rankedSeries = ConnectFixtureServer.populatedRankedSeries();
+      await withFailureScreenshot(tester, 'fixture-shelves', () async {
+        await pumpApp(tester);
+        // Each shelf is answered by a read of its own, so each is waited for
+        // on its own.
+        await pumpUntilFound(
+          tester,
+          find.byKey(
+            const ValueKey(
+              'catalog-ranking-${ConnectFixtureServer.seedSeriesId}',
+            ),
+          ),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(
+            const ValueKey(
+              'catalog-new-arrivals-${ConnectFixtureServer.seedSeriesId}',
+            ),
+          ),
+        );
+
+        expect(
+          find.byKey(const ValueKey('catalog-ranking-error')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const ValueKey('catalog-new-arrivals-error')),
+          findsNothing,
         );
       });
     });
@@ -157,10 +192,16 @@ void main() {
         );
         await pumpUntilRouteSettled(tester, find.text('Episodes'));
         await tester.pageBack();
-        // The detail screen carries the series title too, so it matches twice
-        // until that route has finished leaving.
+        // The catalog names the series on its new-arrivals shelf as well as in
+        // its list, so the screen that has to be gone is the detail one.
         await pumpUntilRouteSettled(tester, find.text('Publira'));
-        expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsOneWidget);
+        expect(find.text('Episodes'), findsNothing);
+        expect(
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+          findsOneWidget,
+        );
       });
     });
 
@@ -424,7 +465,9 @@ void main() {
         await tester.tap(find.text('Back to the catalog'));
         await pumpUntilFound(
           tester,
-          find.text(ConnectFixtureServer.seedSeriesTitle),
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
         );
       });
     });
@@ -567,6 +610,35 @@ void main() {
         );
         expect(find.text('Publira'), findsOneWidget);
         expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
+      });
+    });
+
+    testWidgets('the seed tenant chart reaches the catalog', (tester) async {
+      await withFailureScreenshot(tester, 'live-ranking', () async {
+        await pumpLive(tester);
+        // `db/seeds/scenarios/170_ranking.sql` is the snapshot the engagement
+        // batch would have written for this tenant, and the E2E stack applies
+        // it, so the weekly chart has positions to show here.
+        // Each shelf is answered by a read of its own, so each is waited for
+        // on its own.
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('catalog-ranking')),
+          timeout: const Duration(seconds: 20),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('catalog-new-arrivals')),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.byKey(const ValueKey('catalog-ranking-error')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const ValueKey('catalog-new-arrivals-error')),
+          findsNothing,
+        );
       });
     });
 
@@ -864,20 +936,20 @@ void main() {
       tester,
     ) async {
       await withFailureScreenshot(tester, 'offline-catalog', () async {
-        await pumpLaunch(tester, apiBaseUrl: server.baseUrl);
-        await pumpUntilFound(
-          tester,
-          find.text(ConnectFixtureServer.seedSeriesTitle),
+        // The list rather than the shelves above it: what the device keeps is
+        // the catalog page, and the API has to have answered it before it can
+        // be taken away.
+        final tile = find.byKey(
+          const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
         );
+        await pumpLaunch(tester, apiBaseUrl: server.baseUrl);
+        await pumpUntilFound(tester, tile);
 
         final closedBaseUrl = server.baseUrl;
         await server.close();
 
         await pumpLaunch(tester, apiBaseUrl: closedBaseUrl);
-        await pumpUntilFound(
-          tester,
-          find.text(ConnectFixtureServer.seedSeriesTitle),
-        );
+        await pumpUntilFound(tester, tile);
 
         expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
       });

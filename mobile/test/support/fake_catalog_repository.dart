@@ -7,11 +7,15 @@ import 'package:publira/models/series_item.dart';
 class FakeCatalogRepository implements CatalogRepository {
   FakeCatalogRepository({
     this.series = const [],
+    this.newestSeries = const [],
+    this.rankedSeries = const [],
     this.details = const {},
     this.episodes = const {},
     this.recentSeries = const [],
     this.readingPositions = const {},
     this.listError,
+    this.newestSeriesError,
+    this.rankedSeriesError,
     this.detailError,
     this.episodeError,
     this.readingPositionError,
@@ -19,6 +23,13 @@ class FakeCatalogRepository implements CatalogRepository {
   });
 
   List<SeriesItem> series;
+
+  /// What the new-arrivals shelf is answered with.
+  List<SeriesItem> newestSeries;
+
+  /// What the ranking shelf is answered with.
+  List<RankedSeriesItem> rankedSeries;
+
   Map<String, SeriesDetail> details;
 
   /// Keyed by [episodeKey] so a fake can hold the same episode id under two
@@ -33,6 +44,8 @@ class FakeCatalogRepository implements CatalogRepository {
   Map<String, int> readingPositions;
 
   CatalogFailure? listError;
+  CatalogFailure? newestSeriesError;
+  CatalogFailure? rankedSeriesError;
   CatalogFailure? detailError;
   CatalogFailure? episodeError;
   CatalogFailure? readingPositionError;
@@ -41,6 +54,12 @@ class FakeCatalogRepository implements CatalogRepository {
   /// Limits [listRecentSeries] was called with, in order.
   final List<int> recentSeriesLimits = <int>[];
 
+  /// Limits [listNewestSeries] was called with, in order.
+  final List<int> newestSeriesLimits = <int>[];
+
+  /// Periods [listRankedSeries] was called with, in order.
+  final List<RankingPeriod> rankedSeriesPeriods = <RankingPeriod>[];
+
   @override
   Future<List<SeriesItem>> listSeries() async {
     final error = listError;
@@ -48,6 +67,31 @@ class FakeCatalogRepository implements CatalogRepository {
       throw error;
     }
     return List<SeriesItem>.from(series);
+  }
+
+  @override
+  Future<List<SeriesItem>> listNewestSeries({required int limit}) async {
+    newestSeriesLimits.add(limit);
+    final error = newestSeriesError;
+    if (error != null) {
+      throw error;
+    }
+    // The API answers a page of at most [limit], so a fixture longer than the
+    // shelf asked for must not reach it here either.
+    return List<SeriesItem>.from(newestSeries.take(limit));
+  }
+
+  @override
+  Future<List<RankedSeriesItem>> listRankedSeries({
+    required int limit,
+    required RankingPeriod period,
+  }) async {
+    rankedSeriesPeriods.add(period);
+    final error = rankedSeriesError;
+    if (error != null) {
+      throw error;
+    }
+    return List<RankedSeriesItem>.from(rankedSeries.take(limit));
   }
 
   @override
@@ -197,6 +241,16 @@ List<RecentSeriesItem> fixtureRecentSeries() {
         series: item,
         episode: fixtureDetail(item).episodes.first,
       ),
+  ];
+}
+
+/// A week's chart over the fixture series. The positions run 1 and 3 because
+/// they are a snapshot's own: a series ranked second and unpublished since
+/// leaves the gap behind.
+List<RankedSeriesItem> fixtureRankedSeries() {
+  return [
+    RankedSeriesItem(rank: 1, series: fixtureSeries.first),
+    RankedSeriesItem(rank: 3, series: fixtureSeries.last),
   ];
 }
 

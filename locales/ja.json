@@ -2377,10 +2377,16 @@
       "title": "アカウント"
     },
     "catalog": {
+      "all_series_heading": "すべてのシリーズ",
+      "continue_failed": "読みかけの作品を表示できませんでした",
       "continue_heading": "読みかけの作品",
       "empty": "公開中のシリーズはありません",
       "load_failed": "カタログを表示できませんでした",
-      "offline_not_saved": "オフラインのため、カタログを表示できません。端末に保存されたカタログがありません。"
+      "new_arrivals_failed": "新着シリーズを表示できませんでした",
+      "new_arrivals_heading": "新着シリーズ",
+      "offline_not_saved": "オフラインのため、カタログを表示できません。端末に保存されたカタログがありません。",
+      "ranking_failed": "今週のランキングを表示できませんでした",
+      "ranking_heading": "今週のトップ10"
     },
     "common": {
       "back_to_catalog": "カタログへ戻る",

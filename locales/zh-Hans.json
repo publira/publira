@@ -2377,10 +2377,16 @@
       "title": "账户"
     },
     "catalog": {
+      "all_series_heading": "全部系列",
+      "continue_failed": "无法显示您正在阅读的作品。",
       "continue_heading": "继续阅读",
       "empty": "还没有发布任何系列。",
       "load_failed": "无法显示作品目录。",
-      "offline_not_saved": "您当前处于离线状态，且此设备上没有保存的作品目录。"
+      "new_arrivals_failed": "无法显示最新上架的系列。",
+      "new_arrivals_heading": "最新上架",
+      "offline_not_saved": "您当前处于离线状态，且此设备上没有保存的作品目录。",
+      "ranking_failed": "无法显示本周排行榜。",
+      "ranking_heading": "本周前十"
     },
     "common": {
       "back_to_catalog": "返回作品目录",

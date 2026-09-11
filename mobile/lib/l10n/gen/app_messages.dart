@@ -163,6 +163,12 @@ abstract class AppMessages {
   /// `mobile.account.title`
   String get accountTitle;
 
+  /// `mobile.catalog.all_series_heading`
+  String get catalogAllSeriesHeading;
+
+  /// `mobile.catalog.continue_failed`
+  String get catalogContinueFailed;
+
   /// `mobile.catalog.continue_heading`
   String get catalogContinueHeading;
 
@@ -172,8 +178,20 @@ abstract class AppMessages {
   /// `mobile.catalog.load_failed`
   String get catalogLoadFailed;
 
+  /// `mobile.catalog.new_arrivals_failed`
+  String get catalogNewArrivalsFailed;
+
+  /// `mobile.catalog.new_arrivals_heading`
+  String get catalogNewArrivalsHeading;
+
   /// `mobile.catalog.offline_not_saved`
   String get catalogOfflineNotSaved;
+
+  /// `mobile.catalog.ranking_failed`
+  String get catalogRankingFailed;
+
+  /// `mobile.catalog.ranking_heading`
+  String get catalogRankingHeading;
 
   /// `mobile.comments.approval_notice`
   String get commentsApprovalNotice;
@@ -581,6 +599,16 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get catalogAllSeriesHeading {
+    return 'すべてのシリーズ';
+  }
+
+  @override
+  String get catalogContinueFailed {
+    return '読みかけの作品を表示できませんでした';
+  }
+
+  @override
   String get catalogContinueHeading {
     return '読みかけの作品';
   }
@@ -596,8 +624,28 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get catalogNewArrivalsFailed {
+    return '新着シリーズを表示できませんでした';
+  }
+
+  @override
+  String get catalogNewArrivalsHeading {
+    return '新着シリーズ';
+  }
+
+  @override
   String get catalogOfflineNotSaved {
     return 'オフラインのため、カタログを表示できません。端末に保存されたカタログがありません。';
+  }
+
+  @override
+  String get catalogRankingFailed {
+    return '今週のランキングを表示できませんでした';
+  }
+
+  @override
+  String get catalogRankingHeading {
+    return '今週のトップ10';
   }
 
   @override
@@ -1184,6 +1232,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get catalogAllSeriesHeading {
+    return 'All series';
+  }
+
+  @override
+  String get catalogContinueFailed {
+    return 'Could not show what you were reading.';
+  }
+
+  @override
   String get catalogContinueHeading {
     return 'Continue reading';
   }
@@ -1199,8 +1257,28 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get catalogNewArrivalsFailed {
+    return 'Could not show the new arrivals.';
+  }
+
+  @override
+  String get catalogNewArrivalsHeading {
+    return 'New arrivals';
+  }
+
+  @override
   String get catalogOfflineNotSaved {
     return 'You are offline, and this device holds no saved catalog.';
+  }
+
+  @override
+  String get catalogRankingFailed {
+    return 'Could not show this week\'s ranking.';
+  }
+
+  @override
+  String get catalogRankingHeading {
+    return 'Top 10 this week';
   }
 
   @override
@@ -1787,6 +1865,16 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get catalogAllSeriesHeading {
+    return '전체 시리즈';
+  }
+
+  @override
+  String get catalogContinueFailed {
+    return '읽던 작품을 표시할 수 없습니다';
+  }
+
+  @override
   String get catalogContinueHeading {
     return '이어서 읽기';
   }
@@ -1802,8 +1890,28 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get catalogNewArrivalsFailed {
+    return '새로 나온 시리즈를 표시할 수 없습니다';
+  }
+
+  @override
+  String get catalogNewArrivalsHeading {
+    return '새로 나온 시리즈';
+  }
+
+  @override
   String get catalogOfflineNotSaved {
     return '오프라인 상태이며, 이 기기에 저장된 카탈로그가 없습니다.';
+  }
+
+  @override
+  String get catalogRankingFailed {
+    return '이번 주 랭킹을 표시할 수 없습니다';
+  }
+
+  @override
+  String get catalogRankingHeading {
+    return '이번 주 톱 10';
   }
 
   @override
@@ -2390,6 +2498,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get catalogAllSeriesHeading {
+    return '全部系列';
+  }
+
+  @override
+  String get catalogContinueFailed {
+    return '无法显示您正在阅读的作品。';
+  }
+
+  @override
   String get catalogContinueHeading {
     return '继续阅读';
   }
@@ -2405,8 +2523,28 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get catalogNewArrivalsFailed {
+    return '无法显示最新上架的系列。';
+  }
+
+  @override
+  String get catalogNewArrivalsHeading {
+    return '最新上架';
+  }
+
+  @override
   String get catalogOfflineNotSaved {
     return '您当前处于离线状态，且此设备上没有保存的作品目录。';
+  }
+
+  @override
+  String get catalogRankingFailed {
+    return '无法显示本周排行榜。';
+  }
+
+  @override
+  String get catalogRankingHeading {
+    return '本周前十';
   }
 
   @override
@@ -2993,6 +3131,16 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get catalogAllSeriesHeading {
+    return '全部系列';
+  }
+
+  @override
+  String get catalogContinueFailed {
+    return '無法顯示您正在閱讀的作品。';
+  }
+
+  @override
   String get catalogContinueHeading {
     return '繼續閱讀';
   }
@@ -3008,8 +3156,28 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get catalogNewArrivalsFailed {
+    return '無法顯示最新上架的系列。';
+  }
+
+  @override
+  String get catalogNewArrivalsHeading {
+    return '最新上架';
+  }
+
+  @override
   String get catalogOfflineNotSaved {
     return '您目前處於離線狀態，且此裝置上沒有儲存的作品目錄。';
+  }
+
+  @override
+  String get catalogRankingFailed {
+    return '無法顯示本週排行榜。';
+  }
+
+  @override
+  String get catalogRankingHeading {
+    return '本週前十名';
   }
 
   @override
