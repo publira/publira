@@ -339,6 +339,15 @@ type Querier interface {
 	// access the save is: an episode they may no longer open has no position to
 	// resume, and answering with one would tell them the row is still there.
 	GetMyEpisodeReadingPosition(ctx context.Context, arg GetMyEpisodeReadingPositionParams) (GetMyEpisodeReadingPositionRow, error)
+	// What this reader's own reactions say about the series: the mean of the scores
+	// they gave, over the episodes they reacted to and no others. A reader who
+	// finished an episode without reacting is not in this divisor, which is where
+	// it parts from the public figure — this is the reader's own statement rather
+	// than a rate over a cohort, so it is neither shrunk nor held to a floor.
+	//
+	// It runs on the reader's own connection: episode_ratings is member-isolated,
+	// so the rows this reads are theirs by the policy rather than by the predicate.
+	GetMySeriesRating(ctx context.Context, arg GetMySeriesRatingParams) (GetMySeriesRatingRow, error)
 	// The episode of one series the reader moved in most recently, with the
 	// position they left and whether they already finished it. The series page
 	// renders its call to action from this single private read, which is what
@@ -422,6 +431,40 @@ type Querier interface {
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
+	// What a series is rated, and what one reader's own reactions say about it.
+	//
+	// There is no series rating to store: a reader rates a series by reacting to
+	// its episodes, so the figure is derived. Both halves of the division are the
+	// signed-in cohort content_daily_stats already measures complete_count and
+	// member_view_count over — a reaction needs a session, and a completed read is
+	// recorded for a member — so the rate they form compares like with like.
+	// The series' figure and the readers behind it.
+	//
+	// The rate is the reaction points the series collected over the reads its
+	// episodes were finished on, which is what keeps a hundred-episode work from
+	// outranking a five-episode one on volume and a widely read one from
+	// outranking a beloved one. Both totals come from the series rows of
+	// content_daily_stats, which already roll up every episode of the series.
+	//
+	// The rate alone would put a series two readers finished and both reacted to at
+	// the top of every list, so it is pulled towards the tenant's own mean by a
+	// fixed number of imagined reads: with few reads behind it the figure is
+	// mostly the tenant's, and it becomes the series' own as real reads outweigh
+	// them. Twenty is roughly where a tenant's catalogue stops being the better
+	// estimate of a series nobody has finished yet.
+	//
+	// The result is then held to the 1-5 scale the reaction is given on. It can
+	// fall below 1 on its own, because a reader who finishes an episode without
+	// reacting counts in the divisor and gives no points, and a figure under the
+	// bottom of the scale it is drawn on would be read as a score no reader can
+	// give.
+	//
+	// rating_count is the readers, not the divisor: a reader counts once for the
+	// series however many of its episodes they reacted to. It is reported together
+	// with the figure and not before it, so the two always describe the same
+	// reactions — a reaction given today reaches the aggregates with the next run,
+	// and a series shows nothing at all until it does.
+	GetSeriesRating(ctx context.Context, arg GetSeriesRatingParams) (GetSeriesRatingRow, error)
 	// Whether a slug the series list was filtered by names a tag of this tenant.
 	// A filter naming nothing is refused rather than answered with an empty list,
 	// for the reason GetGenreIDByPublicIDForTenant gives.

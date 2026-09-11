@@ -992,6 +992,13 @@ func (s *apiServer) GetSeriesDetail(
 	if err != nil {
 		return nil, s.internalError(ctx, "series comment mode is not a supported mode", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
 	}
+	rating, err := s.queriesFor(ctx).GetSeriesRating(ctx, dbmodels.GetSeriesRatingParams{
+		TenantID: tenant.ID,
+		SeriesID: row.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get the series rating", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+	}
 
 	res := connect.NewResponse(&publirav1.GetSeriesDetailResponse{
 		RequiredMinimumAge: int32(requiredMinimumAge),
@@ -1003,6 +1010,8 @@ func (s *apiServer) GetSeriesDetail(
 			FreeEpisodeCount: row.FreeEpisodeCount,
 			Genres:           genres,
 			Tags:             tags,
+			RatingAverage:    rating.RatingAverage,
+			RatingCount:      rating.RatingCount,
 		},
 		Episodes: make([]*publirattypesv1.Episode, 0, len(episodes)),
 	})

@@ -573,6 +573,12 @@ type SeriesListing struct {
 	CommentMode        sql.NullString `json:"comment_mode"`
 }
 
+type SeriesRatingCount struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+	Count    int64     `json:"count"`
+}
+
 type SeriesTag struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	SeriesID  uuid.UUID `json:"series_id"`

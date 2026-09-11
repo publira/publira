@@ -482,6 +482,7 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 	// The series states no comment mode, so the tenant's own is what the
 	// detail read resolves it against.
 	expectTenantCommentMode(mock, tenantID, now, "disabled")
+	expectSeriesRating(mock, tenantID, seriesID, 0, 0)
 	recorded := forbidSeriesViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)

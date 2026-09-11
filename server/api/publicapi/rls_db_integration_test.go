@@ -82,6 +82,11 @@ var publicDataTables = []struct {
 	// pair a storefront shows to everybody, so a missing policy here would hand
 	// every tenant's rating counts to every other one.
 	{name: "episode_rating_counts", count: "SELECT count(*) FROM episode_rating_counts"},
+	// The series page reads both of these to say what a series is rated: the
+	// headcount behind the figure, and the daily aggregates the figure itself
+	// is derived from.
+	{name: "series_rating_counts", count: "SELECT count(*) FROM series_rating_counts"},
+	{name: "content_daily_stats", count: "SELECT count(*) FROM content_daily_stats"},
 	{name: "users", count: "SELECT count(*) FROM users"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
@@ -126,10 +131,14 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)", first.ID, member.ID, episode.ID); err != nil {
 		t.Fatalf("seed reading position: %v", err)
 	}
-	// The rating carries its own count row: the trigger on episode_ratings
-	// writes one, so both tables are seeded by this single insert.
+	// The rating carries its own count rows: the triggers on episode_ratings
+	// write the episode's tally and the series' one, so three tables are seeded
+	// by this single insert.
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_ratings (tenant_id, user_id, episode_id, score) VALUES ($1, $2, $3, 5)", first.ID, member.ID, episode.ID); err != nil {
 		t.Fatalf("seed episode rating: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, complete_count, rating_count, rating_sum) VALUES ($1, $2, CURRENT_DATE, 'series', $3, 1, 1, 5)", uuid.Must(uuid.NewV7()), first.ID, series.ID); err != nil {
+		t.Fatalf("seed content daily stats: %v", err)
 	}
 	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 

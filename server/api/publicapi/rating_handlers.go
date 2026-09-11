@@ -181,6 +181,57 @@ func (s *apiServer) GetMyEpisodeRating(
 	}), nil
 }
 
+// GetMySeriesRating answers what this reader's own reactions say about a
+// series: the mean of the scores they gave its episodes.
+//
+// There is no RPC beside it to rate the series. A reader rates a series by
+// reacting to the episodes it is made of, and the figure everyone sees is
+// derived from those reactions rather than stored.
+func (s *apiServer) GetMySeriesRating(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetMySeriesRatingRequest],
+) (*connect.Response[publirav1.GetMySeriesRatingResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
+	if seriesPublicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series public id is required"))
+	}
+	// The published catalog query first, as every member-facing series RPC
+	// does, so a foreign, unpublished, or missing series is NotFound before
+	// anything of the reader's is read.
+	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
+		TenantID: tenant.ID,
+		PublicID: seriesPublicID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to get rating series target", err, "tenant_id", tenant.ID.String())
+	}
+
+	rating, err := s.queriesFor(ctx).GetMySeriesRating(ctx, dbmodels.GetMySeriesRatingParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		SeriesID: seriesID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get the reader's series rating", err,
+			"tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
+	return noStorePrivateResponse(&publirav1.GetMySeriesRatingResponse{
+		RatingAverage:     rating.RatingAverage,
+		RatedEpisodeCount: rating.RatedEpisodeCount,
+	}), nil
+}
+
 // RateEpisode records this reader's rating of an episode they may read, or
 // raises the one they already gave.
 func (s *apiServer) RateEpisode(
@@ -260,10 +311,6 @@ func (s *apiServer) storeEpisodeRating(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
-	// Taken before the score is read, because the event this files carries the
-	// difference the press made. Two presses arriving at once would otherwise
-	// each read the same starting score and each claim the whole difference,
-	// and the day would count more points than the reader gave.
 	// Taken before the score is read, because the event this files carries the
 	// difference the press made. Two presses arriving at once would otherwise
 	// each read the same starting score and each claim the whole difference,

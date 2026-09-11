@@ -971,8 +971,25 @@ type Series struct {
 	// so an episode leaving its free window stops counting the moment it does,
 	// and a series with no free episode carries 0 rather than nothing.
 	FreeEpisodeCount int32 `protobuf:"varint,18,opt,name=free_episode_count,json=freeEpisodeCount,proto3" json:"free_episode_count,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// What the series is rated, to one decimal on the 1-5 scale its episodes are
+	// reacted to on. A reader never rates a series directly: the figure is the
+	// reaction points its episodes collected over the reads they were finished
+	// on, pulled towards the tenant's own mean while few readers have finished
+	// any of them, so a series two people read does not top the list at 5.0.
+	//
+	// 0 means the series has no figure yet rather than the worst one: nobody has
+	// reacted to it, or the reactions have not reached the daily aggregates the
+	// figure is derived from. A client shows nothing in that case rather than a
+	// zero. Set on the reads where a Series stands for one series a reader
+	// opened, and empty in the lists that carry a series as a link.
+	RatingAverage float64 `protobuf:"fixed64,19,opt,name=rating_average,json=ratingAverage,proto3" json:"rating_average,omitempty"`
+	// How many readers are behind `rating_average`. A reader counts once for the
+	// series however many of its episodes they reacted to, so this is a
+	// headcount and not a count of reactions. It is set and cleared together
+	// with the figure.
+	RatingCount   int64 `protobuf:"varint,20,opt,name=rating_count,json=ratingCount,proto3" json:"rating_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Series) Reset() {
@@ -1113,6 +1130,20 @@ func (x *Series) GetTags() []*Tag {
 func (x *Series) GetFreeEpisodeCount() int32 {
 	if x != nil {
 		return x.FreeEpisodeCount
+	}
+	return 0
+}
+
+func (x *Series) GetRatingAverage() float64 {
+	if x != nil {
+		return x.RatingAverage
+	}
+	return 0
+}
+
+func (x *Series) GetRatingCount() int64 {
+	if x != nil {
+		return x.RatingCount
 	}
 	return 0
 }
@@ -1973,7 +2004,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\"-\n" +
 	"\x03Tag\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\"\x90\x06\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xda\x06\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -1992,7 +2023,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12/\n" +
 	"\x06genres\x18\x10 \x03(\v2\x17.publira.types.v1.GenreR\x06genres\x12)\n" +
 	"\x04tags\x18\x11 \x03(\v2\x15.publira.types.v1.TagR\x04tags\x12,\n" +
-	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xdd\x02\n" +
+	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCount\x12%\n" +
+	"\x0erating_average\x18\x13 \x01(\x01R\rratingAverage\x12!\n" +
+	"\frating_count\x18\x14 \x01(\x03R\vratingCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xdd\x02\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +

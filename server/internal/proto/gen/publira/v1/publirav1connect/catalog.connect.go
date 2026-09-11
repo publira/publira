@@ -122,6 +122,9 @@ const (
 	// RatingServiceGetMyEpisodeRatingProcedure is the fully-qualified name of the RatingService's
 	// GetMyEpisodeRating RPC.
 	RatingServiceGetMyEpisodeRatingProcedure = "/publira.v1.RatingService/GetMyEpisodeRating"
+	// RatingServiceGetMySeriesRatingProcedure is the fully-qualified name of the RatingService's
+	// GetMySeriesRating RPC.
+	RatingServiceGetMySeriesRatingProcedure = "/publira.v1.RatingService/GetMySeriesRating"
 	// ContentViewServiceRecordContentViewProcedure is the fully-qualified name of the
 	// ContentViewService's RecordContentView RPC.
 	ContentViewServiceRecordContentViewProcedure = "/publira.v1.ContentViewService/RecordContentView"
@@ -1096,6 +1099,14 @@ type RatingServiceClient interface {
 	// its body: the answer is about a rating they already gave, and a rental that
 	// has run out does not take it back.
 	GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error)
+	// Returns what the authenticated reader's own reactions say about a currently
+	// published series: the mean of the scores they gave its episodes.
+	//
+	// There is no RPC to rate a series, and there will not be one. A series is
+	// rated by reacting to the episodes it is made of, which is also why this
+	// answer covers only the episodes this reader reacted to rather than every
+	// episode of the series.
+	GetMySeriesRating(context.Context, *connect.Request[v1.GetMySeriesRatingRequest]) (*connect.Response[v1.GetMySeriesRatingResponse], error)
 }
 
 // NewRatingServiceClient constructs a client for the publira.v1.RatingService service. By default,
@@ -1121,6 +1132,12 @@ func NewRatingServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(ratingServiceMethods.ByName("GetMyEpisodeRating")),
 			connect.WithClientOptions(opts...),
 		),
+		getMySeriesRating: connect.NewClient[v1.GetMySeriesRatingRequest, v1.GetMySeriesRatingResponse](
+			httpClient,
+			baseURL+RatingServiceGetMySeriesRatingProcedure,
+			connect.WithSchema(ratingServiceMethods.ByName("GetMySeriesRating")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1128,6 +1145,7 @@ func NewRatingServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 type ratingServiceClient struct {
 	rateEpisode        *connect.Client[v1.RateEpisodeRequest, v1.RateEpisodeResponse]
 	getMyEpisodeRating *connect.Client[v1.GetMyEpisodeRatingRequest, v1.GetMyEpisodeRatingResponse]
+	getMySeriesRating  *connect.Client[v1.GetMySeriesRatingRequest, v1.GetMySeriesRatingResponse]
 }
 
 // RateEpisode calls publira.v1.RatingService.RateEpisode.
@@ -1138,6 +1156,11 @@ func (c *ratingServiceClient) RateEpisode(ctx context.Context, req *connect.Requ
 // GetMyEpisodeRating calls publira.v1.RatingService.GetMyEpisodeRating.
 func (c *ratingServiceClient) GetMyEpisodeRating(ctx context.Context, req *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error) {
 	return c.getMyEpisodeRating.CallUnary(ctx, req)
+}
+
+// GetMySeriesRating calls publira.v1.RatingService.GetMySeriesRating.
+func (c *ratingServiceClient) GetMySeriesRating(ctx context.Context, req *connect.Request[v1.GetMySeriesRatingRequest]) (*connect.Response[v1.GetMySeriesRatingResponse], error) {
+	return c.getMySeriesRating.CallUnary(ctx, req)
 }
 
 // RatingServiceHandler is an implementation of the publira.v1.RatingService service.
@@ -1162,6 +1185,14 @@ type RatingServiceHandler interface {
 	// its body: the answer is about a rating they already gave, and a rental that
 	// has run out does not take it back.
 	GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error)
+	// Returns what the authenticated reader's own reactions say about a currently
+	// published series: the mean of the scores they gave its episodes.
+	//
+	// There is no RPC to rate a series, and there will not be one. A series is
+	// rated by reacting to the episodes it is made of, which is also why this
+	// answer covers only the episodes this reader reacted to rather than every
+	// episode of the series.
+	GetMySeriesRating(context.Context, *connect.Request[v1.GetMySeriesRatingRequest]) (*connect.Response[v1.GetMySeriesRatingResponse], error)
 }
 
 // NewRatingServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1183,12 +1214,20 @@ func NewRatingServiceHandler(svc RatingServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(ratingServiceMethods.ByName("GetMyEpisodeRating")),
 		connect.WithHandlerOptions(opts...),
 	)
+	ratingServiceGetMySeriesRatingHandler := connect.NewUnaryHandler(
+		RatingServiceGetMySeriesRatingProcedure,
+		svc.GetMySeriesRating,
+		connect.WithSchema(ratingServiceMethods.ByName("GetMySeriesRating")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.RatingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RatingServiceRateEpisodeProcedure:
 			ratingServiceRateEpisodeHandler.ServeHTTP(w, r)
 		case RatingServiceGetMyEpisodeRatingProcedure:
 			ratingServiceGetMyEpisodeRatingHandler.ServeHTTP(w, r)
+		case RatingServiceGetMySeriesRatingProcedure:
+			ratingServiceGetMySeriesRatingHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1204,6 +1243,10 @@ func (UnimplementedRatingServiceHandler) RateEpisode(context.Context, *connect.R
 
 func (UnimplementedRatingServiceHandler) GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.GetMyEpisodeRating is not implemented"))
+}
+
+func (UnimplementedRatingServiceHandler) GetMySeriesRating(context.Context, *connect.Request[v1.GetMySeriesRatingRequest]) (*connect.Response[v1.GetMySeriesRatingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.GetMySeriesRating is not implemented"))
 }
 
 // ContentViewServiceClient is a client for the publira.v1.ContentViewService service.

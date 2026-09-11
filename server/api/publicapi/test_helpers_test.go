@@ -262,3 +262,13 @@ func expectTenantAgeVerification(mock sqlmock.Sqlmock, tenantID uuid.UUID, now t
 func expectTenantCommentMode(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, mode string) {
 	expectTenantConfigRead(mock, tenantID, now, mode, ageverification.None)
 }
+
+// expectSeriesRating stands in for the derived figure every series detail read
+// carries. It is matched by the query's name rather than by a copy of its text:
+// the query is one aggregate over the daily stats and the tally beside them,
+// and no handler test turns on how it is written.
+func expectSeriesRating(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID, average float64, count int64) {
+	mock.ExpectQuery("-- name: GetSeriesRating :one").
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows([]string{"rating_count", "rating_average"}).AddRow(count, average))
+}
