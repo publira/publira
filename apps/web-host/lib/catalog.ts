@@ -4,6 +4,7 @@ import {
   isRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
+import type { CursorWalkStop } from "@publira/api-client/pagination";
 import {
   EpisodeAccess,
   RankingPeriod,
@@ -37,7 +38,7 @@ import {
   tenantSeriesListTag,
   tenantSeriesTag,
 } from "./cache-tags";
-import { localizedReadFailure } from "./read-failure";
+import { localizedReadFailure, localizedReadUnavailable } from "./read-failure";
 
 export interface EyeCatchImageVariant {
   variantType: string;
@@ -526,8 +527,9 @@ export const listPublishedGenres = async (
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
 
   const genres: PublishedGenreItem[] = [];
+  let stop: CursorWalkStop;
   try {
-    await forEachPageWithToken(
+    stop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.catalog.listPublishedGenres({
           limit,
@@ -547,6 +549,15 @@ export const listPublishedGenres = async (
     );
   } catch (error) {
     return localizedReadFailure(error, locale, "host.genres.list_failed");
+  }
+
+  // A walk that stopped on its own budget, or on a token it had already seen,
+  // read some of the classification rather than all of it. Every caller treats
+  // this list as the whole of it — the genre page decides a 404 on a genre
+  // being absent from it — so a partial answer is reported as a failed read
+  // instead of being passed off as the tenant's genres.
+  if (stop !== "completed") {
+    return localizedReadUnavailable(locale, "host.genres.list_failed");
   }
 
   return { ok: true, value: genres };
@@ -597,8 +608,9 @@ export const findPublishedTagBySlug = async (
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
 
   let match: PublishedTagItem | null = null;
+  let stop: CursorWalkStop;
   try {
-    await forEachPageWithToken(
+    stop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.catalog.listPublishedTags({
           limit,
@@ -620,6 +632,14 @@ export const findPublishedTagBySlug = async (
     );
   } catch (error) {
     return localizedReadFailure(error, locale, "host.tags.detail_failed");
+  }
+
+  // `stopped-by-callback` is the match, and `completed` is the whole
+  // vocabulary read without one. Every other stop means the walk gave up part
+  // way, and `null` would then send the tag page to `notFound()` for a tag
+  // that is only further down the list than the walk got.
+  if (stop !== "completed" && stop !== "stopped-by-callback") {
+    return localizedReadUnavailable(locale, "host.tags.detail_failed");
   }
 
   return { ok: true, value: match };

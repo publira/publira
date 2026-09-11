@@ -27,3 +27,22 @@ export const localizedReadFailure = async <TValue = never>(
     rpcErrorMessage(error, getMessage(messages, key), { locale })
   );
 };
+
+/**
+ * The same failure, for a read that has no error to classify.
+ *
+ * A cursor walk that runs out of its page or row budget answers with every row
+ * it managed to read and no exception, and a caller that took that for the
+ * whole list would show a truncated one — or, worse, conclude that the record
+ * it was looking for does not exist. Such a read reports the operation's own
+ * sentence, the one {@link localizedReadFailure} falls back to, because what
+ * the reader can do about it is the same either way.
+ */
+export const localizedReadUnavailable = async <TValue = never>(
+  locale: Locale,
+  key: HostMessageKey
+): Promise<CachedReadResult<TValue>> => {
+  const messages = await loadHostMessages(locale);
+
+  return cachedReadFailure<TValue>(getMessage(messages, key));
+};

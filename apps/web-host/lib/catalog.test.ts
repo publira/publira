@@ -718,6 +718,30 @@ describe("catalog.listPublishedGenres", () => {
       ok: false,
     });
   });
+
+  /**
+   * The genre page decides a 404 on a genre being absent from this list, so a
+   * walk that stopped on its own budget must not be passed off as the whole
+   * classification.
+   */
+  it("A walk that gave up part way is a failure rather than a short list", async () => {
+    mockListPublishedGenres.mockResolvedValue({
+      genres: [
+        {
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 4,
+          slug: "fantasy",
+        },
+      ],
+      nextToken: "always-more",
+    });
+
+    await expect(listPublishedGenres("TENANT_001", "en")).resolves.toEqual({
+      message: "Could not load the genre list. Please try again later.",
+      ok: false,
+    });
+  });
 });
 
 describe("catalog.findPublishedTagBySlug", () => {
@@ -760,6 +784,26 @@ describe("catalog.findPublishedTagBySlug", () => {
     await expect(
       findPublishedTagBySlug("TENANT_001", "time-travel", "en")
     ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  /**
+   * A walk that never ends is stopped by the page budget rather than by the
+   * list running out, and the slug may well have been on the page it did not
+   * reach. Reporting `null` there would send the tag page to `notFound()` for
+   * a tag that exists.
+   */
+  it("A walk that gave up part way is a failure rather than a missing tag", async () => {
+    mockListPublishedTags.mockResolvedValue({
+      nextToken: "always-more",
+      tags: [{ name: "School life", publishedSeriesCount: 2, slug: "school" }],
+    });
+
+    await expect(
+      findPublishedTagBySlug("TENANT_001", "time-travel", "en")
+    ).resolves.toEqual({
+      message: "Could not load the tag. Please try again later.",
+      ok: false,
+    });
   });
 });
 
