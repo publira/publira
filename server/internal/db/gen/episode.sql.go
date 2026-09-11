@@ -1290,6 +1290,7 @@ WHERE s.tenant_id = $2
                 AND p.user_id = $3
                 AND p.episode_id = e.id
                 AND (p.expires_at IS NULL OR p.expires_at > NOW())
+                AND p.refunded_at IS NULL
         )
         OR EXISTS (
             SELECT 1

@@ -50,6 +50,7 @@ WITH readable AS (
                     AND p.user_id = sqlc.arg('user_id')::uuid
                     AND p.episode_id = e.id
                     AND (p.expires_at IS NULL OR p.expires_at > NOW())
+                    AND p.refunded_at IS NULL
             )
             OR EXISTS (
                 SELECT 1
@@ -124,6 +125,7 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
                 AND p.user_id = sqlc.arg('user_id')::uuid
                 AND p.episode_id = e.id
                 AND (p.expires_at IS NULL OR p.expires_at > NOW())
+                AND p.refunded_at IS NULL
         )
         OR EXISTS (
             SELECT 1
@@ -194,6 +196,7 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
                 AND p.user_id = sqlc.arg('user_id')::uuid
                 AND p.episode_id = e.id
                 AND (p.expires_at IS NULL OR p.expires_at > NOW())
+                AND p.refunded_at IS NULL
         )
         OR EXISTS (
             SELECT 1
@@ -355,6 +358,7 @@ FROM continue_from cf
                     AND p.user_id = sqlc.arg('user_id')::uuid
                     AND p.episode_id = e.id
                     AND (p.expires_at IS NULL OR p.expires_at > NOW())
+                    AND p.refunded_at IS NULL
             )
             OR EXISTS (
                 SELECT 1
@@ -504,6 +508,7 @@ FROM continue_from cf
                     AND p.user_id = sqlc.arg('user_id')::uuid
                     AND p.episode_id = e.id
                     AND (p.expires_at IS NULL OR p.expires_at > NOW())
+                    AND p.refunded_at IS NULL
             )
             OR EXISTS (
                 SELECT 1

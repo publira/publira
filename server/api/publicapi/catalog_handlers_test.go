@@ -1264,6 +1264,7 @@ func TestUserHasEpisodeContentAccessQueryCoversPurchasesAndTickets(t *testing.T)
 		"at.revoked_at IS NULL",
 		"at.expires_at > NOW()",
 		"p.expires_at > NOW()",
+		"p.refunded_at IS NULL",
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(userHasEpisodeContentAccessQuery, snippet) {

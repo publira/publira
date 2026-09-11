@@ -499,6 +499,9 @@ type Purchase struct {
 	PurchasedAt             time.Time      `json:"purchased_at"`
 	TenantID                uuid.UUID      `json:"tenant_id"`
 	StripeCheckoutSessionID sql.NullString `json:"stripe_checkout_session_id"`
+	StripePaymentIntentID   sql.NullString `json:"stripe_payment_intent_id"`
+	RefundedAmount          sql.NullInt32  `json:"refunded_amount"`
+	RefundedAt              sql.NullTime   `json:"refunded_at"`
 }
 
 type Series struct {

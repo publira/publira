@@ -31,7 +31,8 @@ INSERT INTO purchases (
     episode_id,
     price_at_purchase,
     expires_at,
-    stripe_checkout_session_id
+    stripe_checkout_session_id,
+    stripe_payment_intent_id
 )
 SELECT
     $1::uuid,
@@ -40,7 +41,8 @@ SELECT
     $4::uuid,
     $5::integer,
     $6::timestamptz,
-    $7::text
+    $7::text,
+    $8::text
 FROM locked
 WHERE NOT EXISTS (
     SELECT 1
@@ -49,9 +51,10 @@ WHERE NOT EXISTS (
         AND user_id = $3::uuid
         AND episode_id = $4::uuid
         AND (expires_at IS NULL OR expires_at > NOW())
+        AND refunded_at IS NULL
 )
 ON CONFLICT (stripe_checkout_session_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id, stripe_payment_intent_id, refunded_amount, refunded_at
 `
 
 type CreatePurchaseFromStripeCheckoutParams struct {
@@ -62,6 +65,7 @@ type CreatePurchaseFromStripeCheckoutParams struct {
 	PriceAtPurchase         int32          `json:"price_at_purchase"`
 	ExpiresAt               sql.NullTime   `json:"expires_at"`
 	StripeCheckoutSessionID sql.NullString `json:"stripe_checkout_session_id"`
+	StripePaymentIntentID   sql.NullString `json:"stripe_payment_intent_id"`
 }
 
 // The advisory lock serializes different Stripe Checkout sessions for the same
@@ -77,6 +81,7 @@ func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg Crea
 		arg.PriceAtPurchase,
 		arg.ExpiresAt,
 		arg.StripeCheckoutSessionID,
+		arg.StripePaymentIntentID,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -88,6 +93,9 @@ func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg Crea
 		&i.PurchasedAt,
 		&i.TenantID,
 		&i.StripeCheckoutSessionID,
+		&i.StripePaymentIntentID,
+		&i.RefundedAmount,
+		&i.RefundedAt,
 	)
 	return i, err
 }
@@ -195,6 +203,7 @@ const listMyPurchasesAsc = `-- name: ListMyPurchasesAsc :many
 SELECT p.id,
     p.price_at_purchase,
     p.expires_at,
+    p.refunded_at,
     p.purchased_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -244,6 +253,7 @@ type ListMyPurchasesAscRow struct {
 	ID                uuid.UUID    `json:"id"`
 	PriceAtPurchase   int32        `json:"price_at_purchase"`
 	ExpiresAt         sql.NullTime `json:"expires_at"`
+	RefundedAt        sql.NullTime `json:"refunded_at"`
 	PurchasedAt       time.Time    `json:"purchased_at"`
 	EpisodePublicID   string       `json:"episode_public_id"`
 	EpisodeTitle      string       `json:"episode_title"`
@@ -272,6 +282,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 			&i.ID,
 			&i.PriceAtPurchase,
 			&i.ExpiresAt,
+			&i.RefundedAt,
 			&i.PurchasedAt,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -296,6 +307,7 @@ const listMyPurchasesDesc = `-- name: ListMyPurchasesDesc :many
 SELECT p.id,
     p.price_at_purchase,
     p.expires_at,
+    p.refunded_at,
     p.purchased_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -345,6 +357,7 @@ type ListMyPurchasesDescRow struct {
 	ID                uuid.UUID    `json:"id"`
 	PriceAtPurchase   int32        `json:"price_at_purchase"`
 	ExpiresAt         sql.NullTime `json:"expires_at"`
+	RefundedAt        sql.NullTime `json:"refunded_at"`
 	PurchasedAt       time.Time    `json:"purchased_at"`
 	EpisodePublicID   string       `json:"episode_public_id"`
 	EpisodeTitle      string       `json:"episode_title"`
@@ -373,6 +386,7 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 			&i.ID,
 			&i.PriceAtPurchase,
 			&i.ExpiresAt,
+			&i.RefundedAt,
 			&i.PurchasedAt,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -391,6 +405,64 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 		return nil, err
 	}
 	return items, nil
+}
+
+const recordStripeRefundOnPurchase = `-- name: RecordStripeRefundOnPurchase :one
+WITH refund AS (
+    SELECT p.id,
+        GREATEST(
+            COALESCE(p.refunded_amount, 0),
+            COALESCE($1::integer, p.price_at_purchase)
+        ) AS amount
+    FROM purchases p
+    WHERE p.tenant_id = $2
+        AND p.stripe_payment_intent_id = $3::text
+)
+UPDATE purchases p
+SET refunded_amount = refund.amount,
+    refunded_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
+        ELSE p.refunded_at
+    END
+FROM refund
+WHERE p.id = refund.id
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.refunded_amount, p.refunded_at
+`
+
+type RecordStripeRefundOnPurchaseParams struct {
+	RefundedAmount        sql.NullInt32 `json:"refunded_amount"`
+	TenantID              uuid.UUID     `json:"tenant_id"`
+	StripePaymentIntentID string        `json:"stripe_payment_intent_id"`
+}
+
+// Records what Stripe has refunded against one purchase, matched by the
+// payment intent the refund event names. Nothing matches when the payment
+// intent belongs to another tenant or to no purchase here, and the caller
+// reads that empty result as a delivery it has no sale for.
+//
+// The amount Stripe reports is cumulative over every refund against the
+// charge, so GREATEST keeps an out-of-order delivery from walking it back, and
+// an event that reports no amount at all is recorded as a refund of the whole
+// price. refunded_at follows from the amount rather than from the event:
+// it is set once the refunded total reaches what was paid, and a repeated
+// delivery of the same refund leaves the instant already stored.
+func (q *Queries) RecordStripeRefundOnPurchase(ctx context.Context, arg RecordStripeRefundOnPurchaseParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, recordStripeRefundOnPurchase, arg.RefundedAmount, arg.TenantID, arg.StripePaymentIntentID)
+	var i Purchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.PriceAtPurchase,
+		&i.ExpiresAt,
+		&i.PurchasedAt,
+		&i.TenantID,
+		&i.StripeCheckoutSessionID,
+		&i.StripePaymentIntentID,
+		&i.RefundedAmount,
+		&i.RefundedAt,
+	)
+	return i, err
 }
 
 const upsertTenantPaymentConfig = `-- name: UpsertTenantPaymentConfig :one
@@ -460,6 +532,7 @@ SELECT EXISTS (
         AND user_id = $2::uuid
         AND episode_id = $3
         AND (expires_at IS NULL OR expires_at > NOW())
+        AND refunded_at IS NULL
 ) AS has_purchase
 `
 

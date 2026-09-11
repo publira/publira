@@ -91,11 +91,13 @@ Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernet
 
 Paid episodes are sold as a one-time payment through Stripe Checkout. The URL the browser returns to does not confirm the purchase. `POST /api/v1/webhook/stripe` on `web-host` receives the request on the tenant's public domain and does nothing but forward Stripe's raw body and signature to PurchaseService. The API server verifies the signature with the target tenant's enabled payment configuration and creates a row in `purchases` only when it receives `checkout.session.completed` (or `checkout.session.async_payment_succeeded` for asynchronous payments).
 
+`charge.refunded` is handled on the same endpoint and records the refund on the purchase it reverses. The event names the payment intent rather than the Checkout Session, which is why a purchase stores `stripe_payment_intent_id` when it is created. `refunded_amount` holds the amount Stripe has refunded so far, and `refunded_at` is set once that reaches the price paid; a fully refunded purchase opens nothing and no longer blocks the reader from buying the episode again, while a partial refund leaves the reading right alone.
+
 Starting Checkout and verifying the webhook both use the enabled configuration in `tenant_payment_config`; without a usable one neither runs, and web-host turns the resulting `FailedPrecondition` into a 503. After a completed or cancelled purchase the reader returns to the episode URL on the tenant's `domain`.
 
 Tenant administrators register the Stripe secret key and the webhook signing secret through `AdminPaymentSettingsService`. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
 
-In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/stripe` as the webhook endpoint and enable the two events above. For local development, forward with the Stripe CLI:
+In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/stripe` as the webhook endpoint and enable the three events above. For local development, forward with the Stripe CLI:
 
 ```bash
 stripe listen --forward-to localhost:3000/api/v1/webhook/stripe

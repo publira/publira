@@ -1468,6 +1468,18 @@ type Querier interface {
 	// The caller resolves the episode through the published catalog query first, so
 	// publication and body access are settled before this runs.
 	RateEpisode(ctx context.Context, arg RateEpisodeParams) (EpisodeRating, error)
+	// Records what Stripe has refunded against one purchase, matched by the
+	// payment intent the refund event names. Nothing matches when the payment
+	// intent belongs to another tenant or to no purchase here, and the caller
+	// reads that empty result as a delivery it has no sale for.
+	//
+	// The amount Stripe reports is cumulative over every refund against the
+	// charge, so GREATEST keeps an out-of-order delivery from walking it back, and
+	// an event that reports no amount at all is recorded as a refund of the whole
+	// price. refunded_at follows from the amount rather than from the event:
+	// it is set once the refunded total reaches what was paid, and a repeated
+	// delivery of the same refund leaves the instant already stored.
+	RecordStripeRefundOnPurchase(ctx context.Context, arg RecordStripeRefundOnPurchaseParams) (Purchase, error)
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error)

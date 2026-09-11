@@ -38,6 +38,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			purchaseID,
 			int32(500),
 			now.Add(time.Hour),
+			nil,
 			now,
 			"EPISODE001",
 			"Episode title",
@@ -65,6 +66,48 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 	}
 	if purchase.PriceAtPurchase != 500 {
 		t.Fatalf("price_at_purchase = %d, want 500", purchase.PriceAtPurchase)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+// A refunded purchase opens nothing, so the library must not offer it as one
+// the reader can still open.
+func TestPurchaseListReportsARefundedPurchaseAsInactive(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	purchaseID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	testServer, mock := newTestPublicServer(t)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectAuthSession(mock, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listMyPurchasesDescQuery)).
+		WithArgs(tenantID, userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WillReturnRows(purchaseRows().AddRow(
+			purchaseID,
+			int32(500),
+			nil,
+			now.Add(-time.Hour),
+			now.Add(-2*time.Hour),
+			"EPISODE001",
+			"Episode title",
+			int32(3),
+			"SERIES001",
+			"Series title",
+		))
+
+	client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
+	response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, tenantID.String()))
+	if err != nil {
+		t.Fatalf("ListMyPurchases: %v", err)
+	}
+	if len(response.Msg.Purchases) != 1 {
+		t.Fatalf("purchase count = %d, want 1", len(response.Msg.Purchases))
+	}
+	if response.Msg.Purchases[0].IsActive {
+		t.Fatal("is_active = true for a refunded purchase, want false")
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -269,7 +312,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "price_at_purchase", "expires_at", "purchased_at", "episode_public_id", "episode_title", "episode_order_index", "series_public_id", "series_title",
+		"id", "price_at_purchase", "expires_at", "refunded_at", "purchased_at", "episode_public_id", "episode_title", "episode_order_index", "series_public_id", "series_title",
 	})
 }
 
@@ -277,6 +320,7 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 	return rows.AddRow(
 		id,
 		int32(500),
+		nil,
 		nil,
 		purchasedAt,
 		"EPISODE"+id.String(),
