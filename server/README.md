@@ -438,18 +438,34 @@ A cookie whose only purpose is counting signed-out readers. Its value is a UUIDv
 
 ## Rating events
 
-`RatingService.RateContent` records a 1–5 rating from a signed-in reader in `content_events`. Unlike a view event, it is an explicit action by the reader, so a failure is returned as an error rather than swallowed.
+`RatingService.RateEpisode` records a signed-in reader's reaction to one episode, on a 1–5 scale with no neutral point. The reader's own score lives in `episode_ratings`, and every press that raises it files a `rating` event as well. Unlike a view event, it is an explicit action by the reader, so a failure is returned as an error rather than swallowed.
 
 | Item | Value |
 | --- | --- |
 | Event type | `rating` |
-| actor | `user_id` (sign-in required; anonymous ratings are not accepted) |
-| Target | `series_id` alone for a series rating, `series_id` + `episode_id` for an episode rating |
-| `series_id` | Resolved from `series` / `episodes` rather than taken from client input |
-| Score | `rating_score` 1–5. Out-of-range values and an unset 0 are `invalid_argument` (there is a CHECK constraint on the DB side too) |
-| Append-only | Rating again neither updates nor deletes the existing row; it appends a new one |
+| actor | `user_id` (sign-in required; anonymous reactions are not accepted) |
+| Target | `series_id` + `episode_id`, both resolved from `episodes` rather than taken from client input |
+| Score | `rating_score` carries the points the press added, not the score the reader now stands at |
+| Append-only | Pressing again appends another event; `episode_ratings` holds the score itself |
 
-There is no RPC for withdrawing a rating. Which rating counts is decided on read: `ListLatestContentRatingsByEntity` returns the latest single row per actor.
+There is no RPC for withdrawing or lowering a reaction, and none for rating a series directly. How expressive one press is follows `tenant_config.episode_rating_mode`, which a series may override in `series_listings.episode_rating_mode`: `single` stores the whole 5 on the first press, `multiple` lets the reader press their way up to it.
+
+| RPC | Answers |
+| --- | --- |
+| `RatingService.GetMyEpisodeRating` | This reader's score for one episode, the readers who have reacted to it, and the press mode governing it |
+| `RatingService.GetMySeriesRating` | The mean of this reader's own scores across the episodes of one series they reacted to |
+
+### The derived series rating
+
+A series is rated by the episodes it is made of. `CatalogService.GetSeriesDetail` carries `rating_average` and `rating_count` on the series, both derived on read and both absent — `0` — until the reactions reach the daily aggregates.
+
+| Item | Value |
+| --- | --- |
+| Source | The `series` rows of `content_daily_stats`, which already roll up every episode of the series |
+| Rate | `rating_sum / complete_count`, so a long or widely read series does not outrank a beloved one on volume |
+| Prior | Twenty imagined completed reads at the tenant's own mean, which a series with few finished reads is pulled towards. The mean comes from `tenant_rating_totals`, which `aggregate-content-stats` restates on the run that changes it |
+| Scale | Held to 1–5, the scale the reaction itself is given on |
+| `rating_count` | `series_rating_counts`, a trigger-maintained tally of the readers who reacted, counting each reader once per series |
 
 ## Completion events and read-through
 

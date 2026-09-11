@@ -939,6 +939,23 @@ message GetMyEpisodeRatingResponse {
   EpisodeRatingMode mode = 3;
 }
 
+message GetMySeriesRatingRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+}
+
+message GetMySeriesRatingResponse {
+  // The mean of the scores this reader gave the series' episodes, to one
+  // decimal, and 0 when they have reacted to none of them. It is the reader's
+  // own statement rather than a rate over a cohort, so it is neither pulled
+  // towards a mean nor held to the bottom of the scale the way
+  // `publira.types.v1.Series.rating_average` is.
+  double rating_average = 1;
+  // How many of the series' episodes this reader has reacted to, which is what
+  // the figure above is the mean of.
+  int32 rated_episode_count = 2;
+}
+
 service RatingService {
   // Rates an episode the authenticated reader may read, or raises the rating
   // they already gave. The score is capped at 5, so a reader who is already
@@ -960,6 +977,14 @@ service RatingService {
   // its body: the answer is about a rating they already gave, and a rental that
   // has run out does not take it back.
   rpc GetMyEpisodeRating(GetMyEpisodeRatingRequest) returns (GetMyEpisodeRatingResponse) {}
+  // Returns what the authenticated reader's own reactions say about a currently
+  // published series: the mean of the scores they gave its episodes.
+  //
+  // There is no RPC to rate a series, and there will not be one. A series is
+  // rated by reacting to the episodes it is made of, which is also why this
+  // answer covers only the episodes this reader reacted to rather than every
+  // episode of the series.
+  rpc GetMySeriesRating(GetMySeriesRatingRequest) returns (GetMySeriesRatingResponse) {}
 }
 
 // Kinds of public catalog targets a page view can be recorded for.

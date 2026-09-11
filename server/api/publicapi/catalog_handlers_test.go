@@ -737,6 +737,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	// The series carries a rating, so the tenant's age rule is read; this one
 	// verifies nothing, so the series asks no age of anyone.
 	expectTenantAgeVerification(mock, tenantID, now, ageverification.None)
+	expectSeriesRating(mock, tenantID, seriesID, 4.2, 128)
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
@@ -784,6 +785,10 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	}
 	if resp.Msg.Series.FreeEpisodeCount != 1 {
 		t.Fatalf("series free_episode_count = %d, want 1", resp.Msg.Series.FreeEpisodeCount)
+	}
+	if resp.Msg.Series.RatingAverage != 4.2 || resp.Msg.Series.RatingCount != 128 {
+		t.Fatalf("series rating = %v over %d readers, want 4.2 over 128",
+			resp.Msg.Series.RatingAverage, resp.Msg.Series.RatingCount)
 	}
 
 	assertPublicExpectations(t, mock)

@@ -573,6 +573,12 @@ type SeriesListing struct {
 	CommentMode        sql.NullString `json:"comment_mode"`
 }
 
+type SeriesRatingCount struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+	Count    int64     `json:"count"`
+}
+
 type SeriesTag struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	SeriesID  uuid.UUID `json:"series_id"`
@@ -658,6 +664,13 @@ type TenantPaymentConfig struct {
 	WebhookSecretHint      sql.NullString `json:"webhook_secret_hint"`
 	CreatedAt              time.Time      `json:"created_at"`
 	UpdatedAt              time.Time      `json:"updated_at"`
+}
+
+type TenantRatingTotal struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	Points         int64     `json:"points"`
+	CompletedReads int64     `json:"completed_reads"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type TenantSmtpConfig struct {

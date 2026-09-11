@@ -91,6 +91,8 @@ Fully rebuilds `content_daily_stats` for one calendar day across every tenant. V
 
 A day is the tenant's own: the window runs from that tenant's local midnight to the next, resolved from `tenants.timezone` (falling back to `platform_config.default_timezone`). So one run covers different instants for tenants in different zones, and a tenant whose stored zone cannot be loaded fails on its own without stopping the rest.
 
+The same transaction restates `tenant_rating_totals`, the tenant's all-time reaction points and completed reads over its series rows. It is the mean a series with few finished reads is rated against, and storing it here is what keeps the series page from summing the tenant's whole history on every read.
+
 For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
 
 ```bash

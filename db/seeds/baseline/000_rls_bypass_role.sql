@@ -96,20 +96,21 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO publira_platform, publira_cont
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
 GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 
--- episode_rating_counts is derived, not written: it is the tally of
--- episode_ratings and only the trigger on that table may move it. The grants
--- above hand every table to every app role, so the API roles have to give this
--- one back, or a storefront connection could set the number its own tenant's
--- readers see without a single rating behind it. The trigger keeps working
--- because it is SECURITY DEFINER; nothing else may write here.
+-- episode_rating_counts and series_rating_counts are derived, not written: they
+-- are the tallies of episode_ratings and only the triggers on that table may
+-- move them. The grants above hand every table to every app role, so the API
+-- roles have to give these back, or a storefront connection could set the
+-- numbers its own tenant's readers see without a single rating behind them. The
+-- triggers keep working because they are SECURITY DEFINER; nothing else may
+-- write here.
 --
 -- This runs after the migrations, like the ALL TABLES grants above, so the
--- table exists by the time the revoke names it.
+-- tables exist by the time the revoke names them.
 --
 -- The other derived tables — content_daily_stats, content_ranking_snapshots,
 -- item_recommend_features — still carry the blanket grant. Taking it off them
 -- is publira/publira#2010.
-REVOKE INSERT, UPDATE, DELETE ON episode_rating_counts FROM publira_admin, publira_public;
+REVOKE INSERT, UPDATE, DELETE ON episode_rating_counts, series_rating_counts FROM publira_admin, publira_public;
 
 -- River versions its own schema (river_job and the rest) and outbox-worker
 -- applies it with rivermigrate at startup, so that role needs to create tables,

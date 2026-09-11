@@ -168,6 +168,23 @@ message Series {
   // so an episode leaving its free window stops counting the moment it does,
   // and a series with no free episode carries 0 rather than nothing.
   int32 free_episode_count = 18;
+  // What the series is rated, to one decimal on the 1-5 scale its episodes are
+  // reacted to on. A reader never rates a series directly: the figure is the
+  // reaction points its episodes collected over the reads they were finished
+  // on, pulled towards the tenant's own mean while few readers have finished
+  // any of them, so a series two people read does not top the list at 5.0.
+  //
+  // 0 means the series has no figure yet rather than the worst one: nobody has
+  // reacted to it, or the reactions have not reached the daily aggregates the
+  // figure is derived from. A client shows nothing in that case rather than a
+  // zero. Set on the reads where a Series stands for one series a reader
+  // opened, and empty in the lists that carry a series as a link.
+  double rating_average = 19;
+  // How many readers are behind `rating_average`. A reader counts once for the
+  // series however many of its episodes they reacted to, so this is a
+  // headcount and not a count of reactions. It is set and cleared together
+  // with the figure.
+  int64 rating_count = 20;
 }
 
 message Episode {
