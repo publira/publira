@@ -1034,7 +1034,16 @@
         "tags": "標籤",
         "tags_add": "新增",
         "tags_remove": "移除 {$name}",
-        "tags_description": "按 Enter 或 新增 寫入標籤。最多 {$count} 個。與正在使用的標籤同名時會歸入該標籤。"
+        "tags_description": "按 Enter 或 新增 寫入標籤。最多 {$count} 個。與正在使用的標籤同名時會歸入該標籤。",
+        "comment_mode": "留言",
+        "comment_mode_description": "本作品的章節公開留言的方式。作品未自行指定時沿用租戶設定，該設定變更後也會繼續沿用。",
+        "comment_mode_options": {
+          "tenant_default": "沿用租戶設定",
+          "tenant_default_known": "沿用租戶設定（{$mode}）",
+          "disabled": "不接受留言",
+          "immediate": "立即公開",
+          "approval_required": "審核後公開"
+        }
       },
       "validation": {
         "label_required": "品牌為必填。",
@@ -1046,7 +1055,8 @@
         "published_at_invalid": "發布日期與時間無效。",
         "status_invalid": "請選擇連載狀態。",
         "age_rating_invalid": "請選擇年齡分級。",
-        "tags_too_many": "標籤最多 {$count} 個。"
+        "tags_too_many": "標籤最多 {$count} 個。",
+        "comment_mode_invalid": "請選擇本作品公開留言的方式。"
       },
       "created": "系列已建立。",
       "updated": "系列已更新。",

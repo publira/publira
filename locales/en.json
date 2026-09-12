@@ -1034,7 +1034,16 @@
         "tags": "Tags",
         "tags_add": "Add",
         "tags_remove": "Remove {$name}",
-        "tags_description": "Press Enter or Add to write a tag. Up to {$count} tags. A name that matches a tag already in use is filed under that tag."
+        "tags_description": "Press Enter or Add to write a tag. Up to {$count} tags. A name that matches a tag already in use is filed under that tag.",
+        "comment_mode": "Comments",
+        "comment_mode_description": "How comments on this series' episodes are published. A series that states nothing of its own keeps following the tenant setting, including after that setting changes.",
+        "comment_mode_options": {
+          "tenant_default": "Follow the tenant setting",
+          "tenant_default_known": "Follow the tenant setting ({$mode})",
+          "disabled": "Do not accept comments",
+          "immediate": "Publish straight away",
+          "approval_required": "Publish after approval"
+        }
       },
       "validation": {
         "label_required": "A label is required.",
@@ -1046,7 +1055,8 @@
         "published_at_invalid": "The publication date and time is invalid.",
         "status_invalid": "Select a serialization status.",
         "age_rating_invalid": "Select an age rating.",
-        "tags_too_many": "A series can carry at most {$count} tags."
+        "tags_too_many": "A series can carry at most {$count} tags.",
+        "comment_mode_invalid": "Select how comments on this series are published."
       },
       "created": "Series created.",
       "updated": "Series updated.",

@@ -17,12 +17,20 @@ import type { ChangeEventHandler } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
+import type { SeriesCommentMode } from "#lib/series-comment-mode";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
 
 interface SeriesEyeCatchFormProps {
   initialSeries: SeriesListItem;
+  /**
+   * The mode the series states of its own, empty while it follows its
+   * tenant's. This card edits the eye-catch alone, but the Action behind it is
+   * `UpdateSeries`, which writes the whole listing row — so the mode rides
+   * along untouched rather than being reset by an image upload.
+   */
+  commentMode: SeriesCommentMode;
   action: (
     prevState: SeriesActionState,
     formData: FormData
@@ -31,6 +39,7 @@ interface SeriesEyeCatchFormProps {
 
 export const SeriesEyeCatchForm = ({
   initialSeries,
+  commentMode,
   action,
 }: SeriesEyeCatchFormProps) => {
   const locale = useContext(AdminLocaleContext);
@@ -121,6 +130,7 @@ export const SeriesEyeCatchForm = ({
             type="hidden"
             value={initialSeries.ageRating}
           />
+          <input name="comment_mode" type="hidden" value={commentMode} />
           {initialSeries.scheduleWeekdays.map((weekday) => (
             <input
               key={weekday}

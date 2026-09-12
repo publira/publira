@@ -202,6 +202,49 @@ test.describe("admin publish flow", () => {
     await expect(row.getByText("R15", { exact: true })).toBeVisible();
   });
 
+  // `comment_mode` is a tenant-wide setting, and a series may state one of its
+  // own instead. The form offers the tenant's setting as an option of its own,
+  // naming what that setting currently is, so the choice is made from the form
+  // rather than from the settings screen.
+  test("states a comment mode of its own and reads it back on the form", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const title = `E2E Comment Mode Series ${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        synopsis: `Comment mode synopsis ${suffix}`,
+        title,
+      })
+    );
+
+    await expect(page).toHaveURL(new RegExp(`/series/${seriesId}`, "u"));
+    const fields = seriesFormFields(page);
+    // A new series states no mode of its own. The seed tenant has never opened
+    // its comment settings, so what it follows is "do not accept comments".
+    await expect(fields.commentModeSelect).toHaveText(
+      "Follow the tenant setting (Do not accept comments)"
+    );
+
+    await selectOption(
+      page,
+      fields.commentModeSelect,
+      "Publish after approval"
+    );
+    await page.getByRole("button", { name: "Update series" }).click();
+    await expect(page.getByText("Series updated.")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Read back from the API rather than from the control the click left
+    // behind: a reload is what proves the save reached the listing row.
+    await page.reload();
+    await expect(seriesFormFields(page).commentModeSelect).toHaveText(
+      "Publish after approval"
+    );
+  });
+
   test("publishing a series makes it visible on the same tenant's web-host", async ({
     page,
   }) => {

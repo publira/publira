@@ -1,14 +1,24 @@
-import { SeriesAgeRating, SeriesStatus } from "@publira/api-client/admin/types";
+import {
+  CommentMode,
+  SeriesAgeRating,
+  SeriesStatus,
+} from "@publira/api-client/admin/types";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheTag, mockGetAccessToken, mockListSeries, mockUpdateSeries } =
-  vi.hoisted(() => ({
-    mockCacheTag: vi.fn(),
-    mockGetAccessToken: vi.fn(),
-    mockListSeries: vi.fn(),
-    mockUpdateSeries: vi.fn(),
-  }));
+const {
+  mockCacheTag,
+  mockGetAccessToken,
+  mockGetSeries,
+  mockListSeries,
+  mockUpdateSeries,
+} = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockGetSeries: vi.fn(),
+  mockListSeries: vi.fn(),
+  mockUpdateSeries: vi.fn(),
+}));
 
 vi.mock("next/cache", () => ({
   cacheTag: mockCacheTag,
@@ -21,6 +31,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     series: {
+      getSeries: mockGetSeries,
       listSeries: mockListSeries,
       updateSeries: mockUpdateSeries,
     },
@@ -318,6 +329,7 @@ describe("the classification a series carries", () => {
     await updateSeries(
       {
         ageRating: "r15",
+        commentMode: "",
         creatorPublicIds: [],
         genrePublicIds: ["GENRE001"],
         isPublished: true,
@@ -342,6 +354,138 @@ describe("the classification a series carries", () => {
         status: SeriesStatus.COMPLETED,
         tagNames: ["seaside"],
       }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+});
+
+/**
+ * `series_listings.comment_mode` is the mode one series publishes comments
+ * under instead of its tenant's, and NULL — `COMMENT_MODE_UNSPECIFIED` over
+ * the wire — is the series stating none and following the tenant.
+ */
+describe("the comment mode a series states", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("reads the series' own mode back beside the series", async () => {
+    mockGetSeries.mockResolvedValue({
+      commentMode: CommentMode.APPROVAL_REQUIRED,
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      commentMode: "approval_required",
+      ok: true,
+    });
+  });
+
+  // The form offers "follow the tenant" as one of its options, so unspecified
+  // has to arrive as that choice rather than as a mode of the series' own.
+  it("reads an unspecified mode back as following the tenant", async () => {
+    mockGetSeries.mockResolvedValue({
+      commentMode: CommentMode.UNSPECIFIED,
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ commentMode: "", ok: true });
+  });
+
+  // Reporting a mode this build cannot name as "follows the tenant" would open
+  // the form on that option, and the next save would write it over the mode the
+  // series actually holds.
+  it("reports a mode it cannot name rather than answering with the tenant's", async () => {
+    mockGetSeries.mockResolvedValue({
+      commentMode: 99,
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  // `UpdateSeries` writes the whole listing row, so a save that left the mode
+  // out would put the series back on its tenant's setting.
+  it("sends the mode on every update", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries(
+      {
+        ageRating: "all",
+        commentMode: "disabled",
+        creatorPublicIds: [],
+        genrePublicIds: [],
+        isPublished: true,
+        labelPublicId: "LABEL001",
+        publicId: "SERIES001",
+        readingPeriodHours: 24,
+        scheduleWeekdays: [],
+        status: "ongoing",
+        synopsis: "A synopsis",
+        tagNames: [],
+        tenantId: "TENANT001",
+        title: "Series title",
+      },
+      "en"
+    );
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ commentMode: CommentMode.DISABLED }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("sends unspecified for a series that states no mode of its own", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries(
+      {
+        ageRating: "all",
+        commentMode: "",
+        creatorPublicIds: [],
+        genrePublicIds: [],
+        isPublished: true,
+        labelPublicId: "LABEL001",
+        publicId: "SERIES001",
+        readingPeriodHours: 24,
+        scheduleWeekdays: [],
+        status: "ongoing",
+        synopsis: "A synopsis",
+        tagNames: [],
+        tenantId: "TENANT001",
+        title: "Series title",
+      },
+      "en"
+    );
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ commentMode: CommentMode.UNSPECIFIED }),
       { headers: { Authorization: "Bearer session-token" } }
     );
   });
