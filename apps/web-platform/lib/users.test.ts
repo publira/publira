@@ -344,7 +344,8 @@ describe("searchPlatformTenantFilterOptions", () => {
       searchPlatformTenantFilterOptions("Tenant", "en")
     ).resolves.toEqual({
       hasMore: false,
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
       requiresSignIn: false,
       tenants: [],

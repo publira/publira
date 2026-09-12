@@ -549,7 +549,8 @@ describe("updateTenantPaymentSettingsAction", () => {
 
   it("returns the message and leaves the cache tag alone when the save fails", async () => {
     mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
     });
 
@@ -563,7 +564,8 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

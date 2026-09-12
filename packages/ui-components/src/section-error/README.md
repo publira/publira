@@ -20,7 +20,8 @@ export default function Example() {
       <SectionErrorHeading>
         <SectionErrorTitle>Could not display the operators</SectionErrorTitle>
         <SectionErrorDescription>
-          You do not have permission to perform this action.
+          You do not have permission to perform this action. Go back or use an
+          account that does.
         </SectionErrorDescription>
       </SectionErrorHeading>
     </SectionError>

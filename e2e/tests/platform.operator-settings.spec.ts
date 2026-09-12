@@ -35,8 +35,9 @@ const CHANGED_MESSAGE = "Your email address has been changed.";
 const PENDING_NEW_EMAIL_MESSAGE =
   "This confirmation is done. The change applies once the new email address is confirmed as well.";
 const FAILED_MESSAGE =
-  "Could not change your email address. The link may have expired or be invalid.";
-const WRONG_PASSWORD_MESSAGE = "The password is incorrect.";
+  "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.";
+const WRONG_PASSWORD_MESSAGE =
+  "The password is incorrect. Check it and try again.";
 const SMTP_SAVED_MESSAGE = "Email settings saved.";
 
 const signIn = (page: Page, nextPath: string): Promise<void> =>

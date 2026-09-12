@@ -83,7 +83,8 @@ describe("notificationDisplay", () => {
         en
       )
     ).toEqual({
-      description: "the scheduled episode could not be published.",
+      description:
+        "the scheduled episode could not be published. Open the episode and try publishing again.",
       href: "/series/SR01/episodes/EP01",
       title: "An episode could not be published",
     });

@@ -165,7 +165,7 @@ test.describe("web-host episode comments", () => {
       WEB_HOST_EPISODE_COMMENTS_BASE_URL
     );
     await pollEpisodePage(page, () =>
-      page.getByText("No comments yet.").count()
+      page.getByText("No comments yet. Be the first to post one.").count()
     ).toBe(1);
 
     await postComment(page, body);

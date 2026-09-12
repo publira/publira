@@ -76,13 +76,14 @@ describe("notificationDisplay", () => {
       )
     ).toEqual({
       description:
-        "“Episode 1” (Series A) could not be published for tenant “Acme”.",
+        "“Episode 1” (Series A) could not be published for tenant “Acme”. Open the episode and try publishing again.",
       href: "/tenants/SeedTNNTAAA1",
       title: "An episode could not be published",
     });
 
     expect(notificationDisplay("episode_publish_failed", {}, en)).toEqual({
-      description: "the scheduled episode could not be published.",
+      description:
+        "the scheduled episode could not be published. Open the episode and try publishing again.",
       href: undefined,
       title: "An episode could not be published",
     });
@@ -101,7 +102,7 @@ describe("notificationDisplay", () => {
       )
     ).toEqual({
       description:
-        "テナント「Acme」の「Episode 1」（Series A）を公開できませんでした。",
+        "テナント「Acme」の「Episode 1」（Series A）を公開できませんでした。エピソードを開いて公開をやり直してください。",
       href: undefined,
       title: "エピソードの公開に失敗しました",
     });

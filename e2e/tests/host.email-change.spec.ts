@@ -27,7 +27,7 @@ const CHANGED_MESSAGE = "Your email address has been changed.";
 const PENDING_NEW_EMAIL_MESSAGE =
   "This confirmation is complete. The change takes effect once the new address is confirmed as well.";
 const FAILED_MESSAGE =
-  "Could not change your email address. The link may have expired or be invalid.";
+  "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.";
 
 const memberEmail = (): string =>
   querySql(`

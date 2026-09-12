@@ -434,15 +434,15 @@ test.describe("web-host episode reading", () => {
     const firstPage = pageCanvas(page, 1);
     await expect(firstPage).toHaveAttribute("data-page-status", "error");
     await expect(
-      page.getByText("This page could not be loaded.")
+      page.getByText("This page could not be loaded. Try again.")
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Reload" }).click();
 
     await expect(firstPage).toHaveAttribute("data-page-status", "loaded");
-    await expect(page.getByText("This page could not be loaded.")).toHaveCount(
-      0
-    );
+    await expect(
+      page.getByText("This page could not be loaded. Try again.")
+    ).toHaveCount(0);
     // The control is drawn over the page, where a click near the edge of the
     // viewport would otherwise turn it: asking for the page again must not
     // carry the reader past it.

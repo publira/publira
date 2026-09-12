@@ -120,7 +120,8 @@ describe("payment-settings", () => {
     const result = await getTenantPaymentSettings("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
       requiresSignIn: false,
     });
@@ -226,7 +227,8 @@ describe("payment-settings", () => {
     );
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
     });
   });

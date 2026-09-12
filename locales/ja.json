@@ -160,24 +160,24 @@
     }
   },
   "errors": {
-    "disallowed_value": "許可されていない値です。",
+    "disallowed_value": "許可されていない値です。別の値を選んでください。",
     "rpc": {
-      "conflict": "重複するデータがあるため保存できません。",
-      "forbidden": "この操作を行う権限がありません。",
-      "invalid-argument": "入力内容に誤りがあります。",
-      "not-found": "対象が見つかりません。",
+      "conflict": "重複するデータがあるため保存できません。内容を変えて再試行してください。",
+      "forbidden": "この操作を行う権限がありません。戻るか、権限のあるアカウントでログインしてください。",
+      "invalid-argument": "入力内容に誤りがあります。内容を確認して再試行してください。",
+      "not-found": "対象が見つかりません。一覧に戻って開き直してください。",
       "rate-limited": "短時間に操作が集中しています。少し時間をおいて再試行してください。",
       "unauthenticated": "セッションが無効です。再ログインしてください。",
       "unavailable": "サーバーに接続できませんでした。時間をおいて再試行してください。"
     },
     "smtp_test": {
-      "authentication": "SMTP 認証に失敗しました",
-      "connection": "SMTP サーバーに接続できませんでした",
-      "recipient": "宛先メールアドレスを受け付けられませんでした",
-      "starttls": "STARTTLS の確立に失敗しました",
-      "timeout": "SMTP サーバーへの接続がタイムアウトしました",
-      "tls": "TLS 接続に失敗しました",
-      "unknown": "SMTP 接続テストに失敗しました"
+      "authentication": "SMTP 認証に失敗しました。SMTP の設定を確認して再試行してください。",
+      "connection": "SMTP サーバーに接続できませんでした。SMTP の設定を確認して再試行してください。",
+      "recipient": "宛先メールアドレスを受け付けられませんでした。宛先を確認して再試行してください。",
+      "starttls": "STARTTLS の確立に失敗しました。SMTP の設定を確認して再試行してください。",
+      "timeout": "SMTP サーバーへの接続がタイムアウトしました。SMTP の設定を確認して再試行してください。",
+      "tls": "TLS 接続に失敗しました。SMTP の設定を確認して再試行してください。",
+      "unknown": "SMTP 接続テストに失敗しました。SMTP の設定を確認して再試行してください。"
     },
     "validation": "入力内容を確認してください。"
   },
@@ -190,7 +190,7 @@
       "section_error": "監査ログを表示できませんでした",
       "title": "監査ログ",
       "page_description": "テナント内の操作履歴を確認し、変更の追跡や説明責任に利用します。",
-      "empty": "条件に一致する監査ログはありません。",
+      "empty": "条件に一致する監査ログはありません。条件を広げてください。",
       "pagination_description": "1ページあたり{$count}件まで表示します。",
       "actor_option": "{$name} ({$id})",
       "actor_unnamed": "名前未設定",
@@ -251,7 +251,7 @@
       "audience_selected_user": "指定 ({$name})",
       "list_failed": "お知らせ一覧の取得に失敗しました。時間をおいて再試行してください。",
       "create_failed": "お知らせの配信に失敗しました。時間をおいて再試行してください。",
-      "target_users_failed": "対象ユーザー一覧の取得に失敗しました。",
+      "target_users_failed": "対象ユーザー一覧の取得に失敗しました。時間をおいて再試行してください。",
       "columns": {
         "created_at": "作成日時",
         "title": "タイトル",
@@ -271,7 +271,7 @@
         "audience_all": "全体配信",
         "audience_selected": "指定ユーザー配信",
         "target_users": "対象ユーザー",
-        "target_users_unavailable": "対象ユーザー一覧を取得できないため、指定ユーザー配信は利用できません。",
+        "target_users_unavailable": "対象ユーザー一覧を取得できないため、指定ユーザー配信は利用できません。全員向けにするか、時間をおいて再試行してください。",
         "user_option": "{$name} ({$id})",
         "submitting": "送信中…",
         "submit": "お知らせを配信"
@@ -409,14 +409,14 @@
         "accepted": "この招待はすでに承諾済みです。",
         "canceled": "この招待は取り消されています。",
         "email_invited": "{$email} をテナント管理者として招待しています。",
-        "expired": "この招待は期限切れです。",
-        "expired_action": "招待リンクの有効期限が切れています。",
+        "expired": "この招待は期限切れです。管理者に新しい招待を依頼してください。",
+        "expired_action": "招待リンクの有効期限が切れています。管理者に新しい招待を依頼してください。",
         "invalid_token": "招待トークンが見つかりません。",
         "name_label": "お名前",
         "name_placeholder": "山田 太郎",
-        "not_found": "招待が見つかりません。",
+        "not_found": "招待が見つかりません。管理者に新しい招待を依頼してください。",
         "password_confirm_label": "パスワード（確認）",
-        "password_mismatch": "パスワード確認が一致しません。",
+        "password_mismatch": "パスワード確認が一致しません。同じパスワードを入力してください。",
         "submit": "招待を承諾する",
         "title": "管理者招待の承諾",
         "description": "招待を承諾すると、このテナントの管理画面にアクセスできます。"
@@ -424,34 +424,34 @@
       "confirm_email": {
         "changed": "メールアドレスの変更が完了しました。",
         "changed_help": "新しいメールアドレスでログインできます。",
-        "failed": "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
+        "failed": "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。新しい確認メールをリクエストしてください。",
         "failure_help": "メールアドレス変更を再度リクエストしてください。",
-        "invalid_link": "確認リンクが無効です。",
+        "invalid_link": "確認リンクが無効です。新しい確認メールをリクエストしてください。",
         "pending": "確認が完了しました。",
         "pending_current_email": "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。",
         "pending_new_email": "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。",
         "processing": "メールアドレス変更の確認を処理しています。",
         "title": "メールアドレス変更確認",
-        "to_login": "ログイン画面へ"
+        "to_login": "ログイン"
       },
       "confirm_password": {
         "confirm_password_label": "新しいパスワード（確認）",
         "description": "新しいパスワードを入力してください。設定後はログイン画面からすぐに利用できます。",
         "eyebrow": "メールで受け取ったリンクから、管理画面用の新しいパスワードを設定します。",
-        "expired": "この再設定リンクは有効期限が切れています。",
+        "expired": "この再設定リンクは有効期限が切れています。再設定メールを送り直してください。",
         "failure_help": "もう一度メール送信からやり直すと、新しい再設定リンクを受け取れます。",
-        "invalid": "この再設定リンクは無効です。",
+        "invalid": "この再設定リンクは無効です。再設定メールを送り直してください。",
         "password_label": "新しいパスワード",
-        "password_mismatch": "パスワード確認が一致しません。",
+        "password_mismatch": "パスワード確認が一致しません。同じパスワードを入力してください。",
         "request_again": "再設定メールを送信",
         "submit": "新しいパスワードを設定",
         "title": "新しいパスワードの設定",
-        "to_login": "ログイン画面へ"
+        "to_login": "ログイン"
       },
       "errors": {
         "accept_invite_failed": "招待の承諾に失敗しました。時間をおいて再試行してください。",
         "email_change_failed": "メールアドレス変更リクエストに失敗しました。時間をおいて再試行してください。",
-        "login_failed": "メールアドレスまたはパスワードが正しくありません。",
+        "login_failed": "メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。",
         "login_processing_failed": "ログイン処理に失敗しました。時間をおいて再試行してください。",
         "name_and_password_required": "名前とパスワードを入力してください。",
         "new_password_required": "新しいパスワードを入力してください。",
@@ -460,16 +460,16 @@
         "reset_link_invalid": "再設定リンクが無効です。もう一度メール送信からやり直してください。",
         "reset_request_failed": "再設定メールの送信に失敗しました。時間をおいて再試行してください。",
         "reset_request_invalid_email": "メールアドレスを確認してください。",
-        "tenant_missing": "テナント識別子が見つかりません。"
+        "tenant_missing": "テナント識別子が見つかりません。URL を確認してください。"
       },
       "fields": {
         "email_invalid": "メールアドレスの形式が正しくありません。",
         "email_label": "メールアドレス",
         "email_required": "メールアドレスを入力してください。",
-        "invalid_token": "確認リンクが無効です。",
+        "invalid_token": "確認リンクが無効です。新しい確認メールをリクエストしてください。",
         "password_label": "パスワード",
         "password_required": "パスワードを入力してください。",
-        "tenant_missing": "テナント ID が見つかりません。"
+        "tenant_missing": "テナント ID が見つかりません。URL を確認してください。"
       },
       "forgot_password": {
         "description": "管理画面に登録済みのメールアドレス宛てに、再設定リンクを送信します。",
@@ -522,8 +522,8 @@
           "locked": "コードの誤りが続いたため、一時的にロックされています。しばらく待ってから再試行してください。",
           "verify_failed": "コードを確認できませんでした。時間をおいて再試行してください。",
           "enroll_failed": "2 段階認証を設定できませんでした。時間をおいて再試行してください。",
-          "not_enabled": "このアカウントでは 2 段階認証が設定されていません。",
-          "already_enabled": "このアカウントでは 2 段階認証がすでに設定されています。"
+          "not_enabled": "このアカウントでは 2 段階認証が設定されていません。アカウント設定から設定してください。",
+          "already_enabled": "このアカウントでは 2 段階認証がすでに設定されています。認証アプリでログインしてください。"
         }
       }
     },
@@ -656,7 +656,7 @@
       "queue_title": "公開キュー",
       "queue_description": "直近で確認が必要なエピソードと公開予定です。",
       "queue_empty_title": "公開キューは空です",
-      "queue_empty_description": "現在、下書きまたは予約済みのエピソードはありません。",
+      "queue_empty_description": "現在、下書きまたは予約済みのエピソードはありません。シリーズのページからエピソードを作成してください。",
       "columns": {
         "series": "シリーズ",
         "episode": "エピソード",
@@ -1052,7 +1052,7 @@
         "edit_description": "エピソードの公開設定とページ画像を編集します。",
         "new_description": "シリーズ配下に新しいエピソードを登録します。",
         "new_action": "新規作成",
-        "create_action": "エピソードを新規作成",
+        "create_action": "エピソードを作成",
         "back_to_series": "シリーズへ戻る",
         "back_to_list": "一覧へ戻る",
         "created": "エピソードを作成しました。",
@@ -1060,7 +1060,7 @@
         "pages_uploaded": "ページ画像を追加しました。",
         "image_list_title": "登録済みページ画像",
         "image_list_description": "画像はドラッグ＆ドロップで並び替えできます。",
-        "image_list_empty": "ページ画像はまだ登録されていません。",
+        "image_list_empty": "ページ画像はまだ登録されていません。このページのフォームから追加してください。",
         "list_error": "エピソード一覧を表示できませんでした",
         "empty_title": "このシリーズのエピソードは未登録です。",
         "empty_description": "まだエピソードがありません。まずは新規作成してください。",
@@ -1072,17 +1072,17 @@
         "pagination_aria": "エピソード一覧のページ送り",
         "pagination_description": "表示順に、1ページあたり {$count} 件まで表示します。",
         "reordered": "エピソードの表示順を更新しました。",
-        "reorder_error": "エピソードの表示順更新に失敗しました。",
+        "reorder_error": "エピソードの表示順更新に失敗しました。時間をおいて再試行してください。",
         "image_reordered": "ページ画像の表示順を更新しました。",
-        "image_reorder_error": "ページ画像の表示順更新に失敗しました。",
+        "image_reorder_error": "ページ画像の表示順更新に失敗しました。時間をおいて再試行してください。",
         "image_alt": "ページ {$index}",
         "image_list_error": "ページ画像を表示できませんでした",
         "schedule_error": "公開設定を表示できませんでした",
         "schedule_title": "publish_at 設定",
-        "schedule_description": "公開予約日時を更新します。空欄で送信すると予約を解除します。",
+        "schedule_description": "公開予約日時を更新します。空欄のまま更新すると予約を解除します。",
         "schedule_update": "publish_at を更新",
         "updating": "更新中...",
-        "create_failed": "エピソードの入稿に失敗しました。時間をおいて再試行してください。",
+        "create_failed": "エピソードの作成に失敗しました。時間をおいて再試行してください。",
         "list_failed": "エピソード一覧の取得に失敗しました。時間をおいて再試行してください。",
         "get_failed": "エピソードの取得に失敗しました。時間をおいて再試行してください。",
         "schedule_failed": "公開設定の更新に失敗しました。時間をおいて再試行してください。",
@@ -1108,28 +1108,28 @@
           "epub_description": "ePub（.epub）から本文画像を抽出して登録します。壊れた ePub や参照不整合・不正パスを含むファイルは拒否されます。",
           "upload_progress": "アップロード進捗",
           "adding": "追加中...",
-          "submit_zip": "ZIP を入稿",
-          "submit_epub": "ePub を入稿",
+          "submit_zip": "ZIP を追加",
+          "submit_epub": "ePub を追加",
           "submit_image": "ページ画像を追加",
           "title": "漫画ページ追加",
           "description": "エピソードに紐づくページ画像を複数選択して追加します。",
           "target": "入稿対象",
           "method": "アップロード方法",
           "select_images": "ページ画像を複数選択",
-          "select_zip": "ZIP で入稿",
-          "select_epub": "ePub で入稿",
+          "select_zip": "ZIP を使う",
+          "select_epub": "ePub を使う",
           "processing": "ファイルを処理しています。完了までしばらくお待ちください。"
         },
         "form": {
-          "create": "エピソードを入稿",
-          "submitting": "送信中...",
+          "create": "エピソードを作成",
+          "submitting": "作成中...",
           "title": "タイトル",
           "title_placeholder": "例: 第1話 はじまりの朝",
           "price": "価格",
           "price_description": "0 を指定すると無料で公開されます。",
           "reading_period": "閲覧可能期間",
           "reading_period_description": "単位は時間です。0 を指定すると無制限で閲覧できます。",
-          "publish_at_description": "未入力の場合は下書きとして入稿します。入力するとテナントのタイムゾーン（{$time_zone}）の壁時計として予約公開します。"
+          "publish_at_description": "未入力の場合は下書きとして作成します。入力するとテナントのタイムゾーン（{$time_zone}）の壁時計として予約公開します。"
         },
         "validation": {
           "episode_missing": "エピソード ID が見つかりません。",
@@ -1536,7 +1536,7 @@
         "disable_submit": "無効にする",
         "disable_submitting": "無効化中…",
         "disable_done": "2 段階認証を無効にしました。",
-        "load_failed": "2 段階認証の状態を取得できませんでした。"
+        "load_failed": "2 段階認証の状態を取得できませんでした。時間をおいて再試行してください。"
       },
       "payment": {
         "title": "決済設定",
@@ -1606,7 +1606,7 @@
         "published_title": "エピソードが公開されました",
         "published_description": "{$subject}を公開しました。",
         "publish_failed_title": "エピソードの公開に失敗しました",
-        "publish_failed_description": "{$subject}を公開できませんでした。",
+        "publish_failed_description": "{$subject}を公開できませんでした。エピソードを開いて公開をやり直してください。",
         "comments_awaiting_approval_title": "承認待ちのコメントがあります",
         "comments_awaiting_approval_description": "{$subject}に承認待ちのコメントが届いています。",
         "comments_reported_title": "コメントが報告されました",
@@ -1745,10 +1745,10 @@
   "host": {
     "announcements": {
       "description": "運営から配信されたお知らせを確認できます。",
-      "first_page": "お知らせ一覧の先頭へ",
+      "first_page": "お知らせ一覧の先頭を表示",
       "list_empty": "現在表示できるお知らせはありません。",
       "list_error": "お知らせ一覧を表示できませんでした",
-      "list_failed": "お知らせの取得に失敗しました。",
+      "list_failed": "お知らせの取得に失敗しました。時間をおいて再試行してください。",
       "list_heading": "お知らせ一覧",
       "open_and_mark_read": "開いて既読にする",
       "open_link": "遷移先を開く",
@@ -1760,11 +1760,11 @@
     "auth": {
       "confirm_email": {
         "changed": "メールアドレスの変更が完了しました。",
-        "failed": "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
+        "failed": "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。新しい確認メールをリクエストしてください。",
         "pending_current_email": "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。",
         "pending_new_email": "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。",
         "title": "メール変更確認",
-        "to_my": "マイページへ",
+        "to_my": "マイページを開く",
         "to_settings": "設定へ戻る"
       },
       "confirm_password": {
@@ -1775,14 +1775,14 @@
         "to_reset_password": "パスワード再設定へ戻る"
       },
       "errors": {
-        "login_failed": "メールアドレスまたはパスワードが正しくありません。",
+        "login_failed": "メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。",
         "name_required": "表示名を入力してください。",
         "name_too_long": "表示名は100文字以内で入力してください。",
         "password_confirm_required": "パスワード確認を入力してください。",
         "password_confirm_too_long": "パスワード確認は1024文字以内で入力してください。",
-        "password_mismatch": "パスワード確認が一致しません。",
+        "password_mismatch": "パスワード確認が一致しません。同じパスワードを入力してください。",
         "resend_verification_failed": "確認メールの送信に失敗しました。入力内容をご確認ください。",
-        "reset_confirm_failed": "再設定に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
+        "reset_confirm_failed": "再設定に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。再設定メールを送り直してください。",
         "reset_request_failed": "再設定メールの送信に失敗しました。入力内容をご確認ください。",
         "signup_failed": "新規登録に失敗しました。入力内容をご確認ください。"
       },
@@ -1791,11 +1791,11 @@
         "email_invalid": "メールアドレスの形式が正しくありません。",
         "email_label": "メールアドレス",
         "email_required": "メールアドレスを入力してください。",
-        "invalid_token": "確認リンクが無効です。",
+        "invalid_token": "確認リンクが無効です。新しい確認メールをリクエストしてください。",
         "password_label": "パスワード",
         "password_required": "パスワードを入力してください。",
         "sent_to": "送信先: {$email}",
-        "tenant_missing": "テナント ID が見つかりません。",
+        "tenant_missing": "テナント ID が見つかりません。URL を確認してください。",
         "to_login": "ログイン画面へ戻る"
       },
       "login": {
@@ -1844,7 +1844,7 @@
       "verify": {
         "failed": "確認に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
         "title": "メール確認",
-        "to_login": "ログイン画面へ",
+        "to_login": "ログイン",
         "to_resend_verification": "確認メールを再送する",
         "verified": "メールアドレスの確認が完了しました。ログインしてください。"
       }
@@ -1912,7 +1912,7 @@
         "delete_failed": "コメントを削除できませんでした。時間をおいて再度お試しください。",
         "deleted": "コメントを削除しました。",
         "deleting": "削除中…",
-        "empty": "まだコメントはありません。",
+        "empty": "まだコメントはありません。最初のコメントを投稿してください。",
         "list_error": "コメントを表示できませんでした",
         "list_failed": "コメントを読み込めませんでした。時間をおいて再度お試しください。",
         "own_error": "自分のコメントを表示できませんでした",
@@ -1957,7 +1957,7 @@
         "guest_title": "このエピソードは有料です",
         "guest_unpayable_description": "本文を読むには、ログインして管理者からチケットを付与してもらう必要があります。現在このサイトでは購入手続きを利用できません。",
         "login": "ログインして閲覧する",
-        "purchase": "購入手続きへ",
+        "purchase": "このエピソードを購入",
         "signed_in_payable_description": "閲覧権限がありません。チケットの有効期限が切れているか、まだ付与されていません。購入済みの場合は、別のアカウントでログインしていないか確認してください。",
         "signed_in_title": "このエピソードは閲覧できません",
         "signed_in_unpayable_description": "現在このサイトでは購入手続きを利用できません。チケットの有効期限が切れているか、まだ付与されていないかを確認してください。"
@@ -1976,14 +1976,14 @@
       "reading_period_hours": "{$hours}時間",
       "reading_period_unlimited": "制限なし",
       "scheduled_at": "公開予定",
-      "to_series_detail": "シリーズ詳細へ",
+      "to_series_detail": "シリーズを開く",
       "viewer": {
         "enter_fullscreen": "全画面表示にする",
         "exit_fullscreen": "全画面表示を終了",
         "loading": "読み込み中…",
         "navigation": "ページ送り",
         "no_pages": "ページがありません",
-        "page_error": "このページを読み込めませんでした。",
+        "page_error": "このページを読み込めませんでした。再試行してください。",
         "page_status": "{$first} / {$total}ページ",
         "page_status_range": "{$first}–{$last} / {$total}ページ",
         "page_title": "{$title} {$page}ページ",
@@ -1992,7 +1992,7 @@
       }
     },
     "errors": {
-      "not_found_description": "お探しのページは削除されたか、URL が変更された可能性があります。",
+      "not_found_description": "お探しのページは削除されたか、URL が変更された可能性があります。ホームを開いてください。",
       "not_found_title": "ページが見つかりません",
       "page_description": "時間をおいて再試行してください。繰り返す場合はしばらく経ってからアクセスしてください。",
       "page_title": "ページを表示できませんでした",
@@ -2023,14 +2023,14 @@
       "list_title": "ジャンル一覧",
       "not_found_title": "ジャンルが見つかりません",
       "series_empty": "このジャンルのシリーズはまだ公開されていません。",
-      "series_first_page": "このジャンルのシリーズ一覧の先頭へ",
+      "series_first_page": "このジャンルのシリーズ一覧の先頭を表示",
       "series_pagination_aria": "ジャンル別シリーズのページング"
     },
     "labels": {
       "back_to_list": "レーベル一覧へ戻る",
       "detail_description": "{$name} の公開中シリーズ {$count} 件",
       "detail_failed": "レーベルを取得できませんでした。時間をおいて再試行してください。",
-      "first_page": "レーベル一覧の先頭へ",
+      "first_page": "レーベル一覧の先頭を表示",
       "list_description": "{$site}のレーベルをご紹介します",
       "list_empty": "レーベルはまだ登録されていません。",
       "list_error": "レーベル一覧を表示できませんでした",
@@ -2041,7 +2041,7 @@
       "pagination_aria": "レーベル一覧ページング",
       "series_description": "このレーベルに属する公開中シリーズ一覧です。",
       "series_empty": "まだ公開中シリーズはありません。",
-      "series_first_page": "所属シリーズの先頭へ",
+      "series_first_page": "所属シリーズの先頭を表示",
       "series_heading": "所属シリーズ",
       "series_pagination_aria": "所属シリーズページング"
     },
@@ -2086,10 +2086,10 @@
       "subscription_empty_title": "購読中のコンテンツがありません",
       "subscription_heading": "購読情報",
       "title": "マイページ",
-      "to_library": "購入済み一覧",
-      "to_login": "ログインへ",
+      "to_library": "購入済みを開く",
+      "to_login": "ログイン",
       "to_settings": "設定を開く",
-      "to_settings_page": "設定ページへ"
+      "to_settings_page": "設定を開く"
     },
     "nav": {
       "account_menu": "アカウントメニュー",
@@ -2125,7 +2125,7 @@
       "episode_published_subject_unknown": "新しいエピソード",
       "episode_published_subject_with_series": "「{$episode_title}」（{$series_title}）",
       "episode_published_title": "新しいエピソードが公開されました",
-      "first_page": "通知一覧の先頭へ",
+      "first_page": "通知一覧の先頭を表示",
       "list_error": "通知一覧を表示できませんでした",
       "list_failed": "通知一覧の取得に失敗しました。時間をおいて再試行してください。",
       "list_heading": "通知一覧",
@@ -2148,7 +2148,7 @@
     "ranking": {
       "computed_at": "{$datetime} 更新",
       "description": "いま最も読まれている作品です。",
-      "first_page": "ランキングの先頭へ",
+      "first_page": "ランキングの先頭を表示",
       "list_empty": "ランキングはまだ集計されていません。",
       "list_error": "ランキングを表示できませんでした",
       "list_failed": "ランキングを取得できませんでした。時間をおいて再試行してください。",
@@ -2183,7 +2183,7 @@
       "error": "検索結果を表示できませんでした",
       "labels_error": "レーベルの検索結果を表示できませんでした",
       "labels_failed": "レーベルの検索結果を取得できませんでした。時間をおいて再試行してください。",
-      "labels_first_page": "レーベルの検索結果の先頭へ",
+      "labels_first_page": "レーベルの検索結果の先頭を表示",
       "labels_heading": "レーベル",
       "labels_no_results": "「{$query}」に一致するレーベルはありません。",
       "labels_pagination_aria": "レーベルの検索結果ページング",
@@ -2192,7 +2192,7 @@
       "results_title": "「{$query}」の検索結果",
       "series_error": "シリーズの検索結果を表示できませんでした",
       "series_failed": "シリーズの検索結果を取得できませんでした。時間をおいて再試行してください。",
-      "series_first_page": "シリーズの検索結果の先頭へ",
+      "series_first_page": "シリーズの検索結果の先頭を表示",
       "series_heading": "シリーズ",
       "series_no_results": "「{$query}」に一致するシリーズはありません。",
       "series_pagination_aria": "シリーズの検索結果ページング",
@@ -2208,7 +2208,7 @@
         "r18_description": "18歳以上であることを確認すると、この作品を閲覧できます。",
         "r18_title": "「{$title}」は R18 指定です"
       },
-      "back_to_list": "← シリーズ一覧に戻る",
+      "back_to_list": "シリーズ一覧に戻る",
       "continue_reading": "続きを読む",
       "detail_failed": "シリーズを取得できませんでした。時間をおいて再試行してください。",
       "episode_count": "全{$count}話",
@@ -2226,7 +2226,7 @@
       "filter_reset": "条件をクリア",
       "filter_status": "連載状況",
       "filter_status_all": "すべての状況",
-      "first_page": "シリーズ一覧の先頭へ",
+      "first_page": "シリーズ一覧の先頭を表示",
       "list_description": "{$site}に登録されているシリーズをご紹介します",
       "list_empty": "シリーズはまだ登録されていません。",
       "list_error": "シリーズ一覧を表示できませんでした",
@@ -2271,11 +2271,11 @@
       "email_notifications_update_failed": "通知設定の更新に失敗しました。時間をおいて再度お試しください。",
       "email_notifications_updated": "通知設定を更新しました。",
       "follows_description": "フォローしている作品と著者を確認し、公開ページへ移動するか、フォローを解除できます。",
-      "follows_empty_description": "公開中の作品や著者をフォローすると、ここに表示されます。非公開になった対象は一覧から外れます。",
+      "follows_empty_description": "公開中の作品や著者をフォローすると、ここに表示されます。シリーズや著者のページからフォローしてください。非公開になった対象は一覧から外れます。",
       "follows_empty_title": "フォロー中の作品・著者はありません。",
       "follows_error": "フォロー一覧を表示できませんでした",
       "follows_failed": "フォロー一覧を取得できませんでした。時間をおいて再試行してください。",
-      "follows_first_page": "フォロー一覧の先頭へ",
+      "follows_first_page": "フォロー一覧の先頭を表示",
       "follows_followed_at": "フォロー日時",
       "follows_heading": "フォロー中の作品・著者",
       "follows_kind_creator": "著者",
@@ -2312,7 +2312,7 @@
       "detail_failed": "タグを取得できませんでした。時間をおいて再試行してください。",
       "not_found_title": "タグが見つかりません",
       "series_empty": "このタグのシリーズはまだ公開されていません。",
-      "series_first_page": "このタグのシリーズ一覧の先頭へ",
+      "series_first_page": "このタグのシリーズ一覧の先頭を表示",
       "series_pagination_aria": "タグ別シリーズのページング"
     },
     "top": {
@@ -2368,14 +2368,14 @@
     },
     "catalog": {
       "all_series_heading": "すべてのシリーズ",
-      "continue_failed": "読みかけの作品を表示できませんでした",
+      "continue_failed": "読みかけの作品を表示できませんでした。もう一度お試しください。",
       "continue_heading": "読みかけの作品",
       "empty": "公開中のシリーズはありません",
-      "load_failed": "カタログを表示できませんでした",
-      "new_arrivals_failed": "新着シリーズを表示できませんでした",
+      "load_failed": "カタログを表示できませんでした。もう一度お試しください。",
+      "new_arrivals_failed": "新着シリーズを表示できませんでした。もう一度お試しください。",
       "new_arrivals_heading": "新着シリーズ",
       "offline_not_saved": "オフラインのため、カタログを表示できません。端末に保存されたカタログがありません。",
-      "ranking_failed": "今週のランキングを表示できませんでした",
+      "ranking_failed": "今週のランキングを表示できませんでした。もう一度お試しください。",
       "ranking_heading": "今週のトップ10"
     },
     "common": {
@@ -2402,7 +2402,7 @@
       "deleted": "コメントを削除しました。",
       "deleting": "削除中…",
       "disabled": "このサイトではコメントを受け付けていません。",
-      "empty": "まだコメントはありません。",
+      "empty": "まだコメントはありません。最初のコメントを投稿してください。",
       "list_failed": "コメントを読み込めませんでした。時間をおいて再度お試しください。",
       "newer": "新しいコメント",
       "older": "古いコメント",
@@ -2456,7 +2456,7 @@
       "episode_count": "{$count} 話",
       "episodes_empty": "公開中のエピソードはありません",
       "episodes_heading": "エピソード一覧",
-      "load_failed": "ページを表示できませんでした",
+      "load_failed": "ページを表示できませんでした。もう一度お試しください。",
       "not_found": "シリーズが見つかりません ({$id})",
       "offline_not_saved": "オフラインのため、このシリーズを表示できません。端末に保存されたデータがありません。",
       "saved_offline": "保存済み",
@@ -2471,7 +2471,7 @@
       "email_not_verified": "メールアドレスの確認が完了していません。確認メールのリンクを開いてください。",
       "email_required": "メールアドレスを入力してください",
       "failed": "サインインできませんでした",
-      "invalid_credentials": "メールアドレスまたはパスワードが正しくありません",
+      "invalid_credentials": "メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。",
       "password_label": "パスワード",
       "password_required": "パスワードを入力してください",
       "website_note": "アカウントの作成とパスワードの再設定はウェブサイトで行えます。"
@@ -2483,7 +2483,7 @@
         "up_to_date_description": "「{$title}」にはこの先のエピソードがまだありません",
         "up_to_date_title": "最新のエピソードまで読み終えました"
       },
-      "load_failed": "エピソードを表示できませんでした",
+      "load_failed": "エピソードを表示できませんでした。もう一度お試しください。",
       "locked": "この話は購入すると読めます",
       "locked_signed_out": "この話は購入すると読めます。購入済みの場合はサインインしてください。",
       "next_episode": "次のエピソード",
@@ -2491,7 +2491,7 @@
       "no_pages": "このエピソードにはまだページがありません",
       "not_found": "エピソードが見つかりません ({$id})",
       "offline_not_saved": "オフラインのため、このエピソードを表示できません。端末に保存済みのエピソードのみ読めます。",
-      "page_failed": "このページを表示できませんでした",
+      "page_failed": "このページを表示できませんでした。もう一度お試しください。",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "前のエピソード",
@@ -2544,25 +2544,25 @@
       "confirm_email": {
         "back_to_settings": "設定へ戻る",
         "changed": "メールアドレスの変更が完了しました。",
-        "failed": "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
-        "invalid_link": "確認リンクが無効です。",
+        "failed": "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。新しい確認メールをリクエストしてください。",
+        "invalid_link": "確認リンクが無効です。新しい確認メールをリクエストしてください。",
         "pending_current_email": "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。",
         "pending_new_email": "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。",
         "title": "メールアドレス変更確認",
-        "to_dashboard": "ダッシュボードへ"
+        "to_dashboard": "ダッシュボードを開く"
       },
       "confirm_password": {
         "confirm_password_label": "新しいパスワード（確認）",
         "description": "新しいパスワードを入力してください。設定後はログイン画面からすぐに利用できます。",
-        "expired": "この再設定リンクは有効期限が切れています。",
+        "expired": "この再設定リンクは有効期限が切れています。再設定メールを送り直してください。",
         "failure_help": "もう一度メール送信からやり直すと、新しい再設定リンクを受け取れます。",
-        "invalid": "この再設定リンクは無効です。",
+        "invalid": "この再設定リンクは無効です。再設定メールを送り直してください。",
         "password_label": "新しいパスワード",
-        "password_mismatch": "パスワード確認が一致しません。",
+        "password_mismatch": "パスワード確認が一致しません。同じパスワードを入力してください。",
         "request_again": "再設定メールを送信",
         "submit": "新しいパスワードを設定",
         "title": "新しいパスワードの設定",
-        "to_login": "ログイン画面へ"
+        "to_login": "ログイン"
       },
       "errors": {
         "new_password_required": "新しいパスワードを入力してください。",
@@ -2578,13 +2578,13 @@
         "email_invalid": "メールアドレスの形式が正しくありません。",
         "email_label": "メールアドレス",
         "email_required": "メールアドレスを入力してください。",
-        "invalid_token": "確認リンクが無効です。",
+        "invalid_token": "確認リンクが無効です。新しい確認メールをリクエストしてください。",
         "password_label": "パスワード",
         "password_required": "パスワードを入力してください。"
       },
       "login": {
         "eyebrow": "Platform Console ログイン",
-        "failed": "メールアドレスまたはパスワードが正しくありません。",
+        "failed": "メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。",
         "forgot_password": "パスワードを忘れた場合",
         "pending": "ログイン中...",
         "reset_done": "パスワードが再設定されました。新しいパスワードでログインしてください。",
@@ -2677,7 +2677,7 @@
       "saving": "保存中...",
       "select_placeholder": "選択してください",
       "status": "状態",
-      "submit": "送信",
+      "submit": "保存",
       "suspend": "停止する",
       "tenant_status": {
         "active": "稼働中",
@@ -2715,7 +2715,7 @@
       },
       "title": "ダッシュボード",
       "view_audit": "監査ログを見る",
-      "view_tenants": "テナント一覧へ"
+      "view_tenants": "テナント一覧を開く"
     },
     "errors": {
       "console_description": "時間をおいて再試行してください。繰り返す場合は、エラー ID を添えて管理者に連絡してください。",
@@ -2762,7 +2762,7 @@
       "detail_metadata": "オペレーター詳細",
       "detail_title": "オペレーター詳細: {$name}",
       "email_taken": "このメールアドレスはすでに登録されています。",
-      "empty": "オペレーターはまだ登録されていません。",
+      "empty": "オペレーターはまだ登録されていません。このページのフォームから追加してください。",
       "heading": "オペレーター管理",
       "info_description": "オペレーターのアカウント情報と現在の状態を確認します。",
       "info_title": "基本情報",
@@ -2815,8 +2815,8 @@
       "mark_all_read_failed": "一括既読に失敗しました。時間をおいて再試行してください。",
       "mark_read_failed": "既読への更新に失敗しました。時間をおいて再試行してください。",
       "events": {
-        "publish_failed_description": "{$subject}を公開できませんでした。",
-        "publish_failed_description_tenant": "テナント「{$tenant}」の{$subject}を公開できませんでした。",
+        "publish_failed_description": "{$subject}を公開できませんでした。エピソードを開いて公開をやり直してください。",
+        "publish_failed_description_tenant": "テナント「{$tenant}」の{$subject}を公開できませんでした。エピソードを開いて公開をやり直してください。",
         "publish_failed_title": "エピソードの公開に失敗しました",
         "subject_episode": "「{$episode}」",
         "subject_in_series": "「{$episode}」（{$series}）",
@@ -2897,7 +2897,7 @@
       "timezone_required": "タイムゾーンを選択してください。",
       "timezone_save_failed": "既定タイムゾーンの保存に失敗しました。時間をおいて再試行してください。",
       "username": "ユーザー名",
-      "wrong_password": "パスワードが正しくありません。"
+      "wrong_password": "パスワードが正しくありません。入力内容を確認して再試行してください。"
     },
     "shell": {
       "account_menu": "{$name}のアカウントメニュー",
@@ -2967,7 +2967,7 @@
       "domain_taken": "ドメインが既に使用されています。",
       "duplicate_create": "重複するデータがあるため作成できません。",
       "duplicate_update": "重複するデータがあるため更新できません。",
-      "empty": "テナントはまだ登録されていません。",
+      "empty": "テナントはまだ登録されていません。ナビゲーションから作成してください。",
       "empty_filtered": "条件に一致するテナントが見つかりませんでした。",
       "existing_admin_added": "既存ユーザーをテナント管理者として追加しました。",
       "get_failed": "テナントの取得に失敗しました。時間をおいて再試行してください。",
@@ -2986,7 +2986,7 @@
       "invite_admin_title": "テナント管理者を招待",
       "invite_create_failed": "招待の作成に失敗しました。時間をおいて再試行してください。",
       "invite_email_invalid": "メールアドレスの形式を確認してください。",
-      "invite_not_found": "対象の招待が見つかりません。",
+      "invite_not_found": "対象の招待が見つかりません。招待一覧を開いてください。",
       "invite_sent": "招待メールを送信しました。",
       "list_failed": "テナント一覧の取得に失敗しました。時間をおいて再試行してください。",
       "load_failed": "テナント一覧を表示できませんでした",
@@ -3007,7 +3007,7 @@
       "members_list_failed": "メンバー一覧の取得に失敗しました。時間をおいて再試行してください。",
       "members_list_title": "テナントメンバー一覧",
       "member_already_added": "このユーザーは既にメンバーとして追加されています。",
-      "member_not_found": "対象のメンバーが見つかりません。",
+      "member_not_found": "対象のメンバーが見つかりません。メンバー一覧を開いてください。",
       "member_role_update_failed": "ロール変更に失敗しました。時間をおいて再試行してください。",
       "members_load_failed": "メンバー管理を表示できませんでした",
       "members_nav": "メンバー管理",
@@ -3016,7 +3016,7 @@
       "name": "テナント名",
       "name_and_domain_required": "テナント名とドメインは必須です。",
       "name_required": "テナント名は必須です。",
-      "not_found": "テナントが見つかりません。",
+      "not_found": "テナントが見つかりません。テナント一覧を開いてください。",
       "new_role": "新しいロール",
       "new_tenant": "新規テナント作成",
       "page_description": "プラットフォーム運営者が横断でテナントの状態を確認し、詳細画面へ遷移するための起点です。",
@@ -3059,7 +3059,7 @@
       "heading": "ユーザー管理",
       "info_description": "ユーザーの登録情報と現在ステータスを表示します。",
       "info_title": "基本情報",
-      "invalid_id": "ユーザーIDが不正です。",
+      "invalid_id": "ユーザーIDが不正です。内容を確認して再試行してください。",
       "list_failed": "ユーザー一覧の取得に失敗しました。時間をおいて再試行してください。",
       "load_failed": "ユーザー一覧を表示できませんでした",
       "load_one_failed": "ユーザーを表示できませんでした",

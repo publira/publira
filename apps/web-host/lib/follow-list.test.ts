@@ -199,7 +199,8 @@ describe("listMyFollows", () => {
 
     expect(result).toEqual({
       follows: [],
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       nextToken: "",
       ok: false,
       previousToken: "",

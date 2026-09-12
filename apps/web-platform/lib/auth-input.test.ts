@@ -76,10 +76,10 @@ describe("authTokenFormSchema", () => {
 
   it("reports the rejection in the catalog's locale", () => {
     expect(firstIssue(authTokenFormSchema(JA).safeParse("short"))).toBe(
-      "確認リンクが無効です。"
+      "確認リンクが無効です。新しい確認メールをリクエストしてください。"
     );
     expect(firstIssue(authTokenFormSchema(EN).safeParse("short"))).toBe(
-      "This confirmation link is invalid."
+      "This confirmation link is invalid. Request a new confirmation email."
     );
   });
 });

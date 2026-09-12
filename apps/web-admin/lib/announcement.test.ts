@@ -164,7 +164,8 @@ describe("announcement lib", () => {
 
     expect(result).toEqual({
       announcements: [],
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -276,7 +277,8 @@ describe("announcement lib", () => {
     const result = await listAllAnnouncementTargetUsers("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "Could not load the list of target users.",
+      message:
+        "Could not load the list of target users. Please try again later.",
       ok: false,
       requiresSignIn: false,
       users: [],

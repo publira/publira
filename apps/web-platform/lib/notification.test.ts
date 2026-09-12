@@ -117,7 +117,7 @@ describe("notification lib", () => {
       {
         createdAt: "2026-04-04T00:00:00Z",
         description:
-          "“Episode 1” (Series A) could not be published for tenant “Acme”.",
+          "“Episode 1” (Series A) could not be published for tenant “Acme”. Open the episode and try publishing again.",
         href: "/tenants/SeedTNNTAAA1",
         id: "n1",
         isRead: false,
@@ -180,7 +180,8 @@ describe("notification lib", () => {
     const result = await listNotifications("en");
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       nextToken: "",
       notifications: [],
       ok: false,

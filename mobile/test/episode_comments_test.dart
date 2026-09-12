@@ -93,7 +93,10 @@ void main() {
       tester,
       find.byKey(const ValueKey('episode-comments-empty')),
     );
-    expect(find.text('No comments yet.'), findsOneWidget);
+    expect(
+      find.text('No comments yet. Be the first to post one.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a reader who is signed out is offered the way in', (

@@ -30,7 +30,7 @@ describe("sharedMessage", () => {
       "入力内容を確認してください。"
     );
     expect(sharedMessage("errors.disallowed_value", "ja")).toBe(
-      "許可されていない値です。"
+      "許可されていない値です。別の値を選んでください。"
     );
   });
 
@@ -39,7 +39,7 @@ describe("sharedMessage", () => {
       "Please check the information you entered."
     );
     expect(sharedMessage("errors.disallowed_value", "en")).toBe(
-      "This value is not allowed."
+      "This value is not allowed. Choose another."
     );
   });
 });
@@ -50,16 +50,16 @@ describe("sharedRpcErrorMessage", () => {
       "セッションが無効です。再ログインしてください。"
     );
     expect(sharedRpcErrorMessage("forbidden", "ja")).toBe(
-      "この操作を行う権限がありません。"
+      "この操作を行う権限がありません。戻るか、権限のあるアカウントでログインしてください。"
     );
     expect(sharedRpcErrorMessage("invalid-argument", "ja")).toBe(
-      "入力内容に誤りがあります。"
+      "入力内容に誤りがあります。内容を確認して再試行してください。"
     );
     expect(sharedRpcErrorMessage("not-found", "ja")).toBe(
-      "対象が見つかりません。"
+      "対象が見つかりません。一覧に戻って開き直してください。"
     );
     expect(sharedRpcErrorMessage("conflict", "ja")).toBe(
-      "重複するデータがあるため保存できません。"
+      "重複するデータがあるため保存できません。内容を変えて再試行してください。"
     );
     expect(sharedRpcErrorMessage("unavailable", "ja")).toBe(
       "サーバーに接続できませんでした。時間をおいて再試行してください。"
@@ -71,16 +71,16 @@ describe("sharedRpcErrorMessage", () => {
       "Your session is no longer valid. Please sign in again."
     );
     expect(sharedRpcErrorMessage("forbidden", "en")).toBe(
-      "You do not have permission to perform this action."
+      "You do not have permission to perform this action. Go back or use an account that does."
     );
     expect(sharedRpcErrorMessage("invalid-argument", "en")).toBe(
-      "The submitted values are invalid."
+      "The submitted values are invalid. Check them and try again."
     );
     expect(sharedRpcErrorMessage("not-found", "en")).toBe(
-      "The requested item could not be found."
+      "The requested item could not be found. Go back and open it from the list."
     );
     expect(sharedRpcErrorMessage("conflict", "en")).toBe(
-      "Cannot save because this data already exists."
+      "Cannot save because this data already exists. Change the values and try again."
     );
     expect(sharedRpcErrorMessage("unavailable", "en")).toBe(
       "Could not connect to the server. Please try again later."

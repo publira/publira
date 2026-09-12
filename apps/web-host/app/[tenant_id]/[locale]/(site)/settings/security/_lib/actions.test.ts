@@ -141,7 +141,8 @@ describe("changePasswordAction", () => {
 
     expect(mockChangePublicPassword).not.toHaveBeenCalled();
     expect(lastFlash()).toEqual({
-      message: "The passwords do not match.",
+      message:
+        "The passwords do not match. Enter the same password in both fields.",
       status: "error",
     });
   });
