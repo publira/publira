@@ -1,6 +1,6 @@
 "use client";
 
-import { formatMessage, toIntlLocale } from "@publira/i18n";
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import { HeartIcon } from "@publira/icons";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -30,7 +30,9 @@ import {
   MAX_EPISODE_REACTION_SCORE,
   reactionFillRatio,
 } from "#lib/episode-rating-state";
+import type { HostMessageKey } from "#lib/messages";
 
+import { useHostMessages } from "./client-message";
 import { LocaleField } from "./locale-field";
 import { useLocale } from "./locale-provider";
 
@@ -42,9 +44,9 @@ import { useLocale } from "./locale-provider";
  * headcount — so Heart and Count read those values from context rather than
  * taking them as props. Copy is written on the named slot that renders it:
  * the accessible name is sr-only children of Name, never a `copy` bag. A
- * slot whose wording is a node takes `<Message>`; Progress and Readers then
- * interpolate the resolved template because score and headcount move in the
- * browser.
+ * static slot takes `<Message>` as its node. Progress and Readers take a
+ * catalog key instead, because their values change in the browser and are
+ * resolved from the client catalog.
  *
  * ```tsx
  * <EpisodeReaction size="sm">
@@ -53,9 +55,7 @@ import { useLocale } from "./locale-provider";
  *       <EpisodeReactionNameIdle>
  *         <Message message="host.episode.reaction.login_aria" />
  *       </EpisodeReactionNameIdle>
- *       <EpisodeReactionNameReaders>
- *         <Message message="host.episode.reaction.count_aria" />
- *       </EpisodeReactionNameReaders>
+ *       <EpisodeReactionNameReaders message="host.episode.reaction.count_aria" />
  *     </EpisodeReactionName>
  *     <EpisodeReactionHeart />
  *     <EpisodeReactionCount />
@@ -342,9 +342,6 @@ export const EpisodeReactionName = ({ children }: { children: ReactNode }) => {
   );
 };
 
-const messageTemplate = (children: ReactNode): string | null =>
-  typeof children === "string" ? children : null;
-
 export const EpisodeReactionNameIdle = ({
   children,
 }: {
@@ -358,21 +355,21 @@ export const EpisodeReactionNameIdle = ({
 };
 
 export const EpisodeReactionNameProgress = ({
-  children,
+  message,
 }: {
-  children: ReactNode;
+  message: HostMessageKey;
 }) => {
+  const messages = useHostMessages();
   const { mode, score } = useEpisodeReactionFace();
-  const template = messageTemplate(children);
   if (
-    !template ||
     mode !== "multiple" ||
     score <= 0 ||
     score >= MAX_EPISODE_REACTION_SCORE
   ) {
     return null;
   }
-  return formatMessage(template, {
+
+  return getMessage(messages, message, {
     max: MAX_EPISODE_REACTION_SCORE,
     score,
   });
@@ -391,19 +388,16 @@ export const EpisodeReactionNameDone = ({
 };
 
 export const EpisodeReactionNameReaders = ({
-  children,
+  message,
 }: {
-  children: ReactNode;
+  message: HostMessageKey;
 }) => {
   const locale = useLocale();
+  const messages = useHostMessages();
   const { ratingCount } = useEpisodeReactionFace();
-  const template = messageTemplate(children);
-  if (!template) {
-    return null;
-  }
   const count = ratingCount.toLocaleString(toIntlLocale(locale));
 
-  return `. ${formatMessage(template, { count })}`;
+  return `. ${getMessage(messages, message, { count })}`;
 };
 
 export const EpisodeReactionError = () => {

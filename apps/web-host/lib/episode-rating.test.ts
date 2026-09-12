@@ -162,7 +162,8 @@ describe("getMyEpisodeRating", () => {
     const result = await getMyEpisodeRating(tenantId, "MISSING01", "en");
 
     expect(result).toEqual({
-      message: "The requested item could not be found.",
+      message:
+        "The requested item could not be found. Go back and open it from the list.",
       ok: false,
     });
   });

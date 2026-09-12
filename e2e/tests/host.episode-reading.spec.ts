@@ -618,8 +618,10 @@ test.describe("web-host episode reading", () => {
       WEB_HOST_EDGE_BASE_URL
     );
     await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
-    await expectFirstPageDrawn(page);
 
+    // The member may resume a page another reading scenario saved. The reaction
+    // control is independent of that position, and its own accessible state is
+    // what this scenario verifies.
     const reactButtons = page.getByRole("button", {
       name: "React to this episode. Readers who reacted: 0",
     });
@@ -645,7 +647,6 @@ test.describe("web-host episode reading", () => {
     ).toBeVisible();
 
     await page.reload();
-    await expectFirstPageDrawn(page);
     await expect(
       page.getByRole("button", {
         name: "You have reacted to this episode. Readers who reacted: 1",

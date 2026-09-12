@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -32,6 +33,10 @@ vi.mock("#components/locale-provider", () => ({
   useTenantDefaultLocale: () => "en",
 }));
 
+vi.mock("./client-message", () => ({
+  useHostMessages: () => sharedCatalog("en"),
+}));
+
 const { rateEpisodeAction } = vi.hoisted(() => ({
   rateEpisodeAction: vi.fn(() => {
     const { promise } = Promise.withResolvers<never>();
@@ -58,9 +63,7 @@ const GuestReaction = ({
         <EpisodeReactionNameIdle>
           Sign in to react to this episode
         </EpisodeReactionNameIdle>
-        <EpisodeReactionNameReaders>
-          {"Readers who reacted: {$count}"}
-        </EpisodeReactionNameReaders>
+        <EpisodeReactionNameReaders message="host.episode.reaction.count_aria" />
       </EpisodeReactionName>
       <EpisodeReactionHeart />
       <EpisodeReactionCount />
@@ -92,15 +95,11 @@ const SignedInReaction = ({
           <EpisodeReactionNameIdle>
             React to this episode
           </EpisodeReactionNameIdle>
-          <EpisodeReactionNameProgress>
-            {"React to this episode, {$score} of {$max}"}
-          </EpisodeReactionNameProgress>
+          <EpisodeReactionNameProgress message="host.episode.reaction.press_progress_aria" />
           <EpisodeReactionNameDone>
             You have reacted to this episode
           </EpisodeReactionNameDone>
-          <EpisodeReactionNameReaders>
-            {"Readers who reacted: {$count}"}
-          </EpisodeReactionNameReaders>
+          <EpisodeReactionNameReaders message="host.episode.reaction.count_aria" />
         </EpisodeReactionName>
         <EpisodeReactionHeart />
         <EpisodeReactionCount />
