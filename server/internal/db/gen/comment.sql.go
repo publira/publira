@@ -965,8 +965,9 @@ type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow struct {
 // as well would only make the site reconcile two copies of the same comment.
 //
 // A comment removed by staff or by the report threshold stays in this list
-// exactly as it was, because the removal is silent; only the author's own
-// withdrawal takes it away from them.
+// exactly as it was: the removal is told through a notification, not by the
+// comment changing shape here. Only the author's own withdrawal takes it
+// away from them.
 func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc,
 		arg.TenantID,
@@ -1103,9 +1104,9 @@ type WithdrawEpisodeCommentByPublicIDForUserParams struct {
 }
 
 // The author's own deletion. It applies to a comment staff had removed too,
-// since the author was never told about that removal and still sees the
-// comment. The removal columns are cleared because no removal is in force on a
-// withdrawn row any more; audit_logs keeps what staff did and why.
+// since the author still sees that comment unchanged. The removal columns
+// are cleared because no removal is in force on a withdrawn row any more;
+// audit_logs keeps what staff did and why.
 func (q *Queries) WithdrawEpisodeCommentByPublicIDForUser(ctx context.Context, arg WithdrawEpisodeCommentByPublicIDForUserParams) (EpisodeComment, error) {
 	row := q.db.QueryRowContext(ctx, withdrawEpisodeCommentByPublicIDForUser, arg.TenantID, arg.UserID, arg.PublicID)
 	var i EpisodeComment
