@@ -3,6 +3,8 @@
  * consumed by `@publira/brand/theme.css`.
  */
 
+import { z } from "zod";
+
 export interface TenantThemeColors {
   accentColor: string;
   accentForegroundColor: string;
@@ -33,6 +35,21 @@ export interface TenantThemeColors {
   warningForegroundColor: string;
 }
 
+export interface TenantThemeFontFamilies {
+  serifFontFamily: string;
+  sansFontFamily: string;
+}
+
+export type TenantTheme = TenantThemeColors & TenantThemeFontFamilies;
+
+/** Default stacks (keep in sync with packages/brand/theme.css). */
+export const DEFAULT_TENANT_THEME_FONT_FAMILIES = {
+  sansFontFamily:
+    '"Hiragino Sans", "BIZ UDPGothic", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", system-ui, sans-serif',
+  serifFontFamily:
+    '"Hiragino Mincho ProN", "BIZ UDPMincho", "Yu Mincho", "Noto Serif CJK JP", "Noto Serif JP", serif',
+} as const;
+
 /** Default brand colors (keep in sync with packages/brand/theme.css). */
 export const DEFAULT_TENANT_THEME_COLORS: TenantThemeColors = {
   accentColor: "#e3e9f5",
@@ -62,6 +79,13 @@ export const DEFAULT_TENANT_THEME_COLORS: TenantThemeColors = {
   surfaceForegroundColor: "#1f1d1a",
   warningColor: "#8a5a0b",
   warningForegroundColor: "#ffffff",
+};
+
+/** The stored form of the default theme: empty stacks select the brand defaults. */
+export const DEFAULT_TENANT_THEME: TenantTheme = {
+  ...DEFAULT_TENANT_THEME_COLORS,
+  sansFontFamily: "",
+  serifFontFamily: "",
 };
 
 const themeColorToCssVar: {
@@ -97,16 +121,75 @@ const themeColorToCssVar: {
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/u;
+const MAXIMUM_FONT_FAMILY_LENGTH = 512;
+const FORBIDDEN_FONT_FAMILY_CHARACTER = /[;{}()\\/<>@\p{Cc}]/u;
+const UNQUOTED_FONT_FAMILY = /^[\p{L}_-][\p{L}\p{N}_\-\p{Zs}]*$/u;
 
 const isHexColor = (value: string): boolean => HEX_COLOR.test(value);
+
+/**
+ * Whether a value can be written into a `font-family` declaration verbatim.
+ * This intentionally accepts a smaller grammar than CSS: no escapes or
+ * functions means a tenant-controlled value cannot introduce CSS syntax.
+ */
+export const isTenantThemeFontFamily = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return true;
+  }
+  if (
+    new TextEncoder().encode(trimmed).byteLength > MAXIMUM_FONT_FAMILY_LENGTH ||
+    FORBIDDEN_FONT_FAMILY_CHARACTER.test(trimmed)
+  ) {
+    return false;
+  }
+
+  const families: string[] = [];
+  let family = "";
+  let quote = "";
+  for (const character of trimmed) {
+    if (character === "'" || character === '"') {
+      quote = quote === character ? "" : quote || character;
+    }
+    if (character === "," && !quote) {
+      families.push(family.trim());
+      family = "";
+      continue;
+    }
+    family += character;
+  }
+  if (quote) {
+    return false;
+  }
+  families.push(family.trim());
+
+  return families.every((name) => {
+    if (!name) {
+      return false;
+    }
+    const [first] = name;
+    if (first === "'" || first === '"') {
+      return (
+        name.length >= 3 &&
+        name.at(-1) === first &&
+        name.slice(1, -1).trim().length > 0
+      );
+    }
+    return UNQUOTED_FONT_FAMILY.test(name);
+  });
+};
+
+/** A Zod boundary schema shared by theme settings forms. */
+export const tenantThemeFontFamilySchema = (errorMessage: string) =>
+  z.string().trim().refine(isTenantThemeFontFamily, { error: errorMessage });
 
 /**
  * Normalize partial theme input with brand defaults.
  * Invalid / empty color values fall back to defaults.
  */
 export const resolveTenantThemeColors = (
-  theme?: Partial<TenantThemeColors> | null
-): TenantThemeColors => {
+  theme?: Partial<TenantTheme> | null
+): TenantTheme => {
   const source = theme ?? {};
   const resolved = { ...DEFAULT_TENANT_THEME_COLORS };
   for (const key of Object.keys(
@@ -117,7 +200,15 @@ export const resolveTenantThemeColors = (
       resolved[key] = raw.toLowerCase();
     }
   }
-  return resolved;
+  return {
+    ...resolved,
+    sansFontFamily: isTenantThemeFontFamily(source.sansFontFamily ?? "")
+      ? (source.sansFontFamily?.trim() ?? "")
+      : "",
+    serifFontFamily: isTenantThemeFontFamily(source.serifFontFamily ?? "")
+      ? (source.serifFontFamily?.trim() ?? "")
+      : "",
+  };
 };
 
 /**
@@ -125,7 +216,7 @@ export const resolveTenantThemeColors = (
  * `style` props or client-side `setProperty`.
  */
 export const toPubliraThemeCssVariables = (
-  theme?: Partial<TenantThemeColors> | null
+  theme?: Partial<TenantTheme> | null
 ): Record<string, string> => {
   const resolved = resolveTenantThemeColors(theme);
   const vars: Record<string, string> = {};
@@ -134,6 +225,12 @@ export const toPubliraThemeCssVariables = (
   ) as (keyof TenantThemeColors)[]) {
     vars[themeColorToCssVar[key]] = resolved[key];
   }
+  if (resolved.serifFontFamily) {
+    vars["--publira-font-serif"] = resolved.serifFontFamily;
+  }
+  if (resolved.sansFontFamily) {
+    vars["--publira-font-sans"] = resolved.sansFontFamily;
+  }
   return vars;
 };
 
@@ -141,7 +238,7 @@ export const toPubliraThemeCssVariables = (
  * Build a `:root { ... }` CSS text block for `GET /theme.css` responses.
  */
 export const toPubliraThemeCssText = (
-  theme?: Partial<TenantThemeColors> | null
+  theme?: Partial<TenantTheme> | null
 ): string => {
   const vars = toPubliraThemeCssVariables(theme);
   const declarations = Object.entries(vars)

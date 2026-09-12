@@ -10,6 +10,8 @@ import {
   findThemeTextContrastIssues,
   THEME_TEXT_CONTRAST_MIN_RATIO,
 } from "@publira/utils/theme-contrast";
+import { tenantThemeFontFamilySchema } from "@publira/utils/theme-css-variables";
+import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -129,8 +131,14 @@ const tenantThemeSchema = (messages: SharedMessages) =>
     primaryColor: hexColorCodeSchema(messages),
     primaryForegroundColor: hexColorCodeSchema(messages),
     ringColor: hexColorCodeSchema(messages),
+    sansFontFamily: tenantThemeFontFamilySchema(
+      getMessage(messages, "admin.settings.theme.validation.font_family")
+    ),
     secondaryColor: hexColorCodeSchema(messages),
     secondaryForegroundColor: hexColorCodeSchema(messages),
+    serifFontFamily: tenantThemeFontFamilySchema(
+      getMessage(messages, "admin.settings.theme.validation.font_family")
+    ),
     successColor: hexColorCodeSchema(messages),
     successForegroundColor: hexColorCodeSchema(messages),
     surfaceColor: hexColorCodeSchema(messages),
@@ -139,10 +147,7 @@ const tenantThemeSchema = (messages: SharedMessages) =>
     warningForegroundColor: hexColorCodeSchema(messages),
   });
 
-const themeColorLabelKeys: Record<
-  keyof z.output<ReturnType<typeof tenantThemeSchema>>,
-  AdminMessageKey
-> = {
+const themeColorLabelKeys: Record<keyof TenantThemeColors, AdminMessageKey> = {
   accentColor: "admin.settings.theme.colors.accent.label",
   accentForegroundColor: "admin.settings.theme.colors.accent_foreground.label",
   backgroundColor: "admin.settings.theme.colors.background.label",
@@ -346,12 +351,14 @@ const tenantThemeFormFieldMap = [
   ["primaryColor", "primary_color"],
   ["primaryForegroundColor", "primary_foreground_color"],
   ["ringColor", "ring_color"],
+  ["sansFontFamily", "sans_font_family"],
   ["secondaryColor", "secondary_color"],
   ["secondaryForegroundColor", "secondary_foreground_color"],
   ["successColor", "success_color"],
   ["successForegroundColor", "success_foreground_color"],
   ["surfaceColor", "surface_color"],
   ["surfaceForegroundColor", "surface_foreground_color"],
+  ["serifFontFamily", "serif_font_family"],
   ["warningColor", "warning_color"],
   ["warningForegroundColor", "warning_foreground_color"],
 ] as const;

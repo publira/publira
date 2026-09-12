@@ -338,6 +338,8 @@ func TenantThemeFromGetRow(
 		DestructiveForegroundColor: row.DestructiveForegroundColor,
 		InfoColor:                  row.InfoColor,
 		InfoForegroundColor:        row.InfoForegroundColor,
+		SerifFontFamily:            row.SerifFontFamily,
+		SansFontFamily:             row.SansFontFamily,
 	}
 	if row.IconImageUpdatedAt.Valid {
 		theme.IconImageUpdatedAt = row.IconImageUpdatedAt.Time.UTC().Format(time.RFC3339)

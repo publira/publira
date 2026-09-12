@@ -8,7 +8,7 @@ import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
-import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { cacheTag } from "next/cache";
 
 import {
@@ -24,14 +24,14 @@ import { getAccessToken } from "./session";
 import { toTenantBrandingImage } from "./tenant-branding-image";
 import type { TenantBrandingImage } from "./tenant-branding-image";
 
-export interface UpdateTenantThemeSettingsInput extends TenantThemeColors {
+export interface UpdateTenantThemeSettingsInput extends TenantTheme {
   tenantId: string;
 }
 
 export type TenantThemeSettingsResult =
   | {
       ok: true;
-      theme: TenantThemeColors;
+      theme: TenantTheme;
       icon: TenantBrandingImage | null;
       logo: TenantBrandingImage | null;
     }
@@ -145,9 +145,8 @@ const parseLogoErrorMessage = (
       : undefined,
   });
 
-const toTenantTheme = (
-  theme?: Partial<TenantThemeColors> | null
-): TenantThemeColors => resolveTenantThemeColors(theme);
+const toTenantTheme = (theme?: Partial<TenantTheme> | null): TenantTheme =>
+  resolveTenantThemeColors(theme);
 
 export const getTenantThemeSettings = async (
   tenantId: string,
@@ -254,8 +253,10 @@ export const updateTenantThemeSettings = async (
           primaryColor: input.primaryColor,
           primaryForegroundColor: input.primaryForegroundColor,
           ringColor: input.ringColor,
+          sansFontFamily: input.sansFontFamily,
           secondaryColor: input.secondaryColor,
           secondaryForegroundColor: input.secondaryForegroundColor,
+          serifFontFamily: input.serifFontFamily,
           successColor: input.successColor,
           successForegroundColor: input.successForegroundColor,
           surfaceColor: input.surfaceColor,

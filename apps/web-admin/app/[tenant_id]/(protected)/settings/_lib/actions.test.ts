@@ -103,7 +103,10 @@ const textFormData = (values: Record<string, string>): FormData => {
   return formData;
 };
 
-const themeFormData = (colors = DEFAULT_TENANT_THEME_COLORS): FormData =>
+const themeFormData = (
+  colors = DEFAULT_TENANT_THEME_COLORS,
+  fontFamilies?: { sansFontFamily: string; serifFontFamily: string }
+): FormData =>
   textFormData({
     tenant_id: "TENANT001",
     ...Object.fromEntries(
@@ -112,6 +115,8 @@ const themeFormData = (colors = DEFAULT_TENANT_THEME_COLORS): FormData =>
         value,
       ])
     ),
+    sans_font_family: fontFamilies?.sansFontFamily ?? "",
+    serif_font_family: fontFamilies?.serifFontFamily ?? "",
   });
 
 describe("updateTenantThemeSettingsAction", () => {
@@ -166,6 +171,8 @@ describe("updateTenantThemeSettingsAction", () => {
     expect(mockUpdateTenantThemeSettings).toHaveBeenCalledWith(
       {
         ...DEFAULT_TENANT_THEME_COLORS,
+        sansFontFamily: "",
+        serifFontFamily: "",
         tenantId: "TENANT001",
       },
       "en"
@@ -174,6 +181,29 @@ describe("updateTenantThemeSettingsAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:theme-settings"
     );
+  });
+
+  it("keeps an unsafe font family out of the API", async () => {
+    const { updateTenantThemeSettingsAction } = await import("./actions");
+
+    const result = await updateTenantThemeSettingsAction(
+      null,
+      themeFormData(DEFAULT_TENANT_THEME_COLORS, {
+        sansFontFamily: "Noto Sans, sans-serif",
+        serifFontFamily: "Noto Serif; color: red",
+      })
+    );
+
+    expect(result).toMatchObject({
+      fieldErrors: {
+        serifFontFamily:
+          "Enter a comma-separated list of font family names only.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+    expect(mockUpdateTenantThemeSettings).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });
 

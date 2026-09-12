@@ -11,8 +11,15 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { toPubliraThemeCssVariables } from "@publira/utils/theme-css-variables";
-import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+import {
+  DEFAULT_TENANT_THEME_FONT_FAMILIES,
+  toPubliraThemeCssVariables,
+} from "@publira/utils/theme-css-variables";
+import type {
+  TenantTheme,
+  TenantThemeColors,
+  TenantThemeFontFamilies,
+} from "@publira/utils/theme-css-variables";
 import {
   useActionState,
   useCallback,
@@ -41,7 +48,7 @@ interface ThemeSettingsFormProps {
     prevState: ThemeSettingsActionState,
     formData: FormData
   ) => Promise<ThemeSettingsActionState>;
-  initialTheme: TenantThemeColors;
+  initialTheme: TenantTheme;
 }
 
 interface ColorSwatchInputProps {
@@ -90,6 +97,7 @@ const ColorSwatchInput = ({
 };
 
 type ColorKey = keyof TenantThemeColors;
+type FontFamilyKey = keyof TenantThemeFontFamilies;
 
 interface ColorFieldConfig {
   key: ColorKey;
@@ -315,7 +323,7 @@ const colorGroups: {
   },
 ];
 
-const applyThemePreview = (theme: TenantThemeColors) => {
+const applyThemePreview = (theme: TenantTheme) => {
   if (typeof document === "undefined") {
     return;
   }
@@ -340,7 +348,7 @@ export const ThemeSettingsForm = ({
   // Seeded once per mount; submitting is what replaces it, with the palette the
   // server stored — normalization included, so the pickers show what a reload
   // would show.
-  const [colors, setColors] = useState<TenantThemeColors>(initialTheme);
+  const [theme, setTheme] = useState<TenantTheme>(initialTheme);
   const [state, formAction, isPending] = useActionState(
     async (
       previousState: ThemeSettingsActionState,
@@ -348,7 +356,7 @@ export const ThemeSettingsForm = ({
     ): Promise<ThemeSettingsActionState> => {
       const nextState = await action(previousState, formData);
       if (nextState?.ok) {
-        setColors(nextState.theme);
+        setTheme(nextState.theme);
       }
       return nextState;
     },
@@ -358,7 +366,19 @@ export const ThemeSettingsForm = ({
   const createHandler = useCallback(
     (key: ColorKey) => (event: React.ChangeEvent<HTMLInputElement>) => {
       const nextValue = event.target.value;
-      setColors((prev) => {
+      setTheme((prev) => {
+        const next = { ...prev, [key]: nextValue };
+        applyThemePreview(next);
+        return next;
+      });
+    },
+    []
+  );
+
+  const createFontFamilyHandler = useCallback(
+    (key: FontFamilyKey) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      const nextValue = event.target.value;
+      setTheme((prev) => {
         const next = { ...prev, [key]: nextValue };
         applyThemePreview(next);
         return next;
@@ -382,11 +402,91 @@ export const ThemeSettingsForm = ({
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
-        <ThemePreview theme={colors} />
+        <ThemePreview theme={theme} />
       </AdminSection>
 
       <form action={formAction} className="contents">
         <input name="tenant_id" type="hidden" value={tenantId} />
+
+        <AdminSection>
+          <AdminSectionHeader>
+            <AdminSectionHeading>
+              <AdminSectionTitle>
+                {getMessage(messages, "admin.settings.theme.typefaces.title")}
+              </AdminSectionTitle>
+              <AdminSectionDescription>
+                {getMessage(
+                  messages,
+                  "admin.settings.theme.typefaces.description"
+                )}
+              </AdminSectionDescription>
+            </AdminSectionHeading>
+          </AdminSectionHeader>
+          <div className="grid gap-5 sm:max-w-3xl">
+            <Field>
+              <FieldLabel>
+                {getMessage(
+                  messages,
+                  "admin.settings.theme.typefaces.serif.label"
+                )}
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  maxLength={512}
+                  name="serif_font_family"
+                  onChange={createFontFamilyHandler("serifFontFamily")}
+                  placeholder={
+                    DEFAULT_TENANT_THEME_FONT_FAMILIES.serifFontFamily
+                  }
+                  type="text"
+                  value={theme.serifFontFamily}
+                />
+                <FieldDescription>
+                  {getMessage(
+                    messages,
+                    "admin.settings.theme.typefaces.serif.description"
+                  )}
+                </FieldDescription>
+                {fieldErrors?.serifFontFamily ? (
+                  <FormMessage variant="destructive">
+                    {fieldErrors.serifFontFamily}
+                  </FormMessage>
+                ) : null}
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>
+                {getMessage(
+                  messages,
+                  "admin.settings.theme.typefaces.sans.label"
+                )}
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  maxLength={512}
+                  name="sans_font_family"
+                  onChange={createFontFamilyHandler("sansFontFamily")}
+                  placeholder={
+                    DEFAULT_TENANT_THEME_FONT_FAMILIES.sansFontFamily
+                  }
+                  type="text"
+                  value={theme.sansFontFamily}
+                />
+                <FieldDescription>
+                  {getMessage(
+                    messages,
+                    "admin.settings.theme.typefaces.sans.description"
+                  )}
+                </FieldDescription>
+                {fieldErrors?.sansFontFamily ? (
+                  <FormMessage variant="destructive">
+                    {fieldErrors.sansFontFamily}
+                  </FormMessage>
+                ) : null}
+              </FieldContent>
+            </Field>
+          </div>
+        </AdminSection>
 
         {colorGroups.map((group) => (
           <AdminSection key={group.titleKey}>
@@ -422,7 +522,7 @@ export const ThemeSettingsForm = ({
                             name={field.formName}
                             onChange={createHandler(field.key)}
                             pickerLabel={pickerLabel}
-                            value={colors[field.key]}
+                            value={theme[field.key]}
                           />
                           {field.descriptionKey ? (
                             <FieldDescription>
@@ -445,7 +545,7 @@ export const ThemeSettingsForm = ({
                             name={pair.formName}
                             onChange={createHandler(pair.key)}
                             pickerLabel={pickerLabel}
-                            value={colors[pair.key]}
+                            value={theme[pair.key]}
                           />
                           {pair.descriptionKey ? (
                             <FieldDescription>
@@ -473,7 +573,7 @@ export const ThemeSettingsForm = ({
                         name={field.formName}
                         onChange={createHandler(field.key)}
                         pickerLabel={pickerLabel}
-                        value={colors[field.key]}
+                        value={theme[field.key]}
                       />
                       {field.descriptionKey ? (
                         <FieldDescription>

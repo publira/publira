@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { DEFAULT_TENANT_THEME_COLORS } from "@publira/utils/theme-css-variables";
+import { DEFAULT_TENANT_THEME } from "@publira/utils/theme-css-variables";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -12,7 +12,7 @@ import { ThemePreview } from "./theme-preview";
  * `import()` instead of leaving each boundary on its skeleton.
  */
 const renderPreview = async (
-  theme: typeof DEFAULT_TENANT_THEME_COLORS = DEFAULT_TENANT_THEME_COLORS
+  theme: typeof DEFAULT_TENANT_THEME = DEFAULT_TENANT_THEME
 ): Promise<HTMLElement> => {
   let container: HTMLElement | undefined;
 
@@ -33,12 +33,14 @@ afterEach(() => {
 });
 
 describe("ThemePreview", () => {
-  it("paints the frame from the colors it was given, not the document's", async () => {
+  it("paints the frame from the theme it was given, not the document's", async () => {
     const frame = await renderPreview({
-      ...DEFAULT_TENANT_THEME_COLORS,
+      ...DEFAULT_TENANT_THEME,
       backgroundColor: "#101010",
       cardColor: "#202020",
       primaryColor: "#ff0000",
+      sansFontFamily: '"Noto Sans SC", sans-serif',
+      serifFontFamily: '"Noto Serif KR", serif',
     });
 
     expect(frame.style.getPropertyValue("--publira-color-primary")).toBe(
@@ -50,6 +52,12 @@ describe("ThemePreview", () => {
     expect(frame.style.getPropertyValue("--publira-color-card")).toBe(
       "#202020"
     );
+    expect(frame.style.getPropertyValue("--publira-font-serif")).toBe(
+      '"Noto Serif KR", serif'
+    );
+    expect(frame.style.getPropertyValue("--publira-font-sans")).toBe(
+      '"Noto Sans SC", sans-serif'
+    );
   });
 
   it("shows the sample site the colors are judged on", async () => {
@@ -60,10 +68,14 @@ describe("ThemePreview", () => {
       "The Lighthouse at the End of Summer"
     );
     const second = await screen.findByText("Notes from the Night Bakery");
+    const typeSamples = await screen.findAllByText(
+      "日本語 · Latin · 한국어 · 中文"
+    );
 
     expect(siteName.length).toBeGreaterThan(0);
     expect(featured.length).toBeGreaterThan(0);
     expect(second).toBeTruthy();
+    expect(typeSamples).toHaveLength(2);
   });
 
   it("keeps the facsimile out of the accessibility tree", async () => {

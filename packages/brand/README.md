@@ -44,7 +44,7 @@ The motion tokens:
 @import "@publira/brand/theme.css";
 ```
 
-The per-tenant dynamic theme comes from a short-TTL `GET /theme.css` (`app/[tenant_id]/theme.css/route.ts`) that returns the `--publira-color-*` values, loaded by the root layout through `<link rel="stylesheet" href="/theme.css" />`.
+The per-tenant dynamic theme comes from a short-TTL `GET /theme.css` (`app/[tenant_id]/theme.css/route.ts`) that returns the `--publira-color-*` values and, when configured, `--publira-font-serif` / `--publira-font-sans` values. The root layout loads it through `<link rel="stylesheet" href="/theme.css" />`.
 
 ## Notes
 

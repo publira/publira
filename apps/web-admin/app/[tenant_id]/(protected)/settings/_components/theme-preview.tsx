@@ -4,14 +4,14 @@ import { Badge } from "@publira/ui-components/badge";
 import { buttonVariants } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { toPubliraThemeCssVariables } from "@publira/utils/theme-css-variables";
-import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { Suspense } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 import { ClientMessage } from "#components/client-message";
 
 interface ThemePreviewProps {
-  theme: TenantThemeColors;
+  theme: TenantTheme;
 }
 
 /**
@@ -135,6 +135,19 @@ export const ThemePreview = ({ theme }: ThemePreviewProps) => {
       </div>
 
       <div className="grid gap-6 px-4 py-5">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <span className="font-serif">
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <ClientMessage message="admin.settings.theme.preview.type_sample" />
+            </Suspense>
+          </span>
+          <span>
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <ClientMessage message="admin.settings.theme.preview.type_sample" />
+            </Suspense>
+          </span>
+        </div>
+
         <section>
           <div className="flex aspect-16/7 items-center justify-center rounded-surface bg-muted p-3 text-center">
             <span className="font-serif text-lg leading-tight text-muted-foreground">

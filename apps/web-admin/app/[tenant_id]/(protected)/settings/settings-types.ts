@@ -1,5 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+import type { TenantTheme } from "@publira/utils/theme-css-variables";
 
 import type { TenantSmtpSettings } from "#lib/email-settings";
 import type { TenantPaymentSettings } from "#lib/payment-settings";
@@ -26,6 +26,7 @@ export type ThemeSettingsFieldErrors = Partial<
     | "foregroundColor"
     | "surfaceColor"
     | "surfaceForegroundColor"
+    | "serifFontFamily"
     | "cardColor"
     | "cardForegroundColor"
     | "popoverColor"
@@ -38,6 +39,7 @@ export type ThemeSettingsFieldErrors = Partial<
     | "borderColor"
     | "inputColor"
     | "ringColor"
+    | "sansFontFamily"
     | "successColor"
     | "successForegroundColor"
     | "warningColor"
@@ -54,7 +56,7 @@ export type ThemeSettingsActionState =
   | {
       ok: true;
       message: string;
-      theme: TenantThemeColors;
+      theme: TenantTheme;
     }
   | {
       ok: false;

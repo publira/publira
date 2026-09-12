@@ -36,10 +36,16 @@ export { formatList, type FormatListOptions } from "./format-list";
 export { getTenantDomainCandidates } from "./tenant-domain";
 export {
   DEFAULT_TENANT_THEME_COLORS,
+  DEFAULT_TENANT_THEME_FONT_FAMILIES,
+  DEFAULT_TENANT_THEME,
+  isTenantThemeFontFamily,
   resolveTenantThemeColors,
+  tenantThemeFontFamilySchema,
   toPubliraThemeCssText,
   toPubliraThemeCssVariables,
+  type TenantTheme,
   type TenantThemeColors,
+  type TenantThemeFontFamilies,
 } from "./theme-css-variables";
 export {
   colorContrastRatio,

@@ -58,6 +58,9 @@ const primaryColorField = (page: Page): Locator =>
 const primaryForegroundField = (page: Page): Locator =>
   page.locator('input[name="primary_foreground_color"]');
 
+const sansFontFamilyField = (page: Page): Locator =>
+  page.locator('input[name="sans_font_family"]');
+
 const expectStatus = (
   scope: Page | Locator,
   text: string,
@@ -118,6 +121,9 @@ const primaryCustomProperty = (page: Page): Promise<string> =>
       .toLowerCase()
   );
 
+const hostSansFontFamily = (page: Page): Promise<string> =>
+  page.evaluate(() => getComputedStyle(document.body).fontFamily);
+
 /**
  * `/theme.css` is served with `max-age=30`, so a browser that already fetched
  * the previous palette would keep painting it. The Node-side `request` fixture
@@ -175,6 +181,18 @@ const restorePrimaryColor = async (
     request,
     `--publira-color-primary:${DEFAULT_PRIMARY_COLOR}`
   );
+};
+
+const restoreFontFamilies = async (page: Page): Promise<void> => {
+  if (
+    !(await page.locator('input[name="serif_font_family"]').inputValue()) &&
+    !(await sansFontFamilyField(page).inputValue())
+  ) {
+    return;
+  }
+  await fillField(page.locator('input[name="serif_font_family"]'), "");
+  await fillField(sansFontFamilyField(page), "");
+  await saveTheme(page);
 };
 
 const deleteBrandingIfSet = async (
@@ -297,6 +315,7 @@ test.describe("admin brand settings", () => {
     }
     if (restoreTheme) {
       await restorePrimaryColor(page, request);
+      await restoreFontFamilies(page);
     }
   });
 
@@ -320,6 +339,28 @@ test.describe("admin brand settings", () => {
       ).toBeVisible({ timeout: 5000 });
       return await primaryCustomProperty(page);
     }).toBe(SAVED_PRIMARY_COLOR);
+  });
+
+  test("saving a font stack reaches GET /theme.css and the public site", async ({
+    page,
+    request,
+  }) => {
+    restoreTheme = true;
+    await fillField(sansFontFamilyField(page), "Arial, sans-serif");
+    await saveTheme(page);
+
+    await expectThemeCssToContain(
+      request,
+      "--publira-font-sans:Arial, sans-serif"
+    );
+
+    await disableThemeCssHttpCache(page);
+    await pollHostPage(page, hostUrl("/"), async () => {
+      await expect(
+        page.getByRole("heading", { exact: true, name: "New episodes" })
+      ).toBeVisible({ timeout: 5000 });
+      return await hostSansFontFamily(page);
+    }).toBe("Arial, sans-serif");
   });
 
   test("a colour that fails the contrast check is refused rather than saved", async ({

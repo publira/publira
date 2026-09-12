@@ -1177,9 +1177,22 @@
       "theme_error": "테마를 표시할 수 없습니다",
       "theme": {
         "color_picker": "색상 선택기",
+        "typefaces": {
+          "title": "글꼴",
+          "description": "독자의 기기에 설치된 글꼴을 우선순위대로 지정합니다. 비워 두면 기본 스택을 사용합니다.",
+          "serif": {
+            "label": "본문 및 표시용 스택",
+            "description": "제목과 본문에 사용합니다. 예: \"Noto Serif KR\", \"Batang\", serif"
+          },
+          "sans": {
+            "label": "UI용 스택",
+            "description": "탐색과 컨트롤에 사용합니다. 예: \"Noto Sans SC\", \"PingFang SC\", sans-serif"
+          }
+        },
         "preview": {
           "title": "공개 사이트 미리보기",
           "description": "편집 중인 색을 공개 사이트를 이루는 요소에 적용해 보여 줍니다. 편집할 때마다 갱신되며, 테마를 저장하기 전까지 공개 사이트의 색은 그대로입니다.",
+          "type_sample": "日本語 · Latin · 한국어 · 中文",
           "site_name": "푸른하늘 책방",
           "works": {
             "first": {
@@ -1335,7 +1348,8 @@
         "validation": {
           "hex_color": "#RRGGBB 형식으로 입력해 주세요.",
           "contrast": "{$background}과(와) {$foreground}의 명암비는 {$minimum}:1 이상이어야 합니다(현재 {$actual}:1).",
-          "contrast_summary": "텍스트가 읽기 쉽도록 색 조합을 확인해 주세요."
+          "contrast_summary": "텍스트가 읽기 쉽도록 색 조합을 확인해 주세요.",
+          "font_family": "글꼴 패밀리 이름만 쉼표로 구분하여 입력해 주세요."
         }
       },
       "title": "설정",

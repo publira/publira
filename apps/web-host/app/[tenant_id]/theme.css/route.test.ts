@@ -16,8 +16,11 @@ describe("GET /theme.css", () => {
     mockGetTenantTheme.mockReset();
   });
 
-  it("Return dedicated theme read colors and short-term cache headers", async () => {
-    mockGetTenantTheme.mockResolvedValueOnce({ primaryColor: "#112233" });
+  it("returns dedicated theme values and short-term cache headers", async () => {
+    mockGetTenantTheme.mockResolvedValueOnce({
+      primaryColor: "#112233",
+      sansFontFamily: "Arial, sans-serif",
+    });
 
     const response = await GET(
       new NextRequest("https://shop.example.test/theme.css"),
@@ -28,9 +31,9 @@ describe("GET /theme.css", () => {
       }
     );
 
-    await expect(response.text()).resolves.toContain(
-      "--publira-color-primary:#112233;"
-    );
+    const css = await response.text();
+    expect(css).toContain("--publira-color-primary:#112233;");
+    expect(css).toContain("--publira-font-sans:Arial, sans-serif");
     expect(response.headers.get("Cache-Control")).toBe(
       "public, max-age=30, s-maxage=30, stale-while-revalidate=60"
     );

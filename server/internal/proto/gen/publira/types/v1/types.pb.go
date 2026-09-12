@@ -1501,8 +1501,12 @@ type TenantTheme struct {
 	// Tenant logo. The variant list is empty when the tenant has not set one.
 	LogoImageUpdatedAt string                `protobuf:"bytes,32,opt,name=logo_image_updated_at,json=logoImageUpdatedAt,proto3" json:"logo_image_updated_at,omitempty"`
 	LogoImageVariants  []*TenantImageVariant `protobuf:"bytes,33,rep,name=logo_image_variants,json=logoImageVariants,proto3" json:"logo_image_variants,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// A CSS font-family list for reading text. Empty uses the brief's default stack.
+	SerifFontFamily string `protobuf:"bytes,34,opt,name=serif_font_family,json=serifFontFamily,proto3" json:"serif_font_family,omitempty"`
+	// A CSS font-family list for interface text. Empty uses the brief's default stack.
+	SansFontFamily string `protobuf:"bytes,35,opt,name=sans_font_family,json=sansFontFamily,proto3" json:"sans_font_family,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TenantTheme) Reset() {
@@ -1750,6 +1754,20 @@ func (x *TenantTheme) GetLogoImageVariants() []*TenantImageVariant {
 		return x.LogoImageVariants
 	}
 	return nil
+}
+
+func (x *TenantTheme) GetSerifFontFamily() string {
+	if x != nil {
+		return x.SerifFontFamily
+	}
+	return ""
+}
+
+func (x *TenantTheme) GetSansFontFamily() string {
+	if x != nil {
+		return x.SansFontFamily
+	}
+	return ""
 }
 
 type Page struct {
@@ -2054,7 +2072,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x05width\x18\x04 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x05 \x01(\x05R\x06height\x12&\n" +
 	"\x0ffile_size_bytes\x18\x06 \x01(\x03R\rfileSizeBytes\x12!\n" +
-	"\fvariant_type\x18\a \x01(\tR\vvariantType\"\x81\f\n" +
+	"\fvariant_type\x18\a \x01(\tR\vvariantType\"\xd7\f\n" +
 	"\vTenantTheme\x12#\n" +
 	"\rprimary_color\x18\x01 \x01(\tR\fprimaryColor\x12'\n" +
 	"\x0fsecondary_color\x18\x02 \x01(\tR\x0esecondaryColor\x12!\n" +
@@ -2092,7 +2110,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x15icon_image_updated_at\x18\x1e \x01(\tR\x12iconImageUpdatedAt\x12T\n" +
 	"\x13icon_image_variants\x18\x1f \x03(\v2$.publira.types.v1.TenantImageVariantR\x11iconImageVariants\x121\n" +
 	"\x15logo_image_updated_at\x18  \x01(\tR\x12logoImageUpdatedAt\x12T\n" +
-	"\x13logo_image_variants\x18! \x03(\v2$.publira.types.v1.TenantImageVariantR\x11logoImageVariantsJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\xdc\x01\n" +
+	"\x13logo_image_variants\x18! \x03(\v2$.publira.types.v1.TenantImageVariantR\x11logoImageVariants\x12*\n" +
+	"\x11serif_font_family\x18\" \x01(\tR\x0fserifFontFamily\x12(\n" +
+	"\x10sans_font_family\x18# \x01(\tR\x0esansFontFamilyJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\xdc\x01\n" +
 	"\x04Page\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +

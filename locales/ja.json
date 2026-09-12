@@ -1177,9 +1177,22 @@
       "theme_error": "テーマを表示できませんでした",
       "theme": {
         "color_picker": "カラーピッカー",
+        "typefaces": {
+          "title": "書体",
+          "description": "読者の端末にインストールされている書体を優先順に指定します。空欄では既定のスタックを使います。",
+          "serif": {
+            "label": "本文・見出し用スタック",
+            "description": "見出しと本文に使います。例: \"Noto Serif KR\", \"Batang\", serif"
+          },
+          "sans": {
+            "label": "UI 用スタック",
+            "description": "ナビゲーションと操作部品に使います。例: \"Noto Sans SC\", \"PingFang SC\", sans-serif"
+          }
+        },
         "preview": {
           "title": "公開サイトのプレビュー",
           "description": "編集中の色を、公開サイトを構成する部品に当てて表示します。編集するたびに更新され、テーマを保存するまで公開サイトの色は変わりません。",
+          "type_sample": "日本語 · Latin · 한국어 · 中文",
           "site_name": "あおぞら書房",
           "works": {
             "first": {
@@ -1335,7 +1348,8 @@
         "validation": {
           "hex_color": "#RRGGBB 形式で入力してください。",
           "contrast": "{$background}と{$foreground}のコントラスト比は {$minimum}:1 以上にしてください（現在 {$actual}:1）。",
-          "contrast_summary": "テキストを読みやすくするため、色の組み合わせを確認してください。"
+          "contrast_summary": "テキストを読みやすくするため、色の組み合わせを確認してください。",
+          "font_family": "フォントファミリー名をカンマ区切りで入力してください。"
         }
       },
       "title": "設定",

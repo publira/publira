@@ -56,6 +56,8 @@ func tenantThemeColumns() []string {
 		"info_foreground_color",
 		"icon_image_id",
 		"logo_image_id",
+		"serif_font_family",
+		"sans_font_family",
 	}
 }
 
@@ -89,6 +91,8 @@ func tenantThemeSelectColumns() []string {
 		"destructive_foreground_color",
 		"info_color",
 		"info_foreground_color",
+		"serif_font_family",
+		"sans_font_family",
 		"icon_image_id",
 		"icon_image_updated_at",
 		"logo_image_id",
@@ -130,6 +134,8 @@ func tenantThemeUpsertRow(tenantID uuid.UUID, primaryColor, secondaryColor, acce
 		"#ffffff",
 		icon,
 		logo,
+		"",
+		"",
 	}
 }
 
@@ -163,6 +169,8 @@ func tenantThemeSelectRow(tenantID uuid.UUID, primaryColor, secondaryColor, acce
 		"#ffffff",
 		"#2f5d8a",
 		"#ffffff",
+		"",
+		"",
 		icon,
 		brandingImageUpdatedAt(icon, now),
 		logo,
@@ -450,6 +458,8 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 			"#ffffff",
 			"#2f5d8a",
 			"#ffffff",
+			"\"Noto Serif KR\", serif",
+			"\"Noto Sans KR\", sans-serif",
 		).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
@@ -486,6 +496,8 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 			DestructiveForegroundColor: "#FFFFFF",
 			InfoColor:                  "#2F5D8A",
 			InfoForegroundColor:        "#FFFFFF",
+			SerifFontFamily:            " \"Noto Serif KR\", serif ",
+			SansFontFamily:             "\"Noto Sans KR\", sans-serif",
 		},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
@@ -503,6 +515,37 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 		t.Fatalf("accent_color = %q, want #e3e9f5", resp.Msg.Theme.AccentColor)
 	}
 	assertExpectations(t, mock)
+}
+
+func TestValidateTenantThemeFontFamily(t *testing.T) {
+	for _, value := range []string{
+		`"Noto Serif KR", Batang, serif`,
+		`Noto Sans SC, PingFang SC, sans-serif`,
+		``,
+	} {
+		if _, err := validateTenantThemeFontFamily(value, "theme.serif_font_family"); err != nil {
+			t.Fatalf("validateTenantThemeFontFamily(%q) error = %v", value, err)
+		}
+	}
+
+	for _, value := range []string{
+		"Noto Serif; color: red",
+		"Noto Serif { color: red }",
+		"url(font)",
+		"Noto Serif/serif",
+		`"unclosed`,
+		"Noto Serif,, serif",
+		"Noto Serif\\, serif",
+		"Noto Serif\nserif",
+	} {
+		_, err := validateTenantThemeFontFamily(value, "theme.serif_font_family")
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("validateTenantThemeFontFamily(%q) code = %v, want invalid_argument", value, connect.CodeOf(err))
+		}
+		if !strings.Contains(err.Error(), "theme.serif_font_family") {
+			t.Fatalf("validateTenantThemeFontFamily(%q) error = %q, want font field violation", value, err)
+		}
+	}
 }
 
 func testSquarePNG(t *testing.T, size int) []byte {

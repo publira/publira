@@ -279,6 +279,10 @@ message TenantTheme {
   // Tenant logo. The variant list is empty when the tenant has not set one.
   string logo_image_updated_at = 32;
   repeated TenantImageVariant logo_image_variants = 33;
+  // A CSS font-family list for reading text. Empty uses the brief's default stack.
+  string serif_font_family = 34;
+  // A CSS font-family list for interface text. Empty uses the brief's default stack.
+  string sans_font_family = 35;
 }
 
 message Page {

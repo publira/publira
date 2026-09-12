@@ -28,6 +28,8 @@ SELECT
     COALESCE(tt.destructive_foreground_color, '#ffffff') AS destructive_foreground_color,
     COALESCE(tt.info_color, '#2f5d8a') AS info_color,
     COALESCE(tt.info_foreground_color, '#ffffff') AS info_foreground_color,
+    COALESCE(tt.serif_font_family, '') AS serif_font_family,
+    COALESCE(tt.sans_font_family, '') AS sans_font_family,
     tt.icon_image_id,
     fi.updated_at AS icon_image_updated_at,
     tt.logo_image_id,
@@ -69,6 +71,8 @@ INSERT INTO tenant_themes (
         destructive_foreground_color,
         info_color,
         info_foreground_color,
+        serif_font_family,
+        sans_font_family,
         updated_at
     )
 VALUES (
@@ -100,6 +104,8 @@ VALUES (
         $26,
         $27,
         $28,
+        $29,
+        $30,
         NOW()
     ) ON CONFLICT (tenant_id) DO
 UPDATE
@@ -130,6 +136,8 @@ SET background_color = EXCLUDED.background_color,
     destructive_foreground_color = EXCLUDED.destructive_foreground_color,
     info_color = EXCLUDED.info_color,
     info_foreground_color = EXCLUDED.info_foreground_color,
+    serif_font_family = EXCLUDED.serif_font_family,
+    sans_font_family = EXCLUDED.sans_font_family,
     updated_at = NOW()
 RETURNING *;
 
