@@ -171,9 +171,9 @@ describe("NotificationManager", () => {
       />
     );
 
-    expect(screen.getByText("通知一覧")).toBeDefined();
+    expect(screen.getByText("状態")).toBeDefined();
     expect(screen.getByText("未読")).toBeDefined();
-    expect(screen.queryByText("Notifications")).toBeNull();
+    expect(screen.queryByText("Status")).toBeNull();
   });
 
   it("shows the creation time as a wall clock in the tenant time zone", () => {

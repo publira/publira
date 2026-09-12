@@ -3,7 +3,6 @@
 import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
-import { Card, CardContent } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   useActionState,
@@ -84,47 +83,43 @@ export const LabelEyeCatchForm = ({
   }, []);
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <form action={formAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="public_id" type="hidden" value={initialLabel.publicId} />
-          <input name="name" type="hidden" value={initialLabel.name} />
-          <input
-            name="current_eye_catch_image_updated_at"
-            type="hidden"
-            value={effectiveLabel.eyeCatchImageUpdatedAt}
-          />
+    <form action={formAction} className="grid gap-4">
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="public_id" type="hidden" value={initialLabel.publicId} />
+      <input name="name" type="hidden" value={initialLabel.name} />
+      <input
+        name="current_eye_catch_image_updated_at"
+        type="hidden"
+        value={effectiveLabel.eyeCatchImageUpdatedAt}
+      />
 
-          <EyeCatchImageField
-            clearEyeCatchImage={clearEyeCatchImage}
-            fileInputId="label_eye_catch_image"
-            fileInputRef={fileInputRef}
-            hasVariants={hasVariants}
-            localPreviewUrl={localPreviewUrl}
-            onDeleteToggle={handleDeleteToggle}
-            onImageFileChange={handleImageFileChange}
-            onVariantImageClick={handleVariantImageClick}
-            onVariantTypeChange={setSelectedVariantType}
-            selectedVariantType={selectedVariantType}
-            variants={variants}
-          />
+      <EyeCatchImageField
+        clearEyeCatchImage={clearEyeCatchImage}
+        fileInputId="label_eye_catch_image"
+        fileInputRef={fileInputRef}
+        hasVariants={hasVariants}
+        localPreviewUrl={localPreviewUrl}
+        onDeleteToggle={handleDeleteToggle}
+        onImageFileChange={handleImageFileChange}
+        onVariantImageClick={handleVariantImageClick}
+        onVariantTypeChange={setSelectedVariantType}
+        selectedVariantType={selectedVariantType}
+        variants={variants}
+      />
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+      {state ? (
+        <FormMessage variant={state.ok ? "success" : "destructive"}>
+          {state.message}
+        </FormMessage>
+      ) : null}
 
-          <div className="flex justify-end">
-            <Button disabled={isPending} type="submit">
-              {isPending
-                ? getMessage(messages, "admin.labels.form.submitting")
-                : getMessage(messages, "admin.labels.form.eye_catch_update")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      <div className="flex justify-end">
+        <Button disabled={isPending} type="submit">
+          {isPending
+            ? getMessage(messages, "admin.labels.form.submitting")
+            : getMessage(messages, "admin.labels.form.eye_catch_update")}
+        </Button>
+      </div>
+    </form>
   );
 };

@@ -3,13 +3,6 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { Input } from "@publira/ui-components/input";
 import {
   SectionError,
@@ -18,7 +11,7 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -26,6 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeleton,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
@@ -79,25 +73,14 @@ type AuditLogsPageProps = PageProps<"/audit-logs">;
 const pageSize = DEFAULT_LIST_PAGE_SIZE;
 
 const AuditLogsSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <div className="h-5 w-36 animate-pulse rounded bg-muted" />
-      <div className="h-4 w-72 animate-pulse rounded bg-muted/70" />
-    </CardHeader>
-    <CardContent className="grid gap-4">
-      <div className="flex gap-3">
-        <div className="h-10 w-48 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 w-56 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 w-24 animate-pulse rounded bg-muted/70" />
-      </div>
-      <div className="grid gap-3">
-        <div className="h-12 animate-pulse rounded bg-muted/70" />
-        <div className="h-12 animate-pulse rounded bg-muted/70" />
-        <div className="h-12 animate-pulse rounded bg-muted/70" />
-        <div className="h-12 animate-pulse rounded bg-muted/70" />
-      </div>
-    </CardContent>
-  </Card>
+  <div className="grid gap-4">
+    <div className="flex gap-3">
+      <Skeleton className="h-10 w-48" />
+      <Skeleton className="h-10 w-56" />
+      <Skeleton className="h-10 w-24" />
+    </div>
+    <TableSkeleton rows={4} />
+  </div>
 );
 
 const AuditLogsFiltersSkeleton = () => (
@@ -235,7 +218,7 @@ const AuditLogsFilters = async ({
       </Button>
       {hasFilter ? (
         <Link
-          className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+          className="flex h-10 items-center rounded-control px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
           href="/audit-logs"
         >
           <Message message="platform.common.clear" />
@@ -382,9 +365,6 @@ const AuditLogsTableBody = async ({
               ) : (
                 <p className="text-sm">-</p>
               )}
-              <p className="font-mono text-xs text-muted-foreground">
-                {log.actorUserPublicId || "-"}
-              </p>
               <p>
                 <Badge tone="info">
                   {getActorRoleLabel(log.actorRole, messages)}
@@ -396,9 +376,6 @@ const AuditLogsTableBody = async ({
             <div className="grid gap-1">
               <p className="font-medium">
                 {getAuditActionLabel(log.action, messages)}
-              </p>
-              <p className="font-mono text-xs text-muted-foreground">
-                {log.action || "-"}
               </p>
               <p>
                 <Badge tone={getOutcomeTone(log.outcome)}>
@@ -466,73 +443,61 @@ const AuditLogsContent = async ({
     ? buildAuditLogsPath({ ...filterParams, token: result.nextToken })
     : undefined;
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "platform.audit.card_title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "platform.audit.card_description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <Suspense fallback={<AuditLogsFiltersSkeleton />}>
-          <AuditLogsFilters
-            actionFilter={actionFilter}
-            actorFilter={actorFilter}
-            hasFilter={hasFilter}
-          />
-        </Suspense>
+    <div className="grid gap-4">
+      <Suspense fallback={<AuditLogsFiltersSkeleton />}>
+        <AuditLogsFilters
+          actionFilter={actionFilter}
+          actorFilter={actorFilter}
+          hasFilter={hasFilter}
+        />
+      </Suspense>
 
-        {result.ok ? null : (
-          <SectionError>
-            <SectionErrorHeading>
-              <SectionErrorTitle>
-                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                  <Message message="platform.audit.load_failed" />
-                </Suspense>
-              </SectionErrorTitle>
-              <SectionErrorDescription>
-                {result.message}
-              </SectionErrorDescription>
-            </SectionErrorHeading>
-          </SectionError>
-        )}
+      {result.ok ? null : (
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="platform.audit.load_failed" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>{result.message}</SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
+      )}
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>
-                {getMessage(messages, "platform.audit.columns.at")}
-              </TableHead>
-              <TableHead>
-                {getMessage(messages, "platform.audit.columns.actor")}
-              </TableHead>
-              <TableHead>
-                {getMessage(messages, "platform.audit.columns.action")}
-              </TableHead>
-              <TableHead>
-                {getMessage(messages, "platform.audit.columns.target")}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <AuditLogsTableBody
-            hasFilter={hasFilter}
-            locale={locale}
-            result={result}
-            timeZone={timeZone}
-          />
-        </Table>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>
+              {getMessage(messages, "platform.audit.columns.at")}
+            </TableHead>
+            <TableHead>
+              {getMessage(messages, "platform.audit.columns.actor")}
+            </TableHead>
+            <TableHead>
+              {getMessage(messages, "platform.audit.columns.action")}
+            </TableHead>
+            <TableHead>
+              {getMessage(messages, "platform.audit.columns.target")}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <AuditLogsTableBody
+          hasFilter={hasFilter}
+          locale={locale}
+          result={result}
+          timeZone={timeZone}
+        />
+      </Table>
 
-        <Suspense fallback={<SkeletonLine className="ml-auto h-8 w-40" />}>
-          <AuditLogsPagination
-            nextHref={nextHref}
-            previousHref={previousHref}
-            result={result}
-          />
-        </Suspense>
-      </CardContent>
-    </Card>
+      <Suspense fallback={<SkeletonLine className="ml-auto h-8 w-40" />}>
+        <AuditLogsPagination
+          nextHref={nextHref}
+          previousHref={previousHref}
+          result={result}
+        />
+      </Suspense>
+    </div>
   );
 };
 

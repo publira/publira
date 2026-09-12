@@ -4,13 +4,6 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -29,6 +22,14 @@ import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import {
+  AdminSection,
+  AdminSectionActions,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
@@ -415,58 +416,59 @@ export const CommentReportQueue = ({
     !listErrorMessage && (reports.length > 0 || hasPageLinks);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
-            <Message message="admin.comments.reports.title" />
-          </Suspense>
-        </CardTitle>
-        <CardDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.comments.reports.description" />
-          </Suspense>
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="grid gap-4">
-        {/* An `aria-label` cannot be a node, so it is resolved as a string. */}
-        <CommentReportStatusFilter
-          ariaLabel={getMessage(
-            sharedCatalog(locale),
-            "admin.comments.reports.filter_aria"
-          )}
-          status={status}
-          statusOptions={statusOptions}
-        />
-
-        <CommentReportListBody
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          locale={locale}
-          reports={reports}
-          timeZone={timeZone}
-        />
-
-        {showPagination ? (
-          <PaginationFooter
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+              <Message message="admin.comments.reports.title" />
+            </Suspense>
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+              <Message message="admin.comments.reports.description" />
+            </Suspense>
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+        <AdminSectionActions>
+          {/* An `aria-label` cannot be a node, so it is resolved as a string. */}
+          <CommentReportStatusFilter
             ariaLabel={getMessage(
               sharedCatalog(locale),
-              "admin.comments.reports.pagination_aria"
+              "admin.comments.reports.filter_aria"
             )}
-            description={
-              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                <Message
-                  message="admin.comments.reports.pagination_description"
-                  values={{ count: pageSize }}
-                />
-              </Suspense>
-            }
-            nextHref={nextHref}
-            previousHref={previousHref}
+            status={status}
+            statusOptions={statusOptions}
           />
-        ) : null}
-      </CardContent>
-    </Card>
+        </AdminSectionActions>
+      </AdminSectionHeader>
+
+      <CommentReportListBody
+        hasPageLinks={hasPageLinks}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+        reports={reports}
+        timeZone={timeZone}
+      />
+
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(
+            sharedCatalog(locale),
+            "admin.comments.reports.pagination_aria"
+          )}
+          description={
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message
+                message="admin.comments.reports.pagination_description"
+                values={{ count: pageSize }}
+              />
+            </Suspense>
+          }
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
+      ) : null}
+    </AdminSection>
   );
 };

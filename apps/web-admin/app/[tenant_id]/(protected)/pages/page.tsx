@@ -1,11 +1,15 @@
 import { getMessage } from "@publira/i18n";
+import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { TableSkeleton } from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import {
   AdminPage,
+  AdminPageActions,
   AdminPageContent,
   AdminPageDescription,
   AdminPageHeader,
@@ -38,17 +42,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
-
-const PageManagerSkeleton = () => (
-  <div className="rounded-2xl border border-border/70 bg-card p-6">
-    <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
-    <div className="grid gap-3">
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-      <div className="h-12 animate-pulse rounded bg-muted/70" />
-    </div>
-  </div>
-);
 
 const PageManagerData = async ({
   searchParams,
@@ -90,9 +83,16 @@ const PagesPage = ({ searchParams }: PagesPageProps) => (
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton render={<Link href="/pages/new" />} variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.pages.new_action" />
+          </Suspense>
+        </LinkButton>
+      </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <Suspense fallback={<PageManagerSkeleton />}>
+      <Suspense fallback={<TableSkeleton />}>
         <PageManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>

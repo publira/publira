@@ -1,13 +1,6 @@
 import { getMessage } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { Input } from "@publira/ui-components/input";
 import {
   SectionError,
@@ -16,7 +9,7 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -24,6 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeleton,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
@@ -63,24 +57,14 @@ const allowedStatusValues = new Set<string>(statusFilterValues);
 const pageSize = 20;
 
 const TenantsTableSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <div className="h-5 w-32 animate-pulse rounded bg-muted" />
-      <div className="h-4 w-72 animate-pulse rounded bg-muted/70" />
-    </CardHeader>
-    <CardContent className="grid gap-4">
-      <div className="flex gap-3">
-        <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 w-44 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 w-24 animate-pulse rounded bg-muted/70" />
-      </div>
-      <div className="grid gap-3">
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-      </div>
-    </CardContent>
-  </Card>
+  <div className="grid gap-4">
+    <div className="flex gap-3">
+      <Skeleton className="h-10 w-64" />
+      <Skeleton className="h-10 w-44" />
+      <Skeleton className="h-10 w-24" />
+    </div>
+    <TableSkeleton />
+  </div>
 );
 
 type TenantsPageProps = PageProps<"/tenants">;
@@ -124,140 +108,121 @@ const TenantsContent = async ({
   }));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "platform.tenants.card_title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "platform.tenants.card_description")}
-        </CardDescription>
-      </CardHeader>
+    <div className="grid gap-4">
+      <Form
+        action="/tenants"
+        className="flex flex-wrap gap-3"
+        key={`${filters.name}::${filters.status}`}
+      >
+        <Input
+          className="w-64"
+          defaultValue={filters.name}
+          name="name"
+          placeholder={getMessage(
+            messages,
+            "platform.tenants.search_placeholder"
+          )}
+          type="search"
+        />
+        <Select
+          className="w-44"
+          defaultValue={filters.status || undefined}
+          items={statusSelectItems}
+          name="status"
+          placeholder={getMessage(messages, "platform.tenants.all_statuses")}
+        />
+        <Button type="submit">
+          {getMessage(messages, "platform.common.filter")}
+        </Button>
+        {filters.name || filters.status ? (
+          <Link
+            className="flex h-10 items-center rounded-control px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+            href="/tenants"
+          >
+            {getMessage(messages, "platform.common.clear")}
+          </Link>
+        ) : null}
+      </Form>
 
-      <CardContent className="grid gap-4">
-        <Form
-          action="/tenants"
-          className="flex flex-wrap gap-3"
-          key={`${filters.name}::${filters.status}`}
-        >
-          <Input
-            className="w-64"
-            defaultValue={filters.name}
-            name="name"
-            placeholder={getMessage(
-              messages,
-              "platform.tenants.search_placeholder"
-            )}
-            type="search"
-          />
-          <Select
-            className="w-44"
-            defaultValue={filters.status || undefined}
-            items={statusSelectItems}
-            name="status"
-            placeholder={getMessage(messages, "platform.tenants.all_statuses")}
-          />
-          <Button type="submit">
-            {getMessage(messages, "platform.common.filter")}
-          </Button>
-          {filters.name || filters.status ? (
-            <Link
-              className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
-              href="/tenants"
-            >
-              {getMessage(messages, "platform.common.clear")}
-            </Link>
-          ) : null}
-        </Form>
+      {result.ok ? null : (
+        <SectionError>
+          <SectionErrorHeading>
+            <SectionErrorTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="platform.tenants.load_failed" />
+              </Suspense>
+            </SectionErrorTitle>
+            <SectionErrorDescription>{result.message}</SectionErrorDescription>
+          </SectionErrorHeading>
+        </SectionError>
+      )}
 
-        {result.ok ? null : (
-          <SectionError>
-            <SectionErrorHeading>
-              <SectionErrorTitle>
-                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                  <Message message="platform.tenants.load_failed" />
-                </Suspense>
-              </SectionErrorTitle>
-              <SectionErrorDescription>
-                {result.message}
-              </SectionErrorDescription>
-            </SectionErrorHeading>
-          </SectionError>
-        )}
-
-        <Table>
-          <TableHeader>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>
+              {getMessage(messages, "platform.tenants.columns_tenant")}
+            </TableHead>
+            <TableHead className="w-40">
+              {getMessage(messages, "platform.tenants.columns_status")}
+            </TableHead>
+            <TableHead className="w-52">
+              {getMessage(messages, "platform.tenants.columns_created")}
+            </TableHead>
+            <TableHead className="w-40" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {result.ok && result.tenants.length === 0 ? (
             <TableRow>
-              <TableHead>
-                {getMessage(messages, "platform.tenants.columns_tenant")}
-              </TableHead>
-              <TableHead className="w-40">
-                {getMessage(messages, "platform.tenants.columns_status")}
-              </TableHead>
-              <TableHead className="w-52">
-                {getMessage(messages, "platform.tenants.columns_created")}
-              </TableHead>
-              <TableHead className="w-40" />
+              <TableCell className="text-muted-foreground" colSpan={4}>
+                {filters.name || filters.status
+                  ? getMessage(messages, "platform.tenants.empty_filtered")
+                  : getMessage(messages, "platform.tenants.empty")}
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {result.ok && result.tenants.length === 0 ? (
-              <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={4}>
-                  {filters.name || filters.status
-                    ? getMessage(messages, "platform.tenants.empty_filtered")
-                    : getMessage(messages, "platform.tenants.empty")}
+          ) : null}
+          {result.ok &&
+            result.tenants.map((tenant) => (
+              <TableRow key={tenant.publicId}>
+                <TableCell className="font-medium">{tenant.name}</TableCell>
+                <TableCell>
+                  <Badge
+                    tone={getTenantStatusTone(tenant.status)}
+                    variant="outline"
+                  >
+                    {getTenantStatusLabel(tenant.status, messages)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {formatDateTime(tenant.createdAt, {
+                    fallback: getMessage(messages, "platform.common.unset"),
+                    locale,
+                    timeZone,
+                  })}
+                </TableCell>
+                <TableCell>
+                  <LinkButton
+                    render={<Link href={`/tenants/${tenant.publicId}`} />}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {getMessage(messages, "platform.common.detail")}
+                  </LinkButton>
                 </TableCell>
               </TableRow>
-            ) : null}
-            {result.ok &&
-              result.tenants.map((tenant) => (
-                <TableRow key={tenant.publicId}>
-                  <TableCell>
-                    <div className="grid gap-1">
-                      <p className="font-medium text-foreground">
-                        {tenant.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {tenant.publicId}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge tone={getTenantStatusTone(tenant.status)}>
-                      {getTenantStatusLabel(tenant.status, messages)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {formatDateTime(tenant.createdAt, {
-                      fallback: getMessage(messages, "platform.common.unset"),
-                      locale,
-                      timeZone,
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <LinkButton
-                      render={<Link href={`/tenants/${tenant.publicId}`} />}
-                      size="sm"
-                      variant="outline"
-                    >
-                      {getMessage(messages, "platform.common.detail")}
-                    </LinkButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
+            ))}
+        </TableBody>
+      </Table>
 
-        <PaginationControls
-          ariaLabel={getMessage(messages, "platform.tenants.pagination_aria")}
-          nextHref={nextHref}
-          nextLabel={getMessage(messages, "platform.common.next")}
-          previousHref={previousHref}
-          previousLabel={getMessage(messages, "platform.common.previous")}
-        />
-      </CardContent>
-    </Card>
+      <PaginationControls
+        ariaLabel={getMessage(messages, "platform.tenants.pagination_aria")}
+        nextHref={nextHref}
+        nextLabel={getMessage(messages, "platform.common.next")}
+        previousHref={previousHref}
+        previousLabel={getMessage(messages, "platform.common.previous")}
+      />
+    </div>
   );
 };
 

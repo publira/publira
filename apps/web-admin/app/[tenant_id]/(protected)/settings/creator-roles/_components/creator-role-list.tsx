@@ -119,7 +119,7 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
       <ul aria-labelledby={CREATOR_ROLE_LIST_TITLE_ID} className="grid gap-3">
         {optimisticCreatorRoles.map((creatorRole, index) => (
           <li
-            className="grid gap-3 rounded-lg border border-border/70 bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
+            className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
             key={creatorRole.publicId}
           >
             <p className="pt-2 text-xs text-muted-foreground sm:w-20">

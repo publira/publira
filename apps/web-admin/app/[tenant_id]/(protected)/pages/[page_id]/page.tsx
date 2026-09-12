@@ -7,7 +7,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -27,6 +27,7 @@ import {
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
+  AdminSections,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
@@ -69,14 +70,14 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "page_id");
 
 const PageWorkspaceSkeleton = () => (
-  <div className="grid gap-6">
-    <div className="h-44 animate-pulse rounded-2xl bg-muted/70" />
+  <AdminSections>
+    <Skeleton className="h-44" />
     <div className="grid gap-6 xl:grid-cols-2">
-      <div className="h-[420px] animate-pulse rounded-2xl bg-muted/70" />
-      <div className="h-[420px] animate-pulse rounded-2xl bg-muted/70" />
+      <Skeleton className="h-[420px]" />
+      <Skeleton className="h-[420px]" />
     </div>
-    <div className="h-72 animate-pulse rounded-2xl bg-muted/70" />
-  </div>
+    <Skeleton className="h-72" />
+  </AdminSections>
 );
 
 const PageLoadError = ({ message }: { message: string }) => (

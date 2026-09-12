@@ -1,5 +1,5 @@
 import { getMessage } from "@publira/i18n";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -35,16 +35,16 @@ export const generateStaticParams = () =>
 
 const CreatorRoleManagerSkeleton = () => (
   <div className="grid gap-6">
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
-      <div className="h-10 animate-pulse rounded bg-muted/70" />
+    <div className="grid gap-4">
+      <SkeletonLine className="h-5 w-40" />
+      <Skeleton className="h-10" />
     </div>
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
+    <div className="grid gap-4">
+      <SkeletonLine className="h-5 w-32" />
       <div className="grid gap-3">
-        <div className="h-14 animate-pulse rounded bg-muted/70" />
-        <div className="h-14 animate-pulse rounded bg-muted/70" />
-        <div className="h-14 animate-pulse rounded bg-muted/70" />
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
       </div>
     </div>
   </div>

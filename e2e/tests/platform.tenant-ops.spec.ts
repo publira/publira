@@ -118,11 +118,16 @@ test.describe("platform tenant operations", () => {
     await expect(tenantDomainInput(page)).toHaveValue(domain);
     await expect(tenantAdminDomainInput(page)).toHaveValue(adminDomain);
 
+    // The list names the tenant rather than showing its public id: an
+    // identifier belongs on the detail screen, which is where the row's own
+    // link leads and where this test read it above.
     await page.goto(platformUrl("/tenants"));
     await expect(page.getByText(name)).toBeVisible();
     await expect(
-      page.locator("tr", { hasText: name }).getByText(tenantId)
-    ).toBeVisible();
+      page
+        .locator("tr", { hasText: name })
+        .getByRole("link", { name: "Details" })
+    ).toHaveAttribute("href", `/tenants/${tenantId}`);
     await expect(
       page.locator("tr", { hasText: name }).getByText("Active")
     ).toBeVisible();

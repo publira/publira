@@ -7,4 +7,11 @@ export {
   ConsolePageHeader as AdminPageHeader,
   ConsolePageHeading as AdminPageHeading,
   ConsolePageTitle as AdminPageTitle,
+  ConsoleSection as AdminSection,
+  ConsoleSectionActions as AdminSectionActions,
+  ConsoleSectionDescription as AdminSectionDescription,
+  ConsoleSectionHeader as AdminSectionHeader,
+  ConsoleSectionHeading as AdminSectionHeading,
+  ConsoleSections as AdminSections,
+  ConsoleSectionTitle as AdminSectionTitle,
 } from "@publira/layouts/admin";

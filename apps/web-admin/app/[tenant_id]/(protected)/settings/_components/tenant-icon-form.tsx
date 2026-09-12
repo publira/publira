@@ -4,13 +4,6 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   ConfirmDialog,
   ConfirmDialogAction,
   ConfirmDialogCancel,
@@ -33,6 +26,13 @@ import Image from "next/image";
 import { useActionState, useContext, useRef, useState } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { tenantBrandingVariant } from "#lib/tenant-branding-image";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -82,126 +82,121 @@ export const TenantIconForm = ({
   const preview = tenantBrandingVariant(icon);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.settings.icon.title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.settings.icon.description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-5" ref={formRef}>
-          <input name="tenant_id" type="hidden" value={tenantId} />
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.settings.icon.title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.settings.icon.description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <form action={formAction} className="grid gap-5" ref={formRef}>
+        <input name="tenant_id" type="hidden" value={tenantId} />
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.settings.icon.current")}
-            </FieldLabel>
-            <FieldContent>
-              {preview ? (
-                <Image
-                  alt={getMessage(messages, "admin.settings.icon.current")}
-                  className="size-16 rounded-md border bg-card object-contain"
-                  height={preview.height}
-                  src={preview.url}
-                  width={preview.width}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {getMessage(messages, "admin.settings.icon.unset")}
-                </p>
-              )}
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.settings.icon.file")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                accept="image/jpeg,image/png,image/webp"
-                name="icon"
-                type="file"
-              />
-              <FieldDescription>
-                {getMessage(messages, "admin.settings.icon.file_description")}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
-
-          <div className="flex justify-end gap-2">
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.icon.current")}
+          </FieldLabel>
+          <FieldContent>
             {preview ? (
-              <ConfirmDialog>
-                <ConfirmDialogTrigger
-                  render={
-                    <Button
-                      disabled={isPending}
-                      type="button"
-                      variant="outline"
-                    >
-                      {getMessage(messages, "admin.settings.delete")}
-                    </Button>
-                  }
-                />
-                <ConfirmDialogContent>
-                  <ConfirmDialogHeader>
-                    <ConfirmDialogTitle>
-                      {getMessage(messages, "admin.settings.icon.delete_title")}
-                    </ConfirmDialogTitle>
-                    <ConfirmDialogDescription>
-                      {getMessage(
-                        messages,
-                        "admin.settings.icon.delete_description"
-                      )}
-                    </ConfirmDialogDescription>
-                  </ConfirmDialogHeader>
-                  <ConfirmDialogFooter>
-                    <ConfirmDialogCancel>
-                      {getMessage(messages, "admin.common.cancel")}
-                    </ConfirmDialogCancel>
-                    <ConfirmDialogAction
-                      onClick={() => {
-                        formRef.current?.requestSubmit(deleteButtonRef.current);
-                      }}
-                      variant="destructive"
-                    >
-                      {getMessage(messages, "admin.settings.delete_action")}
-                    </ConfirmDialogAction>
-                  </ConfirmDialogFooter>
-                </ConfirmDialogContent>
-              </ConfirmDialog>
-            ) : null}
-            <button
-              className="hidden"
-              name="intent"
-              ref={deleteButtonRef}
-              type="submit"
-              value="delete"
-            >
-              {getMessage(messages, "admin.settings.icon.delete_submit")}
-            </button>
-            <Button
-              disabled={isPending}
-              name="intent"
-              type="submit"
-              value="upload"
-            >
-              {isPending
-                ? getMessage(messages, "admin.settings.saving")
-                : getMessage(messages, "admin.settings.icon.submit")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+              <Image
+                alt={getMessage(messages, "admin.settings.icon.current")}
+                className="size-16 rounded-control border bg-card object-contain"
+                height={preview.height}
+                src={preview.url}
+                width={preview.width}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {getMessage(messages, "admin.settings.icon.unset")}
+              </p>
+            )}
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.icon.file")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              accept="image/jpeg,image/png,image/webp"
+              name="icon"
+              type="file"
+            />
+            <FieldDescription>
+              {getMessage(messages, "admin.settings.icon.file_description")}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+
+        {state ? (
+          <FormMessage variant={state.ok ? "success" : "destructive"}>
+            {state.message}
+          </FormMessage>
+        ) : null}
+
+        <div className="flex justify-end gap-2">
+          {preview ? (
+            <ConfirmDialog>
+              <ConfirmDialogTrigger
+                render={
+                  <Button disabled={isPending} type="button" variant="outline">
+                    {getMessage(messages, "admin.settings.delete")}
+                  </Button>
+                }
+              />
+              <ConfirmDialogContent>
+                <ConfirmDialogHeader>
+                  <ConfirmDialogTitle>
+                    {getMessage(messages, "admin.settings.icon.delete_title")}
+                  </ConfirmDialogTitle>
+                  <ConfirmDialogDescription>
+                    {getMessage(
+                      messages,
+                      "admin.settings.icon.delete_description"
+                    )}
+                  </ConfirmDialogDescription>
+                </ConfirmDialogHeader>
+                <ConfirmDialogFooter>
+                  <ConfirmDialogCancel>
+                    {getMessage(messages, "admin.common.cancel")}
+                  </ConfirmDialogCancel>
+                  <ConfirmDialogAction
+                    onClick={() => {
+                      formRef.current?.requestSubmit(deleteButtonRef.current);
+                    }}
+                  >
+                    {getMessage(messages, "admin.settings.delete_action")}
+                  </ConfirmDialogAction>
+                </ConfirmDialogFooter>
+              </ConfirmDialogContent>
+            </ConfirmDialog>
+          ) : null}
+          <button
+            className="hidden"
+            name="intent"
+            ref={deleteButtonRef}
+            type="submit"
+            value="delete"
+          >
+            {getMessage(messages, "admin.settings.icon.delete_submit")}
+          </button>
+          <Button
+            disabled={isPending}
+            name="intent"
+            type="submit"
+            value="upload"
+          >
+            {isPending
+              ? getMessage(messages, "admin.settings.saving")
+              : getMessage(messages, "admin.settings.icon.submit")}
+          </Button>
+        </div>
+      </form>
+    </AdminSection>
   );
 };

@@ -1,11 +1,4 @@
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -17,92 +10,99 @@ import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { Message } from "#components/message";
+import {
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSectionTitle,
+} from "#components/platform-page";
 
 import { requestPlatformEmailChangeAction } from "../../_lib/actions";
 
 export const EmailChangeForm = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>
-        <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
-          <Message message="platform.settings.email_change_title" />
-        </Suspense>
-      </CardTitle>
-      <CardDescription>
-        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-          <Message message="platform.settings.email_change_description" />
-        </Suspense>
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <ActionForm
-        action={requestPlatformEmailChangeAction}
-        className="grid gap-4"
-      >
-        <Field>
-          <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <Message message="platform.settings.email_change_current" />
-            </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="email"
-              name="current_email"
-              placeholder="current@example.com"
-              required
-              type="email"
-            />
-          </FieldContent>
-        </Field>
+  <PlatformSection>
+    <PlatformSectionHeader>
+      <PlatformSectionHeading>
+        <PlatformSectionTitle>
+          <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+            <Message message="platform.settings.email_change_title" />
+          </Suspense>
+        </PlatformSectionTitle>
+        <PlatformSectionDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="platform.settings.email_change_description" />
+          </Suspense>
+        </PlatformSectionDescription>
+      </PlatformSectionHeading>
+    </PlatformSectionHeader>
+    <ActionForm
+      action={requestPlatformEmailChangeAction}
+      className="grid gap-4"
+    >
+      <Field>
+        <FieldLabel required>
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="platform.settings.email_change_current" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="email"
+            name="current_email"
+            placeholder="current@example.com"
+            required
+            type="email"
+          />
+        </FieldContent>
+      </Field>
 
-        <Field>
-          <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <Message message="platform.settings.email_change_new" />
-            </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="email"
-              name="new_email"
-              placeholder="new@example.com"
-              required
-              type="email"
-            />
-          </FieldContent>
-        </Field>
+      <Field>
+        <FieldLabel required>
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="platform.settings.email_change_new" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="email"
+            name="new_email"
+            placeholder="new@example.com"
+            required
+            type="email"
+          />
+        </FieldContent>
+      </Field>
 
-        <Field>
-          <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="platform.settings.email_change_password" />
+      <Field>
+        <FieldLabel required>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.settings.email_change_password" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="current-password"
+            name="current_password"
+            placeholder="••••••••"
+            required
+            type="password"
+          />
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="platform.settings.email_change_password_help" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="current-password"
-              name="current_password"
-              placeholder="••••••••"
-              required
-              type="password"
-            />
-            <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-                <Message message="platform.settings.email_change_password_help" />
-              </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+          </FieldDescription>
+        </FieldContent>
+      </Field>
 
-        <div className="mt-2 flex justify-end gap-2">
-          <ActionFormSubmit>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="platform.settings.email_change_submit" />
-            </Suspense>
-          </ActionFormSubmit>
-        </div>
-      </ActionForm>
-    </CardContent>
-  </Card>
+      <div className="mt-2 flex justify-end gap-2">
+        <ActionFormSubmit>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.settings.email_change_submit" />
+          </Suspense>
+        </ActionFormSubmit>
+      </div>
+    </ActionForm>
+  </PlatformSection>
 );

@@ -16,6 +16,7 @@ export default defineConfig({
     "src/figure-line/index.ts",
     "src/form-actions/index.ts",
     "src/form-message/index.ts",
+    "src/identifier/index.ts",
     "src/input/index.ts",
     "src/locale-switcher/index.ts",
     "src/popover/index.ts",

@@ -4,13 +4,6 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -28,6 +21,13 @@ import {
 import type { ChangeEvent, DragEvent } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
@@ -164,171 +164,164 @@ export const EpisodePagesForm = ({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.series.episodes.pages.title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.series.episodes.pages.description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="series_public_id" type="hidden" value={seriesPublicId} />
-          <input
-            name="episode_public_id"
-            type="hidden"
-            value={episodePublicId}
-          />
-          <input name="upload_mode" type="hidden" value={uploadMode} />
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.series.episodes.pages.title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.series.episodes.pages.description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <form action={formAction} className="grid gap-4">
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="series_public_id" type="hidden" value={seriesPublicId} />
+        <input name="episode_public_id" type="hidden" value={episodePublicId} />
+        <input name="upload_mode" type="hidden" value={uploadMode} />
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.series.episodes.pages.target")}
-            </FieldLabel>
-            <FieldContent>
-              <p className="text-sm text-muted-foreground">
-                Series: {seriesPublicId} / Episode: {episodePublicId}
-              </p>
-            </FieldContent>
-          </Field>
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.series.episodes.pages.target")}
+          </FieldLabel>
+          <FieldContent>
+            <p className="text-sm text-muted-foreground">
+              Series: {seriesPublicId} / Episode: {episodePublicId}
+            </p>
+          </FieldContent>
+        </Field>
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.series.episodes.pages.method")}
-            </FieldLabel>
-            <FieldContent>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={isPending}
-                  onClick={handleSelectPages}
-                  type="button"
-                  variant={uploadMode === "pages" ? "default" : "outline"}
-                >
-                  {getMessage(
-                    messages,
-                    "admin.series.episodes.pages.select_images"
-                  )}
-                </Button>
-                <Button
-                  disabled={isPending}
-                  onClick={handleSelectZip}
-                  type="button"
-                  variant={uploadMode === "zip" ? "default" : "outline"}
-                >
-                  {getMessage(
-                    messages,
-                    "admin.series.episodes.pages.select_zip"
-                  )}
-                </Button>
-                <Button
-                  disabled={isPending}
-                  onClick={handleSelectEpub}
-                  type="button"
-                  variant={uploadMode === "epub" ? "default" : "outline"}
-                >
-                  {getMessage(
-                    messages,
-                    "admin.series.episodes.pages.select_epub"
-                  )}
-                </Button>
-              </div>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel required>{fileLabel}</FieldLabel>
-            <FieldContent>
-              <div
-                className={
-                  isDragOver
-                    ? "rounded-lg border-2 border-dashed border-foreground/60 bg-muted/50 p-4"
-                    : "rounded-lg border-2 border-dashed border-border p-4"
-                }
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.series.episodes.pages.method")}
+          </FieldLabel>
+          <FieldContent>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={isPending}
+                onClick={handleSelectPages}
+                type="button"
+                variant={uploadMode === "pages" ? "default" : "outline"}
               >
-                <p className="mb-3 text-sm text-muted-foreground">
-                  {dropMessage}
-                </p>
-                <Input
-                  accept={acceptValue}
-                  multiple={uploadMode === "pages"}
-                  name={uploadMode === "pages" ? "pages" : "archive"}
-                  onChange={handleChange}
-                  ref={inputRef}
-                  required
-                  type="file"
-                />
+                {getMessage(
+                  messages,
+                  "admin.series.episodes.pages.select_images"
+                )}
+              </Button>
+              <Button
+                disabled={isPending}
+                onClick={handleSelectZip}
+                type="button"
+                variant={uploadMode === "zip" ? "default" : "outline"}
+              >
+                {getMessage(messages, "admin.series.episodes.pages.select_zip")}
+              </Button>
+              <Button
+                disabled={isPending}
+                onClick={handleSelectEpub}
+                type="button"
+                variant={uploadMode === "epub" ? "default" : "outline"}
+              >
+                {getMessage(
+                  messages,
+                  "admin.series.episodes.pages.select_epub"
+                )}
+              </Button>
+            </div>
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel required>{fileLabel}</FieldLabel>
+          <FieldContent>
+            <div
+              className={
+                isDragOver
+                  ? "border-2 border-dashed border-foreground/60 bg-muted/50 p-4"
+                  : "border-2 border-dashed border-border p-4"
+              }
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              <p className="mb-3 text-sm text-muted-foreground">
+                {dropMessage}
+              </p>
+              <Input
+                accept={acceptValue}
+                multiple={uploadMode === "pages"}
+                name={uploadMode === "pages" ? "pages" : "archive"}
+                onChange={handleChange}
+                ref={inputRef}
+                required
+                type="file"
+              />
+            </div>
+            <FieldDescription>{fieldDescription}</FieldDescription>
+            {selectedFileNames.length > 0 ? (
+              <div className="grid gap-1 text-xs text-muted-foreground">
+                {selectedFileNames.map((fileName) => (
+                  <p key={fileName}>{fileName}</p>
+                ))}
               </div>
-              <FieldDescription>{fieldDescription}</FieldDescription>
-              {selectedFileNames.length > 0 ? (
-                <div className="grid gap-1 text-xs text-muted-foreground">
-                  {selectedFileNames.map((fileName) => (
-                    <p key={fileName}>{fileName}</p>
-                  ))}
-                </div>
-              ) : null}
-              {isPending ? (
-                <div className="grid gap-2">
-                  <progress
-                    aria-label={getMessage(
-                      messages,
-                      "admin.series.episodes.pages.upload_progress"
-                    )}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {getMessage(
-                      messages,
-                      "admin.series.episodes.pages.processing"
-                    )}
-                  </p>
-                </div>
-              ) : null}
-            </FieldContent>
-          </Field>
+            ) : null}
+            {isPending ? (
+              <div className="grid gap-2">
+                <progress
+                  aria-label={getMessage(
+                    messages,
+                    "admin.series.episodes.pages.upload_progress"
+                  )}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {getMessage(
+                    messages,
+                    "admin.series.episodes.pages.processing"
+                  )}
+                </p>
+              </div>
+            ) : null}
+          </FieldContent>
+        </Field>
 
-          {state && state.mode === "pages" ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+        {state && state.mode === "pages" ? (
+          <FormMessage variant={state.ok ? "success" : "destructive"}>
+            {state.message}
+          </FormMessage>
+        ) : null}
 
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={isPending} type="submit">
-              {(() => {
-                if (isPending) {
-                  return getMessage(
-                    messages,
-                    "admin.series.episodes.pages.adding"
-                  );
-                }
-                if (uploadMode === "zip") {
-                  return getMessage(
-                    messages,
-                    "admin.series.episodes.pages.submit_zip"
-                  );
-                }
-                if (uploadMode === "epub") {
-                  return getMessage(
-                    messages,
-                    "admin.series.episodes.pages.submit_epub"
-                  );
-                }
+        <div className="mt-2 flex justify-end gap-2">
+          <Button disabled={isPending} type="submit">
+            {(() => {
+              if (isPending) {
                 return getMessage(
                   messages,
-                  "admin.series.episodes.pages.submit_image"
+                  "admin.series.episodes.pages.adding"
                 );
-              })()}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+              }
+              if (uploadMode === "zip") {
+                return getMessage(
+                  messages,
+                  "admin.series.episodes.pages.submit_zip"
+                );
+              }
+              if (uploadMode === "epub") {
+                return getMessage(
+                  messages,
+                  "admin.series.episodes.pages.submit_epub"
+                );
+              }
+              return getMessage(
+                messages,
+                "admin.series.episodes.pages.submit_image"
+              );
+            })()}
+          </Button>
+        </div>
+      </form>
+    </AdminSection>
   );
 };

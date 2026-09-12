@@ -3,6 +3,8 @@
 import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
+import { Skeleton } from "../skeleton/skeleton";
+
 type TableProps = ComponentPropsWithoutRef<"table">;
 type TheadProps = ComponentPropsWithoutRef<"thead">;
 type TbodyProps = ComponentPropsWithoutRef<"tbody">;
@@ -104,4 +106,27 @@ export const TableLoadingRow = ({
       </TableRow>
     ))}
   </>
+);
+
+export interface TableSkeletonProps {
+  rows?: number;
+}
+
+/**
+ * The shape a table has before the rows it lists have been read: the heavy
+ * rule the header sits on, then bands separated by the same hairlines.
+ *
+ * A screen whose table cannot render at all yet — because the columns are
+ * themselves waiting on the catalog — stands this in its place, so nothing
+ * moves sideways when the data arrives.
+ */
+export const TableSkeleton = ({ rows = 3 }: TableSkeletonProps) => (
+  <div className="divide-y divide-border border-t-2 border-border">
+    {Array.from({ length: rows }, (_, index) => (
+      // biome-ignore lint/suspicious/noArrayIndexKey: static loading placeholder
+      <div className="py-3" key={index}>
+        <Skeleton className="h-5 w-full" />
+      </div>
+    ))}
+  </div>
 );

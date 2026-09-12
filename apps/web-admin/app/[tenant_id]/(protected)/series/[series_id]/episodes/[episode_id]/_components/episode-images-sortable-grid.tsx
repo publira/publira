@@ -164,7 +164,7 @@ export const EpisodeImagesSortableGrid = ({
         // Drag-and-drop reordering is intentionally on the figure container.
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <figure
-          className="grid cursor-move gap-2 rounded-md border border-border/70 bg-background p-2"
+          className="grid cursor-move gap-2 border border-border bg-background p-2"
           data-image-id={image.id}
           data-pending={isPending ? "true" : undefined}
           draggable={!isPending}

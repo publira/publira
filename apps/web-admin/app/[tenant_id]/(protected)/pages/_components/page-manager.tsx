@@ -4,13 +4,6 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -167,44 +160,29 @@ export const PageManager = ({
     !listErrorMessage && (pages.length > 0 || hasPageLinks);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1">
-          <CardTitle>
-            {getMessage(messages, "admin.pages.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.pages.list_description")}
-          </CardDescription>
-        </div>
-        <LinkButton href="/pages/new" variant="outline">
-          {getMessage(messages, "admin.pages.new_action")}
-        </LinkButton>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <PageListBody
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          locale={locale}
-          pages={pages}
-          timeZone={timeZone}
-        />
+    <div className="grid gap-6">
+      <PageListBody
+        hasPageLinks={hasPageLinks}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+        pages={pages}
+        timeZone={timeZone}
+      />
 
-        {showPagination ? (
-          <PaginationFooter
-            ariaLabel={getMessage(messages, "admin.pages.pagination_aria")}
-            description={getMessage(
-              messages,
-              "admin.pages.pagination_description",
-              {
-                count: pageSize,
-              }
-            )}
-            nextHref={nextHref}
-            previousHref={previousHref}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(messages, "admin.pages.pagination_aria")}
+          description={getMessage(
+            messages,
+            "admin.pages.pagination_description",
+            {
+              count: pageSize,
+            }
+          )}
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
+      ) : null}
+    </div>
   );
 };

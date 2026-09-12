@@ -1,13 +1,6 @@
 import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -20,6 +13,13 @@ import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { Message } from "#components/message";
+import {
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSectionTitle,
+} from "#components/platform-page";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { updatePlatformDefaultLocaleAction } from "../../_lib/actions";
@@ -41,69 +41,69 @@ export const PlatformDefaultLocaleForm = async ({
   }));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
-            <Message message="platform.settings.default_locale_title" />
-          </Suspense>
-        </CardTitle>
-        <CardDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-            <Message message="platform.settings.default_locale_description" />
-          </Suspense>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ActionForm
-          action={updatePlatformDefaultLocaleAction}
-          className="grid gap-4 sm:max-w-lg"
-        >
-          <Field>
-            <FieldLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="platform.settings.default_locale_label" />
+    <PlatformSection>
+      <PlatformSectionHeader>
+        <PlatformSectionHeading>
+          <PlatformSectionTitle>
+            <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+              <Message message="platform.settings.default_locale_title" />
+            </Suspense>
+          </PlatformSectionTitle>
+          <PlatformSectionDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+              <Message message="platform.settings.default_locale_description" />
+            </Suspense>
+          </PlatformSectionDescription>
+        </PlatformSectionHeading>
+      </PlatformSectionHeader>
+      <ActionForm
+        action={updatePlatformDefaultLocaleAction}
+        className="grid gap-4 sm:max-w-lg"
+      >
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.settings.default_locale_label" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+              <Select
+                defaultValue={initialDefaultLocale}
+                disabled={hasLoadError}
+                items={items}
+                name="default_locale"
+                placeholder={getMessage(
+                  messages,
+                  "platform.settings.default_locale_placeholder"
+                )}
+              />
+            </Suspense>
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message message="platform.settings.default_locale_help" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-                <Select
-                  defaultValue={initialDefaultLocale}
-                  disabled={hasLoadError}
-                  items={items}
-                  name="default_locale"
-                  placeholder={getMessage(
-                    messages,
-                    "platform.settings.default_locale_placeholder"
-                  )}
-                />
-              </Suspense>
-              <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-                  <Message message="platform.settings.default_locale_help" />
-                </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-          {loadErrorMessage ? (
-            <FormMessage variant="destructive">
-              {loadErrorMessage}
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <Message message="platform.settings.default_locale_reload" />
-              </Suspense>
-            </FormMessage>
-          ) : null}
+        {loadErrorMessage ? (
+          <FormMessage variant="destructive">
+            {loadErrorMessage}
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <Message message="platform.settings.default_locale_reload" />
+            </Suspense>
+          </FormMessage>
+        ) : null}
 
-          <div className="mt-2 flex justify-end gap-2">
-            <ActionFormSubmit disabled={hasLoadError}>
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="platform.settings.default_locale_save" />
-              </Suspense>
-            </ActionFormSubmit>
-          </div>
-        </ActionForm>
-      </CardContent>
-    </Card>
+        <div className="mt-2 flex justify-end gap-2">
+          <ActionFormSubmit disabled={hasLoadError}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.settings.default_locale_save" />
+            </Suspense>
+          </ActionFormSubmit>
+        </div>
+      </ActionForm>
+    </PlatformSection>
   );
 };

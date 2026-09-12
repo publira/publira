@@ -4,13 +4,6 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -66,101 +59,76 @@ export const EpisodeForm = ({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.series.episodes.form.card_title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.series.episodes.form.card_description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          action={formAction}
-          className="grid gap-4"
-          onSubmit={handleSubmit}
-        >
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="series_public_id" type="hidden" value={seriesPublicId} />
+    <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
-          <Field>
-            <FieldLabel required>
-              {getMessage(messages, "admin.series.episodes.form.title")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="title"
-                placeholder={getMessage(
-                  messages,
-                  "admin.series.episodes.form.title_placeholder"
-                )}
-                required
-                type="text"
-              />
-            </FieldContent>
-          </Field>
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.series.episodes.form.title")}
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            name="title"
+            placeholder={getMessage(
+              messages,
+              "admin.series.episodes.form.title_placeholder"
+            )}
+            required
+            type="text"
+          />
+        </FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel required>
-              {getMessage(messages, "admin.series.episodes.form.price")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={0}
-                min={0}
-                name="price"
-                required
-                type="number"
-              />
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.series.episodes.form.price_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.series.episodes.form.price")}
+        </FieldLabel>
+        <FieldContent>
+          <Input defaultValue={0} min={0} name="price" required type="number" />
+          <FieldDescription>
+            {getMessage(
+              messages,
+              "admin.series.episodes.form.price_description"
+            )}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel required>
-              {getMessage(
-                messages,
-                "admin.series.episodes.form.reading_period"
-              )}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={0}
-                min={0}
-                name="reading_period_hours"
-                required
-                type="number"
-              />
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.series.episodes.form.reading_period_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.series.episodes.form.reading_period")}
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            defaultValue={0}
+            min={0}
+            name="reading_period_hours"
+            required
+            type="number"
+          />
+          <FieldDescription>
+            {getMessage(
+              messages,
+              "admin.series.episodes.form.reading_period_description"
+            )}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
 
-          <PublishAtInput timeZone={timeZone} />
+      <PublishAtInput timeZone={timeZone} />
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+      {state ? (
+        <FormMessage variant={state.ok ? "success" : "destructive"}>
+          {state.message}
+        </FormMessage>
+      ) : null}
 
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={isPending} type="submit">
-              {submitLabel}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      <div className="mt-2 flex justify-end gap-2">
+        <Button disabled={isPending} type="submit">
+          {submitLabel}
+        </Button>
+      </div>
+    </form>
   );
 };

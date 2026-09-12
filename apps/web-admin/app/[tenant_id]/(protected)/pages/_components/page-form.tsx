@@ -4,13 +4,6 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -90,118 +83,102 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {isUpdate
-            ? getMessage(messages, "admin.pages.form.update_card_title")
-            : getMessage(messages, "admin.pages.form.create_card_title")}
-        </CardTitle>
-        <CardDescription>
-          {isUpdate
-            ? getMessage(messages, "admin.pages.form.update_description")
-            : getMessage(messages, "admin.pages.form.create_description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="page_id" type="hidden" value={initialPage?.id ?? ""} />
-          <input
-            name="display_in_footer"
-            type="hidden"
-            value={displayInFooter ? "true" : "false"}
+    <form action={formAction} className="grid gap-4">
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="page_id" type="hidden" value={initialPage?.id ?? ""} />
+      <input
+        name="display_in_footer"
+        type="hidden"
+        value={displayInFooter ? "true" : "false"}
+      />
+
+      <Field>
+        <FieldLabel>slug</FieldLabel>
+        <FieldContent>
+          <Input
+            disabled={isUpdate}
+            name="slug"
+            onBlur={handleSlugBlur}
+            onChange={handleSlugChange}
+            placeholder="/privacy"
+            type="text"
+            value={slug}
           />
+          <FieldDescription>
+            {getMessage(messages, "admin.pages.form.slug_description", {
+              path: formatPagePath(slug),
+            })}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel>slug</FieldLabel>
-            <FieldContent>
-              <Input
-                disabled={isUpdate}
-                name="slug"
-                onBlur={handleSlugBlur}
-                onChange={handleSlugChange}
-                placeholder="/privacy"
-                type="text"
-                value={slug}
-              />
-              <FieldDescription>
-                {getMessage(messages, "admin.pages.form.slug_description", {
-                  path: formatPagePath(slug),
-                })}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.pages.form.title")}
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            name="title"
+            onChange={handleTitleChange}
+            placeholder={getMessage(
+              messages,
+              "admin.pages.form.title_placeholder"
+            )}
+            required
+            type="text"
+            value={title}
+          />
+        </FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel required>
-              {getMessage(messages, "admin.pages.form.title")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="title"
-                onChange={handleTitleChange}
-                placeholder={getMessage(
-                  messages,
-                  "admin.pages.form.title_placeholder"
-                )}
-                required
-                type="text"
-                value={title}
-              />
-            </FieldContent>
-          </Field>
+      <Field>
+        <FieldContent>
+          <label className="inline-flex items-center gap-2 text-sm text-foreground">
+            <input
+              checked={displayInFooter}
+              onChange={handleDisplayInFooterChange}
+              type="checkbox"
+            />
+            {getMessage(messages, "admin.pages.form.footer_visible")}
+          </label>
+          <FieldDescription>
+            {getMessage(messages, "admin.pages.form.footer_description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
 
-          <Field>
-            <FieldContent>
-              <label className="inline-flex items-center gap-2 text-sm text-foreground">
-                <input
-                  checked={displayInFooter}
-                  onChange={handleDisplayInFooterChange}
-                  type="checkbox"
-                />
-                {getMessage(messages, "admin.pages.form.footer_visible")}
-              </label>
-              <FieldDescription>
-                {getMessage(messages, "admin.pages.form.footer_description")}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+      {isUpdate ? null : (
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.pages.form.body")}
+          </FieldLabel>
+          <FieldContent>
+            <Textarea
+              name="content_markdown"
+              onChange={handleContentMarkdownChange}
+              placeholder={getMessage(
+                messages,
+                "admin.pages.form.body_placeholder"
+              )}
+              rows={16}
+              value={contentMarkdown}
+            />
+            <FieldDescription>
+              {getMessage(messages, "admin.pages.form.body_description")}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+      )}
 
-          {isUpdate ? null : (
-            <Field>
-              <FieldLabel>
-                {getMessage(messages, "admin.pages.form.body")}
-              </FieldLabel>
-              <FieldContent>
-                <Textarea
-                  name="content_markdown"
-                  onChange={handleContentMarkdownChange}
-                  placeholder={getMessage(
-                    messages,
-                    "admin.pages.form.body_placeholder"
-                  )}
-                  rows={16}
-                  value={contentMarkdown}
-                />
-                <FieldDescription>
-                  {getMessage(messages, "admin.pages.form.body_description")}
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-          )}
+      {state ? (
+        <FormMessage variant="destructive">{state.message}</FormMessage>
+      ) : null}
 
-          {state ? (
-            <FormMessage variant="destructive">{state.message}</FormMessage>
-          ) : null}
-
-          <div className="flex justify-end">
-            <Button disabled={isPending} type="submit">
-              {submitLabel}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      <div className="flex justify-end">
+        <Button disabled={isPending} type="submit">
+          {submitLabel}
+        </Button>
+      </div>
+    </form>
   );
 };

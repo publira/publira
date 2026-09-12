@@ -4,13 +4,6 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -29,6 +22,14 @@ import {
 } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSections,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import type { AdminMessageKey } from "#lib/locale";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -369,125 +370,127 @@ export const ThemeSettingsForm = ({
   const fieldErrors = state && !state.ok ? state.fieldErrors : undefined;
 
   return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {getMessage(messages, "admin.settings.theme.preview.title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.settings.theme.preview.description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ThemePreview theme={colors} />
-        </CardContent>
-      </Card>
+    <AdminSections>
+      <AdminSection>
+        <AdminSectionHeader>
+          <AdminSectionHeading>
+            <AdminSectionTitle>
+              {getMessage(messages, "admin.settings.theme.preview.title")}
+            </AdminSectionTitle>
+            <AdminSectionDescription>
+              {getMessage(messages, "admin.settings.theme.preview.description")}
+            </AdminSectionDescription>
+          </AdminSectionHeading>
+        </AdminSectionHeader>
+        <ThemePreview theme={colors} />
+      </AdminSection>
 
       <form action={formAction} className="contents">
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         {colorGroups.map((group) => (
-          <Card key={group.titleKey}>
-            <CardHeader>
-              <CardTitle>{getMessage(messages, group.titleKey)}</CardTitle>
-              <CardDescription>
-                {getMessage(messages, group.descriptionKey)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-5 sm:max-w-3xl">
-                {group.fields.map((field, index) => {
-                  if (index > 0 && group.fields[index - 1]?.inlineWithNext) {
-                    return null;
-                  }
+          <AdminSection key={group.titleKey}>
+            <AdminSectionHeader>
+              <AdminSectionHeading>
+                <AdminSectionTitle>
+                  {getMessage(messages, group.titleKey)}
+                </AdminSectionTitle>
+                <AdminSectionDescription>
+                  {getMessage(messages, group.descriptionKey)}
+                </AdminSectionDescription>
+              </AdminSectionHeading>
+            </AdminSectionHeader>
+            <div className="grid gap-5 sm:max-w-3xl">
+              {group.fields.map((field, index) => {
+                if (index > 0 && group.fields[index - 1]?.inlineWithNext) {
+                  return null;
+                }
 
-                  if (field.inlineWithNext && group.fields[index + 1]) {
-                    const pair = group.fields[index + 1];
-                    return (
-                      <div
-                        className="grid gap-5 md:grid-cols-2"
-                        key={`${field.key}-${pair.key}`}
-                      >
-                        <Field>
-                          <FieldLabel required>
-                            {getMessage(messages, field.labelKey)}
-                          </FieldLabel>
-                          <FieldContent>
-                            <ColorSwatchInput
-                              name={field.formName}
-                              onChange={createHandler(field.key)}
-                              pickerLabel={pickerLabel}
-                              value={colors[field.key]}
-                            />
-                            {field.descriptionKey ? (
-                              <FieldDescription>
-                                {getMessage(messages, field.descriptionKey)}
-                              </FieldDescription>
-                            ) : null}
-                            {fieldErrors?.[field.key] ? (
-                              <FormMessage variant="destructive">
-                                {fieldErrors[field.key]}
-                              </FormMessage>
-                            ) : null}
-                          </FieldContent>
-                        </Field>
-                        <Field>
-                          <FieldLabel required>
-                            {getMessage(messages, pair.labelKey)}
-                          </FieldLabel>
-                          <FieldContent>
-                            <ColorSwatchInput
-                              name={pair.formName}
-                              onChange={createHandler(pair.key)}
-                              pickerLabel={pickerLabel}
-                              value={colors[pair.key]}
-                            />
-                            {pair.descriptionKey ? (
-                              <FieldDescription>
-                                {getMessage(messages, pair.descriptionKey)}
-                              </FieldDescription>
-                            ) : null}
-                            {fieldErrors?.[pair.key] ? (
-                              <FormMessage variant="destructive">
-                                {fieldErrors[pair.key]}
-                              </FormMessage>
-                            ) : null}
-                          </FieldContent>
-                        </Field>
-                      </div>
-                    );
-                  }
-
+                if (field.inlineWithNext && group.fields[index + 1]) {
+                  const pair = group.fields[index + 1];
                   return (
-                    <Field key={field.key}>
-                      <FieldLabel required>
-                        {getMessage(messages, field.labelKey)}
-                      </FieldLabel>
-                      <FieldContent>
-                        <ColorSwatchInput
-                          name={field.formName}
-                          onChange={createHandler(field.key)}
-                          pickerLabel={pickerLabel}
-                          value={colors[field.key]}
-                        />
-                        {field.descriptionKey ? (
-                          <FieldDescription>
-                            {getMessage(messages, field.descriptionKey)}
-                          </FieldDescription>
-                        ) : null}
-                        {fieldErrors?.[field.key] ? (
-                          <FormMessage variant="destructive">
-                            {fieldErrors[field.key]}
-                          </FormMessage>
-                        ) : null}
-                      </FieldContent>
-                    </Field>
+                    <div
+                      className="grid gap-5 md:grid-cols-2"
+                      key={`${field.key}-${pair.key}`}
+                    >
+                      <Field>
+                        <FieldLabel required>
+                          {getMessage(messages, field.labelKey)}
+                        </FieldLabel>
+                        <FieldContent>
+                          <ColorSwatchInput
+                            name={field.formName}
+                            onChange={createHandler(field.key)}
+                            pickerLabel={pickerLabel}
+                            value={colors[field.key]}
+                          />
+                          {field.descriptionKey ? (
+                            <FieldDescription>
+                              {getMessage(messages, field.descriptionKey)}
+                            </FieldDescription>
+                          ) : null}
+                          {fieldErrors?.[field.key] ? (
+                            <FormMessage variant="destructive">
+                              {fieldErrors[field.key]}
+                            </FormMessage>
+                          ) : null}
+                        </FieldContent>
+                      </Field>
+                      <Field>
+                        <FieldLabel required>
+                          {getMessage(messages, pair.labelKey)}
+                        </FieldLabel>
+                        <FieldContent>
+                          <ColorSwatchInput
+                            name={pair.formName}
+                            onChange={createHandler(pair.key)}
+                            pickerLabel={pickerLabel}
+                            value={colors[pair.key]}
+                          />
+                          {pair.descriptionKey ? (
+                            <FieldDescription>
+                              {getMessage(messages, pair.descriptionKey)}
+                            </FieldDescription>
+                          ) : null}
+                          {fieldErrors?.[pair.key] ? (
+                            <FormMessage variant="destructive">
+                              {fieldErrors[pair.key]}
+                            </FormMessage>
+                          ) : null}
+                        </FieldContent>
+                      </Field>
+                    </div>
                   );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                }
+
+                return (
+                  <Field key={field.key}>
+                    <FieldLabel required>
+                      {getMessage(messages, field.labelKey)}
+                    </FieldLabel>
+                    <FieldContent>
+                      <ColorSwatchInput
+                        name={field.formName}
+                        onChange={createHandler(field.key)}
+                        pickerLabel={pickerLabel}
+                        value={colors[field.key]}
+                      />
+                      {field.descriptionKey ? (
+                        <FieldDescription>
+                          {getMessage(messages, field.descriptionKey)}
+                        </FieldDescription>
+                      ) : null}
+                      {fieldErrors?.[field.key] ? (
+                        <FormMessage variant="destructive">
+                          {fieldErrors[field.key]}
+                        </FormMessage>
+                      ) : null}
+                    </FieldContent>
+                  </Field>
+                );
+              })}
+            </div>
+          </AdminSection>
         ))}
 
         {state ? (
@@ -504,6 +507,6 @@ export const ThemeSettingsForm = ({
           </Button>
         </div>
       </form>
-    </div>
+    </AdminSections>
   );
 };

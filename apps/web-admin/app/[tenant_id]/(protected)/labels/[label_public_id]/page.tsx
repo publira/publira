@@ -7,7 +7,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -72,11 +72,9 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "label_public_id");
 
 const EditLabelFormSkeleton = () => (
-  <div className="rounded-2xl border border-border/70 bg-card p-6">
-    <div className="grid gap-4">
-      <div className="h-20 animate-pulse rounded bg-muted/70" />
-      <div className="ml-auto h-10 w-36 animate-pulse rounded bg-muted" />
-    </div>
+  <div className="grid gap-4">
+    <Skeleton className="h-20" />
+    <Skeleton className="ml-auto h-10 w-36" />
   </div>
 );
 

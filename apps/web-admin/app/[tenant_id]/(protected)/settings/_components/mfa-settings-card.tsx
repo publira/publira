@@ -3,17 +3,17 @@
 import { getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
 import { useAdminMessages } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { MfaCodeField } from "#components/mfa-code-field";
 import { MfaEnrollmentSecret } from "#components/mfa-enrollment-secret";
 import { MfaRecoveryCodes } from "#components/mfa-recovery-codes";
@@ -328,53 +328,53 @@ export const MfaSettingsCard = ({ status }: MfaSettingsCardProps) => {
   const issuedCodes = issuedRecoveryCodes(confirmState, regenerateState);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.settings.mfa.title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.settings.mfa.description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <MfaStatusSummary status={status} />
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.settings.mfa.title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.settings.mfa.description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <MfaStatusSummary status={status} />
 
-        <MfaNotices
-          confirmState={confirmState}
-          disableState={disableState}
-          regenerateState={regenerateState}
-        />
+      <MfaNotices
+        confirmState={confirmState}
+        disableState={disableState}
+        regenerateState={regenerateState}
+      />
 
-        {issuedCodes ? <MfaRecoveryCodes codes={issuedCodes} /> : null}
+      {issuedCodes ? <MfaRecoveryCodes codes={issuedCodes} /> : null}
 
-        {status.enabled ? (
-          <>
-            <MfaRegenerateForm
-              action={regenerateAction}
-              isPending={isRegenerating}
-              state={regenerateState}
-              tenantId={tenantId}
-            />
-            <MfaDisableForm
-              action={disableAction}
-              isPending={isDisabling}
-              state={disableState}
-              tenantId={tenantId}
-            />
-          </>
-        ) : (
-          <MfaSetupSection
-            confirmAction={confirmAction}
-            confirmState={confirmState}
-            isConfirming={isConfirming}
-            isStarting={isStarting}
-            startAction={startAction}
-            startState={startState}
+      {status.enabled ? (
+        <>
+          <MfaRegenerateForm
+            action={regenerateAction}
+            isPending={isRegenerating}
+            state={regenerateState}
             tenantId={tenantId}
           />
-        )}
-      </CardContent>
-    </Card>
+          <MfaDisableForm
+            action={disableAction}
+            isPending={isDisabling}
+            state={disableState}
+            tenantId={tenantId}
+          />
+        </>
+      ) : (
+        <MfaSetupSection
+          confirmAction={confirmAction}
+          confirmState={confirmState}
+          isConfirming={isConfirming}
+          isStarting={isStarting}
+          startAction={startAction}
+          startState={startState}
+          tenantId={tenantId}
+        />
+      )}
+    </AdminSection>
   );
 };

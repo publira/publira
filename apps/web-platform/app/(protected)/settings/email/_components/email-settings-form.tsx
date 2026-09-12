@@ -2,13 +2,6 @@
 
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Dialog,
   DialogBackdrop,
   DialogClose,
@@ -29,6 +22,13 @@ import type { ChangeEvent } from "react";
 import { useActionState, useCallback, useId, useState } from "react";
 
 import { ClientMessage } from "#components/client-message";
+import {
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSectionTitle,
+} from "#components/platform-page";
 import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
@@ -118,271 +118,271 @@ export const EmailSettingsForm = ({
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <ClientMessage message="platform.settings.smtp_card_title" />
-        </CardTitle>
-        <CardDescription>
-          <ClientMessage message="platform.settings.smtp_card_description" />
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          action={saveFormAction}
-          className="grid gap-5 sm:max-w-3xl"
-          id={formId}
-        >
-          <Field>
-            <FieldLabel required>
-              <ClientMessage message="platform.settings.host" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.host}
-                name="host"
-                placeholder="smtp.example.com"
-                required
-                type="text"
-              />
-            </FieldContent>
-          </Field>
+    <PlatformSection>
+      <PlatformSectionHeader>
+        <PlatformSectionHeading>
+          <PlatformSectionTitle>
+            <ClientMessage message="platform.settings.smtp_card_title" />
+          </PlatformSectionTitle>
+          <PlatformSectionDescription>
+            <ClientMessage message="platform.settings.smtp_card_description" />
+          </PlatformSectionDescription>
+        </PlatformSectionHeading>
+      </PlatformSectionHeader>
+      <form
+        action={saveFormAction}
+        className="grid gap-5 sm:max-w-3xl"
+        id={formId}
+      >
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="platform.settings.host" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.host}
+              name="host"
+              placeholder="smtp.example.com"
+              required
+              type="text"
+            />
+          </FieldContent>
+        </Field>
 
-          <Field>
-            <FieldLabel required>
-              <ClientMessage message="platform.settings.port" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={String(initialSettings.port || 587)}
-                min={1}
-                max={65_535}
-                name="port"
-                required
-                type="number"
-              />
-            </FieldContent>
-          </Field>
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="platform.settings.port" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={String(initialSettings.port || 587)}
+              min={1}
+              max={65_535}
+              name="port"
+              required
+              type="number"
+            />
+          </FieldContent>
+        </Field>
 
-          <Field>
-            <FieldLabel required>
-              <ClientMessage message="platform.settings.username" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.username}
-                name="username"
-                required
-                type="text"
-              />
-            </FieldContent>
-          </Field>
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="platform.settings.username" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.username}
+              name="username"
+              required
+              type="text"
+            />
+          </FieldContent>
+        </Field>
 
-          <Field>
-            <FieldLabel required={isPasswordEditing}>
-              <ClientMessage message="platform.settings.password" />
-            </FieldLabel>
-            <FieldContent>
-              {hasStoredPassword && !isPasswordEditing ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    defaultValue="****"
-                    disabled
-                    key="password-masked"
-                    readOnly
-                    type="password"
-                  />
+        <Field>
+          <FieldLabel required={isPasswordEditing}>
+            <ClientMessage message="platform.settings.password" />
+          </FieldLabel>
+          <FieldContent>
+            {hasStoredPassword && !isPasswordEditing ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  defaultValue="****"
+                  disabled
+                  key="password-masked"
+                  readOnly
+                  type="password"
+                />
+                <Button
+                  onClick={handleStartPasswordEdit}
+                  type="button"
+                  variant="outline"
+                >
+                  <ClientMessage message="platform.settings.password_change" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  autoComplete="new-password"
+                  key="password-editable"
+                  name="password"
+                  required={isPasswordEditing}
+                  type="password"
+                />
+                {hasStoredPassword ? (
                   <Button
-                    onClick={handleStartPasswordEdit}
+                    onClick={handleCancelPasswordEdit}
                     type="button"
                     variant="outline"
                   >
-                    <ClientMessage message="platform.settings.password_change" />
+                    <ClientMessage message="platform.settings.password_undo" />
                   </Button>
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    autoComplete="new-password"
-                    key="password-editable"
-                    name="password"
-                    required={isPasswordEditing}
-                    type="password"
-                  />
-                  {hasStoredPassword ? (
+                ) : null}
+              </div>
+            )}
+
+            <input
+              name="password_update_mode"
+              type="hidden"
+              value={
+                hasStoredPassword && !isPasswordEditing
+                  ? String(SECRET_UPDATE_MODE_UNCHANGED)
+                  : String(SECRET_UPDATE_MODE_REPLACE)
+              }
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="platform.settings.smtp_encryption" />
+          </FieldLabel>
+          <FieldContent>
+            <Select
+              defaultValue={initialSettings.encryption || "starttls"}
+              items={encryptionOptions}
+              name="encryption"
+              required
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="platform.settings.from_address" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.fromAddress}
+              name="from_address"
+              placeholder="noreply@example.com"
+              required
+              type="email"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            <ClientMessage message="platform.settings.reply_to" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.replyTo}
+              name="reply_to"
+              placeholder="support@example.com"
+              type="email"
+            />
+          </FieldContent>
+        </Field>
+
+        {loadErrorMessage ? (
+          <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
+        ) : null}
+
+        {saveState ? (
+          <FormMessage variant={saveState.ok ? "success" : "destructive"}>
+            {saveState.message}
+          </FormMessage>
+        ) : null}
+
+        <div className="flex flex-wrap gap-3">
+          <Dialog onOpenChange={setDialogOpen} open={dialogOpen}>
+            <DialogTrigger
+              render={
+                <Button type="button" variant="outline">
+                  <ClientMessage message="platform.settings.smtp_test" />
+                </Button>
+              }
+            />
+            <DialogPortal>
+              <DialogBackdrop />
+              <DialogViewport>
+                <DialogPopup>
+                  <DialogHeader>
+                    <DialogTitle>
+                      <ClientMessage message="platform.settings.smtp_test_title" />
+                    </DialogTitle>
+                    <DialogDescription>
+                      <ClientMessage message="platform.settings.smtp_test_description" />
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="mt-4 grid gap-4">
+                    <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                      <input
+                        checked={sendToSelf}
+                        onChange={handleSendToSelfChange}
+                        type="checkbox"
+                      />
+                      <ClientMessage message="platform.settings.smtp_test_self" />
+                    </label>
+                    <input
+                      form={formId}
+                      name="recipient_type"
+                      type="hidden"
+                      value={
+                        sendToSelf
+                          ? String(TEST_EMAIL_RECIPIENT_TYPE_SELF)
+                          : String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
+                      }
+                    />
+
+                    {sendToSelf ? null : (
+                      <Field>
+                        <FieldLabel required>
+                          <ClientMessage message="platform.settings.smtp_test_custom" />
+                        </FieldLabel>
+                        <FieldContent>
+                          <Input
+                            form={formId}
+                            name="recipient_email"
+                            placeholder="recipient@example.com"
+                            required={!sendToSelf}
+                            type="email"
+                          />
+                        </FieldContent>
+                      </Field>
+                    )}
+
+                    {testState ? (
+                      <FormMessage
+                        variant={testState.ok ? "success" : "destructive"}
+                      >
+                        {testState.message}
+                      </FormMessage>
+                    ) : null}
+                  </div>
+
+                  <DialogFooter>
+                    <DialogClose
+                      render={
+                        <Button type="button" variant="outline">
+                          <ClientMessage message="platform.settings.smtp_test_close" />
+                        </Button>
+                      }
+                    />
                     <Button
-                      onClick={handleCancelPasswordEdit}
-                      type="button"
+                      disabled={isTesting}
+                      form={formId}
+                      formAction={testFormAction}
+                      type="submit"
                       variant="outline"
                     >
-                      <ClientMessage message="platform.settings.password_undo" />
+                      <ClientMessage message="platform.settings.smtp_test_submit" />
                     </Button>
-                  ) : null}
-                </div>
-              )}
+                  </DialogFooter>
+                </DialogPopup>
+              </DialogViewport>
+            </DialogPortal>
+          </Dialog>
 
-              <input
-                name="password_update_mode"
-                type="hidden"
-                value={
-                  hasStoredPassword && !isPasswordEditing
-                    ? String(SECRET_UPDATE_MODE_UNCHANGED)
-                    : String(SECRET_UPDATE_MODE_REPLACE)
-                }
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel required>
-              <ClientMessage message="platform.settings.smtp_encryption" />
-            </FieldLabel>
-            <FieldContent>
-              <Select
-                defaultValue={initialSettings.encryption || "starttls"}
-                items={encryptionOptions}
-                name="encryption"
-                required
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel required>
-              <ClientMessage message="platform.settings.from_address" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.fromAddress}
-                name="from_address"
-                placeholder="noreply@example.com"
-                required
-                type="email"
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>
-              <ClientMessage message="platform.settings.reply_to" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.replyTo}
-                name="reply_to"
-                placeholder="support@example.com"
-                type="email"
-              />
-            </FieldContent>
-          </Field>
-
-          {loadErrorMessage ? (
-            <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
-          ) : null}
-
-          {saveState ? (
-            <FormMessage variant={saveState.ok ? "success" : "destructive"}>
-              {saveState.message}
-            </FormMessage>
-          ) : null}
-
-          <div className="flex flex-wrap gap-3">
-            <Dialog onOpenChange={setDialogOpen} open={dialogOpen}>
-              <DialogTrigger
-                render={
-                  <Button type="button" variant="outline">
-                    <ClientMessage message="platform.settings.smtp_test" />
-                  </Button>
-                }
-              />
-              <DialogPortal>
-                <DialogBackdrop />
-                <DialogViewport>
-                  <DialogPopup>
-                    <DialogHeader>
-                      <DialogTitle>
-                        <ClientMessage message="platform.settings.smtp_test_title" />
-                      </DialogTitle>
-                      <DialogDescription>
-                        <ClientMessage message="platform.settings.smtp_test_description" />
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="mt-4 grid gap-4">
-                      <label className="inline-flex items-center gap-2 text-sm text-foreground">
-                        <input
-                          checked={sendToSelf}
-                          onChange={handleSendToSelfChange}
-                          type="checkbox"
-                        />
-                        <ClientMessage message="platform.settings.smtp_test_self" />
-                      </label>
-                      <input
-                        form={formId}
-                        name="recipient_type"
-                        type="hidden"
-                        value={
-                          sendToSelf
-                            ? String(TEST_EMAIL_RECIPIENT_TYPE_SELF)
-                            : String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
-                        }
-                      />
-
-                      {sendToSelf ? null : (
-                        <Field>
-                          <FieldLabel required>
-                            <ClientMessage message="platform.settings.smtp_test_custom" />
-                          </FieldLabel>
-                          <FieldContent>
-                            <Input
-                              form={formId}
-                              name="recipient_email"
-                              placeholder="recipient@example.com"
-                              required={!sendToSelf}
-                              type="email"
-                            />
-                          </FieldContent>
-                        </Field>
-                      )}
-
-                      {testState ? (
-                        <FormMessage
-                          variant={testState.ok ? "success" : "destructive"}
-                        >
-                          {testState.message}
-                        </FormMessage>
-                      ) : null}
-                    </div>
-
-                    <DialogFooter>
-                      <DialogClose
-                        render={
-                          <Button type="button" variant="outline">
-                            <ClientMessage message="platform.settings.smtp_test_close" />
-                          </Button>
-                        }
-                      />
-                      <Button
-                        disabled={isTesting}
-                        form={formId}
-                        formAction={testFormAction}
-                        type="submit"
-                        variant="outline"
-                      >
-                        <ClientMessage message="platform.settings.smtp_test_submit" />
-                      </Button>
-                    </DialogFooter>
-                  </DialogPopup>
-                </DialogViewport>
-              </DialogPortal>
-            </Dialog>
-
-            <Button disabled={isSaving} type="submit">
-              <ClientMessage message="platform.common.save" />
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+          <Button disabled={isSaving} type="submit">
+            <ClientMessage message="platform.common.save" />
+          </Button>
+        </div>
+      </form>
+    </PlatformSection>
   );
 };

@@ -1,12 +1,11 @@
 import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
+  Figure,
+  FigureLabel,
+  FigureLine,
+  FigureValue,
+} from "@publira/ui-components/figure-line";
 import {
   SectionError,
   SectionErrorDescription,
@@ -35,6 +34,12 @@ import {
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSections,
+  AdminSectionTitle,
 } from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
@@ -79,51 +84,45 @@ const formatReadThroughRate = (
     : formatPercent(rate, { locale });
 
 const EngagementSkeleton = () => (
-  <div className="grid gap-6">
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-40 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-72 animate-pulse rounded bg-muted/70" />
-      </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-3">
-        <div className="h-20 animate-pulse rounded bg-muted/70" />
-        <div className="h-20 animate-pulse rounded bg-muted/70" />
-        <div className="h-20 animate-pulse rounded bg-muted/70" />
-      </CardContent>
-    </Card>
+  <AdminSections>
+    <FigureLine>
+      {(["skeleton-1", "skeleton-2", "skeleton-3"] as const).map((key) => (
+        <Figure key={key}>
+          <FigureLabel>
+            <SkeletonLine className="h-4 w-28" />
+          </FigureLabel>
+          <FigureValue>
+            <SkeletonLine className="h-6 w-12" />
+          </FigureValue>
+        </Figure>
+      ))}
+    </FigureLine>
 
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-36 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>
-                <SkeletonLine className="h-4 w-24" />
-              </TableHead>
-              <TableHead>
-                <SkeletonLine className="h-4 w-32" />
-              </TableHead>
-              <TableHead>
-                <SkeletonLine className="h-4 w-16" />
-              </TableHead>
-              <TableHead>
-                <SkeletonLine className="h-4 w-16" />
-              </TableHead>
-              <TableHead>
-                <SkeletonLine className="h-4 w-20" />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableLoadingRow colSpan={5} rows={6} />
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>
+            <SkeletonLine className="h-4 w-24" />
+          </TableHead>
+          <TableHead>
+            <SkeletonLine className="h-4 w-32" />
+          </TableHead>
+          <TableHead>
+            <SkeletonLine className="h-4 w-16" />
+          </TableHead>
+          <TableHead>
+            <SkeletonLine className="h-4 w-16" />
+          </TableHead>
+          <TableHead>
+            <SkeletonLine className="h-4 w-20" />
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableLoadingRow colSpan={5} rows={6} />
+      </TableBody>
+    </Table>
+  </AdminSections>
 );
 
 const EngagementContent = async ({
@@ -164,146 +163,127 @@ const EngagementContent = async ({
     result.totalMemberViewCount
   );
 
-  const summaryItems = [
-    {
-      label: "admin.engagement.complete_count_label",
-      value: String(result.totalCompleteCount),
-    },
-    {
-      label: "admin.engagement.member_view_count_label",
-      value: String(result.totalMemberViewCount),
-    },
-    {
-      label: "admin.engagement.rate_label",
-      value: formatReadThroughRate(totalRate, locale, messages),
-    },
-  ] as const;
-
   return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {getMessage(messages, "admin.engagement.summary_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.engagement.period", {
-              end: formatPlainDate(result.period.end, { locale }),
-              start: formatPlainDate(result.period.start, { locale }),
-              time_zone: result.period.timeZone,
-            })}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            {summaryItems.map((item) => (
-              <div
-                className="rounded-xl border border-border/70 p-4"
-                key={item.label}
-              >
-                <p className="text-sm text-muted-foreground">
-                  {getMessage(messages, item.label)}
-                </p>
-                <p className="mt-1 text-3xl font-semibold">{item.value}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {getMessage(messages, "admin.engagement.definition")}
-          </p>
-        </CardContent>
-      </Card>
+    <AdminSections>
+      <AdminSection>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {getMessage(messages, "admin.engagement.period", {
+            end: formatPlainDate(result.period.end, { locale }),
+            start: formatPlainDate(result.period.start, { locale }),
+            time_zone: result.period.timeZone,
+          })}
+        </p>
+        <FigureLine>
+          <Figure>
+            <FigureLabel>
+              {getMessage(messages, "admin.engagement.complete_count_label")}
+            </FigureLabel>
+            <FigureValue>{result.totalCompleteCount}</FigureValue>
+          </Figure>
+          <Figure>
+            <FigureLabel>
+              {getMessage(messages, "admin.engagement.member_view_count_label")}
+            </FigureLabel>
+            <FigureValue>{result.totalMemberViewCount}</FigureValue>
+          </Figure>
+          <Figure>
+            <FigureLabel>
+              {getMessage(messages, "admin.engagement.rate_label")}
+            </FigureLabel>
+            <FigureValue>
+              {formatReadThroughRate(totalRate, locale, messages)}
+            </FigureValue>
+          </Figure>
+        </FigureLine>
+        <p className="text-xs text-muted-foreground">
+          {getMessage(messages, "admin.engagement.definition")}
+        </p>
+      </AdminSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {getMessage(messages, "admin.engagement.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.engagement.list_description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {result.episodes.length === 0 ? (
-            <CursorPageEmptyState
-              description={
-                <Message message="admin.engagement.empty_description" />
-              }
-              hasPageLinks={hasPageLinks}
-              itemLabel={getMessage(messages, "admin.engagement.title")}
-              title={getMessage(messages, "admin.engagement.empty_title")}
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    {getMessage(messages, "admin.engagement.columns.series")}
-                  </TableHead>
-                  <TableHead>
-                    {getMessage(messages, "admin.engagement.columns.episode")}
-                  </TableHead>
-                  <TableHead className="w-32">
-                    {getMessage(
-                      messages,
-                      "admin.engagement.columns.complete_count"
+      <AdminSection>
+        <AdminSectionHeader>
+          <AdminSectionHeading>
+            <AdminSectionTitle>
+              {getMessage(messages, "admin.engagement.list_title")}
+            </AdminSectionTitle>
+            <AdminSectionDescription>
+              {getMessage(messages, "admin.engagement.list_description")}
+            </AdminSectionDescription>
+          </AdminSectionHeading>
+        </AdminSectionHeader>
+        {result.episodes.length === 0 ? (
+          <CursorPageEmptyState
+            description={
+              <Message message="admin.engagement.empty_description" />
+            }
+            hasPageLinks={hasPageLinks}
+            itemLabel={getMessage(messages, "admin.engagement.title")}
+            title={getMessage(messages, "admin.engagement.empty_title")}
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  {getMessage(messages, "admin.engagement.columns.series")}
+                </TableHead>
+                <TableHead>
+                  {getMessage(messages, "admin.engagement.columns.episode")}
+                </TableHead>
+                <TableHead className="w-32">
+                  {getMessage(
+                    messages,
+                    "admin.engagement.columns.complete_count"
+                  )}
+                </TableHead>
+                <TableHead className="w-32">
+                  {getMessage(
+                    messages,
+                    "admin.engagement.columns.member_view_count"
+                  )}
+                </TableHead>
+                <TableHead className="w-32">
+                  {getMessage(messages, "admin.engagement.columns.rate")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.episodes.map((item) => (
+                <TableRow
+                  key={`${item.seriesPublicId}-${item.episodePublicId}`}
+                >
+                  <TableCell>{item.seriesTitle}</TableCell>
+                  <TableCell className="font-medium">
+                    {item.episodeTitle}
+                  </TableCell>
+                  <TableCell>{item.completeCount}</TableCell>
+                  <TableCell>{item.memberViewCount}</TableCell>
+                  <TableCell>
+                    {formatReadThroughRate(
+                      readThroughRate(item.completeCount, item.memberViewCount),
+                      locale,
+                      messages
                     )}
-                  </TableHead>
-                  <TableHead className="w-32">
-                    {getMessage(
-                      messages,
-                      "admin.engagement.columns.member_view_count"
-                    )}
-                  </TableHead>
-                  <TableHead className="w-32">
-                    {getMessage(messages, "admin.engagement.columns.rate")}
-                  </TableHead>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {result.episodes.map((item) => (
-                  <TableRow
-                    key={`${item.seriesPublicId}-${item.episodePublicId}`}
-                  >
-                    <TableCell>{item.seriesTitle}</TableCell>
-                    <TableCell className="font-medium">
-                      {item.episodeTitle}
-                    </TableCell>
-                    <TableCell>{item.completeCount}</TableCell>
-                    <TableCell>{item.memberViewCount}</TableCell>
-                    <TableCell>
-                      {formatReadThroughRate(
-                        readThroughRate(
-                          item.completeCount,
-                          item.memberViewCount
-                        ),
-                        locale,
-                        messages
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+              ))}
+            </TableBody>
+          </Table>
+        )}
 
-          {result.episodes.length > 0 || hasPageLinks ? (
-            <PaginationFooter
-              {...pageHrefs}
-              ariaLabel={getMessage(
-                messages,
-                "admin.engagement.pagination_aria"
-              )}
-              description={getMessage(
-                messages,
-                "admin.engagement.pagination_description",
-                { count: DEFAULT_PAGE_SIZE }
-              )}
-            />
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
+        {result.episodes.length > 0 || hasPageLinks ? (
+          <PaginationFooter
+            {...pageHrefs}
+            ariaLabel={getMessage(messages, "admin.engagement.pagination_aria")}
+            description={getMessage(
+              messages,
+              "admin.engagement.pagination_description",
+              { count: DEFAULT_PAGE_SIZE }
+            )}
+          />
+        ) : null}
+      </AdminSection>
+    </AdminSections>
   );
 };
 

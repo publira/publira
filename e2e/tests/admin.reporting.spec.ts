@@ -118,12 +118,17 @@ const readThroughRows = (page: Page): Locator =>
 const readThroughPagination = (page: Page): Locator =>
   page.getByRole("navigation", { name: "Read-through pages" });
 
-/** The value under one label of the summary card. */
+/**
+ * The figure beside one label of the summary line.
+ *
+ * The figures are a description list — a label and its number on one baseline —
+ * so the value is the `<dd>` that follows the `<dt>` carrying the label.
+ */
 const summaryValue = (page: Page, label: string): Locator =>
   page
-    .locator("p")
+    .locator("dt")
     .filter({ hasText: new RegExp(`^${label}$`, "u") })
-    .locator("xpath=following-sibling::p[1]");
+    .locator("xpath=following-sibling::dd[1]");
 
 const expectReadThroughRow = async (
   row: Locator,

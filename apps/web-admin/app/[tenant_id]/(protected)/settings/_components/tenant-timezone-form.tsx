@@ -4,13 +4,6 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Combobox,
   ComboboxEmpty,
   ComboboxInput,
@@ -29,6 +22,13 @@ import { listSupportedTimeZones } from "@publira/utils";
 import { useActionState, useContext, useMemo, useState } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { TenantTimezoneActionState } from "../settings-types";
@@ -71,78 +71,78 @@ export const TenantTimezoneForm = ({
   }, [initialTimezone]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.settings.timezone.title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.settings.timezone.description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-4 sm:max-w-lg">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="timezone" type="hidden" value={timezone} />
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.settings.timezone.title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.settings.timezone.description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <form action={formAction} className="grid gap-4 sm:max-w-lg">
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="timezone" type="hidden" value={timezone} />
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.settings.timezone.label")}
-            </FieldLabel>
-            <FieldContent>
-              <Combobox
-                disabled={!canEdit}
-                items={items}
-                onValueChange={setTimezone}
-                value={timezone}
-              >
-                <ComboboxInput
-                  placeholder={getMessage(
-                    messages,
-                    "admin.settings.timezone.placeholder"
-                  )}
-                />
-                <ComboboxPopup>
-                  <ComboboxEmpty>
-                    {getMessage(messages, "admin.settings.timezone.empty")}
-                  </ComboboxEmpty>
-                  <ComboboxItems />
-                </ComboboxPopup>
-              </Combobox>
-              <FieldDescription>
-                {getMessage(
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.timezone.label")}
+          </FieldLabel>
+          <FieldContent>
+            <Combobox
+              disabled={!canEdit}
+              items={items}
+              onValueChange={setTimezone}
+              value={timezone}
+            >
+              <ComboboxInput
+                placeholder={getMessage(
                   messages,
-                  "admin.settings.timezone.field_description"
+                  "admin.settings.timezone.placeholder"
                 )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+              />
+              <ComboboxPopup>
+                <ComboboxEmpty>
+                  {getMessage(messages, "admin.settings.timezone.empty")}
+                </ComboboxEmpty>
+                <ComboboxItems />
+              </ComboboxPopup>
+            </Combobox>
+            <FieldDescription>
+              {getMessage(
+                messages,
+                "admin.settings.timezone.field_description"
+              )}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-          {canEdit ? null : (
-            <FormMessage variant="destructive">
-              {getMessage(messages, "admin.settings.admin_only")}
-            </FormMessage>
-          )}
+        {canEdit ? null : (
+          <FormMessage variant="destructive">
+            {getMessage(messages, "admin.settings.admin_only")}
+          </FormMessage>
+        )}
 
-          {loadErrorMessage ? (
-            <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
-          ) : null}
+        {loadErrorMessage ? (
+          <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
+        ) : null}
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+        {state ? (
+          <FormMessage variant={state.ok ? "success" : "destructive"}>
+            {state.message}
+          </FormMessage>
+        ) : null}
 
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={!canEdit || isPending} type="submit">
-              {isPending
-                ? getMessage(messages, "admin.settings.saving")
-                : getMessage(messages, "admin.settings.timezone.submit")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button disabled={!canEdit || isPending} type="submit">
+            {isPending
+              ? getMessage(messages, "admin.settings.saving")
+              : getMessage(messages, "admin.settings.timezone.submit")}
+          </Button>
+        </div>
+      </form>
+    </AdminSection>
   );
 };

@@ -1,13 +1,6 @@
 import { getMessage } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import {
   SectionError,
@@ -16,6 +9,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
 import {
   parseRouteParams,
@@ -28,6 +22,11 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import {
+  Identifier,
+  IdentifierCopy,
+  IdentifierValue,
+} from "#components/identifier";
+import {
   PlatformPage,
   PlatformPageActions,
   PlatformPageContent,
@@ -35,6 +34,11 @@ import {
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSectionTitle,
 } from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
@@ -70,28 +74,17 @@ const userDetailParamsSchema = z.object({
 
 const UserDetailSkeleton = () => (
   <PlatformPageContent>
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
-      <Card>
-        <CardHeader>
-          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <div className="h-12 animate-pulse rounded bg-muted/70" />
-            <div className="h-12 animate-pulse rounded bg-muted/70" />
-            <div className="h-12 animate-pulse rounded bg-muted/70" />
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-        </CardHeader>
-        <CardContent>
-          <div className="h-16 animate-pulse rounded bg-muted/70" />
-        </CardContent>
-      </Card>
+    <div className="grid gap-10 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
+      <PlatformSection>
+        <SkeletonLine className="h-5 w-28" />
+        <Skeleton className="h-12" />
+        <Skeleton className="h-12" />
+        <Skeleton className="h-12" />
+      </PlatformSection>
+      <PlatformSection>
+        <SkeletonLine className="h-5 w-28" />
+        <Skeleton className="h-16" />
+      </PlatformSection>
     </div>
   </PlatformPageContent>
 );
@@ -234,94 +227,106 @@ const UserDetailContent = async ({
         </PlatformPageActions>
       </PlatformPageHeader>
       <PlatformPageContent>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {getMessage(messages, "platform.users.info_title")}
-              </CardTitle>
-              <CardDescription>
-                {getMessage(messages, "platform.users.info_description")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <Field>
-                <FieldLabel>
-                  {getMessage(messages, "platform.users.public_id")}
-                </FieldLabel>
-                <p className="font-mono text-xs">{user.publicId}</p>
-              </Field>
-              <Field>
-                <FieldLabel>
-                  {getMessage(messages, "platform.users.columns_name")}
-                </FieldLabel>
-                <p className="text-sm">
-                  {user.name || getMessage(messages, "platform.common.unset")}
-                </p>
-              </Field>
-              <Field>
-                <FieldLabel>
-                  {getMessage(messages, "platform.common.email")}
-                </FieldLabel>
-                <p className="text-sm">{user.email}</p>
-              </Field>
-              <Field>
-                <FieldLabel>
-                  {getMessage(messages, "platform.users.registered_at")}
-                </FieldLabel>
-                <p className="text-sm">
-                  {formatDate(user.createdAt, {
-                    fallback: getMessage(messages, "platform.common.unset"),
-                    locale,
-                    timeZone,
-                  })}
-                </p>
-              </Field>
-              <Field>
-                <FieldLabel>
-                  {getMessage(messages, "platform.users.status")}
-                </FieldLabel>
-                <p>
-                  <Badge tone={getEndUserStatusTone(user.status)}>
-                    {getEndUserStatusLabel(user.status, messages)}
-                  </Badge>
-                </p>
-              </Field>
-            </CardContent>
-          </Card>
+        <div className="grid gap-10 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
+          <PlatformSection>
+            <PlatformSectionHeader>
+              <PlatformSectionHeading>
+                <PlatformSectionTitle>
+                  {getMessage(messages, "platform.users.info_title")}
+                </PlatformSectionTitle>
+                <PlatformSectionDescription>
+                  {getMessage(messages, "platform.users.info_description")}
+                </PlatformSectionDescription>
+              </PlatformSectionHeading>
+            </PlatformSectionHeader>
+            <Field>
+              <FieldLabel>
+                {getMessage(messages, "platform.users.public_id")}
+              </FieldLabel>
+              <Identifier>
+                <IdentifierValue>{user.publicId}</IdentifierValue>
+                <IdentifierCopy
+                  aria-label={getMessage(
+                    messages,
+                    "platform.users.copy_public_id"
+                  )}
+                  value={user.publicId}
+                />
+              </Identifier>
+            </Field>
+            <Field>
+              <FieldLabel>
+                {getMessage(messages, "platform.users.columns_name")}
+              </FieldLabel>
+              <p className="text-sm">
+                {user.name || getMessage(messages, "platform.common.unset")}
+              </p>
+            </Field>
+            <Field>
+              <FieldLabel>
+                {getMessage(messages, "platform.common.email")}
+              </FieldLabel>
+              <p className="text-sm">{user.email}</p>
+            </Field>
+            <Field>
+              <FieldLabel>
+                {getMessage(messages, "platform.users.registered_at")}
+              </FieldLabel>
+              <p className="text-sm">
+                {formatDate(user.createdAt, {
+                  fallback: getMessage(messages, "platform.common.unset"),
+                  locale,
+                  timeZone,
+                })}
+              </p>
+            </Field>
+            <Field>
+              <FieldLabel>
+                {getMessage(messages, "platform.users.status")}
+              </FieldLabel>
+              <p>
+                <Badge tone={getEndUserStatusTone(user.status)}>
+                  {getEndUserStatusLabel(user.status, messages)}
+                </Badge>
+              </p>
+            </Field>
+          </PlatformSection>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {getMessage(messages, "platform.users.affiliated_title")}
-              </CardTitle>
-              <CardDescription>
-                {getMessage(messages, "platform.users.affiliated_description")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {user.tenantIds.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {getMessage(messages, "platform.users.affiliated_empty")}
-                </p>
-              ) : (
-                <ul className="grid gap-2">
-                  {user.tenantIds.map((tenantId) => (
-                    <li key={tenantId}>
-                      <Link
-                        className="text-sm text-primary underline-offset-4 hover:underline"
-                        href={`/tenants/${tenantId}`}
-                      >
-                        {tenantId === user.primaryTenantPublicId
-                          ? user.primaryTenantName || tenantId
-                          : tenantId}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+          <PlatformSection>
+            <PlatformSectionHeader>
+              <PlatformSectionHeading>
+                <PlatformSectionTitle>
+                  {getMessage(messages, "platform.users.affiliated_title")}
+                </PlatformSectionTitle>
+                <PlatformSectionDescription>
+                  {getMessage(
+                    messages,
+                    "platform.users.affiliated_description"
+                  )}
+                </PlatformSectionDescription>
+              </PlatformSectionHeading>
+            </PlatformSectionHeader>
+            {user.tenantIds.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {getMessage(messages, "platform.users.affiliated_empty")}
+              </p>
+            ) : (
+              <ul className="grid gap-2">
+                {user.tenantIds.map((tenantId) => (
+                  <li key={tenantId}>
+                    <Link
+                      className="text-sm text-primary underline-offset-4 hover:underline"
+                      href={`/tenants/${tenantId}`}
+                    >
+                      {tenantId === user.primaryTenantPublicId
+                        ? user.primaryTenantName || tenantId
+                        : tenantId}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PlatformSection>
         </div>
       </PlatformPageContent>
     </>

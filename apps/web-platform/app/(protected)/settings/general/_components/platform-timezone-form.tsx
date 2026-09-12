@@ -3,13 +3,6 @@
 import { getMessage } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Combobox,
   ComboboxEmpty,
   ComboboxInput,
@@ -28,6 +21,13 @@ import { listSupportedTimeZones } from "@publira/utils";
 import { useActionState, useMemo, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import {
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSectionTitle,
+} from "#components/platform-page";
 
 import type { PlatformDefaultTimezoneActionState } from "../../_lib/actions";
 
@@ -67,72 +67,72 @@ export const PlatformTimezoneForm = ({
   }, [initialTimezone]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <ClientMessage message="platform.settings.default_timezone_title" />
-        </CardTitle>
-        <CardDescription>
-          <ClientMessage message="platform.settings.default_timezone_description" />
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-4 sm:max-w-lg">
-          <input name="default_timezone" type="hidden" value={timezone} />
+    <PlatformSection>
+      <PlatformSectionHeader>
+        <PlatformSectionHeading>
+          <PlatformSectionTitle>
+            <ClientMessage message="platform.settings.default_timezone_title" />
+          </PlatformSectionTitle>
+          <PlatformSectionDescription>
+            <ClientMessage message="platform.settings.default_timezone_description" />
+          </PlatformSectionDescription>
+        </PlatformSectionHeading>
+      </PlatformSectionHeader>
+      <form action={formAction} className="grid gap-4 sm:max-w-lg">
+        <input name="default_timezone" type="hidden" value={timezone} />
 
-          <Field>
-            <FieldLabel>
-              <ClientMessage message="platform.settings.default_timezone_label" />
-            </FieldLabel>
-            <FieldContent>
-              <Combobox
-                disabled={hasLoadError}
-                items={items}
-                onValueChange={setTimezone}
-                value={timezone}
-              >
-                <ComboboxInput
-                  placeholder={getMessage(
+        <Field>
+          <FieldLabel>
+            <ClientMessage message="platform.settings.default_timezone_label" />
+          </FieldLabel>
+          <FieldContent>
+            <Combobox
+              disabled={hasLoadError}
+              items={items}
+              onValueChange={setTimezone}
+              value={timezone}
+            >
+              <ComboboxInput
+                placeholder={getMessage(
+                  messages,
+                  "platform.settings.default_timezone_placeholder"
+                )}
+              />
+              <ComboboxPopup>
+                <ComboboxEmpty>
+                  {getMessage(
                     messages,
-                    "platform.settings.default_timezone_placeholder"
+                    "platform.settings.default_timezone_empty"
                   )}
-                />
-                <ComboboxPopup>
-                  <ComboboxEmpty>
-                    {getMessage(
-                      messages,
-                      "platform.settings.default_timezone_empty"
-                    )}
-                  </ComboboxEmpty>
-                  <ComboboxItems />
-                </ComboboxPopup>
-              </Combobox>
-              <FieldDescription>
-                <ClientMessage message="platform.settings.default_timezone_help" />
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+                </ComboboxEmpty>
+                <ComboboxItems />
+              </ComboboxPopup>
+            </Combobox>
+            <FieldDescription>
+              <ClientMessage message="platform.settings.default_timezone_help" />
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-          {loadErrorMessage ? (
-            <FormMessage variant="destructive">
-              {loadErrorMessage}
-              <ClientMessage message="platform.settings.default_timezone_reload" />
-            </FormMessage>
-          ) : null}
+        {loadErrorMessage ? (
+          <FormMessage variant="destructive">
+            {loadErrorMessage}
+            <ClientMessage message="platform.settings.default_timezone_reload" />
+          </FormMessage>
+        ) : null}
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+        {state ? (
+          <FormMessage variant={state.ok ? "success" : "destructive"}>
+            {state.message}
+          </FormMessage>
+        ) : null}
 
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={hasLoadError || isPending} type="submit">
-              <ClientMessage message="platform.settings.default_timezone_save" />
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button disabled={hasLoadError || isPending} type="submit">
+            <ClientMessage message="platform.settings.default_timezone_save" />
+          </Button>
+        </div>
+      </form>
+    </PlatformSection>
   );
 };

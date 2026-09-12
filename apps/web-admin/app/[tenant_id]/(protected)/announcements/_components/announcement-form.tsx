@@ -3,7 +3,6 @@
 import { getMessage, toIntlLocale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
-import { Card, CardContent } from "@publira/ui-components/card";
 import {
   Field,
   FieldContent,
@@ -86,176 +85,166 @@ export const AnnouncementForm = ({
   );
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <form action={formAction} className="grid gap-5">
-          <input name="tenant_id" type="hidden" value={tenantId} />
+    <form action={formAction} className="grid gap-5">
+      <input name="tenant_id" type="hidden" value={tenantId} />
 
-          <Field>
-            <FieldLabel required>
-              {getMessage(messages, "admin.announcements.form.title")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                maxLength={120}
-                name="title"
-                placeholder={getMessage(
-                  messages,
-                  "admin.announcements.form.title_placeholder"
-                )}
-                required
-                type="text"
-              />
-            </FieldContent>
-          </Field>
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.announcements.form.title")}
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            maxLength={120}
+            name="title"
+            placeholder={getMessage(
+              messages,
+              "admin.announcements.form.title_placeholder"
+            )}
+            required
+            type="text"
+          />
+        </FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel required>
-              {getMessage(messages, "admin.announcements.form.body")}
-            </FieldLabel>
-            <FieldContent>
-              <Textarea
-                maxLength={2000}
-                name="body"
-                placeholder={getMessage(
-                  messages,
-                  "admin.announcements.form.body_placeholder"
-                )}
-                required
-                rows={5}
-              />
-            </FieldContent>
-          </Field>
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.announcements.form.body")}
+        </FieldLabel>
+        <FieldContent>
+          <Textarea
+            maxLength={2000}
+            name="body"
+            placeholder={getMessage(
+              messages,
+              "admin.announcements.form.body_placeholder"
+            )}
+            required
+            rows={5}
+          />
+        </FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.announcements.form.link")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="link_url"
-                placeholder={getMessage(
-                  messages,
-                  "admin.announcements.form.link_placeholder"
-                )}
-                type="text"
+      <Field>
+        <FieldLabel>
+          {getMessage(messages, "admin.announcements.form.link")}
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            name="link_url"
+            placeholder={getMessage(
+              messages,
+              "admin.announcements.form.link_placeholder"
+            )}
+            type="text"
+          />
+          <FieldDescription>
+            {getMessage(messages, "admin.announcements.form.link_description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+
+      <Field>
+        <FieldLabel required>
+          {getMessage(messages, "admin.announcements.form.audience")}
+        </FieldLabel>
+        <FieldContent>
+          <div className="grid gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                checked={audienceType === "all"}
+                name="audience_type"
+                onChange={handleAudienceTypeChange}
+                type="radio"
+                value="all"
               />
+              {getMessage(messages, "admin.announcements.form.audience_all")}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                checked={audienceType === "selected"}
+                name="audience_type"
+                onChange={handleAudienceTypeChange}
+                type="radio"
+                value="selected"
+              />
+              {getMessage(
+                messages,
+                "admin.announcements.form.audience_selected"
+              )}
+            </label>
+          </div>
+        </FieldContent>
+      </Field>
+
+      {audienceType === "selected" ? (
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.announcements.form.target_users")}
+          </FieldLabel>
+          <FieldContent>
+            {usersErrorMessage ? (
+              <FormMessage variant="destructive">
+                {usersErrorMessage}
+              </FormMessage>
+            ) : null}
+
+            {sortedUsers.length === 0 ? (
               <FieldDescription>
                 {getMessage(
                   messages,
-                  "admin.announcements.form.link_description"
+                  "admin.announcements.form.target_users_unavailable"
                 )}
               </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel required>
-              {getMessage(messages, "admin.announcements.form.audience")}
-            </FieldLabel>
-            <FieldContent>
-              <div className="grid gap-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    checked={audienceType === "all"}
-                    name="audience_type"
-                    onChange={handleAudienceTypeChange}
-                    type="radio"
-                    value="all"
-                  />
-                  {getMessage(
-                    messages,
-                    "admin.announcements.form.audience_all"
-                  )}
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    checked={audienceType === "selected"}
-                    name="audience_type"
-                    onChange={handleAudienceTypeChange}
-                    type="radio"
-                    value="selected"
-                  />
-                  {getMessage(
-                    messages,
-                    "admin.announcements.form.audience_selected"
-                  )}
-                </label>
+            ) : (
+              <div className="max-h-72 overflow-y-auto border border-border p-3">
+                <div className="grid gap-2">
+                  {sortedUsers.map((user) => (
+                    <label
+                      className="flex items-center gap-2 text-sm"
+                      key={user.publicId}
+                    >
+                      <input
+                        checked={selectedUserIdSet.has(user.publicId)}
+                        onChange={handleUserToggle}
+                        type="checkbox"
+                        value={user.publicId}
+                      />
+                      {getMessage(
+                        messages,
+                        "admin.announcements.form.user_option",
+                        { id: user.publicId, name: user.name }
+                      )}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </FieldContent>
-          </Field>
+            )}
 
-          {audienceType === "selected" ? (
-            <Field>
-              <FieldLabel>
-                {getMessage(messages, "admin.announcements.form.target_users")}
-              </FieldLabel>
-              <FieldContent>
-                {usersErrorMessage ? (
-                  <FormMessage variant="destructive">
-                    {usersErrorMessage}
-                  </FormMessage>
-                ) : null}
+            {selectedUserIds.map((publicId) => (
+              <input
+                key={publicId}
+                name="target_user_public_ids"
+                type="hidden"
+                value={publicId}
+              />
+            ))}
+          </FieldContent>
+        </Field>
+      ) : null}
 
-                {sortedUsers.length === 0 ? (
-                  <FieldDescription>
-                    {getMessage(
-                      messages,
-                      "admin.announcements.form.target_users_unavailable"
-                    )}
-                  </FieldDescription>
-                ) : (
-                  <div className="max-h-72 overflow-y-auto rounded-lg border border-border/70 p-3">
-                    <div className="grid gap-2">
-                      {sortedUsers.map((user) => (
-                        <label
-                          className="flex items-center gap-2 text-sm"
-                          key={user.publicId}
-                        >
-                          <input
-                            checked={selectedUserIdSet.has(user.publicId)}
-                            onChange={handleUserToggle}
-                            type="checkbox"
-                            value={user.publicId}
-                          />
-                          {getMessage(
-                            messages,
-                            "admin.announcements.form.user_option",
-                            { id: user.publicId, name: user.name }
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+      {state ? (
+        <FormMessage variant={state.ok ? "success" : "destructive"}>
+          {state.message}
+        </FormMessage>
+      ) : null}
 
-                {selectedUserIds.map((publicId) => (
-                  <input
-                    key={publicId}
-                    name="target_user_public_ids"
-                    type="hidden"
-                    value={publicId}
-                  />
-                ))}
-              </FieldContent>
-            </Field>
-          ) : null}
-
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
-
-          <div className="flex justify-end">
-            <Button disabled={isPending} type="submit">
-              {isPending
-                ? getMessage(messages, "admin.announcements.form.submitting")
-                : getMessage(messages, "admin.announcements.form.submit")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      <div className="flex justify-end">
+        <Button disabled={isPending} type="submit">
+          {isPending
+            ? getMessage(messages, "admin.announcements.form.submitting")
+            : getMessage(messages, "admin.announcements.form.submit")}
+        </Button>
+      </div>
+    </form>
   );
 };

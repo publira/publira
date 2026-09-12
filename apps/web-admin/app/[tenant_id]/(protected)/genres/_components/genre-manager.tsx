@@ -2,13 +2,6 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   EmptyState,
   EmptyStateDescription,
   EmptyStateHeading,
@@ -24,6 +17,14 @@ import {
 } from "@publira/ui-components/section-error";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSections,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 
 import { createGenreAction } from "../_lib/actions";
@@ -89,63 +90,63 @@ export const GenreManager = ({
   const messages = sharedCatalog(locale);
 
   return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {getMessage(messages, "admin.genres.create_card_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.genres.create_description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ActionForm action={createGenreAction} className="grid gap-4">
-            <input name="tenant_id" type="hidden" value={tenantId} />
-            <Field>
-              <FieldLabel required>
-                {getMessage(messages, "admin.genres.form.name")}
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  className="sm:max-w-sm"
-                  maxLength={CATALOG_NAME_MAX_LENGTH}
-                  name="name"
-                  placeholder={getMessage(
-                    messages,
-                    "admin.genres.form.name_placeholder"
-                  )}
-                  required
-                  type="text"
-                />
-              </FieldContent>
-            </Field>
-            <div className="flex justify-end">
-              <ActionFormSubmit>
-                {getMessage(messages, "admin.genres.create_action")}
-              </ActionFormSubmit>
-            </div>
-          </ActionForm>
-        </CardContent>
-      </Card>
+    <AdminSections>
+      <AdminSection>
+        <AdminSectionHeader>
+          <AdminSectionHeading>
+            <AdminSectionTitle>
+              {getMessage(messages, "admin.genres.create_card_title")}
+            </AdminSectionTitle>
+            <AdminSectionDescription>
+              {getMessage(messages, "admin.genres.create_description")}
+            </AdminSectionDescription>
+          </AdminSectionHeading>
+        </AdminSectionHeader>
+        <ActionForm action={createGenreAction} className="grid gap-4">
+          <input name="tenant_id" type="hidden" value={tenantId} />
+          <Field>
+            <FieldLabel required>
+              {getMessage(messages, "admin.genres.form.name")}
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                className="sm:max-w-sm"
+                maxLength={CATALOG_NAME_MAX_LENGTH}
+                name="name"
+                placeholder={getMessage(
+                  messages,
+                  "admin.genres.form.name_placeholder"
+                )}
+                required
+                type="text"
+              />
+            </FieldContent>
+          </Field>
+          <div className="flex justify-end">
+            <ActionFormSubmit>
+              {getMessage(messages, "admin.genres.create_action")}
+            </ActionFormSubmit>
+          </div>
+        </ActionForm>
+      </AdminSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {getMessage(messages, "admin.genres.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.genres.list_description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <GenreListBody
-            genres={genres}
-            listErrorMessage={listErrorMessage}
-            locale={locale}
-          />
-        </CardContent>
-      </Card>
-    </div>
+      <AdminSection>
+        <AdminSectionHeader>
+          <AdminSectionHeading>
+            <AdminSectionTitle>
+              {getMessage(messages, "admin.genres.list_title")}
+            </AdminSectionTitle>
+            <AdminSectionDescription>
+              {getMessage(messages, "admin.genres.list_description")}
+            </AdminSectionDescription>
+          </AdminSectionHeading>
+        </AdminSectionHeader>
+        <GenreListBody
+          genres={genres}
+          listErrorMessage={listErrorMessage}
+          locale={locale}
+        />
+      </AdminSection>
+    </AdminSections>
   );
 };

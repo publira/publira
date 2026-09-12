@@ -126,7 +126,7 @@ Implementation:
 | --- | --- | --- |
 | `Detect changes` | Evaluate path filters and select jobs and Docker matrix entries. | This file |
 | `Lint and Format` | `pnpm check` across every file type that oxfmt supports. | [`AGENTS.md`](../../AGENTS.md) |
-| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; package builds; `pnpm typegen`, literal-`<svg>` grep, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
+| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; package builds; `pnpm typegen`, literal-`<svg>` grep, the design-token guard, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
 | `Lint / Go` | `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test` after package builds, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. Starts a Valkey service so `@publira/next-cache-handlers` Redis integration tests run. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
@@ -249,7 +249,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | Job | Local command |
    | --- | --- |
    | `Lint and Format` | `pnpm check` |
-   | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, package build, `pnpm typegen`, and `pnpm typecheck` |
+   | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, package build, `pnpm typegen`, `node scripts/check-design-tokens.ts`, and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm build --filter "./packages/*"`, then `pnpm test` and `pnpm test:scripts` |
    | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. `scripts/check-migration-order.sh` reproduces the ordering guard; an append-only failure is not reproduced locally — restore the migration and add a new one instead |

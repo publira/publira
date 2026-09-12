@@ -3,7 +3,6 @@
 import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
-import { Card, CardContent } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   useActionState,
@@ -26,7 +25,7 @@ interface SeriesEyeCatchFormProps {
   initialSeries: SeriesListItem;
   /**
    * The mode the series states of its own, empty while it follows its
-   * tenant's. This card edits the eye-catch alone, but the Action behind it is
+   * tenant's. This form edits the eye-catch alone, but the Action behind it is
    * `UpdateSeries`, which writes the whole listing row — so the mode rides
    * along untouched rather than being reset by an image upload.
    */
@@ -93,109 +92,92 @@ export const SeriesEyeCatchForm = ({
   }, []);
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <form action={formAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input
-            name="public_id"
-            type="hidden"
-            value={initialSeries.publicId}
-          />
-          <input name="title" type="hidden" value={initialSeries.title} />
-          <input name="synopsis" type="hidden" value={initialSeries.synopsis} />
-          <input
-            name="reading_period_hours"
-            type="hidden"
-            value={String(initialSeries.readingPeriodHours)}
-          />
-          <input
-            name="label_public_id"
-            type="hidden"
-            value={initialSeries.labelPublicId}
-          />
-          <input
-            name="published_at"
-            type="hidden"
-            value={initialSeries.publishedAt}
-          />
-          <input
-            name="current_eye_catch_image_updated_at"
-            type="hidden"
-            value={effectiveSeries.eyeCatchImageUpdatedAt}
-          />
-          <input name="status" type="hidden" value={initialSeries.status} />
-          <input
-            name="age_rating"
-            type="hidden"
-            value={initialSeries.ageRating}
-          />
-          <input name="comment_mode" type="hidden" value={commentMode} />
-          {initialSeries.scheduleWeekdays.map((weekday) => (
-            <input
-              key={weekday}
-              name="schedule_weekdays"
-              type="hidden"
-              value={String(weekday)}
-            />
-          ))}
-          {initialSeries.genrePublicIds.map((publicId) => (
-            <input
-              key={publicId}
-              name="genre_public_ids"
-              type="hidden"
-              value={publicId}
-            />
-          ))}
-          {initialSeries.tagNames.map((tagName) => (
-            <input
-              key={tagName}
-              name="tag_names"
-              type="hidden"
-              value={tagName}
-            />
-          ))}
-          {initialSeries.creatorPublicIds.map((publicId) => (
-            <input
-              key={publicId}
-              name="creator_public_ids"
-              type="hidden"
-              value={publicId}
-            />
-          ))}
-          {initialSeries.isPublished ? (
-            <input name="is_published" type="hidden" value="on" />
-          ) : null}
+    <form action={formAction} className="grid gap-4">
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="public_id" type="hidden" value={initialSeries.publicId} />
+      <input name="title" type="hidden" value={initialSeries.title} />
+      <input name="synopsis" type="hidden" value={initialSeries.synopsis} />
+      <input
+        name="reading_period_hours"
+        type="hidden"
+        value={String(initialSeries.readingPeriodHours)}
+      />
+      <input
+        name="label_public_id"
+        type="hidden"
+        value={initialSeries.labelPublicId}
+      />
+      <input
+        name="published_at"
+        type="hidden"
+        value={initialSeries.publishedAt}
+      />
+      <input
+        name="current_eye_catch_image_updated_at"
+        type="hidden"
+        value={effectiveSeries.eyeCatchImageUpdatedAt}
+      />
+      <input name="status" type="hidden" value={initialSeries.status} />
+      <input name="age_rating" type="hidden" value={initialSeries.ageRating} />
+      <input name="comment_mode" type="hidden" value={commentMode} />
+      {initialSeries.scheduleWeekdays.map((weekday) => (
+        <input
+          key={weekday}
+          name="schedule_weekdays"
+          type="hidden"
+          value={String(weekday)}
+        />
+      ))}
+      {initialSeries.genrePublicIds.map((publicId) => (
+        <input
+          key={publicId}
+          name="genre_public_ids"
+          type="hidden"
+          value={publicId}
+        />
+      ))}
+      {initialSeries.tagNames.map((tagName) => (
+        <input key={tagName} name="tag_names" type="hidden" value={tagName} />
+      ))}
+      {initialSeries.creatorPublicIds.map((publicId) => (
+        <input
+          key={publicId}
+          name="creator_public_ids"
+          type="hidden"
+          value={publicId}
+        />
+      ))}
+      {initialSeries.isPublished ? (
+        <input name="is_published" type="hidden" value="on" />
+      ) : null}
 
-          <EyeCatchImageField
-            clearEyeCatchImage={clearEyeCatchImage}
-            fileInputId="series_eye_catch_image"
-            fileInputRef={fileInputRef}
-            hasVariants={hasVariants}
-            localPreviewUrl={localPreviewUrl}
-            onDeleteToggle={handleDeleteToggle}
-            onImageFileChange={handleImageFileChange}
-            onVariantImageClick={handleVariantImageClick}
-            onVariantTypeChange={setSelectedVariantType}
-            selectedVariantType={selectedVariantType}
-            variants={variants}
-          />
+      <EyeCatchImageField
+        clearEyeCatchImage={clearEyeCatchImage}
+        fileInputId="series_eye_catch_image"
+        fileInputRef={fileInputRef}
+        hasVariants={hasVariants}
+        localPreviewUrl={localPreviewUrl}
+        onDeleteToggle={handleDeleteToggle}
+        onImageFileChange={handleImageFileChange}
+        onVariantImageClick={handleVariantImageClick}
+        onVariantTypeChange={setSelectedVariantType}
+        selectedVariantType={selectedVariantType}
+        variants={variants}
+      />
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+      {state ? (
+        <FormMessage variant={state.ok ? "success" : "destructive"}>
+          {state.message}
+        </FormMessage>
+      ) : null}
 
-          <div className="flex justify-end">
-            <Button disabled={isPending} type="submit">
-              {isPending
-                ? getMessage(messages, "admin.series.form.submitting")
-                : getMessage(messages, "admin.series.form.eye_catch_update")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      <div className="flex justify-end">
+        <Button disabled={isPending} type="submit">
+          {isPending
+            ? getMessage(messages, "admin.series.form.submitting")
+            : getMessage(messages, "admin.series.form.eye_catch_update")}
+        </Button>
+      </div>
+    </form>
   );
 };

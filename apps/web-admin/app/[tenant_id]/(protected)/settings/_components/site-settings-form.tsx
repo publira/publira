@@ -4,13 +4,6 @@ import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -22,6 +15,13 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useContext, useState } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import type { TenantSiteSettings } from "#lib/site-settings";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -76,106 +76,103 @@ export const SiteSettingsForm = ({
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getMessage(messages, "admin.settings.site.title")}
-        </CardTitle>
-        <CardDescription>
-          {getMessage(messages, "admin.settings.site.description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            {getMessage(messages, "admin.settings.site.title")}
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            {getMessage(messages, "admin.settings.site.description")}
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <form action={formAction} className="grid gap-4">
+        <input name="tenant_id" type="hidden" value={tenantId} />
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.settings.site.copyright")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="copyright_text"
-                onChange={handleCopyrightTextChange}
-                placeholder={getMessage(
-                  messages,
-                  "admin.settings.site.copyright_placeholder"
-                )}
-                type="text"
-                value={copyrightText}
-              />
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.settings.site.copyright_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.site.copyright")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="copyright_text"
+              onChange={handleCopyrightTextChange}
+              placeholder={getMessage(
+                messages,
+                "admin.settings.site.copyright_placeholder"
+              )}
+              type="text"
+              value={copyrightText}
+            />
+            <FieldDescription>
+              {getMessage(
+                messages,
+                "admin.settings.site.copyright_description"
+              )}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.settings.site.tagline")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="site_tagline"
-                onChange={handleSiteTaglineChange}
-                placeholder={getMessage(
-                  messages,
-                  "admin.settings.site.tagline_placeholder"
-                )}
-                type="text"
-                value={siteTagline}
-              />
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.settings.site.tagline_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.site.tagline")}
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="site_tagline"
+              onChange={handleSiteTaglineChange}
+              placeholder={getMessage(
+                messages,
+                "admin.settings.site.tagline_placeholder"
+              )}
+              type="text"
+              value={siteTagline}
+            />
+            <FieldDescription>
+              {getMessage(messages, "admin.settings.site.tagline_description")}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-          <Field>
-            <FieldLabel>
-              {getMessage(messages, "admin.settings.site.site_description")}
-            </FieldLabel>
-            <FieldContent>
-              <Textarea
-                name="site_description"
-                onChange={handleSiteDescriptionChange}
-                placeholder={getMessage(
-                  messages,
-                  "admin.settings.site.site_description_placeholder"
-                )}
-                rows={3}
-                value={siteDescription}
-              />
-              <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.settings.site.site_description_description"
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+        <Field>
+          <FieldLabel>
+            {getMessage(messages, "admin.settings.site.site_description")}
+          </FieldLabel>
+          <FieldContent>
+            <Textarea
+              name="site_description"
+              onChange={handleSiteDescriptionChange}
+              placeholder={getMessage(
+                messages,
+                "admin.settings.site.site_description_placeholder"
+              )}
+              rows={3}
+              value={siteDescription}
+            />
+            <FieldDescription>
+              {getMessage(
+                messages,
+                "admin.settings.site.site_description_description"
+              )}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
+        {state ? (
+          <FormMessage variant={state.ok ? "success" : "destructive"}>
+            {state.message}
+          </FormMessage>
+        ) : null}
 
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={isPending} type="submit">
-              {isPending
-                ? getMessage(messages, "admin.settings.saving")
-                : getMessage(messages, "admin.settings.site.submit")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button disabled={isPending} type="submit">
+            {isPending
+              ? getMessage(messages, "admin.settings.saving")
+              : getMessage(messages, "admin.settings.site.submit")}
+          </Button>
+        </div>
+      </form>
+    </AdminSection>
   );
 };

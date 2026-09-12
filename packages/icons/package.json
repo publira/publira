@@ -51,6 +51,10 @@
       "types": "./dist/comment-icon.d.mts",
       "default": "./dist/comment-icon.mjs"
     },
+    "./copy-icon": {
+      "types": "./dist/copy-icon.d.mts",
+      "default": "./dist/copy-icon.mjs"
+    },
     "./dashboard-icon": {
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"

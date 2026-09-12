@@ -1,11 +1,4 @@
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   EmptyState,
   EmptyStateDescription,
   EmptyStateHeading,
@@ -22,6 +15,14 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSections,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { Message } from "#components/message";
 
 import { createCreatorRoleAction } from "../_lib/actions";
@@ -90,67 +91,67 @@ export const CreatorRoleManager = ({
   listErrorMessage,
   tenantId,
 }: CreatorRoleManagerProps) => (
-  <div className="grid gap-6">
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <Suspense fallback={<SkeletonLine className="h-6 w-28" />}>
-            <Message message="admin.creator_roles.create_card_title" />
-          </Suspense>
-        </CardTitle>
-        <CardDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-            <Message message="admin.creator_roles.create_description" />
-          </Suspense>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ActionForm action={createCreatorRoleAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <Field>
-            <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="admin.creator_roles.form.name" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <Suspense
-                fallback={<Skeleton className="h-9 w-full sm:max-w-sm" />}
-              >
-                <CreatorRoleNameInput />
-              </Suspense>
-            </FieldContent>
-          </Field>
-          <div className="flex justify-end">
-            <ActionFormSubmit>
-              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="admin.creator_roles.create_action" />
-              </Suspense>
-            </ActionFormSubmit>
-          </div>
-        </ActionForm>
-      </CardContent>
-    </Card>
+  <AdminSections>
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            <Suspense fallback={<SkeletonLine className="h-6 w-28" />}>
+              <Message message="admin.creator_roles.create_card_title" />
+            </Suspense>
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="admin.creator_roles.create_description" />
+            </Suspense>
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <ActionForm action={createCreatorRoleAction} className="grid gap-4">
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <Field>
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.creator_roles.form.name" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Suspense
+              fallback={<Skeleton className="h-9 w-full sm:max-w-sm" />}
+            >
+              <CreatorRoleNameInput />
+            </Suspense>
+          </FieldContent>
+        </Field>
+        <div className="flex justify-end">
+          <ActionFormSubmit>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.creator_roles.create_action" />
+            </Suspense>
+          </ActionFormSubmit>
+        </div>
+      </ActionForm>
+    </AdminSection>
 
-    <Card>
-      <CardHeader>
-        <CardTitle id={CREATOR_ROLE_LIST_TITLE_ID}>
-          <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
-            <Message message="admin.creator_roles.list_title" />
-          </Suspense>
-        </CardTitle>
-        <CardDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.creator_roles.list_description" />
-          </Suspense>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <CreatorRoleListBody
-          creatorRoles={creatorRoles}
-          listErrorMessage={listErrorMessage}
-        />
-      </CardContent>
-    </Card>
-  </div>
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle id={CREATOR_ROLE_LIST_TITLE_ID}>
+            <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+              <Message message="admin.creator_roles.list_title" />
+            </Suspense>
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="admin.creator_roles.list_description" />
+            </Suspense>
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <CreatorRoleListBody
+        creatorRoles={creatorRoles}
+        listErrorMessage={listErrorMessage}
+      />
+    </AdminSection>
+  </AdminSections>
 );

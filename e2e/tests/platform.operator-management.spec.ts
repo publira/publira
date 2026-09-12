@@ -295,13 +295,16 @@ test.describe("platform operator management", () => {
       page.getByRole("heading", { level: 1, name: "Users" })
     ).toBeVisible();
 
+    // The list names each reader rather than showing their public id: an
+    // identifier belongs on the detail screen, which is where this test picks
+    // it up again below.
     await expect(
-      listRow(page, SEED_MEMBER_PUBLIC_ID).getByRole("link", {
+      listRow(page, SEED_MEMBER.name).getByRole("link", {
         name: SEED_TENANT.name,
       })
     ).toHaveAttribute("href", `/tenants/${SEED_TENANT.publicId}`);
     await expect(
-      listRow(page, NOTIFICATION_INBOX_MEMBER.publicId).getByRole("link", {
+      listRow(page, NOTIFICATION_INBOX_MEMBER.name).getByRole("link", {
         name: NOTIFICATION_INBOX_TENANT.name,
       })
     ).toHaveAttribute("href", `/tenants/${NOTIFICATION_INBOX_TENANT.publicId}`);
@@ -312,13 +315,11 @@ test.describe("platform operator management", () => {
       .getByRole("searchbox", { name: "Search tenants" })
       .fill(NOTIFICATION_INBOX_TENANT.name);
     await page.getByRole("button", { name: "Filter" }).click();
-    await expect(
-      listRow(page, NOTIFICATION_INBOX_MEMBER.publicId)
-    ).toBeVisible();
-    await expect(listRow(page, SEED_MEMBER_PUBLIC_ID)).toHaveCount(0);
+    await expect(listRow(page, NOTIFICATION_INBOX_MEMBER.name)).toBeVisible();
+    await expect(listRow(page, SEED_MEMBER.name)).toHaveCount(0);
 
     await page.goto(platformUrl(listPath));
-    await listRow(page, SEED_MEMBER_PUBLIC_ID)
+    await listRow(page, SEED_MEMBER.name)
       .getByRole("link", { name: "Details" })
       .click();
 

@@ -33,9 +33,12 @@ test.describe("web-platform notification bell", () => {
     const more = menu.getByRole("link", { name: "View all" });
     await expect(more).toHaveAttribute("href", "/notifications");
     await Promise.all([page.waitForURL(/\/notifications\/?$/u), more.click()]);
+    // Scoped to the page body: the menu titles itself "Notifications" too, and
+    // it is still closing its way out of the document as the screen arrives.
+    const main = page.getByRole("main");
     await expect(
-      page.getByRole("heading", { exact: true, name: "Notifications" })
+      main.getByRole("heading", { exact: true, name: "Notifications" })
     ).toBeVisible();
-    await expect(page.getByText("No notifications yet.")).toBeVisible();
+    await expect(main.getByText("No notifications yet.")).toBeVisible();
   });
 });

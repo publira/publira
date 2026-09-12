@@ -1,5 +1,4 @@
 import { getMessage } from "@publira/i18n";
-import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -12,6 +11,7 @@ import {
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
+  PlatformSection,
 } from "#components/platform-page";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformEmailSettings } from "#lib/email-settings";
@@ -52,18 +52,13 @@ const tabLabel = (
 );
 
 const EmailSettingsFormSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <Skeleton className="h-6 w-32" />
-      <Skeleton className="h-4 w-3/4" />
-    </CardHeader>
-    <CardContent className="grid gap-5 sm:max-w-3xl">
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-9 w-full" />
-      <Skeleton className="h-9 w-40" />
-    </CardContent>
-  </Card>
+  <PlatformSection>
+    <SkeletonLine className="h-5 w-40" />
+    <Skeleton className="h-9 w-full" />
+    <Skeleton className="h-9 w-full" />
+    <Skeleton className="h-9 w-full" />
+    <Skeleton className="h-9 w-40" />
+  </PlatformSection>
 );
 
 const EmailSettingsSection = async () => {

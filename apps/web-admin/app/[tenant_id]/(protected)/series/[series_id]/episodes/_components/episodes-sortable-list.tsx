@@ -173,7 +173,7 @@ export const EpisodesSortableList = ({
     <div className="grid gap-3">
       {optimisticItems.map((episode) => (
         <div
-          className="flex cursor-move items-center justify-between rounded-lg border border-border/70 bg-background px-4 py-3"
+          className="flex cursor-move items-center justify-between border border-border bg-background px-4 py-3"
           data-episode-id={episode.publicId}
           data-pending={isPending ? "true" : undefined}
           draggable={!isPending}

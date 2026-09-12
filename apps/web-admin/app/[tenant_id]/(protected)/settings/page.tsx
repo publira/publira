@@ -5,7 +5,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -17,6 +17,8 @@ import {
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
+  AdminSection,
+  AdminSections,
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -54,32 +56,28 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const SettingsFormsSkeleton = () => (
-  <div className="grid gap-6">
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
-      <div className="grid gap-3">
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-        <div className="h-24 animate-pulse rounded bg-muted/70" />
-        <div className="h-10 animate-pulse rounded bg-muted/70" />
-      </div>
-    </div>
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
-      <div className="h-10 animate-pulse rounded bg-muted/70" />
-    </div>
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
-      <div className="h-10 animate-pulse rounded bg-muted/70" />
-    </div>
-    <div className="rounded-2xl border border-border/70 bg-card p-6">
-      <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
-      <div className="grid gap-2">
-        <div className="h-12 animate-pulse rounded bg-muted/70" />
-        <div className="h-12 animate-pulse rounded bg-muted/70" />
-        <div className="h-12 animate-pulse rounded bg-muted/70" />
-      </div>
-    </div>
-  </div>
+  <AdminSections>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-40" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-24" />
+      <Skeleton className="h-10" />
+    </AdminSection>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-32" />
+      <Skeleton className="h-10" />
+    </AdminSection>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-32" />
+      <Skeleton className="h-10" />
+    </AdminSection>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-40" />
+      <Skeleton className="h-12" />
+      <Skeleton className="h-12" />
+      <Skeleton className="h-12" />
+    </AdminSection>
+  </AdminSections>
 );
 
 const tenantDefaultLocaleOptions = (): TenantDefaultLocaleFormOption[] =>
@@ -121,7 +119,7 @@ const SettingsForms = async () => {
   );
 
   return (
-    <>
+    <AdminSections>
       {settingsResult.ok ? (
         <SiteSettingsForm
           action={updateSiteSettingsAction}
@@ -173,7 +171,7 @@ const SettingsForms = async () => {
           commentSettingsResult.ok ? undefined : commentSettingsResult.message
         }
       />
-    </>
+    </AdminSections>
   );
 };
 

@@ -6,13 +6,6 @@ import type { FormActionState } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   ConfirmDialog,
   ConfirmDialogAction,
   ConfirmDialogCancel,
@@ -65,6 +58,14 @@ import {
 
 import { useClientMessages } from "#components/client-message";
 import { PaginationControls } from "#components/pagination-controls";
+import {
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSections,
+  PlatformSectionTitle,
+} from "#components/platform-page";
 import {
   getInvitationStatusLabel,
   getTenantRoleLabel,
@@ -530,7 +531,7 @@ const TenantMemberRoleDialog = ({
                     {copy.roleOptions.map((roleOption) => (
                       <label
                         key={roleOption.value}
-                        className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-control border border-input bg-background px-3 py-2 text-sm text-foreground"
                       >
                         <input
                           defaultChecked={member.role === roleOption.value}
@@ -873,195 +874,202 @@ export const TenantMembersManager = ({
 
   return (
     <TenantMembersLabelsContext value={copy}>
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{copy.inviteAdminTitle}</CardTitle>
-            <CardDescription>{copy.inviteAdminDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={createInviteAction} className="grid gap-4">
-              <input name="tenant_id" type="hidden" value={tenantId} />
-              <Field>
-                <FieldLabel required>{copy.inviteAdminEmail}</FieldLabel>
-                <FieldContent>
-                  <Input
-                    name="invite_email"
-                    placeholder="admin@example.com"
-                    required
-                    type="email"
-                  />
-                </FieldContent>
-              </Field>
-
-              {inviteState ? (
-                <FormMessage
-                  variant={inviteState.ok ? "success" : "destructive"}
-                >
-                  {inviteState.message}
-                </FormMessage>
-              ) : null}
-
-              <div className="flex justify-end">
-                <Button
-                  disabled={isInvitePending}
-                  type="submit"
-                  variant="outline"
-                >
-                  {isInvitePending ? copy.inviteAdminPending : copy.inviteAdmin}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{copy.membersListTitle}</CardTitle>
-            <CardDescription>{copy.membersListDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            {deleteState ? (
-              <FormMessage variant={deleteState.ok ? "success" : "destructive"}>
-                {deleteState.message}
-              </FormMessage>
-            ) : null}
-            {membersErrorMessage ? (
-              <SectionError>
-                <SectionErrorHeading>
-                  <SectionErrorTitle>
-                    {copy.membersListFailed}
-                  </SectionErrorTitle>
-                  <SectionErrorDescription>
-                    {membersErrorMessage}
-                  </SectionErrorDescription>
-                </SectionErrorHeading>
-              </SectionError>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{copy.membersColumnsName}</TableHead>
-                      <TableHead>{copy.membersColumnsEmail}</TableHead>
-                      <TableHead>{copy.membersColumnsRole}</TableHead>
-                      <TableHead>{copy.membersColumnsStatus}</TableHead>
-                      <TableHead>{copy.membersColumnsCreated}</TableHead>
-                      <TableHead className="w-56">
-                        {copy.membersColumnsActions}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {members.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          className="text-muted-foreground"
-                          colSpan={6}
-                        >
-                          {copy.membersEmpty}
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
-                    {members.map((member) => (
-                      <TenantMemberRow
-                        key={member.userPublicId || member.email}
-                        locale={locale}
-                        member={member}
-                        removeAction={removeAction}
-                        setDeleteState={setDeleteState}
-                        tenantId={tenantId}
-                        timeZone={timeZone}
-                        updateRoleAction={updateRoleAction}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-                <PaginationControls
-                  ariaLabel={copy.membersAria}
-                  nextHref={membersNextHref}
-                  nextLabel={copy.next}
-                  previousHref={membersPreviousHref}
-                  previousLabel={copy.previous}
+      <PlatformSections>
+        <PlatformSection>
+          <PlatformSectionHeader>
+            <PlatformSectionHeading>
+              <PlatformSectionTitle>
+                {copy.inviteAdminTitle}
+              </PlatformSectionTitle>
+              <PlatformSectionDescription>
+                {copy.inviteAdminDescription}
+              </PlatformSectionDescription>
+            </PlatformSectionHeading>
+          </PlatformSectionHeader>
+          <form action={createInviteAction} className="grid gap-4">
+            <input name="tenant_id" type="hidden" value={tenantId} />
+            <Field>
+              <FieldLabel required>{copy.inviteAdminEmail}</FieldLabel>
+              <FieldContent>
+                <Input
+                  name="invite_email"
+                  placeholder="admin@example.com"
+                  required
+                  type="email"
                 />
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </FieldContent>
+            </Field>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{copy.addTitle}</CardTitle>
-            <CardDescription>{copy.addDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={addFormAction} className="grid gap-4">
-              <input name="tenant_id" type="hidden" value={tenantId} />
-              <Field>
-                <FieldLabel required>{copy.addEmailLabel}</FieldLabel>
-                <FieldContent>
-                  <Input
-                    name="member_email"
-                    placeholder="member@example.com"
-                    required
-                    type="email"
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel required>{copy.role}</FieldLabel>
-                <FieldContent>
-                  <Select
-                    defaultValue="tenant_admin"
-                    items={copy.roleOptions}
-                    name="member_role"
-                    required
-                  />
-                </FieldContent>
-              </Field>
-              {addState ? (
-                <FormMessage variant={addState.ok ? "success" : "destructive"}>
-                  {addState.message}
-                </FormMessage>
-              ) : null}
-              <div className="flex justify-end">
-                <Button disabled={isAddPending} type="submit" variant="outline">
-                  {isAddPending ? copy.addPending : copy.addSubmit}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{copy.invitationsTitle}</CardTitle>
-            <CardDescription>{copy.invitationsDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            {invitationActionState ? (
-              <FormMessage
-                variant={invitationActionState.ok ? "success" : "destructive"}
-              >
-                {invitationActionState.message}
+            {inviteState ? (
+              <FormMessage variant={inviteState.ok ? "success" : "destructive"}>
+                {inviteState.message}
               </FormMessage>
             ) : null}
 
-            <TenantInvitationsSection
-              invitationErrorMessage={invitationErrorMessage}
-              invitations={invitations}
-              invitationsNextHref={invitationsNextHref}
-              invitationsPreviousHref={invitationsPreviousHref}
-              isCancelPending={isCancelPending}
-              isResendPending={isResendPending}
-              locale={locale}
-              onCancel={handleCancel}
-              onResend={handleResend}
-              timeZone={timeZone}
-            />
-          </CardContent>
-        </Card>
-      </div>
+            <div className="flex justify-end">
+              <Button
+                disabled={isInvitePending}
+                type="submit"
+                variant="outline"
+              >
+                {isInvitePending ? copy.inviteAdminPending : copy.inviteAdmin}
+              </Button>
+            </div>
+          </form>
+        </PlatformSection>
+
+        <PlatformSection>
+          <PlatformSectionHeader>
+            <PlatformSectionHeading>
+              <PlatformSectionTitle>
+                {copy.membersListTitle}
+              </PlatformSectionTitle>
+              <PlatformSectionDescription>
+                {copy.membersListDescription}
+              </PlatformSectionDescription>
+            </PlatformSectionHeading>
+          </PlatformSectionHeader>
+          {deleteState ? (
+            <FormMessage variant={deleteState.ok ? "success" : "destructive"}>
+              {deleteState.message}
+            </FormMessage>
+          ) : null}
+          {membersErrorMessage ? (
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>{copy.membersListFailed}</SectionErrorTitle>
+                <SectionErrorDescription>
+                  {membersErrorMessage}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{copy.membersColumnsName}</TableHead>
+                    <TableHead>{copy.membersColumnsEmail}</TableHead>
+                    <TableHead>{copy.membersColumnsRole}</TableHead>
+                    <TableHead>{copy.membersColumnsStatus}</TableHead>
+                    <TableHead>{copy.membersColumnsCreated}</TableHead>
+                    <TableHead className="w-56">
+                      {copy.membersColumnsActions}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="text-muted-foreground" colSpan={6}>
+                        {copy.membersEmpty}
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {members.map((member) => (
+                    <TenantMemberRow
+                      key={member.userPublicId || member.email}
+                      locale={locale}
+                      member={member}
+                      removeAction={removeAction}
+                      setDeleteState={setDeleteState}
+                      tenantId={tenantId}
+                      timeZone={timeZone}
+                      updateRoleAction={updateRoleAction}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+              <PaginationControls
+                ariaLabel={copy.membersAria}
+                nextHref={membersNextHref}
+                nextLabel={copy.next}
+                previousHref={membersPreviousHref}
+                previousLabel={copy.previous}
+              />
+            </>
+          )}
+        </PlatformSection>
+
+        <PlatformSection>
+          <PlatformSectionHeader>
+            <PlatformSectionHeading>
+              <PlatformSectionTitle>{copy.addTitle}</PlatformSectionTitle>
+              <PlatformSectionDescription>
+                {copy.addDescription}
+              </PlatformSectionDescription>
+            </PlatformSectionHeading>
+          </PlatformSectionHeader>
+          <form action={addFormAction} className="grid gap-4">
+            <input name="tenant_id" type="hidden" value={tenantId} />
+            <Field>
+              <FieldLabel required>{copy.addEmailLabel}</FieldLabel>
+              <FieldContent>
+                <Input
+                  name="member_email"
+                  placeholder="member@example.com"
+                  required
+                  type="email"
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel required>{copy.role}</FieldLabel>
+              <FieldContent>
+                <Select
+                  defaultValue="tenant_admin"
+                  items={copy.roleOptions}
+                  name="member_role"
+                  required
+                />
+              </FieldContent>
+            </Field>
+            {addState ? (
+              <FormMessage variant={addState.ok ? "success" : "destructive"}>
+                {addState.message}
+              </FormMessage>
+            ) : null}
+            <div className="flex justify-end">
+              <Button disabled={isAddPending} type="submit" variant="outline">
+                {isAddPending ? copy.addPending : copy.addSubmit}
+              </Button>
+            </div>
+          </form>
+        </PlatformSection>
+
+        <PlatformSection>
+          <PlatformSectionHeader>
+            <PlatformSectionHeading>
+              <PlatformSectionTitle>
+                {copy.invitationsTitle}
+              </PlatformSectionTitle>
+              <PlatformSectionDescription>
+                {copy.invitationsDescription}
+              </PlatformSectionDescription>
+            </PlatformSectionHeading>
+          </PlatformSectionHeader>
+          {invitationActionState ? (
+            <FormMessage
+              variant={invitationActionState.ok ? "success" : "destructive"}
+            >
+              {invitationActionState.message}
+            </FormMessage>
+          ) : null}
+
+          <TenantInvitationsSection
+            invitationErrorMessage={invitationErrorMessage}
+            invitations={invitations}
+            invitationsNextHref={invitationsNextHref}
+            invitationsPreviousHref={invitationsPreviousHref}
+            isCancelPending={isCancelPending}
+            isResendPending={isResendPending}
+            locale={locale}
+            onCancel={handleCancel}
+            onResend={handleResend}
+            timeZone={timeZone}
+          />
+        </PlatformSection>
+      </PlatformSections>
     </TenantMembersLabelsContext>
   );
 };

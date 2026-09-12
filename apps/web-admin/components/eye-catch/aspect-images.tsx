@@ -3,7 +3,6 @@
 import { getMessage } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
-import { Card, CardContent } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { cn } from "@publira/utils";
@@ -11,6 +10,13 @@ import type { ChangeEventHandler, ReactEventHandler } from "react";
 import { useActionState, useContext, useEffect, useRef, useState } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import type { CropSource } from "#components/image-crop/crop";
 import {
   centreCropRect,
@@ -144,7 +150,7 @@ const EyeCatchAspectSlot = ({
       : undefined;
 
   return (
-    <div className="grid gap-3 rounded-lg border border-border/60 p-3">
+    <div className="grid gap-3 border border-border p-3">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-medium">{variantType}</p>
         {current ? (
@@ -159,7 +165,7 @@ const EyeCatchAspectSlot = ({
           variant_type: variantType,
         })}
         className={cn(
-          "relative overflow-hidden rounded-md border border-border/50 bg-muted/40 transition-colors hover:border-blue-300",
+          "relative overflow-hidden rounded-surface border border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary",
           eyeCatchAspectClassName(variantType)
         )}
         onClick={handlePickImage}
@@ -285,34 +291,34 @@ export const EyeCatchAspectImages = ({
   const messages = sharedCatalog(locale);
 
   return (
-    <Card>
-      <CardContent className="grid gap-4 pt-6">
-        <div className="grid gap-1">
-          <h2 className="text-sm font-medium">
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
             {getMessage(messages, "admin.eye_catch.aspect.title")}
-          </h2>
-          <p className="text-sm text-muted-foreground">
+          </AdminSectionTitle>
+          <AdminSectionDescription>
             {getMessage(messages, "admin.eye_catch.aspect.description")}
-          </p>
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      {variants.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {getMessage(messages, "admin.eye_catch.aspect.eye_catch_required")}
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {EYE_CATCH_ASPECTS.map((aspect) => (
+            <EyeCatchAspectSlot
+              aspect={aspect}
+              key={aspect.variantType}
+              publicId={publicId}
+              uploadAction={uploadAction}
+              variants={variants}
+            />
+          ))}
         </div>
-        {variants.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {getMessage(messages, "admin.eye_catch.aspect.eye_catch_required")}
-          </p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {EYE_CATCH_ASPECTS.map((aspect) => (
-              <EyeCatchAspectSlot
-                aspect={aspect}
-                key={aspect.variantType}
-                publicId={publicId}
-                uploadAction={uploadAction}
-                variants={variants}
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </AdminSection>
   );
 };

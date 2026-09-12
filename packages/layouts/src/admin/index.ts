@@ -44,6 +44,16 @@ export {
 } from "./console-user-menu";
 
 export {
+  ConsoleSection,
+  ConsoleSectionActions,
+  ConsoleSectionDescription,
+  ConsoleSectionHeader,
+  ConsoleSectionHeading,
+  ConsoleSections,
+  ConsoleSectionTitle,
+} from "./console-section";
+
+export {
   ConsolePage,
   ConsolePageActions,
   ConsolePageContent,

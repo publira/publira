@@ -100,7 +100,6 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
               onClick={() => {
                 formRef.current?.requestSubmit();
               }}
-              variant="destructive"
             >
               {getMessage(
                 messages,

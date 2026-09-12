@@ -2,13 +2,6 @@
 
 import { Button } from "@publira/ui-components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -20,6 +13,13 @@ import { RadioGroup } from "@publira/ui-components/radio-group";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense, useActionState, useState } from "react";
 
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
 import { ClientMessage } from "#components/client-message";
 import type { TenantCommentSettings } from "#lib/tenant-comment-settings";
 import {
@@ -134,107 +134,107 @@ export const TenantCommentSettingsForm = ({
   const controlsDisabled = fieldsDisabled || isPending;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-            <ClientMessage message="admin.settings.comments.title" />
-          </Suspense>
-        </CardTitle>
-        <CardDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage message="admin.settings.comments.description" />
-          </Suspense>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="grid gap-4 sm:max-w-lg">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="comment_mode" type="hidden" value={commentMode} />
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+              <ClientMessage message="admin.settings.comments.title" />
+            </Suspense>
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <ClientMessage message="admin.settings.comments.description" />
+            </Suspense>
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <form action={formAction} className="grid gap-4 sm:max-w-lg">
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="comment_mode" type="hidden" value={commentMode} />
 
-          <Field>
-            <FieldLabel htmlFor="tenant_comment_mode">
-              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                <ClientMessage message="admin.settings.comments.mode_label" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <RadioGroup
-                id="tenant_comment_mode"
-                items={commentModeItems(controlsDisabled)}
-                onValueChange={(value) => {
-                  if (isTenantCommentMode(value)) {
-                    setCommentMode(value);
-                  }
-                }}
-                value={commentMode}
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                <ClientMessage message="admin.settings.comments.auto_hide_label" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                className="sm:max-w-32"
-                disabled={controlsDisabled}
-                inputMode="numeric"
-                max={MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD}
-                min={0}
-                name="auto_hide_report_threshold"
-                onChange={(event) =>
-                  setAutoHideReportThreshold(event.target.value)
+        <Field>
+          <FieldLabel htmlFor="tenant_comment_mode">
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <ClientMessage message="admin.settings.comments.mode_label" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <RadioGroup
+              id="tenant_comment_mode"
+              items={commentModeItems(controlsDisabled)}
+              onValueChange={(value) => {
+                if (isTenantCommentMode(value)) {
+                  setCommentMode(value);
                 }
-                step={1}
-                type="number"
-                value={autoHideReportThreshold}
-              />
-              <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                  <ClientMessage message="admin.settings.comments.auto_hide_description" />
-                </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+              }}
+              value={commentMode}
+            />
+          </FieldContent>
+        </Field>
 
-          {canEdit ? null : (
-            <FormMessage variant="destructive">
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <ClientMessage message="admin.settings.comments.auto_hide_label" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              className="sm:max-w-32"
+              disabled={controlsDisabled}
+              inputMode="numeric"
+              max={MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD}
+              min={0}
+              name="auto_hide_report_threshold"
+              onChange={(event) =>
+                setAutoHideReportThreshold(event.target.value)
+              }
+              step={1}
+              type="number"
+              value={autoHideReportThreshold}
+            />
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                <ClientMessage message="admin.settings.comments.auto_hide_description" />
+              </Suspense>
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+
+        {canEdit ? null : (
+          <FormMessage variant="destructive">
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <ClientMessage message="admin.settings.admin_only" />
+            </Suspense>
+          </FormMessage>
+        )}
+
+        {loadErrorMessage ? (
+          <FormMessage variant="destructive">
+            <span className="block">{loadErrorMessage}</span>
+            <span className="block">
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-                <ClientMessage message="admin.settings.admin_only" />
+                <ClientMessage message="admin.settings.comments.load_error_hint" />
               </Suspense>
-            </FormMessage>
-          )}
+            </span>
+          </FormMessage>
+        ) : null}
 
-          {loadErrorMessage ? (
-            <FormMessage variant="destructive">
-              <span className="block">{loadErrorMessage}</span>
-              <span className="block">
-                <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-                  <ClientMessage message="admin.settings.comments.load_error_hint" />
-                </Suspense>
-              </span>
-            </FormMessage>
-          ) : null}
+        {state ? (
+          <FormMessage variant={state.ok ? "success" : "destructive"}>
+            {state.message}
+          </FormMessage>
+        ) : null}
 
-          {state ? (
-            <FormMessage variant={state.ok ? "success" : "destructive"}>
-              {state.message}
-            </FormMessage>
-          ) : null}
-
-          <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={fieldsDisabled || isPending} type="submit">
-              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                <SubmitLabel isPending={isPending} />
-              </Suspense>
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button disabled={fieldsDisabled || isPending} type="submit">
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <SubmitLabel isPending={isPending} />
+            </Suspense>
+          </Button>
+        </div>
+      </form>
+    </AdminSection>
   );
 };

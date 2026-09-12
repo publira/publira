@@ -18,7 +18,7 @@ export const MfaRecoveryCodes = ({ codes }: MfaRecoveryCodesProps) => {
   const messages = useAdminMessages();
 
   return (
-    <div className="grid gap-3 rounded-lg border border-border/70 bg-muted/40 p-4">
+    <div className="grid gap-3 border border-border bg-muted/40 p-4">
       <div className="grid gap-1">
         <p className="text-sm font-medium text-foreground">
           {getMessage(messages, "admin.auth.mfa.recovery_codes_title")}
@@ -29,8 +29,13 @@ export const MfaRecoveryCodes = ({ codes }: MfaRecoveryCodesProps) => {
       </div>
       <ul className="grid grid-cols-2 gap-2">
         {codes.map((code) => (
-          <li className="font-mono text-sm tracking-wider" key={code}>
-            {code}
+          <li key={code}>
+            {/*
+              A recovery code is transcribed character by character, so it is
+              set in the monospace face that tells `1` from `l` and `0` from
+              `O` apart — the one place a console still wants one.
+            */}
+            <code className="font-mono text-sm tracking-wider">{code}</code>
           </li>
         ))}
       </ul>

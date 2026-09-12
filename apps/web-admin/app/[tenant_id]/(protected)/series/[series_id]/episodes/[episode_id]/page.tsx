@@ -180,7 +180,7 @@ const EditEpisodePage = async ({
             seriesPublicId={series_id}
           />
 
-          <section className="grid gap-3 rounded-lg border border-border/70 p-4">
+          <section className="grid gap-3 border border-border p-4">
             <h2 className="text-sm font-medium">
               {getMessage(messages, "admin.series.episodes.image_list_title")}
             </h2>

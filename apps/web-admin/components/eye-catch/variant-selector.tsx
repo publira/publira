@@ -84,7 +84,7 @@ export const EyeCatchVariantSelector = ({
         return (
           <button
             className={cn(
-              "grid cursor-pointer gap-2 rounded-lg border p-2 transition-all",
+              "grid cursor-pointer gap-2 border p-2 transition-colors duration-state ease-state",
               isSelected
                 ? "border-blue-500 bg-blue-50"
                 : "border-border/60 hover:border-blue-300"
@@ -97,7 +97,7 @@ export const EyeCatchVariantSelector = ({
             <p className="text-xs text-muted-foreground">{typeKey}</p>
             <div
               className={cn(
-                "relative overflow-hidden rounded-md border bg-muted/40",
+                "relative overflow-hidden rounded-surface border bg-muted/40",
                 eyeCatchAspectClassName(typeKey),
                 isSelected ? "border-blue-500" : "border-border/50"
               )}

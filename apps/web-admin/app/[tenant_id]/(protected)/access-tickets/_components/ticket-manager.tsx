@@ -4,14 +4,6 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import { StatusChip } from "@publira/ui-components/badge";
-import { LinkButton } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import {
   SectionError,
   SectionErrorDescription,
@@ -28,7 +20,6 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
-import Link from "next/link";
 import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
@@ -248,49 +239,30 @@ export const TicketManager = ({
     !listErrorMessage && (tickets.length > 0 || hasPageLinks);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1">
-          <CardTitle>
-            {getMessage(messages, "admin.access_tickets.list_title")}
-          </CardTitle>
-          <CardDescription>
-            {getMessage(messages, "admin.access_tickets.list_description")}
-          </CardDescription>
-        </div>
-        <LinkButton
-          render={<Link href="/access-tickets/new" />}
-          variant="outline"
-        >
-          {getMessage(messages, "admin.access_tickets.new_action")}
-        </LinkButton>
-      </CardHeader>
+    <div className="grid gap-6">
+      <TicketListBody
+        hasPageLinks={hasPageLinks}
+        listErrorMessage={listErrorMessage}
+        locale={locale}
+        tickets={tickets}
+        timeZone={timeZone}
+      />
 
-      <CardContent className="grid gap-4">
-        <TicketListBody
-          hasPageLinks={hasPageLinks}
-          listErrorMessage={listErrorMessage}
-          locale={locale}
-          tickets={tickets}
-          timeZone={timeZone}
+      {showPagination ? (
+        <PaginationFooter
+          ariaLabel={getMessage(
+            messages,
+            "admin.access_tickets.pagination_aria"
+          )}
+          description={getMessage(
+            messages,
+            "admin.access_tickets.pagination_description",
+            { count: pageSize }
+          )}
+          nextHref={nextHref}
+          previousHref={previousHref}
         />
-
-        {showPagination ? (
-          <PaginationFooter
-            ariaLabel={getMessage(
-              messages,
-              "admin.access_tickets.pagination_aria"
-            )}
-            description={getMessage(
-              messages,
-              "admin.access_tickets.pagination_description",
-              { count: pageSize }
-            )}
-            nextHref={nextHref}
-            previousHref={previousHref}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
+      ) : null}
+    </div>
   );
 };

@@ -59,6 +59,10 @@
       "types": "./dist/form-message/index.d.mts",
       "default": "./dist/form-message/index.mjs"
     },
+    "./identifier": {
+      "types": "./dist/identifier/index.d.mts",
+      "default": "./dist/identifier/index.mjs"
+    },
     "./input": {
       "types": "./dist/input/index.d.mts",
       "default": "./dist/input/index.mjs"
