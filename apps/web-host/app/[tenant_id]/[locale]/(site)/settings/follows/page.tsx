@@ -28,7 +28,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 type FollowsPageProps = PageProps<"/[tenant_id]/[locale]/settings/follows">;
 
 const FollowListSkeleton = () => (
-  <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-56" />
     <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
   </section>

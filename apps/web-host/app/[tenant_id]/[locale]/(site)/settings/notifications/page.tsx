@@ -31,7 +31,7 @@ const NotificationsSection = async () => {
     notificationSettings?.emailNotificationsEnabled ?? true;
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <h2 className="mb-4 text-lg font-semibold">
         {getMessage(messages, "host.settings.email_notifications_heading")}
       </h2>
@@ -67,7 +67,7 @@ const NotificationsSection = async () => {
 };
 
 const NotificationsSectionFallback = () => (
-  <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+  <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-40" />
     <div className="h-20 w-full animate-pulse rounded-md bg-muted" />
   </section>

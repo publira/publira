@@ -175,7 +175,7 @@ export const PurchaseLibrary = async ({
         </SectionError>
       ) : null}
       {!listErrorMessage && purchases.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-6">
+        <section className="border border-dashed border-border bg-muted/20 p-6">
           <h2 className="text-lg font-semibold">
             {getMessage(messages, "host.library.empty_title")}
           </h2>
@@ -191,7 +191,7 @@ export const PurchaseLibrary = async ({
         </section>
       ) : null}
       {activePurchases.length > 0 ? (
-        <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+        <section className="border border-border bg-card p-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">
               {getMessage(messages, "host.library.shelf_heading")}
@@ -212,7 +212,7 @@ export const PurchaseLibrary = async ({
         </section>
       ) : null}
       {expiredPurchases.length > 0 ? (
-        <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+        <section className="border border-border bg-card p-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">
               {getMessage(messages, "host.library.history_heading")}

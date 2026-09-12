@@ -124,7 +124,7 @@ export const NotificationList = async ({
   );
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+    <section className="border border-border bg-card p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">
           {getMessage(messages, "host.notifications.list_heading")}

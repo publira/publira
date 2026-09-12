@@ -62,7 +62,7 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
   return (
     <section
       aria-labelledby={HISTORY_HEADING_ID}
-      className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+      className="border border-border bg-card p-6"
     >
       <h2 className="mb-4 text-lg font-semibold" id={HISTORY_HEADING_ID}>
         {getMessage(messages, "host.my.history_heading")}
