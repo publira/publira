@@ -61,7 +61,7 @@ export const generateMetadata = async (
 };
 
 const PublishedPageSkeleton = () => (
-  <div className="mx-auto max-w-3xl px-6 py-12">
+  <div className="mx-auto max-w-(--measure-prose) px-6 py-12">
     <div className="mb-6 h-9 w-2/3 animate-pulse rounded bg-muted" />
     <div className="space-y-3">
       {Array.from({ length: 6 }, (_, index) => (
