@@ -1034,7 +1034,16 @@
         "tags": "태그",
         "tags_add": "추가",
         "tags_remove": "{$name} 제거",
-        "tags_description": "Enter 또는 추가 로 태그를 씁니다. 최대 {$count}개입니다. 사용 중인 태그와 같은 이름은 그 태그로 묶입니다."
+        "tags_description": "Enter 또는 추가 로 태그를 씁니다. 최대 {$count}개입니다. 사용 중인 태그와 같은 이름은 그 태그로 묶입니다.",
+        "comment_mode": "댓글",
+        "comment_mode_description": "이 작품의 에피소드에서 댓글을 공개하는 방식입니다. 작품이 따로 지정하지 않으면 테넌트 설정을 따르며, 그 설정이 바뀐 뒤에도 계속 따릅니다.",
+        "comment_mode_options": {
+          "tenant_default": "테넌트 설정을 따름",
+          "tenant_default_known": "테넌트 설정을 따름({$mode})",
+          "disabled": "받지 않음",
+          "immediate": "바로 공개",
+          "approval_required": "승인 후 공개"
+        }
       },
       "validation": {
         "label_required": "레이블은 필수입니다.",
@@ -1046,7 +1055,8 @@
         "published_at_invalid": "공개 일시 형식이 올바르지 않습니다.",
         "status_invalid": "연재 상태를 선택하세요.",
         "age_rating_invalid": "연령 등급을 선택하세요.",
-        "tags_too_many": "태그는 최대 {$count}개입니다."
+        "tags_too_many": "태그는 최대 {$count}개입니다.",
+        "comment_mode_invalid": "이 작품에서 댓글을 공개하는 방식을 선택하세요."
       },
       "created": "시리즈를 만들었습니다.",
       "updated": "시리즈를 변경했습니다.",

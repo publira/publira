@@ -38,6 +38,7 @@ import {
   SERIES_AGE_RATING_VALUES,
   SERIES_STATUS_VALUES,
 } from "#lib/series-classification";
+import { SERIES_COMMENT_MODES } from "#lib/series-comment-mode";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { SeriesActionState, SeriesMutationMode } from "../series-types";
@@ -72,6 +73,14 @@ const seriesCommonSchema = (messages: AdminMessages) =>
   z.object({
     ageRating: z.enum(SERIES_AGE_RATING_VALUES, {
       error: getMessage(messages, "admin.series.validation.age_rating_invalid"),
+    }),
+    // The empty value is one of the four: it is the series stating no mode of
+    // its own and so following the tenant's.
+    commentMode: z.enum(SERIES_COMMENT_MODES, {
+      error: getMessage(
+        messages,
+        "admin.series.validation.comment_mode_invalid"
+      ),
     }),
     creatorPublicIds: trimmedStringListFormSchema,
     eyeCatchImage: optionalFileFormSchema,
@@ -121,6 +130,7 @@ const seriesEyeCatchSchema = (messages: AdminMessages) =>
 
 const seriesFormFields = {
   ageRating: { kind: "value", name: "age_rating" },
+  commentMode: { kind: "value", name: "comment_mode" },
   creatorPublicIds: { kind: "values", name: "creator_public_ids" },
   eyeCatchImage: { kind: "file", name: "eye_catch_image" },
   genrePublicIds: { kind: "values", name: "genre_public_ids" },
@@ -215,6 +225,7 @@ export const createSeriesAction = async (
     createSeries(
       {
         ageRating: parsed.data.ageRating,
+        commentMode: parsed.data.commentMode,
         creatorPublicIds: parsed.data.creatorPublicIds,
         eyeCatchImageContentType,
         eyeCatchImageData,
@@ -279,6 +290,7 @@ export const updateSeriesAction = async (
     updateSeries(
       {
         ageRating: parsed.data.ageRating,
+        commentMode: parsed.data.commentMode,
         creatorPublicIds: parsed.data.creatorPublicIds,
         eyeCatchImageContentType,
         eyeCatchImageData,
@@ -358,6 +370,7 @@ export const updateSeriesEyeCatchAction = async (
       {
         ageRating: parsed.data.ageRating,
         clearEyeCatchImage: parsed.data.clearEyeCatchImage,
+        commentMode: parsed.data.commentMode,
         creatorPublicIds: parsed.data.creatorPublicIds,
         eyeCatchImageContentType,
         eyeCatchImageData,

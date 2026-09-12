@@ -22,6 +22,7 @@ import { listAllLabels } from "#lib/label";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { listSeries } from "#lib/series";
 import { listTagSuggestions } from "#lib/tag";
+import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -59,6 +60,7 @@ const NewSeriesFormData = async () => {
     labelsResult,
     genresResult,
     tagsResult,
+    commentSettingsResult,
     timeZone,
   ] = await Promise.all([
     // Only `defaultReadingPeriodHours` is read here, and that comes from the
@@ -70,6 +72,10 @@ const NewSeriesFormData = async () => {
     listAllLabels(tenantId, locale),
     listGenres(tenantId, locale),
     listTagSuggestions(tenantId, locale),
+    // Only to name the tenant's own mode inside the option that follows it, so
+    // a read that failed leaves that option unnamed rather than the form
+    // unusable.
+    getTenantCommentSettings(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -96,6 +102,9 @@ const NewSeriesFormData = async () => {
       tagSuggestions={tagsResult.tagNames}
       tagSuggestionsErrorMessage={
         tagsResult.ok ? undefined : tagsResult.message
+      }
+      tenantCommentMode={
+        commentSettingsResult.ok ? commentSettingsResult.commentMode : undefined
       }
       timeZone={timeZone}
     />

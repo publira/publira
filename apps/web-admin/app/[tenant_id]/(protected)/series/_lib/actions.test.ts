@@ -94,6 +94,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
     formData.set("published_at", "2030-01-01T10:00");
     formData.set("clear_eye_catch_image", "0");
 
@@ -102,6 +103,7 @@ describe("series actions", () => {
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       {
         ageRating: "all",
+        commentMode: "",
         creatorPublicIds: [],
         eyeCatchImageContentType: undefined,
         eyeCatchImageData: undefined,
@@ -153,6 +155,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
     formData.set("published_at", "2030-01-01T10:00:00-08:00");
 
     await updateSeriesAction(null, formData);
@@ -192,6 +195,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
     formData.set("published_at", "2030-01-01T10:00");
 
     await updateSeriesAction(null, formData);
@@ -224,6 +228,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
     formData.set("published_at", "2030-01-01");
 
     const result = await updateSeriesAction(null, formData);
@@ -247,6 +252,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
     formData.set("clear_eye_catch_image", "0");
 
     const result = await updateSeriesEyeCatchAction(null, formData);
@@ -286,6 +292,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
 
     await createSeriesAction(null, formData);
 
@@ -309,6 +316,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "hiatus");
     formData.set("age_rating", "r18");
+    formData.set("comment_mode", "");
     formData.append("schedule_weekdays", "5");
     formData.append("schedule_weekdays", "1");
     formData.append("genre_public_ids", "GENRE001");
@@ -347,6 +355,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
     formData.append("schedule_weekdays", "7");
     // An empty value would be Sunday if it were read with `Number`.
     formData.append("schedule_weekdays", "");
@@ -371,6 +380,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
     for (let index = 0; index <= 20; index += 1) {
       formData.append("tag_names", `tag-${index}`);
     }
@@ -379,6 +389,55 @@ describe("series actions", () => {
 
     expect(result).toEqual({
       message: "A series can carry at most 20 tags.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateSeries).not.toHaveBeenCalled();
+  });
+
+  // A series that states a mode of its own posts it like any other field, and
+  // the empty value above is the series stating none.
+  it("sends the comment mode the series states", async () => {
+    mockCreateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { publicId: "SERIES001" },
+    });
+
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("comment_mode", "approval_required");
+
+    await createSeriesAction(null, formData);
+
+    expect(mockCreateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ commentMode: "approval_required" }),
+      "en"
+    );
+  });
+
+  it("refuses a comment mode the form could not have offered", async () => {
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("comment_mode", "moderated");
+
+    const result = await createSeriesAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Select how comments on this series are published.",
       mode: "create",
       ok: false,
     });
@@ -395,6 +454,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "cancelled");
     formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
 
     const result = await createSeriesAction(null, formData);
 

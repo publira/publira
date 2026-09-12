@@ -49,6 +49,8 @@ import {
   DEFAULT_SERIES_AGE_RATING,
   DEFAULT_SERIES_STATUS,
 } from "#lib/series-classification";
+import type { SeriesCommentMode } from "#lib/series-comment-mode";
+import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
@@ -60,6 +62,7 @@ import {
   SeriesTagField,
 } from "./series-classification-fields";
 import type { GenreOption } from "./series-classification-fields";
+import { SeriesCommentModeField } from "./series-comment-mode-field";
 
 interface CreatorOption {
   publicId: string;
@@ -87,6 +90,16 @@ interface SeriesFormProps {
   genresErrorMessage?: string;
   tagSuggestionsErrorMessage?: string;
   initialSeries?: SeriesListItem;
+  /**
+   * The mode the series states of its own, empty while it follows its
+   * tenant's. It comes in beside {@link SeriesFormProps.initialSeries} because
+   * the API answers it beside the series: the storefront reads the same
+   * `Series` message, and there the useful answer is the tenant and the series
+   * resolved together.
+   */
+  initialCommentMode?: SeriesCommentMode;
+  /** What the tenant publishes comments under, for the option that follows it. */
+  tenantCommentMode?: TenantCommentMode;
   timeZone: string;
 }
 
@@ -375,8 +388,9 @@ const EyeCatchImageField = ({
 };
 
 const useSeriesFormState = ({
+  initialCommentMode,
   initialSeries,
-}: Pick<SeriesFormProps, "initialSeries">) => {
+}: Pick<SeriesFormProps, "initialCommentMode" | "initialSeries">) => {
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' creators
   // and label.
@@ -399,6 +413,9 @@ const useSeriesFormState = ({
     () => initialSeries?.genrePublicIds ?? []
   );
   const [tagNames, setTagNames] = useState(() => initialSeries?.tagNames ?? []);
+  const [commentMode, setCommentMode] = useState<SeriesCommentMode>(
+    () => initialCommentMode ?? ""
+  );
   const [uploadedEyeCatchPreviewUrl, setUploadedEyeCatchPreviewUrl] =
     useState("");
 
@@ -437,6 +454,7 @@ const useSeriesFormState = ({
 
   return {
     ageRating,
+    commentMode,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
@@ -445,6 +463,7 @@ const useSeriesFormState = ({
     selectedGenrePublicIds,
     selectedLabelPublicId,
     setAgeRating,
+    setCommentMode,
     setScheduleWeekdays,
     setSelectedCreatorPublicIds,
     setSelectedGenrePublicIds,
@@ -469,6 +488,8 @@ export const SeriesForm = ({
   genresErrorMessage,
   tagSuggestionsErrorMessage,
   initialSeries,
+  initialCommentMode,
+  tenantCommentMode,
   timeZone,
 }: SeriesFormProps) => {
   const locale = useContext(AdminLocaleContext);
@@ -504,6 +525,7 @@ export const SeriesForm = ({
   );
   const {
     ageRating,
+    commentMode,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
@@ -512,6 +534,7 @@ export const SeriesForm = ({
     selectedGenrePublicIds,
     selectedLabelPublicId,
     setAgeRating,
+    setCommentMode,
     setScheduleWeekdays,
     setSelectedCreatorPublicIds,
     setSelectedGenrePublicIds,
@@ -520,7 +543,7 @@ export const SeriesForm = ({
     setTagNames,
     status,
     tagNames,
-  } = useSeriesFormState({ initialSeries });
+  } = useSeriesFormState({ initialCommentMode, initialSeries });
 
   const useLabelFallbackInput =
     Boolean(labelsErrorMessage) || labelItems.length === 0;
@@ -680,6 +703,12 @@ export const SeriesForm = ({
               suggestions={tagSuggestions}
               suggestionsErrorMessage={tagSuggestionsErrorMessage}
               value={tagNames}
+            />
+
+            <SeriesCommentModeField
+              onChange={setCommentMode}
+              tenantCommentMode={tenantCommentMode}
+              value={commentMode}
             />
           </div>
 

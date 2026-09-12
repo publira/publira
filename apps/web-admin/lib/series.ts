@@ -1,4 +1,8 @@
-import { SeriesAgeRating, SeriesStatus } from "@publira/api-client/admin/types";
+import {
+  CommentMode,
+  SeriesAgeRating,
+  SeriesStatus,
+} from "@publira/api-client/admin/types";
 import type { Series } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
@@ -39,6 +43,8 @@ import type {
   SeriesAgeRatingValue,
   SeriesStatusValue,
 } from "./series-classification";
+import { SERIES_COMMENT_MODES } from "./series-comment-mode";
+import type { SeriesCommentMode } from "./series-comment-mode";
 import { getAccessToken } from "./session";
 
 /**
@@ -127,7 +133,18 @@ export type UpdateSeriesResult =
  * The interrupt has to be raised by the caller, outside the cache scope.
  */
 export type GetSeriesResult =
-  | { ok: true; series: SeriesItem }
+  | {
+      ok: true;
+      series: SeriesItem;
+      /**
+       * The series' own comment mode, empty while it follows its tenant's. It
+       * rides beside the series rather than in it because the API answers it
+       * that way: `Series` is the message the storefront reads too, and there
+       * the answer a page needs is the tenant and the series resolved
+       * together.
+       */
+      commentMode: SeriesCommentMode;
+    }
   | { notFound: true; ok: false }
   | {
       message: string;
@@ -210,6 +227,18 @@ const SERIES_AGE_RATING_ENUM: Record<SeriesAgeRatingValue, SeriesAgeRating> = {
 };
 
 /**
+ * Unspecified is the one place the enum's zero value names something: a series
+ * that states no mode of its own and so follows its tenant's, stored as no
+ * value at all.
+ */
+const SERIES_COMMENT_MODE_ENUM: Record<SeriesCommentMode, CommentMode> = {
+  "": CommentMode.UNSPECIFIED,
+  approval_required: CommentMode.APPROVAL_REQUIRED,
+  disabled: CommentMode.DISABLED,
+  immediate: CommentMode.IMMEDIATE,
+};
+
+/**
  * Unspecified is the column default rather than a missing value — the API
  * documents a save that names no status as storing the default — so it reads
  * back as that default instead of as nothing.
@@ -226,6 +255,26 @@ const toSeriesAgeRatingValue = (
   SERIES_AGE_RATING_VALUES.find(
     (value) => SERIES_AGE_RATING_ENUM[value] === ageRating
   ) ?? DEFAULT_SERIES_AGE_RATING;
+
+/**
+ * Unspecified names the series following its tenant, so it reads back as the
+ * empty value rather than as nothing — and so does a response that carried no
+ * field at all, which is the same statement.
+ *
+ * A value naming none of the four is reported instead, the way an unresolvable
+ * `tenant_config.comment_mode` is: the form would otherwise open on "follow the
+ * tenant" and the next save would write that over the mode the series holds.
+ */
+const toSeriesCommentMode = (
+  commentMode: CommentMode | undefined
+): SeriesCommentMode | undefined => {
+  if (commentMode === undefined) {
+    return "";
+  }
+  return SERIES_COMMENT_MODES.find(
+    (value) => SERIES_COMMENT_MODE_ENUM[value] === commentMode
+  );
+};
 
 const WEEKDAY_COUNT = 7;
 
@@ -462,7 +511,16 @@ export const getSeries = async (
       };
     }
 
+    const commentMode = toSeriesCommentMode(response.commentMode);
+    if (commentMode === undefined) {
+      return {
+        message: listErrorMessage(messages),
+        ok: false,
+      };
+    }
+
     return {
+      commentMode,
       ok: true,
       series: mapSeries(response.series),
     };
@@ -581,6 +639,16 @@ interface SeriesClassificationInput {
   tagNames: string[];
 }
 
+/**
+ * The comment mode every save carries, for the reason the classification is
+ * carried: a save that left it out would put the series back on its tenant's
+ * setting, so an editor fixing a typo would reopen commenting on a title that
+ * had it turned off.
+ */
+interface SeriesCommentModeInput {
+  commentMode: SeriesCommentMode;
+}
+
 export const createSeries = async (
   input: {
     tenantId: string;
@@ -593,7 +661,8 @@ export const createSeries = async (
     publishedAt?: string;
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
-  } & SeriesClassificationInput,
+  } & SeriesClassificationInput &
+    SeriesCommentModeInput,
   locale: Locale
 ): Promise<CreateSeriesResult> => {
   const messages = sharedCatalog(locale);
@@ -614,6 +683,7 @@ export const createSeries = async (
     const response = await apiClient.series.createSeries(
       {
         ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
+        commentMode: SERIES_COMMENT_MODE_ENUM[input.commentMode],
         creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
@@ -670,7 +740,8 @@ export const updateSeries = async (
     clearEyeCatchImage?: boolean;
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
-  } & SeriesClassificationInput,
+  } & SeriesClassificationInput &
+    SeriesCommentModeInput,
   locale: Locale
 ): Promise<UpdateSeriesResult> => {
   const messages = sharedCatalog(locale);
@@ -693,6 +764,7 @@ export const updateSeries = async (
       {
         ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
         clearEyeCatchImage: input.clearEyeCatchImage,
+        commentMode: SERIES_COMMENT_MODE_ENUM[input.commentMode],
         creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,

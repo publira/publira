@@ -40,6 +40,7 @@ import { listAllLabels } from "#lib/label";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { getSeries } from "#lib/series";
 import { listTagSuggestions } from "#lib/tag";
+import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -180,6 +181,7 @@ const EditSeriesFormData = async ({
       <div className="grid gap-6" key={result.series.publicId}>
         <SeriesEyeCatchForm
           action={updateSeriesEyeCatchAction}
+          commentMode={result.commentMode}
           initialSeries={result.series}
         />
         <EyeCatchAspectImages
@@ -197,6 +199,7 @@ const EditSeriesFormData = async ({
     labelsResult,
     genresResult,
     tagsResult,
+    commentSettingsResult,
     timeZone,
   ] = await Promise.all([
     getSeries({ publicId: seriesId, tenantId }, locale),
@@ -205,6 +208,10 @@ const EditSeriesFormData = async ({
     listAllLabels(tenantId, locale),
     listGenres(tenantId, locale),
     listTagSuggestions(tenantId, locale),
+    // Only to name the tenant's own mode inside the option that follows it, so
+    // a read that failed leaves that option unnamed rather than the form
+    // unusable.
+    getTenantCommentSettings(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -232,6 +239,7 @@ const EditSeriesFormData = async ({
       defaultReadingPeriodHours={result.series.readingPeriodHours}
       genres={genresResult.genres}
       genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
+      initialCommentMode={result.commentMode}
       initialSeries={result.series}
       key={result.series.publicId}
       labels={labelsResult.labels}
@@ -240,6 +248,9 @@ const EditSeriesFormData = async ({
       tagSuggestions={tagsResult.tagNames}
       tagSuggestionsErrorMessage={
         tagsResult.ok ? undefined : tagsResult.message
+      }
+      tenantCommentMode={
+        commentSettingsResult.ok ? commentSettingsResult.commentMode : undefined
       }
       timeZone={timeZone}
     />

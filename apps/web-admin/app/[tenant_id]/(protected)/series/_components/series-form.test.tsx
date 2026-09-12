@@ -146,6 +146,9 @@ it("finds each input by its role and label", async () => {
   expect(
     await screen.findAllByRole("combobox", { name: /Age rating/u })
   ).toHaveLength(2);
+  expect(
+    await screen.findAllByRole("combobox", { name: /Comments/u })
+  ).toHaveLength(2);
 });
 
 // The classification the API stored is what the form opens on. Without this a
@@ -177,6 +180,74 @@ it("opens on the classification the series carries", () => {
   expect(screen.getByRole("checkbox", { name: "Tue" }).dataset.checked).toBe(
     undefined
   );
+});
+
+// The mode the series states is what the form opens on, for the reason the
+// classification is: `UpdateSeries` writes the whole listing row, so a save
+// that carried the default back would reopen commenting on a title that had it
+// turned off.
+it("opens on the comment mode the series states", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      initialCommentMode="disabled"
+      initialSeries={series}
+      labels={labels}
+      mode="update"
+      tagSuggestions={tagSuggestions}
+      timeZone="Asia/Tokyo"
+    />
+  );
+
+  expect(posted("comment_mode")).toEqual(["disabled"]);
+});
+
+// A series that states nothing follows its tenant, so the option that says so
+// names what the tenant currently publishes comments under — otherwise an
+// editor has to open the settings screen to find out what they are choosing.
+it("names the tenant's own mode in the option that follows it", async () => {
+  render(
+    <SeriesForm
+      action={action}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      labels={labels}
+      mode="create"
+      tagSuggestions={tagSuggestions}
+      tenantCommentMode="approval_required"
+      timeZone="Asia/Tokyo"
+    />
+  );
+
+  expect(posted("comment_mode")).toEqual([""]);
+  expect(
+    await screen.findByText(
+      "Follow the tenant setting (Publish after approval)"
+    )
+  ).toBeDefined();
+});
+
+// The tenant read can fail, and a mode named there would be read as the
+// tenant's own choice, so the option says only that it follows the tenant.
+it("leaves that option unnamed when the tenant setting could not be read", async () => {
+  render(
+    <SeriesForm
+      action={action}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      labels={labels}
+      mode="create"
+      tagSuggestions={tagSuggestions}
+      timeZone="Asia/Tokyo"
+    />
+  );
+
+  expect(await screen.findByText("Follow the tenant setting")).toBeDefined();
 });
 
 // A series with no weekly schedule says so, rather than showing seven empty

@@ -1034,7 +1034,16 @@
         "tags": "标签",
         "tags_add": "添加",
         "tags_remove": "移除 {$name}",
-        "tags_description": "按 Enter 或 添加 写入标签。最多 {$count} 个。与正在使用的标签同名时会归入该标签。"
+        "tags_description": "按 Enter 或 添加 写入标签。最多 {$count} 个。与正在使用的标签同名时会归入该标签。",
+        "comment_mode": "评论",
+        "comment_mode_description": "本作品的章节公开评论的方式。作品未自行指定时沿用租户设置，该设置变更后也会继续沿用。",
+        "comment_mode_options": {
+          "tenant_default": "沿用租户设置",
+          "tenant_default_known": "沿用租户设置（{$mode}）",
+          "disabled": "不接受评论",
+          "immediate": "立即公开",
+          "approval_required": "审核后公开"
+        }
       },
       "validation": {
         "label_required": "品牌为必填项。",
@@ -1046,7 +1055,8 @@
         "published_at_invalid": "发布日期和时间无效。",
         "status_invalid": "请选择连载状态。",
         "age_rating_invalid": "请选择年龄分级。",
-        "tags_too_many": "标签最多 {$count} 个。"
+        "tags_too_many": "标签最多 {$count} 个。",
+        "comment_mode_invalid": "请选择本作品公开评论的方式。"
       },
       "created": "系列已创建。",
       "updated": "系列已更新。",
