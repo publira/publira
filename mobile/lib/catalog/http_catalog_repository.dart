@@ -299,16 +299,7 @@ class HttpCatalogRepository implements CatalogRepository {
     final series = _seriesFromJson(rawSeries, 'series');
     final episodes = _parseEpisodes(body['episodes']);
     return SeriesDetail(
-      series: SeriesItem(
-        id: series.id,
-        title: series.title,
-        description: series.description,
-        episodeCount: episodes.length,
-        labelName: series.labelName,
-        creators: series.creators,
-        eyeCatchVariants: series.eyeCatchVariants,
-        imageRequestHeaders: series.imageRequestHeaders,
-      ),
+      series: series.copyWith(episodeCount: episodes.length),
       episodes: episodes,
     );
   }
@@ -333,7 +324,77 @@ class HttpCatalogRepository implements CatalogRepository {
         path,
       ),
       imageRequestHeaders: config.publicImageRequestHeaders,
+      status: _parseStatus(json['status']),
+      scheduleWeekdays: _parseScheduleWeekdays(json['scheduleWeekdays'], path),
+      ageRating: _parseAgeRating(json['ageRating']),
+      genres: _parseGenres(json['genres'], path),
     );
+  }
+
+  /// protojson writes an enum as its name and omits the zero value, which is
+  /// how an unclassified series arrives.
+  SeriesStatus? _parseStatus(Object? raw) {
+    return switch (raw) {
+      'SERIES_STATUS_ONGOING' => SeriesStatus.ongoing,
+      'SERIES_STATUS_COMPLETED' => SeriesStatus.completed,
+      'SERIES_STATUS_HIATUS' => SeriesStatus.hiatus,
+      _ => null,
+    };
+  }
+
+  /// protojson writes an enum as its name. Unspecified and a name this build
+  /// does not know are both read as unset, so a new rating cannot close a
+  /// series a tenant never rated.
+  SeriesAgeRating? _parseAgeRating(Object? raw) {
+    return switch (raw) {
+      'SERIES_AGE_RATING_ALL' => SeriesAgeRating.all,
+      'SERIES_AGE_RATING_R15' => SeriesAgeRating.r15,
+      'SERIES_AGE_RATING_R18' => SeriesAgeRating.r18,
+      _ => null,
+    };
+  }
+
+  List<int> _parseScheduleWeekdays(Object? raw, String path) {
+    // protojson omits an empty repeated field, which is a series that keeps
+    // no weekly schedule.
+    if (raw == null) {
+      return const [];
+    }
+    final weekdays = _expectList(raw, '$path.scheduleWeekdays')
+        .map((item) {
+          if (item is! int) {
+            _invalidPayload('$path.scheduleWeekdays[] must be an integer');
+          }
+          return item;
+        })
+        // A number outside Sunday–Saturday is dropped rather than named: the
+        // weekday formatter would write it out as the digit it is.
+        .where((weekday) => weekday >= 0 && weekday <= 6)
+        .toList();
+    return List<int>.unmodifiable(weekdays);
+  }
+
+  List<SeriesGenre> _parseGenres(Object? raw, String path) {
+    // protojson omits an empty repeated field, so a series in no genre
+    // arrives without the key at all.
+    if (raw == null) {
+      return const [];
+    }
+    final genrePath = '$path.genres[]';
+    final genres = _expectList(raw, '$path.genres')
+        .map((item) => _expectMap(item, genrePath))
+        .map((json) {
+          return SeriesGenre(
+            id: _readString(json, 'publicId', genrePath),
+            name: _readString(json, 'name', genrePath),
+          );
+        })
+        // A genre with no name or no public id is nothing a reader can be
+        // shown, and the site drops it from the same field for the same
+        // reason.
+        .where((genre) => genre.id.isNotEmpty && genre.name.isNotEmpty)
+        .toList();
+    return List<SeriesGenre>.unmodifiable(genres);
   }
 
   List<SeriesCreator> _parseCreators(Object? raw, String path) {
@@ -436,6 +497,7 @@ class HttpCatalogRepository implements CatalogRepository {
       ),
       nextEpisode: _neighborFromJson(body['nextEpisode'], 'nextEpisode'),
       imageRequestHeaders: config.imageRequestHeaders(_client.accessToken),
+      ageRating: _parseAgeRating(rawSeries['ageRating']),
     );
   }
 

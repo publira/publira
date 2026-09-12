@@ -298,15 +298,7 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// everything that addresses a live server, so reading it back is what puts
   /// that part on again.
   SeriesItem _addressable(SeriesItem series) {
-    return SeriesItem(
-      id: series.id,
-      title: series.title,
-      description: series.description,
-      episodeCount: series.episodeCount,
-      labelName: series.labelName,
-      eyeCatchVariants: series.eyeCatchVariants,
-      imageRequestHeaders: imageRequestHeaders,
-    );
+    return series.copyWith(imageRequestHeaders: imageRequestHeaders);
   }
 
   /// The same body with everything that authorizes a request taken out.
@@ -323,6 +315,7 @@ class OfflineCatalogRepository implements CatalogRepository {
       access: detail.access,
       previousEpisode: detail.previousEpisode,
       nextEpisode: detail.nextEpisode,
+      ageRating: detail.ageRating,
       images: [
         for (final image in detail.images)
           EpisodeImageItem(

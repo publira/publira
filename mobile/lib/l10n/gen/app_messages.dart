@@ -352,6 +352,30 @@ abstract class AppMessages {
   /// `mobile.push.open`
   String get pushOpen;
 
+  /// `mobile.series.age_gate.confirm_r15`
+  String get seriesAgeGateConfirmR15;
+
+  /// `mobile.series.age_gate.confirm_r18`
+  String get seriesAgeGateConfirmR18;
+
+  /// `mobile.series.age_gate.r15_description`
+  String get seriesAgeGateR15Description;
+
+  /// `mobile.series.age_gate.r15_title`
+  String seriesAgeGateR15Title({required String title});
+
+  /// `mobile.series.age_gate.r18_description`
+  String get seriesAgeGateR18Description;
+
+  /// `mobile.series.age_gate.r18_title`
+  String seriesAgeGateR18Title({required String title});
+
+  /// `mobile.series.age_rating_r15`
+  String get seriesAgeRatingR15;
+
+  /// `mobile.series.age_rating_r18`
+  String get seriesAgeRatingR18;
+
   /// `mobile.series.episode_count`
   String seriesEpisodeCount({required String count});
 
@@ -372,6 +396,18 @@ abstract class AppMessages {
 
   /// `mobile.series.saved_offline`
   String get seriesSavedOffline;
+
+  /// `mobile.series.schedule`
+  String seriesSchedule({required String weekdays});
+
+  /// `mobile.series.status_completed`
+  String get seriesStatusCompleted;
+
+  /// `mobile.series.status_hiatus`
+  String get seriesStatusHiatus;
+
+  /// `mobile.series.status_ongoing`
+  String get seriesStatusOngoing;
 
   /// `mobile.series.title`
   String get seriesTitle;
@@ -914,6 +950,46 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmR15 {
+    return '15歳以上です';
+  }
+
+  @override
+  String get seriesAgeGateConfirmR18 {
+    return '18歳以上です';
+  }
+
+  @override
+  String get seriesAgeGateR15Description {
+    return '15歳以上であることを確認すると、この作品を閲覧できます。';
+  }
+
+  @override
+  String seriesAgeGateR15Title({required String title}) {
+    return '「$title」は R15 指定です';
+  }
+
+  @override
+  String get seriesAgeGateR18Description {
+    return '18歳以上であることを確認すると、この作品を閲覧できます。';
+  }
+
+  @override
+  String seriesAgeGateR18Title({required String title}) {
+    return '「$title」は R18 指定です';
+  }
+
+  @override
+  String get seriesAgeRatingR15 {
+    return 'R15';
+  }
+
+  @override
+  String get seriesAgeRatingR18 {
+    return 'R18';
+  }
+
+  @override
   String seriesEpisodeCount({required String count}) {
     return '$count 話';
   }
@@ -946,6 +1022,26 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get seriesSavedOffline {
     return '保存済み';
+  }
+
+  @override
+  String seriesSchedule({required String weekdays}) {
+    return '$weekdaysに更新';
+  }
+
+  @override
+  String get seriesStatusCompleted {
+    return '完結';
+  }
+
+  @override
+  String get seriesStatusHiatus {
+    return '休載中';
+  }
+
+  @override
+  String get seriesStatusOngoing {
+    return '連載中';
   }
 
   @override
@@ -1547,6 +1643,46 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmR15 {
+    return 'I am 15 or older';
+  }
+
+  @override
+  String get seriesAgeGateConfirmR18 {
+    return 'I am 18 or older';
+  }
+
+  @override
+  String get seriesAgeGateR15Description {
+    return 'Confirm that you are 15 or older to open this series.';
+  }
+
+  @override
+  String seriesAgeGateR15Title({required String title}) {
+    return '“$title” is rated R15';
+  }
+
+  @override
+  String get seriesAgeGateR18Description {
+    return 'Confirm that you are 18 or older to open this series.';
+  }
+
+  @override
+  String seriesAgeGateR18Title({required String title}) {
+    return '“$title” is rated R18';
+  }
+
+  @override
+  String get seriesAgeRatingR15 {
+    return 'R15';
+  }
+
+  @override
+  String get seriesAgeRatingR18 {
+    return 'R18';
+  }
+
+  @override
   String seriesEpisodeCount({required String count}) {
     return '$count episodes';
   }
@@ -1579,6 +1715,26 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get seriesSavedOffline {
     return 'Saved on this device';
+  }
+
+  @override
+  String seriesSchedule({required String weekdays}) {
+    return 'Updates on $weekdays';
+  }
+
+  @override
+  String get seriesStatusCompleted {
+    return 'Completed';
+  }
+
+  @override
+  String get seriesStatusHiatus {
+    return 'On hiatus';
+  }
+
+  @override
+  String get seriesStatusOngoing {
+    return 'Ongoing';
   }
 
   @override
@@ -2180,6 +2336,46 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmR15 {
+    return '15세 이상입니다';
+  }
+
+  @override
+  String get seriesAgeGateConfirmR18 {
+    return '18세 이상입니다';
+  }
+
+  @override
+  String get seriesAgeGateR15Description {
+    return '15세 이상임을 확인하면 이 작품을 볼 수 있습니다.';
+  }
+
+  @override
+  String seriesAgeGateR15Title({required String title}) {
+    return '“$title”은(는) R15 등급입니다';
+  }
+
+  @override
+  String get seriesAgeGateR18Description {
+    return '18세 이상임을 확인하면 이 작품을 볼 수 있습니다.';
+  }
+
+  @override
+  String seriesAgeGateR18Title({required String title}) {
+    return '“$title”은(는) R18 등급입니다';
+  }
+
+  @override
+  String get seriesAgeRatingR15 {
+    return 'R15';
+  }
+
+  @override
+  String get seriesAgeRatingR18 {
+    return 'R18';
+  }
+
+  @override
   String seriesEpisodeCount({required String count}) {
     return '$count화';
   }
@@ -2212,6 +2408,26 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get seriesSavedOffline {
     return '이 기기에 저장됨';
+  }
+
+  @override
+  String seriesSchedule({required String weekdays}) {
+    return '$weekdays에 업데이트';
+  }
+
+  @override
+  String get seriesStatusCompleted {
+    return '완결';
+  }
+
+  @override
+  String get seriesStatusHiatus {
+    return '휴재 중';
+  }
+
+  @override
+  String get seriesStatusOngoing {
+    return '연재 중';
   }
 
   @override
@@ -2813,6 +3029,46 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmR15 {
+    return '我已满 15 岁';
+  }
+
+  @override
+  String get seriesAgeGateConfirmR18 {
+    return '我已满 18 岁';
+  }
+
+  @override
+  String get seriesAgeGateR15Description {
+    return '确认已满 15 岁后即可阅读该系列。';
+  }
+
+  @override
+  String seriesAgeGateR15Title({required String title}) {
+    return '“$title”为 R15';
+  }
+
+  @override
+  String get seriesAgeGateR18Description {
+    return '确认已满 18 岁后即可阅读该系列。';
+  }
+
+  @override
+  String seriesAgeGateR18Title({required String title}) {
+    return '“$title”为 R18';
+  }
+
+  @override
+  String get seriesAgeRatingR15 {
+    return 'R15';
+  }
+
+  @override
+  String get seriesAgeRatingR18 {
+    return 'R18';
+  }
+
+  @override
   String seriesEpisodeCount({required String count}) {
     return '$count 章';
   }
@@ -2845,6 +3101,26 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get seriesSavedOffline {
     return '已保存到此设备';
+  }
+
+  @override
+  String seriesSchedule({required String weekdays}) {
+    return '$weekdays更新';
+  }
+
+  @override
+  String get seriesStatusCompleted {
+    return '已完结';
+  }
+
+  @override
+  String get seriesStatusHiatus {
+    return '休载中';
+  }
+
+  @override
+  String get seriesStatusOngoing {
+    return '连载中';
   }
 
   @override
@@ -3446,6 +3722,46 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmR15 {
+    return '我已滿 15 歲';
+  }
+
+  @override
+  String get seriesAgeGateConfirmR18 {
+    return '我已滿 18 歲';
+  }
+
+  @override
+  String get seriesAgeGateR15Description {
+    return '確認已滿 15 歲後即可閱讀此系列。';
+  }
+
+  @override
+  String seriesAgeGateR15Title({required String title}) {
+    return '「$title」為 R15';
+  }
+
+  @override
+  String get seriesAgeGateR18Description {
+    return '確認已滿 18 歲後即可閱讀此系列。';
+  }
+
+  @override
+  String seriesAgeGateR18Title({required String title}) {
+    return '「$title」為 R18';
+  }
+
+  @override
+  String get seriesAgeRatingR15 {
+    return 'R15';
+  }
+
+  @override
+  String get seriesAgeRatingR18 {
+    return 'R18';
+  }
+
+  @override
   String seriesEpisodeCount({required String count}) {
     return '$count 章';
   }
@@ -3478,6 +3794,26 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get seriesSavedOffline {
     return '已儲存到此裝置';
+  }
+
+  @override
+  String seriesSchedule({required String weekdays}) {
+    return '$weekdays更新';
+  }
+
+  @override
+  String get seriesStatusCompleted {
+    return '已完結';
+  }
+
+  @override
+  String get seriesStatusHiatus {
+    return '休載中';
+  }
+
+  @override
+  String get seriesStatusOngoing {
+    return '連載中';
   }
 
   @override

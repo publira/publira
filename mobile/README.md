@@ -131,6 +131,7 @@ mobile/
 │   ├── models/                   # Series / episode body / episode comment
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / series detail / viewer / comments / sign-in / account
+│   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation
@@ -170,7 +171,7 @@ The catalog is four sections, top to bottom. Each reads its own page of `Catalog
 | New arrivals | `ListPublishedSeries`, newest first | A tenant with a published series |
 | All series | `ListPublishedSeries`, by title | The whole catalog, as the list the screen ends in |
 
-The first three are horizontal shelves, and a shelf answered with nothing takes its heading with it: a reader in the middle of nothing and a tenant with no chart are offered no row rather than an empty one. The whole-catalog list is ordered by title because the newest of it already stands above it as a shelf of its own.
+The first three are horizontal shelves, and a shelf answered with nothing takes its heading with it: a reader in the middle of nothing and a tenant with no chart are offered no row rather than an empty one. The whole-catalog list is ordered by title because the newest of it already stands above it as a shelf of its own. Each of its tiles shows the series status and its first genre when the series carries them. The series screen shows the full classification (status, schedule, every genre, and a restricted age rating), and a rated series or episode is not opened until the reader confirms the rating, which the app remembers locally.
 
 Only the whole-catalog list is kept for reading without a network. The shelves above it are another order over the same series, a chart of a window that has closed, and one reader's own history — none of which the device can answer on its own, so each reports that it could not reach the API.
 

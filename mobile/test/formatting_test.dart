@@ -50,4 +50,12 @@ void main() {
       '1,200 episodes',
     );
   });
+
+  test('a weekday is named in the catalog locale', () {
+    final en = AppMessages.forLocale(const Locale('en'))!;
+    expect(en.formatWeekday(0), 'Sunday');
+    expect(en.formatWeekday(1), 'Monday');
+    expect(en.formatWeekday(6), 'Saturday');
+    expect(en.formatWeekday(9), '9');
+  });
 }

@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_comment.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
 import 'package:publira/viewer/reading_position.dart';
@@ -116,6 +117,49 @@ void main() {
 
     expect(find.text('1 / 3'), findsOneWidget);
     expect(find.text('${fixtureSeries.first.title} #1'), findsOneWidget);
+  });
+
+  testWidgets('a rated episode is not opened without the confirmation', (
+    tester,
+  ) async {
+    const series = fixtureRatedSeries;
+    final episode = fixtureDetail(series).episodes.first;
+    catalog = FakeCatalogRepository(
+      series: [series],
+      details: {series.id: fixtureDetail(series)},
+      episodes: {
+        episodeKey(series.id, episode.id): EpisodeDetail(
+          episode: episode,
+          seriesId: series.id,
+          seriesTitle: series.title,
+          access: EpisodeAccess.free,
+          images: [
+            EpisodeImageItem(
+              id: '${episode.id}-page-1',
+              url: Uri.parse('http://127.0.0.1:8200/images/episodes/p1'),
+              displayOrder: 1,
+              width: 800,
+              height: 1200,
+            ),
+          ],
+          ageRating: SeriesAgeRating.r15,
+        ),
+      },
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.episodeViewerPath(series.id, episode.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+    expect(find.text('“After Dark” is rated R15'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-page-view')),
+    );
   });
 
   testWidgets('the next button turns to the following page', (tester) async {

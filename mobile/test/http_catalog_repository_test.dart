@@ -222,6 +222,103 @@ void main() {
     ]);
   });
 
+  test('listSeries carries status, schedule, and genres', () async {
+    final items = await catalog.listSeries();
+
+    expect(items.first.status, SeriesStatus.ongoing);
+    expect(items.first.scheduleWeekdays, [1, 4]);
+    expect(items.first.genres.single.name, 'Fantasy');
+    expect(items.first.genres.single.id, 'SeedGENRAAA1');
+    expect(items.first.ageRating, isNull);
+    expect(items.last.status, isNull);
+    expect(items.last.genres, isEmpty);
+  });
+
+  test('getSeries carries the classification of the series', () async {
+    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+
+    expect(detail!.series.status, SeriesStatus.ongoing);
+    expect(detail.series.scheduleWeekdays, [1, 4]);
+    expect(detail.series.genres.single.name, 'Fantasy');
+  });
+
+  test('listSeries maps a restricted age rating', () async {
+    server.series = [
+      {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+        'ageRating': 'SERIES_AGE_RATING_R15',
+      },
+    ];
+
+    final items = await catalog.listSeries();
+
+    expect(items.single.ageRating, SeriesAgeRating.r15);
+  });
+
+  test('listSeries drops a genre with no name or public id', () async {
+    server.series = [
+      {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+        'genres': [
+          {'publicId': '', 'name': 'Fantasy'},
+          {'publicId': 'SeedGENRAAA2', 'name': ''},
+          {'publicId': 'SeedGENRAAA1', 'name': 'Fantasy'},
+        ],
+      },
+    ];
+
+    final items = await catalog.listSeries();
+
+    expect(items.single.genres.single.name, 'Fantasy');
+    expect(items.single.genres.single.id, 'SeedGENRAAA1');
+  });
+
+  test(
+    'listSeries drops a weekday that is not Sunday through Saturday',
+    () async {
+      server.series = [
+        {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+          'scheduleWeekdays': [1, 9, 4],
+        },
+      ];
+
+      final items = await catalog.listSeries();
+
+      expect(items.single.scheduleWeekdays, [1, 4]);
+    },
+  );
+
+  test('getEpisode carries the series age rating', () async {
+    server.episodes = {
+      ConnectFixtureServer.seedEpisodeId: {
+        'episode': {
+          'publicId': ConnectFixtureServer.seedEpisodeId,
+          'title': ConnectFixtureServer.seedEpisodeTitle,
+          'orderIndex': 1,
+          'price': 0,
+        },
+        'series': {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+          'ageRating': 'SERIES_AGE_RATING_R18',
+        },
+        'access': 'EPISODE_ACCESS_FREE',
+        'images': const <Object?>[],
+      },
+    };
+
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+    );
+
+    expect(detail!.ageRating, SeriesAgeRating.r18);
+  });
+
   test('getSeries carries the cover renditions of the series', () async {
     final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
 

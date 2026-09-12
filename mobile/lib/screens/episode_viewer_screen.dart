@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/comments/comment_failure.dart';
@@ -253,7 +254,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         }
         return _shell(
           title: open.detail.episode.title,
-          body: _body(messages, open),
+          body: AgeRatingGate(
+            rating: open.detail.ageRating,
+            seriesTitle: open.detail.seriesTitle,
+            child: _body(messages, open),
+          ),
         );
       },
     );

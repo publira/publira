@@ -83,6 +83,7 @@ class EpisodeDetail {
     this.previousEpisode,
     this.nextEpisode,
     this.imageRequestHeaders = const {},
+    this.ageRating,
   });
 
   final EpisodeItem episode;
@@ -102,4 +103,10 @@ class EpisodeDetail {
   /// Headers [images] must be fetched with. They travel with the pages because
   /// the same read decided both which pages exist and who is asking for them.
   final Map<String, String> imageRequestHeaders;
+
+  /// Who the series is meant for, taken from the series `GetEpisodeDetail`
+  /// returned beside the body. The viewer gates on it the way the series
+  /// screen does, so a continue-reading card or a deep link cannot open the
+  /// pages without the confirmation.
+  final SeriesAgeRating? ageRating;
 }

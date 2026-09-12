@@ -104,6 +104,10 @@ Map<String, Object?> _seriesToJson(SeriesItem series) => {
   'eyeCatchVariants': [
     for (final variant in series.eyeCatchVariants) _variantToJson(variant),
   ],
+  if (series.status != null) 'status': series.status!.name,
+  'scheduleWeekdays': series.scheduleWeekdays,
+  if (series.ageRating != null) 'ageRating': series.ageRating!.name,
+  'genres': [for (final genre in series.genres) _genreToJson(genre)],
 };
 
 SeriesItem? _seriesFromJson(Object? decoded) {
@@ -116,6 +120,8 @@ SeriesItem? _seriesFromJson(Object? decoded) {
   }
   final rawVariants = decoded['eyeCatchVariants'];
   final rawCreators = decoded['creators'];
+  final rawGenres = decoded['genres'];
+  final rawWeekdays = decoded['scheduleWeekdays'];
   return SeriesItem(
     id: id,
     title: _string(decoded['title']),
@@ -132,7 +138,52 @@ SeriesItem? _seriesFromJson(Object? decoded) {
       for (final item in rawVariants is List ? rawVariants : const [])
         ?_variantFromJson(item),
     ],
+    status: _statusFromJson(decoded['status']),
+    scheduleWeekdays: [
+      for (final item in rawWeekdays is List ? rawWeekdays : const [])
+        if (item is int && item >= 0 && item <= 6) item,
+    ],
+    ageRating: _ageRatingFromJson(decoded['ageRating']),
+    genres: [
+      for (final item in rawGenres is List ? rawGenres : const [])
+        ?_genreFromJson(item),
+    ],
   );
+}
+
+Map<String, Object?> _genreToJson(SeriesGenre genre) => {
+  'id': genre.id,
+  'name': genre.name,
+};
+
+SeriesGenre? _genreFromJson(Object? decoded) {
+  if (decoded is! Map) {
+    return null;
+  }
+  final id = _string(decoded['id']);
+  final name = _string(decoded['name']);
+  if (id.isEmpty || name.isEmpty) {
+    return null;
+  }
+  return SeriesGenre(id: id, name: name);
+}
+
+SeriesStatus? _statusFromJson(Object? raw) {
+  return switch (raw) {
+    'ongoing' => SeriesStatus.ongoing,
+    'completed' => SeriesStatus.completed,
+    'hiatus' => SeriesStatus.hiatus,
+    _ => null,
+  };
+}
+
+SeriesAgeRating? _ageRatingFromJson(Object? raw) {
+  return switch (raw) {
+    'all' => SeriesAgeRating.all,
+    'r15' => SeriesAgeRating.r15,
+    'r18' => SeriesAgeRating.r18,
+    _ => null,
+  };
 }
 
 Map<String, Object?> _creatorToJson(SeriesCreator creator) => {
@@ -284,6 +335,7 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
     'seriesId': detail.seriesId,
     'seriesTitle': detail.seriesTitle,
     'access': detail.access.name,
+    if (detail.ageRating != null) 'ageRating': detail.ageRating!.name,
     'episode': _episodeToJson(detail.episode),
     'images': [for (final image in detail.images) _imageToJson(image)],
     // The neighbours are saved with the body so the end of an episode read
@@ -330,6 +382,7 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
       ],
       previousEpisode: _neighborFromJson(decoded['previousEpisode']),
       nextEpisode: _neighborFromJson(decoded['nextEpisode']),
+      ageRating: _ageRatingFromJson(decoded['ageRating']),
     ),
   );
 }

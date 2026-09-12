@@ -2440,6 +2440,16 @@
       "open": "開く"
     },
     "series": {
+      "age_gate": {
+        "confirm_r15": "15歳以上です",
+        "confirm_r18": "18歳以上です",
+        "r15_description": "15歳以上であることを確認すると、この作品を閲覧できます。",
+        "r15_title": "「{$title}」は R15 指定です",
+        "r18_description": "18歳以上であることを確認すると、この作品を閲覧できます。",
+        "r18_title": "「{$title}」は R18 指定です"
+      },
+      "age_rating_r15": "R15",
+      "age_rating_r18": "R18",
       "episode_count": "{$count} 話",
       "episodes_empty": "公開中のエピソードはありません",
       "episodes_heading": "エピソード一覧",
@@ -2447,6 +2457,10 @@
       "not_found": "シリーズが見つかりません ({$id})",
       "offline_not_saved": "オフラインのため、このシリーズを表示できません。端末に保存されたデータがありません。",
       "saved_offline": "保存済み",
+      "schedule": "{$weekdays}に更新",
+      "status_completed": "完結",
+      "status_hiatus": "休載中",
+      "status_ongoing": "連載中",
       "title": "シリーズ"
     },
     "sign_in": {

@@ -642,6 +642,7 @@ class _SeriesTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     final credits = _creditLine(messages, series);
+    final classification = _tileClassification(messages, series);
     return ListTile(
       key: ValueKey('series-tile-${series.id}'),
       // 42 is the widest a 3:4 box can be and still stand inside the 56 pixels
@@ -656,7 +657,10 @@ class _SeriesTile extends StatelessWidget {
         ),
       ),
       title: Text(series.title),
-      subtitle: credits.isEmpty && series.description.isEmpty
+      subtitle:
+          credits.isEmpty &&
+              classification.isEmpty &&
+              series.description.isEmpty
           ? null
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -664,6 +668,13 @@ class _SeriesTile extends StatelessWidget {
               children: [
                 if (credits.isNotEmpty)
                   Text(credits, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (classification.isNotEmpty)
+                  Text(
+                    key: ValueKey('series-tile-classification-${series.id}'),
+                    classification,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 if (series.description.isNotEmpty)
                   Text(
                     series.description,
@@ -676,6 +687,16 @@ class _SeriesTile extends StatelessWidget {
       onTap: () => context.push(AppRoutes.seriesDetailPath(series.id)),
     );
   }
+}
+
+/// Status and the first genre, which is what a catalog tile has room for.
+/// Empty when the series carries neither, which leaves the line off.
+String _tileClassification(AppMessages messages, SeriesItem series) {
+  final parts = <String>[
+    if (series.status != null) messages.seriesStatusLabel(series.status!),
+    if (series.genres.isNotEmpty) series.genres.first.name,
+  ];
+  return parts.join(' · ');
 }
 
 /// What a section says about a failure, in the words closest to it.

@@ -2440,6 +2440,16 @@
       "open": "打开"
     },
     "series": {
+      "age_gate": {
+        "confirm_r15": "我已满 15 岁",
+        "confirm_r18": "我已满 18 岁",
+        "r15_description": "确认已满 15 岁后即可阅读该系列。",
+        "r15_title": "“{$title}”为 R15",
+        "r18_description": "确认已满 18 岁后即可阅读该系列。",
+        "r18_title": "“{$title}”为 R18"
+      },
+      "age_rating_r15": "R15",
+      "age_rating_r18": "R18",
       "episode_count": "{$count} 章",
       "episodes_empty": "还没有发布任何章节。",
       "episodes_heading": "章节",
@@ -2447,6 +2457,10 @@
       "not_found": "找不到系列（{$id}）",
       "offline_not_saved": "您当前处于离线状态，且此设备上没有保存该系列的内容。",
       "saved_offline": "已保存到此设备",
+      "schedule": "{$weekdays}更新",
+      "status_completed": "已完结",
+      "status_hiatus": "休载中",
+      "status_ongoing": "连载中",
       "title": "系列"
     },
     "sign_in": {
