@@ -18,6 +18,8 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { AgeRatedVisibility } from "#components/age-rated-visibility";
+import { AgeRatingBadge } from "#components/age-rating-badge";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { GenreChips } from "#components/genre-chips";
 import { LocaleLink } from "#components/locale-link";
@@ -288,37 +290,41 @@ const ContinueReadingSection = async () => {
       </div>
       <ol className="mt-2 divide-y divide-border">
         {result.series.map(({ episode, series }) => (
-          <li key={series.publicId}>
-            <LocaleLink
-              className="group flex items-center gap-4 py-3"
-              href={`/series/${series.publicId}/episodes/${episode.publicId}`}
-            >
-              <EyeCatchFrame
-                alt={series.title}
-                className="size-14 shrink-0 rounded-control"
-                sizes="56px"
-                variants={series.eyeCatchImageVariants}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-baseline gap-2">
-                  <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
-                      <Message
-                        message="host.common.episode_number"
-                        values={{ number: episode.orderIndex }}
-                      />
-                    </Suspense>
+          <AgeRatedVisibility key={series.publicId} rating={series.ageRating}>
+            <li>
+              <LocaleLink
+                className="group flex items-center gap-4 py-3"
+                href={`/series/${series.publicId}/episodes/${episode.publicId}`}
+              >
+                <EyeCatchFrame
+                  alt={series.title}
+                  className="size-14 shrink-0 rounded-control"
+                  sizes="56px"
+                  variants={series.eyeCatchImageVariants}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline gap-2">
+                    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-10" />}
+                      >
+                        <Message
+                          message="host.common.episode_number"
+                          values={{ number: episode.orderIndex }}
+                        />
+                      </Suspense>
+                    </span>
+                    <span className="truncate underline-offset-4 group-hover:underline">
+                      {episode.title}
+                    </span>
                   </span>
-                  <span className="truncate underline-offset-4 group-hover:underline">
-                    {episode.title}
+                  <span className="block truncate text-sm text-muted-foreground">
+                    {series.title}
                   </span>
                 </span>
-                <span className="block truncate text-sm text-muted-foreground">
-                  {series.title}
-                </span>
-              </span>
-            </LocaleLink>
-          </li>
+              </LocaleLink>
+            </li>
+          </AgeRatedVisibility>
         ))}
       </ol>
     </section>
@@ -445,7 +451,11 @@ const WeeklyScheduleSection = async () => {
           {days.map((day) => (
             <WeeklyScheduleDayPanel key={day.weekday} weekday={day.weekday}>
               {day.series.length > 0 ? (
-                <SeriesShelf locale={locale} series={day.series} />
+                <SeriesShelf
+                  hideUntilConfirmed
+                  locale={locale}
+                  series={day.series}
+                />
               ) : (
                 <SectionEmpty message="host.top.schedule_day_empty" />
               )}
@@ -491,77 +501,87 @@ const FeaturedWorkSection = async () => {
   const { latestEpisode } = featured;
 
   return (
-    <section>
-      <LocaleLink className="group block" href={`/series/${featured.seriesId}`}>
-        <EyeCatchFrame
-          alt={featured.seriesTitle}
-          className="aspect-16/7 w-full rounded-surface"
-          fetchPriority="high"
-          loading="eager"
-          preferredType="landscape"
-          sizes="(max-width: 1200px) 100vw, 1152px"
-          variants={featured.eyeCatchImageVariants}
+    <AgeRatedVisibility rating={featured.ageRating}>
+      <section>
+        <LocaleLink
+          className="group block"
+          href={`/series/${featured.seriesId}`}
         >
-          <span className="font-serif text-2xl leading-tight text-muted-foreground">
+          <EyeCatchFrame
+            alt={featured.seriesTitle}
+            className="aspect-16/7 w-full rounded-surface"
+            fetchPriority="high"
+            loading="eager"
+            preferredType="landscape"
+            sizes="(max-width: 1200px) 100vw, 1152px"
+            variants={featured.eyeCatchImageVariants}
+          >
+            <span className="font-serif text-2xl leading-tight text-muted-foreground">
+              {featured.seriesTitle}
+            </span>
+          </EyeCatchFrame>
+          <h1 className="mt-5 font-serif text-3xl leading-tight underline-offset-4 group-hover:underline">
             {featured.seriesTitle}
-          </span>
-        </EyeCatchFrame>
-        <h1 className="mt-5 font-serif text-3xl leading-tight underline-offset-4 group-hover:underline">
-          {featured.seriesTitle}
-        </h1>
-      </LocaleLink>
-      {featured.creatorNames.length > 0 && (
-        <p className="mt-2 text-muted-foreground">
-          {formatList(featured.creatorNames, { locale })}
-        </p>
-      )}
-      {latestEpisode && (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
-          <p className="text-sm text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <Message message="host.top.latest_update" />
-            </Suspense>{" "}
-            <span className="text-foreground tabular-nums">
-              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          </h1>
+        </LocaleLink>
+        {featured.ageRating ? (
+          <div className="mt-2">
+            <AgeRatingBadge rating={featured.ageRating} />
+          </div>
+        ) : null}
+        {featured.creatorNames.length > 0 && (
+          <p className="mt-2 text-muted-foreground">
+            {formatList(featured.creatorNames, { locale })}
+          </p>
+        )}
+        {latestEpisode && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+            <p className="text-sm text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="host.top.latest_update" />
+              </Suspense>{" "}
+              <span className="text-foreground tabular-nums">
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message
+                    message="host.common.episode_number"
+                    values={{ number: latestEpisode.orderIndex }}
+                  />
+                </Suspense>
+              </span>{" "}
+              <span className="text-foreground">{latestEpisode.title}</span>{" "}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message
-                  message="host.common.episode_number"
+                  message="host.top.published_on"
+                  values={{
+                    date: formatDate(latestEpisode.publishedAt, {
+                      fallback: "",
+                      locale,
+                      timeZone,
+                    }),
+                  }}
+                />
+              </Suspense>
+            </p>
+            <LinkButton
+              render={
+                <LocaleLink
+                  href={`/series/${featured.seriesId}/episodes/${latestEpisode.episodeId}`}
+                />
+              }
+              size="lg"
+              variant="secondary"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message
+                  message="host.top.read_episode"
                   values={{ number: latestEpisode.orderIndex }}
                 />
               </Suspense>
-            </span>{" "}
-            <span className="text-foreground">{latestEpisode.title}</span>{" "}
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message
-                message="host.top.published_on"
-                values={{
-                  date: formatDate(latestEpisode.publishedAt, {
-                    fallback: "",
-                    locale,
-                    timeZone,
-                  }),
-                }}
-              />
-            </Suspense>
-          </p>
-          <LinkButton
-            render={
-              <LocaleLink
-                href={`/series/${featured.seriesId}/episodes/${latestEpisode.episodeId}`}
-              />
-            }
-            size="lg"
-            variant="secondary"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-              <Message
-                message="host.top.read_episode"
-                values={{ number: latestEpisode.orderIndex }}
-              />
-            </Suspense>
-          </LinkButton>
-        </div>
-      )}
-    </section>
+            </LinkButton>
+          </div>
+        )}
+      </section>
+    </AgeRatedVisibility>
   );
 };
 
@@ -603,15 +623,20 @@ const PopularSeriesCard = async ({
           {formatList(series.creatorNames, { locale })}
         </span>
       )}
-      {series.freeEpisodeCount > 0 && (
-        <Badge className="mt-2" tone="success">
-          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-            <Message
-              message="host.common.free_episode_count"
-              values={{ count: series.freeEpisodeCount }}
-            />
-          </Suspense>
-        </Badge>
+      {(series.ageRating || series.freeEpisodeCount > 0) && (
+        <span className="mt-2 flex flex-wrap gap-2">
+          <AgeRatingBadge rating={series.ageRating} />
+          {series.freeEpisodeCount > 0 && (
+            <Badge tone="success">
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message
+                  message="host.common.free_episode_count"
+                  values={{ count: series.freeEpisodeCount }}
+                />
+              </Suspense>
+            </Badge>
+          )}
+        </span>
       )}
     </LocaleLink>
   );
@@ -643,9 +668,11 @@ const PopularSeriesShelf = ({
     return (
       <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
         {popular.rankedSeries.map(({ rank, series }) => (
-          <li key={series.publicId}>
-            <PopularSeriesCard rank={rank} series={series} />
-          </li>
+          <AgeRatedVisibility key={series.publicId} rating={series.ageRating}>
+            <li>
+              <PopularSeriesCard rank={rank} series={series} />
+            </li>
+          </AgeRatedVisibility>
         ))}
       </ul>
     );
@@ -658,9 +685,11 @@ const PopularSeriesShelf = ({
   return (
     <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
       {popular.series.map((series) => (
-        <li key={series.publicId}>
-          <PopularSeriesCard series={series} />
-        </li>
+        <AgeRatedVisibility key={series.publicId} rating={series.ageRating}>
+          <li>
+            <PopularSeriesCard series={series} />
+          </li>
+        </AgeRatedVisibility>
       ))}
     </ul>
   );
@@ -737,7 +766,7 @@ const FreeSeriesSection = async () => {
     return <SectionEmpty message="host.top.free_empty" />;
   }
 
-  return <SeriesShelf locale={locale} series={freeSeries} />;
+  return <SeriesShelf hideUntilConfirmed locale={locale} series={freeSeries} />;
 };
 
 const NewEpisodesSection = async () => {
@@ -772,48 +801,55 @@ const NewEpisodesSection = async () => {
         }
 
         return (
-          <li key={`${ids.seriesId}-${ids.episodeId}`}>
-            <LocaleLink
-              className="group flex items-center gap-4 py-3"
-              href={`/series/${ids.seriesId}/episodes/${ids.episodeId}`}
-            >
-              <EyeCatchFrame
-                alt={episode.seriesTitle}
-                className="size-14 shrink-0 rounded-control"
-                sizes="56px"
-                variants={episode.eyeCatchImageVariants}
-              />
-              <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
-                <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                  <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
-                      <Message
-                        message="host.common.episode_number"
-                        values={{ number: episode.episodeOrderIndex }}
+          <AgeRatedVisibility
+            key={`${ids.seriesId}-${ids.episodeId}`}
+            rating={episode.ageRating}
+          >
+            <li>
+              <LocaleLink
+                className="group flex items-center gap-4 py-3"
+                href={`/series/${ids.seriesId}/episodes/${ids.episodeId}`}
+              >
+                <EyeCatchFrame
+                  alt={episode.seriesTitle}
+                  className="size-14 shrink-0 rounded-control"
+                  sizes="56px"
+                  variants={episode.eyeCatchImageVariants}
+                />
+                <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
+                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-10" />}
+                      >
+                        <Message
+                          message="host.common.episode_number"
+                          values={{ number: episode.episodeOrderIndex }}
+                        />
+                      </Suspense>
+                    </span>
+                    <span className="truncate underline-offset-4 group-hover:underline">
+                      {episode.episodeTitle}
+                    </span>
+                  </span>
+                  <span className="flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:w-64 sm:shrink-0">
+                    <span className="truncate">{episode.seriesTitle}</span>
+                    <span className="shrink-0">
+                      <RelativeTime
+                        absolute={formatDate(episode.publishedAt, {
+                          fallback: "",
+                          locale,
+                          timeZone,
+                        })}
+                        timeZone={timeZone}
+                        value={episode.publishedAt}
                       />
-                    </Suspense>
-                  </span>
-                  <span className="truncate underline-offset-4 group-hover:underline">
-                    {episode.episodeTitle}
+                    </span>
                   </span>
                 </span>
-                <span className="flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:w-64 sm:shrink-0">
-                  <span className="truncate">{episode.seriesTitle}</span>
-                  <span className="shrink-0">
-                    <RelativeTime
-                      absolute={formatDate(episode.publishedAt, {
-                        fallback: "",
-                        locale,
-                        timeZone,
-                      })}
-                      timeZone={timeZone}
-                      value={episode.publishedAt}
-                    />
-                  </span>
-                </span>
-              </span>
-            </LocaleLink>
-          </li>
+              </LocaleLink>
+            </li>
+          </AgeRatedVisibility>
         );
       })}
     </ol>
@@ -852,48 +888,52 @@ const UpdatedSeriesSection = async () => {
         }
 
         return (
-          <li key={ids.seriesId}>
-            <LocaleLink
-              className="group flex items-center gap-4 py-3"
-              href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
-            >
-              <EyeCatchFrame
-                alt={item.seriesTitle}
-                className="size-14 shrink-0 rounded-control"
-                sizes="56px"
-                variants={item.eyeCatchImageVariants}
-              />
-              <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
-                <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                  <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
-                      <Message
-                        message="host.common.episode_number"
-                        values={{ number: item.latestEpisodeOrderIndex }}
+          <AgeRatedVisibility key={ids.seriesId} rating={item.ageRating}>
+            <li>
+              <LocaleLink
+                className="group flex items-center gap-4 py-3"
+                href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
+              >
+                <EyeCatchFrame
+                  alt={item.seriesTitle}
+                  className="size-14 shrink-0 rounded-control"
+                  sizes="56px"
+                  variants={item.eyeCatchImageVariants}
+                />
+                <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
+                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-10" />}
+                      >
+                        <Message
+                          message="host.common.episode_number"
+                          values={{ number: item.latestEpisodeOrderIndex }}
+                        />
+                      </Suspense>
+                    </span>
+                    <span className="truncate underline-offset-4 group-hover:underline">
+                      {item.latestEpisodeTitle}
+                    </span>
+                  </span>
+                  <span className="flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:w-64 sm:shrink-0">
+                    <span className="truncate">{item.seriesTitle}</span>
+                    <span className="shrink-0">
+                      <RelativeTime
+                        absolute={formatDate(item.latestPublishedAt, {
+                          fallback: "",
+                          locale,
+                          timeZone,
+                        })}
+                        timeZone={timeZone}
+                        value={item.latestPublishedAt}
                       />
-                    </Suspense>
-                  </span>
-                  <span className="truncate underline-offset-4 group-hover:underline">
-                    {item.latestEpisodeTitle}
+                    </span>
                   </span>
                 </span>
-                <span className="flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:w-64 sm:shrink-0">
-                  <span className="truncate">{item.seriesTitle}</span>
-                  <span className="shrink-0">
-                    <RelativeTime
-                      absolute={formatDate(item.latestPublishedAt, {
-                        fallback: "",
-                        locale,
-                        timeZone,
-                      })}
-                      timeZone={timeZone}
-                      value={item.latestPublishedAt}
-                    />
-                  </span>
-                </span>
-              </span>
-            </LocaleLink>
-          </li>
+              </LocaleLink>
+            </li>
+          </AgeRatedVisibility>
         );
       })}
     </ol>

@@ -17,6 +17,7 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { AgeRatingBadge } from "#components/age-rating-badge";
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import type { EyeCatchVariant } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
@@ -378,6 +379,11 @@ const RankingList = async ({
                     {formatList(series.creatorNames, { locale })}
                   </span>
                 )}
+                {series.ageRating ? (
+                  <span className="mt-1 block">
+                    <AgeRatingBadge rating={series.ageRating} />
+                  </span>
+                ) : null}
               </span>
               <span className="shrink-0">
                 <RankMovementMarker previousRank={previousRank} rank={rank} />

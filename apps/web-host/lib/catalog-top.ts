@@ -3,6 +3,7 @@ import { currentWeekday, parseInstant, WEEKDAY_NUMBERS } from "@publira/utils";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
+import type { RestrictedAgeRating } from "./age-rating";
 import { listPublishedAuthors } from "./authors";
 import { applyCacheTag, tenantTodayTag } from "./cache-tags";
 import {
@@ -20,6 +21,7 @@ import type {
 } from "./catalog";
 
 export interface CatalogTopEpisodeItem {
+  ageRating?: RestrictedAgeRating;
   episodeId: string;
   episodeOrderIndex: number;
   episodeTitle: string;
@@ -35,6 +37,7 @@ export interface CatalogTopEpisodeItem {
 }
 
 export interface CatalogTopUpdatedSeriesItem {
+  ageRating?: RestrictedAgeRating;
   creatorNames: string[];
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   latestEpisodeId: string;
@@ -47,6 +50,7 @@ export interface CatalogTopUpdatedSeriesItem {
 
 /** The work the top page opens with, and the episode its one button offers. */
 export interface CatalogTopFeaturedWork {
+  ageRating?: RestrictedAgeRating;
   creatorNames: string[];
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   /** Absent while the series has no published episode: then there is nothing to read yet. */
@@ -122,6 +126,7 @@ const byNewestDateDesc = (
 ) => compareNewestFirst(left.publishedAt, right.publishedAt);
 
 interface SeriesDetailRow {
+  ageRating?: RestrictedAgeRating;
   creatorNames: string[];
   episodes: {
     orderIndex: number;
@@ -174,6 +179,7 @@ const loadSeriesDetailRows = async (
     }
 
     rows.push({
+      ...(seriesItem.ageRating ? { ageRating: seriesItem.ageRating } : {}),
       creatorNames: seriesItem.creatorNames,
       episodes: detail.value.episodes,
       eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
@@ -398,6 +404,7 @@ export const getCatalogTopFeaturedWork = async (
   return {
     ok: true,
     value: {
+      ...(series.ageRating ? { ageRating: series.ageRating } : {}),
       creatorNames: series.creatorNames,
       eyeCatchImageVariants: series.eyeCatchImageVariants,
       latestEpisode: latestEpisode
@@ -441,6 +448,7 @@ export const getCatalogTopNewEpisodes = async (
         episode.publishedAt.trim().length > 0
           ? [
               {
+                ...(row.ageRating ? { ageRating: row.ageRating } : {}),
                 episodeId: episode.publicId,
                 episodeOrderIndex: episode.orderIndex,
                 episodeTitle: episode.title,
@@ -492,6 +500,7 @@ export const getCatalogTopUpdatedSeries = async (
 
       return [
         {
+          ...(row.ageRating ? { ageRating: row.ageRating } : {}),
           creatorNames: row.creatorNames,
           eyeCatchImageVariants: row.eyeCatchImageVariants,
           latestEpisodeId: latestEpisode.publicId,
