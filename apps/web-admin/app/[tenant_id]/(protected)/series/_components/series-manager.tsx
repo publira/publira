@@ -44,72 +44,98 @@ type SeriesManagerProps = CursorPageHrefs & {
   timeZone: string;
 };
 
-const SeriesFiltersForm = ({
-  filters,
-  messages,
-}: {
-  filters: SeriesFilters;
-  messages: ReturnType<typeof sharedCatalog>;
-}) => (
+const SeriesFiltersForm = ({ filters }: { filters: SeriesFilters }) => (
   <form className="flex flex-wrap items-end gap-4">
     <Field className="w-52">
-      <FieldLabel htmlFor="series-status-filter">
-        {getMessage(messages, "admin.series.filter.status")}
+      <FieldLabel
+        htmlFor="series-status-filter"
+        id="series-status-filter-label"
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="admin.series.filter.status" />
+        </Suspense>
       </FieldLabel>
       <FieldContent>
         <select
+          aria-labelledby="series-status-filter-label"
           className="flex h-10 w-full rounded-control border border-input bg-background px-3 py-2 text-sm text-foreground"
           defaultValue={filters.status}
           id="series-status-filter"
           name="status"
         >
           <option value="">
-            {getMessage(messages, "admin.series.filter.status_all")}
+            <Suspense fallback={null}>
+              <Message message="admin.series.filter.status_all" />
+            </Suspense>
           </option>
           <option value="ongoing">
-            {getMessage(messages, "admin.series.status.ongoing")}
+            <Suspense fallback={null}>
+              <Message message="admin.series.status.ongoing" />
+            </Suspense>
           </option>
           <option value="completed">
-            {getMessage(messages, "admin.series.status.completed")}
+            <Suspense fallback={null}>
+              <Message message="admin.series.status.completed" />
+            </Suspense>
           </option>
           <option value="hiatus">
-            {getMessage(messages, "admin.series.status.hiatus")}
+            <Suspense fallback={null}>
+              <Message message="admin.series.status.hiatus" />
+            </Suspense>
           </option>
         </select>
       </FieldContent>
     </Field>
     <Field className="w-52">
-      <FieldLabel htmlFor="series-age-rating-filter">
-        {getMessage(messages, "admin.series.filter.age_rating")}
+      <FieldLabel
+        htmlFor="series-age-rating-filter"
+        id="series-age-rating-filter-label"
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="admin.series.filter.age_rating" />
+        </Suspense>
       </FieldLabel>
       <FieldContent>
         <select
+          aria-labelledby="series-age-rating-filter-label"
           className="flex h-10 w-full rounded-control border border-input bg-background px-3 py-2 text-sm text-foreground"
           defaultValue={filters.ageRating}
           id="series-age-rating-filter"
           name="age_rating"
         >
           <option value="">
-            {getMessage(messages, "admin.series.filter.age_rating_all")}
+            <Suspense fallback={null}>
+              <Message message="admin.series.filter.age_rating_all" />
+            </Suspense>
           </option>
           <option value="all">
-            {getMessage(messages, "admin.series.age_rating.all")}
+            <Suspense fallback={null}>
+              <Message message="admin.series.age_rating.all" />
+            </Suspense>
           </option>
           <option value="r15">
-            {getMessage(messages, "admin.series.age_rating.r15")}
+            <Suspense fallback={null}>
+              <Message message="admin.series.age_rating.r15" />
+            </Suspense>
           </option>
           <option value="r18">
-            {getMessage(messages, "admin.series.age_rating.r18")}
+            <Suspense fallback={null}>
+              <Message message="admin.series.age_rating.r18" />
+            </Suspense>
           </option>
         </select>
       </FieldContent>
     </Field>
     <div className="flex gap-2">
       <Button type="submit">
-        {getMessage(messages, "admin.series.filter.apply")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+          <Message message="admin.series.filter.apply" />
+        </Suspense>
       </Button>
       <LinkButton href="/series" variant="outline">
-        {getMessage(messages, "admin.series.filter.reset")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+          <Message message="admin.series.filter.reset" />
+        </Suspense>
       </LinkButton>
     </div>
   </form>
@@ -315,7 +341,7 @@ export const SeriesManager = ({
 
   return (
     <div className="grid gap-6">
-      <SeriesFiltersForm filters={filters} messages={messages} />
+      <SeriesFiltersForm filters={filters} />
       <SeriesListBody
         hasPageLinks={hasPageLinks}
         listErrorMessage={listErrorMessage}

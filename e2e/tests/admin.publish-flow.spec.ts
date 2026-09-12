@@ -203,16 +203,12 @@ test.describe("admin publish flow", () => {
 
     // List filters travel in the URL, so a cursor page remains on the same
     // narrowed list and a reload can reproduce the editor's view.
-    await selectOption(
-      page,
-      page.getByRole("combobox", { name: "Serialization status" }),
-      "Completed"
-    );
-    await selectOption(
-      page,
-      page.getByRole("combobox", { name: "Age rating" }),
-      "R15"
-    );
+    await page
+      .getByRole("combobox", { name: "Serialization status" })
+      .selectOption("completed");
+    await page
+      .getByRole("combobox", { name: "Age rating" })
+      .selectOption("r15");
     await page.getByRole("button", { name: "Apply" }).click();
     await page.waitForURL(/\/series\?status=completed&age_rating=r15$/u);
     await expect(page.locator("tr", { hasText: title })).toBeVisible();
