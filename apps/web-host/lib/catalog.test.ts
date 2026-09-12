@@ -4,7 +4,7 @@ import {
   RankingPeriod,
   SeriesOrder,
 } from "@publira/api-client/public/catalog";
-import { SeriesStatus } from "@publira/api-client/public/types";
+import { CommentMode, SeriesStatus } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -71,6 +71,36 @@ describe("toEpisodeAccessState", () => {
     expect(isPublicEpisodeBody("free")).toBe(true);
     expect(isPublicEpisodeBody("locked")).toBe(false);
     expect(isPublicEpisodeBody("entitled")).toBe(false);
+  });
+});
+
+describe("catalog.getSeriesDetail", () => {
+  beforeEach(() => {
+    mockGetSeriesDetail.mockReset();
+  });
+
+  it("maps the resolved comment mode returned for a series", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      commentMode: CommentMode.APPROVAL_REQUIRED,
+      episodes: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    await expect(
+      getSeriesDetail("TENANT_001", "SERIES_001", "en")
+    ).resolves.toMatchObject({
+      ok: true,
+      value: {
+        episodes: [],
+        series: {
+          commentMode: "approval_required",
+          publicId: "SERIES_001",
+        },
+      },
+    });
   });
 });
 

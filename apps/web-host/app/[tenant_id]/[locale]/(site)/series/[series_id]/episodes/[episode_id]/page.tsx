@@ -16,7 +16,11 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getEpisodeDetail, isPublicEpisodeBody } from "#lib/catalog";
+import {
+  getEpisodeDetail,
+  getSeriesDetail,
+  isPublicEpisodeBody,
+} from "#lib/catalog";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -121,8 +125,9 @@ const EpisodeContent = async (
   // The catalog is awaited here for one string: the body section names itself
   // as a landmark, and an `aria-label` cannot be a node. Everything else on
   // this page streams its own copy in through `<Message>`.
-  const [result, tenant, messages] = await Promise.all([
+  const [result, seriesResult, tenant, messages] = await Promise.all([
     getEpisodeDetail(tenantId, series_id, episode_id, locale),
+    getSeriesDetail(tenantId, series_id, locale),
     getTenantSiteInfo(tenantId),
     loadHostMessages(locale),
   ]);
@@ -137,6 +142,13 @@ const EpisodeContent = async (
 
   const { access, episode, images, nextEpisode, previousEpisode, series } =
     result.value;
+  // GetSeriesDetail resolves a series override against the tenant default.
+  // If that read failed, do not offer a form whose submission might be
+  // rejected; the next request retries the uncached failure value.
+  const commentMode =
+    seriesResult.ok && seriesResult.value
+      ? seriesResult.value.series.commentMode
+      : "disabled";
   // The site-info read resolves the tenant zone. The fallback only covers an
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
@@ -307,26 +319,27 @@ const EpisodeContent = async (
           tenantId={tenantId}
         />
 
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="host.episode.comments.list_error" />
+        {commentMode === "disabled" ? null : (
+          <SectionErrorBoundary
+            title={
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="host.episode.comments.list_error" />
+              </Suspense>
+            }
+          >
+            {/* Its own boundary, so the pages and the episode metadata above
+                reach the reader without waiting on the comment reads. */}
+            <Suspense fallback={<CommentsSkeleton />}>
+              <EpisodeComments
+                commentMode={commentMode}
+                episodePublicId={episode.publicId}
+                seriesPublicId={series.publicId}
+                tenantId={tenantId}
+                token={commentSearchParams[COMMENT_TOKEN_PARAM]}
+              />
             </Suspense>
-          }
-        >
-          {/* Its own boundary, so the pages and the episode metadata above
-              reach the reader without waiting on the comment reads. The
-              section renders nothing at all where the tenant has commenting
-              turned off. */}
-          <Suspense fallback={<CommentsSkeleton />}>
-            <EpisodeComments
-              episodePublicId={episode.publicId}
-              seriesPublicId={series.publicId}
-              tenantId={tenantId}
-              token={commentSearchParams[COMMENT_TOKEN_PARAM]}
-            />
-          </Suspense>
-        </SectionErrorBoundary>
+          </SectionErrorBoundary>
+        )}
       </EpisodeColumn>
     </main>
   );
