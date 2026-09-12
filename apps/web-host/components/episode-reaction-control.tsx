@@ -1,4 +1,4 @@
-import { getMessage } from "@publira/i18n";
+import { getMessage, toIntlLocale } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -14,21 +14,20 @@ import { getMyEpisodeRating } from "#lib/episode-rating";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantDefaultLocale } from "#lib/tenant";
 
-import {
-  EpisodeReactionButton,
-  EpisodeReactionLoginLink,
-} from "./episode-reaction-button";
-import type { EpisodeReactionControlSize } from "./episode-reaction-button";
+import type { EpisodeReactionSize } from "./episode-reaction";
+import { EpisodeReactionHeart, EpisodeReactionLogin } from "./episode-reaction";
+import { EpisodeReactionButton } from "./episode-reaction-button";
 
 /**
  * Member-specific reaction island. The surrounding episode body stays on the
  * public cache; this component must sit inside its own `<Suspense>` so the
  * session cookie does not personalize the static shell.
  *
- * The headcount a guest sees is the one the cached episode read already
- * carried. A signed-in reader's own score is a private read next to the
- * follow state, and that same read is what the control takes the live
- * headcount from once they are signed in.
+ * It fills the compound face — heart and headcount as slots — after the
+ * private read. The headcount a guest sees is the one the cached episode
+ * read already carried. A signed-in reader's own score is a private read
+ * next to the follow state, and that same read is what the control takes
+ * the live headcount from once they are signed in.
  */
 export const EpisodeReactionControl = async ({
   episodePublicId,
@@ -42,7 +41,7 @@ export const EpisodeReactionControl = async ({
   ratingCount: number;
   returnTo: string;
   seriesPublicId: string;
-  size?: EpisodeReactionControlSize;
+  size?: EpisodeReactionSize;
   tenantId: string;
 }) => {
   const locale = await getLocale();
@@ -51,17 +50,6 @@ export const EpisodeReactionControl = async ({
     getMyEpisodeRating(tenantId, episodePublicId, locale),
     loadHostMessages(locale),
   ]);
-
-  const copy = {
-    countAria: getMessage(messages, "host.episode.reaction.count_aria"),
-    loginAria: getMessage(messages, "host.episode.reaction.login_aria"),
-    maxAria: getMessage(messages, "host.episode.reaction.max_aria"),
-    pressAria: getMessage(messages, "host.episode.reaction.press_aria"),
-    pressProgressAria: getMessage(
-      messages,
-      "host.episode.reaction.press_progress_aria"
-    ),
-  };
 
   if (!result.ok) {
     return (
@@ -79,19 +67,35 @@ export const EpisodeReactionControl = async ({
   }
 
   if (!result.signedIn) {
+    const count = ratingCount.toLocaleString(toIntlLocale(locale));
+    const countLabel = getMessage(
+      messages,
+      "host.episode.reaction.count_aria",
+      { count }
+    );
     return (
-      <EpisodeReactionLoginLink
-        copy={copy}
+      <EpisodeReactionLogin
+        aria-label={`${getMessage(messages, "host.episode.reaction.login_aria")}. ${countLabel}`}
         href={buildLoginPath(locale, defaultLocale, returnTo)}
-        ratingCount={ratingCount}
         size={size}
-      />
+      >
+        <EpisodeReactionHeart />
+        {count}
+      </EpisodeReactionLogin>
     );
   }
 
   return (
     <EpisodeReactionButton
-      copy={copy}
+      copy={{
+        countAria: getMessage(messages, "host.episode.reaction.count_aria"),
+        maxAria: getMessage(messages, "host.episode.reaction.max_aria"),
+        pressAria: getMessage(messages, "host.episode.reaction.press_aria"),
+        pressProgressAria: getMessage(
+          messages,
+          "host.episode.reaction.press_progress_aria"
+        ),
+      }}
       episodePublicId={episodePublicId}
       mode={result.mode}
       ratingCount={result.ratingCount}

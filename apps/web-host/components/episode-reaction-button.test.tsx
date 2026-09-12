@@ -1,26 +1,13 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  EpisodeReactionButton,
-  EpisodeReactionControlSkeleton,
-  EpisodeReactionLoginLink,
-} from "./episode-reaction-button";
+import { EpisodeReactionButton } from "./episode-reaction-button";
 
 vi.mock("#components/locale-provider", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "en",
-}));
-
-vi.mock("next/link", () => ({
-  default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
 }));
 
 const { rateEpisodeAction } = vi.hoisted(() => ({
@@ -38,7 +25,6 @@ const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 const copy = {
   countAria: "Readers who reacted: {$count}",
-  loginAria: "Sign in to react to this episode",
   maxAria: "You have reacted to this episode",
   pressAria: "React to this episode",
   pressProgressAria: "React to this episode, {$score} of {$max}",
@@ -47,26 +33,6 @@ const copy = {
 afterEach(() => {
   cleanup();
   rateEpisodeAction.mockClear();
-});
-
-describe("EpisodeReactionLoginLink", () => {
-  it("sends a guest to login with returnTo, showing the public headcount", () => {
-    render(
-      <EpisodeReactionLoginLink
-        copy={copy}
-        href="/login?returnTo=%2Fseries%2FSERIES01%2Fepisodes%2FEPISODE01"
-        ratingCount={12}
-      />
-    );
-
-    const link = screen.getByRole("link", {
-      name: "Sign in to react to this episode. Readers who reacted: 12",
-    });
-    expect(link.getAttribute("href")).toBe(
-      "/login?returnTo=%2Fseries%2FSERIES01%2Fepisodes%2FEPISODE01"
-    );
-    expect(link.textContent).toContain("12");
-  });
 });
 
 describe("EpisodeReactionButton", () => {
@@ -144,12 +110,5 @@ describe("EpisodeReactionButton", () => {
     fireEvent.click(screen.getByRole("button"));
     await Promise.resolve();
     expect(rateEpisodeAction).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("EpisodeReactionControlSkeleton", () => {
-  it("renders a placeholder the size of the control", () => {
-    const { container } = render(<EpisodeReactionControlSkeleton />);
-    expect(container.querySelector("[aria-hidden='true']")).toBeTruthy();
   });
 });

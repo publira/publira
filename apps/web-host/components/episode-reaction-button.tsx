@@ -1,12 +1,7 @@
 "use client";
 
 import { formatMessage, toIntlLocale } from "@publira/i18n";
-import { HeartIcon } from "@publira/icons";
-import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Skeleton } from "@publira/ui-components/skeleton";
-import { cn } from "@publira/utils";
-import Link from "next/link";
 import { startTransition, useActionState, useOptimistic, useRef } from "react";
 
 import type {
@@ -21,63 +16,24 @@ import {
 import type { RateEpisodeActionState } from "#lib/episode-rating-actions";
 import { rateEpisodeAction } from "#lib/episode-rating-actions";
 
+import type { EpisodeReactionSize } from "./episode-reaction";
+import {
+  EpisodeReactionHeart,
+  EpisodeReactionSubmit,
+} from "./episode-reaction";
 import { LocaleField } from "./locale-field";
 import { useLocale } from "./locale-provider";
 
 /**
- * The control's copy, resolved on the server. Count and progress labels are
- * MessageFormat patterns so the client can keep them in step with optimistic
- * presses; the rest land in `aria-label` as already-resolved strings.
+ * MessageFormat patterns the optimistic face interpolates as the score and
+ * the headcount move. They cannot be nodes: they land in `aria-label`.
  */
 export interface EpisodeReactionButtonCopy {
   countAria: string;
-  loginAria: string;
   maxAria: string;
   pressAria: string;
   pressProgressAria: string;
 }
-
-export type EpisodeReactionControlSize = "lg" | "sm";
-
-const reactionButtonClassName = "shrink-0 tabular-nums";
-
-const heartClassNameForSize = (size: EpisodeReactionControlSize): string =>
-  size === "sm" ? "size-4" : "size-5";
-
-const skeletonClassNameForSize = (size: EpisodeReactionControlSize): string =>
-  size === "sm" ? "h-8 w-16" : "h-10 w-20";
-
-const ReactionHeart = ({
-  fillRatio,
-  size,
-}: {
-  fillRatio: number;
-  size: EpisodeReactionControlSize;
-}) => {
-  const heartClassName = heartClassNameForSize(size);
-
-  return (
-    <span
-      aria-hidden="true"
-      className={cn("relative inline-block", heartClassName)}
-    >
-      <HeartIcon className={heartClassName} />
-      {fillRatio > 0 ? (
-        <span
-          className={cn(
-            "absolute inset-0 overflow-hidden text-secondary",
-            heartClassName
-          )}
-          style={{
-            clipPath: `inset(${(1 - fillRatio) * 100}% 0 0 0)`,
-          }}
-        >
-          <HeartIcon className={cn(heartClassName, "fill-current")} />
-        </span>
-      ) : null}
-    </span>
-  );
-};
 
 const reactionAriaLabel = (
   copy: EpisodeReactionButtonCopy,
@@ -97,41 +53,10 @@ const reactionAriaLabel = (
   return `${action}. ${countLabel}`;
 };
 
-export const EpisodeReactionControlSkeleton = ({
-  size = "lg",
-}: {
-  size?: EpisodeReactionControlSize;
-}) => <Skeleton className={skeletonClassNameForSize(size)} />;
-
-export const EpisodeReactionLoginLink = ({
-  copy,
-  href,
-  ratingCount,
-  size = "lg",
-}: {
-  copy: EpisodeReactionButtonCopy;
-  href: string;
-  ratingCount: number;
-  size?: EpisodeReactionControlSize;
-}) => {
-  const locale = useLocale();
-  const count = ratingCount.toLocaleString(toIntlLocale(locale));
-  const countLabel = formatMessage(copy.countAria, { count });
-
-  return (
-    <LinkButton
-      aria-label={`${copy.loginAria}. ${countLabel}`}
-      className={reactionButtonClassName}
-      render={<Link href={href} />}
-      size={size}
-      variant="outline"
-    >
-      <ReactionHeart fillRatio={0} size={size} />
-      {count}
-    </LinkButton>
-  );
-};
-
+/**
+ * The signed-in control. Presses are optimistic and batched into one request
+ * so a burst in `multiple` mode is one `presses` value rather than a race.
+ */
 export const EpisodeReactionButton = ({
   copy,
   episodePublicId,
@@ -150,7 +75,7 @@ export const EpisodeReactionButton = ({
   returnTo: string;
   score: number;
   seriesPublicId: string;
-  size?: EpisodeReactionControlSize;
+  size?: EpisodeReactionSize;
   tenantId: string;
 }) => {
   const locale = useLocale();
@@ -216,16 +141,13 @@ export const EpisodeReactionButton = ({
       <input name="returnTo" type="hidden" value={returnTo} />
       <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
       <input name="tenantId" type="hidden" value={tenantId} />
-      <Button
+      <EpisodeReactionSubmit
         aria-label={reactionAriaLabel(copy, countLabel, mode, optimistic.score)}
-        className={reactionButtonClassName}
         size={size}
-        type="submit"
-        variant="outline"
       >
-        <ReactionHeart fillRatio={fillRatio} size={size} />
+        <EpisodeReactionHeart fillRatio={fillRatio} />
         {count}
-      </Button>
+      </EpisodeReactionSubmit>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}

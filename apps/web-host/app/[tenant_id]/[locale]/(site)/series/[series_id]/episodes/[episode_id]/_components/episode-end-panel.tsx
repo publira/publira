@@ -4,7 +4,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { EpisodeReactionControlSkeleton } from "#components/episode-reaction-button";
+import { EpisodeReactionSkeleton } from "#components/episode-reaction";
 import { EpisodeReactionControl } from "#components/episode-reaction-control";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { FollowControlSkeleton } from "#components/follow-button";
@@ -157,7 +157,7 @@ export const EpisodeEndPanel = async ({
         >
           {/* Member-specific, so it sits in a boundary of its own: the
               section around it stays on the shared public cache. */}
-          <Suspense fallback={<EpisodeReactionControlSkeleton />}>
+          <Suspense fallback={<EpisodeReactionSkeleton />}>
             <EpisodeReactionControl
               episodePublicId={episode.publicId}
               ratingCount={episode.ratingCount}
