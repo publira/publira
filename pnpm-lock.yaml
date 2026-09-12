@@ -177,8 +177,8 @@ catalogs:
       specifier: 1.43.0
       version: 1.43.0
     '@publira/comic-viewer':
-      specifier: 0.7.0
-      version: 0.7.0
+      specifier: 0.8.0
+      version: 0.8.0
     '@tailwindcss/postcss':
       specifier: 4.3.3
       version: 4.3.3
@@ -428,7 +428,7 @@ importers:
         version: link:../../packages/brand
       '@publira/comic-viewer':
         specifier: 'catalog:'
-        version: 0.7.0(react@19.2.8)
+        version: 0.8.0(react@19.2.8)
       '@publira/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -2176,8 +2176,8 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  '@publira/comic-viewer@0.7.0':
-    resolution: {integrity: sha512-JvrTrJNdjGTD/Sf+Y7DrbRQR0H270IfhHcVCColczYmyXHRjAeG3jqtmoz5rj7PHY4wnBWRME1pWG9rYxgqmOA==}
+  '@publira/comic-viewer@0.8.0':
+    resolution: {integrity: sha512-KiV/FLtvOqzA8XmTLSapVCA4dfxumKfIuEx0tpr81/mpQk9m6rH7Fa6l4sPpCQ6wYeD2AYlsy53AvgbzCoheOQ==}
     peerDependencies:
       react: '>=19'
 
@@ -6196,7 +6196,7 @@ snapshots:
     dependencies:
       playwright: 1.63.0
 
-  '@publira/comic-viewer@0.7.0(react@19.2.8)':
+  '@publira/comic-viewer@0.8.0(react@19.2.8)':
     dependencies:
       react: 19.2.8
 
