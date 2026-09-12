@@ -948,6 +948,7 @@ func mapSeriesAscRows(rows []dbmodels.ListSeriesByTenantAscRow) []seriesPageRow 
 func (s *adminServer) seriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	filters seriesListFilters,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -956,6 +957,8 @@ func (s *adminServer) seriesPage(
 	if direction == pagination.Backward {
 		rows, err := queries.ListSeriesByTenantAsc(ctx, dbmodels.ListSeriesByTenantAscParams{
 			TenantID:        tenantID,
+			Status:          filters.status,
+			AgeRating:       filters.ageRating,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
 			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -969,6 +972,8 @@ func (s *adminServer) seriesPage(
 
 	rows, err := queries.ListSeriesByTenantDesc(ctx, dbmodels.ListSeriesByTenantDescParams{
 		TenantID:        tenantID,
+		Status:          filters.status,
+		AgeRating:       filters.ageRating,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -980,11 +985,100 @@ func (s *adminServer) seriesPage(
 	return mapSeriesDescRows(rows), nil
 }
 
+// seriesListFilters holds the optional classifications in the same shape the
+// keyset queries accept. An unspecified enum means the editor has not narrowed
+// that column, unlike a series write where it means the column default.
+type seriesListFilters struct {
+	ageRating sql.NullString
+	status    sql.NullString
+}
+
+func (filters seriesListFilters) active() bool {
+	return filters.status.Valid || filters.ageRating.Valid
+}
+
+// key names the filtered list a cursor points into. A filter changes the
+// boundary row's position, so a token from another filter must be refused
+// rather than queried as though it named this list.
+func (filters seriesListFilters) key() string {
+	key := "created_at_desc"
+	if filters.status.Valid {
+		key += "+status:" + filters.status.String
+	}
+	if filters.ageRating.Valid {
+		key += "+age_rating:" + filters.ageRating.String
+	}
+	return key
+}
+
+func resolveSeriesListFilters(req *publiraadminv1.ListSeriesRequest) (seriesListFilters, error) {
+	filters := seriesListFilters{}
+	if req.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_UNSPECIFIED {
+		status, err := protomapper.SeriesStatusToStored(req.Status)
+		if err != nil {
+			return seriesListFilters{}, connect.NewError(connect.CodeInvalidArgument, errors.New("status is not supported"))
+		}
+		filters.status = sql.NullString{String: status, Valid: true}
+	}
+	if req.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_UNSPECIFIED {
+		ageRating, err := protomapper.SeriesAgeRatingToStored(req.AgeRating)
+		if err != nil {
+			return seriesListFilters{}, connect.NewError(connect.CodeInvalidArgument, errors.New("age_rating is not supported"))
+		}
+		filters.ageRating = sql.NullString{String: ageRating, Valid: true}
+	}
+	return filters, nil
+}
+
+func encodeSeriesListToken(direction pagination.Direction, filters seriesListFilters, at time.Time, id uuid.UUID) string {
+	if !filters.active() {
+		return pagination.EncodeTimeUUID(direction, at, id)
+	}
+	return pagination.Encode(direction, filters.key(), at.UTC().Format(time.RFC3339Nano), id.String())
+}
+
+func encodeSeriesListRecoveryToken(direction pagination.Direction, filters seriesListFilters, keys pagination.TimeUUIDKeys) string {
+	if !filters.active() {
+		return pagination.EncodeTimeUUIDRecovery(direction, keys.Time, keys.ID)
+	}
+	return pagination.Encode(direction, filters.key(), keys.Time.UTC().Format(time.RFC3339Nano), keys.ID.String(), "inclusive")
+}
+
+func decodeSeriesListCursor(cursor pagination.Cursor, filters seriesListFilters) (pagination.TimeUUIDKeys, error) {
+	if !filters.active() {
+		return pagination.DecodeTimeUUID(cursor)
+	}
+	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
+		return pagination.TimeUUIDKeys{}, invalid
+	}
+	inclusive := len(cursor.Keys) == 4
+	if inclusive && cursor.Keys[3] != "inclusive" {
+		return pagination.TimeUUIDKeys{}, invalid
+	}
+	if cursor.Keys[0] != filters.key() {
+		return pagination.TimeUUIDKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another filter"))
+	}
+	at, err := time.Parse(time.RFC3339Nano, cursor.Keys[1])
+	if err != nil {
+		return pagination.TimeUUIDKeys{}, invalid
+	}
+	id, err := uuid.Parse(cursor.Keys[2])
+	if err != nil {
+		return pagination.TimeUUIDKeys{}, invalid
+	}
+	return pagination.TimeUUIDKeys{Time: at.UTC(), ID: id, Inclusive: inclusive, Valid: true}, nil
+}
+
 func (s *adminServer) ListSeries(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListSeriesRequest],
 ) (*connect.Response[publiraadminv1.ListSeriesResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	filters, err := resolveSeriesListFilters(req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -995,14 +1089,17 @@ func (s *adminServer) ListSeries(
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
+		keys, err = decodeSeriesListCursor(cursor, filters)
 		if err != nil {
+			if connect.CodeOf(err) == connect.CodeInvalidArgument {
+				return nil, err
+			}
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 		}
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.seriesPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.seriesPage(ctx, tenant.ID, filters, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list series", err, "tenant_id", tenant.ID.String())
 	}
@@ -1106,11 +1203,11 @@ func (s *adminServer) ListSeries(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+			res.PreviousToken = encodeSeriesListToken(pagination.Backward, filters, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			res.NextToken = encodeSeriesListToken(pagination.Forward, filters, last.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -1118,9 +1215,9 @@ func (s *adminServer) ListSeries(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = encodeSeriesListRecoveryToken(pagination.Backward, filters, keys)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = encodeSeriesListRecoveryToken(pagination.Forward, filters, keys)
 	}
 
 	return connect.NewResponse(res), nil

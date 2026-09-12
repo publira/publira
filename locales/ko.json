@@ -947,6 +947,14 @@
       "eye_catch_tab": "커버 이미지",
       "pagination_aria": "시리즈 목록 페이지 이동",
       "pagination_description": "최신순으로 한 페이지에 최대 {$count}건까지 표시합니다.",
+      "filter": {
+        "status": "연재 상태",
+        "status_all": "모든 연재 상태",
+        "age_rating": "연령 등급",
+        "age_rating_all": "모든 연령 등급",
+        "apply": "적용",
+        "reset": "초기화"
+      },
       "columns": {
         "title": "제목",
         "label": "레이블",

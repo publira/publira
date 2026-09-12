@@ -114,6 +114,11 @@ export type ListSeriesResult = CursorPageTokens &
       }
   );
 
+export type ListSeriesOptions = CursorPageOptions & {
+  ageRating?: SeriesAgeRatingValue;
+  status?: SeriesStatusValue;
+};
+
 export type CreateSeriesResult =
   | { ok: true; series: SeriesItem }
   | { ok: false; message: string };
@@ -338,7 +343,7 @@ const mapSeries = (series: RawSeries): SeriesItem => ({
 export const listSeries = async (
   tenantId: string,
   locale: Locale,
-  options: CursorPageOptions = {}
+  options: ListSeriesOptions = {}
 ): Promise<ListSeriesResult> => {
   "use cache: private";
   cacheTag(seriesListCacheTag(tenantId));
@@ -360,6 +365,12 @@ export const listSeries = async (
     const response = await apiClient.series.listSeries(
       {
         ...cursorPageRequest(options),
+        ...(options.ageRating
+          ? { ageRating: SERIES_AGE_RATING_ENUM[options.ageRating] }
+          : {}),
+        ...(options.status
+          ? { status: SERIES_STATUS_ENUM[options.status] }
+          : {}),
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)

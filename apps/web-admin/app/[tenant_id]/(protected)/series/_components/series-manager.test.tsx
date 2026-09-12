@@ -28,6 +28,7 @@ describe("SeriesManager", () => {
   it("says nothing is registered yet when the first page is empty", () => {
     render(
       <SeriesManager
+        filters={{ ageRating: "", status: "", token: "" }}
         locale="en"
         pageSize={20}
         series={[]}
@@ -44,6 +45,7 @@ describe("SeriesManager", () => {
   it("does not say the whole list is empty when a later page is empty", () => {
     render(
       <SeriesManager
+        filters={{ ageRating: "", status: "", token: "" }}
         locale="en"
         pageSize={20}
         previousHref="?token=previous"
@@ -60,6 +62,7 @@ describe("SeriesManager", () => {
   it("shows only the error and does not call the list empty when the fetch fails", () => {
     render(
       <SeriesManager
+        filters={{ ageRating: "", status: "", token: "" }}
         listErrorMessage="Could not load the series."
         locale="en"
         nextHref="?token=next"

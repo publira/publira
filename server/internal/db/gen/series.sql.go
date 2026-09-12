@@ -420,26 +420,36 @@ FROM series s
     ) siv ON true
 WHERE s.tenant_id = $1
     AND (
-        $2::uuid IS NULL
+        $2::text IS NULL
+        OR sl.status = $2::text
+    )
+    AND (
+        $3::text IS NULL
+        OR sl.age_rating = $3::text
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $3::boolean
-            AND (s.created_at, s.id) >= ($4::timestamptz, $2::uuid)
+            $5::boolean
+            AND (s.created_at, s.id) >= ($6::timestamptz, $4::uuid)
         )
         OR (
-            NOT $3::boolean
-            AND (s.created_at, s.id) > ($4::timestamptz, $2::uuid)
+            NOT $5::boolean
+            AND (s.created_at, s.id) > ($6::timestamptz, $4::uuid)
         )
     )
 ORDER BY s.created_at ASC, s.id ASC
-LIMIT $5
+LIMIT $7
 `
 
 type ListSeriesByTenantAscParams struct {
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	CursorID        uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive bool          `json:"cursor_inclusive"`
-	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
-	Limit           int32         `json:"limit"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	Status          sql.NullString `json:"status"`
+	AgeRating       sql.NullString `json:"age_rating"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
 }
 
 type ListSeriesByTenantAscRow struct {
@@ -464,6 +474,8 @@ type ListSeriesByTenantAscRow struct {
 func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, listSeriesByTenantAsc,
 		arg.TenantID,
+		arg.Status,
+		arg.AgeRating,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -537,26 +549,36 @@ FROM series s
     ) siv ON true
 WHERE s.tenant_id = $1
     AND (
-        $2::uuid IS NULL
+        $2::text IS NULL
+        OR sl.status = $2::text
+    )
+    AND (
+        $3::text IS NULL
+        OR sl.age_rating = $3::text
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $3::boolean
-            AND (s.created_at, s.id) <= ($4::timestamptz, $2::uuid)
+            $5::boolean
+            AND (s.created_at, s.id) <= ($6::timestamptz, $4::uuid)
         )
         OR (
-            NOT $3::boolean
-            AND (s.created_at, s.id) < ($4::timestamptz, $2::uuid)
+            NOT $5::boolean
+            AND (s.created_at, s.id) < ($6::timestamptz, $4::uuid)
         )
     )
 ORDER BY s.created_at DESC, s.id DESC
-LIMIT $5
+LIMIT $7
 `
 
 type ListSeriesByTenantDescParams struct {
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	CursorID        uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive bool          `json:"cursor_inclusive"`
-	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
-	Limit           int32         `json:"limit"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	Status          sql.NullString `json:"status"`
+	AgeRating       sql.NullString `json:"age_rating"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
 }
 
 type ListSeriesByTenantDescRow struct {
@@ -586,6 +608,8 @@ type ListSeriesByTenantDescRow struct {
 func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listSeriesByTenantDesc,
 		arg.TenantID,
+		arg.Status,
+		arg.AgeRating,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,

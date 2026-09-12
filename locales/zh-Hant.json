@@ -947,6 +947,14 @@
       "eye_catch_tab": "封面圖",
       "pagination_aria": "系列列表分頁",
       "pagination_description": "由新到舊排列，每頁最多 {$count} 筆。",
+      "filter": {
+        "status": "連載狀態",
+        "status_all": "所有連載狀態",
+        "age_rating": "年齡分級",
+        "age_rating_all": "所有年齡分級",
+        "apply": "套用",
+        "reset": "重設"
+      },
       "columns": {
         "title": "標題",
         "label": "品牌",

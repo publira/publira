@@ -263,6 +263,14 @@ FROM series s
     ) siv ON true
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND (
+        sqlc.narg('status')::text IS NULL
+        OR sl.status = sqlc.narg('status')::text
+    )
+    AND (
+        sqlc.narg('age_rating')::text IS NULL
+        OR sl.age_rating = sqlc.narg('age_rating')::text
+    )
+    AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
@@ -305,6 +313,14 @@ FROM series s
         LIMIT 1
     ) siv ON true
 WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('status')::text IS NULL
+        OR sl.status = sqlc.narg('status')::text
+    )
+    AND (
+        sqlc.narg('age_rating')::text IS NULL
+        OR sl.age_rating = sqlc.narg('age_rating')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (

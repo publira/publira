@@ -947,6 +947,14 @@
       "eye_catch_tab": "封面图",
       "pagination_aria": "系列列表分页",
       "pagination_description": "按时间从新到旧排列，每页最多 {$count} 条。",
+      "filter": {
+        "status": "连载状态",
+        "status_all": "所有连载状态",
+        "age_rating": "年龄分级",
+        "age_rating_all": "所有年龄分级",
+        "apply": "应用",
+        "reset": "重置"
+      },
       "columns": {
         "title": "标题",
         "label": "品牌",
