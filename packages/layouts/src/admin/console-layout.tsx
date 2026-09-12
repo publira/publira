@@ -63,7 +63,7 @@ export const ConsoleLayoutSkeleton = () => (
 );
 
 export const ConsoleHeaderUserSkeleton = () => (
-  <Skeleton className="size-8 rounded-full" />
+  <Skeleton className="size-9 rounded-control" />
 );
 
 /** A 48px bar: what the console is showing on the left, its controls on the right. */
