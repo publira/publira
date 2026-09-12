@@ -1972,6 +1972,17 @@
       },
       "page_count_value": "{$count} pages",
       "published": "Published {$date}",
+      "reaction": {
+        "control_error": "Could not show the reaction control",
+        "count_aria": "Readers who reacted: {$count}",
+        "failed": "Could not record the reaction. Please try again later.",
+        "login_aria": "Sign in to react to this episode",
+        "max_aria": "You have reacted to this episode",
+        "press_aria": "React to this episode",
+        "press_progress_aria": "React to this episode, {$score} of {$max}",
+        "status_error": "Could not show your reaction",
+        "status_failed": "Could not load your reaction. Please try again later."
+      },
       "reading_period": "Viewing period",
       "reading_period_hours": "{$hours} hours",
       "reading_period_unlimited": "Unlimited",

@@ -1972,6 +1972,17 @@
       },
       "page_count_value": "{$count} 頁",
       "published": "發布於 {$date}",
+      "reaction": {
+        "control_error": "無法顯示回應操作",
+        "count_aria": "已回應的讀者：{$count}",
+        "failed": "無法記錄回應。請稍後再試。",
+        "login_aria": "登入後回應此章節",
+        "max_aria": "你已回應此章節",
+        "press_aria": "回應此章節",
+        "press_progress_aria": "回應此章節，{$score} / {$max}",
+        "status_error": "無法顯示你的回應",
+        "status_failed": "無法載入你的回應。請稍後再試。"
+      },
       "reading_period": "閱讀期限",
       "reading_period_hours": "{$hours} 小時",
       "reading_period_unlimited": "無期限",

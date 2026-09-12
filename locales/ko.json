@@ -1972,6 +1972,17 @@
       },
       "page_count_value": "{$count}쪽",
       "published": "{$date} 공개",
+      "reaction": {
+        "control_error": "반응 조작을 표시하지 못했습니다",
+        "count_aria": "반응한 사람 {$count}명",
+        "failed": "반응을 기록하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "login_aria": "로그인하고 이 에피소드에 반응하기",
+        "max_aria": "이 에피소드에 이미 반응했습니다",
+        "press_aria": "이 에피소드에 반응하기",
+        "press_progress_aria": "이 에피소드에 반응하기, {$score} / {$max}",
+        "status_error": "반응 상태를 표시하지 못했습니다",
+        "status_failed": "반응 상태를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+      },
       "reading_period": "열람 기한",
       "reading_period_hours": "{$hours}시간",
       "reading_period_unlimited": "제한 없음",
