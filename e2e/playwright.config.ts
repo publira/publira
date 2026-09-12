@@ -40,6 +40,13 @@ const platformLocaleSwitchingSpecs = /platform\.locale-switching\./u;
 const platformOperatorManagementSpecs = /platform\.operator-management\./u;
 
 /**
+ * This spec changes its tenant's saved comment mode twice and waits for the
+ * public cache to observe each value. It runs after the parallel projects so
+ * their requests cannot keep the old mode live while that round trip runs.
+ */
+const commentModerationSpecs = /admin\.comment-moderation\./u;
+
+/**
  * The spec that drives initial setup. `/setup` renders only while the platform
  * has no operator at all, so it empties `platform_users` — the table every
  * console sign-in in the suite reads — and runs last of everything.
@@ -148,7 +155,12 @@ export default defineConfig({
     {
       dependencies: screenshotDependencies,
       name: "web-admin",
-      testIgnore: [processIsolatedSpecs, performanceSpecs, screenshotSpecs],
+      testIgnore: [
+        processIsolatedSpecs,
+        commentModerationSpecs,
+        performanceSpecs,
+        screenshotSpecs,
+      ],
       testMatch: [/admin\./u],
       timeout: 120_000,
       use: {
@@ -276,6 +288,24 @@ export default defineConfig({
         baseURL: WEB_PLATFORM_BASE_URL,
       },
     },
+    // This round trip changes a tenant-wide setting and asks web-host to read
+    // both values through its cache. It follows every parallel project so
+    // concurrent requests cannot race either cache revalidation.
+    {
+      dependencies: [
+        "catalog-error-boundary",
+        "admin-error-boundary",
+        "platform-operator-management",
+      ],
+      fullyParallel: false,
+      name: "admin-comment-moderation",
+      testMatch: [commentModerationSpecs],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_ADMIN_BASE_URL,
+      },
+    },
     // Last, and on its own: it measures elapsed time, so nothing else may be
     // competing for the CPU. Depending on the tail of every chain above is what
     // empties the worker pool for it. Its baseURL is the Traefik edge, the only
@@ -285,6 +315,7 @@ export default defineConfig({
         "catalog-error-boundary",
         "admin-error-boundary",
         "platform-operator-management",
+        "admin-comment-moderation",
       ],
       fullyParallel: false,
       name: "viewer-performance",
