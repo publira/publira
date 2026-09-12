@@ -2443,10 +2443,13 @@
       "age_gate": {
         "confirm_r15": "15세 이상입니다",
         "confirm_r18": "18세 이상입니다",
+        "confirm_unknown": "열람해도 됩니다",
         "r15_description": "15세 이상임을 확인하면 이 작품을 볼 수 있습니다.",
         "r15_title": "“{$title}”은(는) R15 등급입니다",
         "r18_description": "18세 이상임을 확인하면 이 작품을 볼 수 있습니다.",
-        "r18_title": "“{$title}”은(는) R18 등급입니다"
+        "r18_title": "“{$title}”은(는) R18 등급입니다",
+        "unknown_description": "이 앱이 인식하지 못하는 연령 등급입니다. 열람해도 된다는 것을 확인하면 이 작품을 볼 수 있습니다.",
+        "unknown_title": "“{$title}”에는 연령 등급이 있습니다"
       },
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",

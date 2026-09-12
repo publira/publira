@@ -169,6 +169,24 @@ void main() {
     expect(series.genres.single.id, 'SeedGENRAAA1');
   });
 
+  test('an unrecognized stored age rating is read as unknown', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free', ownerId: ''),
+        series: [
+          {
+            'id': 'SeedSERSAAA1',
+            'title': 'Seed Series 001',
+            'description': 'synopsis',
+            'ageRating': 'r20',
+          },
+        ],
+      ),
+    );
+
+    expect(decoded!.series!.single.ageRating, SeriesAgeRating.unknown);
+  });
+
   test(
     'a series saved before this build carries no credits or classification',
     () {

@@ -179,10 +179,12 @@ SeriesStatus? _statusFromJson(Object? raw) {
 
 SeriesAgeRating? _ageRatingFromJson(Object? raw) {
   return switch (raw) {
+    null => null,
     'all' => SeriesAgeRating.all,
     'r15' => SeriesAgeRating.r15,
     'r18' => SeriesAgeRating.r18,
-    _ => null,
+    'unknown' => SeriesAgeRating.unknown,
+    _ => SeriesAgeRating.unknown,
   };
 }
 

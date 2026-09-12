@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -20,8 +18,9 @@ class AgeRatingGate extends StatelessWidget {
     required this.child,
   });
 
-  /// The rating of the series being opened. Anything other than `r15` / `r18`
-  /// passes [child] through.
+  /// The rating of the series being opened. Unspecified and all-ages pass
+  /// [child] through; `r15`, `r18`, and a name this build does not know wait
+  /// for confirmation.
   final SeriesAgeRating? rating;
 
   final String seriesTitle;
@@ -30,7 +29,7 @@ class AgeRatingGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final confirmation = AgeRatingConfirmationScope.of(context);
-    if (ageRatingMeetsConfirmation(rating, confirmation.confirmed)) {
+    if (confirmation.confirmed.covers(rating)) {
       return child;
     }
     if (!confirmation.isRestored) {
@@ -39,65 +38,95 @@ class AgeRatingGate extends StatelessWidget {
         child: CircularProgressIndicator(),
       );
     }
-    final restricted = rating!;
-    return _AgeRatingPrompt(
-      rating: restricted,
-      seriesTitle: seriesTitle,
-      onConfirm: () {
-        unawaited(confirmation.confirm(restricted));
-      },
-    );
+    return _AgeRatingPrompt(rating: rating!, seriesTitle: seriesTitle);
   }
 }
 
 /// The confirmation itself: an [AlertDialog] in the route, not an overlay, so
 /// nothing of the rated body stands behind it.
-class _AgeRatingPrompt extends StatelessWidget {
-  const _AgeRatingPrompt({
-    required this.rating,
-    required this.seriesTitle,
-    required this.onConfirm,
-  });
+class _AgeRatingPrompt extends StatefulWidget {
+  const _AgeRatingPrompt({required this.rating, required this.seriesTitle});
 
   final SeriesAgeRating rating;
   final String seriesTitle;
-  final VoidCallback onConfirm;
+
+  @override
+  State<_AgeRatingPrompt> createState() => _AgeRatingPromptState();
+}
+
+class _AgeRatingPromptState extends State<_AgeRatingPrompt> {
+  var _busy = false;
 
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    final isR18 = rating == SeriesAgeRating.r18;
     return Center(
       child: AlertDialog(
         key: const ValueKey('age-rating-gate'),
-        title: Text(
-          isR18
-              ? messages.seriesAgeGateR18Title(title: seriesTitle)
-              : messages.seriesAgeGateR15Title(title: seriesTitle),
-        ),
-        content: Text(
-          isR18
-              ? messages.seriesAgeGateR18Description
-              : messages.seriesAgeGateR15Description,
-        ),
+        title: Text(_title(messages)),
+        content: Text(_description(messages)),
         actions: [
           TextButton(
             key: const ValueKey('age-rating-cancel'),
-            onPressed: () => _dismiss(context),
+            onPressed: _busy ? null : () => _dismiss(context),
             child: Text(messages.commonCancel),
           ),
           FilledButton(
             key: const ValueKey('age-rating-confirm'),
-            onPressed: onConfirm,
-            child: Text(
-              isR18
-                  ? messages.seriesAgeGateConfirmR18
-                  : messages.seriesAgeGateConfirmR15,
-            ),
+            onPressed: _busy ? null : _confirm,
+            child: Text(_confirmLabel(messages)),
           ),
         ],
       ),
     );
+  }
+
+  String _title(AppMessages messages) {
+    return switch (widget.rating) {
+      SeriesAgeRating.r18 => messages.seriesAgeGateR18Title(
+        title: widget.seriesTitle,
+      ),
+      SeriesAgeRating.unknown => messages.seriesAgeGateUnknownTitle(
+        title: widget.seriesTitle,
+      ),
+      SeriesAgeRating.r15 || SeriesAgeRating.all =>
+        messages.seriesAgeGateR15Title(title: widget.seriesTitle),
+    };
+  }
+
+  String _description(AppMessages messages) {
+    return switch (widget.rating) {
+      SeriesAgeRating.r18 => messages.seriesAgeGateR18Description,
+      SeriesAgeRating.unknown => messages.seriesAgeGateUnknownDescription,
+      SeriesAgeRating.r15 ||
+      SeriesAgeRating.all => messages.seriesAgeGateR15Description,
+    };
+  }
+
+  String _confirmLabel(AppMessages messages) {
+    return switch (widget.rating) {
+      SeriesAgeRating.r18 => messages.seriesAgeGateConfirmR18,
+      SeriesAgeRating.unknown => messages.seriesAgeGateConfirmUnknown,
+      SeriesAgeRating.r15 ||
+      SeriesAgeRating.all => messages.seriesAgeGateConfirmR15,
+    };
+  }
+
+  Future<void> _confirm() async {
+    setState(() {
+      _busy = true;
+    });
+    try {
+      await AgeRatingConfirmationScope.of(context).confirm(widget.rating);
+    } catch (_) {
+      // The write did not land, so the controller still holds the previous
+      // confirmation and this prompt stays. The button can be pressed again.
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
   }
 
   void _dismiss(BuildContext context) {

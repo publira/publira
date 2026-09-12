@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,32 +5,43 @@ import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:publira/models/series_item.dart';
 
-/// Where the app remembers the highest age rating this install has confirmed.
+/// Where the app remembers the age ratings this install has confirmed.
 abstract class AgeRatingConfirmationStore {
-  /// The stored rating, or `null` when the reader has confirmed none.
-  Future<SeriesAgeRating?> read();
+  /// The stored confirmation, empty when the reader has confirmed none.
+  Future<AgeRatingConfirmation> read();
 
-  /// Remembers [rating], keeping an `r18` already stored rather than lowering
-  /// it to `r15`.
-  Future<SeriesAgeRating> write(SeriesAgeRating rating);
+  /// Remembers [rating]. An `r18` already stored is kept rather than lowered
+  /// to `r15`; an unrecognized rating is recorded beside that ladder, not on
+  /// it.
+  Future<AgeRatingConfirmation> write(SeriesAgeRating rating);
 }
 
-/// [AgeRatingConfirmationStore] that keeps the rating in memory.
+/// [AgeRatingConfirmationStore] that keeps the confirmation in memory.
 ///
 /// Widget tests inject one so a confirmation does not reach the filesystem,
-/// and so a test can start already confirmed.
+/// and so a test can start already confirmed or make a write fail.
 class MemoryAgeRatingConfirmationStore implements AgeRatingConfirmationStore {
-  MemoryAgeRatingConfirmationStore({this.confirmed});
+  MemoryAgeRatingConfirmationStore({
+    this.confirmed = AgeRatingConfirmation.empty,
+    this.writeError,
+  });
 
-  SeriesAgeRating? confirmed;
+  AgeRatingConfirmation confirmed;
+
+  /// Thrown by [write], standing in for a disk that refuses the file.
+  Object? writeError;
 
   @override
-  Future<SeriesAgeRating?> read() async => confirmed;
+  Future<AgeRatingConfirmation> read() async => confirmed;
 
   @override
-  Future<SeriesAgeRating> write(SeriesAgeRating rating) async {
-    confirmed = maxRestrictedAgeRating(confirmed, rating);
-    return confirmed!;
+  Future<AgeRatingConfirmation> write(SeriesAgeRating rating) async {
+    final error = writeError;
+    if (error != null) {
+      throw error;
+    }
+    confirmed = confirmed.confirming(rating);
+    return confirmed;
   }
 }
 
@@ -55,33 +65,41 @@ class FileAgeRatingConfirmationStore implements AgeRatingConfirmationStore {
   final SettingsRootResolver _root;
 
   @override
-  Future<SeriesAgeRating?> read() async {
+  Future<AgeRatingConfirmation> read() async {
     try {
       final file = await _file();
       if (!await file.exists()) {
-        return null;
+        return AgeRatingConfirmation.empty;
       }
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is! Map) {
-        return null;
+        return AgeRatingConfirmation.empty;
       }
-      return _parseStored(decoded['confirmed']);
+      return AgeRatingConfirmation(
+        named: _parseStoredNamed(decoded['confirmed']),
+        unknown: decoded['unknown'] == true,
+      );
     } on FileSystemException {
-      return null;
+      return AgeRatingConfirmation.empty;
     } on FormatException {
-      return null;
+      return AgeRatingConfirmation.empty;
     }
   }
 
   @override
-  Future<SeriesAgeRating> write(SeriesAgeRating rating) async {
-    final next = maxRestrictedAgeRating(await read(), rating)!;
+  Future<AgeRatingConfirmation> write(SeriesAgeRating rating) async {
+    final next = (await read()).confirming(rating);
     final file = await _file();
     await file.parent.create(recursive: true);
     // A rename on the same filesystem is atomic, so a process that dies
     // mid-write cannot leave a truncated file the next read would drop.
     final staged = File('${file.path}.writing');
-    await staged.writeAsString(jsonEncode({'confirmed': next.name}));
+    await staged.writeAsString(
+      jsonEncode({
+        if (next.named != null) 'confirmed': next.named!.name,
+        if (next.unknown) 'unknown': true,
+      }),
+    );
     await staged.rename(file.path);
     return next;
   }
@@ -92,7 +110,7 @@ class FileAgeRatingConfirmationStore implements AgeRatingConfirmationStore {
   }
 }
 
-SeriesAgeRating? _parseStored(Object? raw) {
+SeriesAgeRating? _parseStoredNamed(Object? raw) {
   return switch (raw) {
     'r15' => SeriesAgeRating.r15,
     'r18' => SeriesAgeRating.r18,
@@ -100,21 +118,21 @@ SeriesAgeRating? _parseStored(Object? raw) {
   };
 }
 
-/// Holds the rating this install has confirmed and notifies when it changes.
+/// Holds the ratings this install has confirmed and notifies when they change.
 class AgeRatingConfirmationController extends ChangeNotifier {
   AgeRatingConfirmationController({AgeRatingConfirmationStore? store})
     : _store = store ?? MemoryAgeRatingConfirmationStore();
 
   final AgeRatingConfirmationStore _store;
 
-  SeriesAgeRating? _confirmed;
+  var _confirmed = AgeRatingConfirmation.empty;
 
   /// Whether [restore] has finished. Until it has, a rated series must not
   /// open: the first frame of a returning reader would otherwise show the
   /// body before the stored confirmation is read.
   var isRestored = false;
 
-  SeriesAgeRating? get confirmed => _confirmed;
+  AgeRatingConfirmation get confirmed => _confirmed;
 
   Future<void> restore() async {
     _confirmed = await _store.read();
@@ -122,12 +140,13 @@ class AgeRatingConfirmationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Records [rating] and opens whatever it covers. An `r18` already stored
-  /// stays; an `r15` stored later does not take it down.
+  /// Records [rating] after it has been persisted, then opens whatever it
+  /// covers. A write that fails leaves the previous confirmation in place,
+  /// so the body stays behind the prompt.
   Future<void> confirm(SeriesAgeRating rating) async {
-    _confirmed = maxRestrictedAgeRating(_confirmed, rating);
+    final confirmed = await _store.write(rating);
+    _confirmed = confirmed;
     notifyListeners();
-    await _store.write(rating);
   }
 }
 

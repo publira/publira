@@ -7,6 +7,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
+import 'package:publira/settings/age_rating_confirmation.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -27,13 +28,18 @@ void main() {
     offline = InMemoryOfflineLibrary();
   });
 
-  Future<void> pumpApp(WidgetTester tester, {AuthSession? session}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    AuthSession? session,
+    AgeRatingConfirmationController? ageRatingConfirmation,
+  }) async {
     await tester.pumpWidget(
       PubliraApp(
         router: router,
         catalog: catalog,
         auth: fakeAuthController(session: session),
         offline: offline,
+        ageRatingConfirmation: ageRatingConfirmation,
       ),
     );
     await tester.pump();
@@ -241,6 +247,56 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
 
     expect(find.text('“Midnight” is rated R18'), findsOneWidget);
+    expect(find.text('Episodes'), findsNothing);
+  });
+
+  testWidgets('an unrecognized rating is not opened as R15', (tester) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureUnknownRatedSeries],
+      details: {
+        fixtureUnknownRatedSeries.id: fixtureDetail(fixtureUnknownRatedSeries),
+      },
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureUnknownRatedSeries.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    expect(find.text('“Uncharted” has an age rating'), findsOneWidget);
+    expect(find.text('I am allowed to open this series'), findsOneWidget);
+    expect(find.text('“Uncharted” is rated R15'), findsNothing);
+    expect(find.text('Episodes'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await pumpUntilFound(tester, find.text('Episodes'));
+  });
+
+  testWidgets('a failed confirmation write leaves the series unopened', (
+    tester,
+  ) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureRatedSeries],
+      details: {fixtureRatedSeries.id: fixtureDetail(fixtureRatedSeries)},
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureRatedSeries.id),
+    );
+    await pumpApp(
+      tester,
+      ageRatingConfirmation: AgeRatingConfirmationController(
+        store: MemoryAgeRatingConfirmationStore(
+          writeError: Exception('disk full'),
+        ),
+      ),
+    );
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const ValueKey('age-rating-gate')), findsOneWidget);
     expect(find.text('Episodes'), findsNothing);
   });
 

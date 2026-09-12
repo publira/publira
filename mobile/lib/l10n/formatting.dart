@@ -58,7 +58,7 @@ extension AppMessagesFormatting on AppMessages {
     return switch (rating) {
       SeriesAgeRating.r15 => seriesAgeRatingR15,
       SeriesAgeRating.r18 => seriesAgeRatingR18,
-      SeriesAgeRating.all || null => null,
+      SeriesAgeRating.all || SeriesAgeRating.unknown || null => null,
     };
   }
 

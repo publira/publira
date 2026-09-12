@@ -46,33 +46,83 @@ enum SeriesStatus { ongoing, completed, hiatus }
 ///
 /// `all` and `null` on [SeriesItem.ageRating] carry no badge and no
 /// confirmation. [r15] and [r18] do, and a confirmation of [r18] covers
-/// [r15] as well.
-enum SeriesAgeRating { all, r15, r18 }
+/// [r15] as well. [unknown] is a name this build does not know, which still
+/// closes the body: a future rating must not open as unrestricted.
+enum SeriesAgeRating { all, r15, r18, unknown }
 
 /// Whether [rating] is one a reader has to confirm before the pages open.
 bool isRestrictedAgeRating(SeriesAgeRating? rating) =>
-    rating == SeriesAgeRating.r15 || rating == SeriesAgeRating.r18;
+    rating == SeriesAgeRating.r15 ||
+    rating == SeriesAgeRating.r18 ||
+    rating == SeriesAgeRating.unknown;
 
-/// Whether a stored confirmation is enough for [required]. Confirming `r18`
-/// covers `r15` as well; confirming `r15` does not open an `r18` series.
-bool ageRatingMeetsConfirmation(
-  SeriesAgeRating? required,
-  SeriesAgeRating? confirmed,
-) {
-  if (!isRestrictedAgeRating(required)) {
-    return true;
+/// What this install has confirmed: the highest named restricted rating, and
+/// whether an unrecognized rating has been confirmed on its own.
+///
+/// An unrecognized rating is not on the R15/R18 ladder. Confirming `r18`
+/// does not cover it, and confirming it does not cover `r15`.
+class AgeRatingConfirmation {
+  const AgeRatingConfirmation({this.named, this.unknown = false});
+
+  static const empty = AgeRatingConfirmation();
+
+  /// `r15` or `r18`, the highest named rating confirmed. `null` when neither
+  /// has been.
+  final SeriesAgeRating? named;
+
+  /// Whether the reader has confirmed a rating this build does not know.
+  final bool unknown;
+
+  bool get isEmpty => named == null && !unknown;
+
+  /// Whether a stored confirmation is enough for [required]. Confirming
+  /// `r18` covers `r15`; confirming `r15` does not open an `r18` series;
+  /// an unrecognized rating is covered only by its own confirmation.
+  bool covers(SeriesAgeRating? required) {
+    return switch (required) {
+      null || SeriesAgeRating.all => true,
+      SeriesAgeRating.r15 =>
+        named == SeriesAgeRating.r15 || named == SeriesAgeRating.r18,
+      SeriesAgeRating.r18 => named == SeriesAgeRating.r18,
+      SeriesAgeRating.unknown => unknown,
+    };
   }
-  if (!isRestrictedAgeRating(confirmed)) {
-    return false;
+
+  /// The confirmation after [rating] is recorded, keeping an `r18` already
+  /// stored rather than lowering it to `r15`.
+  AgeRatingConfirmation confirming(SeriesAgeRating rating) {
+    return switch (rating) {
+      SeriesAgeRating.unknown => AgeRatingConfirmation(
+        named: named,
+        unknown: true,
+      ),
+      SeriesAgeRating.r15 || SeriesAgeRating.r18 => AgeRatingConfirmation(
+        named: maxRestrictedAgeRating(named, rating),
+        unknown: unknown,
+      ),
+      SeriesAgeRating.all => this,
+    };
   }
-  if (required == SeriesAgeRating.r15) {
-    return true;
-  }
-  return confirmed == SeriesAgeRating.r18;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AgeRatingConfirmation &&
+      named == other.named &&
+      unknown == other.unknown;
+
+  @override
+  int get hashCode => Object.hash(named, unknown);
 }
 
-/// The higher of two restricted ratings, so confirming `r18` later cannot be
-/// overwritten by confirming `r15`.
+/// Whether a stored confirmation is enough for [required].
+bool ageRatingMeetsConfirmation(
+  SeriesAgeRating? required,
+  AgeRatingConfirmation confirmed,
+) => confirmed.covers(required);
+
+/// The higher of two named restricted ratings, so confirming `r18` later
+/// cannot be overwritten by confirming `r15`. Unrecognized ratings are not
+/// on this ladder and are ignored.
 SeriesAgeRating? maxRestrictedAgeRating(
   SeriesAgeRating? current,
   SeriesAgeRating next,
@@ -80,10 +130,10 @@ SeriesAgeRating? maxRestrictedAgeRating(
   if (current == SeriesAgeRating.r18 || next == SeriesAgeRating.r18) {
     return SeriesAgeRating.r18;
   }
-  if (isRestrictedAgeRating(current) || isRestrictedAgeRating(next)) {
+  if (current == SeriesAgeRating.r15 || next == SeriesAgeRating.r15) {
     return SeriesAgeRating.r15;
   }
-  return current;
+  return null;
 }
 
 /// One genre a series carries, as `publira.types.v1.Genre` describes it, in
@@ -144,7 +194,8 @@ class SeriesItem {
   final List<int> scheduleWeekdays;
 
   /// Who the series is meant for. `null` and [SeriesAgeRating.all] are the
-  /// same on screen: no badge and no confirmation.
+  /// same on screen: no badge and no confirmation. [SeriesAgeRating.unknown]
+  /// still waits for confirmation, without a named badge.
   final SeriesAgeRating? ageRating;
 
   /// The tenant's genres this series carries, in the tenant's genre order.

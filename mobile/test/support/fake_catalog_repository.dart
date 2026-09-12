@@ -244,6 +244,16 @@ const fixtureR18Series = SeriesItem(
   ageRating: SeriesAgeRating.r18,
 );
 
+/// A series whose rating this build does not know, used to check the gate
+/// fails closed instead of presenting the R15 copy.
+const fixtureUnknownRatedSeries = SeriesItem(
+  id: 'series-unknown-rating',
+  title: 'Uncharted',
+  description: 'A series with an unrecognized rating.',
+  episodeCount: 1,
+  ageRating: SeriesAgeRating.unknown,
+);
+
 SeriesDetail fixtureDetail(SeriesItem item) {
   return SeriesDetail(
     series: item,

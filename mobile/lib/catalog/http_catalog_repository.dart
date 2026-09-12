@@ -342,15 +342,16 @@ class HttpCatalogRepository implements CatalogRepository {
     };
   }
 
-  /// protojson writes an enum as its name. Unspecified and a name this build
-  /// does not know are both read as unset, so a new rating cannot close a
-  /// series a tenant never rated.
+  /// protojson writes an enum as its name and omits the zero value. A name
+  /// this build does not know is [SeriesAgeRating.unknown], so a future
+  /// rating cannot open as unrestricted.
   SeriesAgeRating? _parseAgeRating(Object? raw) {
     return switch (raw) {
+      null || 0 || 'SERIES_AGE_RATING_UNSPECIFIED' => null,
       'SERIES_AGE_RATING_ALL' => SeriesAgeRating.all,
       'SERIES_AGE_RATING_R15' => SeriesAgeRating.r15,
       'SERIES_AGE_RATING_R18' => SeriesAgeRating.r18,
-      _ => null,
+      _ => SeriesAgeRating.unknown,
     };
   }
 

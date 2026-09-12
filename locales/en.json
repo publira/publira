@@ -2443,10 +2443,13 @@
       "age_gate": {
         "confirm_r15": "I am 15 or older",
         "confirm_r18": "I am 18 or older",
+        "confirm_unknown": "I am allowed to open this series",
         "r15_description": "Confirm that you are 15 or older to open this series.",
         "r15_title": "“{$title}” is rated R15",
         "r18_description": "Confirm that you are 18 or older to open this series.",
-        "r18_title": "“{$title}” is rated R18"
+        "r18_title": "“{$title}” is rated R18",
+        "unknown_description": "This app does not recognize the age rating. Confirm that you are allowed to open this series.",
+        "unknown_title": "“{$title}” has an age rating"
       },
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",

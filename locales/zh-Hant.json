@@ -2443,10 +2443,13 @@
       "age_gate": {
         "confirm_r15": "我已滿 15 歲",
         "confirm_r18": "我已滿 18 歲",
+        "confirm_unknown": "我可以閱讀此系列",
         "r15_description": "確認已滿 15 歲後即可閱讀此系列。",
         "r15_title": "「{$title}」為 R15",
         "r18_description": "確認已滿 18 歲後即可閱讀此系列。",
-        "r18_title": "「{$title}」為 R18"
+        "r18_title": "「{$title}」為 R18",
+        "unknown_description": "此應用無法辨識該年齡分級。確認可以閱讀後即可開啟此系列。",
+        "unknown_title": "「{$title}」有年齡分級"
       },
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",

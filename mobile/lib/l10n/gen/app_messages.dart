@@ -358,6 +358,9 @@ abstract class AppMessages {
   /// `mobile.series.age_gate.confirm_r18`
   String get seriesAgeGateConfirmR18;
 
+  /// `mobile.series.age_gate.confirm_unknown`
+  String get seriesAgeGateConfirmUnknown;
+
   /// `mobile.series.age_gate.r15_description`
   String get seriesAgeGateR15Description;
 
@@ -369,6 +372,12 @@ abstract class AppMessages {
 
   /// `mobile.series.age_gate.r18_title`
   String seriesAgeGateR18Title({required String title});
+
+  /// `mobile.series.age_gate.unknown_description`
+  String get seriesAgeGateUnknownDescription;
+
+  /// `mobile.series.age_gate.unknown_title`
+  String seriesAgeGateUnknownTitle({required String title});
 
   /// `mobile.series.age_rating_r15`
   String get seriesAgeRatingR15;
@@ -960,6 +969,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmUnknown {
+    return '閲覧して問題ありません';
+  }
+
+  @override
   String get seriesAgeGateR15Description {
     return '15歳以上であることを確認すると、この作品を閲覧できます。';
   }
@@ -977,6 +991,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String seriesAgeGateR18Title({required String title}) {
     return '「$title」は R18 指定です';
+  }
+
+  @override
+  String get seriesAgeGateUnknownDescription {
+    return 'このアプリが認識しない年齢制限です。閲覧して問題ないことを確認すると、この作品を開けます。';
+  }
+
+  @override
+  String seriesAgeGateUnknownTitle({required String title}) {
+    return '「$title」には年齢制限があります';
   }
 
   @override
@@ -1653,6 +1677,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmUnknown {
+    return 'I am allowed to open this series';
+  }
+
+  @override
   String get seriesAgeGateR15Description {
     return 'Confirm that you are 15 or older to open this series.';
   }
@@ -1670,6 +1699,16 @@ class _AppMessagesEn extends AppMessages {
   @override
   String seriesAgeGateR18Title({required String title}) {
     return '“$title” is rated R18';
+  }
+
+  @override
+  String get seriesAgeGateUnknownDescription {
+    return 'This app does not recognize the age rating. Confirm that you are allowed to open this series.';
+  }
+
+  @override
+  String seriesAgeGateUnknownTitle({required String title}) {
+    return '“$title” has an age rating';
   }
 
   @override
@@ -2346,6 +2385,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmUnknown {
+    return '열람해도 됩니다';
+  }
+
+  @override
   String get seriesAgeGateR15Description {
     return '15세 이상임을 확인하면 이 작품을 볼 수 있습니다.';
   }
@@ -2363,6 +2407,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String seriesAgeGateR18Title({required String title}) {
     return '“$title”은(는) R18 등급입니다';
+  }
+
+  @override
+  String get seriesAgeGateUnknownDescription {
+    return '이 앱이 인식하지 못하는 연령 등급입니다. 열람해도 된다는 것을 확인하면 이 작품을 볼 수 있습니다.';
+  }
+
+  @override
+  String seriesAgeGateUnknownTitle({required String title}) {
+    return '“$title”에는 연령 등급이 있습니다';
   }
 
   @override
@@ -3039,6 +3093,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmUnknown {
+    return '我可以阅读该系列';
+  }
+
+  @override
   String get seriesAgeGateR15Description {
     return '确认已满 15 岁后即可阅读该系列。';
   }
@@ -3056,6 +3115,16 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String seriesAgeGateR18Title({required String title}) {
     return '“$title”为 R18';
+  }
+
+  @override
+  String get seriesAgeGateUnknownDescription {
+    return '此应用无法识别该年龄分级。确认可以阅读后即可打开该系列。';
+  }
+
+  @override
+  String seriesAgeGateUnknownTitle({required String title}) {
+    return '“$title”有年龄分级';
   }
 
   @override
@@ -3732,6 +3801,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get seriesAgeGateConfirmUnknown {
+    return '我可以閱讀此系列';
+  }
+
+  @override
   String get seriesAgeGateR15Description {
     return '確認已滿 15 歲後即可閱讀此系列。';
   }
@@ -3749,6 +3823,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String seriesAgeGateR18Title({required String title}) {
     return '「$title」為 R18';
+  }
+
+  @override
+  String get seriesAgeGateUnknownDescription {
+    return '此應用無法辨識該年齡分級。確認可以閱讀後即可開啟此系列。';
+  }
+
+  @override
+  String seriesAgeGateUnknownTitle({required String title}) {
+    return '「$title」有年齡分級';
   }
 
   @override

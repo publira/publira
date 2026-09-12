@@ -256,6 +256,20 @@ void main() {
     expect(items.single.ageRating, SeriesAgeRating.r15);
   });
 
+  test('listSeries maps an unrecognized age rating as unknown', () async {
+    server.series = [
+      {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+        'ageRating': 'SERIES_AGE_RATING_R20',
+      },
+    ];
+
+    final items = await catalog.listSeries();
+
+    expect(items.single.ageRating, SeriesAgeRating.unknown);
+  });
+
   test('listSeries drops a genre with no name or public id', () async {
     server.series = [
       {
