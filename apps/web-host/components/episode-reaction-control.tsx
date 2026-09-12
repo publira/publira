@@ -84,12 +84,12 @@ export const EpisodeReactionControl = async ({
           ratingCount={ratingCount}
         >
           <EpisodeReactionName>
+            {/* One boundary so Message resolves as a string child of the
+                interpolating slots, not as a streamed hole that bypasses them. */}
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
               <EpisodeReactionNameIdle>
                 <Message message="host.episode.reaction.login_aria" />
               </EpisodeReactionNameIdle>
-            </Suspense>
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <EpisodeReactionNameReaders>
                 <Message message="host.episode.reaction.count_aria" />
               </EpisodeReactionNameReaders>
@@ -115,22 +115,16 @@ export const EpisodeReactionControl = async ({
       >
         <EpisodeReactionSubmit>
           <EpisodeReactionName>
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-52" />}>
               <EpisodeReactionNameIdle>
                 <Message message="host.episode.reaction.press_aria" />
               </EpisodeReactionNameIdle>
-            </Suspense>
-            <Suspense fallback={<SkeletonLine className="h-4 w-52" />}>
               <EpisodeReactionNameProgress>
                 <Message message="host.episode.reaction.press_progress_aria" />
               </EpisodeReactionNameProgress>
-            </Suspense>
-            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
               <EpisodeReactionNameDone>
                 <Message message="host.episode.reaction.max_aria" />
               </EpisodeReactionNameDone>
-            </Suspense>
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <EpisodeReactionNameReaders>
                 <Message message="host.episode.reaction.count_aria" />
               </EpisodeReactionNameReaders>
