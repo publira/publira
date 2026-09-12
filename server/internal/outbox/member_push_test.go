@@ -68,20 +68,28 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 }
 
 func TestMemberPushNotificationSkipsATypeThatIsNotPushed(t *testing.T) {
-	queries := &stubPushDeviceQuerier{}
-	sender := &stubPushSender{}
+	for _, notificationType := range []string{
+		"episode_publish_failed",
+		NotificationTypeCommentApproved,
+		NotificationTypeCommentHidden,
+	} {
+		t.Run(notificationType, func(t *testing.T) {
+			queries := &stubPushDeviceQuerier{}
+			sender := &stubPushSender{}
 
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
-	event := memberPushEvent(t, uuid.New(), "episode_publish_failed")
-	if err := handler(context.Background(), event); err != nil {
-		t.Fatalf("handler: %v", err)
-	}
+			handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+			event := memberPushEvent(t, uuid.New(), notificationType)
+			if err := handler(context.Background(), event); err != nil {
+				t.Fatalf("handler: %v", err)
+			}
 
-	if queries.listCalls != 0 {
-		t.Fatalf("device lookups = %d, want 0", queries.listCalls)
-	}
-	if len(sender.sent) != 0 {
-		t.Fatalf("messages sent = %d, want 0", len(sender.sent))
+			if queries.listCalls != 0 {
+				t.Fatalf("device lookups = %d, want 0", queries.listCalls)
+			}
+			if len(sender.sent) != 0 {
+				t.Fatalf("messages sent = %d, want 0", len(sender.sent))
+			}
+		})
 	}
 }
 

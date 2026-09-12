@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/contentevents"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -370,6 +371,25 @@ func (s *adminServer) loadCommentForModeration(
 	return row, nil
 }
 
+// commentAuthorNotification is the bell row ApproveComment and HideComment
+// write for the person who posted the comment. The catalog fields come off
+// the moderation read so the inbox can name the episode without a second
+// lookup, and the type plus hidden_reason is what the storefront turns into
+// copy.
+func commentAuthorNotification(row moderationCommentRow, notificationType, hiddenReason string) outbox.CommentAuthorNotification {
+	return outbox.CommentAuthorNotification{
+		TenantID:         row.TenantID,
+		UserID:           row.UserID,
+		NotificationType: notificationType,
+		CommentPublicID:  row.PublicID,
+		EpisodePublicID:  row.EpisodePublicID,
+		EpisodeTitle:     row.EpisodeTitle,
+		SeriesPublicID:   row.SeriesPublicID,
+		SeriesTitle:      row.SeriesTitle,
+		HiddenReason:     hiddenReason,
+	}
+}
+
 // commentPublicIDArg is the identifier every moderation action takes.
 func commentPublicIDArg(raw string) (string, error) {
 	publicID := strings.TrimSpace(raw)
@@ -564,10 +584,10 @@ func (s *adminServer) CountPendingComments(
 // ApproveComment publishes one comment that was waiting for staff approval.
 //
 // Approval is the second of the two ways a comment becomes public, so it is
-// also where the engagement event for it is filed. The two writes share a
-// transaction: nothing replays this projection afterwards, and a comment that
-// is public without one is a comment its author's reading history has no
-// record of.
+// also where the engagement event for it is filed and where its author is
+// told it went live. Those writes share a transaction: nothing replays the
+// projection afterwards, and a comment that is public without one is a
+// comment its author's reading history has no record of.
 func (s *adminServer) ApproveComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ApproveCommentRequest],
@@ -602,6 +622,9 @@ func (s *adminServer) ApproveComment(
 	if err := contentevents.ProjectComment(ctx, qtx, tenant.ID, current.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to project the engagement event of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
 	}
+	if err := outbox.NotifyCommentAuthor(ctx, qtx, commentAuthorNotification(current, outbox.NotificationTypeCommentApproved, "")); err != nil {
+		return nil, s.internalDBError(ctx, "failed to notify the author of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit the comment approval", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
 	}
@@ -617,7 +640,8 @@ func (s *adminServer) ApproveComment(
 }
 
 // HideComment removes one comment from every reader-facing response but its
-// author's, who is never told about it.
+// author's. The author still sees the comment unchanged, and is told through a
+// bell notification rather than by the comment itself changing shape.
 func (s *adminServer) HideComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.HideCommentRequest],
@@ -635,13 +659,26 @@ func (s *adminServer) HideComment(
 		return nil, commentStateError("removed", current.Status)
 	}
 
-	if _, err := s.queriesFor(ctx).HideEpisodeCommentByPublicIDForTenant(ctx, dbmodels.HideEpisodeCommentByPublicIDForTenantParams{
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin comment hide transaction", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := dbmodels.New(tx)
+	if _, err := qtx.HideEpisodeCommentByPublicIDForTenant(ctx, dbmodels.HideEpisodeCommentByPublicIDForTenantParams{
 		TenantID:     tenant.ID,
 		PublicID:     publicID,
 		HiddenBy:     uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true},
 		HiddenReason: commentHiddenReasonStaff,
 	}); err != nil {
 		return nil, s.commentTransitionError(ctx, "hide", "removed", tenant.ID, publicID, err)
+	}
+	if err := outbox.NotifyCommentAuthor(ctx, qtx, commentAuthorNotification(current, outbox.NotificationTypeCommentHidden, commentHiddenReasonStaff)); err != nil {
+		return nil, s.internalDBError(ctx, "failed to notify the author of a hidden comment", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit the comment hide", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
 	}
 
 	updated, err := s.loadCommentForModeration(ctx, tenant.ID, publicID)

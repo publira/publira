@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"slices"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/commentretention"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -159,6 +161,38 @@ func (e *adminDBEnv) auditRowCount(t *testing.T, tenantID uuid.UUID, action, tar
 	)
 }
 
+// commentAuthorNotificationCount is how many bell rows one reader has of one
+// type. ApproveComment and HideComment write exactly one for the comment's
+// author, and nobody else.
+func (e *adminDBEnv) commentAuthorNotificationCount(t *testing.T, tenantID, userID uuid.UUID, notificationType string) int {
+	t.Helper()
+
+	return e.countRows(t,
+		"SELECT count(*) FROM notifications WHERE tenant_id = $1 AND user_id = $2 AND notification_type = $3",
+		tenantID, userID, notificationType,
+	)
+}
+
+func (e *adminDBEnv) commentAuthorNotificationPayload(t *testing.T, tenantID, userID uuid.UUID, notificationType string) (subjectKey string, payload map[string]string) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var raw string
+	err := e.PG.DB.QueryRowContext(ctx,
+		"SELECT subject_key, payload::text FROM notifications WHERE tenant_id = $1 AND user_id = $2 AND notification_type = $3",
+		tenantID, userID, notificationType,
+	).Scan(&subjectKey, &raw)
+	if err != nil {
+		t.Fatalf("read %s notification: %v", notificationType, err)
+	}
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		t.Fatalf("decode %s notification payload: %v", notificationType, err)
+	}
+	return subjectKey, payload
+}
+
 func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "MOD", "moderation.example.com")
@@ -259,6 +293,82 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 		PublicId: comment.PublicID,
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("RestoreComment on a published comment error = %v, want failed_precondition", err)
+	}
+}
+
+func TestDBAdminCommentApprovalAndHideNotifyTheAuthor(t *testing.T) {
+	env := newAdminDBEnv(t)
+	fixture := newCommentModerationFixture(t, env, "NTF", "notify-author.example.com")
+	client := env.commentClient()
+	comment := fixture.seedComment(t, "NTFPENDING01", "pending")
+	tenantID := fixture.admin.Tenant.ID
+
+	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+		Tenant:   fixture.admin.tenantContext(),
+		PublicId: comment.PublicID,
+	})); err != nil {
+		t.Fatalf("ApproveComment: %v", err)
+	}
+
+	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.reader, outbox.NotificationTypeCommentApproved); got != 1 {
+		t.Fatalf("comment_approved rows for the author = %d, want 1", got)
+	}
+	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.admin.User.ID, outbox.NotificationTypeCommentApproved); got != 0 {
+		t.Fatalf("comment_approved rows for the moderator = %d, want 0", got)
+	}
+	subjectKey, payload := env.commentAuthorNotificationPayload(t, tenantID, fixture.reader, outbox.NotificationTypeCommentApproved)
+	if subjectKey != outbox.CommentAuthorSubjectKey(comment.PublicID) {
+		t.Fatalf("comment_approved subject_key = %q, want %q", subjectKey, outbox.CommentAuthorSubjectKey(comment.PublicID))
+	}
+	wantApproved := map[string]string{
+		"episode_id":    fixture.episode.PublicID,
+		"episode_title": fixture.episode.Title,
+		"series_id":     fixture.series.PublicID,
+		"series_title":  fixture.series.Title,
+		"comment_id":    comment.PublicID,
+	}
+	for key, value := range wantApproved {
+		if payload[key] != value {
+			t.Fatalf("comment_approved payload[%q] = %q, want %q", key, payload[key], value)
+		}
+	}
+	if len(payload) != len(wantApproved) {
+		t.Fatalf("comment_approved payload = %v, want exactly %v", payload, wantApproved)
+	}
+
+	// A second approval is refused, so it must not write a second row either.
+	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+		Tenant:   fixture.admin.tenantContext(),
+		PublicId: comment.PublicID,
+	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("ApproveComment on a published comment error = %v, want failed_precondition", err)
+	}
+	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.reader, outbox.NotificationTypeCommentApproved); got != 1 {
+		t.Fatalf("comment_approved rows after a refused second approval = %d, want 1", got)
+	}
+
+	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+		Tenant:   fixture.admin.tenantContext(),
+		PublicId: comment.PublicID,
+	})); err != nil {
+		t.Fatalf("HideComment: %v", err)
+	}
+
+	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.reader, outbox.NotificationTypeCommentHidden); got != 1 {
+		t.Fatalf("comment_hidden rows for the author = %d, want 1", got)
+	}
+	_, hiddenPayload := env.commentAuthorNotificationPayload(t, tenantID, fixture.reader, outbox.NotificationTypeCommentHidden)
+	if hiddenPayload["hidden_reason"] != outbox.CommentHiddenReasonStaff {
+		t.Fatalf("comment_hidden hidden_reason = %q, want %q", hiddenPayload["hidden_reason"], outbox.CommentHiddenReasonStaff)
+	}
+	if hiddenPayload["comment_id"] != comment.PublicID {
+		t.Fatalf("comment_hidden comment_id = %q, want %q", hiddenPayload["comment_id"], comment.PublicID)
+	}
+	if got := env.countRows(t,
+		"SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2",
+		tenantID, outbox.EventTypeMemberPushNotification,
+	); got != 0 {
+		t.Fatalf("member_push_notification events = %d, want 0 (these types are bell-only)", got)
 	}
 }
 
