@@ -100,6 +100,26 @@
  * the inherited value — the document's own token.
  */
 .publira-theme-scope {
+  --font-sans: var(
+    --publira-font-sans,
+    "Hiragino Sans",
+    "BIZ UDPGothic",
+    "Yu Gothic",
+    "Noto Sans CJK JP",
+    "Noto Sans JP",
+    system-ui,
+    sans-serif
+  );
+  --font-serif: var(
+    --publira-font-serif,
+    "Hiragino Mincho ProN",
+    "BIZ UDPMincho",
+    "Yu Mincho",
+    "Noto Serif CJK JP",
+    "Noto Serif JP",
+    serif
+  );
+
   --color-background: var(--publira-color-background);
   --color-foreground: var(--publira-color-foreground);
 

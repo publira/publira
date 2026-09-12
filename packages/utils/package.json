@@ -75,7 +75,8 @@
   },
   "dependencies": {
     "@publira/i18n": "workspace:*",
-    "cn": "0.2.6"
+    "cn": "0.2.6",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
@@ -85,8 +86,7 @@
     "temporal-polyfill": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "zod": "catalog:"
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "next": "^16.3.0",

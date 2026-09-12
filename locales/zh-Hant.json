@@ -1177,9 +1177,22 @@
       "theme_error": "無法顯示主題",
       "theme": {
         "color_picker": "色彩選擇器",
+        "typefaces": {
+          "title": "字體",
+          "description": "依優先順序指定讀者裝置中已安裝的字體。留空則使用預設字體堆疊。",
+          "serif": {
+            "label": "正文與展示字體堆疊",
+            "description": "用於標題與正文。範例：\"Noto Serif KR\", \"Batang\", serif"
+          },
+          "sans": {
+            "label": "UI 字體堆疊",
+            "description": "用於導覽與控制項。範例：\"Noto Sans SC\", \"PingFang SC\", sans-serif"
+          }
+        },
         "preview": {
           "title": "公開網站預覽",
           "description": "您正在編輯的顏色，會呈現在公開網站的各個組成部分上。它會隨每次編輯即時變化，在您儲存主題之前，公開網站仍使用目前的顏色。",
+          "type_sample": "日本語 · Latin · 한국어 · 中文",
           "site_name": "青空書屋",
           "works": {
             "first": {
@@ -1335,7 +1348,8 @@
         "validation": {
           "hex_color": "請以 #RRGGBB 的形式輸入顏色。",
           "contrast": "{$background} 與 {$foreground} 的對比度至少需要達到 {$minimum}:1（目前為 {$actual}:1）。",
-          "contrast_summary": "請檢查這些顏色組合，以確保文字清晰可讀。"
+          "contrast_summary": "請檢查這些顏色組合，以確保文字清晰可讀。",
+          "font_family": "請只輸入以逗號分隔的字體家族名稱。"
         }
       },
       "title": "設定",

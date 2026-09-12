@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -24,6 +25,13 @@ import (
 
 var hexColorCodePattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
+const maximumTenantThemeFontFamilyLength = 512
+
+// An unquoted CSS family name is a sequence of CSS identifiers. Escapes are
+// deliberately not accepted: the stored value is written into a stylesheet
+// verbatim, and accepting a smaller grammar keeps that boundary auditable.
+var unquotedFontFamilyPattern = regexp.MustCompile(`^[\p{L}_-][\p{L}\p{N}_\-\p{Zs}]*$`)
+
 // WCAG AA requires 4.5:1 contrast for normal text. Theme foreground tokens
 // are used for text, including compact labels, so the stricter text threshold
 // protects each rendered pair rather than relying on a component's size.
@@ -35,6 +43,69 @@ func validateHexColorCode(value string, fieldName string) (string, error) {
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New(fieldName+" must be a hex color code in #RRGGBB format"))
 	}
 	return strings.ToLower(trimmed), nil
+}
+
+func validateTenantThemeFontFamily(value string, fieldName string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	invalid := func() (string, error) {
+		return "", rpcerrors.NewFieldViolationError(
+			connect.CodeInvalidArgument,
+			errors.New(fieldName+" must be a CSS font-family list"),
+			fieldName,
+		)
+	}
+	if trimmed == "" {
+		return "", nil
+	}
+	if len(trimmed) > maximumTenantThemeFontFamilyLength {
+		return invalid()
+	}
+
+	var families []string
+	var family strings.Builder
+	var quote rune
+	for _, char := range trimmed {
+		if unicode.IsControl(char) || strings.ContainsRune(";{}()/\\<>@", char) {
+			return invalid()
+		}
+		switch char {
+		case '\'', '"':
+			switch quote {
+			case 0:
+				quote = char
+			case char:
+				quote = 0
+			}
+		case ',':
+			if quote == 0 {
+				families = append(families, strings.TrimSpace(family.String()))
+				family.Reset()
+				continue
+			}
+		}
+		family.WriteRune(char)
+	}
+	if quote != 0 {
+		return invalid()
+	}
+	families = append(families, strings.TrimSpace(family.String()))
+
+	for _, family := range families {
+		if family == "" {
+			return invalid()
+		}
+		if first := family[0]; first == '\'' || first == '"' {
+			if len(family) < 3 || family[len(family)-1] != first || strings.TrimSpace(family[1:len(family)-1]) == "" {
+				return invalid()
+			}
+			continue
+		}
+		if !unquotedFontFamilyPattern.MatchString(family) {
+			return invalid()
+		}
+	}
+
+	return trimmed, nil
 }
 
 func themeColorRelativeLuminance(color string) float64 {
@@ -128,6 +199,14 @@ func normalizeTenantTheme(theme *publirattypesv1.TenantTheme) (dbmodels.UpsertTe
 			)
 		}
 	}
+	serifFontFamily, err := validateTenantThemeFontFamily(theme.SerifFontFamily, "theme.serif_font_family")
+	if err != nil {
+		return dbmodels.UpsertTenantThemeParams{}, err
+	}
+	sansFontFamily, err := validateTenantThemeFontFamily(theme.SansFontFamily, "theme.sans_font_family")
+	if err != nil {
+		return dbmodels.UpsertTenantThemeParams{}, err
+	}
 	return dbmodels.UpsertTenantThemeParams{
 		PrimaryColor:               normalized[0],
 		SecondaryColor:             normalized[1],
@@ -156,6 +235,8 @@ func normalizeTenantTheme(theme *publirattypesv1.TenantTheme) (dbmodels.UpsertTe
 		DestructiveForegroundColor: normalized[24],
 		InfoColor:                  normalized[25],
 		InfoForegroundColor:        normalized[26],
+		SerifFontFamily:            serifFontFamily,
+		SansFontFamily:             sansFontFamily,
 	}, nil
 }
 

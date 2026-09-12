@@ -6,7 +6,7 @@ import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
-import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
@@ -229,7 +229,7 @@ export const getTenantSiteInfo = async (
  */
 export const getTenantTheme = async (
   tenantId: string
-): Promise<TenantThemeColors | null> => {
+): Promise<TenantTheme | null> => {
   "use cache";
   cacheLife({ stale: 30 });
 

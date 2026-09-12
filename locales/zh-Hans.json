@@ -1177,9 +1177,22 @@
       "theme_error": "无法显示主题",
       "theme": {
         "color_picker": "取色器",
+        "typefaces": {
+          "title": "字体",
+          "description": "按优先顺序指定读者设备中已安装的字体。留空则使用默认字体栈。",
+          "serif": {
+            "label": "正文和展示字体栈",
+            "description": "用于标题和正文。示例：\"Noto Serif KR\", \"Batang\", serif"
+          },
+          "sans": {
+            "label": "UI 字体栈",
+            "description": "用于导航和控件。示例：\"Noto Sans SC\", \"PingFang SC\", sans-serif"
+          }
+        },
         "preview": {
           "title": "公开站点预览",
           "description": "您正在编辑的颜色，会呈现在公开站点各个组成部分上。它会随每次编辑实时变化，在您保存主题之前，公开站点仍使用当前的颜色。",
+          "type_sample": "日本語 · Latin · 한국어 · 中文",
           "site_name": "青空书屋",
           "works": {
             "first": {
@@ -1335,7 +1348,8 @@
         "validation": {
           "hex_color": "请以 #RRGGBB 的形式输入颜色。",
           "contrast": "{$background} 与 {$foreground} 的对比度至少需要达到 {$minimum}:1（当前为 {$actual}:1）。",
-          "contrast_summary": "请检查这些颜色组合，以保证文字清晰可读。"
+          "contrast_summary": "请检查这些颜色组合，以保证文字清晰可读。",
+          "font_family": "请仅输入以逗号分隔的字体系列名称。"
         }
       },
       "title": "设置",

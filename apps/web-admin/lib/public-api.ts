@@ -4,7 +4,7 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
-import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { LRUCache } from "lru-cache";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -26,7 +26,7 @@ interface TenantPublicInfo {
    */
   defaultLocale: Locale | null;
   name: string | null;
-  theme: TenantThemeColors;
+  theme: TenantTheme;
 }
 
 const applyTenantSiteCacheTag = (tenantId: string) => {
@@ -83,7 +83,7 @@ export const getTenantName = async (
 
 export const getTenantThemeColors = async (
   tenantId: string
-): Promise<TenantThemeColors | null> => {
+): Promise<TenantTheme | null> => {
   const info = await getTenantPublicInfo(tenantId);
   return info?.theme ?? null;
 };

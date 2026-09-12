@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_TENANT_THEME,
   DEFAULT_TENANT_THEME_COLORS,
+  isTenantThemeFontFamily,
   resolveTenantThemeColors,
   toPubliraThemeCssText,
   toPubliraThemeCssVariables,
@@ -11,8 +13,8 @@ import {
 
 describe("theme-css-variables", () => {
   it("falls back to brand defaults for empty input", () => {
-    expect(resolveTenantThemeColors(null)).toEqual(DEFAULT_TENANT_THEME_COLORS);
-    expect(resolveTenantThemeColors({})).toEqual(DEFAULT_TENANT_THEME_COLORS);
+    expect(resolveTenantThemeColors(null)).toEqual(DEFAULT_TENANT_THEME);
+    expect(resolveTenantThemeColors({})).toEqual(DEFAULT_TENANT_THEME);
   });
 
   it("merges partial theme and lowercases valid hex colors", () => {
@@ -55,6 +57,33 @@ describe("theme-css-variables", () => {
     expect(css).toContain(
       `--publira-color-background:${DEFAULT_TENANT_THEME_COLORS.backgroundColor}`
     );
+  });
+
+  it("emits configured font stacks without overriding defaults for empty values", () => {
+    const vars = toPubliraThemeCssVariables({
+      serifFontFamily: '"Noto Serif KR", serif',
+    });
+
+    expect(vars["--publira-font-serif"]).toBe('"Noto Serif KR", serif');
+    expect(vars["--publira-font-sans"]).toBeUndefined();
+  });
+
+  it("only accepts a safe CSS font-family list", () => {
+    expect(
+      isTenantThemeFontFamily('"Noto Sans SC", PingFang SC, sans-serif')
+    ).toBe(true);
+    for (const value of [
+      "Noto Sans; color:red",
+      "Noto Sans { color: red }",
+      "url(font)",
+      "Noto Sans/serif",
+      '"unclosed',
+      "Noto Sans,, sans-serif",
+      "Noto Sans\\, serif",
+      "Noto Sans\nserif",
+    ]) {
+      expect(isTenantThemeFontFamily(value)).toBe(false);
+    }
   });
 });
 

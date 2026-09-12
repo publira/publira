@@ -723,6 +723,8 @@ type TenantTheme struct {
 	InfoForegroundColor        string        `json:"info_foreground_color"`
 	IconImageID                uuid.NullUUID `json:"icon_image_id"`
 	LogoImageID                uuid.NullUUID `json:"logo_image_id"`
+	SerifFontFamily            string        `json:"serif_font_family"`
+	SansFontFamily             string        `json:"sans_font_family"`
 }
 
 type TenantUserRole struct {

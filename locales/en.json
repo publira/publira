@@ -1177,9 +1177,22 @@
       "theme_error": "Could not display the theme",
       "theme": {
         "color_picker": "Color picker",
+        "typefaces": {
+          "title": "Typefaces",
+          "description": "Choose the installed faces readers see first. Leave a field empty to use the default stack.",
+          "serif": {
+            "label": "Reading and display stack",
+            "description": "For titles and reading text. Example: \"Noto Serif KR\", \"Batang\", serif"
+          },
+          "sans": {
+            "label": "UI stack",
+            "description": "For navigation and controls. Example: \"Noto Sans SC\", \"PingFang SC\", sans-serif"
+          }
+        },
         "preview": {
           "title": "Public site preview",
           "description": "The colors you are editing, shown on the parts a public site is built from. It follows every edit, and the public site keeps its current colors until you save the theme.",
+          "type_sample": "日本語 · Latin · 한국어 · 中文",
           "site_name": "Aozora Books",
           "works": {
             "first": {
@@ -1335,7 +1348,8 @@
         "validation": {
           "hex_color": "Enter a color in #RRGGBB form.",
           "contrast": "The contrast ratio between {$background} and {$foreground} must be at least {$minimum}:1 (currently {$actual}:1).",
-          "contrast_summary": "Check these color pairs so the text stays readable."
+          "contrast_summary": "Check these color pairs so the text stays readable.",
+          "font_family": "Enter a comma-separated list of font family names only."
         }
       },
       "title": "Settings",
