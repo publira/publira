@@ -21,6 +21,21 @@ export const tenantSiteTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:site`;
 
 /**
+ * What a cached read carries when its answer depends on what day it is where
+ * the tenant publishes — the weekday the storefront's schedule module opens
+ * on, and nothing else so far.
+ *
+ * Such an answer goes stale at the tenant's own midnight rather than on an
+ * edit, so the `roll-tenant-day` batch drops this tag when that tenant's
+ * calendar day turns (`server/cmd/batch/README.md`). It is a tag of its own
+ * for exactly that reason: a daily drop aimed at the catalog's tags would take
+ * every series list and every series page with it, for a value that is one
+ * number on one module.
+ */
+export const tenantTodayTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:today`;
+
+/**
  * The dynamic `/theme.css` Route Handler consumes this tag through
  * `getTenantTheme()`. Keep it distinct from site chrome, so a theme save has
  * an explicit, auditable invalidation target.

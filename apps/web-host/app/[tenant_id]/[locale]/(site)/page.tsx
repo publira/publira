@@ -12,16 +12,10 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  currentWeekday,
-  formatDate,
-  formatList,
-  formatWeekdayName,
-} from "@publira/utils";
+import { formatDate, formatList, formatWeekdayName } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { EyeCatchFrame } from "#components/eye-catch-frame";
@@ -385,11 +379,13 @@ const GenresSection = async () => {
  * The serials of the week, one day at a time, opened on the day it is where
  * the tenant publishes.
  *
- * `connection()` is what makes that day true. Every other read on this page is
- * cached and prerenders into the static shell, and a weekday resolved there
- * would be the day the shell was built on — a Monday module still calling
- * itself today's on Thursday. So this module alone is built per request, and
- * the seven days' series it shows are still cached reads underneath.
+ * Which day that is comes out of the read rather than off this page's clock:
+ * the module is prerendered like every other one here, so a weekday resolved
+ * at render time would be the day the shell was built on. It is resolved
+ * inside the cached read instead, under a tag the `roll-tenant-day` batch
+ * drops when the tenant's calendar day turns — once a day, and only this
+ * module's entry. Making the page itself request-time would answer the same
+ * question by giving up the prerender of everything on it.
  *
  * The zone is the tenant's rather than the server's: which day it is where the
  * process happens to run says nothing about when the next episode arrives.
@@ -399,14 +395,15 @@ const GenresSection = async () => {
  * schedule this site does not keep.
  */
 const WeeklyScheduleSection = async () => {
-  await connection();
-
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [result, timeZone, messages] = await Promise.all([
-    getCatalogTopWeeklySchedule(tenantId, { locale }),
+  const [timeZone, messages] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
     loadHostMessages(locale),
   ]);
+  const result = await getCatalogTopWeeklySchedule(tenantId, {
+    locale,
+    timeZone,
+  });
 
   if (!result.ok) {
     return (
@@ -417,7 +414,7 @@ const WeeklyScheduleSection = async () => {
     );
   }
 
-  const days = result.value;
+  const { days, openWeekday } = result.value;
 
   if (days.every((day) => day.series.length === 0)) {
     return null;
@@ -433,7 +430,7 @@ const WeeklyScheduleSection = async () => {
         </h2>
       </div>
       <div className="mt-4">
-        <WeeklySchedule defaultWeekday={currentWeekday(timeZone)}>
+        <WeeklySchedule defaultWeekday={openWeekday}>
           <WeeklyScheduleDays
             aria-label={getMessage(messages, "host.top.schedule_days_aria")}
           >
