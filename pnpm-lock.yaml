@@ -275,8 +275,8 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
       ultracite:
-        specifier: 7.11.0
-        version: 7.11.0(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(oxfmt@0.67.0)(oxlint@1.82.0)(prettier@3.9.6)
+        specifier: 7.11.1
+        version: 7.11.1(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(oxfmt@0.67.0)(oxlint@1.82.0)(prettier@3.9.6)
 
   apps/email-renderer:
     dependencies:
@@ -5171,8 +5171,8 @@ packages:
     resolution: {integrity: sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A==}
     engines: {node: '>=18'}
 
-  ultracite@7.11.0:
-    resolution: {integrity: sha512-HJByeIoO4Lhcing1k2sabI7BCHRqeMztXGYZm4Zcir7NXvidXLwDgLNZgSR4w3oPKPgx7CRTqzJitt/oPR34NA==}
+  ultracite@7.11.1:
+    resolution: {integrity: sha512-NHqXD/fpNpLyAWCU3AOfRppVvXtxVk0D+oWrEOUXOveAiQCoyCnx+vL34Fa/rnFPY2piYfdqNhghp/J04uQ6JQ==}
     hasBin: true
     peerDependencies:
       '@biomejs/biome': ^2.5.0
@@ -9409,7 +9409,7 @@ snapshots:
 
   uint8array-extras@1.5.0: {}
 
-  ultracite@7.11.0(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(oxfmt@0.67.0)(oxlint@1.82.0)(prettier@3.9.6):
+  ultracite@7.11.1(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(oxfmt@0.67.0)(oxlint@1.82.0)(prettier@3.9.6):
     dependencies:
       '@clack/prompts': 1.7.0
       cli-truncate: 6.1.1
