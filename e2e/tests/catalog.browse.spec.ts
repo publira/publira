@@ -374,14 +374,19 @@ test.describe("web-host catalog browsing", () => {
       maxRedirects: 0,
     });
     expect(list.status()).toBe(308);
-    expect(new URL(list.headers().location ?? "").pathname).toBe("/creators");
+    expect(new URL(list.headers().location ?? "", list.url()).pathname).toBe(
+      "/creators"
+    );
 
     const detail = await page.request.get(
       hostPath(`/authors/${SEED_TENANT.creatorId}?token=djF8Zg`),
       { maxRedirects: 0 }
     );
     expect(detail.status()).toBe(308);
-    const detailLocation = new URL(detail.headers().location ?? "");
+    const detailLocation = new URL(
+      detail.headers().location ?? "",
+      detail.url()
+    );
     expect(detailLocation.pathname).toBe(`/creators/${SEED_TENANT.creatorId}`);
     expect(detailLocation.search).toBe("?token=djF8Zg");
 
@@ -390,9 +395,9 @@ test.describe("web-host catalog browsing", () => {
       { maxRedirects: 0 }
     );
     expect(prefixed.status()).toBe(308);
-    expect(new URL(prefixed.headers().location ?? "").pathname).toBe(
-      `/ja/creators/${SEED_TENANT.creatorId}`
-    );
+    expect(
+      new URL(prefixed.headers().location ?? "", prefixed.url()).pathname
+    ).toBe(`/ja/creators/${SEED_TENANT.creatorId}`);
 
     // Following it renders the creator the old URL named.
     await page.goto(hostPath(`/authors/${SEED_TENANT.creatorId}`));
