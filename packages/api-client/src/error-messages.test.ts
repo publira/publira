@@ -17,22 +17,28 @@ describe("rpcErrorMessage", () => {
       rpcErrorMessage(new ConnectError("x", Code.PermissionDenied), fallback, {
         locale: "en",
       })
-    ).toBe("You do not have permission to perform this action.");
+    ).toBe(
+      "You do not have permission to perform this action. Go back or use an account that does."
+    );
     expect(
       rpcErrorMessage(new ConnectError("x", Code.InvalidArgument), fallback, {
         locale: "en",
       })
-    ).toBe("The submitted values are invalid.");
+    ).toBe("The submitted values are invalid. Check them and try again.");
     expect(
       rpcErrorMessage(new ConnectError("x", Code.NotFound), fallback, {
         locale: "en",
       })
-    ).toBe("The requested item could not be found.");
+    ).toBe(
+      "The requested item could not be found. Go back and open it from the list."
+    );
     expect(
       rpcErrorMessage(new ConnectError("x", Code.AlreadyExists), fallback, {
         locale: "en",
       })
-    ).toBe("Cannot save because this data already exists.");
+    ).toBe(
+      "Cannot save because this data already exists. Change the values and try again."
+    );
     expect(
       rpcErrorMessage(new ConnectError("x", Code.Unavailable), fallback, {
         locale: "en",
@@ -50,12 +56,14 @@ describe("rpcErrorMessage", () => {
       rpcErrorMessage(new ConnectError("x", Code.PermissionDenied), fallback, {
         locale: "ja",
       })
-    ).toBe("この操作を行う権限がありません。");
+    ).toBe(
+      "この操作を行う権限がありません。戻るか、権限のあるアカウントでログインしてください。"
+    );
     expect(
       rpcErrorMessage(new ConnectError("x", Code.InvalidArgument), fallback, {
         locale: "ja",
       })
-    ).toBe("入力内容に誤りがあります。");
+    ).toBe("入力内容に誤りがあります。内容を確認して再試行してください。");
   });
 
   it("a category without a shared message returns the fallback", () => {
@@ -93,10 +101,10 @@ describe("rpcErrorMessage", () => {
 describe("smtpTestFailureMessage", () => {
   it("renders the same failure reason in each locale", () => {
     expect(smtpTestFailureMessage("SMTP_TEST_AUTHENTICATION", "en")).toBe(
-      "SMTP authentication failed."
+      "SMTP authentication failed. Check the SMTP settings and try again."
     );
     expect(smtpTestFailureMessage("SMTP_TEST_AUTHENTICATION", "ja")).toBe(
-      "SMTP 認証に失敗しました"
+      "SMTP 認証に失敗しました。SMTP の設定を確認して再試行してください。"
     );
   });
 });

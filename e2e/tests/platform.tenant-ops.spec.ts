@@ -360,7 +360,7 @@ test.describe("platform tenant operations", () => {
     await page.getByRole("button", { name: "Add" }).click();
 
     await expect(formMessage(page)).toContainText(
-      "You do not have permission to perform this action."
+      "You do not have permission to perform this action. Go back or use an account that does."
     );
     // Still on the create form — no redirect to the list.
     await expect(page).toHaveURL(/\/operators\/new/u);

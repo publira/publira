@@ -147,12 +147,14 @@ describe("TenantPaymentSettingsForm", () => {
         action={noopAction}
         canEdit
         initialSettings={emptyTenantPaymentSettings}
-        loadErrorMessage="You do not have permission to perform this action."
+        loadErrorMessage="You do not have permission to perform this action. Go back or use an account that does."
       />
     );
 
     expect(
-      screen.getByText("You do not have permission to perform this action.")
+      screen.getByText(
+        "You do not have permission to perform this action. Go back or use an account that does."
+      )
     ).toBeDefined();
     expect(
       screen.getByRole<HTMLButtonElement>("button", { name: "Save" }).disabled

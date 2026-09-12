@@ -355,7 +355,8 @@ describe("tenant admin invitation", () => {
     await expect(
       acceptTenantAdminInvitation("tenant_001", "token_001", "en")
     ).resolves.toEqual({
-      message: "This invitation link has expired.",
+      message:
+        "This invitation link has expired. Ask an administrator to send a new one.",
       ok: false,
     });
   });

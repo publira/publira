@@ -79,7 +79,9 @@ describe("authTokenFormSchema", () => {
 
     expect(
       authTokenFormSchema(EN).safeParse("short").error?.issues[0]?.message
-    ).toBe("This confirmation link is not valid.");
+    ).toBe(
+      "This confirmation link is not valid. Request a new confirmation email."
+    );
   });
 });
 
@@ -107,7 +109,7 @@ describe("tenantIdFormSchema", () => {
     expect(tenantIdFormSchema(JA).safeParse("").success).toBe(false);
 
     expect(tenantIdFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
-      "Tenant ID not found."
+      "Tenant ID not found. Check the URL and try again."
     );
   });
 });

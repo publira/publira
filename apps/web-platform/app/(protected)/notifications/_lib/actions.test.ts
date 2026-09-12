@@ -101,7 +101,8 @@ describe("notification actions", () => {
 
   it("returns a message without updating tags when the API rejects", async () => {
     mockMarkAllNotificationsAsRead.mockResolvedValueOnce({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
     });
 
@@ -109,7 +110,8 @@ describe("notification actions", () => {
     const result = await markAllNotificationsAsReadAction(null, formData({}));
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

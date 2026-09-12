@@ -160,24 +160,24 @@
     }
   },
   "errors": {
-    "disallowed_value": "This value is not allowed.",
+    "disallowed_value": "This value is not allowed. Choose another.",
     "rpc": {
-      "conflict": "Cannot save because this data already exists.",
-      "forbidden": "You do not have permission to perform this action.",
-      "invalid-argument": "The submitted values are invalid.",
-      "not-found": "The requested item could not be found.",
+      "conflict": "Cannot save because this data already exists. Change the values and try again.",
+      "forbidden": "You do not have permission to perform this action. Go back or use an account that does.",
+      "invalid-argument": "The submitted values are invalid. Check them and try again.",
+      "not-found": "The requested item could not be found. Go back and open it from the list.",
       "rate-limited": "Too many requests in a short time. Please wait a moment and try again.",
       "unauthenticated": "Your session is no longer valid. Please sign in again.",
       "unavailable": "Could not connect to the server. Please try again later."
     },
     "smtp_test": {
-      "authentication": "SMTP authentication failed.",
-      "connection": "Could not connect to the SMTP server.",
-      "recipient": "The SMTP server rejected the recipient email address.",
-      "starttls": "Could not establish STARTTLS.",
-      "timeout": "The connection to the SMTP server timed out.",
-      "tls": "Could not establish a TLS connection.",
-      "unknown": "The SMTP connection test failed."
+      "authentication": "SMTP authentication failed. Check the SMTP settings and try again.",
+      "connection": "Could not connect to the SMTP server. Check the SMTP settings and try again.",
+      "recipient": "The SMTP server rejected the recipient email address. Check the address and try again.",
+      "starttls": "Could not establish STARTTLS. Check the SMTP settings and try again.",
+      "timeout": "The connection to the SMTP server timed out. Check the SMTP settings and try again.",
+      "tls": "Could not establish a TLS connection. Check the SMTP settings and try again.",
+      "unknown": "The SMTP connection test failed. Check the SMTP settings and try again."
     },
     "validation": "Please check the information you entered."
   },
@@ -190,7 +190,7 @@
       "section_error": "Could not display the audit log",
       "title": "Audit log",
       "page_description": "Review what happened in this tenant, for tracking changes and for accountability.",
-      "empty": "No audit log entry matches these filters.",
+      "empty": "No audit log entry matches these filters. Widen them.",
       "pagination_description": "Shows up to {$count} entries per page.",
       "actor_option": "{$name} ({$id})",
       "actor_unnamed": "No name set",
@@ -251,7 +251,7 @@
       "audience_selected_user": "Selected ({$name})",
       "list_failed": "Could not load the announcements. Please try again later.",
       "create_failed": "Could not deliver the announcement. Please try again later.",
-      "target_users_failed": "Could not load the list of target users.",
+      "target_users_failed": "Could not load the list of target users. Please try again later.",
       "columns": {
         "created_at": "Created",
         "title": "Title",
@@ -271,7 +271,7 @@
         "audience_all": "Everyone",
         "audience_selected": "Selected users",
         "target_users": "Target users",
-        "target_users_unavailable": "The user list could not be loaded, so delivering to selected users is unavailable.",
+        "target_users_unavailable": "The user list could not be loaded, so delivering to selected users is unavailable. Choose everyone, or try again later.",
         "user_option": "{$name} ({$id})",
         "submitting": "Sending…",
         "submit": "Deliver the announcement"
@@ -409,14 +409,14 @@
         "accepted": "This invitation has already been accepted.",
         "canceled": "This invitation has been canceled.",
         "email_invited": "{$email} has been invited as a tenant administrator.",
-        "expired": "This invitation has expired.",
-        "expired_action": "This invitation link has expired.",
+        "expired": "This invitation has expired. Ask an administrator to send a new one.",
+        "expired_action": "This invitation link has expired. Ask an administrator to send a new one.",
         "invalid_token": "The invitation token was not found.",
         "name_label": "Full name",
         "name_placeholder": "Jane Doe",
-        "not_found": "The invitation could not be found.",
+        "not_found": "The invitation could not be found. Ask an administrator to send a new one.",
         "password_confirm_label": "Password (confirm)",
-        "password_mismatch": "The passwords do not match.",
+        "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
         "submit": "Accept invitation",
         "title": "Accept administrator invitation",
         "description": "Accept the invitation to access this tenant's admin console."
@@ -424,34 +424,34 @@
       "confirm_email": {
         "changed": "Your email address has been changed.",
         "changed_help": "You can sign in with your new email address.",
-        "failed": "Could not change your email address. The link may have expired or be invalid.",
+        "failed": "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.",
         "failure_help": "Request the email address change again.",
-        "invalid_link": "This confirmation link is invalid.",
+        "invalid_link": "This confirmation link is invalid. Request a new confirmation email.",
         "pending": "Confirmation is complete.",
         "pending_current_email": "This confirmation is complete. The change applies once the current email address is confirmed as well.",
         "pending_new_email": "This confirmation is complete. The change applies once the new email address is confirmed as well.",
         "processing": "Confirming your email address change.",
         "title": "Confirm email address change",
-        "to_login": "Go to sign-in"
+        "to_login": "Sign in"
       },
       "confirm_password": {
         "confirm_password_label": "New password (confirm)",
         "description": "Enter a new password. You can sign in with it right away.",
         "eyebrow": "Set a new password for the admin console from the link in your email.",
-        "expired": "This reset link has expired.",
+        "expired": "This reset link has expired. Request the reset email again.",
         "failure_help": "Request the reset email again to receive a new link.",
-        "invalid": "This reset link is invalid.",
+        "invalid": "This reset link is invalid. Request the reset email again.",
         "password_label": "New password",
-        "password_mismatch": "The passwords do not match.",
+        "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
         "request_again": "Send reset email",
         "submit": "Set new password",
         "title": "Set a new password",
-        "to_login": "Go to sign-in"
+        "to_login": "Sign in"
       },
       "errors": {
         "accept_invite_failed": "Could not accept the invitation. Please try again later.",
         "email_change_failed": "Could not request the email address change. Please try again later.",
-        "login_failed": "The email address or password is incorrect.",
+        "login_failed": "The email address or password is incorrect. Check them and try again.",
         "login_processing_failed": "Could not sign you in. Please try again later.",
         "name_and_password_required": "Enter your name and password.",
         "new_password_required": "Enter a new password.",
@@ -460,16 +460,16 @@
         "reset_link_invalid": "This reset link is invalid. Request the reset email again.",
         "reset_request_failed": "Could not send the reset email. Please try again later.",
         "reset_request_invalid_email": "Check the email address.",
-        "tenant_missing": "The tenant identifier could not be found."
+        "tenant_missing": "The tenant identifier could not be found. Check the URL and try again."
       },
       "fields": {
         "email_invalid": "Enter a valid email address.",
         "email_label": "Email address",
         "email_required": "Enter your email address.",
-        "invalid_token": "This confirmation link is invalid.",
+        "invalid_token": "This confirmation link is invalid. Request a new confirmation email.",
         "password_label": "Password",
         "password_required": "Enter your password.",
-        "tenant_missing": "The tenant ID could not be found."
+        "tenant_missing": "The tenant ID could not be found. Check the URL and try again."
       },
       "forgot_password": {
         "description": "We will send a reset link to the email address registered for this admin console.",
@@ -522,8 +522,8 @@
           "locked": "Too many incorrect codes. Wait a while before trying again.",
           "verify_failed": "Could not verify the code. Please try again later.",
           "enroll_failed": "Could not set up two-step verification. Please try again later.",
-          "not_enabled": "Two-step verification is not set up for this account.",
-          "already_enabled": "Two-step verification is already set up for this account."
+          "not_enabled": "Two-step verification is not set up for this account. Set it up from account settings.",
+          "already_enabled": "Two-step verification is already set up for this account. Sign in with your authenticator."
         }
       }
     },
@@ -656,7 +656,7 @@
       "queue_title": "Publishing queue",
       "queue_description": "Episodes and upcoming releases that need attention.",
       "queue_empty_title": "The publishing queue is empty",
-      "queue_empty_description": "There are no draft or scheduled episodes.",
+      "queue_empty_description": "There are no draft or scheduled episodes. Create an episode from a series page.",
       "columns": {
         "series": "Series",
         "episode": "Episode",
@@ -1060,7 +1060,7 @@
         "pages_uploaded": "Page images added.",
         "image_list_title": "Registered page images",
         "image_list_description": "Drag and drop images to reorder them.",
-        "image_list_empty": "No page images have been registered yet.",
+        "image_list_empty": "No page images have been registered yet. Add them with the form on this page.",
         "list_error": "Could not display episodes",
         "empty_title": "This series has no episodes yet.",
         "empty_description": "There are no episodes yet. Create one first.",
@@ -1072,14 +1072,14 @@
         "pagination_aria": "Episode list pagination",
         "pagination_description": "By display order, up to {$count} items per page.",
         "reordered": "Episode order updated.",
-        "reorder_error": "Could not update episode order.",
+        "reorder_error": "Could not update episode order. Please try again later.",
         "image_reordered": "Page image order updated.",
-        "image_reorder_error": "Could not update page image order.",
+        "image_reorder_error": "Could not update page image order. Please try again later.",
         "image_alt": "Page {$index}",
         "image_list_error": "Could not display page images",
         "schedule_error": "Could not display publishing settings",
         "schedule_title": "publish_at settings",
-        "schedule_description": "Update the scheduled publication time. Submit blank to clear the schedule.",
+        "schedule_description": "Update the scheduled publication time. Leave blank to clear the schedule.",
         "schedule_update": "Update publish_at",
         "updating": "Updating...",
         "create_failed": "Could not create the episode. Please try again later.",
@@ -1108,28 +1108,28 @@
           "epub_description": "Extracts body images from an ePub (.epub). Broken files or files with invalid references or unsafe paths are rejected.",
           "upload_progress": "Upload progress",
           "adding": "Adding...",
-          "submit_zip": "Submit ZIP",
-          "submit_epub": "Submit ePub",
+          "submit_zip": "Add a ZIP",
+          "submit_epub": "Add an ePub",
           "submit_image": "Add page images",
           "title": "Add comic pages",
           "description": "Select and add multiple page images for this episode.",
           "target": "Submission target",
           "method": "Upload method",
           "select_images": "Select multiple page images",
-          "select_zip": "Submit a ZIP",
-          "select_epub": "Submit an ePub",
+          "select_zip": "Use a ZIP",
+          "select_epub": "Use an ePub",
           "processing": "Processing files. Please wait until it completes."
         },
         "form": {
-          "create": "Submit episode",
-          "submitting": "Submitting...",
+          "create": "Create episode",
+          "submitting": "Creating...",
           "title": "Title",
           "title_placeholder": "Example: Episode 1 — A beginning morning",
           "price": "Price",
           "price_description": "Set 0 to publish for free.",
           "reading_period": "Reading period",
           "reading_period_description": "Enter hours. Set 0 for unlimited reading.",
-          "publish_at_description": "Leave blank to submit as a draft. When set, it will be scheduled using the tenant time zone ({$time_zone})."
+          "publish_at_description": "Leave blank to create as a draft. When set, it will be scheduled using the tenant time zone ({$time_zone})."
         },
         "validation": {
           "episode_missing": "Episode ID is missing.",
@@ -1536,7 +1536,7 @@
         "disable_submit": "Turn off",
         "disable_submitting": "Turning off…",
         "disable_done": "Two-step verification has been turned off.",
-        "load_failed": "Could not read the two-step verification status."
+        "load_failed": "Could not read the two-step verification status. Please try again later."
       },
       "payment": {
         "title": "Payment settings",
@@ -1606,7 +1606,7 @@
         "published_title": "An episode was published",
         "published_description": "{$subject} was published.",
         "publish_failed_title": "An episode could not be published",
-        "publish_failed_description": "{$subject} could not be published.",
+        "publish_failed_description": "{$subject} could not be published. Open the episode and try publishing again.",
         "comments_awaiting_approval_title": "Comments are waiting for approval",
         "comments_awaiting_approval_description": "New comments on {$subject} are waiting for approval.",
         "comments_reported_title": "Comments were reported",
@@ -1745,10 +1745,10 @@
   "host": {
     "announcements": {
       "description": "Announcements published by the site operator.",
-      "first_page": "Go to the first page",
+      "first_page": "Show the first page",
       "list_empty": "There are no announcements to show.",
       "list_error": "Could not display the announcements",
-      "list_failed": "Could not load the announcements.",
+      "list_failed": "Could not load the announcements. Please try again later.",
       "list_heading": "Announcements",
       "open_and_mark_read": "Open and mark as read",
       "open_link": "Open link",
@@ -1760,11 +1760,11 @@
     "auth": {
       "confirm_email": {
         "changed": "Your email address has been changed.",
-        "failed": "Could not change your email address. The link may have expired or be invalid.",
+        "failed": "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.",
         "pending_current_email": "This confirmation is complete. The change takes effect once the current address is confirmed as well.",
         "pending_new_email": "This confirmation is complete. The change takes effect once the new address is confirmed as well.",
         "title": "Email change confirmation",
-        "to_my": "Go to My Page",
+        "to_my": "Open My Page",
         "to_settings": "Back to settings"
       },
       "confirm_password": {
@@ -1775,14 +1775,14 @@
         "to_reset_password": "Back to password reset"
       },
       "errors": {
-        "login_failed": "That email address or password is incorrect.",
+        "login_failed": "That email address or password is incorrect. Check them and try again.",
         "name_required": "Enter a display name.",
         "name_too_long": "Use 100 characters or fewer for the display name.",
         "password_confirm_required": "Confirm your password.",
         "password_confirm_too_long": "Use 1024 characters or fewer to confirm your password.",
-        "password_mismatch": "The passwords do not match.",
+        "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
         "resend_verification_failed": "Could not send the confirmation email. Please check what you entered.",
-        "reset_confirm_failed": "Could not reset your password. The link may have expired or be invalid.",
+        "reset_confirm_failed": "Could not reset your password. The link may have expired or be invalid. Request a new reset email.",
         "reset_request_failed": "Could not send the reset email. Please check what you entered.",
         "signup_failed": "Could not create your account. Please check what you entered."
       },
@@ -1791,11 +1791,11 @@
         "email_invalid": "Enter a valid email address.",
         "email_label": "Email address",
         "email_required": "Enter your email address.",
-        "invalid_token": "This confirmation link is not valid.",
+        "invalid_token": "This confirmation link is not valid. Request a new confirmation email.",
         "password_label": "Password",
         "password_required": "Enter your password.",
         "sent_to": "Sent to: {$email}",
-        "tenant_missing": "Tenant ID not found.",
+        "tenant_missing": "Tenant ID not found. Check the URL and try again.",
         "to_login": "Back to sign in"
       },
       "login": {
@@ -1844,7 +1844,7 @@
       "verify": {
         "failed": "Could not confirm your email address. The link may have expired or be invalid.",
         "title": "Email confirmation",
-        "to_login": "Go to sign in",
+        "to_login": "Sign in",
         "to_resend_verification": "Send a new confirmation email",
         "verified": "Your email address has been confirmed. You can sign in now."
       }
@@ -1912,7 +1912,7 @@
         "delete_failed": "Could not delete the comment. Please try again later.",
         "deleted": "Your comment has been deleted.",
         "deleting": "Deleting…",
-        "empty": "No comments yet.",
+        "empty": "No comments yet. Be the first to post one.",
         "list_error": "Could not show the comments",
         "list_failed": "Could not load the comments. Please try again later.",
         "own_error": "Could not show your own comments",
@@ -1957,7 +1957,7 @@
         "guest_title": "This episode is paid",
         "guest_unpayable_description": "To read this episode, sign in and ask an administrator to grant you a ticket. This site cannot take purchases at the moment.",
         "login": "Sign in to read",
-        "purchase": "Go to checkout",
+        "purchase": "Buy this episode",
         "signed_in_payable_description": "You do not have access. Your ticket has expired or has not been granted yet. If you have already bought this episode, check whether you are signed in with a different account.",
         "signed_in_title": "You cannot read this episode",
         "signed_in_unpayable_description": "This site cannot take purchases at the moment. Check whether your ticket has expired or has not been granted yet."
@@ -1976,14 +1976,14 @@
       "reading_period_hours": "{$hours} hours",
       "reading_period_unlimited": "Unlimited",
       "scheduled_at": "Scheduled",
-      "to_series_detail": "Go to the series",
+      "to_series_detail": "Open the series",
       "viewer": {
         "enter_fullscreen": "Enter full screen",
         "exit_fullscreen": "Exit full screen",
         "loading": "Loading…",
         "navigation": "Page navigation",
         "no_pages": "No pages",
-        "page_error": "This page could not be loaded.",
+        "page_error": "This page could not be loaded. Try again.",
         "page_status": "Page {$first} of {$total}",
         "page_status_range": "Pages {$first}–{$last} of {$total}",
         "page_title": "{$title}, page {$page}",
@@ -1992,7 +1992,7 @@
       }
     },
     "errors": {
-      "not_found_description": "The page may have been removed, or its URL may have changed.",
+      "not_found_description": "The page may have been removed, or its URL may have changed. Open the home page.",
       "not_found_title": "Page not found",
       "page_description": "Please try again in a moment. If this keeps happening, come back a little later.",
       "page_title": "Could not show this page",
@@ -2023,14 +2023,14 @@
       "list_title": "Genres",
       "not_found_title": "Genre not found",
       "series_empty": "No published series carry this genre yet.",
-      "series_first_page": "Go to the first page of this genre's series",
+      "series_first_page": "Show the first page of this genre's series",
       "series_pagination_aria": "Genre series pagination"
     },
     "labels": {
       "back_to_list": "Back to labels",
       "detail_description": "{$count} published series from {$name}",
       "detail_failed": "Could not load the label. Please try again later.",
-      "first_page": "Go to the first page of labels",
+      "first_page": "Show the first page of labels",
       "list_description": "The labels published on {$site}",
       "list_empty": "No labels have been registered yet.",
       "list_error": "Could not show the label list",
@@ -2041,7 +2041,7 @@
       "pagination_aria": "Label list pagination",
       "series_description": "The published series that belong to this label.",
       "series_empty": "No published series yet.",
-      "series_first_page": "Go to the first page of this label's series",
+      "series_first_page": "Show the first page of this label's series",
       "series_heading": "Series in this label",
       "series_pagination_aria": "Label series pagination"
     },
@@ -2086,10 +2086,10 @@
       "subscription_empty_title": "No subscribed content",
       "subscription_heading": "Subscriptions",
       "title": "My Page",
-      "to_library": "Purchases",
-      "to_login": "Go to sign in",
+      "to_library": "Open purchases",
+      "to_login": "Sign in",
       "to_settings": "Open settings",
-      "to_settings_page": "Go to settings"
+      "to_settings_page": "Open settings"
     },
     "nav": {
       "account_menu": "Account menu",
@@ -2125,7 +2125,7 @@
       "episode_published_subject_unknown": "A new episode",
       "episode_published_subject_with_series": "“{$episode_title}” ({$series_title})",
       "episode_published_title": "A new episode has been published",
-      "first_page": "Go to the first page",
+      "first_page": "Show the first page",
       "list_error": "Could not display your notifications",
       "list_failed": "Could not load your notifications. Please try again later.",
       "list_heading": "Notifications",
@@ -2148,7 +2148,7 @@
     "ranking": {
       "computed_at": "Updated {$datetime}",
       "description": "The works being read the most right now.",
-      "first_page": "Go to the top of the ranking",
+      "first_page": "Show the top of the ranking",
       "list_empty": "No ranking has been computed yet.",
       "list_error": "Could not show the ranking",
       "list_failed": "Could not load the ranking. Please try again later.",
@@ -2183,7 +2183,7 @@
       "error": "Could not show the search results",
       "labels_error": "Could not show the label results",
       "labels_failed": "Could not load the label results. Please try again later.",
-      "labels_first_page": "Go to the first page of label results",
+      "labels_first_page": "Show the first page of label results",
       "labels_heading": "Labels",
       "labels_no_results": "No labels match “{$query}”.",
       "labels_pagination_aria": "Label result pagination",
@@ -2192,7 +2192,7 @@
       "results_title": "Search results for “{$query}”",
       "series_error": "Could not show the series results",
       "series_failed": "Could not load the series results. Please try again later.",
-      "series_first_page": "Go to the first page of series results",
+      "series_first_page": "Show the first page of series results",
       "series_heading": "Series",
       "series_no_results": "No series match “{$query}”.",
       "series_pagination_aria": "Series result pagination",
@@ -2208,7 +2208,7 @@
         "r18_description": "Confirm that you are 18 or older to open this series.",
         "r18_title": "“{$title}” is rated R18"
       },
-      "back_to_list": "← Back to the series list",
+      "back_to_list": "Back to the series list",
       "continue_reading": "Continue reading",
       "detail_failed": "Could not load the series. Please try again later.",
       "episode_count": "{$count} episodes",
@@ -2226,7 +2226,7 @@
       "filter_reset": "Reset",
       "filter_status": "Status",
       "filter_status_all": "All statuses",
-      "first_page": "Go to the first page of series",
+      "first_page": "Show the first page of series",
       "list_description": "The series published on {$site}",
       "list_empty": "No series have been registered yet.",
       "list_error": "Could not show the series list",
@@ -2271,11 +2271,11 @@
       "email_notifications_update_failed": "Could not update your notification settings. Please try again later.",
       "email_notifications_updated": "Your notification settings have been updated.",
       "follows_description": "Review the series and authors you follow, open their pages, or unfollow them.",
-      "follows_empty_description": "Series and authors you follow appear here. Anything that stops being published drops off the list.",
+      "follows_empty_description": "Series and authors you follow appear here. Follow one from its page. Anything that stops being published drops off the list.",
       "follows_empty_title": "You are not following any series or authors.",
       "follows_error": "Could not display your follows",
       "follows_failed": "Could not load your follows. Please try again later.",
-      "follows_first_page": "Go to the first page",
+      "follows_first_page": "Show the first page",
       "follows_followed_at": "Followed",
       "follows_heading": "Series and authors you follow",
       "follows_kind_creator": "Author",
@@ -2312,7 +2312,7 @@
       "detail_failed": "Could not load the tag. Please try again later.",
       "not_found_title": "Tag not found",
       "series_empty": "No published series carry this tag yet.",
-      "series_first_page": "Go to the first page of this tag's series",
+      "series_first_page": "Show the first page of this tag's series",
       "series_pagination_aria": "Tag series pagination"
     },
     "top": {
@@ -2368,14 +2368,14 @@
     },
     "catalog": {
       "all_series_heading": "All series",
-      "continue_failed": "Could not show what you were reading.",
+      "continue_failed": "Could not show what you were reading. Try again.",
       "continue_heading": "Continue reading",
       "empty": "No series have been published yet.",
-      "load_failed": "Could not show the catalog.",
-      "new_arrivals_failed": "Could not show the new arrivals.",
+      "load_failed": "Could not show the catalog. Try again.",
+      "new_arrivals_failed": "Could not show the new arrivals. Try again.",
       "new_arrivals_heading": "New arrivals",
       "offline_not_saved": "You are offline, and this device holds no saved catalog.",
-      "ranking_failed": "Could not show this week's ranking.",
+      "ranking_failed": "Could not show this week's ranking. Try again.",
       "ranking_heading": "Top 10 this week"
     },
     "common": {
@@ -2402,7 +2402,7 @@
       "deleted": "Your comment has been deleted.",
       "deleting": "Deleting…",
       "disabled": "This site is not taking comments.",
-      "empty": "No comments yet.",
+      "empty": "No comments yet. Be the first to post one.",
       "list_failed": "Could not load the comments. Please try again later.",
       "newer": "Newer comments",
       "older": "Older comments",
@@ -2456,7 +2456,7 @@
       "episode_count": "{$count} episodes",
       "episodes_empty": "No episodes have been published yet.",
       "episodes_heading": "Episodes",
-      "load_failed": "Could not show the series.",
+      "load_failed": "Could not show the series. Try again.",
       "not_found": "Series not found ({$id})",
       "offline_not_saved": "You are offline, and this device holds nothing saved for this series.",
       "saved_offline": "Saved on this device",
@@ -2471,7 +2471,7 @@
       "email_not_verified": "Your email address has not been confirmed yet. Open the link in the confirmation email.",
       "email_required": "Enter your email address.",
       "failed": "Could not sign in.",
-      "invalid_credentials": "That email address or password is incorrect.",
+      "invalid_credentials": "That email address or password is incorrect. Check them and try again.",
       "password_label": "Password",
       "password_required": "Enter your password.",
       "website_note": "Create an account or reset your password on the website."
@@ -2483,7 +2483,7 @@
         "up_to_date_description": "“{$title}” has no episode after this one yet.",
         "up_to_date_title": "You are up to date"
       },
-      "load_failed": "Could not show the episode.",
+      "load_failed": "Could not show the episode. Try again.",
       "locked": "This episode can be read once it is purchased.",
       "locked_signed_out": "This episode can be read once it is purchased. If you have already bought it, sign in.",
       "next_episode": "Next episode",
@@ -2491,7 +2491,7 @@
       "no_pages": "This episode has no pages yet.",
       "not_found": "Episode not found ({$id})",
       "offline_not_saved": "You are offline, and only the episodes saved on this device can be read.",
-      "page_failed": "This page could not be loaded.",
+      "page_failed": "This page could not be loaded. Try again.",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "Previous episode",
@@ -2544,25 +2544,25 @@
       "confirm_email": {
         "back_to_settings": "Back to settings",
         "changed": "Your email address has been changed.",
-        "failed": "Could not change your email address. The link may have expired or be invalid.",
-        "invalid_link": "This confirmation link is invalid.",
+        "failed": "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.",
+        "invalid_link": "This confirmation link is invalid. Request a new confirmation email.",
         "pending_current_email": "This confirmation is done. The change applies once the current email address is confirmed as well.",
         "pending_new_email": "This confirmation is done. The change applies once the new email address is confirmed as well.",
         "title": "Confirm email change",
-        "to_dashboard": "Go to dashboard"
+        "to_dashboard": "Open the dashboard"
       },
       "confirm_password": {
         "confirm_password_label": "New password (confirm)",
         "description": "Enter a new password. You can sign in with it right away.",
-        "expired": "This reset link has expired.",
+        "expired": "This reset link has expired. Request the reset email again.",
         "failure_help": "Request the reset email again to receive a new link.",
-        "invalid": "This reset link is invalid.",
+        "invalid": "This reset link is invalid. Request the reset email again.",
         "password_label": "New password",
-        "password_mismatch": "The passwords do not match.",
+        "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
         "request_again": "Send reset email",
         "submit": "Set new password",
         "title": "Set a new password",
-        "to_login": "Go to sign-in"
+        "to_login": "Sign in"
       },
       "errors": {
         "new_password_required": "Enter a new password.",
@@ -2578,13 +2578,13 @@
         "email_invalid": "Enter a valid email address.",
         "email_label": "Email address",
         "email_required": "Enter your email address.",
-        "invalid_token": "This confirmation link is invalid.",
+        "invalid_token": "This confirmation link is invalid. Request a new confirmation email.",
         "password_label": "Password",
         "password_required": "Enter your password."
       },
       "login": {
         "eyebrow": "Platform Console sign-in",
-        "failed": "The email address or password is incorrect.",
+        "failed": "The email address or password is incorrect. Check them and try again.",
         "forgot_password": "Forgot your password?",
         "pending": "Signing in...",
         "reset_done": "Your password has been reset. Sign in with the new password.",
@@ -2677,7 +2677,7 @@
       "saving": "Saving...",
       "select_placeholder": "Select",
       "status": "Status",
-      "submit": "Submit",
+      "submit": "Save",
       "suspend": "Suspend",
       "tenant_status": {
         "active": "Active",
@@ -2715,7 +2715,7 @@
       },
       "title": "Dashboard",
       "view_audit": "View audit logs",
-      "view_tenants": "Go to tenants"
+      "view_tenants": "Open tenants"
     },
     "errors": {
       "console_description": "Please try again later. If it keeps happening, contact an administrator with the error ID.",
@@ -2762,7 +2762,7 @@
       "detail_metadata": "Operator",
       "detail_title": "Operator: {$name}",
       "email_taken": "This email address is already registered.",
-      "empty": "No operators have been added yet.",
+      "empty": "No operators have been added yet. Add one with the form on this page.",
       "heading": "Operators",
       "info_description": "Account details and current status.",
       "info_title": "Profile",
@@ -2815,8 +2815,8 @@
       "mark_all_read_failed": "Could not mark every notification as read. Please try again later.",
       "mark_read_failed": "Could not mark the notification as read. Please try again later.",
       "events": {
-        "publish_failed_description": "{$subject} could not be published.",
-        "publish_failed_description_tenant": "{$subject} could not be published for tenant “{$tenant}”.",
+        "publish_failed_description": "{$subject} could not be published. Open the episode and try publishing again.",
+        "publish_failed_description_tenant": "{$subject} could not be published for tenant “{$tenant}”. Open the episode and try publishing again.",
         "publish_failed_title": "An episode could not be published",
         "subject_episode": "“{$episode}”",
         "subject_in_series": "“{$episode}” ({$series})",
@@ -2897,7 +2897,7 @@
       "timezone_required": "Select a time zone.",
       "timezone_save_failed": "Could not save the default time zone. Please try again later.",
       "username": "Username",
-      "wrong_password": "The password is incorrect."
+      "wrong_password": "The password is incorrect. Check it and try again."
     },
     "shell": {
       "account_menu": "Account menu for {$name}",
@@ -2967,7 +2967,7 @@
       "domain_taken": "This domain is already in use.",
       "duplicate_create": "Cannot create because this data already exists.",
       "duplicate_update": "Cannot update because this data already exists.",
-      "empty": "No tenants have been registered yet.",
+      "empty": "No tenants have been registered yet. Create one from the navigation.",
       "empty_filtered": "No tenants match these filters.",
       "existing_admin_added": "Added the existing user as a tenant admin.",
       "get_failed": "Could not load the tenant. Please try again later.",
@@ -2986,7 +2986,7 @@
       "invite_admin_title": "Invite a tenant admin",
       "invite_create_failed": "Could not create the invitation. Please try again later.",
       "invite_email_invalid": "Check the email address format.",
-      "invite_not_found": "This invitation could not be found.",
+      "invite_not_found": "This invitation could not be found. Open the invitation list.",
       "invite_sent": "Invitation email sent.",
       "list_failed": "Could not load tenants. Please try again later.",
       "load_failed": "Could not display tenants",
@@ -3007,7 +3007,7 @@
       "members_list_failed": "Could not load members. Please try again later.",
       "members_list_title": "Members",
       "member_already_added": "This user is already a member.",
-      "member_not_found": "This member could not be found.",
+      "member_not_found": "This member could not be found. Open the member list.",
       "member_role_update_failed": "Could not change the role. Please try again later.",
       "members_load_failed": "Could not display member management",
       "members_nav": "Members",
@@ -3016,7 +3016,7 @@
       "name": "Tenant name",
       "name_and_domain_required": "Tenant name and domain are required.",
       "name_required": "Tenant name is required.",
-      "not_found": "This tenant could not be found.",
+      "not_found": "This tenant could not be found. Open the tenant list.",
       "new_role": "New role",
       "new_tenant": "Create tenant",
       "page_description": "The starting point for operators to review tenant status and open details.",
@@ -3059,7 +3059,7 @@
       "heading": "Users",
       "info_description": "Registration details and current status.",
       "info_title": "Profile",
-      "invalid_id": "This user ID is invalid.",
+      "invalid_id": "This user ID is invalid. Check it and try again.",
       "list_failed": "Could not load users. Please try again later.",
       "load_failed": "Could not display users",
       "load_one_failed": "Could not display this user",

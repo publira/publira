@@ -99,7 +99,7 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-error')));
 
     expect(
-      find.text('That email address or password is incorrect.'),
+      find.text('That email address or password is incorrect. Check them and try again.'),
       findsOneWidget,
     );
     expect(auth.isSignedIn, isFalse);

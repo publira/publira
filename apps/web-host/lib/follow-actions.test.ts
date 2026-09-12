@@ -173,7 +173,8 @@ describe("toggleFollowAction", () => {
 
   it("If the API rejects, return a message and do not update the tag.", async () => {
     mockFollowTarget.mockResolvedValueOnce({
-      message: "The requested item could not be found.",
+      message:
+        "The requested item could not be found. Go back and open it from the list.",
       ok: false,
     });
 
@@ -191,7 +192,8 @@ describe("toggleFollowAction", () => {
     );
 
     expect(result).toEqual({
-      message: "The requested item could not be found.",
+      message:
+        "The requested item could not be found. Go back and open it from the list.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

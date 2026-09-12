@@ -176,7 +176,8 @@ describe("notification lib", () => {
     const result = await listNotifications("TENANT001", { locale: "en" });
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       nextToken: "",
       notifications: [],
       ok: false,
@@ -211,7 +212,7 @@ describe("notification lib", () => {
     });
 
     expect(result).toEqual({
-      message: "The submitted values are invalid.",
+      message: "The submitted values are invalid. Check them and try again.",
       nextToken: "",
       notifications: [],
       ok: false,
@@ -329,7 +330,8 @@ describe("notification lib", () => {
     });
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
     });
   });
@@ -374,7 +376,8 @@ describe("notification lib", () => {
     const result = await markAllNotificationsAsRead("TENANT001", "en");
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
     });
   });

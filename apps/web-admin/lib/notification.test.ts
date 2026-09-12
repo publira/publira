@@ -182,7 +182,8 @@ describe("notification lib", () => {
     const result = await listNotifications("TENANT001", "en", {});
 
     expect(result).toEqual({
-      message: "You do not have permission to perform this action.",
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       nextToken: "",
       notifications: [],
       ok: false,

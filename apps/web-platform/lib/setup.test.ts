@@ -290,7 +290,7 @@ describe("createInitialUser", () => {
       })
     ).resolves.toEqual({
       alreadyCompleted: false,
-      message: "The submitted values are invalid.",
+      message: "The submitted values are invalid. Check them and try again.",
       ok: false,
     });
   });

@@ -142,7 +142,9 @@ describe("searchParamEnum", () => {
       throw new Error("expected the schema to reject this input");
     }
 
-    expect(parsed.error.issues[0]?.message).toBe("許可されていない値です。");
+    expect(parsed.error.issues[0]?.message).toBe(
+      "許可されていない値です。別の値を選んでください。"
+    );
   });
 
   it("rejects with the English shared wording when locale is en", () => {
@@ -152,7 +154,9 @@ describe("searchParamEnum", () => {
       throw new Error("expected the schema to reject this input");
     }
 
-    expect(parsed.error.issues[0]?.message).toBe("This value is not allowed.");
+    expect(parsed.error.issues[0]?.message).toBe(
+      "This value is not allowed. Choose another."
+    );
   });
 });
 

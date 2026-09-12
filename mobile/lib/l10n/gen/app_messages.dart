@@ -520,27 +520,27 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get errorsDisallowedValue {
-    return '許可されていない値です。';
+    return '許可されていない値です。別の値を選んでください。';
   }
 
   @override
   String get errorsRpcConflict {
-    return '重複するデータがあるため保存できません。';
+    return '重複するデータがあるため保存できません。内容を変えて再試行してください。';
   }
 
   @override
   String get errorsRpcForbidden {
-    return 'この操作を行う権限がありません。';
+    return 'この操作を行う権限がありません。戻るか、権限のあるアカウントでログインしてください。';
   }
 
   @override
   String get errorsRpcInvalidArgument {
-    return '入力内容に誤りがあります。';
+    return '入力内容に誤りがあります。内容を確認して再試行してください。';
   }
 
   @override
   String get errorsRpcNotFound {
-    return '対象が見つかりません。';
+    return '対象が見つかりません。一覧に戻って開き直してください。';
   }
 
   @override
@@ -560,37 +560,37 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get errorsSmtpTestAuthentication {
-    return 'SMTP 認証に失敗しました';
+    return 'SMTP 認証に失敗しました。SMTP の設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestConnection {
-    return 'SMTP サーバーに接続できませんでした';
+    return 'SMTP サーバーに接続できませんでした。SMTP の設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestRecipient {
-    return '宛先メールアドレスを受け付けられませんでした';
+    return '宛先メールアドレスを受け付けられませんでした。宛先を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestStarttls {
-    return 'STARTTLS の確立に失敗しました';
+    return 'STARTTLS の確立に失敗しました。SMTP の設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestTimeout {
-    return 'SMTP サーバーへの接続がタイムアウトしました';
+    return 'SMTP サーバーへの接続がタイムアウトしました。SMTP の設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestTls {
-    return 'TLS 接続に失敗しました';
+    return 'TLS 接続に失敗しました。SMTP の設定を確認して再試行してください。';
   }
 
   @override
   String get errorsSmtpTestUnknown {
-    return 'SMTP 接続テストに失敗しました';
+    return 'SMTP 接続テストに失敗しました。SMTP の設定を確認して再試行してください。';
   }
 
   @override
@@ -650,7 +650,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get catalogContinueFailed {
-    return '読みかけの作品を表示できませんでした';
+    return '読みかけの作品を表示できませんでした。もう一度お試しください。';
   }
 
   @override
@@ -665,12 +665,12 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get catalogLoadFailed {
-    return 'カタログを表示できませんでした';
+    return 'カタログを表示できませんでした。もう一度お試しください。';
   }
 
   @override
   String get catalogNewArrivalsFailed {
-    return '新着シリーズを表示できませんでした';
+    return '新着シリーズを表示できませんでした。もう一度お試しください。';
   }
 
   @override
@@ -685,7 +685,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get catalogRankingFailed {
-    return '今週のランキングを表示できませんでした';
+    return '今週のランキングを表示できませんでした。もう一度お試しください。';
   }
 
   @override
@@ -755,7 +755,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get commentsEmpty {
-    return 'まだコメントはありません。';
+    return 'まだコメントはありません。最初のコメントを投稿してください。';
   }
 
   @override
@@ -1030,7 +1030,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get seriesLoadFailed {
-    return 'ページを表示できませんでした';
+    return 'ページを表示できませんでした。もう一度お試しください。';
   }
 
   @override
@@ -1095,7 +1095,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get signInInvalidCredentials {
-    return 'メールアドレスまたはパスワードが正しくありません';
+    return 'メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。';
   }
 
   @override
@@ -1135,7 +1135,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get viewerLoadFailed {
-    return 'エピソードを表示できませんでした';
+    return 'エピソードを表示できませんでした。もう一度お試しください。';
   }
 
   @override
@@ -1175,7 +1175,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get viewerPageFailed {
-    return 'このページを表示できませんでした';
+    return 'このページを表示できませんでした。もう一度お試しください。';
   }
 
   @override
@@ -1228,27 +1228,27 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get errorsDisallowedValue {
-    return 'This value is not allowed.';
+    return 'This value is not allowed. Choose another.';
   }
 
   @override
   String get errorsRpcConflict {
-    return 'Cannot save because this data already exists.';
+    return 'Cannot save because this data already exists. Change the values and try again.';
   }
 
   @override
   String get errorsRpcForbidden {
-    return 'You do not have permission to perform this action.';
+    return 'You do not have permission to perform this action. Go back or use an account that does.';
   }
 
   @override
   String get errorsRpcInvalidArgument {
-    return 'The submitted values are invalid.';
+    return 'The submitted values are invalid. Check them and try again.';
   }
 
   @override
   String get errorsRpcNotFound {
-    return 'The requested item could not be found.';
+    return 'The requested item could not be found. Go back and open it from the list.';
   }
 
   @override
@@ -1268,37 +1268,37 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get errorsSmtpTestAuthentication {
-    return 'SMTP authentication failed.';
+    return 'SMTP authentication failed. Check the SMTP settings and try again.';
   }
 
   @override
   String get errorsSmtpTestConnection {
-    return 'Could not connect to the SMTP server.';
+    return 'Could not connect to the SMTP server. Check the SMTP settings and try again.';
   }
 
   @override
   String get errorsSmtpTestRecipient {
-    return 'The SMTP server rejected the recipient email address.';
+    return 'The SMTP server rejected the recipient email address. Check the address and try again.';
   }
 
   @override
   String get errorsSmtpTestStarttls {
-    return 'Could not establish STARTTLS.';
+    return 'Could not establish STARTTLS. Check the SMTP settings and try again.';
   }
 
   @override
   String get errorsSmtpTestTimeout {
-    return 'The connection to the SMTP server timed out.';
+    return 'The connection to the SMTP server timed out. Check the SMTP settings and try again.';
   }
 
   @override
   String get errorsSmtpTestTls {
-    return 'Could not establish a TLS connection.';
+    return 'Could not establish a TLS connection. Check the SMTP settings and try again.';
   }
 
   @override
   String get errorsSmtpTestUnknown {
-    return 'The SMTP connection test failed.';
+    return 'The SMTP connection test failed. Check the SMTP settings and try again.';
   }
 
   @override
@@ -1358,7 +1358,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get catalogContinueFailed {
-    return 'Could not show what you were reading.';
+    return 'Could not show what you were reading. Try again.';
   }
 
   @override
@@ -1373,12 +1373,12 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get catalogLoadFailed {
-    return 'Could not show the catalog.';
+    return 'Could not show the catalog. Try again.';
   }
 
   @override
   String get catalogNewArrivalsFailed {
-    return 'Could not show the new arrivals.';
+    return 'Could not show the new arrivals. Try again.';
   }
 
   @override
@@ -1393,7 +1393,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get catalogRankingFailed {
-    return 'Could not show this week\'s ranking.';
+    return 'Could not show this week\'s ranking. Try again.';
   }
 
   @override
@@ -1463,7 +1463,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get commentsEmpty {
-    return 'No comments yet.';
+    return 'No comments yet. Be the first to post one.';
   }
 
   @override
@@ -1738,7 +1738,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get seriesLoadFailed {
-    return 'Could not show the series.';
+    return 'Could not show the series. Try again.';
   }
 
   @override
@@ -1803,7 +1803,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get signInInvalidCredentials {
-    return 'That email address or password is incorrect.';
+    return 'That email address or password is incorrect. Check them and try again.';
   }
 
   @override
@@ -1843,7 +1843,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get viewerLoadFailed {
-    return 'Could not show the episode.';
+    return 'Could not show the episode. Try again.';
   }
 
   @override
@@ -1883,7 +1883,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get viewerPageFailed {
-    return 'This page could not be loaded.';
+    return 'This page could not be loaded. Try again.';
   }
 
   @override

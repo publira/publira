@@ -259,7 +259,7 @@ export const createEpisodeViaUi = async (
     await fields.publishAt.fill(toTokyoDateTimeLocal(input.publishAt));
   }
 
-  await page.getByRole("button", { name: "Submit episode" }).click();
+  await page.getByRole("button", { name: "Create episode" }).click();
   await page.waitForURL((url) => {
     const match = url.pathname.match(/\/episodes\/(?<publicId>[^/]+)(?:\/|$)/u);
     const publicId = match?.groups?.publicId;

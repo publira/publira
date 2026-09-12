@@ -15,10 +15,10 @@ export const PLATFORM_SESSION_COOKIE_NAME = "publira_web_platform_auth";
  * the same failure differently, so it has its own constant.
  */
 export const LOGIN_FAILED_MESSAGE =
-  "The email address or password is incorrect.";
+  "The email address or password is incorrect. Check them and try again.";
 
 export const HOST_LOGIN_FAILED_MESSAGE =
-  "That email address or password is incorrect.";
+  "That email address or password is incorrect. Check them and try again.";
 
 export const SESSION_REVOKED_MESSAGE =
   "Your session has expired. Please sign in again.";

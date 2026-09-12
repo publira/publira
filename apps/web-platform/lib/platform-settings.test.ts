@@ -367,7 +367,7 @@ describe("platform-settings", () => {
     const result = await updatePlatformDefaultLocale("en", "en");
 
     expect(result).toEqual({
-      message: "The submitted values are invalid.",
+      message: "The submitted values are invalid. Check them and try again.",
       ok: false,
     });
   });

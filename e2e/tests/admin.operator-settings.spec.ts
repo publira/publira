@@ -31,7 +31,7 @@ const REQUESTED_MESSAGE =
 const CHANGED_MESSAGE = "Your email address has been changed.";
 const PENDING_MESSAGE = "Confirmation is complete.";
 const FAILED_MESSAGE =
-  "Could not change your email address. The link may have expired or be invalid.";
+  "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.";
 const WRONG_PASSWORD_MESSAGE = "That password is not correct.";
 const SMTP_SAVED_MESSAGE = "The email settings were saved.";
 const SEED_FROM_NAME = "Operator Settings Tenant Mail";

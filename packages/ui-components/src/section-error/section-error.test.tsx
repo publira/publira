@@ -22,7 +22,8 @@ describe("SectionError", () => {
             Could not load the operator list
           </SectionErrorTitle>
           <SectionErrorDescription>
-            You do not have permission to perform this action.
+            You do not have permission to perform this action. Go back or use an
+            account that does.
           </SectionErrorDescription>
         </SectionErrorHeading>
       </SectionError>
@@ -31,7 +32,9 @@ describe("SectionError", () => {
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByText("Could not load the operator list")).toBeTruthy();
     expect(
-      screen.getByText("You do not have permission to perform this action.")
+      screen.getByText(
+        "You do not have permission to perform this action. Go back or use an account that does."
+      )
     ).toBeTruthy();
   });
 

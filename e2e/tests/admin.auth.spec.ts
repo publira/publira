@@ -190,7 +190,9 @@ test.describe("web-admin auth", () => {
       )
     ).toBeVisible();
     await expect(
-      page.getByText("You do not have permission to perform this action.")
+      page.getByText(
+        "You do not have permission to perform this action. Go back or use an account that does."
+      )
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
   });
@@ -211,7 +213,9 @@ test.describe("web-admin auth", () => {
       )
     ).toBeVisible();
     await expect(
-      page.getByText("You do not have permission to perform this action.")
+      page.getByText(
+        "You do not have permission to perform this action. Go back or use an account that does."
+      )
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
   });

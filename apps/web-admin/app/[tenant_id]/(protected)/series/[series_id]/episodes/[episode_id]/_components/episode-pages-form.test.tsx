@@ -84,22 +84,22 @@ describe("EpisodePagesForm", () => {
   it("changes the input attributes and the wording when switching between ZIP and ePub", () => {
     renderForm();
 
-    fireEvent.click(screen.getByRole("button", { name: "Submit a ZIP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use a ZIP" }));
 
     const fileInputAfterZip = fileInput();
 
     expect(fileInputAfterZip.name).toBe("archive");
     expect(fileInputAfterZip.multiple).toBe(false);
     expect(fileInputAfterZip.accept).toBe(".zip,application/zip");
-    expect(screen.getByRole("button", { name: "Submit ZIP" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add a ZIP" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Submit an ePub" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use an ePub" }));
 
     const fileInputAfterEpub = fileInput();
 
     expect(fileInputAfterEpub.name).toBe("archive");
     expect(fileInputAfterEpub.accept).toBe(".epub,application/epub+zip");
-    expect(screen.getByRole("button", { name: "Submit ePub" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add an ePub" })).toBeTruthy();
   });
 
   it("shows the file name after a file is chosen and clears it when the mode changes", () => {
@@ -118,7 +118,7 @@ describe("EpisodePagesForm", () => {
     expect(screen.getByText("page-1.png")).toBeTruthy();
     expect(screen.getByText("page-2.png")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Submit a ZIP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use a ZIP" }));
 
     expect(screen.queryByText("page-1.png")).toBeNull();
     expect(screen.queryByText("page-2.png")).toBeNull();
