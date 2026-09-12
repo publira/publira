@@ -35,7 +35,7 @@ catalog:
   tsdown: 0.23.0
   typescript: 6.0.3
   vitest: 5.0.0
-  zod: 4.5.4
+  zod: 4.6.0
 
 catalogMode: strict
 # These packages come from this organization, so there is no reason to wait out
