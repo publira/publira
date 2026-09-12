@@ -2266,6 +2266,7 @@
       "progress_error": "无法显示您上次的阅读位置",
       "progress_failed": "无法加载您上次的阅读位置。请稍后再试。",
       "read_from_first": "从第 1 章开始阅读",
+      "schedule": "{$weekdays}更新",
       "status_completed": "已完结",
       "status_hiatus": "休载中",
       "status_ongoing": "连载中"
@@ -2368,6 +2369,10 @@
       "recommended_error": "无法显示推荐作品",
       "recommended_failed": "无法加载推荐作品。请稍后再试。",
       "recommended_heading": "推荐作品",
+      "schedule_day_empty": "这一天没有更新的作品。",
+      "schedule_days_aria": "更新日",
+      "schedule_error": "无法显示每周更新安排",
+      "schedule_heading": "按更新日浏览",
       "updated_empty": "暂无更新的作品。",
       "updated_error": "无法显示更新的作品",
       "updated_heading": "最近更新",

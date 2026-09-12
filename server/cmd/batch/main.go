@@ -39,6 +39,11 @@ var subcommands = []subcommand{
 		run:     runApplyFreeWindows,
 	},
 	{
+		name:    "roll-tenant-day",
+		summary: "Drop the public site caches a tenant's calendar day decides, on a ticker until interrupted",
+		run:     runRollTenantDay,
+	},
+	{
 		name:    "project-episode-reads",
 		summary: "File the missing episode_complete events for stored episode reads",
 		run:     runProjectEpisodeReads,

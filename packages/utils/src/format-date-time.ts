@@ -540,3 +540,32 @@ export const formatWeekdayName = (
     options.style ?? "long"
   ).format(plainDate.toZonedDateTime("UTC").epochMilliseconds);
 };
+
+export interface CurrentWeekdayOptions {
+  /** The instant the day is read at. Default: now. */
+  now?: Temporal.Instant;
+}
+
+/**
+ * Which weekday it is in `timeZone` right now, as the number a stored schedule
+ * is written in: 0 is Sunday and 6 is Saturday, the way Postgres
+ * `EXTRACT(DOW)` counts.
+ *
+ * The zone is required because the answer is a calendar day rather than an
+ * instant: a reader in Los Angeles and the tenant that publishes for them are
+ * on different days for eight hours of every one, and the schedule belongs to
+ * the tenant. Reading the host's own clock — `new Date().getDay()`, or
+ * `Temporal.Now` with no zone — would make the answer a property of wherever
+ * the process happens to run.
+ *
+ * `Temporal` counts ISO weekdays, 1 for Monday through 7 for Sunday, so
+ * Sunday's 7 is the one number the remainder moves: every other day already
+ * sits one below the ISO number it shares a name with.
+ */
+export const currentWeekday = (
+  timeZone: string,
+  options: CurrentWeekdayOptions = {}
+): number => {
+  const now = options.now ?? Temporal.Now.instant();
+  return now.toZonedDateTimeISO(timeZone).dayOfWeek % 7;
+};

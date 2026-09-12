@@ -1,9 +1,10 @@
 import type { Locale } from "@publira/i18n";
-import { parseInstant } from "@publira/utils";
+import { currentWeekday, parseInstant, WEEKDAY_NUMBERS } from "@publira/utils";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { listPublishedAuthors } from "./authors";
+import { applyCacheTag, tenantTodayTag } from "./cache-tags";
 import {
   getSeriesDetail,
   listPublishedLabels,
@@ -83,9 +84,17 @@ interface CatalogTopDataOptions {
   maxNewEpisodes?: number;
   maxRanked?: number;
   maxRecommended?: number;
+  maxScheduledSeries?: number;
   maxUpdatedSeries?: number;
   seriesLimit?: number;
 }
+
+/**
+ * The schedule module's own options. `timeZone` is required and belongs to
+ * this read alone: it is the tenant's calendar, and no other module on the top
+ * page asks what day it is.
+ */
+type CatalogTopScheduleOptions = CatalogTopDataOptions & { timeZone: string };
 
 /**
  * Newest first by absolute time. `Date.parse` would fall back to the host zone
@@ -226,6 +235,78 @@ export const getCatalogTopFreeSeries = async (
   }
 
   return { ok: true, value: page.value.series };
+};
+
+/** One day of the weekly schedule module, with the series expected on it. */
+export interface CatalogTopScheduledDay {
+  /** `EXTRACT(DOW)`: 0 is Sunday and 6 is Saturday. */
+  weekday: number;
+  /** Empty where the tenant publishes nothing that day. */
+  series: SeriesListItem[];
+}
+
+/** The whole week, and the day of it the module opens on. */
+export interface CatalogTopWeeklySchedule {
+  /** The day it was where the tenant publishes when this entry was filled. */
+  openWeekday: number;
+  days: CatalogTopScheduledDay[];
+}
+
+/**
+ * The weekly schedule module: the whole week at once, each day holding the
+ * series that expect an episode on it, the most recently updated first.
+ *
+ * All seven days rather than the one being shown, because the module has to
+ * answer two questions with one read. Which day is open is one of them, and
+ * whether the module exists at all — whether any series keeps a schedule — is
+ * the other; a day-by-day read would have to ask the server six more times to
+ * find that out.
+ *
+ * `openWeekday` is read from the clock inside this cache scope, so it is the
+ * day this entry was filled on rather than the day of the request being
+ * served. That is the whole point: resolving it per request would make the
+ * home page dynamic, and the page is prerendered so that every module on it
+ * arrives without a round trip. What keeps the number true is the tag — the
+ * `roll-tenant-day` batch drops {@link tenantTodayTag} when the tenant's
+ * calendar day turns, which is the only moment this answer changes.
+ *
+ * `timeZone` is the tenant's, and it is an argument rather than a read so it
+ * is part of the cache key: a tenant that moves zones gets its own entry
+ * instead of the one filled under the old one.
+ */
+export const getCatalogTopWeeklySchedule = async (
+  tenantId: string,
+  { locale, maxScheduledSeries = 6, timeZone }: CatalogTopScheduleOptions
+): Promise<CachedReadResult<CatalogTopWeeklySchedule>> => {
+  "use cache";
+
+  applyCacheTag(tenantTodayTag(tenantId));
+
+  const pages = await Promise.all(
+    WEEKDAY_NUMBERS.map(async (weekday) => ({
+      page: await listPublishedSeries(tenantId, {
+        limit: maxScheduledSeries,
+        locale,
+        order: "updated",
+        weekday,
+      }),
+      weekday,
+    }))
+  );
+
+  const days: CatalogTopScheduledDay[] = [];
+  for (const { page, weekday } of pages) {
+    // One unreadable day makes the whole strip wrong: the reader would page
+    // through a week with a silent hole in it and read the gap as "nothing
+    // published that day".
+    if (!page.ok) {
+      return cachedReadFailure(page.message);
+    }
+
+    days.push({ series: page.value.series, weekday });
+  }
+
+  return { ok: true, value: { days, openWeekday: currentWeekday(timeZone) } };
 };
 
 /**

@@ -12,7 +12,7 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDate, formatList } from "@publira/utils";
+import { formatDate, formatList, formatWeekdayName } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -35,6 +35,7 @@ import {
   getCatalogTopNewEpisodes,
   getCatalogTopPopularSeries,
   getCatalogTopUpdatedSeries,
+  getCatalogTopWeeklySchedule,
 } from "#lib/catalog-top";
 import type {
   CatalogTopEpisodeItem,
@@ -46,6 +47,13 @@ import type { HostMessageKey } from "#lib/locale";
 import { listMyRecentSeries } from "#lib/reading-progress";
 import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+
+import {
+  WeeklySchedule,
+  WeeklyScheduleDay,
+  WeeklyScheduleDayPanel,
+  WeeklyScheduleDays,
+} from "./_components/weekly-schedule";
 
 type EpisodeLinkSource = CatalogTopEpisodeItem & {
   episodePublicId?: string;
@@ -111,6 +119,7 @@ const SECTION_TITLES = {
   labels: "host.top.featured_labels_error",
   newEpisodes: "host.top.new_episodes_error",
   recommended: "host.top.recommended_error",
+  schedule: "host.top.schedule_error",
   updated: "host.top.updated_error",
 } as const satisfies Record<string, HostMessageKey>;
 
@@ -361,6 +370,88 @@ const GenresSection = async () => {
       </div>
       <div className="mt-4">
         <GenreChips genres={result.value} />
+      </div>
+    </section>
+  );
+};
+
+/**
+ * The serials of the week, one day at a time, opened on the day it is where
+ * the tenant publishes.
+ *
+ * Which day that is comes out of the read rather than off this page's clock:
+ * the module is prerendered like every other one here, so a weekday resolved
+ * at render time would be the day the shell was built on. It is resolved
+ * inside the cached read instead, under a tag the `roll-tenant-day` batch
+ * drops when the tenant's calendar day turns — once a day, and only this
+ * module's entry. Making the page itself request-time would answer the same
+ * question by giving up the prerender of everything on it.
+ *
+ * The zone is the tenant's rather than the server's: which day it is where the
+ * process happens to run says nothing about when the next episode arrives.
+ *
+ * A tenant whose series keep no weekly schedule draws nothing at all, heading
+ * included, the way the genre module does — seven empty days would present a
+ * schedule this site does not keep.
+ */
+const WeeklyScheduleSection = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [timeZone, messages] = await Promise.all([
+    getTenantDisplayTimeZone(tenantId),
+    loadHostMessages(locale),
+  ]);
+  const result = await getCatalogTopWeeklySchedule(tenantId, {
+    locale,
+    timeZone,
+  });
+
+  if (!result.ok) {
+    return (
+      <SectionReadError
+        description={result.message}
+        title={SECTION_TITLES.schedule}
+      />
+    );
+  }
+
+  const { days, openWeekday } = result.value;
+
+  if (days.every((day) => day.series.length === 0)) {
+    return null;
+  }
+
+  return (
+    <section aria-labelledby="weekly-schedule">
+      <div className="border-b border-border pb-2">
+        <h2 className="font-serif text-xl leading-tight" id="weekly-schedule">
+          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+            <Message message="host.top.schedule_heading" />
+          </Suspense>
+        </h2>
+      </div>
+      <div className="mt-4">
+        <WeeklySchedule defaultWeekday={openWeekday}>
+          <WeeklyScheduleDays
+            aria-label={getMessage(messages, "host.top.schedule_days_aria")}
+          >
+            {days.map((day) => (
+              <WeeklyScheduleDay key={day.weekday} weekday={day.weekday}>
+                {/* A weekday is calendar data, so it comes from `Intl` in the
+                    reader's language rather than from the catalog. */}
+                {formatWeekdayName(day.weekday, { locale, style: "short" })}
+              </WeeklyScheduleDay>
+            ))}
+          </WeeklyScheduleDays>
+          {days.map((day) => (
+            <WeeklyScheduleDayPanel key={day.weekday} weekday={day.weekday}>
+              {day.series.length > 0 ? (
+                <SeriesShelf locale={locale} series={day.series} />
+              ) : (
+                <SectionEmpty message="host.top.schedule_day_empty" />
+              )}
+            </WeeklyScheduleDayPanel>
+          ))}
+        </WeeklySchedule>
       </div>
     </section>
   );
@@ -926,6 +1017,18 @@ const Page = () => (
     >
       <Suspense fallback={null}>
         <GenresSection />
+      </Suspense>
+    </SectionErrorBoundary>
+
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message={SECTION_TITLES.schedule} />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={null}>
+        <WeeklyScheduleSection />
       </Suspense>
     </SectionErrorBoundary>
 

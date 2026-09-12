@@ -11,6 +11,7 @@ import {
   findPublishedTagBySlug,
   getEpisodeDetail,
   getEpisodeViewer,
+  getSeriesDetail,
   isPublicEpisodeBody,
   listPublishedGenres,
   listPublishedSeries,
@@ -21,6 +22,7 @@ import {
 
 const {
   mockGetEpisodeDetail,
+  mockGetSeriesDetail,
   mockListPublishedGenres,
   mockListPublishedSeries,
   mockListPublishedTags,
@@ -28,6 +30,7 @@ const {
   mockListRelatedSeries,
 } = vi.hoisted(() => ({
   mockGetEpisodeDetail: vi.fn(),
+  mockGetSeriesDetail: vi.fn(),
   mockListPublishedGenres: vi.fn(),
   mockListPublishedSeries: vi.fn(),
   mockListPublishedTags: vi.fn(),
@@ -39,6 +42,7 @@ vi.mock("./api-client", () => ({
   apiClient: {
     catalog: {
       getEpisodeDetail: mockGetEpisodeDetail,
+      getSeriesDetail: mockGetSeriesDetail,
       listPublishedGenres: mockListPublishedGenres,
       listPublishedSeries: mockListPublishedSeries,
       listPublishedTags: mockListPublishedTags,
@@ -656,6 +660,132 @@ describe("catalog.listPublishedSeries", () => {
     expect(mockListPublishedSeries).toHaveBeenCalledWith(
       expect.objectContaining({ order: SeriesOrder.TITLE_ASC })
     );
+  });
+
+  /**
+   * Sunday is 0, so the weekday cannot be left out of the request to mean "no
+   * weekday" the way an empty genre id does.
+   */
+  it("Sends Sunday as a weekday rather than as no filter at all", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", {
+      limit: 6,
+      locale: "en",
+      weekday: 0,
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ weekday: 0 })
+    );
+  });
+
+  it("Applies no weekday filter when none was asked for", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await listPublishedSeries("TENANT_001", { limit: 6, locale: "en" });
+
+    expect(mockListPublishedSeries.mock.calls[0]?.[0]?.weekday).toBeUndefined();
+  });
+});
+
+describe("catalog.getSeriesDetail", () => {
+  beforeEach(() => {
+    mockGetSeriesDetail.mockReset();
+  });
+
+  it("Carries the classification the series page shows beside the title", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        creators: [],
+        genres: [
+          { name: "Fantasy", publicId: "SeedGENRAAA1", slug: "fantasy" },
+          { name: "Mystery", publicId: "SeedGENRAAA2", slug: "mystery" },
+        ],
+        publicId: "SERIES_1",
+        scheduleWeekdays: [1, 4],
+        status: SeriesStatus.HIATUS,
+        synopsis: "S1",
+        tags: [{ name: "Time travel", slug: "time-travel" }],
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series).toMatchObject({
+      genres: [
+        { name: "Fantasy", publicId: "SeedGENRAAA1" },
+        { name: "Mystery", publicId: "SeedGENRAAA2" },
+      ],
+      scheduleWeekdays: [1, 4],
+      status: "hiatus",
+      tags: [{ name: "Time travel", slug: "time-travel" }],
+    });
+  });
+
+  /**
+   * A chip is a link, so a genre with no id and a tag with no slug have
+   * nowhere to point; a weekday outside 0 to 6 would be written into the
+   * schedule sentence as the digit it is.
+   */
+  it("Drops a classification entry that could not be rendered as a link or a day", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        creators: [],
+        genres: [
+          { name: "Fantasy", publicId: "", slug: "fantasy" },
+          { name: "", publicId: "SeedGENRAAA2", slug: "mystery" },
+        ],
+        publicId: "SERIES_1",
+        scheduleWeekdays: [1, 9],
+        synopsis: "S1",
+        tags: [
+          { name: "Time travel", slug: "" },
+          { name: "Slow burn", slug: "slow-burn" },
+        ],
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series).toMatchObject({
+      genres: [],
+      scheduleWeekdays: [1],
+      tags: [{ name: "Slow burn", slug: "slow-burn" }],
+    });
+  });
+
+  it("Reports a series that carries no classification as carrying none", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        creators: [],
+        publicId: "SERIES_1",
+        synopsis: "S1",
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series).toMatchObject({
+      genres: [],
+      scheduleWeekdays: [],
+      status: undefined,
+      tags: [],
+    });
   });
 });
 

@@ -21,11 +21,14 @@ import { SeriesStatus } from "@publira/api-client/public/types";
 import type {
   EpisodeImage,
   EpisodeNeighbor,
+  Genre,
   Label,
   Series,
   SeriesEyeCatchVariant,
+  Tag,
 } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
+import { WEEKDAY_NUMBERS } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
 
@@ -325,6 +328,52 @@ const toSeriesSerializationStatus = (
   }
 };
 
+/**
+ * The days a schedule can name. A number outside them is dropped rather than
+ * named: `formatWeekdayName` would write it out as the digit it is, and a
+ * sentence reading "Updates on Monday and 9" is worse than one that leaves the
+ * day out.
+ */
+const toScheduleWeekdays = (weekdays: number[] | undefined): number[] =>
+  (weekdays ?? []).filter((weekday) =>
+    WEEKDAY_NUMBERS.some((known) => known === weekday)
+  );
+
+/** One genre a series carries, as the tenant ordered its genres. */
+export interface SeriesGenreItem {
+  name: string;
+  publicId: string;
+}
+
+/** The generated `Genre` fields {@link toSeriesGenreItem} reads. */
+type RawSeriesGenre = Pick<Genre, "name" | "publicId">;
+
+/**
+ * A genre with no `public_id` is dropped: the id is what a genre page is
+ * addressed by, so a chip built without one would link to the genre list.
+ */
+const toSeriesGenreItem = (genre: RawSeriesGenre): SeriesGenreItem[] => {
+  const name = genre.name?.trim() ?? "";
+  const publicId = genre.publicId?.trim() ?? "";
+  return name.length > 0 && publicId.length > 0 ? [{ name, publicId }] : [];
+};
+
+/** One tag a series carries, by name, which is the order the server sends. */
+export interface SeriesTagItem {
+  name: string;
+  slug: string;
+}
+
+/** The generated `Tag` fields {@link toSeriesTagItem} reads. */
+type RawSeriesTag = Pick<Tag, "name" | "slug">;
+
+/** A tag is addressed by its slug, so one without a slug is dropped. */
+const toSeriesTagItem = (tag: RawSeriesTag): SeriesTagItem[] => {
+  const name = tag.name?.trim() ?? "";
+  const slug = tag.slug?.trim() ?? "";
+  return name.length > 0 && slug.length > 0 ? [{ name, slug }] : [];
+};
+
 export interface SeriesDetail {
   publicId: string;
   title: string;
@@ -333,6 +382,14 @@ export interface SeriesDetail {
   labelPublicId: string;
   creatorNames: string[];
   status?: SeriesSerializationStatus;
+  /**
+   * The weekdays a new episode is expected on, as `EXTRACT(DOW)` numbers: 0 is
+   * Sunday and 6 is Saturday. Empty is a series that keeps no weekly schedule,
+   * which the page says nothing about rather than calling irregular.
+   */
+  scheduleWeekdays: number[];
+  genres: SeriesGenreItem[];
+  tags: SeriesTagItem[];
   readingPeriodHours: number;
   eyeCatchImageUpdatedAt?: string;
   eyeCatchImageVariants?: EyeCatchImageVariant[];
@@ -411,6 +468,12 @@ export interface SeriesListFilters {
   status?: SeriesSerializationStatus;
   /** Empty applies no tag filter. */
   tagSlug?: string;
+  /**
+   * Keep only the series expecting an episode on this weekday, as an
+   * `EXTRACT(DOW)` number: 0 is Sunday and 6 is Saturday. `undefined` applies
+   * no weekday filter — it cannot be 0, because 0 is Sunday.
+   */
+  weekday?: number;
 }
 
 /**
@@ -436,6 +499,7 @@ export const listPublishedSeries = async (
     status,
     tagSlug = "",
     token = "",
+    weekday,
   }: SeriesListFilters & {
     limit?: number;
     locale: Locale;
@@ -461,6 +525,7 @@ export const listPublishedSeries = async (
       tagSlug,
       tenant: { tenantId: normalizedTenantId },
       token,
+      weekday,
     });
   } catch (error) {
     return localizedReadFailure(error, locale, "host.series.list_failed");
@@ -1087,12 +1152,17 @@ export const getSeriesDetail = async (
           eyeCatchImageVariants: toEyeCatchImageVariants(
             response.series.eyeCatchImageVariants
           ),
+          genres: (response.series.genres ?? []).flatMap(toSeriesGenreItem),
           labelName: response.series.label?.name?.trim() ?? "",
           labelPublicId: response.series.label?.publicId?.trim() ?? "",
           publicId: response.series.publicId ?? "",
           readingPeriodHours: response.series.readingPeriodHours ?? 0,
+          scheduleWeekdays: toScheduleWeekdays(
+            response.series.scheduleWeekdays
+          ),
           status: toSeriesSerializationStatus(response.series.status),
           synopsis: response.series.synopsis ?? "",
+          tags: (response.series.tags ?? []).flatMap(toSeriesTagItem),
           title: response.series.title ?? "",
         }
       : undefined,

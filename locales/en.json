@@ -2266,6 +2266,7 @@
       "progress_error": "Could not show where you left off",
       "progress_failed": "Could not load where you left off. Please try again later.",
       "read_from_first": "Read from episode 1",
+      "schedule": "Updates on {$weekdays}",
       "status_completed": "Completed",
       "status_hiatus": "On hiatus",
       "status_ongoing": "Ongoing"
@@ -2368,6 +2369,10 @@
       "recommended_error": "Could not show the recommended works",
       "recommended_failed": "Could not load the recommended works. Please try again later.",
       "recommended_heading": "Recommended",
+      "schedule_day_empty": "No series are scheduled for this day.",
+      "schedule_days_aria": "Update weekdays",
+      "schedule_error": "Could not show the weekly schedule",
+      "schedule_heading": "Browse by weekday",
       "updated_empty": "There are no updated works yet.",
       "updated_error": "Could not show the updated works",
       "updated_heading": "Recently updated",

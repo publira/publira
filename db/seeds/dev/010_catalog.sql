@@ -114,6 +114,14 @@ SET tenant_id = EXCLUDED.tenant_id,
 -- Every tenth series has ended and every tenth-but-five is paused, so the
 -- storefront's status filter has all three states to select between and each
 -- of the two narrow ones answers with a page rather than an empty state.
+--
+-- The eight running rounds carry a schedule: seven of them take one weekday
+-- each, and the round ending in nine expects two episodes a week, so the
+-- storefront's weekday module answers with a full shelf on every day of the
+-- week and the series page has both a one-day and a two-day schedule to word.
+-- The two rounds that have ended or are paused keep none: they are expecting
+-- nothing. A pair is written in ascending order, which the column's CHECK
+-- cannot enforce.
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
@@ -134,6 +142,7 @@ INSERT INTO series_listings (
     synopsis,
     reading_period_hours,
     status,
+    schedule_weekdays,
     tenant_id
 )
 SELECT
@@ -145,12 +154,24 @@ SELECT
         WHEN 5 THEN 'hiatus'
         ELSE 'ongoing'
     END,
+    CASE ss.series_no % 10
+        WHEN 1 THEN ARRAY[1]
+        WHEN 2 THEN ARRAY[2]
+        WHEN 3 THEN ARRAY[3]
+        WHEN 4 THEN ARRAY[4]
+        WHEN 6 THEN ARRAY[5]
+        WHEN 7 THEN ARRAY[6]
+        WHEN 8 THEN ARRAY[0]
+        WHEN 9 THEN ARRAY[1, 4]
+        ELSE ARRAY[]::int[]
+    END::smallint[],
     ss.tenant_id
 FROM seed_series ss
 ON CONFLICT (series_id) DO UPDATE
 SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours,
     status = EXCLUDED.status,
+    schedule_weekdays = EXCLUDED.schedule_weekdays,
     tenant_id = EXCLUDED.tenant_id;
 
 WITH tenant_scope AS (

@@ -1,11 +1,6 @@
-import { cn } from "@publira/utils";
-
+import { CHIP } from "#components/chip";
 import { LocaleLink } from "#components/locale-link";
 import type { PublishedGenreItem } from "#lib/catalog";
-
-const CHIP = cn(
-  "inline-flex items-center gap-2 rounded-control border border-border bg-card px-3 py-1.5 text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted"
-);
 
 /**
  * The tenant's genres as a row of links, in the order the console put them in.

@@ -9,6 +9,7 @@ import {
   getCatalogTopPopularSeries,
   getCatalogTopRecommendedSeries,
   getCatalogTopUpdatedSeries,
+  getCatalogTopWeeklySchedule,
 } from "./catalog-top";
 
 const { mockListPublishedAuthors } = vi.hoisted(() => ({
@@ -632,6 +633,102 @@ describe("catalog-top section loaders", () => {
     ).resolves.toEqual({
       ok: true,
       value: [expect.objectContaining({ seriesId: "SERIES_2" })],
+    });
+  });
+
+  it("getCatalogTopWeeklySchedule asks the server for each day of the week in turn", async () => {
+    mockListPublishedSeries.mockImplementation(
+      (_tenantId: string, { weekday }: { weekday: number }) =>
+        Promise.resolve({
+          ok: true,
+          value: {
+            nextToken: "",
+            previousToken: "",
+            series: weekday === 4 ? [seriesFixture[0]] : [],
+          },
+        })
+    );
+
+    const result = await getCatalogTopWeeklySchedule("TENANT_001", {
+      locale: "en",
+      maxScheduledSeries: 6,
+      timeZone: "Asia/Tokyo",
+    });
+
+    expect(
+      mockListPublishedSeries.mock.calls.map(([, options]) => options.weekday)
+    ).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(mockListPublishedSeries).toHaveBeenCalledWith("TENANT_001", {
+      limit: 6,
+      locale: "en",
+      order: "updated",
+      weekday: 0,
+    });
+    expect(
+      result.ok && result.value.days.map((day) => day.series.length)
+    ).toEqual([0, 0, 0, 0, 1, 0, 0]);
+  });
+
+  /**
+   * The day the strip opens on is the tenant's, not the one the process this
+   * runs in happens to be on. It is read at fill time and stays put until the
+   * `roll-tenant-day` batch drops the entry, which is what keeps the home page
+   * prerendered.
+   */
+  it("getCatalogTopWeeklySchedule opens the strip on the day it is in the tenant's zone", async () => {
+    mockListPublishedSeries.mockResolvedValue({
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: [] },
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(
+      // Sunday 22:00 UTC is already Monday morning in Tokyo.
+      Temporal.Instant.from("2026-03-01T22:00:00Z").epochMilliseconds
+    );
+    try {
+      await expect(
+        getCatalogTopWeeklySchedule("TENANT_001", {
+          locale: "en",
+          timeZone: "UTC",
+        })
+      ).resolves.toMatchObject({ ok: true, value: { openWeekday: 0 } });
+      await expect(
+        getCatalogTopWeeklySchedule("TENANT_002", {
+          locale: "en",
+          timeZone: "Asia/Tokyo",
+        })
+      ).resolves.toMatchObject({ ok: true, value: { openWeekday: 1 } });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * A silent hole in the strip would read as "nothing publishes that day",
+   * which is a different statement from "this could not be loaded".
+   */
+  it("getCatalogTopWeeklySchedule reports the whole week as unavailable when one day fails", async () => {
+    mockListPublishedSeries.mockImplementation(
+      (_tenantId: string, { weekday }: { weekday: number }) =>
+        Promise.resolve(
+          weekday === 3
+            ? { message: "The catalog is unavailable.", ok: false }
+            : {
+                ok: true,
+                value: { nextToken: "", previousToken: "", series: [] },
+              }
+        )
+    );
+
+    await expect(
+      getCatalogTopWeeklySchedule("TENANT_001", {
+        locale: "en",
+        timeZone: "Asia/Tokyo",
+      })
+    ).resolves.toMatchObject({
+      message: "The catalog is unavailable.",
+      ok: false,
     });
   });
 });

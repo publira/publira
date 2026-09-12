@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  currentWeekday,
   DEFAULT_TIME_ZONE,
   endOfDayIsoString,
   formatDate,
@@ -570,5 +571,34 @@ describe("formatWeekdayName", () => {
       "Friday",
       "Saturday",
     ]);
+  });
+});
+
+describe("currentWeekday", () => {
+  it("counts the day the way EXTRACT(DOW) does, Sunday first", () => {
+    // 2026-03-01 is a Sunday, and each following instant is one day later.
+    const sunday = Temporal.Instant.from("2026-03-01T12:00:00Z");
+
+    expect(
+      WEEKDAY_NUMBERS.map((offset) =>
+        currentWeekday("UTC", { now: sunday.add({ hours: offset * 24 }) })
+      )
+    ).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it("answers with the day in the given zone, not the one in UTC", () => {
+    // 22:00 Sunday in UTC is already Monday morning in Tokyo.
+    const instant = Temporal.Instant.from("2026-03-01T22:00:00Z");
+
+    expect(currentWeekday("UTC", { now: instant })).toBe(0);
+    expect(currentWeekday("Asia/Tokyo", { now: instant })).toBe(1);
+  });
+
+  it("answers with the day in a zone behind UTC", () => {
+    // 02:00 Monday in UTC is still Sunday evening in Los Angeles.
+    const instant = Temporal.Instant.from("2026-03-02T02:00:00Z");
+
+    expect(currentWeekday("UTC", { now: instant })).toBe(1);
+    expect(currentWeekday("America/Los_Angeles", { now: instant })).toBe(0);
   });
 });
