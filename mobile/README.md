@@ -131,6 +131,7 @@ mobile/
 │   ├── models/                   # Series / episode body / episode comment
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / series detail / viewer / comments / sign-in / account
+│   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation

@@ -194,6 +194,12 @@ const fixtureCreators = <SeriesCreator>[
   SeriesCreator(id: 'SeedAUTHAAA3', name: 'Seed Author 003'),
 ];
 
+/// The first genre of the development seed, which [fixtureSeries]' first
+/// series carries so a catalog tile has a genre to show.
+const fixtureGenres = <SeriesGenre>[
+  SeriesGenre(id: 'SeedGENRAAA1', name: 'Fantasy'),
+];
+
 final fixtureSeries = <SeriesItem>[
   SeriesItem(
     id: 'SeedSERSAAA1',
@@ -204,6 +210,9 @@ final fixtureSeries = <SeriesItem>[
     creators: fixtureCreators,
     eyeCatchVariants: fixtureEyeCatchVariants,
     imageRequestHeaders: fixtureImageHeaders,
+    status: SeriesStatus.ongoing,
+    scheduleWeekdays: const [1, 4],
+    genres: fixtureGenres,
   ),
   const SeriesItem(
     id: 'series-kitchen',
@@ -212,6 +221,38 @@ final fixtureSeries = <SeriesItem>[
     episodeCount: 8,
   ),
 ];
+
+/// A restricted series used to exercise the confirmation before the body
+/// opens. It is not part of [fixtureSeries], so catalog tests that tap the
+/// first tile do not hit the gate.
+const fixtureRatedSeries = SeriesItem(
+  id: 'series-rated',
+  title: 'After Dark',
+  description: 'A series rated R15.',
+  episodeCount: 3,
+  status: SeriesStatus.ongoing,
+  ageRating: SeriesAgeRating.r15,
+  genres: [SeriesGenre(id: 'SeedGENRAAA2', name: 'Romance')],
+);
+
+/// An R18 series, used to check that an R15 confirmation does not open it.
+const fixtureR18Series = SeriesItem(
+  id: 'series-r18',
+  title: 'Midnight',
+  description: 'A series rated R18.',
+  episodeCount: 2,
+  ageRating: SeriesAgeRating.r18,
+);
+
+/// A series whose rating this build does not know, used to check the gate
+/// fails closed instead of presenting the R15 copy.
+const fixtureUnknownRatedSeries = SeriesItem(
+  id: 'series-unknown-rating',
+  title: 'Uncharted',
+  description: 'A series with an unrecognized rating.',
+  episodeCount: 1,
+  ageRating: SeriesAgeRating.unknown,
+);
 
 SeriesDetail fixtureDetail(SeriesItem item) {
   return SeriesDetail(

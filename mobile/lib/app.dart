@@ -27,6 +27,7 @@ import 'package:publira/push/push_device_store.dart';
 import 'package:publira/push/push_messaging.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
+import 'package:publira/settings/age_rating_confirmation.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
 /// fresh [GoRouter], a fake or fixture-backed catalog, and a session that does
@@ -40,6 +41,7 @@ class PubliraApp extends StatefulWidget {
     this.comments,
     this.offline,
     this.push,
+    this.ageRatingConfirmation,
     this.tenantDefaultLocale,
   });
 
@@ -66,6 +68,8 @@ class PubliraApp extends StatefulWidget {
     OfflineLibrary? offline,
     PushMessaging? messaging,
     PushDeviceStore pushDevices = const SecurePushDeviceStore(),
+    AgeRatingConfirmationStore ageRatingConfirmation =
+        const FileAgeRatingConfirmationStore(),
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
     final library = offline ?? FileOfflineLibrary();
@@ -107,6 +111,9 @@ class PubliraApp extends StatefulWidget {
         repository: HttpPushRepository(client: client, tenants: tenants),
         store: pushDevices,
       ),
+      ageRatingConfirmation: AgeRatingConfirmationController(
+        store: ageRatingConfirmation,
+      ),
       tenantDefaultLocale: tenants.defaultLocale,
     );
   }
@@ -138,6 +145,14 @@ class PubliraApp extends StatefulWidget {
   /// notification behaviour at all.
   final PushController? push;
 
+  /// The age rating this install has confirmed, which a rated series or
+  /// episode asks before opening.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to start unconfirmed, or
+  /// to inject a store that is already confirmed.
+  final AgeRatingConfirmationController? ageRatingConfirmation;
+
   /// The tenant's default locale code, once the tenant lookup has learnt it.
   ///
   /// [PubliraApp.fromConfig] hands over what its [TenantResolver] reports; a
@@ -157,11 +172,23 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// controller reports.
   late bool _wasSignedIn;
 
+  /// The confirmation this run owns when the widget did not pass one, so a
+  /// widget test that does not care about ratings still has a store.
+  AgeRatingConfirmationController? _ownedAgeRating;
+  late AgeRatingConfirmationController _ageRating;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _wasSignedIn = widget.auth.isSignedIn;
+    final passed = widget.ageRatingConfirmation;
+    if (passed != null) {
+      _ageRating = passed;
+    } else {
+      _ownedAgeRating = AgeRatingConfirmationController();
+      _ageRating = _ownedAgeRating!;
+    }
     widget.auth.addListener(_onAuthChanged);
     widget.push?.addListener(_onPushChanged);
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
@@ -178,7 +205,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// the two orders the same.
   Future<void> _restore() async {
     await widget.push?.start();
-    await widget.auth.restore();
+    await Future.wait([widget.auth.restore(), _ageRating.restore()]);
   }
 
   @override
@@ -198,6 +225,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.push?.removeListener(_onPushChanged);
     widget.auth.removeListener(_onAuthChanged);
     WidgetsBinding.instance.removeObserver(this);
+    _ownedAgeRating?.dispose();
     super.dispose();
   }
 
@@ -308,17 +336,20 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
             repository: widget.catalog,
             child: CommentScope(
               repository: widget.comments,
-              child: MaterialApp.router(
-                title: 'Publira',
-                scaffoldMessengerKey: _messengerKey,
-                locale: _locale,
-                supportedLocales: AppMessages.supportedLocales,
-                localizationsDelegates: appLocalizationsDelegates,
-                theme: ThemeData(
-                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-                  useMaterial3: true,
+              child: AgeRatingConfirmationScope(
+                controller: _ageRating,
+                child: MaterialApp.router(
+                  title: 'Publira',
+                  scaffoldMessengerKey: _messengerKey,
+                  locale: _locale,
+                  supportedLocales: AppMessages.supportedLocales,
+                  localizationsDelegates: appLocalizationsDelegates,
+                  theme: ThemeData(
+                    colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+                    useMaterial3: true,
+                  ),
+                  routerConfig: widget.router,
                 ),
-                routerConfig: widget.router,
               ),
             ),
           ),

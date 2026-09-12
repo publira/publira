@@ -2440,6 +2440,19 @@
       "open": "열기"
     },
     "series": {
+      "age_gate": {
+        "confirm_r15": "15세 이상입니다",
+        "confirm_r18": "18세 이상입니다",
+        "confirm_unknown": "열람해도 됩니다",
+        "r15_description": "15세 이상임을 확인하면 이 작품을 볼 수 있습니다.",
+        "r15_title": "“{$title}”은(는) R15 등급입니다",
+        "r18_description": "18세 이상임을 확인하면 이 작품을 볼 수 있습니다.",
+        "r18_title": "“{$title}”은(는) R18 등급입니다",
+        "unknown_description": "이 앱이 인식하지 못하는 연령 등급입니다. 열람해도 된다는 것을 확인하면 이 작품을 볼 수 있습니다.",
+        "unknown_title": "“{$title}”에는 연령 등급이 있습니다"
+      },
+      "age_rating_r15": "R15",
+      "age_rating_r18": "R18",
       "episode_count": "{$count}화",
       "episodes_empty": "아직 공개된 에피소드가 없습니다",
       "episodes_heading": "에피소드",
@@ -2447,6 +2460,10 @@
       "not_found": "시리즈를 찾을 수 없습니다 ({$id})",
       "offline_not_saved": "오프라인 상태이며, 이 기기에 저장된 이 시리즈의 데이터가 없습니다.",
       "saved_offline": "이 기기에 저장됨",
+      "schedule": "{$weekdays}에 업데이트",
+      "status_completed": "완결",
+      "status_hiatus": "휴재 중",
+      "status_ongoing": "연재 중",
       "title": "시리즈"
     },
     "sign_in": {

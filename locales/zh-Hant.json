@@ -2440,6 +2440,19 @@
       "open": "開啟"
     },
     "series": {
+      "age_gate": {
+        "confirm_r15": "我已滿 15 歲",
+        "confirm_r18": "我已滿 18 歲",
+        "confirm_unknown": "我可以閱讀此系列",
+        "r15_description": "確認已滿 15 歲後即可閱讀此系列。",
+        "r15_title": "「{$title}」為 R15",
+        "r18_description": "確認已滿 18 歲後即可閱讀此系列。",
+        "r18_title": "「{$title}」為 R18",
+        "unknown_description": "此應用無法辨識該年齡分級。確認可以閱讀後即可開啟此系列。",
+        "unknown_title": "「{$title}」有年齡分級"
+      },
+      "age_rating_r15": "R15",
+      "age_rating_r18": "R18",
       "episode_count": "{$count} 章",
       "episodes_empty": "尚未發布任何章節。",
       "episodes_heading": "章節",
@@ -2447,6 +2460,10 @@
       "not_found": "找不到系列（{$id}）",
       "offline_not_saved": "您目前處於離線狀態，且此裝置上沒有儲存該系列的內容。",
       "saved_offline": "已儲存到此裝置",
+      "schedule": "{$weekdays}更新",
+      "status_completed": "已完結",
+      "status_hiatus": "休載中",
+      "status_ongoing": "連載中",
       "title": "系列"
     },
     "sign_in": {

@@ -143,6 +143,13 @@ class ConnectFixtureServer {
     ];
   }
 
+  /// Classification of the seed series, in the shape `Series` arrives in.
+  static List<Map<String, Object?>> seedGenres() {
+    return [
+      {'publicId': 'SeedGENRAAA1', 'name': 'Fantasy', 'slug': 'fantasy'},
+    ];
+  }
+
   static List<Map<String, Object?>> populatedSeries() {
     return [
       {
@@ -152,6 +159,9 @@ class ConnectFixtureServer {
         'label': {'name': 'Seed Label 01', 'publicId': 'SeedLABLAAA1'},
         'creators': seedCreators(),
         'eyeCatchImageVariants': seedEyeCatchVariants(),
+        'status': 'SERIES_STATUS_ONGOING',
+        'scheduleWeekdays': [1, 4],
+        'genres': seedGenres(),
       },
       {
         'publicId': 'series-kitchen',
@@ -287,6 +297,9 @@ class ConnectFixtureServer {
           'synopsis': seedSeriesSynopsis,
           'creators': seedCreators(),
           'eyeCatchImageVariants': seedEyeCatchVariants(),
+          'status': 'SERIES_STATUS_ONGOING',
+          'scheduleWeekdays': [1, 4],
+          'genres': seedGenres(),
         },
         'episodes': [
           {

@@ -7,6 +7,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
+import 'package:publira/settings/age_rating_confirmation.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -27,13 +28,18 @@ void main() {
     offline = InMemoryOfflineLibrary();
   });
 
-  Future<void> pumpApp(WidgetTester tester, {AuthSession? session}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    AuthSession? session,
+    AgeRatingConfirmationController? ageRatingConfirmation,
+  }) async {
     await tester.pumpWidget(
       PubliraApp(
         router: router,
         catalog: catalog,
         auth: fakeAuthController(session: session),
         offline: offline,
+        ageRatingConfirmation: ageRatingConfirmation,
       ),
     );
     await tester.pump();
@@ -59,6 +65,36 @@ void main() {
     expect(
       find.text('Seed Author 001, Seed Author 002, and Seed Author 003'),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('a catalog tile shows the status and the first genre', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(
+              ValueKey('series-tile-classification-${fixtureSeries.first.id}'),
+            ),
+          )
+          .data,
+      'Ongoing · Fantasy',
+    );
+  });
+
+  testWidgets('a catalog tile of a series with no classification shows no '
+      'classification line', (tester) async {
+    catalog.series = [fixtureSeries.last];
+    await pumpApp(tester);
+
+    expect(
+      find.byKey(
+        ValueKey('series-tile-classification-${fixtureSeries.last.id}'),
+      ),
+      findsNothing,
     );
   });
 
@@ -88,6 +124,180 @@ void main() {
       tester.widget<Text>(find.byKey(const ValueKey('series-creators'))).data,
       'Seed Author 001, Seed Author 002, and Seed Author 003',
     );
+  });
+
+  testWidgets('the series detail screen shows status, schedule, and genres', (
+    tester,
+  ) async {
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('series-status'))).data,
+      'Ongoing',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('series-schedule'))).data,
+      'Updates on Monday and Thursday',
+    );
+    expect(
+      find.byKey(const ValueKey('series-genre-SeedGENRAAA1')),
+      findsOneWidget,
+    );
+    expect(find.text('Fantasy'), findsOneWidget);
+    expect(find.byKey(const ValueKey('series-age-rating')), findsNothing);
+  });
+
+  testWidgets('a rated series is not opened without the confirmation', (
+    tester,
+  ) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureRatedSeries],
+      details: {fixtureRatedSeries.id: fixtureDetail(fixtureRatedSeries)},
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureRatedSeries.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    expect(find.text('Episodes'), findsNothing);
+    expect(find.text(fixtureRatedSeries.description), findsNothing);
+    expect(find.text('“After Dark” is rated R15'), findsOneWidget);
+  });
+
+  testWidgets('cancelling the rating confirmation leaves the series unopened', (
+    tester,
+  ) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureRatedSeries],
+      details: {fixtureRatedSeries.id: fixtureDetail(fixtureRatedSeries)},
+    );
+    await pumpApp(tester);
+    await tester.tap(
+      find.byKey(ValueKey('series-tile-${fixtureRatedSeries.id}')),
+    );
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-cancel')));
+    await pumpUntilFound(tester, find.text('Publira'));
+
+    expect(find.text('Episodes'), findsNothing);
+    expect(router.state.uri.path, AppRoutes.catalog);
+  });
+
+  testWidgets('confirming the rating opens the series and is remembered', (
+    tester,
+  ) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureRatedSeries],
+      details: {fixtureRatedSeries.id: fixtureDetail(fixtureRatedSeries)},
+    );
+    await pumpApp(tester);
+    await tester.tap(
+      find.byKey(ValueKey('series-tile-${fixtureRatedSeries.id}')),
+    );
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(find.text(fixtureRatedSeries.description), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('series-age-rating'))).data,
+      'R15',
+    );
+
+    await tester.pageBack();
+    await pumpUntilFound(tester, find.text('Publira'));
+    await tester.tap(
+      find.byKey(ValueKey('series-tile-${fixtureRatedSeries.id}')),
+    );
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(find.byKey(const ValueKey('age-rating-gate')), findsNothing);
+  });
+
+  testWidgets('an R15 confirmation does not open an R18 series', (
+    tester,
+  ) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureRatedSeries, fixtureR18Series],
+      details: {
+        fixtureRatedSeries.id: fixtureDetail(fixtureRatedSeries),
+        fixtureR18Series.id: fixtureDetail(fixtureR18Series),
+      },
+    );
+    await pumpApp(tester);
+    await tester.tap(
+      find.byKey(ValueKey('series-tile-${fixtureRatedSeries.id}')),
+    );
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    await tester.pageBack();
+    await pumpUntilFound(tester, find.text('Publira'));
+    await tester.tap(
+      find.byKey(ValueKey('series-tile-${fixtureR18Series.id}')),
+    );
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    expect(find.text('“Midnight” is rated R18'), findsOneWidget);
+    expect(find.text('Episodes'), findsNothing);
+  });
+
+  testWidgets('an unrecognized rating is not opened as R15', (tester) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureUnknownRatedSeries],
+      details: {
+        fixtureUnknownRatedSeries.id: fixtureDetail(fixtureUnknownRatedSeries),
+      },
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureUnknownRatedSeries.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    expect(find.text('“Uncharted” has an age rating'), findsOneWidget);
+    expect(find.text('I am allowed to open this series'), findsOneWidget);
+    expect(find.text('“Uncharted” is rated R15'), findsNothing);
+    expect(find.text('Episodes'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await pumpUntilFound(tester, find.text('Episodes'));
+  });
+
+  testWidgets('a failed confirmation write leaves the series unopened', (
+    tester,
+  ) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureRatedSeries],
+      details: {fixtureRatedSeries.id: fixtureDetail(fixtureRatedSeries)},
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureRatedSeries.id),
+    );
+    await pumpApp(
+      tester,
+      ageRatingConfirmation: AgeRatingConfirmationController(
+        store: MemoryAgeRatingConfirmationStore(
+          writeError: Exception('disk full'),
+        ),
+      ),
+    );
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const ValueKey('age-rating-gate')), findsOneWidget);
+    expect(find.text('Episodes'), findsNothing);
   });
 
   testWidgets('a series credited to nobody shows no credit line', (

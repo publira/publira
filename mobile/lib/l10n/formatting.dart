@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/models/series_item.dart';
 
 /// Values rendered the way the catalog's locale writes them.
 ///
@@ -24,6 +25,42 @@ extension AppMessagesFormatting on AppMessages {
   /// catalog (`lib/l10n/localizations.dart`).
   String formatDateTime(DateTime value) =>
       DateFormat.yMMMd(intlLocale).add_jm().format(value.toLocal());
+
+  /// One weekday, given as the number Postgres `EXTRACT(DOW)` uses: 0 is
+  /// Sunday and 6 is Saturday.
+  ///
+  /// The name comes from `intl` rather than from the message catalog, for the
+  /// reason the month names in [formatDateTime] do — a weekday is calendar
+  /// data every locale already carries. There is no instant behind a weekday,
+  /// so the number is resolved against a reference Sunday purely to reach a
+  /// formatter.
+  String formatWeekday(int weekday) {
+    if (weekday < 0 || weekday > 6) {
+      return '$weekday';
+    }
+    // 2024-01-07 was a Sunday. Constructed in the local calendar, not as UTC,
+    // so a zone west of Greenwich cannot pull the name back onto Saturday.
+    return DateFormat.EEEE(intlLocale).format(DateTime(2024, 1, 7 + weekday));
+  }
+
+  /// The catalog copy for [status], which a screen shows as-is.
+  String seriesStatusLabel(SeriesStatus status) {
+    return switch (status) {
+      SeriesStatus.ongoing => seriesStatusOngoing,
+      SeriesStatus.completed => seriesStatusCompleted,
+      SeriesStatus.hiatus => seriesStatusHiatus,
+    };
+  }
+
+  /// The badge for a restricted [rating], or `null` when there is nothing to
+  /// show: unspecified and all-ages carry no mark.
+  String? seriesAgeRatingLabel(SeriesAgeRating? rating) {
+    return switch (rating) {
+      SeriesAgeRating.r15 => seriesAgeRatingR15,
+      SeriesAgeRating.r18 => seriesAgeRatingR18,
+      SeriesAgeRating.all || SeriesAgeRating.unknown || null => null,
+    };
+  }
 
   /// [values] read as one list in this locale — `Alice, Bob, and Carol` under
   /// `en-US`, `Alice、Bob、Carol` under `ja-JP`.

@@ -144,18 +144,68 @@ void main() {
     expect(creators.first.id, 'SeedAUTHAAA1');
   });
 
-  test('a series saved before this build carries no credits', () {
-    // Files written by an earlier build hold no `creators`, and they are read
-    // rather than dropped: the series shows none until it is loaded again.
+  test('the classification of a saved series survives the round trip', () {
+    final written = OfflineIndex(
+      series: const [
+        SeriesItem(
+          id: 'SeedSERSAAA1',
+          title: 'Seed Series 001',
+          description: 'synopsis',
+          status: SeriesStatus.ongoing,
+          scheduleWeekdays: [1, 4],
+          ageRating: SeriesAgeRating.r15,
+          genres: [SeriesGenre(id: 'SeedGENRAAA1', name: 'Fantasy')],
+        ),
+      ],
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+    final series = decoded!.series!.single;
+
+    expect(series.status, SeriesStatus.ongoing);
+    expect(series.scheduleWeekdays, [1, 4]);
+    expect(series.ageRating, SeriesAgeRating.r15);
+    expect(series.genres.single.name, 'Fantasy');
+    expect(series.genres.single.id, 'SeedGENRAAA1');
+  });
+
+  test('an unrecognized stored age rating is read as unknown', () {
     final decoded = OfflineIndex.fromJson(
       _index(
         _episode(access: 'free', ownerId: ''),
-        series: _series(),
+        series: [
+          {
+            'id': 'SeedSERSAAA1',
+            'title': 'Seed Series 001',
+            'description': 'synopsis',
+            'ageRating': 'r20',
+          },
+        ],
       ),
     );
 
-    expect(decoded!.series!.single.creators, isEmpty);
+    expect(decoded!.series!.single.ageRating, SeriesAgeRating.unknown);
   });
+
+  test(
+    'a series saved before this build carries no credits or classification',
+    () {
+      // Files written by an earlier build hold no `creators` or classification,
+      // and they are read rather than dropped: the series shows none until it
+      // is loaded again.
+      final decoded = OfflineIndex.fromJson(
+        _index(
+          _episode(access: 'free', ownerId: ''),
+          series: _series(),
+        ),
+      );
+
+      expect(decoded!.series!.single.creators, isEmpty);
+      expect(decoded.series!.single.status, isNull);
+      expect(decoded.series!.single.genres, isEmpty);
+      expect(decoded.series!.single.ageRating, isNull);
+    },
+  );
 
   test('the episodes either side of a saved body survive the round trip', () {
     final written = OfflineIndex(

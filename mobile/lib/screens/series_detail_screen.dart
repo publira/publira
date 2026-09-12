@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/eye_catch.dart';
@@ -82,7 +83,14 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
             ),
           );
         }
-        return _SeriesDetailBody(detail: detail);
+        return Scaffold(
+          appBar: AppBar(title: Text(detail.series.title)),
+          body: AgeRatingGate(
+            rating: detail.series.ageRating,
+            seriesTitle: detail.series.title,
+            child: _SeriesDetailBody(detail: detail),
+          ),
+        );
       },
     );
   }
@@ -185,76 +193,131 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final messages = AppMessages.of(context);
     final series = widget.detail.series;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(series.title)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // 16:9 is the shape of the rendition, and on a phone it is what the
-          // banner takes. The cap is for the wide screen a tablet or a
-          // desktop window gives it, where the same ratio would push the
-          // synopsis and the episodes off the first screen.
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 220),
-            child: SeriesCover(
-              series: series,
-              preferredTypes: const [eyeCatchLandscape, eyeCatchPortrait],
-              aspectRatio: 16 / 9,
-            ),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // 16:9 is the shape of the rendition, and on a phone it is what the
+        // banner takes. The cap is for the wide screen a tablet or a
+        // desktop window gives it, where the same ratio would push the
+        // synopsis and the episodes off the first screen.
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 220),
+          child: SeriesCover(
+            series: series,
+            preferredTypes: const [eyeCatchLandscape, eyeCatchPortrait],
+            aspectRatio: 16 / 9,
           ),
-          const SizedBox(height: 16),
-          Text(series.title, style: theme.textTheme.headlineSmall),
-          if (series.creators.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              key: const ValueKey('series-creators'),
-              messages.formatList([
-                for (final creator in series.creators) creator.name,
-              ]),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-          const SizedBox(height: 8),
+        ),
+        const SizedBox(height: 16),
+        Text(series.title, style: theme.textTheme.headlineSmall),
+        if (series.creators.isNotEmpty) ...[
+          const SizedBox(height: 4),
           Text(
-            messages.seriesEpisodeCount(
-              count: messages.formatInteger(series.episodeCount),
-            ),
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.primary,
+            key: const ValueKey('series-creators'),
+            messages.formatList([
+              for (final creator in series.creators) creator.name,
+            ]),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          if (series.description.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(series.description, style: theme.textTheme.bodyLarge),
-          ],
-          const SizedBox(height: 24),
-          Text(
-            messages.seriesEpisodesHeading,
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          if (widget.detail.episodes.isEmpty)
-            Text(messages.seriesEpisodesEmpty)
-          else
-            for (final episode in widget.detail.episodes)
-              ListTile(
-                key: ValueKey('episode-tile-${episode.id}'),
-                contentPadding: EdgeInsets.zero,
-                title: Text(episode.title),
-                trailing: _EpisodeTrailing(
-                  price: episode.price,
-                  saved: _saved.contains(episode.id),
-                ),
-                onTap: () {
-                  context.push(
-                    AppRoutes.episodeViewerPath(series.id, episode.id),
-                  );
-                },
-              ),
         ],
-      ),
+        const SizedBox(height: 8),
+        Text(
+          messages.seriesEpisodeCount(
+            count: messages.formatInteger(series.episodeCount),
+          ),
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        if (series.status != null ||
+            series.scheduleWeekdays.isNotEmpty ||
+            messages.seriesAgeRatingLabel(series.ageRating) != null) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            key: const ValueKey('series-classification'),
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (series.status != null)
+                Text(
+                  key: const ValueKey('series-status'),
+                  messages.seriesStatusLabel(series.status!),
+                  style: theme.textTheme.labelLarge,
+                ),
+              if (messages.seriesAgeRatingLabel(series.ageRating)
+                  case final rating?)
+                Text(
+                  key: const ValueKey('series-age-rating'),
+                  rating,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              if (series.scheduleWeekdays.isNotEmpty)
+                Text(
+                  key: const ValueKey('series-schedule'),
+                  messages.seriesSchedule(
+                    weekdays: messages.formatList([
+                      for (final weekday in series.scheduleWeekdays)
+                        messages.formatWeekday(weekday),
+                    ]),
+                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ],
+        if (series.genres.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            key: const ValueKey('series-genres'),
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final genre in series.genres)
+                Chip(
+                  key: ValueKey('series-genre-${genre.id}'),
+                  label: Text(genre.name),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+            ],
+          ),
+        ],
+        if (series.description.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(series.description, style: theme.textTheme.bodyLarge),
+        ],
+        const SizedBox(height: 24),
+        Text(
+          messages.seriesEpisodesHeading,
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        if (widget.detail.episodes.isEmpty)
+          Text(messages.seriesEpisodesEmpty)
+        else
+          for (final episode in widget.detail.episodes)
+            ListTile(
+              key: ValueKey('episode-tile-${episode.id}'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(episode.title),
+              trailing: _EpisodeTrailing(
+                price: episode.price,
+                saved: _saved.contains(episode.id),
+              ),
+              onTap: () {
+                context.push(
+                  AppRoutes.episodeViewerPath(series.id, episode.id),
+                );
+              },
+            ),
+      ],
     );
   }
 }
