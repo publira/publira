@@ -7,12 +7,13 @@ task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the eleven below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the twelve below, the binary prints its usage to stderr and exits non-zero.
 
 | Subcommand | Lifetime | What it does |
 | --- | --- | --- |
 | `publish-episodes` | Ticker, until `SIGINT` / `SIGTERM` | Promotes episodes whose scheduled time has passed |
 | `apply-free-windows` | Ticker, until `SIGINT` / `SIGTERM` | Drops the public site caches at each free window boundary |
+| `roll-tenant-day` | Ticker, until `SIGINT` / `SIGTERM` | Drops the public site caches a tenant's calendar day decides, at that tenant's midnight |
 | `project-episode-reads` | One-shot | Files the missing `episode_complete` events for stored `episode_reads` |
 | `aggregate-content-stats` | One-shot | Rebuilds one calendar day of `content_daily_stats` per tenant |
 | `aggregate-rankings` | One-shot | Rebuilds the daily and weekly `content_ranking_snapshots` |
@@ -68,6 +69,31 @@ Environment variables:
 ### Next.js revalidation
 
 The same `PUBLIRA_REVALIDATE_TOKEN` and `PUBLIRA_WEB_*_INTERNAL_URL` variables as `publish-episodes`. Without them there is nothing to drop, and the pass records the boundaries it crossed anyway rather than collecting them.
+
+## roll-tenant-day
+
+Drops the public site cache entries whose answer is the tenant's own calendar day, at that tenant's midnight, on a ticker. It runs one pass on startup and then one per tick, and shuts down gracefully on `SIGINT` / `SIGTERM`.
+
+```bash
+go run ./server/cmd/batch roll-tenant-day
+```
+
+One module asks what day it is: the storefront's weekly schedule, which opens on the day it is where the tenant publishes. Nothing in the database changes at midnight — the schedule is the same seven days it was yesterday — and the home page is prerendered, so the day it names is the day its cache entry was filled on. Turning that entry over once a day is what keeps it true, and it is why the page does not have to be rendered per request to say what day it is.
+
+The tag is `tenant:<id>:today`, and only the schedule read carries it. A daily drop aimed at the catalog's own tags would rebuild every series list and every series page for the sake of one number on one module.
+
+Which midnight matters is the tenant's, resolved from `tenants.timezone` (falling back to `platform_config.default_timezone`), so one pass turns over a tenant in Tokyo hours before one in Los Angeles. A tenant whose stored zone cannot be loaded is logged and skipped without stopping the rest, and a drop that does not go through is retried on the next pass rather than recorded.
+
+Which day each tenant was last rolled on is remembered in the process rather than in a column. A drop is idempotent, so a restart costs one extra drop of one narrow tag per tenant — which is why the first pass after startup turns every tenant over.
+
+Environment variables:
+
+- `PUBLIRA_DB_URL`: connection string. Defaults to the local development database. The listing spans every tenant, so the role it names has to bypass RLS. Like `publish-episodes`, this subcommand has no dedicated role variable; giving it a login of its own is [#1688](https://github.com/publira/publira/issues/1688).
+- `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS`: seconds between passes. Defaults to `60`; a non-numeric or non-positive value falls back to the default. It bounds how long after midnight the site can keep naming yesterday.
+
+### Next.js revalidation
+
+The same `PUBLIRA_REVALIDATE_TOKEN` and `PUBLIRA_WEB_*_INTERNAL_URL` variables as `publish-episodes`. Without them there is nothing to drop, and each pass records the day it saw rather than collecting it.
 
 ## project-episode-reads
 

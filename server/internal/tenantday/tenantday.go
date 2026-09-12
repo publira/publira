@@ -77,6 +77,22 @@ func (t Tenant) Date(pinned, now time.Time) (time.Time, error) {
 	return civilDate(now.In(location).AddDate(0, 0, -1)), nil
 }
 
+// Today is the calendar day this tenant is currently on.
+//
+// Date answers with yesterday because that is the last day an aggregate can
+// rebuild in full. A caller that has to name the day a reader is looking at —
+// which weekday a storefront opens on — needs the day itself, and asking for
+// it here keeps both readings of "the tenant's day" on one time zone lookup.
+//
+// The result is midnight UTC of that civil date, for the reason Date's is.
+func (t Tenant) Today(now time.Time) (time.Time, error) {
+	location, err := time.LoadLocation(t.TimeZone)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("load time zone %q: %w", t.TimeZone, err)
+	}
+	return civilDate(now.In(location)), nil
+}
+
 func civilDate(at time.Time) time.Time {
 	year, month, day := at.Date()
 	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
