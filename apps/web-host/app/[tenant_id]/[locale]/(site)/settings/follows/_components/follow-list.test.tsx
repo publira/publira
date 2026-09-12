@@ -129,16 +129,16 @@ describe("FollowList", () => {
     );
   });
 
-  it("Draw links to public pages for works and authors and undo operations", async () => {
+  it("Draw links to public pages for works and creators and undo operations", async () => {
     await renderList({
       items: [
         follow(),
         follow({
           followedAt: "2026-05-31T00:00:00Z",
-          href: "/authors/AUTHOR01",
-          publicId: "AUTHOR01",
-          targetKind: "author",
-          title: "Published Author",
+          href: "/creators/CREATOR01",
+          publicId: "CREATOR01",
+          targetKind: "creator",
+          title: "Published Creator",
         }),
       ],
       nextToken: "next",
@@ -147,9 +147,10 @@ describe("FollowList", () => {
 
     const seriesLink = screen.getByRole("link", { name: "Published Series" });
     expect(seriesLink.getAttribute("href")).toBe("/series/SERIES01");
-    const authorLink = screen.getByRole("link", { name: "Published Author" });
-    expect(authorLink.getAttribute("href")).toBe("/authors/AUTHOR01");
+    const creatorLink = screen.getByRole("link", { name: "Published Creator" });
+    expect(creatorLink.getAttribute("href")).toBe("/creators/CREATOR01");
     expect(screen.getByText("Series")).toBeDefined();
+    // The kind label is the word the catalog shows for a creator.
     expect(screen.getByText("Author")).toBeDefined();
     expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
     expect(

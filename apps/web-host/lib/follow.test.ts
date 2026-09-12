@@ -39,15 +39,15 @@ vi.mock("./api-client", () => ({
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 describe("toFollowTargetType", () => {
-  it("maps author and series kinds onto the Follow API enum", () => {
-    expect(toFollowTargetType("author")).toBe(FollowTargetType.CREATOR);
+  it("maps creator and series kinds onto the Follow API enum", () => {
+    expect(toFollowTargetType("creator")).toBe(FollowTargetType.CREATOR);
     expect(toFollowTargetType("series")).toBe(FollowTargetType.SERIES);
   });
 });
 
 describe("toFollowTargetKind", () => {
-  it("maps author and series enums back onto the app kinds", () => {
-    expect(toFollowTargetKind(FollowTargetType.CREATOR)).toBe("author");
+  it("maps creator and series enums back onto the app kinds", () => {
+    expect(toFollowTargetKind(FollowTargetType.CREATOR)).toBe("creator");
     expect(toFollowTargetKind(FollowTargetType.SERIES)).toBe("series");
   });
 
@@ -86,14 +86,14 @@ describe("getMyFollowStatus", () => {
 
     const result = await getMyFollowStatus(
       tenantId,
-      "author",
-      "AUTHOR01",
+      "creator",
+      "CREATOR01",
       "en"
     );
 
     expect(mockGetMyFollowStatus).toHaveBeenCalledWith(
       {
-        target: { publicId: "AUTHOR01", type: FollowTargetType.CREATOR },
+        target: { publicId: "CREATOR01", type: FollowTargetType.CREATOR },
         tenant: { tenantId },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -175,8 +175,8 @@ describe("followTarget / unfollowTarget", () => {
     await expect(
       unfollowTarget({
         locale: "en",
-        publicId: "AUTHOR01",
-        targetKind: "author",
+        publicId: "CREATOR01",
+        targetKind: "creator",
         tenantId,
       })
     ).resolves.toEqual({ isFollowing: false, ok: true });

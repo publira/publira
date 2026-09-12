@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  getCatalogTopFeaturedAuthors,
+  getCatalogTopFeaturedCreators,
   getCatalogTopFeaturedLabels,
   getCatalogTopFeaturedWork,
   getCatalogTopFreeSeries,
@@ -12,8 +12,8 @@ import {
   getCatalogTopWeeklySchedule,
 } from "./catalog-top";
 
-const { mockListPublishedAuthors } = vi.hoisted(() => ({
-  mockListPublishedAuthors: vi.fn(),
+const { mockListPublishedCreators } = vi.hoisted(() => ({
+  mockListPublishedCreators: vi.fn(),
 }));
 
 const {
@@ -30,8 +30,8 @@ const {
   mockListRecommendedSeries: vi.fn(),
 }));
 
-vi.mock("./authors", () => ({
-  listPublishedAuthors: mockListPublishedAuthors,
+vi.mock("./creators", () => ({
+  listPublishedCreators: mockListPublishedCreators,
 }));
 
 vi.mock("./catalog", async (importOriginal) => {
@@ -49,7 +49,7 @@ vi.mock("./catalog", async (importOriginal) => {
 
 const seriesFixture = [
   {
-    creatorNames: ["Author A"],
+    creatorNames: ["Creator A"],
     creators: [],
     freeEpisodeCount: 2,
     labelName: "",
@@ -58,7 +58,7 @@ const seriesFixture = [
     title: "Series 1",
   },
   {
-    creatorNames: ["Author B"],
+    creatorNames: ["Creator B"],
     creators: [],
     freeEpisodeCount: 0,
     labelName: "",
@@ -88,7 +88,7 @@ const detailSeries1 = {
     },
   ],
   series: {
-    creatorNames: ["Author A"],
+    creatorNames: ["Creator A"],
     labelName: "",
     publicId: "SERIES_1",
     readingPeriodHours: 0,
@@ -109,7 +109,7 @@ const detailSeries2 = {
     },
   ],
   series: {
-    creatorNames: ["Author B"],
+    creatorNames: ["Creator B"],
     labelName: "",
     publicId: "SERIES_2",
     readingPeriodHours: 0,
@@ -122,7 +122,7 @@ describe("catalog-top section loaders", () => {
   beforeEach(() => {
     mockGetSeriesDetail.mockReset();
     mockListPublishedLabels.mockReset();
-    mockListPublishedAuthors.mockReset();
+    mockListPublishedCreators.mockReset();
     mockListPublishedSeries.mockReset();
     mockListRankedSeries.mockReset();
     mockListRecommendedSeries.mockReset();
@@ -327,7 +327,7 @@ describe("catalog-top section loaders", () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        creatorNames: ["Author A"],
+        creatorNames: ["Creator A"],
         eyeCatchImageVariants: undefined,
         // The newest published episode, not the last one the detail listed.
         latestEpisode: {
@@ -456,13 +456,13 @@ describe("catalog-top section loaders", () => {
     ]);
   });
 
-  it("getCatalogTopFeaturedLabels / Authors returns public list", async () => {
-    mockListPublishedAuthors.mockResolvedValue({
+  it("getCatalogTopFeaturedLabels / Creators returns public list", async () => {
+    mockListPublishedCreators.mockResolvedValue({
       ok: true,
       value: {
-        authors: [
-          { id: "AUTHOR_1", name: "Author A", seriesCount: 2 },
-          { id: "AUTHOR_2", name: "Author B", seriesCount: 1 },
+        creators: [
+          { id: "CREATOR_1", name: "Creator A", seriesCount: 2 },
+          { id: "CREATOR_2", name: "Creator B", seriesCount: 1 },
         ],
         nextToken: "",
         previousToken: "",
@@ -485,18 +485,18 @@ describe("catalog-top section loaders", () => {
     });
 
     await expect(
-      getCatalogTopFeaturedAuthors("TENANT_001", {
+      getCatalogTopFeaturedCreators("TENANT_001", {
         locale: "en",
-        maxAuthors: 6,
+        maxCreators: 6,
       })
     ).resolves.toEqual({
       ok: true,
       value: [
-        { id: "AUTHOR_1", name: "Author A", seriesCount: 2 },
-        { id: "AUTHOR_2", name: "Author B", seriesCount: 1 },
+        { id: "CREATOR_1", name: "Creator A", seriesCount: 2 },
+        { id: "CREATOR_2", name: "Creator B", seriesCount: 1 },
       ],
     });
-    expect(mockListPublishedAuthors).toHaveBeenCalledWith("TENANT_001", {
+    expect(mockListPublishedCreators).toHaveBeenCalledWith("TENANT_001", {
       limit: 6,
       locale: "en",
     });

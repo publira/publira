@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
-import { hostPath } from "../src/urls";
+import { hostPath, localeHostPath } from "../src/urls";
 
 /** Keep in sync with `SERIES_PAGE_SIZE` in the web-host series list page. */
 const SERIES_PAGE_SIZE = 24;
@@ -15,7 +15,7 @@ const RELATED_SERIES_COUNT = 6;
 /**
  * Main public catalog journeys for the dev-seed tenant (Host `localhost`):
  * catalog top → series list → series detail → episode, plus the label and
- * author entry points.
+ * creator entry points.
  *
  * Every section streams in behind Suspense, so the assertions target the
  * resolved content rather than the skeletons.
@@ -69,11 +69,11 @@ test.describe("web-host catalog browsing", () => {
       featuredLabels.getByText(/^Seed Label \d{2}$/u).first()
     ).toBeVisible();
 
-    const featuredAuthors = page.getByRole("region", {
+    const featuredCreators = page.getByRole("region", {
       name: "Featured authors",
     });
     await expect(
-      featuredAuthors.locator(`a[href^="${hostPath("/authors/")}"]`).first()
+      featuredCreators.locator(`a[href^="${hostPath("/creators/")}"]`).first()
     ).toBeVisible();
 
     // The per-section fallback must not have kicked in. Every section's
@@ -109,7 +109,7 @@ test.describe("web-host catalog browsing", () => {
     ).toBeVisible();
     // `.first()`: the previous route can still be mounted while the client-side
     // navigation streams in, so the name may match more than one node.
-    await expect(page.getByText(SEED_TENANT.authorName).first()).toBeVisible();
+    await expect(page.getByText(SEED_TENANT.creatorName).first()).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 2, name: "Episodes" })
     ).toBeVisible();
@@ -281,31 +281,31 @@ test.describe("web-host catalog browsing", () => {
     ).toBeVisible();
   });
 
-  test("a creator's name finds the author when no series matches", async ({
+  test("a creator's name finds the creator when no series matches", async ({
     page,
   }) => {
     const response = await page.goto(
-      hostPath(`/search?q=${encodeURIComponent(SEED_TENANT.authorName)}`)
+      hostPath(`/search?q=${encodeURIComponent(SEED_TENANT.creatorName)}`)
     );
     expect(response?.status(), await page.content()).toBe(200);
 
     // The seeded synopses name their own series and never a creator, so this
-    // keyword reaches the author group alone: the whole point of searching
+    // keyword reaches the creator group alone: the whole point of searching
     // more than series titles.
     await expect(
       page.getByRole("region", { exact: true, name: "Series" })
-    ).toContainText(`No series match “${SEED_TENANT.authorName}”.`);
+    ).toContainText(`No series match “${SEED_TENANT.creatorName}”.`);
 
-    const authorRow = page
+    const creatorRow = page
       .getByRole("region", { exact: true, name: "Authors" })
       .getByRole("link", {
-        name: new RegExp(`^${SEED_TENANT.authorName}\\b`, "u"),
+        name: new RegExp(`^${SEED_TENANT.creatorName}\\b`, "u"),
       });
-    await expect(authorRow).toHaveCount(1);
-    await authorRow.click();
+    await expect(creatorRow).toHaveCount(1);
+    await creatorRow.click();
 
     await expect(page).toHaveURL(
-      new RegExp(`/authors/${SEED_TENANT.authorId}$`, "u")
+      new RegExp(`/creators/${SEED_TENANT.creatorId}$`, "u")
     );
   });
 
@@ -317,10 +317,10 @@ test.describe("web-host catalog browsing", () => {
     const response = await page.goto(hostPath("/search?q=Seed+Author"));
     expect(response?.status(), await page.content()).toBe(200);
 
-    const authors = page.getByRole("region", { exact: true, name: "Authors" });
-    await authors.getByRole("link", { name: "Show all authors" }).click();
+    const creators = page.getByRole("region", { exact: true, name: "Authors" });
+    await creators.getByRole("link", { name: "Show all authors" }).click();
 
-    await expect(page).toHaveURL(/\/search\?q=Seed\+Author&kind=authors$/u);
+    await expect(page).toHaveURL(/\/search\?q=Seed\+Author&kind=creators$/u);
     // The group is alone on the screen now, and it pages.
     await expect(
       page.getByRole("region", { exact: true, name: "Series" })
@@ -333,8 +333,8 @@ test.describe("web-host catalog browsing", () => {
     ).not.toHaveCount(0);
   });
 
-  test("the author list leads to author detail", async ({ page }) => {
-    const response = await page.goto(hostPath("/authors"));
+  test("the creator list leads to creator detail", async ({ page }) => {
+    const response = await page.goto(hostPath("/creators"));
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
@@ -342,17 +342,17 @@ test.describe("web-host catalog browsing", () => {
     ).toBeVisible();
 
     // Each row is one link carrying the name and the series count beside it.
-    const authorRow = page.getByRole("link", {
-      name: new RegExp(`^${SEED_TENANT.authorName}\\b`, "u"),
+    const creatorRow = page.getByRole("link", {
+      name: new RegExp(`^${SEED_TENANT.creatorName}\\b`, "u"),
     });
-    await expect(authorRow).toHaveCount(1);
-    await authorRow.click();
+    await expect(creatorRow).toHaveCount(1);
+    await creatorRow.click();
 
     await expect(page).toHaveURL(
-      new RegExp(`/authors/${SEED_TENANT.authorId}$`, "u")
+      new RegExp(`/creators/${SEED_TENANT.creatorId}$`, "u")
     );
     await expect(
-      page.getByRole("heading", { level: 1, name: SEED_TENANT.authorName })
+      page.getByRole("heading", { level: 1, name: SEED_TENANT.creatorName })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 2, name: "Related series" })
@@ -361,6 +361,51 @@ test.describe("web-host catalog browsing", () => {
       page
         .getByRole("link", { name: new RegExp(SEED_TENANT.series.title, "u") })
         .first()
+    ).toBeVisible();
+  });
+
+  // These pages were served under `/authors` until they moved, so a bookmark or
+  // an inbound link from before the move is answered permanently — carrying the
+  // locale prefix, the id, and the query it was made with.
+  test("a link to the retired /authors path reaches /creators", async ({
+    page,
+  }) => {
+    const list = await page.request.get(hostPath("/authors"), {
+      maxRedirects: 0,
+    });
+    expect(list.status()).toBe(308);
+    expect(new URL(list.headers().location ?? "", list.url()).pathname).toBe(
+      "/creators"
+    );
+
+    const detail = await page.request.get(
+      hostPath(`/authors/${SEED_TENANT.creatorId}?token=djF8Zg`),
+      { maxRedirects: 0 }
+    );
+    expect(detail.status()).toBe(308);
+    const detailLocation = new URL(
+      detail.headers().location ?? "",
+      detail.url()
+    );
+    expect(detailLocation.pathname).toBe(`/creators/${SEED_TENANT.creatorId}`);
+    expect(detailLocation.search).toBe("?token=djF8Zg");
+
+    const prefixed = await page.request.get(
+      localeHostPath("ja", `/authors/${SEED_TENANT.creatorId}`),
+      { maxRedirects: 0 }
+    );
+    expect(prefixed.status()).toBe(308);
+    expect(
+      new URL(prefixed.headers().location ?? "", prefixed.url()).pathname
+    ).toBe(`/ja/creators/${SEED_TENANT.creatorId}`);
+
+    // Following it renders the creator the old URL named.
+    await page.goto(hostPath(`/authors/${SEED_TENANT.creatorId}`));
+    await expect(page).toHaveURL(
+      new RegExp(`/creators/${SEED_TENANT.creatorId}$`, "u")
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: SEED_TENANT.creatorName })
     ).toBeVisible();
   });
 });

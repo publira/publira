@@ -26,7 +26,7 @@ describe("searchPublishedSeries", () => {
       previousToken: "PREV",
       series: [
         {
-          creators: [{ name: "Author A", publicId: "AUTH_A" }],
+          creators: [{ name: "Creator A", publicId: "AUTH_A" }],
           label: { name: "Label A", publicId: "LABEL_A" },
           publicId: "SERIES_1",
           synopsis: "Synopsis",
@@ -55,11 +55,11 @@ describe("searchPublishedSeries", () => {
         previousToken: "PREV",
         series: [
           {
-            creatorNames: ["Author A"],
+            creatorNames: ["Creator A"],
             creators: [
               {
                 iconImageUrl: "",
-                name: "Author A",
+                name: "Creator A",
                 profileText: "",
                 publicId: "AUTH_A",
               },

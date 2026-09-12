@@ -15,7 +15,7 @@ import type { SeriesListItem } from "#lib/catalog";
  * A row of portrait covers with the title and the creators beneath each one.
  *
  * The design gives grids to covers and nothing else, so this is the one shape
- * a list of works takes: the series list, and the series a label or an author
+ * a list of works takes: the series list, and the series a label or a creator
  * page carries. Six across on a desktop and three on a phone, which is the
  * width a cover keeps its title legible at.
  *

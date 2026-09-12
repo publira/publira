@@ -18,9 +18,9 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getLocale, loadHostMessages } from "#lib/locale";
 
 import {
-  AuthorResults,
-  AuthorResultsSkeleton,
-} from "./_components/author-results";
+  CreatorResults,
+  CreatorResultsSkeleton,
+} from "./_components/creator-results";
 import {
   LabelResults,
   LabelResultsSkeleton,
@@ -67,7 +67,7 @@ const SearchResultsSkeleton = () => (
     </div>
     <div className="grid gap-4">
       <SkeletonLine className="h-6 w-24" />
-      <AuthorResultsSkeleton />
+      <CreatorResultsSkeleton />
     </div>
   </div>
 );
@@ -76,7 +76,7 @@ const SearchResultsSkeleton = () => (
  * The three groups one keyword answers with.
  *
  * `kind` decides how many of them are on screen: the overview shows all three,
- * each behind its own boundary so an author match arrives whether or not a
+ * each behind its own boundary so a creator match arrives whether or not a
  * series matched, and a group's own view shows that group alone with its cursor
  * pagination. The heading of each group sits outside its boundary, so the shape
  * of the answer is on screen before any of the three reads comes back.
@@ -119,15 +119,15 @@ const SearchResults = async ({
         </section>
       )}
 
-      {(kind === "all" || kind === "authors") && (
-        <section aria-labelledby="search-authors" className="grid gap-4">
-          <h2 className="font-serif text-xl leading-tight" id="search-authors">
+      {(kind === "all" || kind === "creators") && (
+        <section aria-labelledby="search-creators" className="grid gap-4">
+          <h2 className="font-serif text-xl leading-tight" id="search-creators">
             <Suspense fallback={<SkeletonLine className="h-6 w-24" />}>
-              <Message message="host.search.authors_heading" />
+              <Message message="host.search.creators_heading" />
             </Suspense>
           </h2>
-          <Suspense fallback={<AuthorResultsSkeleton />}>
-            <AuthorResults query={query} token={token} view={view} />
+          <Suspense fallback={<CreatorResultsSkeleton />}>
+            <CreatorResults query={query} token={token} view={view} />
           </Suspense>
         </section>
       )}

@@ -25,20 +25,20 @@ import {
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { listPublishedAuthors } from "#lib/authors";
+import { listPublishedCreators } from "#lib/creators";
 import { getLocale, loadHostMessages } from "#lib/locale";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
-  authorsListHref,
-  parseAuthorsListSearchParams,
+  creatorsListHref,
+  parseCreatorsListSearchParams,
 } from "./_lib/search-params";
 
-const AUTHORS_PAGE_SIZE = 12;
+const CREATORS_PAGE_SIZE = 12;
 
 /** Enough rows to fill a phone screen while the read comes back. */
-const AUTHORS_SKELETON_COUNT = 8;
+const CREATORS_SKELETON_COUNT = 8;
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -47,12 +47,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
-  return { title: getMessage(messages, "host.authors.list_title") };
+  return { title: getMessage(messages, "host.creators.list_title") };
 };
 
-const AuthorRowsSkeleton = () => (
+const CreatorRowsSkeleton = () => (
   <div className="divide-y divide-border border-t border-border">
-    {Array.from({ length: AUTHORS_SKELETON_COUNT }, (_, index) => (
+    {Array.from({ length: CREATORS_SKELETON_COUNT }, (_, index) => (
       <div
         className="flex items-baseline justify-between gap-4 py-3"
         key={index}
@@ -69,14 +69,14 @@ const AuthorRowsSkeleton = () => (
  * different places, so the whole line resolves at once rather than streaming
  * the name into a fixed frame.
  */
-const AuthorsListDescription = async () => {
+const CreatorsListDescription = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [siteLabel, messages] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
     loadHostMessages(locale),
   ]);
 
-  return getMessage(messages, "host.authors.list_description", {
+  return getMessage(messages, "host.creators.list_description", {
     site: siteLabel,
   });
 };
@@ -86,13 +86,13 @@ const AuthorsListDescription = async () => {
  * the catalog: an `aria-label` cannot be a node. The key stays written out
  * here, beside the `getMessage` that reads it.
  */
-const AuthorsPaginationNav = async ({ children }: { children: ReactNode }) => {
+const CreatorsPaginationNav = async ({ children }: { children: ReactNode }) => {
   const locale = await getLocale();
   const messages = await loadHostMessages(locale);
 
   return (
     <ListPagination
-      aria-label={getMessage(messages, "host.authors.pagination_aria")}
+      aria-label={getMessage(messages, "host.creators.pagination_aria")}
     >
       {children}
     </ListPagination>
@@ -100,7 +100,7 @@ const AuthorsPaginationNav = async ({ children }: { children: ReactNode }) => {
 };
 
 /** The two directions, written once for both places this screen shows them. */
-const AuthorsPagination = ({
+const CreatorsPagination = ({
   nextToken,
   previousToken,
 }: {
@@ -108,37 +108,37 @@ const AuthorsPagination = ({
   previousToken: string;
 }) => (
   <Suspense fallback={<ListPaginationSkeleton />}>
-    <AuthorsPaginationNav>
+    <CreatorsPaginationNav>
       <ListPaginationStep
-        href={previousToken ? authorsListHref(previousToken) : ""}
+        href={previousToken ? creatorsListHref(previousToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="host.common.previous_page" />
         </Suspense>
       </ListPaginationStep>
-      <ListPaginationStep href={nextToken ? authorsListHref(nextToken) : ""}>
+      <ListPaginationStep href={nextToken ? creatorsListHref(nextToken) : ""}>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="host.common.next_page" />
         </Suspense>
       </ListPaginationStep>
-    </AuthorsPaginationNav>
+    </CreatorsPaginationNav>
   </Suspense>
 );
 
-const AuthorsListData = async ({
+const CreatorsListData = async ({
   searchParams,
 }: {
-  searchParams: PageProps<"/[tenant_id]/[locale]/authors">["searchParams"];
+  searchParams: PageProps<"/[tenant_id]/[locale]/creators">["searchParams"];
 }) => {
   const [resolvedSearchParams, tenantId, locale] = await Promise.all([
     searchParams,
     getTenantId(),
     getLocale(),
   ]);
-  const { token } = parseAuthorsListSearchParams(resolvedSearchParams);
+  const { token } = parseCreatorsListSearchParams(resolvedSearchParams);
 
-  const result = await listPublishedAuthors(tenantId, {
-    limit: AUTHORS_PAGE_SIZE,
+  const result = await listPublishedCreators(tenantId, {
+    limit: CREATORS_PAGE_SIZE,
     locale,
     token,
   });
@@ -149,7 +149,7 @@ const AuthorsListData = async ({
         <SectionErrorHeading>
           <SectionErrorTitle>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="host.authors.list_error" />
+              <Message message="host.creators.list_error" />
             </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>{result.message}</SectionErrorDescription>
@@ -158,21 +158,21 @@ const AuthorsListData = async ({
     );
   }
 
-  const { authors, nextToken, previousToken } = result.value;
+  const { creators, nextToken, previousToken } = result.value;
 
-  if (authors.length === 0) {
+  if (creators.length === 0) {
     if (!token) {
       return (
         <EmptyState>
           <EmptyStateHeading>
             <EmptyStateTitle>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                <Message message="host.authors.list_empty_title" />
+                <Message message="host.creators.list_empty_title" />
               </Suspense>
             </EmptyStateTitle>
             <EmptyStateDescription>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-                <Message message="host.authors.list_empty_description" />
+                <Message message="host.creators.list_empty_description" />
               </Suspense>
             </EmptyStateDescription>
           </EmptyStateHeading>
@@ -188,12 +188,12 @@ const AuthorsListData = async ({
         <EmptyState>
           <EmptyStateDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <Message message="host.authors.page_empty" />
+              <Message message="host.creators.page_empty" />
             </Suspense>
           </EmptyStateDescription>
         </EmptyState>
         {previousToken || nextToken ? (
-          <AuthorsPagination
+          <CreatorsPagination
             nextToken={nextToken}
             previousToken={previousToken}
           />
@@ -201,10 +201,10 @@ const AuthorsListData = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={authorsListHref("")}
+              href={creatorsListHref("")}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                <Message message="host.authors.first_page" />
+                <Message message="host.creators.first_page" />
               </Suspense>
             </LocaleLink>
           </p>
@@ -216,20 +216,20 @@ const AuthorsListData = async ({
   return (
     <div className="grid gap-8">
       <ul className="divide-y divide-border border-t border-border">
-        {authors.map((author) => (
-          <li key={author.id}>
+        {creators.map((creator) => (
+          <li key={creator.id}>
             <LocaleLink
               className="group flex items-baseline justify-between gap-4 py-3"
-              href={`/authors/${author.id}`}
+              href={`/creators/${creator.id}`}
             >
               <span className="truncate underline-offset-4 group-hover:underline">
-                {author.name}
+                {creator.name}
               </span>
               <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <Message
                     message="host.common.series_count"
-                    values={{ count: author.seriesCount }}
+                    values={{ count: creator.seriesCount }}
                   />
                 </Suspense>
               </span>
@@ -238,24 +238,24 @@ const AuthorsListData = async ({
         ))}
       </ul>
 
-      <AuthorsPagination nextToken={nextToken} previousToken={previousToken} />
+      <CreatorsPagination nextToken={nextToken} previousToken={previousToken} />
     </div>
   );
 };
 
-const AuthorsPage = ({
+const CreatorsPage = ({
   searchParams,
-}: PageProps<"/[tenant_id]/[locale]/authors">) => (
+}: PageProps<"/[tenant_id]/[locale]/creators">) => (
   <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
     <div className="grid gap-2">
       <h1 className="font-serif text-3xl leading-tight">
         <Suspense fallback={<SkeletonLine className="h-8 w-32" />}>
-          <Message message="host.authors.list_title" />
+          <Message message="host.creators.list_title" />
         </Suspense>
       </h1>
       <p className="text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-5 w-80" />}>
-          <AuthorsListDescription />
+          <CreatorsListDescription />
         </Suspense>
       </p>
     </div>
@@ -263,15 +263,15 @@ const AuthorsPage = ({
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message="host.authors.list_error" />
+          <Message message="host.creators.list_error" />
         </Suspense>
       }
     >
-      <Suspense fallback={<AuthorRowsSkeleton />}>
-        <AuthorsListData searchParams={searchParams} />
+      <Suspense fallback={<CreatorRowsSkeleton />}>
+        <CreatorsListData searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>
   </main>
 );
 
-export default AuthorsPage;
+export default CreatorsPage;

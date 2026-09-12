@@ -11,10 +11,10 @@ import { cursorTokenSchema } from "#lib/cursor-token";
 /**
  * Which of the three result groups the screen is showing. `all` is the
  * overview: a short preview of every group, so one keyword answers with series,
- * authors, and labels at once. The other three are that group on its own, which
+ * creators, and labels at once. The other three are that group on its own, which
  * is where the cursor pagination lives.
  */
-export const searchKinds = ["all", "series", "authors", "labels"] as const;
+export const searchKinds = ["all", "series", "creators", "labels"] as const;
 
 export type SearchKind = (typeof searchKinds)[number];
 

@@ -106,8 +106,10 @@ test.describe("web-host catalog not found", () => {
     ).toBeVisible();
   });
 
-  test("a missing author shows the not-found page", async ({ page }) => {
-    const response = await page.goto(hostPath(`/authors/${MISSING_PUBLIC_ID}`));
+  test("a missing creator shows the not-found page", async ({ page }) => {
+    const response = await page.goto(
+      hostPath(`/creators/${MISSING_PUBLIC_ID}`)
+    );
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(

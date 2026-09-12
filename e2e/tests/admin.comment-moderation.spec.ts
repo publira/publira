@@ -134,23 +134,47 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
   );
 
 /**
+ * How long one navigation may take to stream the comment heading.
+ *
+ * `EpisodeComments` sits behind a Suspense boundary, and the heading's copy
+ * sits behind another, so `goto`'s load event is not the last paint of this
+ * section. Five seconds covers a cache fill; the outer poll is what waits for
+ * revalidation itself.
+ */
+const COMMENTS_SECTION_STREAM_TIMEOUT_MS = 5000;
+
+/**
+ * Whether this load of the episode page offers commenting.
+ *
+ * Waits for the heading to stream in. Returning `count()` at `load` reads the
+ * skeleton, which is 0 whether commenting is on or off.
+ */
+const commentsSectionCountAfterStream = async (page: Page): Promise<number> => {
+  await page.goto(episodeUrl);
+  try {
+    await commentsSection(page).waitFor({
+      state: "visible",
+      timeout: COMMENTS_SECTION_STREAM_TIMEOUT_MS,
+    });
+    return 1;
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return 0;
+    }
+    throw error;
+  }
+};
+
+/**
  * Read the episode page again and again until the comment section itself comes
  * or goes. Separate from {@link pollEpisodePage}, which waits for that section
  * before it reads: here the section's absence is the answer.
  */
 const pollCommentsSection = (page: Page) =>
-  expect.poll(
-    async () => {
-      // `goto` settles on the document's load event, and the section is
-      // streamed into that same response, so what it holds by then is final.
-      await page.goto(episodeUrl);
-      return await commentsSection(page).count();
-    },
-    {
-      message: "the episode page never caught up with the saved comment mode",
-      timeout: 30_000,
-    }
-  );
+  expect.poll(() => commentsSectionCountAfterStream(page), {
+    message: "the episode page never caught up with the saved comment mode",
+    timeout: 30_000,
+  });
 
 /**
  * Put the tenant back the way the suite needs it and tell web-host about it.

@@ -23,7 +23,7 @@ const otherTenantUrl = (pathname: string): string =>
  * A record another tenant owns renders the not-found UI with HTTP 200, not 404:
  * the detail routes read inside `<Suspense>`, so the shell is already committed
  * when `notFound()` runs. What matters for isolation is unchanged and
- * still asserted below — the other tenant's title, episode title and author
+ * still asserted below — the other tenant's title, episode title and creator
  * name never appear in the response.
  */
 test.describe("web-host tenant boundary", () => {
@@ -58,7 +58,7 @@ test.describe("web-host tenant boundary", () => {
     await expect(
       page
         .getByRole("region", { name: "Featured authors" })
-        .getByText(OTHER_TENANT.authorName)
+        .getByText(OTHER_TENANT.creatorName)
     ).toBeVisible();
 
     // Nothing from the dev seed tenant may leak into this render.
@@ -183,13 +183,13 @@ test.describe("web-host tenant boundary", () => {
     ).toHaveCount(0);
   });
 
-  test("another tenant's author detail is not found", async ({ page }) => {
+  test("another tenant's creator detail is not found", async ({ page }) => {
     const response = await page.goto(
-      otherTenantUrl(`/authors/${SEED_TENANT.authorId}`)
+      otherTenantUrl(`/creators/${SEED_TENANT.creatorId}`)
     );
 
     expect(response?.status(), await page.content()).toBe(200);
-    await expect(page.getByText(SEED_TENANT.authorName)).toHaveCount(0);
+    await expect(page.getByText(SEED_TENANT.creatorName)).toHaveCount(0);
   });
 
   test("another tenant's label detail is not found", async ({ page }) => {

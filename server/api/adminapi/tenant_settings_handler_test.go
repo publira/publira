@@ -467,6 +467,13 @@ func TestGetTenantCommentSettingsFailsOnAnUnsupportedStoredMode(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestTenantCommentSettingsRevalidateTags(t *testing.T) {
+	tags := tenantCommentSettingsRevalidateTags(" tenant-id ")
+	if len(tags) != 2 || tags[0] != "tenant:tenant-id:site" || tags[1] != "tenant:tenant-id:series:detail" {
+		t.Fatalf("tenantCommentSettingsRevalidateTags() = %v, want [tenant:tenant-id:site tenant:tenant-id:series:detail]", tags)
+	}
+}
+
 func TestUpdateTenantCommentSettingsPersistsTheChosenValues(t *testing.T) {
 	tests := []struct {
 		name      string

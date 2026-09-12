@@ -5,12 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FollowListEntry } from "./follow-list";
 
 const {
-  mockGetPublishedAuthorDetail,
+  mockGetPublishedCreatorDetail,
   mockGetSeriesDetail,
   mockListMyFollows,
   mockResolveAccessToken,
 } = vi.hoisted(() => ({
-  mockGetPublishedAuthorDetail: vi.fn(),
+  mockGetPublishedCreatorDetail: vi.fn(),
   mockGetSeriesDetail: vi.fn(),
   mockListMyFollows: vi.fn(),
   mockResolveAccessToken: vi.fn(),
@@ -28,8 +28,8 @@ vi.mock("./api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,
 }));
 
-vi.mock("./authors", () => ({
-  getPublishedAuthorDetail: mockGetPublishedAuthorDetail,
+vi.mock("./creators", () => ({
+  getPublishedCreatorDetail: mockGetPublishedCreatorDetail,
 }));
 
 vi.mock("./catalog", () => ({
@@ -44,9 +44,9 @@ const seriesFollow = {
   targetType: FollowTargetType.SERIES,
 };
 
-const authorFollow = {
+const creatorFollow = {
   followedAt: "2026-06-01T00:00:00Z",
-  targetPublicId: "AUTHOR01",
+  targetPublicId: "CREATOR01",
   targetType: FollowTargetType.CREATOR,
 };
 
@@ -109,9 +109,9 @@ describe("listMyFollows", () => {
     });
   });
 
-  it("Return works and authors with target type in server order", async () => {
+  it("Return works and creators with target type in server order", async () => {
     mockListMyFollows.mockResolvedValue({
-      follows: [seriesFollow, authorFollow],
+      follows: [seriesFollow, creatorFollow],
       nextToken: "",
       previousToken: "",
     });
@@ -128,8 +128,8 @@ describe("listMyFollows", () => {
       },
       {
         followedAt: "2026-06-01T00:00:00Z",
-        publicId: "AUTHOR01",
-        targetKind: "author",
+        publicId: "CREATOR01",
+        targetKind: "creator",
       },
     ]);
   });
@@ -233,19 +233,19 @@ describe("resolveFollowListItems", () => {
     },
     {
       followedAt: "2026-06-01T00:00:00Z",
-      publicId: "AUTHOR01",
-      targetKind: "author",
+      publicId: "CREATOR01",
+      targetKind: "creator",
     },
   ];
 
-  it("Add the title of the published work/author and the published page URL", async () => {
+  it("Add the title of the published work/creator and the published page URL", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       ok: true,
       value: { episodes: [], series: { title: "Published Series" } },
     });
-    mockGetPublishedAuthorDetail.mockResolvedValueOnce({
+    mockGetPublishedCreatorDetail.mockResolvedValueOnce({
       ok: true,
-      value: { name: "Published Author" },
+      value: { name: "Published Creator" },
     });
 
     const { resolveFollowListItems } = await import("./follow-list");
@@ -262,16 +262,16 @@ describe("resolveFollowListItems", () => {
       },
       {
         followedAt: "2026-06-01T00:00:00Z",
-        href: "/authors/AUTHOR01",
-        publicId: "AUTHOR01",
-        targetKind: "author",
-        title: "Published Author",
+        href: "/creators/CREATOR01",
+        publicId: "CREATOR01",
+        targetKind: "creator",
+        title: "Published Creator",
         unavailable: false,
       },
     ]);
-    expect(mockGetPublishedAuthorDetail).toHaveBeenCalledWith(
+    expect(mockGetPublishedCreatorDetail).toHaveBeenCalledWith(
       tenantId,
-      "AUTHOR01",
+      "CREATOR01",
       { limit: 1, locale: "en" }
     );
   });
@@ -296,22 +296,22 @@ describe("resolveFollowListItems", () => {
   });
 
   it("If catalog acquisition fails, use publicId as title and leave link.", async () => {
-    mockGetPublishedAuthorDetail.mockResolvedValueOnce({
-      message: "Could not load the author.",
+    mockGetPublishedCreatorDetail.mockResolvedValueOnce({
+      message: "Could not load the creator.",
       ok: false,
     });
 
     const { resolveFollowListItems } = await import("./follow-list");
-    const [, authorEntry] = entries;
+    const [, creatorEntry] = entries;
     await expect(
-      resolveFollowListItems(tenantId, [authorEntry], "en")
+      resolveFollowListItems(tenantId, [creatorEntry], "en")
     ).resolves.toEqual([
       {
         followedAt: "2026-06-01T00:00:00Z",
-        href: "/authors/AUTHOR01",
-        publicId: "AUTHOR01",
-        targetKind: "author",
-        title: "AUTHOR01",
+        href: "/creators/CREATOR01",
+        publicId: "CREATOR01",
+        targetKind: "creator",
+        title: "CREATOR01",
         unavailable: false,
       },
     ]);

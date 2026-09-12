@@ -20,7 +20,7 @@ vi.mock("next/cache", () => ({
 
 vi.mock("./follow", () => ({
   followTarget: mockFollowTarget,
-  followTargetKinds: ["author", "series"],
+  followTargetKinds: ["creator", "series"],
   followsCacheTag: (tenantId: string) => `tenant:${tenantId}:follows`,
   unfollowTarget: mockUnfollowTarget,
 }));
@@ -98,9 +98,9 @@ describe("toggleFollowAction", () => {
       formData({
         intent: "unfollow",
         locale: "en",
-        publicId: "AUTHOR01",
-        returnTo: "/authors/AUTHOR01",
-        targetKind: "author",
+        publicId: "CREATOR01",
+        returnTo: "/creators/CREATOR01",
+        targetKind: "creator",
         tenantId,
       })
     );
@@ -112,8 +112,8 @@ describe("toggleFollowAction", () => {
     });
     expect(mockUnfollowTarget).toHaveBeenCalledWith({
       locale: "en",
-      publicId: "AUTHOR01",
-      targetKind: "author",
+      publicId: "CREATOR01",
+      targetKind: "creator",
       tenantId,
     });
     expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);

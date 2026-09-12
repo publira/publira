@@ -154,13 +154,18 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 	}), nil
 }
 
-// tenantCommentSettingsRevalidateTags names the public site cache that decides
-// whether an episode page offers commenting at all. The mode rides on the
-// storefront's tenant read, so dropping the site entry is what carries a saved
-// change through to the reader. The threshold beside it never leaves this API,
-// and the card saves the pair, so one drop covers the save either way.
+// tenantCommentSettingsRevalidateTags names the public site caches that decide
+// whether an episode page offers commenting at all. GetSeriesDetail resolves a
+// series override against this tenant default, and the episode page reads that
+// resolved mode, so dropping only the site entry would leave every series page
+// serving the previous value. The threshold beside the mode never leaves this
+// API, and the card saves the pair, so one drop covers the save either way.
 func tenantCommentSettingsRevalidateTags(tenantID string) []string {
-	return []string{fmt.Sprintf("tenant:%s:site", strings.TrimSpace(tenantID))}
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	return []string{
+		fmt.Sprintf("tenant:%s:site", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
+	}
 }
 
 // maxCommentAutoHideReportThreshold is the largest automatic removal threshold

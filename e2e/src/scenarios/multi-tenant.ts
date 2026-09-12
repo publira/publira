@@ -8,8 +8,8 @@ export const MULTI_TENANT_SCENARIO = "010_multi_tenant";
 
 /** Second tenant, served on Host `other.localhost`. */
 export const OTHER_TENANT = {
-  authorId: "BndrAUTHAAA1",
-  authorName: "Boundary Author 001",
+  creatorId: "BndrAUTHAAA1",
+  creatorName: "Boundary Author 001",
   labelId: "BndrLABLAAA1",
   labelName: "Boundary Label 01",
   name: "Boundary Tenant",
@@ -46,8 +46,8 @@ export const OTHER_TENANT = {
 
 /** Dev seed tenant, served on Host `localhost` (db/seeds/dev/*.sql). */
 export const SEED_TENANT = {
-  authorId: "SeedAUTHAAA1",
-  authorName: "Seed Author 001",
+  creatorId: "SeedAUTHAAA1",
+  creatorName: "Seed Author 001",
   labelId: "SeedLABLAAA1",
   labelName: "Seed Label 01",
   name: "Seed Tenant",

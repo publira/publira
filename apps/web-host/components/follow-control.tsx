@@ -18,7 +18,7 @@ import { getTenantDefaultLocale } from "#lib/tenant";
 import { FollowButton, FollowLoginLink } from "./follow-button";
 
 /**
- * Member-specific follow island. The surrounding series/author body stays on
+ * Member-specific follow island. The surrounding series/creator body stays on
  * the public cache; this component must sit inside its own `<Suspense>` so
  * the session cookie does not personalize the static shell.
  */
