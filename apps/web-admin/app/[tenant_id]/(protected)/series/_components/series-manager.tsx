@@ -2,7 +2,8 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
-import { LinkButton } from "@publira/ui-components/button";
+import { Button, LinkButton } from "@publira/ui-components/button";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import {
   SectionError,
   SectionErrorDescription,
@@ -31,15 +32,131 @@ import type {
   SeriesStatusValue,
 } from "#lib/series-classification";
 
+import type { SeriesFilters } from "../_lib/search-params";
 import type { SeriesListItem } from "../series-types";
 
 type SeriesManagerProps = CursorPageHrefs & {
+  filters: SeriesFilters;
   series: SeriesListItem[];
   listErrorMessage?: string;
   locale: Locale;
   pageSize: number;
   timeZone: string;
 };
+
+const SeriesFilterFieldSkeleton = () => (
+  <div className="grid gap-2">
+    <SkeletonLine className="h-4 w-24" />
+    <SkeletonLine className="h-10 w-52" />
+  </div>
+);
+
+const SeriesStatusFilter = ({
+  filters,
+  locale,
+}: {
+  filters: SeriesFilters;
+  locale: Locale;
+}) => {
+  const messages = sharedCatalog(locale);
+
+  return (
+    <Field className="w-52">
+      <FieldLabel htmlFor="series-status-filter">
+        {getMessage(messages, "admin.series.filter.status")}
+      </FieldLabel>
+      <FieldContent>
+        <select
+          className="flex h-10 w-full rounded-control border border-input bg-background px-3 py-2 text-sm text-foreground"
+          defaultValue={filters.status}
+          id="series-status-filter"
+          name="status"
+        >
+          <option value="">
+            {getMessage(messages, "admin.series.filter.status_all")}
+          </option>
+          <option value="ongoing">
+            {getMessage(messages, "admin.series.status.ongoing")}
+          </option>
+          <option value="completed">
+            {getMessage(messages, "admin.series.status.completed")}
+          </option>
+          <option value="hiatus">
+            {getMessage(messages, "admin.series.status.hiatus")}
+          </option>
+        </select>
+      </FieldContent>
+    </Field>
+  );
+};
+
+const SeriesAgeRatingFilter = ({
+  filters,
+  locale,
+}: {
+  filters: SeriesFilters;
+  locale: Locale;
+}) => {
+  const messages = sharedCatalog(locale);
+
+  return (
+    <Field className="w-52">
+      <FieldLabel htmlFor="series-age-rating-filter">
+        {getMessage(messages, "admin.series.filter.age_rating")}
+      </FieldLabel>
+      <FieldContent>
+        <select
+          className="flex h-10 w-full rounded-control border border-input bg-background px-3 py-2 text-sm text-foreground"
+          defaultValue={filters.ageRating}
+          id="series-age-rating-filter"
+          name="age_rating"
+        >
+          <option value="">
+            {getMessage(messages, "admin.series.filter.age_rating_all")}
+          </option>
+          <option value="all">
+            {getMessage(messages, "admin.series.age_rating.all")}
+          </option>
+          <option value="r15">
+            {getMessage(messages, "admin.series.age_rating.r15")}
+          </option>
+          <option value="r18">
+            {getMessage(messages, "admin.series.age_rating.r18")}
+          </option>
+        </select>
+      </FieldContent>
+    </Field>
+  );
+};
+
+const SeriesFiltersForm = ({
+  filters,
+  locale,
+}: {
+  filters: SeriesFilters;
+  locale: Locale;
+}) => (
+  <form className="flex flex-wrap items-end gap-4">
+    <Suspense fallback={<SeriesFilterFieldSkeleton />}>
+      <SeriesStatusFilter filters={filters} locale={locale} />
+    </Suspense>
+    <Suspense fallback={<SeriesFilterFieldSkeleton />}>
+      <SeriesAgeRatingFilter filters={filters} locale={locale} />
+    </Suspense>
+    <div className="flex gap-2">
+      <Button type="submit">
+        <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+          <Message message="admin.series.filter.apply" />
+        </Suspense>
+      </Button>
+      <LinkButton href="/series" variant="outline">
+        <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
+          <Message message="admin.series.filter.reset" />
+        </Suspense>
+      </LinkButton>
+    </div>
+  </form>
+);
 
 const getStatusTone = (isPublished: boolean) =>
   isPublished ? ("info" as const) : ("muted" as const);
@@ -223,6 +340,7 @@ const SeriesListBody = ({
 };
 
 export const SeriesManager = ({
+  filters,
   series,
   listErrorMessage,
   nextHref,
@@ -240,6 +358,7 @@ export const SeriesManager = ({
 
   return (
     <div className="grid gap-6">
+      <SeriesFiltersForm filters={filters} locale={locale} />
       <SeriesListBody
         hasPageLinks={hasPageLinks}
         listErrorMessage={listErrorMessage}

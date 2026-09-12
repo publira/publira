@@ -101,6 +101,27 @@ describe("listSeries", () => {
     });
   });
 
+  it("sends selected classification filters as API enums", async () => {
+    mockListSeries.mockResolvedValue({ series: [] });
+
+    const { listSeries } = await import("./series");
+    await listSeries("TENANT001", "en", {
+      ageRating: "r15",
+      status: "completed",
+    });
+
+    expect(mockListSeries).toHaveBeenCalledWith(
+      {
+        ageRating: SeriesAgeRating.R15,
+        limit: 20,
+        status: SeriesStatus.COMPLETED,
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
   it("returns the keyset order of the server without re-sorting it", async () => {
     mockListSeries.mockResolvedValue({
       series: [

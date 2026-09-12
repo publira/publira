@@ -947,6 +947,14 @@
       "eye_catch_tab": "Cover image",
       "pagination_aria": "Series list pagination",
       "pagination_description": "Newest first, up to {$count} items per page.",
+      "filter": {
+        "status": "Serialization status",
+        "status_all": "All serialization states",
+        "age_rating": "Age rating",
+        "age_rating_all": "All age ratings",
+        "apply": "Apply",
+        "reset": "Reset"
+      },
       "columns": {
         "title": "Title",
         "label": "Label",

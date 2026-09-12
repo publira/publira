@@ -118,6 +118,11 @@ message ListSeriesRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // Keep only series with this serialization state. Unspecified keeps every
+  // state.
+  publira.types.v1.SeriesStatus status = 5;
+  // Keep only series for this age group. Unspecified keeps every rating.
+  publira.types.v1.SeriesAgeRating age_rating = 6;
 }
 
 message ListSeriesResponse {

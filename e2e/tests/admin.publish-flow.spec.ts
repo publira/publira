@@ -200,6 +200,21 @@ test.describe("admin publish flow", () => {
     const row = page.locator("tr", { hasText: title });
     await expect(row.getByText("Completed", { exact: true })).toBeVisible();
     await expect(row.getByText("R15", { exact: true })).toBeVisible();
+
+    // List filters travel in the URL, so a cursor page remains on the same
+    // narrowed list and a reload can reproduce the editor's view.
+    await page
+      .getByRole("combobox", { name: "Serialization status" })
+      .selectOption("completed");
+    await page
+      .getByRole("combobox", { name: "Age rating" })
+      .selectOption("r15");
+    await page.getByRole("button", { name: "Apply" }).click();
+    await page.waitForURL(/\/series\?status=completed&age_rating=r15$/u);
+    await expect(page.locator("tr", { hasText: title })).toBeVisible();
+
+    await page.getByRole("link", { name: "Reset" }).click();
+    await page.waitForURL((url) => url.pathname === "/series" && !url.search);
   });
 
   // `comment_mode` is a tenant-wide setting, and a series may state one of its

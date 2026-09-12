@@ -947,6 +947,14 @@
       "eye_catch_tab": "アイキャッチ",
       "pagination_aria": "シリーズ一覧のページ送り",
       "pagination_description": "新しい順に、1ページあたり {$count} 件まで表示します。",
+      "filter": {
+        "status": "連載状況",
+        "status_all": "すべての連載状況",
+        "age_rating": "年齢制限",
+        "age_rating_all": "すべての年齢制限",
+        "apply": "適用",
+        "reset": "リセット"
+      },
       "columns": {
         "title": "タイトル",
         "label": "レーベル",
