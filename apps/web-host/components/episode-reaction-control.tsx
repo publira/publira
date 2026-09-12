@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -11,7 +10,7 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/auth-shared";
 import { getMyEpisodeRating } from "#lib/episode-rating";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getTenantDefaultLocale } from "#lib/tenant";
 
 import type { EpisodeReactionSize } from "./episode-reaction";
@@ -57,10 +56,9 @@ export const EpisodeReactionControl = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
-  const [defaultLocale, result, messages] = await Promise.all([
+  const [defaultLocale, result] = await Promise.all([
     getTenantDefaultLocale(tenantId),
     getMyEpisodeRating(tenantId, episodePublicId, locale),
-    loadHostMessages(locale),
   ]);
 
   if (!result.ok) {
@@ -86,12 +84,16 @@ export const EpisodeReactionControl = async ({
           ratingCount={ratingCount}
         >
           <EpisodeReactionName>
-            <EpisodeReactionNameIdle>
-              {getMessage(messages, "host.episode.reaction.login_aria")}
-            </EpisodeReactionNameIdle>
-            <EpisodeReactionNameReaders>
-              {getMessage(messages, "host.episode.reaction.count_aria")}
-            </EpisodeReactionNameReaders>
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <EpisodeReactionNameIdle>
+                <Message message="host.episode.reaction.login_aria" />
+              </EpisodeReactionNameIdle>
+            </Suspense>
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <EpisodeReactionNameReaders>
+                <Message message="host.episode.reaction.count_aria" />
+              </EpisodeReactionNameReaders>
+            </Suspense>
           </EpisodeReactionName>
           <EpisodeReactionHeart />
           <EpisodeReactionCount />
@@ -113,21 +115,26 @@ export const EpisodeReactionControl = async ({
       >
         <EpisodeReactionSubmit>
           <EpisodeReactionName>
-            <EpisodeReactionNameIdle>
-              {getMessage(messages, "host.episode.reaction.press_aria")}
-            </EpisodeReactionNameIdle>
-            <EpisodeReactionNameProgress>
-              {getMessage(
-                messages,
-                "host.episode.reaction.press_progress_aria"
-              )}
-            </EpisodeReactionNameProgress>
-            <EpisodeReactionNameDone>
-              {getMessage(messages, "host.episode.reaction.max_aria")}
-            </EpisodeReactionNameDone>
-            <EpisodeReactionNameReaders>
-              {getMessage(messages, "host.episode.reaction.count_aria")}
-            </EpisodeReactionNameReaders>
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <EpisodeReactionNameIdle>
+                <Message message="host.episode.reaction.press_aria" />
+              </EpisodeReactionNameIdle>
+            </Suspense>
+            <Suspense fallback={<SkeletonLine className="h-4 w-52" />}>
+              <EpisodeReactionNameProgress>
+                <Message message="host.episode.reaction.press_progress_aria" />
+              </EpisodeReactionNameProgress>
+            </Suspense>
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <EpisodeReactionNameDone>
+                <Message message="host.episode.reaction.max_aria" />
+              </EpisodeReactionNameDone>
+            </Suspense>
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <EpisodeReactionNameReaders>
+                <Message message="host.episode.reaction.count_aria" />
+              </EpisodeReactionNameReaders>
+            </Suspense>
           </EpisodeReactionName>
           <EpisodeReactionHeart />
           <EpisodeReactionCount />

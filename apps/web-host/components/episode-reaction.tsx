@@ -41,38 +41,25 @@ import { useLocale } from "./locale-provider";
  * The root owns size. Login and Form each own a face — fill, score, and
  * headcount — so Heart and Count read those values from context rather than
  * taking them as props. Copy is written on the named slot that renders it:
- * the accessible name is sr-only children of Name, never a `copy` bag, and
- * a MessageFormat template whose numbers move with the press is still a
- * child of that slot because those numbers are only known in the browser.
+ * the accessible name is sr-only children of Name, never a `copy` bag. A
+ * slot whose wording is a node takes `<Message>`; Progress and Readers then
+ * interpolate the resolved template because score and headcount move in the
+ * browser.
  *
  * ```tsx
  * <EpisodeReaction size="sm">
  *   <EpisodeReactionLogin href={loginHref} ratingCount={12}>
  *     <EpisodeReactionName>
- *       <EpisodeReactionNameIdle>Sign in to react to this episode</EpisodeReactionNameIdle>
- *       <EpisodeReactionNameReaders>Readers who reacted: {$count}</EpisodeReactionNameReaders>
+ *       <EpisodeReactionNameIdle>
+ *         <Message message="host.episode.reaction.login_aria" />
+ *       </EpisodeReactionNameIdle>
+ *       <EpisodeReactionNameReaders>
+ *         <Message message="host.episode.reaction.count_aria" />
+ *       </EpisodeReactionNameReaders>
  *     </EpisodeReactionName>
  *     <EpisodeReactionHeart />
  *     <EpisodeReactionCount />
  *   </EpisodeReactionLogin>
- * </EpisodeReaction>
- *
- * <EpisodeReaction>
- *   <EpisodeReactionForm episodePublicId={…} mode="multiple" …>
- *     <EpisodeReactionSubmit>
- *       <EpisodeReactionName>
- *         <EpisodeReactionNameIdle>React to this episode</EpisodeReactionNameIdle>
- *         <EpisodeReactionNameProgress>
- *           React to this episode, {$score} of {$max}
- *         </EpisodeReactionNameProgress>
- *         <EpisodeReactionNameDone>You have reacted to this episode</EpisodeReactionNameDone>
- *         <EpisodeReactionNameReaders>Readers who reacted: {$count}</EpisodeReactionNameReaders>
- *       </EpisodeReactionName>
- *       <EpisodeReactionHeart />
- *       <EpisodeReactionCount />
- *     </EpisodeReactionSubmit>
- *     <EpisodeReactionError />
- *   </EpisodeReactionForm>
  * </EpisodeReaction>
  * ```
  */
@@ -355,7 +342,14 @@ export const EpisodeReactionName = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const EpisodeReactionNameIdle = ({ children }: { children: string }) => {
+const messageTemplate = (children: ReactNode): string | null =>
+  typeof children === "string" ? children : null;
+
+export const EpisodeReactionNameIdle = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
   const { score } = useEpisodeReactionFace();
   if (score > 0) {
     return null;
@@ -366,23 +360,29 @@ export const EpisodeReactionNameIdle = ({ children }: { children: string }) => {
 export const EpisodeReactionNameProgress = ({
   children,
 }: {
-  children: string;
+  children: ReactNode;
 }) => {
   const { mode, score } = useEpisodeReactionFace();
+  const template = messageTemplate(children);
   if (
+    !template ||
     mode !== "multiple" ||
     score <= 0 ||
     score >= MAX_EPISODE_REACTION_SCORE
   ) {
     return null;
   }
-  return formatMessage(children, {
+  return formatMessage(template, {
     max: MAX_EPISODE_REACTION_SCORE,
     score,
   });
 };
 
-export const EpisodeReactionNameDone = ({ children }: { children: string }) => {
+export const EpisodeReactionNameDone = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
   const { score } = useEpisodeReactionFace();
   if (score < MAX_EPISODE_REACTION_SCORE) {
     return null;
@@ -393,13 +393,17 @@ export const EpisodeReactionNameDone = ({ children }: { children: string }) => {
 export const EpisodeReactionNameReaders = ({
   children,
 }: {
-  children: string;
+  children: ReactNode;
 }) => {
   const locale = useLocale();
   const { ratingCount } = useEpisodeReactionFace();
+  const template = messageTemplate(children);
+  if (!template) {
+    return null;
+  }
   const count = ratingCount.toLocaleString(toIntlLocale(locale));
 
-  return `. ${formatMessage(children, { count })}`;
+  return `. ${formatMessage(template, { count })}`;
 };
 
 export const EpisodeReactionError = () => {
