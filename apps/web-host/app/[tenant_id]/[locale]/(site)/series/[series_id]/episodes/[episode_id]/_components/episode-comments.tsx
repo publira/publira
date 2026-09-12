@@ -30,6 +30,7 @@ import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getMe } from "#lib/auth";
+import type { SeriesCommentMode } from "#lib/catalog";
 import {
   listEpisodeComments,
   listMyEpisodeComments,
@@ -37,7 +38,7 @@ import {
 } from "#lib/comments";
 import type { EpisodeCommentItem } from "#lib/comments";
 import { getLocale, loadHostMessages } from "#lib/locale";
-import { getTenantCommentMode, getTenantDisplayTimeZone } from "#lib/tenant";
+import { getTenantDisplayTimeZone } from "#lib/tenant";
 
 import { episodeLoginHref } from "../_lib/access-gate";
 import { postEpisodeCommentAction } from "../_lib/comment-actions";
@@ -47,6 +48,8 @@ import { CommentReportButton } from "./comment-report-button";
 import type { CommentReportButtonCopy } from "./comment-report-button";
 
 export interface EpisodeCommentsProps {
+  /** The series' resolved comment mode from GetSeriesDetail. */
+  commentMode: SeriesCommentMode;
   episodePublicId: string;
   seriesPublicId: string;
   tenantId: string;
@@ -67,17 +70,17 @@ export interface EpisodeCommentsProps {
  * same wording around it — because telling the author is a decision the
  * platform deliberately does not make (`proto/publira/v1/comment.proto`).
  *
- * A tenant that has not turned commenting on gets nothing at all rather than
- * an empty section: the setting answers "does this site take comments", and an
- * empty list would read as "nobody has commented yet".
+ * A series that has not turned commenting on gets nothing at all rather than
+ * an empty section: the resolved setting answers "does this series take
+ * comments", and an empty list would read as "nobody has commented yet".
  */
 export const EpisodeComments = async ({
+  commentMode,
   episodePublicId,
   seriesPublicId,
   tenantId,
   token,
 }: EpisodeCommentsProps) => {
-  const commentMode = await getTenantCommentMode(tenantId);
   if (commentMode === "disabled") {
     return null;
   }

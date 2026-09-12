@@ -17,7 +17,7 @@ import type {
   PublishedGenre,
   PublishedTag,
 } from "@publira/api-client/public/catalog";
-import { SeriesStatus } from "@publira/api-client/public/types";
+import { CommentMode, SeriesStatus } from "@publira/api-client/public/types";
 import type {
   EpisodeImage,
   EpisodeNeighbor,
@@ -375,6 +375,8 @@ const toSeriesTagItem = (tag: RawSeriesTag): SeriesTagItem[] => {
 };
 
 export interface SeriesDetail {
+  /** How this series publishes reader comments after its override is resolved. */
+  commentMode: SeriesCommentMode;
   publicId: string;
   title: string;
   synopsis: string;
@@ -394,6 +396,28 @@ export interface SeriesDetail {
   eyeCatchImageUpdatedAt?: string;
   eyeCatchImageVariants?: EyeCatchImageVariant[];
 }
+
+/**
+ * How a series publishes reader comments after its own setting and the
+ * tenant default have been resolved by GetSeriesDetail.
+ */
+export type SeriesCommentMode = "approval_required" | "disabled" | "immediate";
+
+const toSeriesCommentMode = (
+  mode: CommentMode | undefined
+): SeriesCommentMode => {
+  switch (mode) {
+    case CommentMode.IMMEDIATE: {
+      return "immediate";
+    }
+    case CommentMode.APPROVAL_REQUIRED: {
+      return "approval_required";
+    }
+    default: {
+      return "disabled";
+    }
+  }
+};
 
 export interface LabelListItem {
   publicId: string;
@@ -1143,6 +1167,7 @@ export const getSeriesDetail = async (
       .toSorted((a, b) => a.orderIndex - b.orderIndex),
     series: response.series
       ? {
+          commentMode: toSeriesCommentMode(response.commentMode),
           creatorNames: (response.series.creators ?? []).flatMap((c) => {
             const name = (c.name ?? "").trim();
             return name.length > 0 ? [name] : [];

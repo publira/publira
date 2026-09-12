@@ -8,21 +8,17 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { SeriesCommentMode } from "#lib/catalog";
 import type { EpisodeCommentItem, EpisodeCommentPage } from "#lib/comments";
 
 import { EpisodeComments } from "./episode-comments";
 
-const {
-  mockGetMe,
-  mockGetTenantCommentMode,
-  mockListEpisodeComments,
-  mockListMyEpisodeComments,
-} = vi.hoisted(() => ({
-  mockGetMe: vi.fn(),
-  mockGetTenantCommentMode: vi.fn(),
-  mockListEpisodeComments: vi.fn(),
-  mockListMyEpisodeComments: vi.fn(),
-}));
+const { mockGetMe, mockListEpisodeComments, mockListMyEpisodeComments } =
+  vi.hoisted(() => ({
+    mockGetMe: vi.fn(),
+    mockListEpisodeComments: vi.fn(),
+    mockListMyEpisodeComments: vi.fn(),
+  }));
 
 // `<Message>` is an async Server Component, which the client renderer cannot
 // mount. It resolves through the real catalog here, so the assertions stay on
@@ -59,7 +55,6 @@ vi.mock("#lib/locale", () => ({
 vi.mock("#lib/auth", () => ({ getMe: mockGetMe }));
 
 vi.mock("#lib/tenant", () => ({
-  getTenantCommentMode: mockGetTenantCommentMode,
   getTenantDisplayTimeZone: () => Promise.resolve("Asia/Tokyo"),
 }));
 
@@ -136,8 +131,12 @@ const listPage = (
   },
 });
 
-const renderSection = async (token = "") => {
+const renderSection = async (
+  token = "",
+  commentMode: SeriesCommentMode = "immediate"
+) => {
   const section = await EpisodeComments({
+    commentMode,
     episodePublicId: "SeedEPSDAAA1",
     seriesPublicId: "SeedSERSAAA1",
     tenantId,
@@ -155,7 +154,6 @@ const renderedBodies = (): string[] =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetTenantCommentMode.mockResolvedValue("immediate");
   mockGetMe.mockResolvedValue(null);
   mockListEpisodeComments.mockResolvedValue(listPage([]));
   mockListMyEpisodeComments.mockResolvedValue({ ok: true, value: [] });
@@ -166,10 +164,9 @@ afterEach(() => {
 });
 
 describe("EpisodeComments", () => {
-  it("renders nothing at all where the tenant has commenting turned off", async () => {
-    mockGetTenantCommentMode.mockResolvedValueOnce("disabled");
-
+  it("renders nothing at all where the series has commenting turned off", async () => {
     const section = await EpisodeComments({
+      commentMode: "disabled",
       episodePublicId: "SeedEPSDAAA1",
       seriesPublicId: "SeedSERSAAA1",
       tenantId,
@@ -201,9 +198,7 @@ describe("EpisodeComments", () => {
   });
 
   it("says a comment is waiting where the tenant reviews them first", async () => {
-    mockGetTenantCommentMode.mockResolvedValueOnce("approval_required");
-
-    await renderSection();
+    await renderSection("", "approval_required");
 
     expect(
       screen.getByText("A comment appears here once a moderator approves it.")
