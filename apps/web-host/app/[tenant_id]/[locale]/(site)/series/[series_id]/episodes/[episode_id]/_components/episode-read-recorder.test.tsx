@@ -25,6 +25,7 @@ const episode: EpisodeDetail = {
   price: 0,
   publicId: "EPISODE_001",
   publishedAt: "2026-08-01T00:00:00Z",
+  ratingCount: 0,
   readingPeriodHours: 0,
   scheduledAt: "",
   status: "published",

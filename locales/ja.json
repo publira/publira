@@ -1972,6 +1972,17 @@
       },
       "page_count_value": "{$count}枚",
       "published": "公開 {$date}",
+      "reaction": {
+        "control_error": "リアクション操作を表示できませんでした",
+        "count_aria": "リアクションした人 {$count}人",
+        "failed": "リアクションを記録できませんでした。時間をおいて再試行してください。",
+        "login_aria": "ログインしてこのエピソードにリアクションする",
+        "max_aria": "このエピソードにリアクション済みです",
+        "press_aria": "このエピソードにリアクションする",
+        "press_progress_aria": "このエピソードにリアクションする、{$score} / {$max}",
+        "status_error": "リアクション状態を表示できませんでした",
+        "status_failed": "リアクション状態を取得できませんでした。時間をおいて再試行してください。"
+      },
       "reading_period": "閲覧期限",
       "reading_period_hours": "{$hours}時間",
       "reading_period_unlimited": "制限なし",

@@ -19,6 +19,7 @@ import type {
 } from "@publira/api-client/public/catalog";
 import { CommentMode, SeriesStatus } from "@publira/api-client/public/types";
 import type {
+  Episode,
   EpisodeImage,
   EpisodeNeighbor,
   Genre,
@@ -198,11 +199,45 @@ export interface EpisodeDetail {
   price: number;
   publicId: string;
   publishedAt: string;
+  /**
+   * How many readers have reacted to this episode. Headcount, not presses,
+   * so a five-press rating still counts as one.
+   */
+  ratingCount: number;
   readingPeriodHours: number;
   scheduledAt: string;
   status: string;
   title: string;
 }
+
+/**
+ * The generated `Episode` fields {@link mapEpisodeDetail} reads. Naming them
+ * against the message type is what makes a proto rename fail here.
+ */
+type RawEpisode = Pick<
+  Episode,
+  | "orderIndex"
+  | "price"
+  | "publicId"
+  | "publishedAt"
+  | "ratingCount"
+  | "readingPeriodHours"
+  | "scheduledAt"
+  | "status"
+  | "title"
+>;
+
+const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
+  orderIndex: episode.orderIndex ?? 0,
+  price: episode.price ?? 0,
+  publicId: episode.publicId ?? "",
+  publishedAt: episode.publishedAt ?? "",
+  ratingCount: Number(episode.ratingCount ?? 0),
+  readingPeriodHours: episode.readingPeriodHours ?? 0,
+  scheduledAt: episode.scheduledAt ?? "",
+  status: episode.status ?? "",
+  title: episode.title ?? "",
+});
 
 /**
  * Viewer access for an episode body. Matches `EpisodeAccess` on
@@ -1304,16 +1339,7 @@ export const getEpisodeDetail = async (
     return { ok: true, value: null };
   }
 
-  const episode = {
-    orderIndex: response.episode.orderIndex,
-    price: response.episode.price,
-    publicId: response.episode.publicId,
-    publishedAt: response.episode.publishedAt,
-    readingPeriodHours: response.episode.readingPeriodHours ?? 0,
-    scheduledAt: response.episode.scheduledAt,
-    status: response.episode.status,
-    title: response.episode.title,
-  };
+  const episode = mapEpisodeDetail(response.episode);
 
   return {
     ok: true,

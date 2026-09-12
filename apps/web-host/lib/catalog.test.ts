@@ -121,6 +121,7 @@ describe("catalog.getEpisodeDetail", () => {
         price: 300,
         publicId: "EP_001",
         publishedAt: "2026-03-26T00:00:00Z",
+        ratingCount: 12,
         readingPeriodHours: 72,
         scheduledAt: "",
         status: "published",
@@ -170,6 +171,7 @@ describe("catalog.getEpisodeDetail", () => {
     });
     expect(detail?.series?.ageRating).toBeUndefined();
     expect(detail?.episode.title).toBe("Episode 2");
+    expect(detail?.episode.ratingCount).toBe(12);
     expect(detail?.access).toBe("locked");
     expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);

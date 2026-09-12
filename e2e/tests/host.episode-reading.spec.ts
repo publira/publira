@@ -63,6 +63,41 @@ const episodeCompleteEventCount = (): string =>
         AND ce.source_id IN (SELECT r.id ${READ_STATE_SCOPE});
   `);
 
+/** The seed member's reaction to the seeded episode, if they have given one. */
+const REACTION_SCOPE = `
+  FROM episode_ratings r
+      JOIN users u ON u.id = r.user_id
+      JOIN episodes e ON e.id = r.episode_id
+  WHERE u.email = '${SEED_MEMBER.email}'
+      AND e.public_id = '${VIEWER_EPISODE_ID}'
+`;
+
+/**
+ * Put this member back where they had never reacted to the episode.
+ *
+ * The events go first, because they are found through the rating they came
+ * from and `content_events` keeps no foreign key to `episode_ratings` that
+ * would take them along. The headcount trigger follows the rating row.
+ */
+const clearEpisodeReaction = (): void => {
+  runSql(`
+    BEGIN;
+    DELETE FROM content_events ce
+    WHERE ce.event_type = 'rating'
+        AND ce.user_id IN (
+            SELECT u.id FROM users u WHERE u.email = '${SEED_MEMBER.email}'
+        )
+        AND ce.episode_id IN (
+            SELECT e.id FROM episodes e WHERE e.public_id = '${VIEWER_EPISODE_ID}'
+        );
+    DELETE FROM episode_ratings
+    WHERE (tenant_id, user_id, episode_id) IN (
+        SELECT r.tenant_id, r.user_id, r.episode_id ${REACTION_SCOPE}
+    );
+    COMMIT;
+  `);
+};
+
 /**
  * Put this member back where they had never finished the episode.
  *
@@ -231,6 +266,7 @@ const isStrictlyAscending = (values: readonly number[]): boolean =>
 test.describe("web-host episode reading", () => {
   test.afterAll(() => {
     clearEpisodeReadState();
+    clearEpisodeReaction();
     clearReadingPosition();
   });
 
@@ -554,5 +590,67 @@ test.describe("web-host episode reading", () => {
       page.getByRole("link", { name: "Back to the series" })
     ).toHaveAttribute("href", hostPath(seriesPath));
     await expect(page.getByText(`${VIEWER_PAGE_COUNT} pages`)).toBeVisible();
+  });
+
+  test("a reader reacts to an episode, and the reaction survives a reload", async ({
+    page,
+  }) => {
+    clearEpisodeReaction();
+    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+
+    const loginLinks = page.getByRole("link", {
+      name: "Sign in to react to this episode. Readers who reacted: 0",
+    });
+    await expect(
+      loginLinks,
+      "the heart in the viewer chrome and the one in the end panel both send a guest to login"
+    ).toHaveCount(2);
+    await expect(loginLinks.first()).toHaveAttribute(
+      "href",
+      new RegExp(`returnTo=${encodeURIComponent(VIEWER_EPISODE_PATH)}`, "u")
+    );
+
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_EDGE_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+    await expectFirstPageDrawn(page);
+
+    const reactButtons = page.getByRole("button", {
+      name: "React to this episode. Readers who reacted: 0",
+    });
+    await expect(reactButtons).toHaveCount(2);
+    await reactButtons.last().click();
+
+    const reacted = page.getByRole("button", {
+      name: "You have reacted to this episode. Readers who reacted: 1",
+    });
+    await expect(
+      reacted.last(),
+      "one press in single mode fills the control and counts the reader once"
+    ).toBeVisible();
+
+    await reacted.last().click();
+    await expect(
+      page
+        .getByRole("button", {
+          name: "You have reacted to this episode. Readers who reacted: 1",
+        })
+        .last(),
+      "a second press changes nothing"
+    ).toBeVisible();
+
+    await page.reload();
+    await expectFirstPageDrawn(page);
+    await expect(
+      page.getByRole("button", {
+        name: "You have reacted to this episode. Readers who reacted: 1",
+      }),
+      "the reaction is still there after a reload"
+    ).toHaveCount(2);
   });
 });

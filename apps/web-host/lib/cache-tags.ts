@@ -55,6 +55,14 @@ export const tenantNotificationsTag = (tenantId: string) =>
 export const tenantFollowsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:follows`;
 
+/**
+ * The private read of this member's own episode reactions. A press refreshes
+ * only this island — not the public episode catalog, which is tagged on the
+ * series and dropped separately so other readers see the new headcount.
+ */
+export const tenantEpisodeRatingsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:episode-ratings`;
+
 export const tenantAnnouncementsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements`;
 

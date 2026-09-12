@@ -7,7 +7,10 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import { Suspense } from "react";
 
+import { EpisodeReactionControlSkeleton } from "#components/episode-reaction-button";
+import { EpisodeReactionControl } from "#components/episode-reaction-control";
 import { Message } from "#components/message";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { resolveAccessToken } from "#lib/api-client";
 import type {
   EpisodeDetail,
@@ -133,6 +136,28 @@ export const EpisodeViewer = async ({
           nextHref={nextHref}
           previousHref={previousHref}
         />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-16 justify-center">
+          <div className="pointer-events-auto mt-3">
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="host.episode.reaction.control_error" />
+                </Suspense>
+              }
+            >
+              <Suspense fallback={<EpisodeReactionControlSkeleton size="sm" />}>
+                <EpisodeReactionControl
+                  episodePublicId={episode.publicId}
+                  ratingCount={episode.ratingCount}
+                  returnTo={episodePath(series.publicId, episode.publicId)}
+                  seriesPublicId={series.publicId}
+                  size="sm"
+                  tenantId={tenantId}
+                />
+              </Suspense>
+            </SectionErrorBoundary>
+          </div>
+        </div>
         <EpisodeNeighborKeyNavigation
           copy={{
             nextHint: getMessage(messages, "host.episode.navigation.next_hint"),

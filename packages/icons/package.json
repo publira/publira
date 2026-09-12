@@ -59,6 +59,10 @@
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"
     },
+    "./heart-icon": {
+      "types": "./dist/heart-icon.d.mts",
+      "default": "./dist/heart-icon.mjs"
+    },
     "./image-icon": {
       "types": "./dist/image-icon.d.mts",
       "default": "./dist/image-icon.mjs"
