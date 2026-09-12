@@ -2,12 +2,14 @@ package publicapi
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -106,6 +108,9 @@ func TestDBReportThresholdHidesTheCommentOnlyOnceItIsReached(t *testing.T) {
 	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); !containsPublicID(got, comment.PublicId) {
 		t.Fatalf("public comments = %v, want %s still listed one report short", got, comment.PublicId)
 	}
+	if got := env.notificationCount(t, tenant, outbox.NotificationTypeCommentHidden); got != 0 {
+		t.Fatalf("comment_hidden rows one report short of the threshold = %d, want 0", got)
+	}
 
 	env.reportUntil(t, tenant, comment.PublicId, "ATHLAST", 1)
 
@@ -124,9 +129,37 @@ func TestDBReportThresholdHidesTheCommentOnlyOnceItIsReached(t *testing.T) {
 	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); containsPublicID(got, comment.PublicId) {
 		t.Fatalf("public comments = %v, want the removed %s withheld", got, comment.PublicId)
 	}
-	// The author is never told, so their own list still carries the comment.
+	// The author's own list still carries the comment unchanged: the removal
+	// is told through a notification, not by the comment changing shape.
 	if got := myCommentPublicIDs(env.listMyComments(t, tenant, member, episode.PublicID)); !containsPublicID(got, comment.PublicId) {
 		t.Fatalf("the author's own comments = %v, want %s unchanged for them", got, comment.PublicId)
+	}
+	if got := env.notificationCount(t, tenant, outbox.NotificationTypeCommentHidden); got != 1 {
+		t.Fatalf("comment_hidden rows = %d, want 1", got)
+	}
+	subjectKey, payload := env.staffNotification(t, tenant, outbox.NotificationTypeCommentHidden)
+	if subjectKey != outbox.CommentAuthorSubjectKey(comment.PublicId) {
+		t.Fatalf("comment_hidden subject_key = %q, want %q", subjectKey, outbox.CommentAuthorSubjectKey(comment.PublicId))
+	}
+	var body map[string]string
+	if err := json.Unmarshal([]byte(payload), &body); err != nil {
+		t.Fatalf("decode comment_hidden payload: %v", err)
+	}
+	if body["comment_id"] != comment.PublicId {
+		t.Fatalf("comment_hidden comment_id = %q, want %q", body["comment_id"], comment.PublicId)
+	}
+	if body["hidden_reason"] != outbox.CommentHiddenReasonAutoReports {
+		t.Fatalf("comment_hidden hidden_reason = %q, want %q", body["hidden_reason"], outbox.CommentHiddenReasonAutoReports)
+	}
+	if body["episode_id"] != episode.PublicID || body["series_id"] != fixture.series.PublicID {
+		t.Fatalf("comment_hidden episode/series = %q/%q, want %q/%q",
+			body["episode_id"], body["series_id"], episode.PublicID, fixture.series.PublicID)
+	}
+	if got := env.countRows(t,
+		"SELECT COUNT(*) FROM notifications WHERE tenant_id = $1 AND user_id = $2 AND notification_type = $3",
+		tenant.ID, member.ID, outbox.NotificationTypeCommentHidden,
+	); got != 1 {
+		t.Fatalf("comment_hidden rows for the author = %d, want 1", got)
 	}
 	// The reports stay open, so the queue puts the automatic decision in front
 	// of staff instead of the site simply forgetting about it.
@@ -209,6 +242,9 @@ func TestDBReportThresholdOfZeroNeverHidesTheComment(t *testing.T) {
 	}
 	if got := env.countRows(t, "SELECT COUNT(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'comment_auto_hidden'", tenant.ID); got != 0 {
 		t.Fatalf("automatic removal audit entries = %d, want none", got)
+	}
+	if got := env.notificationCount(t, tenant, outbox.NotificationTypeCommentHidden); got != 0 {
+		t.Fatalf("comment_hidden rows with the threshold turned off = %d, want none", got)
 	}
 }
 

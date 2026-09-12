@@ -626,25 +626,29 @@ func validateCommentReportNote(note string) (sql.NullString, error) {
 // autoHideReportedComment applies the tenant's report threshold to the comment
 // the caller has just reported, and reports whether it took the comment down.
 //
-// The removal and its audit row are written on the transaction that holds the
-// report, so a tenant never ends up with a comment hidden by a threshold no
-// stored report reached, nor with reports that reached it and a comment still
-// on the site. The entry names no actor: the reader pressed "report", and what
-// removed the comment is the number the tenant itself saved.
+// The removal, its audit row, and the bell notification for the author are
+// written on the transaction that holds the report, so a tenant never ends up
+// with a comment hidden by a threshold no stored report reached, nor with
+// reports that reached it and a comment still on the site, nor with a removal
+// the author is never told about. The audit entry names no actor: the reader
+// pressed "report", and what removed the comment is the number the tenant
+// itself saved.
 func (s *apiServer) autoHideReportedComment(
 	ctx context.Context,
 	txq *dbmodels.Queries,
-	tenantID, commentID uuid.UUID,
+	tenantID uuid.UUID,
+	comment dbmodels.GetReportableEpisodeCommentByPublicIDForTenantRow,
+	commentPublicID string,
 ) (bool, error) {
 	hiddenPublicID, err := txq.AutoHideEpisodeCommentAtReportThreshold(ctx, dbmodels.AutoHideEpisodeCommentAtReportThresholdParams{
 		TenantID:  tenantID,
-		CommentID: commentID,
+		CommentID: comment.ID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
-		return false, s.internalDBError(ctx, "failed to apply the comment report threshold", err, "tenant_id", tenantID.String(), "comment_id", commentID.String())
+		return false, s.internalDBError(ctx, "failed to apply the comment report threshold", err, "tenant_id", tenantID.String(), "comment_id", comment.ID.String())
 	}
 
 	if err := auditlog.WriteTenant(ctx, txq, s.logger, auditlog.TenantEntry{
@@ -656,6 +660,20 @@ func (s *apiServer) autoHideReportedComment(
 		Outcome:    auditlog.OutcomeSuccess,
 	}); err != nil {
 		return false, s.internalDBError(ctx, "failed to record the automatic comment removal", err, "tenant_id", tenantID.String(), "comment_public_id", hiddenPublicID)
+	}
+
+	if err := outbox.NotifyCommentAuthor(ctx, txq, outbox.CommentAuthorNotification{
+		TenantID:         tenantID,
+		UserID:           comment.UserID,
+		NotificationType: outbox.NotificationTypeCommentHidden,
+		CommentPublicID:  commentPublicID,
+		EpisodePublicID:  comment.EpisodePublicID,
+		EpisodeTitle:     comment.EpisodeTitle,
+		SeriesPublicID:   comment.SeriesPublicID,
+		SeriesTitle:      comment.SeriesTitle,
+		HiddenReason:     outbox.CommentHiddenReasonAutoReports,
+	}); err != nil {
+		return false, s.internalDBError(ctx, "failed to notify the author of an automatically hidden comment", err, "tenant_id", tenantID.String(), "comment_public_id", hiddenPublicID)
 	}
 
 	return true, nil
@@ -688,9 +706,9 @@ func (s *apiServer) revalidateCommentList(ctx context.Context, tenantID uuid.UUI
 // after the commit would let two reports arriving together each see a count
 // below it.
 //
-// The reader is told the same thing either way. Whether their report was the
-// one that removed the comment is not something the answer to a report may
-// reveal, for the reason a removal is silent at all.
+// The reporter is told the same thing either way. Whether their report was
+// the one that removed the comment is not something the answer to a report
+// may reveal.
 func (s *apiServer) ReportEpisodeComment(
 	ctx context.Context,
 	req *connect.Request[publirav1.ReportEpisodeCommentRequest],
@@ -773,7 +791,7 @@ func (s *apiServer) ReportEpisodeComment(
 		return nil, s.internalDBError(ctx, "failed to refresh comment open report count", err, "tenant_id", tenant.ID.String(), "comment_id", comment.ID.String())
 	}
 
-	autoHidden, err := s.autoHideReportedComment(ctx, txq, tenant.ID, comment.ID)
+	autoHidden, err := s.autoHideReportedComment(ctx, txq, tenant.ID, comment, publicID)
 	if err != nil {
 		return nil, err
 	}

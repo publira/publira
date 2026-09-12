@@ -125,8 +125,9 @@ LIMIT sqlc.arg('limit');
 -- as well would only make the site reconcile two copies of the same comment.
 --
 -- A comment removed by staff or by the report threshold stays in this list
--- exactly as it was, because the removal is silent; only the author's own
--- withdrawal takes it away from them.
+-- exactly as it was: the removal is told through a notification, not by the
+-- comment changing shape here. Only the author's own withdrawal takes it
+-- away from them.
 SELECT id,
     public_id,
     episode_id,
@@ -360,9 +361,9 @@ RETURNING *;
 
 -- name: WithdrawEpisodeCommentByPublicIDForUser :one
 -- The author's own deletion. It applies to a comment staff had removed too,
--- since the author was never told about that removal and still sees the
--- comment. The removal columns are cleared because no removal is in force on a
--- withdrawn row any more; audit_logs keeps what staff did and why.
+-- since the author still sees that comment unchanged. The removal columns
+-- are cleared because no removal is in force on a withdrawn row any more;
+-- audit_logs keeps what staff did and why.
 UPDATE episode_comments
 SET status = 'withdrawn',
     withdrawn_at = NOW(),
