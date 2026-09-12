@@ -1872,6 +1872,8 @@
       "series_pagination_aria": "関連シリーズページング"
     },
     "common": {
+      "age_rating_r15": "R15",
+      "age_rating_r18": "R18",
       "back_to_top": "トップへ戻る",
       "cancel": "キャンセル",
       "episode_number": "第{$number}話",
@@ -2168,6 +2170,7 @@
       "list_failed": "関連作品を取得できませんでした。時間をおいて再試行してください。"
     },
     "search": {
+      "age_rated_hidden": "年齢確認が済むまで、一部の検索結果は表示されません。",
       "authors_error": "著者の検索結果を表示できませんでした",
       "authors_failed": "著者の検索結果を取得できませんでした。時間をおいて再試行してください。",
       "authors_first_page": "著者の検索結果の先頭へ",
@@ -2197,6 +2200,14 @@
       "title": "検索"
     },
     "series": {
+      "age_gate": {
+        "confirm_r15": "15歳以上です",
+        "confirm_r18": "18歳以上です",
+        "r15_description": "15歳以上であることを確認すると、この作品を閲覧できます。",
+        "r15_title": "「{$title}」は R15 指定です",
+        "r18_description": "18歳以上であることを確認すると、この作品を閲覧できます。",
+        "r18_title": "「{$title}」は R18 指定です"
+      },
       "back_to_list": "← シリーズ一覧に戻る",
       "continue_reading": "続きを読む",
       "detail_failed": "シリーズを取得できませんでした。時間をおいて再試行してください。",

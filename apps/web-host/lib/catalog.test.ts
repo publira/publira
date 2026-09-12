@@ -4,7 +4,11 @@ import {
   RankingPeriod,
   SeriesOrder,
 } from "@publira/api-client/public/catalog";
-import { CommentMode, SeriesStatus } from "@publira/api-client/public/types";
+import {
+  CommentMode,
+  SeriesAgeRating,
+  SeriesStatus,
+} from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -164,10 +168,42 @@ describe("catalog.getEpisodeDetail", () => {
       publicId: "SERIES_001",
       title: "Series Title",
     });
+    expect(detail?.series?.ageRating).toBeUndefined();
     expect(detail?.episode.title).toBe("Episode 2");
     expect(detail?.access).toBe("locked");
     expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
+  });
+
+  it("Carries the series rating so the episode page can interpose a confirmation", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        ageRating: SeriesAgeRating.R15,
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(result.ok && result.value?.series.ageRating).toBe("r15");
   });
 
   it("Carry the episodes either side of this one", async () => {
@@ -617,6 +653,38 @@ describe("catalog.listPublishedSeries", () => {
     ).toEqual([3, 0]);
   });
 
+  it("Carries the age rating a card needs to badge and hide", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [
+        {
+          ageRating: SeriesAgeRating.R15,
+          creators: [],
+          publicId: "SERIES_1",
+          synopsis: "S1",
+          title: "Series 1",
+        },
+        {
+          ageRating: SeriesAgeRating.ALL,
+          creators: [],
+          publicId: "SERIES_2",
+          synopsis: "S2",
+          title: "Series 2",
+        },
+      ],
+    });
+
+    const result = await listPublishedSeries("TENANT_001", {
+      limit: 24,
+      locale: "en",
+    });
+
+    expect(
+      result.ok && result.value.series.map((item) => item.ageRating)
+    ).toEqual(["r15", undefined]);
+  });
+
   /**
    * The count is settled per read, so a page filtered here would keep a series
    * whose free window closed between the two.
@@ -761,6 +829,40 @@ describe("catalog.getSeriesDetail", () => {
       status: "hiatus",
       tags: [{ name: "Time travel", slug: "time-travel" }],
     });
+  });
+
+  it("Carries an r18 rating so the page can interpose a confirmation", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        ageRating: SeriesAgeRating.R18,
+        creators: [],
+        publicId: "SERIES_1",
+        synopsis: "S1",
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series.ageRating).toBe("r18");
+  });
+
+  it("Omits the rating on an all-ages series", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        ageRating: SeriesAgeRating.ALL,
+        creators: [],
+        publicId: "SERIES_1",
+        synopsis: "S1",
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series.ageRating).toBeUndefined();
   });
 
   /**

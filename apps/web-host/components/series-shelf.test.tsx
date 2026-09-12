@@ -89,4 +89,17 @@ describe("SeriesShelf", () => {
         .getAttribute("href")
     ).toBe("/series/SERIES02");
   });
+
+  it("Marks a rated series with its age rating inside the link", () => {
+    render(
+      <SeriesShelf
+        locale="en"
+        series={[series({ ageRating: "r18", publicId: "SERIES18" })]}
+      />
+    );
+
+    expect(
+      screen.getByRole("link", { name: /R18/u }).getAttribute("href")
+    ).toBe("/series/SERIES18");
+  });
 });

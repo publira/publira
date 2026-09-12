@@ -32,6 +32,8 @@ import { WEEKDAY_NUMBERS } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
 
+import type { RestrictedAgeRating } from "./age-rating";
+import { withRestrictedAgeRating } from "./age-rating";
 import { apiClient, buildSessionHeaders } from "./api-client";
 import {
   applyCacheTag,
@@ -114,6 +116,11 @@ export interface SeriesListItem {
    * that costs money from its first episode.
    */
   freeEpisodeCount: number;
+  /**
+   * Present only when the series is `r15` or `r18`. All-ages series omit it,
+   * so a card that has no badge is unrestricted rather than "rating unknown".
+   */
+  ageRating?: RestrictedAgeRating;
 }
 
 /**
@@ -124,6 +131,7 @@ export interface SeriesListItem {
  */
 type RawSeriesListItem = Pick<
   Series,
+  | "ageRating"
   | "creators"
   | "eyeCatchImageUpdatedAt"
   | "eyeCatchImageVariants"
@@ -134,33 +142,37 @@ type RawSeriesListItem = Pick<
   | "title"
 >;
 
-export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem => ({
-  creatorNames: (s.creators ?? []).flatMap((c) => {
-    const name = (c.name ?? "").trim();
-    return name.length > 0 ? [name] : [];
-  }),
-  creators: (s.creators ?? []).flatMap((c) => {
-    const name = (c.name ?? "").trim();
-    return name.length > 0
-      ? [
-          {
-            iconImageUrl: c.iconImageUrl?.trim() ?? "",
-            name,
-            profileText: (c.profileText ?? "").trim(),
-            publicId: c.publicId ?? "",
-          },
-        ]
-      : [];
-  }),
-  eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
-  eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
-  freeEpisodeCount: s.freeEpisodeCount ?? 0,
-  labelName: s.label?.name?.trim() ?? "",
-  labelPublicId: s.label?.publicId?.trim() ?? "",
-  publicId: s.publicId,
-  synopsis: s.synopsis,
-  title: s.title,
-});
+export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem =>
+  withRestrictedAgeRating(
+    {
+      creatorNames: (s.creators ?? []).flatMap((c) => {
+        const name = (c.name ?? "").trim();
+        return name.length > 0 ? [name] : [];
+      }),
+      creators: (s.creators ?? []).flatMap((c) => {
+        const name = (c.name ?? "").trim();
+        return name.length > 0
+          ? [
+              {
+                iconImageUrl: c.iconImageUrl?.trim() ?? "",
+                name,
+                profileText: (c.profileText ?? "").trim(),
+                publicId: c.publicId ?? "",
+              },
+            ]
+          : [];
+      }),
+      eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
+      eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
+      freeEpisodeCount: s.freeEpisodeCount ?? 0,
+      labelName: s.label?.name?.trim() ?? "",
+      labelPublicId: s.label?.publicId?.trim() ?? "",
+      publicId: s.publicId,
+      synopsis: s.synopsis,
+      title: s.title,
+    },
+    s.ageRating
+  );
 
 export interface EpisodeItem {
   publicId: string;
@@ -294,6 +306,11 @@ const mapEpisodeNeighbor = (
 
 export interface EpisodeSeriesSummary {
   /**
+   * Present only when the series is `r15` or `r18`. The episode page uses it
+   * to interpose the same confirmation the series page does.
+   */
+  ageRating?: RestrictedAgeRating;
+  /**
    * The work's artwork. Episodes carry none of their own, so it is what a link
    * to a neighbouring episode shows at the head of its row.
    */
@@ -383,6 +400,11 @@ export interface SeriesDetail {
   labelName: string;
   labelPublicId: string;
   creatorNames: string[];
+  /**
+   * Present only when the series is `r15` or `r18`. The page shows a badge
+   * and an interstitial; all-ages series omit both.
+   */
+  ageRating?: RestrictedAgeRating;
   status?: SeriesSerializationStatus;
   /**
    * The weekdays a new episode is expected on, as `EXTRACT(DOW)` numbers: 0 is
@@ -1166,30 +1188,33 @@ export const getSeriesDetail = async (
       }))
       .toSorted((a, b) => a.orderIndex - b.orderIndex),
     series: response.series
-      ? {
-          commentMode: toSeriesCommentMode(response.commentMode),
-          creatorNames: (response.series.creators ?? []).flatMap((c) => {
-            const name = (c.name ?? "").trim();
-            return name.length > 0 ? [name] : [];
-          }),
-          eyeCatchImageUpdatedAt:
-            response.series.eyeCatchImageUpdatedAt || undefined,
-          eyeCatchImageVariants: toEyeCatchImageVariants(
-            response.series.eyeCatchImageVariants
-          ),
-          genres: (response.series.genres ?? []).flatMap(toSeriesGenreItem),
-          labelName: response.series.label?.name?.trim() ?? "",
-          labelPublicId: response.series.label?.publicId?.trim() ?? "",
-          publicId: response.series.publicId ?? "",
-          readingPeriodHours: response.series.readingPeriodHours ?? 0,
-          scheduleWeekdays: toScheduleWeekdays(
-            response.series.scheduleWeekdays
-          ),
-          status: toSeriesSerializationStatus(response.series.status),
-          synopsis: response.series.synopsis ?? "",
-          tags: (response.series.tags ?? []).flatMap(toSeriesTagItem),
-          title: response.series.title ?? "",
-        }
+      ? withRestrictedAgeRating(
+          {
+            commentMode: toSeriesCommentMode(response.commentMode),
+            creatorNames: (response.series.creators ?? []).flatMap((c) => {
+              const name = (c.name ?? "").trim();
+              return name.length > 0 ? [name] : [];
+            }),
+            eyeCatchImageUpdatedAt:
+              response.series.eyeCatchImageUpdatedAt || undefined,
+            eyeCatchImageVariants: toEyeCatchImageVariants(
+              response.series.eyeCatchImageVariants
+            ),
+            genres: (response.series.genres ?? []).flatMap(toSeriesGenreItem),
+            labelName: response.series.label?.name?.trim() ?? "",
+            labelPublicId: response.series.label?.publicId?.trim() ?? "",
+            publicId: response.series.publicId ?? "",
+            readingPeriodHours: response.series.readingPeriodHours ?? 0,
+            scheduleWeekdays: toScheduleWeekdays(
+              response.series.scheduleWeekdays
+            ),
+            status: toSeriesSerializationStatus(response.series.status),
+            synopsis: response.series.synopsis ?? "",
+            tags: (response.series.tags ?? []).flatMap(toSeriesTagItem),
+            title: response.series.title ?? "",
+          },
+          response.series.ageRating
+        )
       : undefined,
   };
 
@@ -1259,13 +1284,16 @@ export const getEpisodeDetail = async (
   }
 
   const series = response.series
-    ? {
-        eyeCatchImageVariants: toEyeCatchImageVariants(
-          response.series.eyeCatchImageVariants
-        ),
-        publicId: response.series.publicId,
-        title: response.series.title,
-      }
+    ? withRestrictedAgeRating(
+        {
+          eyeCatchImageVariants: toEyeCatchImageVariants(
+            response.series.eyeCatchImageVariants
+          ),
+          publicId: response.series.publicId,
+          title: response.series.title,
+        },
+        response.series.ageRating
+      )
     : undefined;
 
   if (

@@ -1872,6 +1872,8 @@
       "series_pagination_aria": "相關系列分頁"
     },
     "common": {
+      "age_rating_r15": "R15",
+      "age_rating_r18": "R18",
       "back_to_top": "返回首頁",
       "cancel": "取消",
       "episode_number": "第 {$number} 章",
@@ -2168,6 +2170,7 @@
       "list_failed": "無法載入相關作品。請稍後再試。"
     },
     "search": {
+      "age_rated_hidden": "在確認年齡之前，部分搜尋結果不會顯示。",
       "authors_error": "無法顯示作者搜尋結果",
       "authors_failed": "無法載入作者搜尋結果。請稍後再試。",
       "authors_first_page": "前往作者結果第一頁",
@@ -2197,6 +2200,14 @@
       "title": "搜尋"
     },
     "series": {
+      "age_gate": {
+        "confirm_r15": "我已滿 15 歲",
+        "confirm_r18": "我已滿 18 歲",
+        "r15_description": "確認已滿 15 歲後即可閱讀此系列。",
+        "r15_title": "「{$title}」為 R15",
+        "r18_description": "確認已滿 18 歲後即可閱讀此系列。",
+        "r18_title": "「{$title}」為 R18"
+      },
       "back_to_list": "← 返回系列列表",
       "continue_reading": "繼續閱讀",
       "detail_failed": "無法載入該系列。請稍後再試。",

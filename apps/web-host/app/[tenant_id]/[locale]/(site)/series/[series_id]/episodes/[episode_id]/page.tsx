@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 
+import { AgeRatingGate } from "#components/age-rating-gate";
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -166,182 +167,189 @@ const EpisodeContent = async (
   });
 
   return (
-    <main>
-      <ContentViewTracker kind="episode" publicId={episode.publicId} />
-      {/* The reader opens the page: everything else is what the reader may
+    <AgeRatingGate
+      backHref={`/series/${series.publicId}`}
+      backMessage="host.episode.to_series_detail"
+      rating={series.ageRating}
+      seriesTitle={series.title}
+    >
+      <main>
+        <ContentViewTracker kind="episode" publicId={episode.publicId} />
+        {/* The reader opens the page: everything else is what the reader may
           want after finishing, so it sits below the pages rather than above
           them. */}
-      <section
-        aria-label={getMessage(messages, "host.episode.body_label")}
-        className="border-b border-border"
-      >
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="host.episode.body_error" />
-            </Suspense>
-          }
+        <section
+          aria-label={getMessage(messages, "host.episode.body_label")}
+          className="border-b border-border"
         >
-          <Suspense fallback={<EpisodeBodySkeleton />}>
-            <EpisodeBody
-              access={access}
-              acceptsPayments={tenant?.acceptsPayments ?? false}
-              checkoutSessionId={
-                purchaseSearchParams.checkout === "success"
-                  ? purchaseSearchParams.session_id
-                  : ""
-              }
-              episode={episode}
-              images={images}
-              nextEpisode={nextEpisode}
-              previousEpisode={previousEpisode}
-              series={series}
-              tenantId={tenantId}
-            />
-          </Suspense>
-        </SectionErrorBoundary>
-      </section>
-
-      <EpisodeColumn>
-        {purchaseSearchParams.checkout === "success" ? (
-          <output className="block rounded-control border border-success px-4 py-3 text-sm text-success">
-            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <Message message="host.episode.checkout_success" />
-            </Suspense>
-          </output>
-        ) : null}
-        {purchaseSearchParams.checkout === "cancelled" ? (
-          <output className="block rounded-control border border-warning px-4 py-3 text-sm text-warning">
-            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <Message message="host.episode.checkout_cancelled" />
-            </Suspense>
-          </output>
-        ) : null}
-        {purchaseSearchParams.checkout === "error" ? (
-          <p
-            className="block rounded-control border border-destructive px-4 py-3 text-sm text-destructive"
-            role="alert"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <Message message="host.episode.checkout_error" />
-            </Suspense>
-          </p>
-        ) : null}
-
-        {/* A running head: which work this is, then which instalment of it.
-            The number is part of the title line rather than a chip beside it,
-            because a serial numbers its instalments the way a book numbers its
-            chapters. */}
-        <header className="grid gap-2">
-          <p className="text-sm text-muted-foreground">
-            <LocaleLink
-              className="underline underline-offset-4"
-              href={`/series/${series.publicId}`}
-            >
-              {series.title}
-            </LocaleLink>
-          </p>
-          <h1 className="font-serif text-3xl leading-tight">
-            <span className="tabular-nums">
-              <Suspense fallback={<SkeletonLine className="h-7 w-28" />}>
-                <Message
-                  message="host.common.episode_number"
-                  values={{ number: episode.orderIndex }}
-                />
-              </Suspense>
-            </span>{" "}
-            {episode.title}
-          </h1>
-          {/* The colophon: what the episode costs, when it appeared, how much
-              of it there is, and how long it stays open. */}
-          <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span className="tabular-nums">
-              {episode.price > 0 ? (
-                `¥${episode.price.toLocaleString(toIntlLocale(locale))}`
-              ) : (
-                <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
-                  <Message message="host.common.free" />
-                </Suspense>
-              )}
-            </span>
-            {publishedAt ? (
-              <span className="tabular-nums">
-                <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-                  <Message
-                    message="host.episode.published"
-                    values={{ date: publishedAt }}
-                  />
-                </Suspense>
-              </span>
-            ) : null}
-            {images.length > 0 ? (
-              <span className="tabular-nums">
-                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                  <Message
-                    message="host.episode.page_count_value"
-                    values={{ count: images.length }}
-                  />
-                </Suspense>
-              </span>
-            ) : null}
-            <span className="tabular-nums">
-              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                <Message message="host.episode.reading_period" />{" "}
-                {episode.readingPeriodHours > 0 ? (
-                  <Message
-                    message="host.episode.reading_period_hours"
-                    values={{ hours: episode.readingPeriodHours }}
-                  />
-                ) : (
-                  <Message message="host.episode.reading_period_unlimited" />
-                )}
-              </Suspense>
-            </span>
-            {scheduledAt ? (
-              <span className="tabular-nums">
-                <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-                  <Message message="host.episode.scheduled_at" />
-                </Suspense>{" "}
-                {scheduledAt}
-              </span>
-            ) : null}
-          </p>
-        </header>
-
-        {/* Directly under the running head, because finishing the pages is
-            when a reader decides whether to keep going. */}
-        <EpisodeEndPanel
-          episode={episode}
-          marksNextEpisode={isPublicEpisodeBody(access)}
-          nextEpisode={nextEpisode}
-          previousEpisode={previousEpisode}
-          series={series}
-          tenantId={tenantId}
-        />
-
-        {commentMode === "disabled" ? null : (
           <SectionErrorBoundary
             title={
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                <Message message="host.episode.comments.list_error" />
+                <Message message="host.episode.body_error" />
               </Suspense>
             }
           >
-            {/* Its own boundary, so the pages and the episode metadata above
-                reach the reader without waiting on the comment reads. */}
-            <Suspense fallback={<CommentsSkeleton />}>
-              <EpisodeComments
-                commentMode={commentMode}
-                episodePublicId={episode.publicId}
-                seriesPublicId={series.publicId}
+            <Suspense fallback={<EpisodeBodySkeleton />}>
+              <EpisodeBody
+                access={access}
+                acceptsPayments={tenant?.acceptsPayments ?? false}
+                checkoutSessionId={
+                  purchaseSearchParams.checkout === "success"
+                    ? purchaseSearchParams.session_id
+                    : ""
+                }
+                episode={episode}
+                images={images}
+                nextEpisode={nextEpisode}
+                previousEpisode={previousEpisode}
+                series={series}
                 tenantId={tenantId}
-                token={commentSearchParams[COMMENT_TOKEN_PARAM]}
               />
             </Suspense>
           </SectionErrorBoundary>
-        )}
-      </EpisodeColumn>
-    </main>
+        </section>
+
+        <EpisodeColumn>
+          {purchaseSearchParams.checkout === "success" ? (
+            <output className="block rounded-control border border-success px-4 py-3 text-sm text-success">
+              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                <Message message="host.episode.checkout_success" />
+              </Suspense>
+            </output>
+          ) : null}
+          {purchaseSearchParams.checkout === "cancelled" ? (
+            <output className="block rounded-control border border-warning px-4 py-3 text-sm text-warning">
+              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                <Message message="host.episode.checkout_cancelled" />
+              </Suspense>
+            </output>
+          ) : null}
+          {purchaseSearchParams.checkout === "error" ? (
+            <p
+              className="block rounded-control border border-destructive px-4 py-3 text-sm text-destructive"
+              role="alert"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                <Message message="host.episode.checkout_error" />
+              </Suspense>
+            </p>
+          ) : null}
+
+          {/* A running head: which work this is, then which instalment of it.
+            The number is part of the title line rather than a chip beside it,
+            because a serial numbers its instalments the way a book numbers its
+            chapters. */}
+          <header className="grid gap-2">
+            <p className="text-sm text-muted-foreground">
+              <LocaleLink
+                className="underline underline-offset-4"
+                href={`/series/${series.publicId}`}
+              >
+                {series.title}
+              </LocaleLink>
+            </p>
+            <h1 className="font-serif text-3xl leading-tight">
+              <span className="tabular-nums">
+                <Suspense fallback={<SkeletonLine className="h-7 w-28" />}>
+                  <Message
+                    message="host.common.episode_number"
+                    values={{ number: episode.orderIndex }}
+                  />
+                </Suspense>
+              </span>{" "}
+              {episode.title}
+            </h1>
+            {/* The colophon: what the episode costs, when it appeared, how much
+              of it there is, and how long it stays open. */}
+            <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <span className="tabular-nums">
+                {episode.price > 0 ? (
+                  `¥${episode.price.toLocaleString(toIntlLocale(locale))}`
+                ) : (
+                  <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
+                    <Message message="host.common.free" />
+                  </Suspense>
+                )}
+              </span>
+              {publishedAt ? (
+                <span className="tabular-nums">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+                    <Message
+                      message="host.episode.published"
+                      values={{ date: publishedAt }}
+                    />
+                  </Suspense>
+                </span>
+              ) : null}
+              {images.length > 0 ? (
+                <span className="tabular-nums">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <Message
+                      message="host.episode.page_count_value"
+                      values={{ count: images.length }}
+                    />
+                  </Suspense>
+                </span>
+              ) : null}
+              <span className="tabular-nums">
+                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                  <Message message="host.episode.reading_period" />{" "}
+                  {episode.readingPeriodHours > 0 ? (
+                    <Message
+                      message="host.episode.reading_period_hours"
+                      values={{ hours: episode.readingPeriodHours }}
+                    />
+                  ) : (
+                    <Message message="host.episode.reading_period_unlimited" />
+                  )}
+                </Suspense>
+              </span>
+              {scheduledAt ? (
+                <span className="tabular-nums">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+                    <Message message="host.episode.scheduled_at" />
+                  </Suspense>{" "}
+                  {scheduledAt}
+                </span>
+              ) : null}
+            </p>
+          </header>
+
+          {/* Directly under the running head, because finishing the pages is
+            when a reader decides whether to keep going. */}
+          <EpisodeEndPanel
+            episode={episode}
+            marksNextEpisode={isPublicEpisodeBody(access)}
+            nextEpisode={nextEpisode}
+            previousEpisode={previousEpisode}
+            series={series}
+            tenantId={tenantId}
+          />
+
+          {commentMode === "disabled" ? null : (
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="host.episode.comments.list_error" />
+                </Suspense>
+              }
+            >
+              {/* Its own boundary, so the pages and the episode metadata above
+                reach the reader without waiting on the comment reads. */}
+              <Suspense fallback={<CommentsSkeleton />}>
+                <EpisodeComments
+                  commentMode={commentMode}
+                  episodePublicId={episode.publicId}
+                  seriesPublicId={series.publicId}
+                  tenantId={tenantId}
+                  token={commentSearchParams[COMMENT_TOKEN_PARAM]}
+                />
+              </Suspense>
+            </SectionErrorBoundary>
+          )}
+        </EpisodeColumn>
+      </main>
+    </AgeRatingGate>
   );
 };
 

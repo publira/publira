@@ -1872,6 +1872,8 @@
       "series_pagination_aria": "Related series pagination"
     },
     "common": {
+      "age_rating_r15": "R15",
+      "age_rating_r18": "R18",
       "back_to_top": "Back to home",
       "cancel": "Cancel",
       "episode_number": "Episode {$number}",
@@ -2168,6 +2170,7 @@
       "list_failed": "Could not load the related series. Please try again later."
     },
     "search": {
+      "age_rated_hidden": "Some results stay hidden until you confirm your age.",
       "authors_error": "Could not show the author results",
       "authors_failed": "Could not load the author results. Please try again later.",
       "authors_first_page": "Go to the first page of author results",
@@ -2197,6 +2200,14 @@
       "title": "Search"
     },
     "series": {
+      "age_gate": {
+        "confirm_r15": "I am 15 or older",
+        "confirm_r18": "I am 18 or older",
+        "r15_description": "Confirm that you are 15 or older to open this series.",
+        "r15_title": "“{$title}” is rated R15",
+        "r18_description": "Confirm that you are 18 or older to open this series.",
+        "r18_title": "“{$title}” is rated R18"
+      },
       "back_to_list": "← Back to the series list",
       "continue_reading": "Continue reading",
       "detail_failed": "Could not load the series. Please try again later.",

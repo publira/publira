@@ -11,6 +11,8 @@ import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cache } from "react";
 
+import type { RestrictedAgeRating } from "./age-rating";
+import { withRestrictedAgeRating } from "./age-rating";
 import {
   apiClient,
   buildSessionHeaders,
@@ -35,6 +37,7 @@ export interface ReadingProgressEpisode {
 export interface RecentSeriesItem {
   episode: ReadingProgressEpisode;
   series: {
+    ageRating?: RestrictedAgeRating;
     eyeCatchImageVariants?: EyeCatchImageVariant[];
     publicId: string;
     title: string;
@@ -102,13 +105,16 @@ const mapRecentSeries = (item: RawRecentSeries): RecentSeriesItem | null => {
   }
   return {
     episode,
-    series: {
-      eyeCatchImageVariants: toEyeCatchImageVariants(
-        item.series?.eyeCatchImageVariants
-      ),
-      publicId: seriesPublicId,
-      title: item.series?.title ?? "",
-    },
+    series: withRestrictedAgeRating(
+      {
+        eyeCatchImageVariants: toEyeCatchImageVariants(
+          item.series?.eyeCatchImageVariants
+        ),
+        publicId: seriesPublicId,
+        title: item.series?.title ?? "",
+      },
+      item.series?.ageRating
+    ),
   };
 };
 

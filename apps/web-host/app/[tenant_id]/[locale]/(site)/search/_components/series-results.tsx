@@ -14,6 +14,11 @@ import { formatList } from "@publira/utils";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
+import {
+  AgeRatedHiddenNotice,
+  AgeRatedVisibility,
+} from "#components/age-rated-visibility";
+import { AgeRatingBadge } from "#components/age-rating-badge";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import {
   ListPagination,
@@ -198,33 +203,41 @@ export const SeriesResults = async ({
 
   return (
     <div className="grid gap-8">
+      <AgeRatedHiddenNotice ratings={series.map((item) => item.ageRating)} />
       <ul className="divide-y divide-border border-t border-border">
         {series.map((item) => (
-          <li key={item.publicId}>
-            <LocaleLink
-              className="group flex items-center gap-4 py-3"
-              href={`/series/${item.publicId}`}
-            >
-              <EyeCatchFrame
-                // The title is beside it in the row, so repeating it here
-                // would read every result out twice.
-                alt=""
-                className="size-14 shrink-0 rounded-control"
-                sizes="56px"
-                variants={item.eyeCatchImageVariants}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-serif leading-tight underline-offset-4 group-hover:underline">
-                  {item.title}
-                </span>
-                {item.creatorNames.length > 0 && (
-                  <span className="mt-1 block truncate text-sm text-muted-foreground">
-                    {formatList(item.creatorNames, { locale })}
+          <AgeRatedVisibility key={item.publicId} rating={item.ageRating}>
+            <li>
+              <LocaleLink
+                className="group flex items-center gap-4 py-3"
+                href={`/series/${item.publicId}`}
+              >
+                <EyeCatchFrame
+                  // The title is beside it in the row, so repeating it here
+                  // would read every result out twice.
+                  alt=""
+                  className="size-14 shrink-0 rounded-control"
+                  sizes="56px"
+                  variants={item.eyeCatchImageVariants}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-serif leading-tight underline-offset-4 group-hover:underline">
+                    {item.title}
                   </span>
-                )}
-              </span>
-            </LocaleLink>
-          </li>
+                  {item.creatorNames.length > 0 && (
+                    <span className="mt-1 block truncate text-sm text-muted-foreground">
+                      {formatList(item.creatorNames, { locale })}
+                    </span>
+                  )}
+                  {item.ageRating ? (
+                    <span className="mt-1 block">
+                      <AgeRatingBadge rating={item.ageRating} />
+                    </span>
+                  ) : null}
+                </span>
+              </LocaleLink>
+            </li>
+          </AgeRatedVisibility>
         ))}
       </ul>
 

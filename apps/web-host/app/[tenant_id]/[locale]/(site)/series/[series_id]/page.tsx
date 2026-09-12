@@ -16,6 +16,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { AgeRatingBadge } from "#components/age-rating-badge";
+import { AgeRatingGate } from "#components/age-rating-gate";
 import { CHIP, TAG_CHIP } from "#components/chip";
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
@@ -161,291 +163,303 @@ const SeriesDetailContent = async (
   const [firstEpisode] = episodes;
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
-      <ContentViewTracker kind="series" publicId={series.publicId} />
+    <AgeRatingGate
+      backHref="/"
+      backMessage="host.common.back_to_top"
+      rating={series.ageRating}
+      seriesTitle={series.title}
+    >
+      <main className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
+        <ContentViewTracker kind="series" publicId={series.publicId} />
 
-      <div className="grid gap-6 sm:grid-cols-[15rem_minmax(0,1fr)] sm:items-start sm:gap-8">
-        {/* The one image a series page is about, so it keeps its title as its
+        <div className="grid gap-6 sm:grid-cols-[15rem_minmax(0,1fr)] sm:items-start sm:gap-8">
+          {/* The one image a series page is about, so it keeps its title as its
             alt text: the cover is what a reader recognizes the work by. */}
-        <EyeCatchFrame
-          alt={series.title}
-          className="aspect-3/4 w-40 rounded-surface sm:w-full"
-          fetchPriority="high"
-          loading="eager"
-          preferredType="portrait"
-          sizes="(max-width: 640px) 160px, 240px"
-          variants={series.eyeCatchImageVariants}
-        >
-          <span className="line-clamp-6 font-serif text-sm leading-tight text-muted-foreground">
-            {series.title}
-          </span>
-        </EyeCatchFrame>
-
-        <div className="grid gap-5">
-          <div className="grid gap-2">
-            <h1 className="font-serif text-3xl leading-tight">
+          <EyeCatchFrame
+            alt={series.title}
+            className="aspect-3/4 w-40 rounded-surface sm:w-full"
+            fetchPriority="high"
+            loading="eager"
+            preferredType="portrait"
+            sizes="(max-width: 640px) 160px, 240px"
+            variants={series.eyeCatchImageVariants}
+          >
+            <span className="line-clamp-6 font-serif text-sm leading-tight text-muted-foreground">
               {series.title}
-            </h1>
-            {series.creatorNames.length > 0 && (
-              <p className="text-muted-foreground">
-                {formatList(series.creatorNames, { locale })}
-              </p>
-            )}
-            <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {series.labelName &&
-                (series.labelPublicId ? (
-                  <LocaleLink
-                    className="text-primary underline underline-offset-4"
-                    href={`/labels/${series.labelPublicId}`}
-                  >
-                    {series.labelName}
-                  </LocaleLink>
-                ) : (
-                  <span>{series.labelName}</span>
-                ))}
-              {series.status && (
-                <Badge tone={SERIES_STATUS_TONES[series.status]}>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                    <SeriesStatusText status={series.status} />
-                  </Suspense>
-                </Badge>
+            </span>
+          </EyeCatchFrame>
+
+          <div className="grid gap-5">
+            <div className="grid gap-2">
+              <h1 className="font-serif text-3xl leading-tight">
+                {series.title}
+              </h1>
+              {series.creatorNames.length > 0 && (
+                <p className="text-muted-foreground">
+                  {formatList(series.creatorNames, { locale })}
+                </p>
               )}
-              {series.scheduleWeekdays.length > 0 && (
-                <span>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                    <Message
-                      message="host.series.schedule"
-                      values={{
-                        // The days are named by `Intl` and joined the way the
-                        // reader's language joins a list, so the sentence the
-                        // catalog holds is the wording around them and nothing
-                        // else.
-                        weekdays: formatList(
-                          series.scheduleWeekdays.map((weekday) =>
-                            formatWeekdayName(weekday, { locale })
+              <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {series.labelName &&
+                  (series.labelPublicId ? (
+                    <LocaleLink
+                      className="text-primary underline underline-offset-4"
+                      href={`/labels/${series.labelPublicId}`}
+                    >
+                      {series.labelName}
+                    </LocaleLink>
+                  ) : (
+                    <span>{series.labelName}</span>
+                  ))}
+                {series.ageRating ? (
+                  <AgeRatingBadge rating={series.ageRating} />
+                ) : null}
+                {series.status && (
+                  <Badge tone={SERIES_STATUS_TONES[series.status]}>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                      <SeriesStatusText status={series.status} />
+                    </Suspense>
+                  </Badge>
+                )}
+                {series.scheduleWeekdays.length > 0 && (
+                  <span>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                      <Message
+                        message="host.series.schedule"
+                        values={{
+                          // The days are named by `Intl` and joined the way the
+                          // reader's language joins a list, so the sentence the
+                          // catalog holds is the wording around them and nothing
+                          // else.
+                          weekdays: formatList(
+                            series.scheduleWeekdays.map((weekday) =>
+                              formatWeekdayName(weekday, { locale })
+                            ),
+                            { locale }
                           ),
-                          { locale }
-                        ),
-                      }}
+                        }}
+                      />
+                    </Suspense>
+                  </span>
+                )}
+                <span className="tabular-nums">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message
+                      message="host.series.episode_count"
+                      values={{ count: episodes.length }}
                     />
                   </Suspense>
                 </span>
-              )}
-              <span className="tabular-nums">
-                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                  <Message
-                    message="host.series.episode_count"
-                    values={{ count: episodes.length }}
-                  />
-                </Suspense>
-              </span>
-            </p>
-          </div>
+              </p>
+            </div>
 
-          {/* Where a reader goes next when this work is not the one: the
+            {/* Where a reader goes next when this work is not the one: the
               tenant's own genres first, then the words an editor wrote on the
               series itself. Both are links out of the page rather than labels,
               so the row is a list. */}
-          {(series.genres.length > 0 || series.tags.length > 0) && (
-            <ul className="flex flex-wrap gap-2">
-              {series.genres.map((genre) => (
-                <li key={genre.publicId}>
-                  <LocaleLink
-                    className={CHIP}
-                    href={`/genres/${genre.publicId}`}
-                  >
-                    {genre.name}
-                  </LocaleLink>
-                </li>
-              ))}
-              {series.tags.map((tag) => (
-                <li key={tag.slug}>
-                  <LocaleLink className={TAG_CHIP} href={`/tags/${tag.slug}`}>
-                    {tag.name}
-                  </LocaleLink>
-                </li>
-              ))}
-            </ul>
-          )}
+            {(series.genres.length > 0 || series.tags.length > 0) && (
+              <ul className="flex flex-wrap gap-2">
+                {series.genres.map((genre) => (
+                  <li key={genre.publicId}>
+                    <LocaleLink
+                      className={CHIP}
+                      href={`/genres/${genre.publicId}`}
+                    >
+                      {genre.name}
+                    </LocaleLink>
+                  </li>
+                ))}
+                {series.tags.map((tag) => (
+                  <li key={tag.slug}>
+                    <LocaleLink className={TAG_CHIP} href={`/tags/${tag.slug}`}>
+                      {tag.name}
+                    </LocaleLink>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-          {series.synopsis && <Prose locale={locale}>{series.synopsis}</Prose>}
+            {series.synopsis && (
+              <Prose locale={locale}>{series.synopsis}</Prose>
+            )}
 
-          <div className="flex flex-wrap items-center gap-3">
-            {firstEpisode && (
-              <SectionErrorBoundary
-                title={
-                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                    <Message message="host.series.progress_error" />
-                  </Suspense>
-                }
-              >
-                <Suspense
-                  fallback={
-                    <ReadingActionLink
-                      episodePublicId={firstEpisode.publicId}
-                      isContinuation={false}
-                      seriesPublicId={series.publicId}
-                    />
+            <div className="flex flex-wrap items-center gap-3">
+              {firstEpisode && (
+                <SectionErrorBoundary
+                  title={
+                    <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                      <Message message="host.series.progress_error" />
+                    </Suspense>
                   }
                 >
-                  <SeriesReadingAction
-                    episodes={episodes}
-                    seriesPublicId={series.publicId}
-                    tenantId={tenantId}
-                  />
-                </Suspense>
-              </SectionErrorBoundary>
-            )}
-            <SectionErrorBoundary
-              title={
-                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                  <Message message="host.follow.control_error" />
-                </Suspense>
-              }
-            >
-              <Suspense fallback={<FollowControlSkeleton />}>
-                <FollowControl
-                  publicId={series.publicId}
-                  returnTo={`/series/${series.publicId}`}
-                  targetKind="series"
-                  targetName={series.title}
-                  tenantId={tenantId}
-                />
-              </Suspense>
-            </SectionErrorBoundary>
-          </div>
-        </div>
-      </div>
-
-      <section className="grid gap-4">
-        <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
-          <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
-            <Message message="host.series.episodes_heading" />
-          </Suspense>
-        </h2>
-        {episodes.length === 0 ? (
-          <EmptyState>
-            <EmptyStateDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                <Message message="host.series.episodes_empty" />
-              </Suspense>
-            </EmptyStateDescription>
-          </EmptyState>
-        ) : (
-          <ol className="divide-y divide-border">
-            {episodes.map((episode) => (
-              <li key={episode.publicId}>
-                <LocaleLink
-                  className="group flex items-center gap-3 py-3 has-data-finished:text-muted-foreground"
-                  href={`/series/${series.publicId}/episodes/${episode.publicId}`}
-                >
-                  <Suspense fallback={<EpisodeReadMarkPlaceholder />}>
-                    <EpisodeReadMark
-                      episodePublicId={episode.publicId}
+                  <Suspense
+                    fallback={
+                      <ReadingActionLink
+                        episodePublicId={firstEpisode.publicId}
+                        isContinuation={false}
+                        seriesPublicId={series.publicId}
+                      />
+                    }
+                  >
+                    <SeriesReadingAction
                       episodes={episodes}
                       seriesPublicId={series.publicId}
                       tenantId={tenantId}
                     />
                   </Suspense>
-                  {/* Episodes carry no artwork of their own, so the row shows
+                </SectionErrorBoundary>
+              )}
+              <SectionErrorBoundary
+                title={
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="host.follow.control_error" />
+                  </Suspense>
+                }
+              >
+                <Suspense fallback={<FollowControlSkeleton />}>
+                  <FollowControl
+                    publicId={series.publicId}
+                    returnTo={`/series/${series.publicId}`}
+                    targetKind="series"
+                    targetName={series.title}
+                    tenantId={tenantId}
+                  />
+                </Suspense>
+              </SectionErrorBoundary>
+            </div>
+          </div>
+        </div>
+
+        <section className="grid gap-4">
+          <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
+            <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+              <Message message="host.series.episodes_heading" />
+            </Suspense>
+          </h2>
+          {episodes.length === 0 ? (
+            <EmptyState>
+              <EmptyStateDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                  <Message message="host.series.episodes_empty" />
+                </Suspense>
+              </EmptyStateDescription>
+            </EmptyState>
+          ) : (
+            <ol className="divide-y divide-border">
+              {episodes.map((episode) => (
+                <li key={episode.publicId}>
+                  <LocaleLink
+                    className="group flex items-center gap-3 py-3 has-data-finished:text-muted-foreground"
+                    href={`/series/${series.publicId}/episodes/${episode.publicId}`}
+                  >
+                    <Suspense fallback={<EpisodeReadMarkPlaceholder />}>
+                      <EpisodeReadMark
+                        episodePublicId={episode.publicId}
+                        episodes={episodes}
+                        seriesPublicId={series.publicId}
+                        tenantId={tenantId}
+                      />
+                    </Suspense>
+                    {/* Episodes carry no artwork of their own, so the row shows
                       the work's: the picture says which series the row is
                       from, and the title beside it says which episode. */}
-                  <EyeCatchFrame
-                    alt=""
-                    className="aspect-16/9 w-24 shrink-0 rounded-control"
-                    preferredType="landscape"
-                    sizes="96px"
-                    variants={series.eyeCatchImageVariants}
-                  />
-                  <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
-                    <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                      <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-10" />}
-                        >
-                          <Message
-                            message="host.common.episode_number"
-                            values={{ number: episode.orderIndex }}
-                          />
-                        </Suspense>
-                      </span>
-                      {/* Wrapped rather than truncated: the title is what a
+                    <EyeCatchFrame
+                      alt=""
+                      className="aspect-16/9 w-24 shrink-0 rounded-control"
+                      preferredType="landscape"
+                      sizes="96px"
+                      variants={series.eyeCatchImageVariants}
+                    />
+                    <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
+                      <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                        <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-10" />}
+                          >
+                            <Message
+                              message="host.common.episode_number"
+                              values={{ number: episode.orderIndex }}
+                            />
+                          </Suspense>
+                        </span>
+                        {/* Wrapped rather than truncated: the title is what a
                           reader picks an episode by, and on a phone the row
                           leaves it too little width to clip it there. */}
-                      <span className="line-clamp-2 underline-offset-4 group-hover:underline">
-                        {episode.title}
-                      </span>
-                    </span>
-                    <span className="mt-1 flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:mt-0 sm:w-56 sm:shrink-0">
-                      <span className="flex items-baseline gap-3">
-                        <span className="tabular-nums">
-                          {episode.price > 0 ? (
-                            `¥${episode.price.toLocaleString(toIntlLocale(locale))}`
-                          ) : (
-                            <Suspense
-                              fallback={<SkeletonLine className="h-4 w-8" />}
-                            >
-                              <Message message="host.common.free" />
-                            </Suspense>
-                          )}
+                        <span className="line-clamp-2 underline-offset-4 group-hover:underline">
+                          {episode.title}
                         </span>
-                        <Suspense fallback={null}>
-                          <EpisodeReadMarker
-                            episodePublicId={episode.publicId}
-                            seriesPublicId={series.publicId}
-                            tenantId={tenantId}
-                          />
-                        </Suspense>
                       </span>
-                      <span className="shrink-0 tabular-nums">
-                        {formatDate(episode.publishedAt, {
-                          fallback: "",
-                          locale,
-                          timeZone,
-                        })}
+                      <span className="mt-1 flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:mt-0 sm:w-56 sm:shrink-0">
+                        <span className="flex items-baseline gap-3">
+                          <span className="tabular-nums">
+                            {episode.price > 0 ? (
+                              `¥${episode.price.toLocaleString(toIntlLocale(locale))}`
+                            ) : (
+                              <Suspense
+                                fallback={<SkeletonLine className="h-4 w-8" />}
+                              >
+                                <Message message="host.common.free" />
+                              </Suspense>
+                            )}
+                          </span>
+                          <Suspense fallback={null}>
+                            <EpisodeReadMarker
+                              episodePublicId={episode.publicId}
+                              seriesPublicId={series.publicId}
+                              tenantId={tenantId}
+                            />
+                          </Suspense>
+                        </span>
+                        <span className="shrink-0 tabular-nums">
+                          {formatDate(episode.publishedAt, {
+                            fallback: "",
+                            locale,
+                            timeZone,
+                          })}
+                        </span>
                       </span>
                     </span>
-                  </span>
-                </LocaleLink>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+                  </LocaleLink>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
 
-      {/* The section renders its own heading, because a read that fails takes
+        {/* The section renders its own heading, because a read that fails takes
           the whole thing with it rather than leaving a heading over nothing.
           The boundary is still here for a throw, which is a defect rather than
           the unreachable API the section answers by disappearing. */}
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="host.related.list_error" />
-          </Suspense>
-        }
-      >
-        <Suspense
-          fallback={<RelatedSeriesSkeleton count={RELATED_SERIES_COUNT} />}
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.related.list_error" />
+            </Suspense>
+          }
         >
-          <RelatedSeries
-            limit={RELATED_SERIES_COUNT}
-            seriesPublicId={series.publicId}
-            tenantId={tenantId}
-          />
-        </Suspense>
-      </SectionErrorBoundary>
+          <Suspense
+            fallback={<RelatedSeriesSkeleton count={RELATED_SERIES_COUNT} />}
+          >
+            <RelatedSeries
+              limit={RELATED_SERIES_COUNT}
+              seriesPublicId={series.publicId}
+              tenantId={tenantId}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
 
-      <p>
-        <LocaleLink
-          className="text-sm text-primary underline underline-offset-4"
-          href="/series"
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <Message message="host.series.back_to_list" />
-          </Suspense>
-        </LocaleLink>
-      </p>
-    </main>
+        <p>
+          <LocaleLink
+            className="text-sm text-primary underline underline-offset-4"
+            href="/series"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="host.series.back_to_list" />
+            </Suspense>
+          </LocaleLink>
+        </p>
+      </main>
+    </AgeRatingGate>
   );
 };
 

@@ -1872,6 +1872,8 @@
       "series_pagination_aria": "관련 시리즈 페이지 이동"
     },
     "common": {
+      "age_rating_r15": "R15",
+      "age_rating_r18": "R18",
       "back_to_top": "홈으로 돌아가기",
       "cancel": "취소",
       "episode_number": "{$number}화",
@@ -2168,6 +2170,7 @@
       "list_failed": "관련 작품을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
     },
     "search": {
+      "age_rated_hidden": "연령을 확인할 때까지 일부 검색 결과는 표시되지 않습니다.",
       "authors_error": "작가 검색 결과를 표시할 수 없습니다",
       "authors_failed": "작가 검색 결과를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "authors_first_page": "작가 검색 결과의 첫 페이지로 이동",
@@ -2197,6 +2200,14 @@
       "title": "검색"
     },
     "series": {
+      "age_gate": {
+        "confirm_r15": "15세 이상입니다",
+        "confirm_r18": "18세 이상입니다",
+        "r15_description": "15세 이상임을 확인하면 이 작품을 볼 수 있습니다.",
+        "r15_title": "“{$title}”은(는) R15 등급입니다",
+        "r18_description": "18세 이상임을 확인하면 이 작품을 볼 수 있습니다.",
+        "r18_title": "“{$title}”은(는) R18 등급입니다"
+      },
       "back_to_list": "← 시리즈 목록으로 돌아가기",
       "continue_reading": "이어 읽기",
       "detail_failed": "시리즈를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",

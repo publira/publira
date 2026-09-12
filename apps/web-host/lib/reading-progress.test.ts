@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { SeriesAgeRating } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getMySeriesProgress, listMyRecentSeries } from "./reading-progress";
@@ -78,6 +79,21 @@ describe("listMyRecentSeries", () => {
       { limit: 6, tenant: { tenantId: TENANT_ID }, token: "" },
       { Authorization: "Bearer session-token" }
     );
+  });
+
+  it("carries the age rating so the home row can hide a rated series", async () => {
+    mockListMyRecentSeries.mockResolvedValue({
+      series: [
+        {
+          episode,
+          series: { ...series, ageRating: SeriesAgeRating.R18 },
+        },
+      ],
+    });
+
+    const result = await listMyRecentSeries(TENANT_ID, { locale: "en" });
+
+    expect(result.ok && result.series[0]?.series.ageRating).toBe("r18");
   });
 
   it("drops an entry the offer cannot be built from", async () => {
