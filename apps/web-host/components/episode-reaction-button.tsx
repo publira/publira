@@ -4,17 +4,17 @@ import { formatMessage, toIntlLocale } from "@publira/i18n";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { startTransition, useActionState, useOptimistic, useRef } from "react";
 
+import type { RateEpisodeActionState } from "#lib/episode-rating-actions";
+import { rateEpisodeAction } from "#lib/episode-rating-actions";
 import type {
   EpisodeReactionMode,
   EpisodeReactionState,
-} from "#lib/episode-rating";
+} from "#lib/episode-rating-state";
 import {
   applyReactionPress,
   MAX_EPISODE_REACTION_SCORE,
   reactionFillRatio,
-} from "#lib/episode-rating";
-import type { RateEpisodeActionState } from "#lib/episode-rating-actions";
-import { rateEpisodeAction } from "#lib/episode-rating-actions";
+} from "#lib/episode-rating-state";
 
 import type { EpisodeReactionSize } from "./episode-reaction";
 import {
