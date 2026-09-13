@@ -61,6 +61,7 @@ func TestIsPublicAddress(t *testing.T) {
 		{address: "8.8.8.8", public: true},
 		{address: "127.0.0.1"},
 		{address: "10.0.0.1"},
+		{address: "100.100.100.200"},
 		{address: "169.254.0.1"},
 		{address: "::1"},
 		{address: "fc00::1"},

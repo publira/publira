@@ -10,12 +10,15 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 )
+
+var sharedAddressSpace = netip.MustParsePrefix("100.64.0.0/10")
 
 // ErrEndpointGone reports that a Web Push service has permanently removed a
 // subscription endpoint.
@@ -120,7 +123,8 @@ func dialPublicAddress(ctx context.Context, network, address string) (net.Conn, 
 }
 
 func isPublicAddress(address net.IP) bool {
-	return !address.IsLoopback() && !address.IsPrivate() && !address.IsLinkLocalUnicast() && !address.IsLinkLocalMulticast() && !address.IsMulticast() && !address.IsUnspecified()
+	parsed, ok := netip.AddrFromSlice(address)
+	return ok && address.IsGlobalUnicast() && !address.IsPrivate() && !address.IsLinkLocalUnicast() && !sharedAddressSpace.Contains(parsed.Unmap())
 }
 
 func validateVAPIDKeyPair(publicKey, privateKey string) error {
