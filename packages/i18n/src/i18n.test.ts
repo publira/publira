@@ -9,6 +9,7 @@ import koCatalog from "../../../locales/ko.json" with { type: "json" };
 import zhHansCatalog from "../../../locales/zh-Hans.json" with { type: "json" };
 import zhHantCatalog from "../../../locales/zh-Hant.json" with { type: "json" };
 import {
+  bindMessages,
   formatMessage,
   getLocales,
   getMessage,
@@ -447,6 +448,47 @@ describe("getMessage", () => {
       vi.stubEnv("NODE_ENV", "production");
       expect(getMessage(jaFixture, "missing")).toBe("missing");
       expect(getMessage(jaFixture, "nav.missing")).toBe("nav.missing");
+    });
+  });
+});
+
+describe("bindMessages", () => {
+  it("resolves a key against the bound catalog", () => {
+    const t = bindMessages(jaFixture);
+
+    expect(t("nav.home")).toBe("ホーム");
+  });
+
+  it("substitutes values the same way getMessage does", () => {
+    const t = bindMessages(enFixture);
+
+    expect(t("greeting", { name: "Ada" })).toBe("Hello, Ada");
+  });
+
+  it("binds one locale per accessor", () => {
+    expect(bindMessages(jaFixture)("nav.home")).toBe("ホーム");
+    expect(bindMessages(enFixture)("nav.home")).toBe("Home");
+  });
+
+  describe("unknown keys", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("throws outside production", () => {
+      vi.stubEnv("NODE_ENV", "development");
+      const t = bindMessages(jaFixture) as (key: string) => string;
+
+      expect(() => t("nav.missing")).toThrow(
+        "Unknown message key: nav.missing"
+      );
+    });
+
+    it("returns the key in production", () => {
+      vi.stubEnv("NODE_ENV", "production");
+      const t = bindMessages(jaFixture) as (key: string) => string;
+
+      expect(t("nav.missing")).toBe("nav.missing");
     });
   });
 });

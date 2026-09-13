@@ -1,6 +1,6 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
 import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
 
@@ -57,7 +57,7 @@ export const ClientMessage = ({
   message: HostMessageKey;
   values?: MessageValues;
 }) => {
-  const messages = useHostMessages();
+  const t = bindMessages(useHostMessages());
 
-  return getMessage(messages, message, values);
+  return t(message, values);
 };

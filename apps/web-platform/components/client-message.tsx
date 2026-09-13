@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  getMessage,
+  bindMessages,
   LOCALE_COOKIE_NAME,
   negotiateInitialLocale,
   parseLocale,
@@ -111,7 +111,7 @@ export const ClientMessage = ({
   message: PlatformMessageKey;
   values?: MessageValues;
 }) => {
-  const messages = useClientMessages();
+  const t = bindMessages(useClientMessages());
 
-  return getMessage(messages, message, values);
+  return t(message, values);
 };

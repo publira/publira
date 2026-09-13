@@ -30,7 +30,7 @@ In-app links carry the prefix through `<LocaleLink>` in `components/locale-link.
 
 ### Screen copy
 
-Reader-facing copy comes from `host.*` in the repo-root [`locales/{locale}.json`](../../locales/README.md). `loadHostMessages(locale)` in `lib/messages.ts` loads the catalog, `<Message>` in `components/message.tsx` renders one string on the server, and `<ClientMessage>` in `components/client-message.tsx` renders one in the browser. `getMessage()` is called directly where the value has to be a string — `aria-label`, `placeholder`, and `generateMetadata`'s `title`.
+Reader-facing copy comes from `host.*` in the repo-root [`locales/{locale}.json`](../../locales/README.md). `loadHostMessages(locale)` in `lib/messages.ts` loads the catalog, `<Message>` in `components/message.tsx` renders one string on the server, and `<ClientMessage>` in `components/client-message.tsx` renders one in the browser. A value that has to be a string — `aria-label`, `placeholder`, `generateMetadata`'s `title` — comes from an accessor bound to the locale rather than from the catalog: `getMessages()` in `lib/get-messages.ts` resolves the request's locale and answers one, and `getMessagesFor(locale)` in `lib/messages.ts` answers the same for a caller that already holds a locale.
 
 Series titles, synopses, episode bodies, and the contents of a published page are written by the tenant and are not translated. They stay as written whatever the locale. The stand-in label for a tenant with no name set comes from `getTenantSiteLabel(tenantId, locale)` in `lib/tenant.ts`.
 

@@ -35,6 +35,8 @@ Nothing here reads request state. `cookies()`, `headers()`, and `next/root-param
 | Export | What it is |
 | --- | --- |
 | `getMessage(catalog, key, values?)` | The string at a dotted key, with `{$name}` substituted from `values` |
+| `bindMessages(catalog)` | The same lookup with the catalog closed over: `(key, values?) => string`. What an app's `getMessages()` answers with |
+| `MessageAccessor<T>` | The type of that bound accessor. Its key parameter is `MessageKey<T>` alone, so an unknown key is a type error as well as a runtime one |
 | `formatMessage(template, values?)` | The same substitution against a template the caller already holds |
 | `MessageKey<T>` | The dotted key of every string leaf of a catalog, for autocomplete and typed wrappers |
 | `MessageTree` / `MessageValues` / `CatalogModule` / `ExactCatalog` / `LocaleCatalogImporters` | The catalog shapes. `ExactCatalog` is what rejects a locale file with a missing or extra key |
@@ -70,13 +72,15 @@ export const loadHostMessages = (locale: Locale): Promise<HostMessages> =>
 ```
 
 ```tsx
-import { getMessage } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
 
-const messages = await loadHostMessages(locale);
+const t = bindMessages(await loadHostMessages(locale));
 
-<h1>{getMessage(messages, "host.series.list_title")}</h1>;
-<p>{getMessage(messages, "host.series.list_description", { site })}</p>;
+<h1>{t("host.series.list_title")}</h1>;
+<p>{t("host.series.list_description", { site })}</p>;
 ```
+
+Apps do not bind a catalog themselves. Each one exports a `getMessages()` that resolves the request's locale and answers the bound accessor, so a Server Component writes `const t = await getMessages();` and nothing else.
 
 A `{$name}` placeholder is substituted as a string. Format a date or a number with `@publira/utils` first, against the tenant's time zone and the UI locale, and pass the result in.
 

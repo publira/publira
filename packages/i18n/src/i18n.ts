@@ -339,3 +339,37 @@ export const getMessage = <TCatalog extends MessageTree>(
 
   return formatMessage(message, values);
 };
+
+/**
+ * A catalog already bound to one locale: the string for `key`, with `{$name}`
+ * replaced from `values`.
+ *
+ * This is the shape an app's `getMessages()` answers with, so a caller that
+ * needs a plain string names the key and nothing else. The catalog is closed
+ * over rather than passed, which is what keeps a key from becoming an implicit
+ * attribute of whichever catalog the caller happened to load.
+ */
+export type MessageAccessor<TCatalog> = (
+  key: MessageKey<TCatalog>,
+  values?: MessageValues
+) => string;
+
+/**
+ * Bind `catalog` into a {@link MessageAccessor}.
+ *
+ * {@link getMessage} stays the primitive this is built on, and an unknown key
+ * behaves exactly as it does there — a throw outside production, the key itself
+ * in production — so binding changes where a key is written, not what happens
+ * to a wrong one. The accessor's parameter is `MessageKey<TCatalog>` alone,
+ * without the `string` escape hatch `getMessage` keeps for a runtime fallback,
+ * so a key the catalog does not carry is also a type error at the call site.
+ *
+ * Apps do not call this directly: each has a `getMessages()` that resolves the
+ * request's locale and answers the bound accessor.
+ */
+export const bindMessages =
+  <TCatalog extends MessageTree>(
+    catalog: TCatalog
+  ): MessageAccessor<TCatalog> =>
+  (key, values) =>
+    getMessage(catalog, key, values);
