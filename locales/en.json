@@ -2495,6 +2495,7 @@
       "episode_count": "{$count} episodes",
       "episodes_empty": "No episodes have been published yet.",
       "rating": "Rating: {$average} · {$count} readers",
+      "rating_single": "Rating: {$average} · {$count} reader",
       "episodes_heading": "Episodes",
       "load_failed": "Could not show the series. Try again.",
       "not_found": "Series not found ({$id})",
@@ -2520,6 +2521,7 @@
       "back_to_series": "Back to the series",
       "reaction": {
         "count": "{$count} readers reacted",
+        "count_single": "{$count} reader reacted",
         "failed": "Could not record the reaction. Try again.",
         "press": "React",
         "score": "React ({$score}/5)",

@@ -406,6 +406,9 @@ abstract class AppMessages {
   /// `mobile.series.rating`
   String seriesRating({required String average, required String count});
 
+  /// `mobile.series.rating_single`
+  String seriesRatingSingle({required String average, required String count});
+
   /// `mobile.series.saved_offline`
   String get seriesSavedOffline;
 
@@ -505,6 +508,9 @@ abstract class AppMessages {
 
   /// `mobile.viewer.reaction.count`
   String viewerReactionCount({required String count});
+
+  /// `mobile.viewer.reaction.count_single`
+  String viewerReactionCountSingle({required String count});
 
   /// `mobile.viewer.reaction.failed`
   String get viewerReactionFailed;
@@ -1070,6 +1076,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String seriesRatingSingle({required String average, required String count}) {
+    return '評価: $average・$count人';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '保存済み';
   }
@@ -1230,6 +1241,11 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String viewerReactionCount({required String count}) {
+    return '$count人がリアクションしました';
+  }
+
+  @override
+  String viewerReactionCountSingle({required String count}) {
     return '$count人がリアクションしました';
   }
 
@@ -1813,6 +1829,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String seriesRatingSingle({required String average, required String count}) {
+    return 'Rating: $average · $count reader';
+  }
+
+  @override
   String get seriesSavedOffline {
     return 'Saved on this device';
   }
@@ -1974,6 +1995,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String viewerReactionCount({required String count}) {
     return '$count readers reacted';
+  }
+
+  @override
+  String viewerReactionCountSingle({required String count}) {
+    return '$count reader reacted';
   }
 
   @override
@@ -2556,6 +2582,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String seriesRatingSingle({required String average, required String count}) {
+    return '평점: $average · $count명';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '이 기기에 저장됨';
   }
@@ -2716,6 +2747,11 @@ class _AppMessagesKo extends AppMessages {
 
   @override
   String viewerReactionCount({required String count}) {
+    return '$count명이 반응했습니다';
+  }
+
+  @override
+  String viewerReactionCountSingle({required String count}) {
     return '$count명이 반응했습니다';
   }
 
@@ -3299,6 +3335,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String seriesRatingSingle({required String average, required String count}) {
+    return '评分：$average · $count 位读者';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '已保存到此设备';
   }
@@ -3459,6 +3500,11 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String viewerReactionCount({required String count}) {
+    return '$count 位读者已反馈';
+  }
+
+  @override
+  String viewerReactionCountSingle({required String count}) {
     return '$count 位读者已反馈';
   }
 
@@ -4042,6 +4088,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String seriesRatingSingle({required String average, required String count}) {
+    return '評分：$average · $count 位讀者';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '已儲存到此裝置';
   }
@@ -4202,6 +4253,11 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String viewerReactionCount({required String count}) {
+    return '$count 位讀者已回應';
+  }
+
+  @override
+  String viewerReactionCountSingle({required String count}) {
     return '$count 位讀者已回應';
   }
 

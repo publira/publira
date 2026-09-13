@@ -215,6 +215,30 @@ void main() {
     },
   );
 
+  testWidgets('a series uses the singular rating count for one reader', (
+    tester,
+  ) async {
+    const rated = SeriesItem(
+      id: 'series-with-one-reaction',
+      title: 'Rated series',
+      description: '',
+      ratingAverage: 5,
+      ratingCount: 1,
+    );
+    catalog = FakeCatalogRepository(
+      series: [rated],
+      details: {rated.id: const SeriesDetail(series: rated, episodes: [])},
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(rated.id),
+    );
+
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('series-rating')));
+
+    expect(find.text('Rating: 5.0 · 1 reader'), findsOneWidget);
+  });
+
   testWidgets('confirming the rating opens the series and is remembered', (
     tester,
   ) async {

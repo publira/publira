@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -53,6 +55,9 @@ class FakeCatalogRepository implements CatalogRepository {
   CatalogFailure? readingPositionError;
   CatalogFailure? recentSeriesError;
   CatalogFailure? reactionError;
+
+  /// Held open by a test that switches readers while a reaction is loading.
+  Completer<EpisodeReaction?>? reactionGate;
 
   Map<String, EpisodeReaction> reactions;
 
@@ -150,6 +155,10 @@ class FakeCatalogRepository implements CatalogRepository {
 
   @override
   Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId) async {
+    final gate = reactionGate;
+    if (gate != null) {
+      return gate.future;
+    }
     final error = reactionError;
     if (error != null) {
       throw error;

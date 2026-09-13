@@ -28,6 +28,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
   var _submitting = false;
   var _accessToken = '';
   var _started = false;
+  var _requestGeneration = 0;
 
   @override
   void didChangeDependencies() {
@@ -38,6 +39,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
     }
     _started = true;
     _accessToken = accessToken;
+    _requestGeneration++;
     _reaction = null;
     _error = null;
     if (accessToken.isNotEmpty) {
@@ -45,29 +47,45 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant EpisodeReactionControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.episode.id == widget.episode.id) {
+      return;
+    }
+    _requestGeneration++;
+    _reaction = null;
+    _error = null;
+    if (_accessToken.isNotEmpty) {
+      _load();
+    }
+  }
+
   Future<void> _load() async {
+    final request = _request();
     setState(() => _loading = true);
     try {
       final reaction = await CatalogScope.of(
         context,
       ).getEpisodeReaction(widget.episode.id);
-      if (!mounted) {
+      if (!_isCurrent(request)) {
         return;
       }
       setState(() => _reaction = reaction);
     } catch (error) {
-      if (!mounted) {
+      if (!_isCurrent(request)) {
         return;
       }
       setState(() => _error = error);
     } finally {
-      if (mounted) {
+      if (_isCurrent(request)) {
         setState(() => _loading = false);
       }
     }
   }
 
   Future<void> _react() async {
+    final request = _request();
     setState(() {
       _submitting = true;
       _error = null;
@@ -76,21 +94,33 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
       final reaction = await CatalogScope.of(
         context,
       ).reactToEpisode(widget.episode.id);
-      if (!mounted) {
+      if (!_isCurrent(request)) {
         return;
       }
       setState(() => _reaction = reaction);
     } catch (error) {
-      if (!mounted) {
+      if (!_isCurrent(request)) {
         return;
       }
       setState(() => _error = error);
     } finally {
-      if (mounted) {
+      if (_isCurrent(request)) {
         setState(() => _submitting = false);
       }
     }
   }
+
+  _ReactionRequest _request() => _ReactionRequest(
+    generation: _requestGeneration,
+    accessToken: _accessToken,
+    episodeId: widget.episode.id,
+  );
+
+  bool _isCurrent(_ReactionRequest request) =>
+      mounted &&
+      request.generation == _requestGeneration &&
+      request.accessToken == _accessToken &&
+      request.episodeId == widget.episode.id;
 
   @override
   Widget build(BuildContext context) {
@@ -136,9 +166,13 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
         const SizedBox(height: 8),
         Text(
           key: const ValueKey('episode-reaction-count'),
-          messages.viewerReactionCount(
-            count: messages.formatInteger(ratingCount),
-          ),
+          ratingCount == 1
+              ? messages.viewerReactionCountSingle(
+                  count: messages.formatInteger(ratingCount),
+                )
+              : messages.viewerReactionCount(
+                  count: messages.formatInteger(ratingCount),
+                ),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),
@@ -154,4 +188,16 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
       ],
     );
   }
+}
+
+class _ReactionRequest {
+  const _ReactionRequest({
+    required this.generation,
+    required this.accessToken,
+    required this.episodeId,
+  });
+
+  final int generation;
+  final String accessToken;
+  final String episodeId;
 }

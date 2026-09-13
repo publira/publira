@@ -2494,6 +2494,7 @@
       "age_rating_r18": "R18",
       "episode_count": "{$count} 章",
       "rating": "评分：{$average} · {$count} 位读者",
+      "rating_single": "评分：{$average} · {$count} 位读者",
       "episodes_empty": "还没有发布任何章节。",
       "episodes_heading": "章节",
       "load_failed": "无法显示该系列。",
@@ -2520,6 +2521,7 @@
       "back_to_series": "返回系列",
       "reaction": {
         "count": "{$count} 位读者已反馈",
+        "count_single": "{$count} 位读者已反馈",
         "failed": "无法记录反馈。请重试。",
         "press": "反馈",
         "score": "反馈 ({$score}/5)",

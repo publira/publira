@@ -2494,6 +2494,7 @@
       "age_rating_r18": "R18",
       "episode_count": "{$count}화",
       "rating": "평점: {$average} · {$count}명",
+      "rating_single": "평점: {$average} · {$count}명",
       "episodes_empty": "아직 공개된 에피소드가 없습니다",
       "episodes_heading": "에피소드",
       "load_failed": "시리즈를 표시할 수 없습니다",
@@ -2520,6 +2521,7 @@
       "back_to_series": "시리즈로 돌아가기",
       "reaction": {
         "count": "{$count}명이 반응했습니다",
+        "count_single": "{$count}명이 반응했습니다",
         "failed": "반응을 기록하지 못했습니다. 다시 시도해 주세요.",
         "press": "반응하기",
         "score": "반응하기 ({$score}/5)",

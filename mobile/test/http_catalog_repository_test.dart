@@ -50,6 +50,26 @@ void main() {
     expect(items.first.labelName, 'Seed Label 01');
   });
 
+  test(
+    'listSeries rejects an aggregate rating above the score ceiling',
+    () async {
+      server.series = [
+        {...ConnectFixtureServer.populatedSeries().first, 'ratingAverage': 6},
+      ];
+
+      expect(
+        catalog.listSeries,
+        throwsA(
+          isA<CatalogFailure>().having(
+            (error) => error.kind,
+            'kind',
+            CatalogFailureKind.unexpected,
+          ),
+        ),
+      );
+    },
+  );
+
   test('listSeries asks for the catalog by title', () async {
     await catalog.listSeries();
 

@@ -686,10 +686,10 @@ class HttpCatalogRepository implements CatalogRepository {
     if (value == null) {
       return 0;
     }
-    if (value is num && value.isFinite && value >= 0) {
+    if (value is num && value.isFinite && value >= 0 && value <= 5) {
       return value.toDouble();
     }
-    _invalidPayload('$path.$key must be a non-negative number');
+    _invalidPayload('$path.$key must be a number between 0 and 5');
   }
 
   bool _readBool(Map<String, Object?> json, String key, String path) {

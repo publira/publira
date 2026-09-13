@@ -2494,6 +2494,7 @@
       "age_rating_r18": "R18",
       "episode_count": "{$count} 話",
       "rating": "評価: {$average}・{$count}人",
+      "rating_single": "評価: {$average}・{$count}人",
       "episodes_empty": "公開中のエピソードはありません",
       "episodes_heading": "エピソード一覧",
       "load_failed": "ページを表示できませんでした。もう一度お試しください。",
@@ -2520,6 +2521,7 @@
       "back_to_series": "シリーズへ戻る",
       "reaction": {
         "count": "{$count}人がリアクションしました",
+        "count_single": "{$count}人がリアクションしました",
         "failed": "リアクションを記録できませんでした。もう一度お試しください。",
         "press": "リアクションする",
         "score": "リアクションする ({$score}/5)",

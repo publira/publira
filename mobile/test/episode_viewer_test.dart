@@ -1,15 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/l10n/localizations.dart';
 import 'package:publira/models/episode_comment.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
+import 'package:publira/viewer/episode_reaction_control.dart';
 import 'package:publira/viewer/reading_position.dart';
 
 import 'support/fake_auth.dart';
@@ -594,7 +601,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(catalog.reactions[episodeId]?.score, 5);
-    expect(find.text('1 readers reacted'), findsOneWidget);
+    expect(find.text('1 reader reacted'), findsOneWidget);
     expect(
       tester
           .widget<FilledButton>(
@@ -603,6 +610,55 @@ void main() {
           .onPressed,
       isNull,
     );
+  });
+
+  testWidgets('a reaction response from a signed-out reader is discarded', (
+    tester,
+  ) async {
+    final auth = fakeAuthController(session: fakeSession);
+    final reaction = Completer<EpisodeReaction?>();
+    catalog.reactionGate = reaction;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        supportedLocales: AppMessages.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        home: AuthScope(
+          controller: auth,
+          child: CatalogScope(
+            repository: catalog,
+            child: Scaffold(
+              body: EpisodeReactionControl(
+                episode: fixtureDetails()[seriesId]!.episodes.first,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('episode-reaction-press')),
+      findsOneWidget,
+    );
+
+    await auth.signOut();
+    expect(auth.isSignedIn, isFalse);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('episode-reaction-sign-in')),
+      findsOneWidget,
+    );
+    reaction.complete(
+      const EpisodeReaction(
+        score: 5,
+        ratingCount: 1,
+        allowsMultiplePresses: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('0 readers reacted'), findsOneWidget);
   });
 
   testWidgets('a tenant that takes no comments offers none at the end', (

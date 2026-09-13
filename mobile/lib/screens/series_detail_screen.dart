@@ -214,10 +214,15 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           const SizedBox(height: 8),
           Text(
             key: const ValueKey('series-rating'),
-            messages.seriesRating(
-              average: series.ratingAverage.toStringAsFixed(1),
-              count: messages.formatInteger(series.ratingCount),
-            ),
+            series.ratingCount == 1
+                ? messages.seriesRatingSingle(
+                    average: series.ratingAverage.toStringAsFixed(1),
+                    count: messages.formatInteger(series.ratingCount),
+                  )
+                : messages.seriesRating(
+                    average: series.ratingAverage.toStringAsFixed(1),
+                    count: messages.formatInteger(series.ratingCount),
+                  ),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
