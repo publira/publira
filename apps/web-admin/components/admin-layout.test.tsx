@@ -156,10 +156,10 @@ describe("AdminUser", () => {
 
 describe("AdminLocaleSwitcher", () => {
   it.each([
-    ["en", "Display language: English"],
-    ["ja", "表示言語: 日本語"],
+    ["en", "Display language"],
+    ["ja", "表示言語"],
   ] as const)(
-    "shows the current display locale on the header trigger in %s",
+    "names the display-language control in %s",
     async (locale, expected) => {
       vi.mocked(getLocale).mockResolvedValue(locale);
 

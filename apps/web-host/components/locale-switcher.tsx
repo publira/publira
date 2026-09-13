@@ -1,6 +1,7 @@
 "use client";
 
 import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { LanguageIcon } from "@publira/icons/language-icon";
 import { SiteLayoutMobileNavigationLink } from "@publira/layouts";
 import {
   Popover,
@@ -44,7 +45,7 @@ import { useLocale, useTenantDefaultLocale } from "./locale-provider";
 export const LocaleSwitcherSkeleton = () => (
   <div
     aria-hidden="true"
-    className="h-9 w-24 animate-pulse rounded-control bg-muted"
+    className="size-9 animate-pulse rounded-control bg-muted"
   />
 );
 
@@ -59,10 +60,10 @@ export const LocaleSwitcher = () => {
   return (
     <Popover>
       <PopoverTrigger
-        aria-label={`${label}: ${getLocaleLabel(currentLocale)}`}
-        className="inline-flex h-9 max-w-28 items-center rounded-control border border-input bg-card px-3 text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted"
+        aria-label={label}
+        className="inline-flex size-9 items-center justify-center rounded-control border border-input bg-card text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted"
       >
-        <span className="truncate">{getLocaleLabel(currentLocale)}</span>
+        <LanguageIcon aria-hidden="true" className="size-5" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-48" sideOffset={8}>
         <PopoverTitle className="px-2 py-1.5 text-sm font-medium text-foreground">

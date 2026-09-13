@@ -1,5 +1,6 @@
 "use client";
 
+import { LanguageIcon } from "@publira/icons/language-icon";
 import { cn } from "@publira/utils";
 import { createContext, useCallback, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
@@ -46,8 +47,8 @@ export interface LocaleSwitcherProps {
  * after that persistence Action succeeds.
  *
  * Composed rather than prop-driven, so each language name is written on the
- * button that offers it and the accessible name of the trigger is an ordinary
- * `aria-label`.
+ * button that offers it and the accessible name of the icon trigger is an
+ * ordinary `aria-label`.
  *
  * ```tsx
  * <LocaleSwitcher
@@ -55,9 +56,7 @@ export interface LocaleSwitcherProps {
  *   currentLocale={locale}
  *   fieldName="locale"
  * >
- *   <LocaleSwitcherTrigger aria-label="Language: English">
- *     English
- *   </LocaleSwitcherTrigger>
+ *   <LocaleSwitcherTrigger aria-label="Language" />
  *   <LocaleSwitcherContent>
  *     <LocaleSwitcherTitle>Language</LocaleSwitcherTitle>
  *     <LocaleSwitcherOptions aria-label="Language">
@@ -102,17 +101,15 @@ export const LocaleSwitcher = ({
 
 export const LocaleSwitcherTrigger = ({
   "aria-label": ariaLabel,
-  children,
 }: {
-  /** Names the control and the language it currently shows. */
+  /** Names the language control. */
   "aria-label": string;
-  children: ReactNode;
 }) => (
   <PopoverTrigger
     aria-label={ariaLabel}
-    className="inline-flex h-9 max-w-28 items-center rounded-control border border-input bg-card px-3 text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted"
+    className="inline-flex size-9 items-center justify-center rounded-control border border-input bg-card text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted"
   >
-    <span className="truncate">{children}</span>
+    <LanguageIcon aria-hidden="true" className="size-5" />
   </PopoverTrigger>
 );
 

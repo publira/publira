@@ -31,9 +31,7 @@ const Switcher = ({
   action: (formData: FormData) => Promise<void>;
 }) => (
   <LocaleSwitcher action={action} currentLocale="en" fieldName="locale">
-    <LocaleSwitcherTrigger aria-label="Language: English">
-      English
-    </LocaleSwitcherTrigger>
+    <LocaleSwitcherTrigger aria-label="Language" />
     <LocaleSwitcherContent>
       <LocaleSwitcherTitle>Language</LocaleSwitcherTitle>
       <LocaleSwitcherOptions aria-label="Language">
@@ -57,7 +55,7 @@ describe("LocaleSwitcher", () => {
     render(<Switcher action={vi.fn()} />);
 
     const trigger = screen.getByRole("button", {
-      name: "Language: English",
+      name: "Language",
     });
     fireEvent.click(trigger);
 
@@ -78,7 +76,7 @@ describe("LocaleSwitcher", () => {
     );
     render(<Switcher action={action} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    fireEvent.click(screen.getByRole("button", { name: "Language" }));
     fireEvent.click(screen.getByRole("button", { name: "日本語" }));
 
     await waitFor(() => {
@@ -92,7 +90,7 @@ describe("LocaleSwitcher", () => {
     render(<Switcher action={vi.fn()} />);
 
     const trigger = screen.getByRole("button", {
-      name: "Language: English",
+      name: "Language",
     });
     trigger.focus();
     fireEvent.click(trigger);

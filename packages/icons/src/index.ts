@@ -12,6 +12,7 @@ export { CopyIcon } from "./copy-icon";
 export { DashboardIcon } from "./dashboard-icon";
 export { HeartIcon } from "./heart-icon";
 export { ImageIcon } from "./image-icon";
+export { LanguageIcon } from "./language-icon";
 export { LogoutIcon } from "./logout-icon";
 export { MaximizeIcon } from "./maximize-icon";
 export { MegaphoneIcon } from "./megaphone-icon";
