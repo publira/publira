@@ -24,9 +24,7 @@ export const PlatformLocaleSwitcher = async () => {
       currentLocale={locale}
       fieldName={LOCALE_FIELD_NAME}
     >
-      <LocaleSwitcherTrigger aria-label={`${label}: ${getLocaleLabel(locale)}`}>
-        {getLocaleLabel(locale)}
-      </LocaleSwitcherTrigger>
+      <LocaleSwitcherTrigger aria-label={label} />
       <LocaleSwitcherContent>
         <LocaleSwitcherTitle>{label}</LocaleSwitcherTitle>
         <LocaleSwitcherOptions aria-label={label}>

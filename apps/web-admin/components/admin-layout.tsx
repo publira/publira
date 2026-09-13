@@ -183,7 +183,9 @@ export const AdminLayout = ({
             </ConsoleHeaderText>
           </ConsoleHeaderContext>
           <ConsoleHeaderActions>
-            <Suspense fallback={<Skeleton className="h-8 w-24 rounded-full" />}>
+            <Suspense
+              fallback={<Skeleton className="size-9 rounded-control" />}
+            >
               <AdminLocaleSwitcher tenantId={tenantId} />
             </Suspense>
             <NotificationBellErrorBoundary>

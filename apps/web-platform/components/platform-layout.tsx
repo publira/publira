@@ -250,7 +250,7 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
         </ConsoleHeaderContext>
         <ConsoleHeaderActions>
           <Suspense
-            fallback={<SkeletonLine className="h-8 w-24 rounded-full" />}
+            fallback={<SkeletonLine className="size-9 rounded-control" />}
           >
             <PlatformLocaleSwitcher />
           </Suspense>

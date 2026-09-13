@@ -24,24 +24,24 @@ export const LOCALE_CODE: Record<LocaleLabel, string> = {
 
 /**
  * Accessible name of the public site's header language control. It is the
- * control's own label followed by the current autonym, and the label itself is
- * translated, so the name to click depends on the language already on screen.
+ * control's own translated label, so the name to click depends on the
+ * language already on screen.
  */
 const HOST_SWITCHER_TRIGGER: Record<LocaleLabel, string> = {
-  English: "Language: English",
-  日本語: "表示言語: 日本語",
-  简体中文: "显示语言: 简体中文",
-  繁體中文: "顯示語言: 繁體中文",
-  한국어: "표시 언어: 한국어",
+  English: "Language",
+  日本語: "表示言語",
+  简体中文: "显示语言",
+  繁體中文: "顯示語言",
+  한국어: "표시 언어",
 };
 
 /** The same control in the two consoles, where that label is worded differently. */
 const CONSOLE_SWITCHER_TRIGGER: Record<LocaleLabel, string> = {
-  English: "Display language: English",
-  日本語: "表示言語: 日本語",
-  简体中文: "显示语言: 简体中文",
-  繁體中文: "顯示語言: 繁體中文",
-  한국어: "표시 언어: 한국어",
+  English: "Display language",
+  日本語: "表示言語",
+  简体中文: "显示语言",
+  繁體中文: "顯示語言",
+  한국어: "표시 언어",
 };
 
 /**

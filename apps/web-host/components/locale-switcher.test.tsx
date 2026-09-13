@@ -35,7 +35,7 @@ describe("LocaleSwitcher", () => {
     render(<LocaleSwitcher />);
 
     const trigger = screen.getByRole("button", {
-      name: "Language: English",
+      name: "Language",
     });
     trigger.focus();
     fireEvent.click(trigger);

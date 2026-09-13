@@ -116,10 +116,10 @@ describe("PlatformUser", () => {
 
 describe("PlatformLocaleSwitcher", () => {
   it.each([
-    ["en", "Display language: English"],
-    ["ja", "表示言語: 日本語"],
+    ["en", "Display language"],
+    ["ja", "表示言語"],
   ] as const)(
-    "names the current display language on the header trigger in locale=%s",
+    "names the display-language control in locale=%s",
     async (locale, expected) => {
       vi.mocked(getPlatformLocale).mockResolvedValue(locale);
 
