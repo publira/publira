@@ -427,6 +427,8 @@ const toSeriesTagItem = (tag: RawSeriesTag): SeriesTagItem[] => {
 };
 
 export interface SeriesDetail {
+  ratingAverage: number;
+  ratingCount: number;
   /** How this series publishes reader comments after its override is resolved. */
   commentMode: SeriesCommentMode;
   publicId: string;
@@ -1239,6 +1241,8 @@ export const getSeriesDetail = async (
             labelName: response.series.label?.name?.trim() ?? "",
             labelPublicId: response.series.label?.publicId?.trim() ?? "",
             publicId: response.series.publicId ?? "",
+            ratingAverage: response.series.ratingAverage,
+            ratingCount: Number(response.series.ratingCount),
             readingPeriodHours: response.series.readingPeriodHours ?? 0,
             scheduleWeekdays: toScheduleWeekdays(
               response.series.scheduleWeekdays

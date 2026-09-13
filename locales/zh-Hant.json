@@ -2277,7 +2277,13 @@
       "schedule": "{$weekdays}更新",
       "status_completed": "已完結",
       "status_hiatus": "休載中",
-      "status_ongoing": "連載中"
+      "status_ongoing": "連載中",
+      "rating": {
+        "public": "評分：{$average} · {$count}位讀者",
+        "own": "你的評分：{$average}",
+        "explanation": "對章節作出回應即可為本系列評分。",
+        "failed": "無法顯示你的評分"
+      }
     },
     "settings": {
       "cancel": "取消",
