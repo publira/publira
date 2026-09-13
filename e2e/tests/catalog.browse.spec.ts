@@ -197,6 +197,19 @@ test.describe("web-host catalog browsing", () => {
     const [secondPageHref] = secondPageHrefs;
     await seriesCards.first().click();
     await expect(page).toHaveURL(new RegExp(`${secondPageHref}$`, "u"));
+
+    // If the selected series is age-rated the gate renders before the h1.
+    // Wait for whichever appears first, then dismiss the gate when present.
+    await page.waitForSelector(
+      "h1, button:text-matches('I am (?:15|18) or older', 'u')",
+      { timeout: 15_000 }
+    );
+    const ageConfirmation = page.getByRole("button", {
+      name: /I am (?:15|18) or older/u,
+    });
+    if (await ageConfirmation.isVisible()) {
+      await ageConfirmation.click();
+    }
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
     await page.goBack();
