@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -64,6 +65,25 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 	}
 	if sender.sent[1].Data["notification_id"] != second.String() {
 		t.Fatalf("second message mirrors %q, want %s", sender.sent[1].Data["notification_id"], second)
+	}
+}
+
+func TestMemberPushNotificationSendsWebPushAndDeletesGoneEndpoint(t *testing.T) {
+	endpoint := "https://push.example.test/subscription"
+	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{{
+		NotificationID: uuid.New(), UserID: uuid.New(), Token: endpoint, Platform: "web",
+		Endpoint: sql.NullString{String: endpoint, Valid: true}, P256dh: sql.NullString{String: "p256dh", Valid: true}, Auth: sql.NullString{String: "auth", Valid: true},
+	}}}
+	sender := &stubWebPushSender{err: push.ErrEndpointGone}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{WebSender: sender}, queries)
+	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(sender.sent) != 1 || sender.sent[0].subscription.Endpoint != endpoint {
+		t.Fatalf("web messages = %+v, want one for %q", sender.sent, endpoint)
+	}
+	if len(queries.deleted) != 1 || queries.deleted[0] != endpoint {
+		t.Fatalf("deleted tokens = %v, want [%s]", queries.deleted, endpoint)
 	}
 }
 
@@ -234,6 +254,21 @@ func (s *stubPushDeviceQuerier) DeleteUserPushDeviceByToken(_ context.Context, t
 type stubPushSender struct {
 	sent []push.Message
 	errs map[string]error
+}
+
+type sentWebPush struct {
+	subscription push.WebPushSubscription
+	message      push.WebPushMessage
+}
+
+type stubWebPushSender struct {
+	sent []sentWebPush
+	err  error
+}
+
+func (s *stubWebPushSender) Send(_ context.Context, subscription push.WebPushSubscription, message push.WebPushMessage) error {
+	s.sent = append(s.sent, sentWebPush{subscription: subscription, message: message})
+	return s.err
 }
 
 func (s *stubPushSender) Send(_ context.Context, message push.Message) error {

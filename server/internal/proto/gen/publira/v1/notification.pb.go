@@ -30,6 +30,7 @@ const (
 	PushPlatform_PUSH_PLATFORM_UNSPECIFIED PushPlatform = 0
 	PushPlatform_PUSH_PLATFORM_ANDROID     PushPlatform = 1
 	PushPlatform_PUSH_PLATFORM_IOS         PushPlatform = 2
+	PushPlatform_PUSH_PLATFORM_WEB         PushPlatform = 3
 )
 
 // Enum value maps for PushPlatform.
@@ -38,11 +39,13 @@ var (
 		0: "PUSH_PLATFORM_UNSPECIFIED",
 		1: "PUSH_PLATFORM_ANDROID",
 		2: "PUSH_PLATFORM_IOS",
+		3: "PUSH_PLATFORM_WEB",
 	}
 	PushPlatform_value = map[string]int32{
 		"PUSH_PLATFORM_UNSPECIFIED": 0,
 		"PUSH_PLATFORM_ANDROID":     1,
 		"PUSH_PLATFORM_IOS":         2,
+		"PUSH_PLATFORM_WEB":         3,
 	}
 )
 
@@ -287,10 +290,15 @@ func (x *ListNotificationsResponse) GetNextToken() string {
 // identity, so registering one that another reader left behind moves it to the
 // caller rather than adding a second row.
 type RegisterPushDeviceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	Platform      PushPlatform           `protobuf:"varint,3,opt,name=platform,proto3,enum=publira.v1.PushPlatform" json:"platform,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token    string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	Platform PushPlatform           `protobuf:"varint,3,opt,name=platform,proto3,enum=publira.v1.PushPlatform" json:"platform,omitempty"`
+	// Web Push subscription fields. `endpoint` is also the token identity for
+	// web registrations, so unregistering by token unregisters by endpoint.
+	Endpoint      string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	P256Dh        string `protobuf:"bytes,5,opt,name=p256dh,proto3" json:"p256dh,omitempty"`
+	Auth          string `protobuf:"bytes,6,opt,name=auth,proto3" json:"auth,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -346,6 +354,27 @@ func (x *RegisterPushDeviceRequest) GetPlatform() PushPlatform {
 	return PushPlatform_PUSH_PLATFORM_UNSPECIFIED
 }
 
+func (x *RegisterPushDeviceRequest) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *RegisterPushDeviceRequest) GetP256Dh() string {
+	if x != nil {
+		return x.P256Dh
+	}
+	return ""
+}
+
+func (x *RegisterPushDeviceRequest) GetAuth() string {
+	if x != nil {
+		return x.Auth
+	}
+	return ""
+}
+
 type RegisterPushDeviceResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Registered    bool                   `protobuf:"varint,1,opt,name=registered,proto3" json:"registered,omitempty"`
@@ -393,9 +422,11 @@ func (x *RegisterPushDeviceResponse) GetRegistered() bool {
 // Signing out, and turning the account switch off, take the device back off
 // the delivery list of every notification the reader would have been sent.
 type UnregisterPushDeviceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token  string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	// Web Push registrations are identified by their subscription endpoint.
+	Endpoint      string `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -440,6 +471,13 @@ func (x *UnregisterPushDeviceRequest) GetTenant() *v1.TenantContext {
 func (x *UnregisterPushDeviceRequest) GetToken() string {
 	if x != nil {
 		return x.Token
+	}
+	return ""
+}
+
+func (x *UnregisterPushDeviceRequest) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
 	}
 	return ""
 }
@@ -782,18 +820,22 @@ const file_publira_v1_notification_proto_rawDesc = "" +
 	"\rnotifications\x18\x01 \x03(\v2\x1c.publira.v1.NotificationItemR\rnotifications\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xa0\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xe8\x01\n" +
 	"\x19RegisterPushDeviceRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x124\n" +
-	"\bplatform\x18\x03 \x01(\x0e2\x18.publira.v1.PushPlatformR\bplatform\"<\n" +
+	"\bplatform\x18\x03 \x01(\x0e2\x18.publira.v1.PushPlatformR\bplatform\x12\x1a\n" +
+	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12\x16\n" +
+	"\x06p256dh\x18\x05 \x01(\tR\x06p256dh\x12\x12\n" +
+	"\x04auth\x18\x06 \x01(\tR\x04auth\"<\n" +
 	"\x1aRegisterPushDeviceResponse\x12\x1e\n" +
 	"\n" +
 	"registered\x18\x01 \x01(\bR\n" +
-	"registered\"l\n" +
+	"registered\"\x88\x01\n" +
 	"\x1bUnregisterPushDeviceRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"B\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12\x1a\n" +
+	"\bendpoint\x18\x03 \x01(\tR\bendpoint\"B\n" +
 	"\x1cUnregisterPushDeviceResponse\x12\"\n" +
 	"\funregistered\x18\x01 \x01(\bR\funregistered\"Z\n" +
 	"\x1fCountUnreadNotificationsRequest\x127\n" +
@@ -808,11 +850,12 @@ const file_publira_v1_notification_proto_rawDesc = "" +
 	"!MarkAllNotificationsAsReadRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"G\n" +
 	"\"MarkAllNotificationsAsReadResponse\x12!\n" +
-	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount*_\n" +
+	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount*v\n" +
 	"\fPushPlatform\x12\x1d\n" +
 	"\x19PUSH_PLATFORM_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15PUSH_PLATFORM_ANDROID\x10\x01\x12\x15\n" +
-	"\x11PUSH_PLATFORM_IOS\x10\x022\xb8\x05\n" +
+	"\x11PUSH_PLATFORM_IOS\x10\x02\x12\x15\n" +
+	"\x11PUSH_PLATFORM_WEB\x10\x032\xb8\x05\n" +
 	"\x13NotificationService\x12b\n" +
 	"\x11ListNotifications\x12$.publira.v1.ListNotificationsRequest\x1a%.publira.v1.ListNotificationsResponse\"\x00\x12w\n" +
 	"\x18CountUnreadNotifications\x12+.publira.v1.CountUnreadNotificationsRequest\x1a,.publira.v1.CountUnreadNotificationsResponse\"\x00\x12q\n" +

@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // TestPublicHandlerExposesOnlyPublicRoutes asserts that NewHandler serves the
@@ -42,6 +43,16 @@ func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminLabelService/ListLabels", false)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminAuthService/GetMe", false)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminDashboardService/GetDashboard", false)
+}
+
+func TestNewHandlerRejectsInvalidWebPushVAPIDConfiguration(t *testing.T) {
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", "invalid")
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", "invalid")
+	t.Setenv("PUBLIRA_WEBPUSH_SUBJECT", "mailto:push@example.test")
+
+	if _, err := NewHandler(nil, nil, &testStorageProvider{}, nil, testutil.TokenManager()); err == nil {
+		t.Fatal("NewHandler error = nil, want invalid VAPID configuration rejection")
+	}
 }
 
 func newPublicRouteTestServer(t *testing.T) *httptest.Server {

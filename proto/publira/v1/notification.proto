@@ -39,6 +39,7 @@ enum PushPlatform {
   PUSH_PLATFORM_UNSPECIFIED = 0;
   PUSH_PLATFORM_ANDROID = 1;
   PUSH_PLATFORM_IOS = 2;
+  PUSH_PLATFORM_WEB = 3;
 }
 
 // A device registers the FCM token it holds right now. The token is the
@@ -48,6 +49,11 @@ message RegisterPushDeviceRequest {
   publira.types.v1.TenantContext tenant = 1;
   string token = 2;
   PushPlatform platform = 3;
+  // Web Push subscription fields. `endpoint` is also the token identity for
+  // web registrations, so unregistering by token unregisters by endpoint.
+  string endpoint = 4;
+  string p256dh = 5;
+  string auth = 6;
 }
 
 message RegisterPushDeviceResponse {
@@ -59,6 +65,8 @@ message RegisterPushDeviceResponse {
 message UnregisterPushDeviceRequest {
   publira.types.v1.TenantContext tenant = 1;
   string token = 2;
+  // Web Push registrations are identified by their subscription endpoint.
+  string endpoint = 3;
 }
 
 message UnregisterPushDeviceResponse {

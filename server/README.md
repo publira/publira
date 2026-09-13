@@ -200,6 +200,16 @@ With none of them set, the `member_push_notification` handler is not registered 
 
 A send reaches the devices it can. A run that reached none of them is retried as an outage; one that reached some completes, because a retry re-runs the whole send and FCM keeps no delivery record, so the devices that already took the message would take it again once per remaining attempt. The devices a partial run could not reach lose that alert and keep the `notifications` row behind it.
 
+## Web Push
+
+The public site registers browser subscriptions and the outbox worker delivers them with VAPID. Set all three values together; a partial or invalid key pair stops the worker at startup rather than claiming notifications it cannot send.
+
+- `PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY`
+- `PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY`
+- `PUBLIRA_WEBPUSH_SUBJECT` (a contact URI, normally `mailto:`)
+
+When unset, web registrations are refused and the tenant response carries no public VAPID key. A push service response of `410 Gone` removes the expired subscription.
+
 ## Distributed tracing (OpenTelemetry)
 
 Every process under `cmd/*` emits OpenTelemetry traces. **It is disabled by default**: unless `PUBLIRA_TRACING_ENABLED` is set, neither the TracerProvider nor the propagator is replaced, and the behavior is exactly what it was before the instrumentation was introduced (the processes start without any collection backend).

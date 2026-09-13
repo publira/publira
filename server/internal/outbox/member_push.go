@@ -60,13 +60,18 @@ type PushSender interface {
 	Send(ctx context.Context, message push.Message) error
 }
 
+type WebPushSender interface {
+	Send(ctx context.Context, subscription push.WebPushSubscription, message push.WebPushMessage) error
+}
+
 // PushHandlerConfig is what the worker resolves once at startup for the push
 // handler. A process with no Firebase credential registers no handler at all,
 // so Sender is never nil in a registered one.
 type PushHandlerConfig struct {
-	DB     *sql.DB
-	Sender PushSender
-	Logger *slog.Logger
+	DB        *sql.DB
+	Sender    PushSender
+	WebSender WebPushSender
+	Logger    *slog.Logger
 }
 
 // pushDeviceQuerier is the statement pair the handler runs, named so a test can
@@ -102,7 +107,7 @@ func NewMemberPushNotificationHandler(cfg PushHandlerConfig) Handler {
 
 func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQuerier) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
-		if cfg.Sender == nil {
+		if cfg.Sender == nil && cfg.WebSender == nil {
 			return errors.New("member push notification handler sender is not configured")
 		}
 
@@ -140,16 +145,28 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 		var failures []error
 		settled := 0
 		for _, device := range devices {
-			sendErr := cfg.Sender.Send(ctx, push.Message{
-				Token: device.Token,
-				Title: payload.SeriesTitle,
-				Body:  payload.EpisodeTitle,
-				Data:  memberPushData(device.NotificationID, notificationType, payload),
-			})
+			data := memberPushData(device.NotificationID, notificationType, payload)
+			var sendErr error
+			switch device.Platform {
+			case "android", "ios":
+				if cfg.Sender == nil {
+					sendErr = errors.New("FCM sender is not configured")
+				} else {
+					sendErr = cfg.Sender.Send(ctx, push.Message{Token: device.Token, Title: payload.SeriesTitle, Body: payload.EpisodeTitle, Data: data})
+				}
+			case "web":
+				if cfg.WebSender == nil {
+					sendErr = errors.New("web push sender is not configured")
+				} else {
+					sendErr = cfg.WebSender.Send(ctx, push.WebPushSubscription{Endpoint: device.Endpoint.String, P256dh: device.P256dh.String, Auth: device.Auth.String}, push.WebPushMessage{Title: payload.SeriesTitle, Body: payload.EpisodeTitle, Data: data})
+				}
+			default:
+				sendErr = fmt.Errorf("unsupported push platform %q", device.Platform)
+			}
 			switch {
 			case sendErr == nil:
 				settled++
-			case errors.Is(sendErr, push.ErrTokenGone):
+			case errors.Is(sendErr, push.ErrTokenGone), errors.Is(sendErr, push.ErrEndpointGone):
 				if _, delErr := queries.DeleteUserPushDeviceByToken(ctx, device.Token); delErr != nil {
 					failures = append(failures, fmt.Errorf("delete revoked push device: %w", delErr))
 					continue

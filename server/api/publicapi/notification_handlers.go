@@ -15,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/push"
 )
 
 const (
@@ -255,11 +256,11 @@ func (s *apiServer) RegisterPushDevice(
 		return nil, err
 	}
 
-	token, err := pushDeviceToken(req.Msg.Token)
+	platform, err := pushDevicePlatform(req.Msg.Platform)
 	if err != nil {
 		return nil, err
 	}
-	platform, err := pushDevicePlatform(req.Msg.Platform)
+	registration, err := s.pushDeviceRegistration(req.Msg, platform)
 	if err != nil {
 		return nil, err
 	}
@@ -270,8 +271,11 @@ func (s *apiServer) RegisterPushDevice(
 	_, err = s.queriesFor(ctx).UpsertUserPushDevice(ctx, dbmodels.UpsertUserPushDeviceParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,
-		Token:    token,
+		Token:    registration.token,
 		Platform: platform,
+		Endpoint: registration.endpoint,
+		P256dh:   registration.p256dh,
+		Auth:     registration.auth,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to register push device", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -289,7 +293,7 @@ func (s *apiServer) UnregisterPushDevice(
 		return nil, err
 	}
 
-	token, err := pushDeviceToken(req.Msg.Token)
+	token, err := pushDeviceToken(firstNonEmpty(req.Msg.Endpoint, req.Msg.Token))
 	if err != nil {
 		return nil, err
 	}
@@ -334,11 +338,64 @@ func pushDevicePlatform(platform publirav1.PushPlatform) (string, error) {
 		return "android", nil
 	case publirav1.PushPlatform_PUSH_PLATFORM_IOS:
 		return "ios", nil
+	case publirav1.PushPlatform_PUSH_PLATFORM_WEB:
+		return "web", nil
 	case publirav1.PushPlatform_PUSH_PLATFORM_UNSPECIFIED:
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("platform is required"))
 	default:
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("platform is invalid"))
 	}
+}
+
+type pushDeviceRegistration struct {
+	token    string
+	endpoint sql.NullString
+	p256dh   sql.NullString
+	auth     sql.NullString
+}
+
+func (s *apiServer) pushDeviceRegistration(request *publirav1.RegisterPushDeviceRequest, platform string) (pushDeviceRegistration, error) {
+	if platform != "web" {
+		if strings.TrimSpace(request.Endpoint) != "" || strings.TrimSpace(request.P256Dh) != "" || strings.TrimSpace(request.Auth) != "" {
+			return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, errors.New("web push subscription fields require platform web"))
+		}
+		token, err := pushDeviceToken(request.Token)
+		return pushDeviceRegistration{token: token}, err
+	}
+	if s.webPushVAPIDPublicKey == "" {
+		return pushDeviceRegistration{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("web push is not configured"))
+	}
+	endpoint, err := pushDeviceToken(request.Endpoint)
+	if err != nil {
+		return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, errors.New("endpoint is required"))
+	}
+	endpoint, err = push.ValidateWebPushEndpoint(endpoint)
+	if err != nil {
+		return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, errors.New("endpoint must be an HTTPS URL"))
+	}
+	p256dh, err := pushDeviceToken(request.P256Dh)
+	if err != nil {
+		return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, errors.New("p256dh is required"))
+	}
+	auth, err := pushDeviceToken(request.Auth)
+	if err != nil {
+		return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, errors.New("auth is required"))
+	}
+	return pushDeviceRegistration{
+		token:    endpoint,
+		endpoint: sql.NullString{String: endpoint, Valid: true},
+		p256dh:   sql.NullString{String: p256dh, Valid: true},
+		auth:     sql.NullString{String: auth, Valid: true},
+	}, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func notificationMarkedCount(marked int64) (int32, error) {

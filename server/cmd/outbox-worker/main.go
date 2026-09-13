@@ -46,6 +46,10 @@ func main() {
 		logger.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	if err := cfg.Push.ValidateWebPush(); err != nil {
+		logger.Error("invalid Web Push configuration", "error", err)
+		os.Exit(1)
+	}
 
 	db, err := sqldb.Open(resolveWorkerDBURL())
 	if err != nil {
@@ -87,6 +91,21 @@ func main() {
 		logger.Info("mobile push is enabled", "fcm_project_id", sender.ProjectID())
 	} else {
 		logger.Info("mobile push is disabled", "reason", "no FCM credential is configured")
+	}
+	if cfg.Push.WebPushConfigured() {
+		sender, senderErr := push.NewWebPushClient(push.WebPushConfig{
+			VAPIDPublicKey:  cfg.Push.WebPushVAPIDPublicKey,
+			VAPIDPrivateKey: cfg.Push.WebPushVAPIDPrivateKey,
+			Subscriber:      cfg.Push.WebPushSubject,
+		})
+		if senderErr != nil {
+			logger.Error("failed to initialize Web Push client", "error", senderErr)
+			os.Exit(1)
+		}
+		pushHandlers.WebSender = sender
+		logger.Info("web push is enabled")
+	} else {
+		logger.Info("web push is disabled", "reason", "no VAPID configuration is configured")
 	}
 
 	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, outbox.EmailHandlerConfig{
@@ -161,7 +180,7 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeAdminEmailChangedNoticeEmail, outbox.NewAdminEmailChangedNoticeEmailHandler(emailHandlers))
 	handlers.Register(outbox.EventTypeCommentAwaitingApprovalNotification, outbox.NewCommentAwaitingApprovalNotificationHandler(staffHandlers))
 	handlers.Register(outbox.EventTypeCommentReportedNotification, outbox.NewCommentReportedNotificationHandler(staffHandlers))
-	if pushHandlers.Sender != nil {
+	if pushHandlers.Sender != nil || pushHandlers.WebSender != nil {
 		handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	}
 	return outbox.Config{

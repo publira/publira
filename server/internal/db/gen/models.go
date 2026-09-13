@@ -827,12 +827,15 @@ type UserPasswordResetToken struct {
 }
 
 type UserPushDevice struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	UserID    uuid.UUID `json:"user_id"`
-	Token     string    `json:"token"`
-	Platform  string    `json:"platform"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	TenantID  uuid.UUID      `json:"tenant_id"`
+	UserID    uuid.UUID      `json:"user_id"`
+	Token     string         `json:"token"`
+	Platform  string         `json:"platform"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	Endpoint  sql.NullString `json:"endpoint"`
+	P256dh    sql.NullString `json:"p256dh"`
+	Auth      sql.NullString `json:"auth"`
 }
 
 type UserRecommendFeature struct {
