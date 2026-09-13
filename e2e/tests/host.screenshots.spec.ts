@@ -119,6 +119,19 @@ test.describe("web-host screenshots", () => {
         await expectScreenshot(page, viewport, "top-page");
       });
 
+      test("a published page", async ({ page }) => {
+        await page.goto(hostPath("/privacy"));
+
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Privacy policy" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("heading", { level: 2, name: "What we collect" })
+        ).toBeVisible();
+
+        await expectScreenshot(page, viewport, "published-page");
+      });
+
       test("the series list", async ({ page }) => {
         await page.goto(hostPath("/series"));
 
