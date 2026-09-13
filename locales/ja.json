@@ -2277,7 +2277,13 @@
       "schedule": "{$weekdays}に更新",
       "status_completed": "完結",
       "status_hiatus": "休載中",
-      "status_ongoing": "連載中"
+      "status_ongoing": "連載中",
+      "rating": {
+        "public": "評価：{$average} · {$count}人",
+        "own": "あなたの評価：{$average}",
+        "explanation": "エピソードにリアクションすると、シリーズの評価に反映されます。",
+        "failed": "あなたの評価を表示できませんでした"
+      }
     },
     "settings": {
       "cancel": "キャンセル",

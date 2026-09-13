@@ -2277,7 +2277,13 @@
       "schedule": "{$weekdays}에 업데이트",
       "status_completed": "완결",
       "status_hiatus": "휴재 중",
-      "status_ongoing": "연재 중"
+      "status_ongoing": "연재 중",
+      "rating": {
+        "public": "평점: {$average} · 독자 {$count}명",
+        "own": "내 평점: {$average}",
+        "explanation": "에피소드에 반응하면 시리즈 평점에 반영됩니다.",
+        "failed": "내 평점을 표시하지 못했습니다"
+      }
     },
     "settings": {
       "cancel": "취소",

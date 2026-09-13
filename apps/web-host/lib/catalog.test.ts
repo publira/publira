@@ -798,6 +798,29 @@ describe("catalog.listPublishedSeries", () => {
 });
 
 describe("catalog.getSeriesDetail", () => {
+  it.each([
+    [0, 0],
+    [3.7, 12],
+  ])(
+    "Carries the public rating %s and reader count from the series read",
+    async (ratingAverage, ratingCount) => {
+      mockGetSeriesDetail.mockResolvedValueOnce({
+        episodes: [],
+        series: {
+          publicId: "SERIES_1",
+          ratingAverage,
+          ratingCount: BigInt(ratingCount),
+          title: "Series 1",
+        },
+      });
+      const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+      expect(result.ok && result.value?.series).toMatchObject({
+        ratingAverage,
+        ratingCount: Number(ratingCount),
+      });
+    }
+  );
+
   beforeEach(() => {
     mockGetSeriesDetail.mockReset();
   });

@@ -2277,7 +2277,13 @@
       "schedule": "Updates on {$weekdays}",
       "status_completed": "Completed",
       "status_hiatus": "On hiatus",
-      "status_ongoing": "Ongoing"
+      "status_ongoing": "Ongoing",
+      "rating": {
+        "public": "Rating: {$average} · {$count} readers",
+        "own": "Your rating: {$average}",
+        "explanation": "React to episodes to rate this series.",
+        "failed": "Could not show your rating"
+      }
     },
     "settings": {
       "cancel": "Cancel",

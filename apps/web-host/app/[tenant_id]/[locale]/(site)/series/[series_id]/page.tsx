@@ -32,6 +32,7 @@ import {
   RelatedSeriesSkeleton,
 } from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { SeriesRating, MySeriesRating } from "#components/series-rating";
 import { getSeriesDetail } from "#lib/catalog";
 import type { SeriesSerializationStatus } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
@@ -194,6 +195,27 @@ const SeriesDetailContent = async (
               <h1 className="font-serif text-3xl leading-tight">
                 {series.title}
               </h1>
+              <SeriesRating
+                average={series.ratingAverage}
+                count={series.ratingCount}
+                locale={locale}
+              >
+                <SectionErrorBoundary
+                  title={
+                    <Suspense fallback={null}>
+                      <Message message="host.series.rating.failed" />
+                    </Suspense>
+                  }
+                >
+                  <Suspense fallback={null}>
+                    <MySeriesRating
+                      tenantId={tenantId}
+                      seriesPublicId={series.publicId}
+                      locale={locale}
+                    />
+                  </Suspense>
+                </SectionErrorBoundary>
+              </SeriesRating>
               {series.creatorNames.length > 0 && (
                 <p className="text-muted-foreground">
                   {formatList(series.creatorNames, { locale })}
