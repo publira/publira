@@ -17,18 +17,27 @@ INSERT INTO user_push_devices (
     tenant_id,
     user_id,
     token,
-    platform
+    platform,
+    endpoint,
+    p256dh,
+    auth
 )
 VALUES (
     sqlc.arg('tenant_id'),
     sqlc.arg('user_id'),
     sqlc.arg('token'),
-    sqlc.arg('platform')
+    sqlc.arg('platform'),
+    sqlc.narg('endpoint'),
+    sqlc.narg('p256dh'),
+    sqlc.narg('auth')
 )
 ON CONFLICT (token) DO UPDATE
 SET
     user_id = EXCLUDED.user_id,
     platform = EXCLUDED.platform,
+    endpoint = EXCLUDED.endpoint,
+    p256dh = EXCLUDED.p256dh,
+    auth = EXCLUDED.auth,
     updated_at = NOW()
 RETURNING *;
 
@@ -54,7 +63,10 @@ SELECT
     n.id AS notification_id,
     d.user_id,
     d.token,
-    d.platform
+    d.platform,
+    d.endpoint,
+    d.p256dh,
+    d.auth
 FROM notifications n
     JOIN user_push_devices d
         ON d.tenant_id = n.tenant_id

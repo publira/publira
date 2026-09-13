@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"database/sql"
 	"regexp"
 	"strings"
 	"testing"
@@ -28,10 +29,10 @@ func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(upsertUserPushDeviceQuery)).
-		WithArgs(tenantID, userID, "device-token", "android").
+		WithArgs(tenantID, userID, "device-token", "android", sql.NullString{}, sql.NullString{}, sql.NullString{}).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at",
-		}).AddRow(tenantID, userID, "device-token", "android", now, now))
+			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth",
+		}).AddRow(tenantID, userID, "device-token", "android", now, now, nil, nil, nil))
 
 	resp, err := client.RegisterPushDevice(context.Background(), newAuthedPublicRequest(&publirav1.RegisterPushDeviceRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -45,6 +46,53 @@ func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 		t.Fatal("registered = false, want true")
 	}
 
+	assertPublicExpectations(t, mock)
+}
+
+func TestRegisterWebPushDeviceRequiresVAPIDConfiguration(t *testing.T) {
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", "")
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	client, mock := newNotificationClient(t, tenantID, userID, time.Now().UTC())
+
+	_, err := client.RegisterPushDevice(context.Background(), newAuthedPublicRequest(&publirav1.RegisterPushDeviceRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Platform: publirav1.PushPlatform_PUSH_PLATFORM_WEB,
+		Endpoint: "https://push.example.test/subscription",
+		P256Dh:   "p256dh",
+		Auth:     "auth",
+	}, tenantID.String()))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("RegisterPushDevice code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", "public-key")
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", "private-key")
+	t.Setenv("PUBLIRA_WEBPUSH_SUBJECT", "mailto:push@example.test")
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock := newNotificationClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(upsertUserPushDeviceQuery)).
+		WithArgs(tenantID, userID, "https://push.example.test/subscription", "web", sql.NullString{String: "https://push.example.test/subscription", Valid: true}, sql.NullString{String: "p256dh", Valid: true}, sql.NullString{String: "auth", Valid: true}).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth",
+		}).AddRow(tenantID, userID, "https://push.example.test/subscription", "web", now, now, "https://push.example.test/subscription", "p256dh", "auth"))
+
+	_, err := client.RegisterPushDevice(context.Background(), newAuthedPublicRequest(&publirav1.RegisterPushDeviceRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Platform: publirav1.PushPlatform_PUSH_PLATFORM_WEB,
+		Endpoint: "https://push.example.test/subscription",
+		P256Dh:   "p256dh",
+		Auth:     "auth",
+	}, tenantID.String()))
+	if err != nil {
+		t.Fatalf("RegisterPushDevice: %v", err)
+	}
 	assertPublicExpectations(t, mock)
 }
 
@@ -144,4 +192,27 @@ func TestUnregisterPushDeviceReportsWhetherARowWasRemoved(t *testing.T) {
 			assertPublicExpectations(t, mock)
 		})
 	}
+}
+
+func TestUnregisterPushDeviceUsesWebPushEndpoint(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock := newNotificationClient(t, tenantID, userID, now)
+	endpoint := "https://push.example.test/subscription"
+	mock.ExpectExec(regexp.QuoteMeta(deleteUserPushDeviceForUserQuery)).
+		WithArgs(tenantID, userID, endpoint).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	resp, err := client.UnregisterPushDevice(context.Background(), newAuthedPublicRequest(&publirav1.UnregisterPushDeviceRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Endpoint: endpoint,
+	}, tenantID.String()))
+	if err != nil {
+		t.Fatalf("UnregisterPushDevice: %v", err)
+	}
+	if !resp.Msg.Unregistered {
+		t.Fatal("unregistered = false, want true")
+	}
+	assertPublicExpectations(t, mock)
 }

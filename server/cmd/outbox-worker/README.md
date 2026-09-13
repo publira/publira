@@ -74,6 +74,7 @@ The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed crea
 - `PUBLIRA_PLATFORM_APP_URL` (optional, the base URL the Platform Console links in the platform auth mail are built from. `http://platform.localhost:3080` when unset)
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional, the keys used to decrypt the SMTP password. Set the same values as the platform API)
 - `PUBLIRA_FCM_PROJECT_ID` / `PUBLIRA_FCM_CREDENTIALS_JSON` (optional, the Firebase project and service account key the mobile push is sent with. `GOOGLE_APPLICATION_CREDENTIALS` is the path form of the same key. Any one of the three registers the handler — the project id counts alone, because Application Default Credentials also resolves a well-known `gcloud` file and an instance's attached service account, neither of which sets a credential variable. With none of them set, `member_push_notification` has no handler and its rows go `dead`)
+- `PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY` / `PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY` / `PUBLIRA_WEBPUSH_SUBJECT` (optional, the complete VAPID key pair and contact URI used for browser subscriptions. They must be set together; a partial or invalid set stops startup. A Web Push-only configuration also registers `member_push_notification`.)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset)
 

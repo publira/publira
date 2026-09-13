@@ -97,8 +97,10 @@ type GetTenantResponse struct {
 	// date at all, so it is answered here rather than only where a body is
 	// opened.
 	AgeVerification v1.AgeVerification `protobuf:"varint,12,opt,name=age_verification,json=ageVerification,proto3,enum=publira.types.v1.AgeVerification" json:"age_verification,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// VAPID public key for Web Push. Empty means Web Push is not configured.
+	WebPushVapidPublicKey string `protobuf:"bytes,13,opt,name=web_push_vapid_public_key,json=webPushVapidPublicKey,proto3" json:"web_push_vapid_public_key,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -215,6 +217,13 @@ func (x *GetTenantResponse) GetAgeVerification() v1.AgeVerification {
 	return v1.AgeVerification(0)
 }
 
+func (x *GetTenantResponse) GetWebPushVapidPublicKey() string {
+	if x != nil {
+		return x.WebPushVapidPublicKey
+	}
+	return ""
+}
+
 var File_publira_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_v1_tenant_proto_rawDesc = "" +
@@ -222,7 +231,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x17publira/v1/tenant.proto\x12\n" +
 	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"K\n" +
 	"\x10GetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xab\x04\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xe5\x04\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -237,7 +246,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x10accepts_payments\x18\n" +
 	" \x01(\bR\x0facceptsPayments\x12@\n" +
 	"\fcomment_mode\x18\v \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12L\n" +
-	"\x10age_verification\x18\f \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification2[\n" +
+	"\x10age_verification\x18\f \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification\x128\n" +
+	"\x19web_push_vapid_public_key\x18\r \x01(\tR\x15webPushVapidPublicKey2[\n" +
 	"\rTenantService\x12J\n" +
 	"\tGetTenant\x12\x1c.publira.v1.GetTenantRequest\x1a\x1d.publira.v1.GetTenantResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 

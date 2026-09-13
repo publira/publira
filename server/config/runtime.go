@@ -57,7 +57,10 @@ type Push struct {
 	// performs that lookup itself.
 	FCMCredentialsJSON []byte
 	// ADCPathConfigured records that GOOGLE_APPLICATION_CREDENTIALS was set.
-	ADCPathConfigured bool
+	ADCPathConfigured      bool
+	WebPushVAPIDPublicKey  string
+	WebPushVAPIDPrivateKey string
+	WebPushSubject         string
 }
 
 // Configured reports whether this deployment means to send push notifications.
@@ -73,6 +76,18 @@ type Push struct {
 // turns push on; the credential is then whatever the Google library finds.
 func (p Push) Configured() bool {
 	return p.FCMProjectID != "" || len(p.FCMCredentialsJSON) > 0 || p.ADCPathConfigured
+}
+
+func (p Push) WebPushConfigured() bool {
+	return p.WebPushVAPIDPublicKey != "" && p.WebPushVAPIDPrivateKey != "" && p.WebPushSubject != ""
+}
+
+func (p Push) ValidateWebPush() error {
+	configured := p.WebPushVAPIDPublicKey != "" || p.WebPushVAPIDPrivateKey != "" || p.WebPushSubject != ""
+	if !configured || p.WebPushConfigured() {
+		return nil
+	}
+	return errors.New("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY, PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY, and PUBLIRA_WEBPUSH_SUBJECT must be set together")
 }
 
 func New() (*Config, error) {
@@ -95,9 +110,12 @@ func New() (*Config, error) {
 func parsePush() Push {
 	credentials := strings.TrimSpace(os.Getenv("PUBLIRA_FCM_CREDENTIALS_JSON"))
 	return Push{
-		FCMProjectID:       strings.TrimSpace(os.Getenv("PUBLIRA_FCM_PROJECT_ID")),
-		FCMCredentialsJSON: []byte(credentials),
-		ADCPathConfigured:  strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) != "",
+		FCMProjectID:           strings.TrimSpace(os.Getenv("PUBLIRA_FCM_PROJECT_ID")),
+		FCMCredentialsJSON:     []byte(credentials),
+		ADCPathConfigured:      strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) != "",
+		WebPushVAPIDPublicKey:  strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY")),
+		WebPushVAPIDPrivateKey: strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY")),
+		WebPushSubject:         strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_SUBJECT")),
 	}
 }
 

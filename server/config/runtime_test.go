@@ -144,6 +144,25 @@ func TestNew_PushIsOffWithoutAnySetting(t *testing.T) {
 	}
 }
 
+func TestPushValidateWebPush(t *testing.T) {
+	tests := []struct {
+		name string
+		push Push
+		want bool
+	}{
+		{name: "unset", push: Push{}, want: true},
+		{name: "complete", push: Push{WebPushVAPIDPublicKey: "public", WebPushVAPIDPrivateKey: "private", WebPushSubject: "mailto:push@example.test"}, want: true},
+		{name: "partial", push: Push{WebPushVAPIDPublicKey: "public"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.push.ValidateWebPush() == nil; got != tt.want {
+				t.Fatalf("ValidateWebPush() success = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestNew_PushIsOnFromAnyOfItsSettings(t *testing.T) {
 	tests := []struct {
 		name  string

@@ -40,6 +40,8 @@ message GetTenantResponse {
   // date at all, so it is answered here rather than only where a body is
   // opened.
   publira.types.v1.AgeVerification age_verification = 12;
+  // VAPID public key for Web Push. Empty means Web Push is not configured.
+  string web_push_vapid_public_key = 13;
 }
 
 service TenantService {

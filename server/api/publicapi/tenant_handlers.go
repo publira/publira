@@ -87,18 +87,19 @@ func (s *apiServer) GetTenant(
 	}
 
 	return connect.NewResponse(&publirav1.GetTenantResponse{
-		TenantPublicId:  tenant.PublicID,
-		TenantName:      tenant.Name,
-		TenantDomain:    tenant.Domain,
-		CopyrightText:   copyrightText,
-		SiteDescription: siteDescription,
-		SiteTagline:     siteTagline,
-		Theme:           theme,
-		Timezone:        tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
-		DefaultLocale:   defaultLocale,
-		AcceptsPayments: acceptsPayments,
-		AgeVerification: ageVerification,
-		CommentMode:     commentMode,
+		TenantPublicId:        tenant.PublicID,
+		TenantName:            tenant.Name,
+		TenantDomain:          tenant.Domain,
+		CopyrightText:         copyrightText,
+		SiteDescription:       siteDescription,
+		SiteTagline:           siteTagline,
+		Theme:                 theme,
+		Timezone:              tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
+		DefaultLocale:         defaultLocale,
+		AcceptsPayments:       acceptsPayments,
+		AgeVerification:       ageVerification,
+		CommentMode:           commentMode,
+		WebPushVapidPublicKey: s.webPushVAPIDPublicKey,
 	}), nil
 }
 

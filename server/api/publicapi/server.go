@@ -36,16 +36,17 @@ type stripeSessionCreator interface {
 }
 
 type apiServer struct {
-	db                *sql.DB
-	queries           Querier
-	storage           storage.Provider
-	encryptor         emailsettings.SecretManager
-	tokens            *auth.TokenManager
-	logger            *slog.Logger
-	guards            readerGuards
-	mail              *mailguard.Guard
-	reval             *revalidate.Client
-	newStripeProvider func(secretKey string) stripeSessionCreator
+	db                    *sql.DB
+	queries               Querier
+	storage               storage.Provider
+	encryptor             emailsettings.SecretManager
+	tokens                *auth.TokenManager
+	logger                *slog.Logger
+	guards                readerGuards
+	mail                  *mailguard.Guard
+	reval                 *revalidate.Client
+	webPushVAPIDPublicKey string
+	newStripeProvider     func(secretKey string) stripeSessionCreator
 }
 
 func invalidSessionError() error {
@@ -175,16 +176,21 @@ func newAPIServer(
 	if revalidateErr != nil {
 		logger.Warn("next revalidate is disabled", "reason", revalidateErr.Error())
 	}
+	webPushPublicKey := strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY"))
+	if webPushPublicKey == "" || strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY")) == "" || strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_SUBJECT")) == "" {
+		webPushPublicKey = ""
+	}
 	return &apiServer{
-		db:        db,
-		queries:   queries,
-		storage:   storageProvider,
-		encryptor: encryptor,
-		tokens:    tokens,
-		logger:    logger,
-		guards:    guards.withDefaults(),
-		mail:      mail,
-		reval:     revalidator,
+		db:                    db,
+		queries:               queries,
+		storage:               storageProvider,
+		encryptor:             encryptor,
+		tokens:                tokens,
+		logger:                logger,
+		guards:                guards.withDefaults(),
+		mail:                  mail,
+		reval:                 revalidator,
+		webPushVAPIDPublicKey: webPushPublicKey,
 		newStripeProvider: func(secretKey string) stripeSessionCreator {
 			return newStripeCheckoutProvider(secretKey)
 		},

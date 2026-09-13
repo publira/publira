@@ -7,6 +7,7 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -54,7 +55,10 @@ SELECT
     n.id AS notification_id,
     d.user_id,
     d.token,
-    d.platform
+    d.platform,
+    d.endpoint,
+    d.p256dh,
+    d.auth
 FROM notifications n
     JOIN user_push_devices d
         ON d.tenant_id = n.tenant_id
@@ -72,10 +76,13 @@ type ListPushDevicesForNotificationParams struct {
 }
 
 type ListPushDevicesForNotificationRow struct {
-	NotificationID uuid.UUID `json:"notification_id"`
-	UserID         uuid.UUID `json:"user_id"`
-	Token          string    `json:"token"`
-	Platform       string    `json:"platform"`
+	NotificationID uuid.UUID      `json:"notification_id"`
+	UserID         uuid.UUID      `json:"user_id"`
+	Token          string         `json:"token"`
+	Platform       string         `json:"platform"`
+	Endpoint       sql.NullString `json:"endpoint"`
+	P256dh         sql.NullString `json:"p256dh"`
+	Auth           sql.NullString `json:"auth"`
 }
 
 // Every device to push one notification to, one row per recipient device. The
@@ -95,6 +102,9 @@ func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPu
 			&i.UserID,
 			&i.Token,
 			&i.Platform,
+			&i.Endpoint,
+			&i.P256dh,
+			&i.Auth,
 		); err != nil {
 			return nil, err
 		}
@@ -114,27 +124,39 @@ INSERT INTO user_push_devices (
     tenant_id,
     user_id,
     token,
-    platform
+    platform,
+    endpoint,
+    p256dh,
+    auth
 )
 VALUES (
     $1,
     $2,
     $3,
-    $4
+    $4,
+    $5,
+    $6,
+    $7
 )
 ON CONFLICT (token) DO UPDATE
 SET
     user_id = EXCLUDED.user_id,
     platform = EXCLUDED.platform,
+    endpoint = EXCLUDED.endpoint,
+    p256dh = EXCLUDED.p256dh,
+    auth = EXCLUDED.auth,
     updated_at = NOW()
-RETURNING tenant_id, user_id, token, platform, created_at, updated_at
+RETURNING tenant_id, user_id, token, platform, created_at, updated_at, endpoint, p256dh, auth
 `
 
 type UpsertUserPushDeviceParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	UserID   uuid.UUID `json:"user_id"`
-	Token    string    `json:"token"`
-	Platform string    `json:"platform"`
+	TenantID uuid.UUID      `json:"tenant_id"`
+	UserID   uuid.UUID      `json:"user_id"`
+	Token    string         `json:"token"`
+	Platform string         `json:"platform"`
+	Endpoint sql.NullString `json:"endpoint"`
+	P256dh   sql.NullString `json:"p256dh"`
+	Auth     sql.NullString `json:"auth"`
 }
 
 // Records the FCM registration token the reader app holds. The token is the
@@ -157,6 +179,9 @@ func (q *Queries) UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDe
 		arg.UserID,
 		arg.Token,
 		arg.Platform,
+		arg.Endpoint,
+		arg.P256dh,
+		arg.Auth,
 	)
 	var i UserPushDevice
 	err := row.Scan(
@@ -166,6 +191,9 @@ func (q *Queries) UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDe
 		&i.Platform,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Endpoint,
+		&i.P256dh,
+		&i.Auth,
 	)
 	return i, err
 }
