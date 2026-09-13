@@ -15,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/push"
 )
 
 const (
@@ -367,6 +368,10 @@ func (s *apiServer) pushDeviceRegistration(request *publirav1.RegisterPushDevice
 	endpoint, err := pushDeviceToken(request.Endpoint)
 	if err != nil {
 		return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, errors.New("endpoint is required"))
+	}
+	endpoint, err = push.ValidateWebPushEndpoint(endpoint)
+	if err != nil {
+		return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, errors.New("endpoint must be an HTTPS URL"))
 	}
 	p256dh, err := pushDeviceToken(request.P256Dh)
 	if err != nil {

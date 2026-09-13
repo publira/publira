@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
+	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
@@ -131,8 +132,12 @@ func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 }
 
 func TestGetTenantIncludesTheme(t *testing.T) {
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", "public-vapid-key")
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", "private-vapid-key")
+	privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+	if err != nil {
+		t.Fatalf("GenerateVAPIDKeys: %v", err)
+	}
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", publicKey)
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", privateKey)
 	t.Setenv("PUBLIRA_WEBPUSH_SUBJECT", "mailto:push@example.test")
 	testServer, mock := newTestPublicServer(t)
 
@@ -189,8 +194,8 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	if resp.Msg.DefaultLocale != "ja" {
 		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
 	}
-	if resp.Msg.WebPushVapidPublicKey != "public-vapid-key" {
-		t.Fatalf("web_push_vapid_public_key = %q, want public-vapid-key", resp.Msg.WebPushVapidPublicKey)
+	if resp.Msg.WebPushVapidPublicKey != publicKey {
+		t.Fatalf("web_push_vapid_public_key = %q, want %q", resp.Msg.WebPushVapidPublicKey, publicKey)
 	}
 	assertPublicExpectations(t, mock)
 }

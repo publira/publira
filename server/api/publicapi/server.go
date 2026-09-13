@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/mailguard"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/push"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
@@ -140,6 +141,9 @@ func isSQLMockDB(db *sql.DB) bool {
 // form can cause — so a limit nobody can meet is caught at startup instead of
 // by the first reader who runs into it.
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (http.Handler, error) {
+	if err := validateWebPushVAPIDFromEnv(); err != nil {
+		return nil, err
+	}
 	logger := slog.Default()
 	guards, err := newReaderGuardsFromEnv(logger)
 	if err != nil {
@@ -150,6 +154,18 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, e
 		return nil, err
 	}
 	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, tokens, logger, guards, mail)), nil
+}
+
+func validateWebPushVAPIDFromEnv() error {
+	config := push.WebPushConfig{
+		VAPIDPublicKey:  strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY")),
+		VAPIDPrivateKey: strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY")),
+		Subscriber:      strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_SUBJECT")),
+	}
+	if config.VAPIDPublicKey == "" && config.VAPIDPrivateKey == "" && config.Subscriber == "" {
+		return nil
+	}
+	return push.ValidateWebPushConfig(config)
 }
 
 func newAPIServer(

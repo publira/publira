@@ -22,11 +22,11 @@ It also handles these non-mail events:
 
 | Event type | Side effect |
 | --- | --- |
-| `member_push_notification` | The mobile push that mirrors a member's `notifications` row, one message per device that reader registered |
+| `member_push_notification` | The FCM or Web Push delivery that mirrors a member's `notifications` row, one message per registered device |
 | `comment_awaiting_approval_notification` | A `notifications` row for every member of the tenant's staff, saying that one episode has comments waiting in the approval queue |
 | `comment_reported_notification` | The same, for an episode whose comments readers have reported |
 
-The push handler is registered only when a Firebase credential is configured; see [Main environment variables](#main-environment-variables).
+The push handler is registered when either Firebase or Web Push credentials are configured; see [Main environment variables](#main-environment-variables).
 
 Both comment events are keyed by the episode and the hour they arrived in, so an episode a hundred readers comment on within the hour produces one alert rather than a hundred. The window is held by `outbox_events.idempotency_key`, which is why a burst writes a single row here, and by the notification's own `(user_id, notification_type, subject_key)`, which is why a redelivered event writes no second row for anyone.
 

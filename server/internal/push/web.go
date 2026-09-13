@@ -8,7 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 )
@@ -45,14 +49,78 @@ func NewWebPushClient(cfg WebPushConfig) (*WebPushClient, error) {
 		VAPIDPublicKey:  strings.TrimSpace(cfg.VAPIDPublicKey),
 		VAPIDPrivateKey: strings.TrimSpace(cfg.VAPIDPrivateKey),
 		TTL:             60,
+		HTTPClient:      newWebPushHTTPClient(),
 	}
-	if options.Subscriber == "" || options.VAPIDPublicKey == "" || options.VAPIDPrivateKey == "" {
-		return nil, errors.New("push: Web Push VAPID configuration is incomplete")
-	}
-	if err := validateVAPIDKeyPair(options.VAPIDPublicKey, options.VAPIDPrivateKey); err != nil {
+	if err := ValidateWebPushConfig(cfg); err != nil {
 		return nil, err
 	}
 	return &WebPushClient{options: options}, nil
+}
+
+// ValidateWebPushConfig ensures that a process will not advertise Web Push
+// when its VAPID credentials cannot sign deliveries.
+func ValidateWebPushConfig(cfg WebPushConfig) error {
+	if strings.TrimSpace(cfg.Subscriber) == "" || strings.TrimSpace(cfg.VAPIDPublicKey) == "" || strings.TrimSpace(cfg.VAPIDPrivateKey) == "" {
+		return errors.New("push: Web Push VAPID configuration is incomplete")
+	}
+	return validateVAPIDKeyPair(strings.TrimSpace(cfg.VAPIDPublicKey), strings.TrimSpace(cfg.VAPIDPrivateKey))
+}
+
+// ValidateWebPushEndpoint accepts only absolute HTTPS subscription URLs. The
+// sender also resolves and filters the host on every dial, because DNS can
+// change after registration.
+func ValidateWebPushEndpoint(raw string) (string, error) {
+	endpoint := strings.TrimSpace(raw)
+	parsed, err := url.ParseRequestURI(endpoint)
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil {
+		return "", errors.New("push: Web Push endpoint must be an absolute HTTPS URL")
+	}
+	return endpoint, nil
+}
+
+func newWebPushHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 15 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+		Transport: &http.Transport{
+			Proxy:       nil,
+			DialContext: dialPublicAddress,
+		},
+	}
+}
+
+func dialPublicAddress(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, fmt.Errorf("push: split endpoint address: %w", err)
+	}
+	addresses, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("push: resolve endpoint host: %w", err)
+	}
+	dialer := &net.Dialer{}
+	var lastErr error
+	for _, address := range addresses {
+		if !isPublicAddress(address.IP) {
+			lastErr = fmt.Errorf("push: endpoint resolves to a restricted address")
+			continue
+		}
+		connection, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(address.IP.String(), port))
+		if dialErr == nil {
+			return connection, nil
+		}
+		lastErr = dialErr
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, errors.New("push: endpoint host resolves to no addresses")
+}
+
+func isPublicAddress(address net.IP) bool {
+	return !address.IsLoopback() && !address.IsPrivate() && !address.IsLinkLocalUnicast() && !address.IsLinkLocalMulticast() && !address.IsMulticast() && !address.IsUnspecified()
 }
 
 func validateVAPIDKeyPair(publicKey, privateKey string) error {
@@ -80,12 +148,16 @@ func validateVAPIDKeyPair(publicKey, privateKey string) error {
 }
 
 func (c *WebPushClient) Send(ctx context.Context, subscription WebPushSubscription, message WebPushMessage) error {
+	endpoint, err := ValidateWebPushEndpoint(subscription.Endpoint)
+	if err != nil {
+		return err
+	}
 	payload, err := json.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("push: encode Web Push message: %w", err)
 	}
 	response, err := webpush.SendNotificationWithContext(ctx, payload, &webpush.Subscription{
-		Endpoint: strings.TrimSpace(subscription.Endpoint),
+		Endpoint: endpoint,
 		Keys: webpush.Keys{
 			P256dh: strings.TrimSpace(subscription.P256dh),
 			Auth:   strings.TrimSpace(subscription.Auth),

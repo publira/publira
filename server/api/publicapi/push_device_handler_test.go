@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
+	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -69,8 +70,12 @@ func TestRegisterWebPushDeviceRequiresVAPIDConfiguration(t *testing.T) {
 }
 
 func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", "public-key")
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", "private-key")
+	privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+	if err != nil {
+		t.Fatalf("GenerateVAPIDKeys: %v", err)
+	}
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", publicKey)
+	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", privateKey)
 	t.Setenv("PUBLIRA_WEBPUSH_SUBJECT", "mailto:push@example.test")
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
@@ -83,7 +88,7 @@ func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
 			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth",
 		}).AddRow(tenantID, userID, "https://push.example.test/subscription", "web", now, now, "https://push.example.test/subscription", "p256dh", "auth"))
 
-	_, err := client.RegisterPushDevice(context.Background(), newAuthedPublicRequest(&publirav1.RegisterPushDeviceRequest{
+	_, err = client.RegisterPushDevice(context.Background(), newAuthedPublicRequest(&publirav1.RegisterPushDeviceRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Platform: publirav1.PushPlatform_PUSH_PLATFORM_WEB,
 		Endpoint: "https://push.example.test/subscription",
