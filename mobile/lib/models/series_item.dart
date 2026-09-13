@@ -161,6 +161,8 @@ class SeriesItem {
     this.scheduleWeekdays = const [],
     this.ageRating,
     this.genres = const [],
+    this.ratingAverage = 0,
+    this.ratingCount = 0,
   });
 
   /// Public id (`public_id`), used as the route parameter.
@@ -202,6 +204,15 @@ class SeriesItem {
   /// Empty for a series in none of them.
   final List<SeriesGenre> genres;
 
+  /// The public mean of reactions to this series' episodes. A zero count
+  /// means the aggregate has not produced a figure, so the screen leaves it
+  /// out rather than presenting zero as a rating.
+  final double ratingAverage;
+
+  /// Readers behind [ratingAverage], counted once each however many episodes
+  /// of this series they reacted to.
+  final int ratingCount;
+
   /// The same series with a different episode count or image-request headers.
   ///
   /// Both are decided after the series is read — the episode list on a detail
@@ -224,6 +235,8 @@ class SeriesItem {
       scheduleWeekdays: scheduleWeekdays,
       ageRating: ageRating,
       genres: genres,
+      ratingAverage: ratingAverage,
+      ratingCount: ratingCount,
     );
   }
 }
@@ -235,12 +248,17 @@ class EpisodeItem {
     required this.title,
     required this.orderIndex,
     required this.price,
+    this.ratingCount = 0,
   });
 
   final String id;
   final String title;
   final int orderIndex;
   final int price;
+
+  /// Readers who reacted to this episode. This is a headcount, not a count of
+  /// presses, and lets a signed-out reader see the reaction total.
+  final int ratingCount;
 }
 
 /// Series plus its published episodes.

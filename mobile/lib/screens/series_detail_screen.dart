@@ -210,6 +210,19 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         ),
         const SizedBox(height: 16),
         Text(series.title, style: theme.textTheme.headlineSmall),
+        if (series.ratingCount > 0) ...[
+          const SizedBox(height: 8),
+          Text(
+            key: const ValueKey('series-rating'),
+            messages.seriesRating(
+              average: series.ratingAverage.toStringAsFixed(1),
+              count: messages.formatInteger(series.ratingCount),
+            ),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
         if (series.creators.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(

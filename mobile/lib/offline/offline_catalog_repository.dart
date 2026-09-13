@@ -221,6 +221,17 @@ class OfflineCatalogRepository implements CatalogRepository {
     }
   }
 
+  // Reactions are account-specific and immediately visible on the website, so
+  // unlike catalog reads they are never served from or queued into offline
+  // storage.
+  @override
+  Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId) =>
+      _origin.getEpisodeReaction(episodePublicId);
+
+  @override
+  Future<EpisodeReaction> reactToEpisode(String episodePublicId) =>
+      _origin.reactToEpisode(episodePublicId);
+
   /// The reader's continue-reading row, which only the API can answer.
   ///
   /// Nothing about it is kept on the device: it is an offer to open something

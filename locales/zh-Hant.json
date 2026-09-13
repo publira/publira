@@ -2493,6 +2493,7 @@
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",
       "episode_count": "{$count} 章",
+      "rating": "評分：{$average} · {$count} 位讀者",
       "episodes_empty": "尚未發布任何章節。",
       "episodes_heading": "章節",
       "load_failed": "無法顯示該系列。",
@@ -2517,6 +2518,14 @@
     },
     "viewer": {
       "back_to_series": "返回系列",
+      "reaction": {
+        "count": "{$count} 位讀者已回應",
+        "failed": "無法記錄回應。請再試一次。",
+        "press": "回應",
+        "score": "回應 ({$score}/5)",
+        "sign_in": "登入後即可回應",
+        "submitting": "正在回應…"
+      },
       "end": {
         "up_next": "接下來",
         "up_to_date_description": "《{$title}》還沒有下一章。",

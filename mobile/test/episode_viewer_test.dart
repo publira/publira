@@ -542,6 +542,69 @@ void main() {
     );
   });
 
+  testWidgets('the end panel sends a guest to sign in to react', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await turnToEnd(tester);
+
+    expect(
+      find.byKey(const ValueKey('episode-reaction-sign-in')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('episode-reaction-press')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('episode-reaction-sign-in')));
+    await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-submit')));
+  });
+
+  testWidgets('a signed-in reader can react once from the end panel', (
+    tester,
+  ) async {
+    catalog.reactions = {
+      episodeId: const EpisodeReaction(
+        score: 0,
+        ratingCount: 0,
+        allowsMultiplePresses: false,
+      ),
+    };
+    await pumpApp(tester, session: fakeSession);
+    await turnToEnd(tester);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-reaction-press')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('episode-reaction-press')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+
+    tester
+        .widget<FilledButton>(
+          find.byKey(const ValueKey('episode-reaction-press')),
+        )
+        .onPressed!
+        .call();
+    await tester.pumpAndSettle();
+
+    expect(catalog.reactions[episodeId]?.score, 5);
+    expect(find.text('1 readers reacted'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('episode-reaction-press')),
+          )
+          .onPressed,
+      isNull,
+    );
+  });
+
   testWidgets('a tenant that takes no comments offers none at the end', (
     tester,
   ) async {

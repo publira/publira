@@ -403,6 +403,9 @@ abstract class AppMessages {
   /// `mobile.series.offline_not_saved`
   String get seriesOfflineNotSaved;
 
+  /// `mobile.series.rating`
+  String seriesRating({required String average, required String count});
+
   /// `mobile.series.saved_offline`
   String get seriesSavedOffline;
 
@@ -499,6 +502,24 @@ abstract class AppMessages {
 
   /// `mobile.viewer.previous_page`
   String get viewerPreviousPage;
+
+  /// `mobile.viewer.reaction.count`
+  String viewerReactionCount({required String count});
+
+  /// `mobile.viewer.reaction.failed`
+  String get viewerReactionFailed;
+
+  /// `mobile.viewer.reaction.press`
+  String get viewerReactionPress;
+
+  /// `mobile.viewer.reaction.score`
+  String viewerReactionScore({required String score});
+
+  /// `mobile.viewer.reaction.sign_in`
+  String get viewerReactionSignIn;
+
+  /// `mobile.viewer.reaction.submitting`
+  String get viewerReactionSubmitting;
 
   /// `mobile.viewer.reload`
   String get viewerReload;
@@ -1044,6 +1065,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String seriesRating({required String average, required String count}) {
+    return '評価: $average・$count人';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '保存済み';
   }
@@ -1200,6 +1226,36 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get viewerPreviousPage {
     return '前のページ';
+  }
+
+  @override
+  String viewerReactionCount({required String count}) {
+    return '$count人がリアクションしました';
+  }
+
+  @override
+  String get viewerReactionFailed {
+    return 'リアクションを記録できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get viewerReactionPress {
+    return 'リアクションする';
+  }
+
+  @override
+  String viewerReactionScore({required String score}) {
+    return 'リアクションする ($score/5)';
+  }
+
+  @override
+  String get viewerReactionSignIn {
+    return 'リアクションするにはサインイン';
+  }
+
+  @override
+  String get viewerReactionSubmitting {
+    return 'リアクション中…';
   }
 
   @override
@@ -1752,6 +1808,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String seriesRating({required String average, required String count}) {
+    return 'Rating: $average · $count readers';
+  }
+
+  @override
   String get seriesSavedOffline {
     return 'Saved on this device';
   }
@@ -1908,6 +1969,36 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get viewerPreviousPage {
     return 'Previous page';
+  }
+
+  @override
+  String viewerReactionCount({required String count}) {
+    return '$count readers reacted';
+  }
+
+  @override
+  String get viewerReactionFailed {
+    return 'Could not record the reaction. Try again.';
+  }
+
+  @override
+  String get viewerReactionPress {
+    return 'React';
+  }
+
+  @override
+  String viewerReactionScore({required String score}) {
+    return 'React ($score/5)';
+  }
+
+  @override
+  String get viewerReactionSignIn {
+    return 'Sign in to react';
+  }
+
+  @override
+  String get viewerReactionSubmitting {
+    return 'Reacting…';
   }
 
   @override
@@ -2460,6 +2551,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String seriesRating({required String average, required String count}) {
+    return '평점: $average · $count명';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '이 기기에 저장됨';
   }
@@ -2616,6 +2712,36 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get viewerPreviousPage {
     return '이전 페이지';
+  }
+
+  @override
+  String viewerReactionCount({required String count}) {
+    return '$count명이 반응했습니다';
+  }
+
+  @override
+  String get viewerReactionFailed {
+    return '반응을 기록하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get viewerReactionPress {
+    return '반응하기';
+  }
+
+  @override
+  String viewerReactionScore({required String score}) {
+    return '반응하기 ($score/5)';
+  }
+
+  @override
+  String get viewerReactionSignIn {
+    return '반응하려면 로그인';
+  }
+
+  @override
+  String get viewerReactionSubmitting {
+    return '반응하는 중…';
   }
 
   @override
@@ -3168,6 +3294,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String seriesRating({required String average, required String count}) {
+    return '评分：$average · $count 位读者';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '已保存到此设备';
   }
@@ -3324,6 +3455,36 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get viewerPreviousPage {
     return '上一页';
+  }
+
+  @override
+  String viewerReactionCount({required String count}) {
+    return '$count 位读者已反馈';
+  }
+
+  @override
+  String get viewerReactionFailed {
+    return '无法记录反馈。请重试。';
+  }
+
+  @override
+  String get viewerReactionPress {
+    return '反馈';
+  }
+
+  @override
+  String viewerReactionScore({required String score}) {
+    return '反馈 ($score/5)';
+  }
+
+  @override
+  String get viewerReactionSignIn {
+    return '登录后反馈';
+  }
+
+  @override
+  String get viewerReactionSubmitting {
+    return '正在反馈…';
   }
 
   @override
@@ -3876,6 +4037,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String seriesRating({required String average, required String count}) {
+    return '評分：$average · $count 位讀者';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '已儲存到此裝置';
   }
@@ -4032,6 +4198,36 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get viewerPreviousPage {
     return '上一頁';
+  }
+
+  @override
+  String viewerReactionCount({required String count}) {
+    return '$count 位讀者已回應';
+  }
+
+  @override
+  String get viewerReactionFailed {
+    return '無法記錄回應。請再試一次。';
+  }
+
+  @override
+  String get viewerReactionPress {
+    return '回應';
+  }
+
+  @override
+  String viewerReactionScore({required String score}) {
+    return '回應 ($score/5)';
+  }
+
+  @override
+  String get viewerReactionSignIn {
+    return '登入後即可回應';
+  }
+
+  @override
+  String get viewerReactionSubmitting {
+    return '正在回應…';
   }
 
   @override

@@ -43,6 +43,9 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.EpisodeReadService/SaveReadingPosition';
   static const _recentSeriesProcedure =
       '/publira.v1.EpisodeReadService/ListMyRecentSeries';
+  static const _myEpisodeRatingProcedure =
+      '/publira.v1.RatingService/GetMyEpisodeRating';
+  static const _rateEpisodeProcedure = '/publira.v1.RatingService/RateEpisode';
 
   final AppConfig config;
   final ConnectClient _client;
@@ -227,6 +230,56 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId) async {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return null;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _myEpisodeRatingProcedure,
+        {
+          'episodePublicId': episodePublicId,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      return _reactionFromJson(body, 'reaction');
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<EpisodeReaction> reactToEpisode(String episodePublicId) async {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      throw const CatalogFailure(
+        CatalogFailureKind.unexpected,
+        message: 'episode reactions require a session',
+      );
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _rateEpisodeProcedure,
+        {
+          'episodePublicId': episodePublicId,
+          'presses': 1,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      return _reactionFromJson(body, 'reaction');
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
   Future<List<RecentSeriesItem>> listRecentSeries({required int limit}) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
@@ -328,6 +381,8 @@ class HttpCatalogRepository implements CatalogRepository {
       scheduleWeekdays: _parseScheduleWeekdays(json['scheduleWeekdays'], path),
       ageRating: _parseAgeRating(json['ageRating']),
       genres: _parseGenres(json['genres'], path),
+      ratingAverage: _readDouble(json, 'ratingAverage', path),
+      ratingCount: _readCount(json, 'ratingCount', path),
     );
   }
 
@@ -461,6 +516,7 @@ class HttpCatalogRepository implements CatalogRepository {
       title: _readString(json, 'title', path),
       orderIndex: _readInt(json, 'orderIndex', path),
       price: _readInt(json, 'price', path),
+      ratingCount: _readCount(json, 'ratingCount', path),
     );
   }
 
@@ -522,6 +578,15 @@ class HttpCatalogRepository implements CatalogRepository {
       orderIndex: _readInt(json, 'orderIndex', path),
       price: _readInt(json, 'price', path),
       isFree: _readBool(json, 'isFree', path),
+    );
+  }
+
+  EpisodeReaction _reactionFromJson(Map<String, Object?> json, String path) {
+    final rawScore = _readInt(json, 'score', path);
+    return EpisodeReaction(
+      score: rawScore < 0 ? 0 : (rawScore > 5 ? 5 : rawScore),
+      ratingCount: _readCount(json, 'ratingCount', path),
+      allowsMultiplePresses: json['mode'] == 'EPISODE_RATING_MODE_MULTIPLE',
     );
   }
 
@@ -598,6 +663,33 @@ class HttpCatalogRepository implements CatalogRepository {
       return value;
     }
     _invalidPayload('$path.$key must be an integer');
+  }
+
+  int _readCount(Map<String, Object?> json, String key, String path) {
+    final value = json[key];
+    if (value == null) {
+      return 0;
+    }
+    final parsed = switch (value) {
+      int value => value,
+      String value => int.tryParse(value),
+      _ => null,
+    };
+    if (parsed == null || parsed < 0) {
+      _invalidPayload('$path.$key must be a non-negative integer');
+    }
+    return parsed;
+  }
+
+  double _readDouble(Map<String, Object?> json, String key, String path) {
+    final value = json[key];
+    if (value == null) {
+      return 0;
+    }
+    if (value is num && value.isFinite && value >= 0) {
+      return value.toDouble();
+    }
+    _invalidPayload('$path.$key must be a non-negative number');
   }
 
   bool _readBool(Map<String, Object?> json, String key, String path) {

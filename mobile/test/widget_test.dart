@@ -5,6 +5,7 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
 import 'package:publira/settings/age_rating_confirmation.dart';
@@ -188,6 +189,31 @@ void main() {
     expect(find.text('Episodes'), findsNothing);
     expect(router.state.uri.path, AppRoutes.catalog);
   });
+
+  testWidgets(
+    'a series displays its derived rating only when readers reacted',
+    (tester) async {
+      const rated = SeriesItem(
+        id: 'series-with-reactions',
+        title: 'Rated series',
+        description: '',
+        ratingAverage: 3.25,
+        ratingCount: 12,
+      );
+      catalog = FakeCatalogRepository(
+        series: [rated],
+        details: {rated.id: const SeriesDetail(series: rated, episodes: [])},
+      );
+      router = createAppRouter(
+        initialLocation: AppRoutes.seriesDetailPath(rated.id),
+      );
+
+      await pumpApp(tester);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('series-rating')));
+
+      expect(find.text('Rating: 3.3 · 12 readers'), findsOneWidget);
+    },
+  );
 
   testWidgets('confirming the rating opens the series and is remembered', (
     tester,
