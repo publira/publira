@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   createPlaceholderStaticParams,
   STATIC_PARAM_PLACEHOLDER,
@@ -13,7 +12,8 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { PageLoadError } from "#components/page-load-error";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getPublishedPage } from "#lib/pages";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -44,9 +44,9 @@ export const generateMetadata = async (
   }
   const { slug } = parsedParams;
 
-  const [result, messages] = await Promise.all([
+  const [result, t] = await Promise.all([
     getPublishedPage(tenantId, slug, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   // An unavailable page reads as "not found" for the `<title>` alone; the page
@@ -54,9 +54,7 @@ export const generateMetadata = async (
   const page = result.ok ? result.value : null;
 
   return {
-    title: page
-      ? page.title
-      : getMessage(messages, "host.errors.not_found_title"),
+    title: page ? page.title : t("host.errors.not_found_title"),
   };
 };
 

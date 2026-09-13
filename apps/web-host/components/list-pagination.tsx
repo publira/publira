@@ -18,7 +18,7 @@ const rowClassName = cn(
  * `aria-label` cannot be a node, so it arrives as the string it will be, under
  * its own attribute name because the element it lands on is this component's
  * root. The screen resolves it in a component of its own, which is what keeps
- * the catalog key written out beside the `getMessage` call that reads it — a
+ * the catalog key written out beside the accessor call that reads it — a
  * key handed across a file boundary is one `git grep` can no longer account
  * for.
  */

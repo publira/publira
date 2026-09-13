@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -15,15 +14,15 @@ import {
   setEmailFlashCookie,
 } from "#lib/email-flash-cookie";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
-import { loadHostMessages } from "#lib/messages";
-import type { HostMessages } from "#lib/messages";
+import { getMessagesFor } from "#lib/messages";
+import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
-const requestPasswordResetFormSchema = (messages: HostMessages) =>
+const requestPasswordResetFormSchema = (t: HostMessageAccessor) =>
   z.object({
-    email: emailFormSchema(messages),
+    email: emailFormSchema(t),
     locale: localeFormSchema,
-    tenantId: tenantIdFormSchema(messages),
+    tenantId: tenantIdFormSchema(t),
   });
 
 export const requestPasswordResetAction = async (
@@ -34,8 +33,8 @@ export const requestPasswordResetAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = requestPasswordResetFormSchema(messages).safeParse(
+  const t = await getMessagesFor(submittedLocale);
+  const parsed = requestPasswordResetFormSchema(t).safeParse(
     toFormDataInput(formData, {
       email: "value",
       locale: "value",
@@ -53,7 +52,7 @@ export const requestPasswordResetAction = async (
   const requested = await requestPublicPasswordReset(email, tenantId);
   if (!requested) {
     return {
-      message: getMessage(messages, "host.auth.errors.reset_request_failed"),
+      message: t("host.auth.errors.reset_request_failed"),
       ok: false,
     };
   }

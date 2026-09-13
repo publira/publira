@@ -5,7 +5,11 @@ import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
 
 import { loadHostMessages } from "#lib/messages";
-import type { HostMessageKey, HostMessages } from "#lib/messages";
+import type {
+  HostMessageAccessor,
+  HostMessageKey,
+  HostMessages,
+} from "#lib/messages";
 
 import { useLocale } from "./locale-provider";
 
@@ -29,15 +33,16 @@ const hostCatalog = (locale: Locale): Promise<HostMessages> => {
 };
 
 /**
- * The catalog, for a client-only control whose DOM API needs a plain string —
+ * The accessor, for a client-only control whose DOM API needs a plain string —
  * an `aria-label` or a `title` that cannot take a node.
  *
  * The locale comes from the route tree through `<LocaleProvider>`, so it is the
  * same value the server rendered with. Keep the hook local to the control that
- * needs it: a catalog object handed across a component boundary makes the key
- * an implicit attribute of whatever the caller happened to load.
+ * needs it: an accessor handed across a component boundary makes the key an
+ * implicit attribute of whatever the caller happened to bind.
  */
-export const useHostMessages = () => use(hostCatalog(useLocale()));
+export const useHostMessages = (): HostMessageAccessor =>
+  bindMessages(use(hostCatalog(useLocale())));
 
 /**
  * One catalog string for a Client Component that cannot render `<Message>`.
@@ -57,7 +62,7 @@ export const ClientMessage = ({
   message: HostMessageKey;
   values?: MessageValues;
 }) => {
-  const t = bindMessages(useHostMessages());
+  const t = useHostMessages();
 
   return t(message, values);
 };

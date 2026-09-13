@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   EmptyState,
@@ -32,7 +31,9 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { getPublishedCreatorDetail } from "#lib/creators";
 import type { PublishedCreatorDetail } from "#lib/creators";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
@@ -87,9 +88,9 @@ export const generateMetadata = async ({
 
   const { token } = parseCreatorDetailSearchParams(resolvedSearchParams);
 
-  const [result, messages] = await Promise.all([
+  const [result, t] = await Promise.all([
     loadPublishedCreatorDetail(tenantId, creator_id, locale, token),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   // An unavailable creator reads as "not found" for the `<title>` alone; the
@@ -98,14 +99,14 @@ export const generateMetadata = async ({
 
   if (!creator) {
     return {
-      title: getMessage(messages, "host.creators.not_found_title"),
+      title: t("host.creators.not_found_title"),
     };
   }
 
   return {
     description:
       creator.profileText ||
-      getMessage(messages, "host.creators.detail_description", {
+      t("host.creators.detail_description", {
         count: creator.seriesCount,
         name: creator.name,
       }),
@@ -135,12 +136,11 @@ const CreatorDetailSkeleton = () => (
  * behind a boundary of its own so the name beside it does not.
  */
 const CreatorIcon = async ({ name, url }: { name: string; url: string }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
     <Image
-      alt={getMessage(messages, "host.creators.icon_alt", { name })}
+      alt={t("host.creators.icon_alt", { name })}
       className="size-24 shrink-0 rounded-surface object-cover"
       decoding="async"
       height={CREATOR_ICON_SIZE}
@@ -152,21 +152,18 @@ const CreatorIcon = async ({ name, url }: { name: string; url: string }) => {
 
 /**
  * The pagination's `<nav>`, and the one component on this screen that resolves
- * the catalog for a string: an `aria-label` cannot be a node. The key stays
- * written out here, beside the `getMessage` that reads it.
+ * the accessor: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the call that reads it.
  */
 const CreatorSeriesPaginationNav = async ({
   children,
 }: {
   children: ReactNode;
 }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
-    <ListPagination
-      aria-label={getMessage(messages, "host.creators.series_pagination_aria")}
-    >
+    <ListPagination aria-label={t("host.creators.series_pagination_aria")}>
       {children}
     </ListPagination>
   );

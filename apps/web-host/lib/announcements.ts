@@ -6,7 +6,6 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import type { AnnouncementItem } from "@publira/api-client/public/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { z } from "zod";
@@ -18,7 +17,7 @@ import {
 } from "./api-client";
 import { tenantIdSchema } from "./auth-input";
 import { applyCacheTag, tenantAnnouncementsTag } from "./cache-tags";
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 
 export interface MemberAnnouncementItem {
   id: string;
@@ -57,18 +56,14 @@ const mapErrorToMessage = async (
   error: unknown,
   locale: Locale
 ): Promise<string> => {
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(
-    error,
-    getMessage(messages, "host.announcements.list_failed"),
-    {
-      locale,
-      overrides: {
-        "invalid-argument": getMessage(messages, "errors.rpc.unauthenticated"),
-      },
-    }
-  );
+  return rpcErrorMessage(error, t("host.announcements.list_failed"), {
+    locale,
+    overrides: {
+      "invalid-argument": t("errors.rpc.unauthenticated"),
+    },
+  });
 };
 
 /**

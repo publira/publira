@@ -1,7 +1,6 @@
-import { getMessage } from "@publira/i18n";
 import { z } from "zod";
 
-import type { HostMessages } from "./messages";
+import type { HostMessageAccessor } from "./messages";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
 
@@ -55,37 +54,26 @@ export interface NotificationDisplay {
  * rather than a string this module assembles.
  */
 const episodeSubject = (
-  messages: HostMessages,
+  t: HostMessageAccessor,
   payload: NotificationPayload
 ): string => {
   if (payload.episode_title && payload.series_title) {
-    return getMessage(
-      messages,
-      "host.notifications.episode_published_subject_with_series",
-      {
-        episode_title: payload.episode_title,
-        series_title: payload.series_title,
-      }
-    );
+    return t("host.notifications.episode_published_subject_with_series", {
+      episode_title: payload.episode_title,
+      series_title: payload.series_title,
+    });
   }
   if (payload.episode_title) {
-    return getMessage(
-      messages,
-      "host.notifications.episode_published_subject",
-      { episode_title: payload.episode_title }
-    );
+    return t("host.notifications.episode_published_subject", {
+      episode_title: payload.episode_title,
+    });
   }
   if (payload.series_title) {
-    return getMessage(
-      messages,
-      "host.notifications.episode_published_subject_series",
-      { series_title: payload.series_title }
-    );
+    return t("host.notifications.episode_published_subject_series", {
+      series_title: payload.series_title,
+    });
   }
-  return getMessage(
-    messages,
-    "host.notifications.episode_published_subject_unknown"
-  );
+  return t("host.notifications.episode_published_subject_unknown");
 };
 
 export const notificationHref = (
@@ -122,26 +110,24 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
 export const notificationDisplay = (
   notificationType: string,
   payload: NotificationPayload,
-  messages: HostMessages
+  t: HostMessageAccessor
 ): NotificationDisplay => {
   const href = notificationHref(payload);
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISHED) {
     return {
-      description: getMessage(
-        messages,
-        "host.notifications.episode_published_description",
-        { subject: episodeSubject(messages, payload) }
-      ),
+      description: t("host.notifications.episode_published_description", {
+        subject: episodeSubject(t, payload),
+      }),
       href,
-      title: getMessage(messages, "host.notifications.episode_published_title"),
+      title: t("host.notifications.episode_published_title"),
     };
   }
 
   return {
-    description: getMessage(messages, "host.notifications.unknown_description"),
+    description: t("host.notifications.unknown_description"),
     href,
-    title: getMessage(messages, "host.notifications.unknown_title"),
+    title: t("host.notifications.unknown_title"),
   };
 };

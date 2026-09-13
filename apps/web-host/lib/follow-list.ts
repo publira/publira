@@ -5,7 +5,6 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { MyFollow } from "@publira/api-client/public/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -19,17 +18,7 @@ import { getSeriesDetail } from "./catalog";
 import { getPublishedCreatorDetail } from "./creators";
 import { followsCacheTag, toFollowTargetKind } from "./follow";
 import type { FollowTargetKind } from "./follow";
-import { loadHostMessages } from "./messages";
-
-/**
- * `locale` reaches the read as an argument rather than being resolved inside
- * the cached scope, so the failure wording belongs to the cache key instead of
- * to whichever request filled the entry.
- */
-const followListMessage = async (
-  locale: Locale,
-  key: "errors.rpc.unauthenticated" | "host.settings.follows_failed"
-): Promise<string> => getMessage(await loadHostMessages(locale), key);
+import { getMessagesFor } from "./messages";
 
 const defaultFollowPageSize = 20;
 
@@ -150,14 +139,14 @@ const readFollowList = async (
   applyCacheTag(followsCacheTag(tenantId));
 
   const { locale } = input;
-  const [messages, sessionId] = await Promise.all([
-    loadHostMessages(locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
       ...emptyFollowPage,
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       unexpected: false,
@@ -187,11 +176,9 @@ const readFollowList = async (
     dropFailedCacheEntry();
     return {
       ...emptyFollowPage,
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "host.settings.follows_failed"),
-        { locale }
-      ),
+      message: rpcErrorMessage(error, t("host.settings.follows_failed"), {
+        locale,
+      }),
       ok: false,
       requiresSignIn: isSignInRequiredError(error),
       unexpected: isUnexpectedError(error),
@@ -203,12 +190,13 @@ export const listMyFollows = async (
   tenantId: string,
   input: ListMyFollowsInput
 ): Promise<ListMyFollowsResult> => {
-  const { unexpected, ...result } = await readFollowList(tenantId, input);
+  const [{ unexpected, ...result }, t] = await Promise.all([
+    readFollowList(tenantId, input),
+    getMessagesFor(input.locale),
+  ]);
   throwIfUnexpected(
     unexpected,
-    result.ok
-      ? await followListMessage(input.locale, "host.settings.follows_failed")
-      : result.message
+    result.ok ? t("host.settings.follows_failed") : result.message
   );
   return result;
 };
@@ -223,11 +211,8 @@ export const resolveFollowListItems = async (
   follows: FollowListEntry[],
   locale: Locale
 ): Promise<FollowListItem[]> => {
-  const messages = await loadHostMessages(locale);
-  const unpublishedTitle = getMessage(
-    messages,
-    "host.settings.follows_unpublished_title"
-  );
+  const t = await getMessagesFor(locale);
+  const unpublishedTitle = t("host.settings.follows_unpublished_title");
 
   return Promise.all(
     follows.map(async (follow) => {

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,7 +21,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./client-message", () => ({
-  useHostMessages: () => sharedCatalog("en"),
+  useHostMessages: () => bindMessages(sharedCatalog("en")),
 }));
 
 vi.mock("./locale-provider", () => ({

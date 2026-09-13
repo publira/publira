@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -12,7 +11,8 @@ import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/auth-shared";
 import type { FollowTargetKind } from "#lib/follow";
 import { getMyFollowStatus } from "#lib/follow";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantDefaultLocale } from "#lib/tenant";
 
 import { FollowButton, FollowLoginLink } from "./follow-button";
@@ -36,10 +36,10 @@ export const FollowControl = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
-  const [defaultLocale, result, messages] = await Promise.all([
+  const [defaultLocale, result, t] = await Promise.all([
     getTenantDefaultLocale(tenantId),
     getMyFollowStatus(tenantId, targetKind, publicId, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   if (!result.ok) {
@@ -60,11 +60,11 @@ export const FollowControl = async ({
   if (!result.signedIn) {
     return (
       <FollowLoginLink
-        ariaLabel={getMessage(messages, "host.follow.login_aria", {
+        ariaLabel={t("host.follow.login_aria", {
           name: targetName,
         })}
         href={buildLoginPath(locale, defaultLocale, returnTo)}
-        label={getMessage(messages, "host.follow.follow")}
+        label={t("host.follow.follow")}
       />
     );
   }
@@ -72,13 +72,13 @@ export const FollowControl = async ({
   return (
     <FollowButton
       copy={{
-        follow: getMessage(messages, "host.follow.follow"),
-        followAriaLabel: getMessage(messages, "host.follow.follow_aria", {
+        follow: t("host.follow.follow"),
+        followAriaLabel: t("host.follow.follow_aria", {
           name: targetName,
         }),
-        pending: getMessage(messages, "host.follow.pending"),
-        unfollow: getMessage(messages, "host.follow.unfollow"),
-        unfollowAriaLabel: getMessage(messages, "host.follow.unfollow_aria", {
+        pending: t("host.follow.pending"),
+        unfollow: t("host.follow.unfollow"),
+        unfollowAriaLabel: t("host.follow.unfollow_aria", {
           name: targetName,
         }),
       }}

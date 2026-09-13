@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import { validationErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -20,7 +19,7 @@ import {
   localeFormSchema,
   requireFormLocale,
 } from "./locale-form";
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 
 export type FollowActionState =
   | { isFollowing: boolean; message: string; ok: true }
@@ -80,11 +79,10 @@ export const toggleFollowAction = async (
   }
 
   updateTag(followsCacheTag(tenantId));
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
   return {
     isFollowing: result.isFollowing,
-    message: getMessage(
-      messages,
+    message: t(
       intent === "follow" ? "host.follow.followed" : "host.follow.unfollowed"
     ),
     ok: true,

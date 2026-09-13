@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenBody,
@@ -20,7 +19,9 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { TenantIdField } from "#components/tenant-id-field";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -28,10 +29,9 @@ import { loginAction } from "./_lib/actions";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return { title: getMessage(messages, "host.auth.login.title") };
+  return { title: t("host.auth.login.title") };
 };
 
 /**
@@ -195,17 +195,17 @@ const LoginFormContent = async ({
 /** The tenant's own name and tagline, which only the site read can supply. */
 const LoginHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [info, siteLabel, messages] = await Promise.all([
+  const [info, siteLabel, t] = await Promise.all([
     getTenantSiteInfo(tenantId),
     getTenantSiteLabel(tenantId, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
   const siteTagline = info?.siteTagline?.trim();
 
   return (
     <>
       <TenantDocumentTitle
-        pageTitle={getMessage(messages, "host.auth.login.title")}
+        pageTitle={t("host.auth.login.title")}
         siteLabel={siteLabel}
       />
       <AuthScreenTitle>{siteLabel}</AuthScreenTitle>

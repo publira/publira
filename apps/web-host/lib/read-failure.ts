@@ -1,10 +1,9 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 import type { HostMessageKey } from "./messages";
 
 /**
@@ -21,11 +20,9 @@ export const localizedReadFailure = async <TValue = never>(
   locale: Locale,
   key: HostMessageKey
 ): Promise<CachedReadResult<TValue>> => {
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return cachedReadFailure<TValue>(
-    rpcErrorMessage(error, getMessage(messages, key), { locale })
-  );
+  return cachedReadFailure<TValue>(rpcErrorMessage(error, t(key), { locale }));
 };
 
 /**
@@ -42,7 +39,7 @@ export const localizedReadUnavailable = async <TValue = never>(
   locale: Locale,
   key: HostMessageKey
 ): Promise<CachedReadResult<TValue>> => {
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return cachedReadFailure<TValue>(getMessage(messages, key));
+  return cachedReadFailure<TValue>(t(key));
 };

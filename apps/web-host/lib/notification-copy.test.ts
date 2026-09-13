@@ -1,15 +1,16 @@
+import { bindMessages } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
-import type { HostMessages } from "./messages";
+import type { HostMessageAccessor } from "./messages";
 import {
   notificationDisplay,
   notificationHref,
   parseNotificationPayload,
 } from "./notification-copy";
 
-const JA: HostMessages = sharedCatalog("ja");
-const EN: HostMessages = sharedCatalog("en");
+const JA: HostMessageAccessor = bindMessages(sharedCatalog("ja"));
+const EN: HostMessageAccessor = bindMessages(sharedCatalog("en"));
 
 describe("parseNotificationPayload", () => {
   it("Extract only known fields", () => {

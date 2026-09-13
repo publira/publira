@@ -25,7 +25,9 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listRankedSeries } from "#lib/catalog";
 import type { RankingPeriodName } from "#lib/catalog";
+import { getMessages } from "#lib/get-messages";
 import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -40,10 +42,9 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return { title: getMessage(messages, "host.ranking.list_title") };
+  return { title: t("host.ranking.list_title") };
 };
 
 /**
@@ -178,26 +179,23 @@ const RankingTabs = async ({
     getLocale(),
   ]);
   const { period } = parseRankingSearchParams(resolvedSearchParams);
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
-    <nav
-      aria-label={getMessage(messages, "host.ranking.period_nav")}
-      className="flex gap-2"
-    >
+    <nav aria-label={t("host.ranking.period_nav")} className="flex gap-2">
       <LocaleLink
         aria-current={period === "daily" ? "page" : undefined}
         className={rankingTabClassName(period === "daily")}
         href={rankingHref("daily")}
       >
-        {getMessage(messages, "host.ranking.period_daily")}
+        {t("host.ranking.period_daily")}
       </LocaleLink>
       <LocaleLink
         aria-current={period === "weekly" ? "page" : undefined}
         className={rankingTabClassName(period === "weekly")}
         href={rankingHref("weekly")}
       >
-        {getMessage(messages, "host.ranking.period_weekly")}
+        {t("host.ranking.period_weekly")}
       </LocaleLink>
     </nav>
   );
@@ -217,12 +215,11 @@ const RankingPagination = async ({
   period: RankingPeriodName;
   previousToken: string;
 }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
     <nav
-      aria-label={getMessage(messages, "host.ranking.pagination_aria")}
+      aria-label={t("host.ranking.pagination_aria")}
       className="mt-8 flex items-center justify-center gap-6"
     >
       {previousToken ? (
@@ -230,11 +227,11 @@ const RankingPagination = async ({
           className="text-sm text-primary underline-offset-4 hover:underline"
           href={rankingHref(period, previousToken)}
         >
-          {getMessage(messages, "host.common.previous_page")}
+          {t("host.common.previous_page")}
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
+          {t("host.common.previous_page")}
         </span>
       )}
 
@@ -243,11 +240,11 @@ const RankingPagination = async ({
           className="text-sm text-primary underline-offset-4 hover:underline"
           href={rankingHref(period, nextToken)}
         >
-          {getMessage(messages, "host.common.next_page")}
+          {t("host.common.next_page")}
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
+          {t("host.common.next_page")}
         </span>
       )}
     </nav>

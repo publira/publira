@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenBody,
@@ -20,38 +19,33 @@ import {
   readEmailFlashCookie,
   RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE,
 } from "#lib/email-flash-cookie";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return {
-    title: getMessage(
-      messages,
-      "host.auth.resend_verification_requested.title"
-    ),
+    title: t("host.auth.resend_verification_requested.title"),
   };
 };
 
 const ResendVerificationRequestedHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [info, siteLabel, messages] = await Promise.all([
+  const [info, siteLabel, t] = await Promise.all([
     getTenantSiteInfo(tenantId),
     getTenantSiteLabel(tenantId, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
   const siteTagline = info?.siteTagline?.trim();
 
   return (
     <>
       <TenantDocumentTitle
-        pageTitle={getMessage(
-          messages,
-          "host.auth.resend_verification_requested.title"
-        )}
+        pageTitle={t("host.auth.resend_verification_requested.title")}
         siteLabel={siteLabel}
       />
       <AuthScreenTitle>{siteLabel}</AuthScreenTitle>

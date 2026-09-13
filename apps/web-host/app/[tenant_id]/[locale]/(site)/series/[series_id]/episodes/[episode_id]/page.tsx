@@ -1,4 +1,4 @@
-import { getMessage, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -22,7 +22,8 @@ import {
   getSeriesDetail,
   isPublicEpisodeBody,
 } from "#lib/catalog";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -126,11 +127,11 @@ const EpisodeContent = async (
   // The catalog is awaited here for one string: the body section names itself
   // as a landmark, and an `aria-label` cannot be a node. Everything else on
   // this page streams its own copy in through `<Message>`.
-  const [result, seriesResult, tenant, messages] = await Promise.all([
+  const [result, seriesResult, tenant, t] = await Promise.all([
     getEpisodeDetail(tenantId, series_id, episode_id, locale),
     getSeriesDetail(tenantId, series_id, locale),
     getTenantSiteInfo(tenantId),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   if (!result.ok) {
@@ -179,7 +180,7 @@ const EpisodeContent = async (
           want after finishing, so it sits below the pages rather than above
           them. */}
         <section
-          aria-label={getMessage(messages, "host.episode.body_label")}
+          aria-label={t("host.episode.body_label")}
           className="border-b border-border"
         >
           <SectionErrorBoundary

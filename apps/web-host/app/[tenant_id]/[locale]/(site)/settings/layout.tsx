@@ -1,11 +1,10 @@
-import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
 
 import { SettingsFlash } from "./settings-flash";
 import { SettingsTabs } from "./settings-tabs";
@@ -14,23 +13,21 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return { title: getMessage(messages, "host.settings.title") };
+  return { title: t("host.settings.title") };
 };
 
 const SettingsTabsSection = async () => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
     <SettingsTabs
       labels={{
-        basic: getMessage(messages, "host.settings.tab_basic"),
-        follows: getMessage(messages, "host.settings.tab_follows"),
-        notifications: getMessage(messages, "host.settings.tab_notifications"),
-        security: getMessage(messages, "host.settings.tab_security"),
+        basic: t("host.settings.tab_basic"),
+        follows: t("host.settings.tab_follows"),
+        notifications: t("host.settings.tab_notifications"),
+        security: t("host.settings.tab_security"),
       }}
     />
   );

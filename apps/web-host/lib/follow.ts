@@ -5,7 +5,6 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import { FollowTargetType } from "@publira/api-client/public/catalog";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -15,7 +14,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { applyCacheTag, tenantFollowsTag } from "./cache-tags";
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 
 /** Public catalog follow targets this app exposes on detail pages. */
 export const followTargetKinds = ["creator", "series"] as const;
@@ -46,15 +45,6 @@ export const toFollowTargetKind = (
  * inside the cached scope, so the wording a failure is stored with belongs to
  * the cache key instead of to whichever request filled the entry.
  */
-const followMessage = async (
-  locale: Locale,
-  key:
-    | "errors.rpc.unauthenticated"
-    | "host.follow.follow_failed"
-    | "host.follow.status_failed"
-    | "host.follow.unfollow_failed"
-): Promise<string> => getMessage(await loadHostMessages(locale), key);
-
 /**
  * Tag the private follow-status and follow-list reads carry, so `updateTag`
  * in the Server Action refreshes only this member's follow island and list —
@@ -93,7 +83,10 @@ const readFollowStatus = async (
   "use cache: private";
   applyCacheTag(followsCacheTag(tenantId));
 
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       isFollowing: false,
@@ -129,11 +122,9 @@ const readFollowStatus = async (
       };
     }
     return {
-      message: rpcErrorMessage(
-        error,
-        await followMessage(locale, "host.follow.status_failed"),
-        { locale }
-      ),
+      message: rpcErrorMessage(error, t("host.follow.status_failed"), {
+        locale,
+      }),
       ok: false,
       unexpected: isUnexpectedError(error),
     };
@@ -153,17 +144,13 @@ export const getMyFollowStatus = async (
   publicId: string,
   locale: Locale
 ): Promise<FollowStatusResult> => {
-  const { unexpected, ...result } = await readFollowStatus(
-    tenantId,
-    targetKind,
-    publicId,
-    locale
-  );
+  const [{ unexpected, ...result }, t] = await Promise.all([
+    readFollowStatus(tenantId, targetKind, publicId, locale),
+    getMessagesFor(locale),
+  ]);
   throwIfUnexpected(
     unexpected,
-    result.ok
-      ? await followMessage(locale, "host.follow.status_failed")
-      : result.message
+    result.ok ? t("host.follow.status_failed") : result.message
   );
   return result;
 };
@@ -176,10 +163,13 @@ export const followTarget = async (input: {
 }): Promise<
   { isFollowing: boolean; ok: true } | { message: string; ok: false }
 > => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: await followMessage(input.locale, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -199,11 +189,9 @@ export const followTarget = async (input: {
     }
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(
-        error,
-        await followMessage(input.locale, "host.follow.follow_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("host.follow.follow_failed"), {
+        locale: input.locale,
+      }),
       ok: false,
     };
   }
@@ -217,10 +205,13 @@ export const unfollowTarget = async (input: {
 }): Promise<
   { isFollowing: boolean; ok: true } | { message: string; ok: false }
 > => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: await followMessage(input.locale, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -240,11 +231,9 @@ export const unfollowTarget = async (input: {
     }
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(
-        error,
-        await followMessage(input.locale, "host.follow.unfollow_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("host.follow.unfollow_failed"), {
+        locale: input.locale,
+      }),
       ok: false,
     };
   }

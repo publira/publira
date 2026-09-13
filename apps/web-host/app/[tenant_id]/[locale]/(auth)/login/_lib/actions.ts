@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -16,17 +15,17 @@ import {
 import { writePublicSessionCookie } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
-import { loadHostMessages } from "#lib/messages";
-import type { HostMessages } from "#lib/messages";
+import { getMessagesFor } from "#lib/messages";
+import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
-const loginFormSchema = (messages: HostMessages) =>
+const loginFormSchema = (t: HostMessageAccessor) =>
   z.object({
-    email: emailFormSchema(messages),
+    email: emailFormSchema(t),
     locale: localeFormSchema,
-    password: passwordFormSchema(messages),
+    password: passwordFormSchema(t),
     returnTo: returnToFormSchema,
-    tenantId: tenantIdFormSchema(messages),
+    tenantId: tenantIdFormSchema(t),
   });
 
 const buildLoginErrorPath = async (
@@ -48,9 +47,9 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   // The locale field falls back rather than failing, so the rejection below can
   // be worded in the reader's language even when the rest of the form is not.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const messages = await loadHostMessages(submittedLocale);
-  const loginFailed = getMessage(messages, "host.auth.errors.login_failed");
-  const parsed = loginFormSchema(messages).safeParse(
+  const t = await getMessagesFor(submittedLocale);
+  const loginFailed = t("host.auth.errors.login_failed");
+  const parsed = loginFormSchema(t).safeParse(
     toFormDataInput(formData, {
       email: "value",
       locale: "value",

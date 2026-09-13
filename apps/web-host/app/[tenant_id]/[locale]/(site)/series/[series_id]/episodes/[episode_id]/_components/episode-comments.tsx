@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   EmptyState,
@@ -37,7 +36,8 @@ import {
   mergeOwnEpisodeComments,
 } from "#lib/comments";
 import type { EpisodeCommentItem } from "#lib/comments";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 
 import { episodeLoginHref } from "../_lib/access-gate";
@@ -86,8 +86,8 @@ export const EpisodeComments = async ({
   }
 
   const locale = await getLocale();
-  const [messages, timeZone, viewer] = await Promise.all([
-    loadHostMessages(locale),
+  const [t, timeZone, viewer] = await Promise.all([
+    getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
     getMe(tenantId),
   ]);
@@ -111,9 +111,7 @@ export const EpisodeComments = async ({
   const comments = mergeOwnEpisodeComments(page, ownComments);
 
   const pagination = (
-    <ListPagination
-      aria-label={getMessage(messages, "host.episode.comments.pagination_aria")}
-    >
+    <ListPagination aria-label={t("host.episode.comments.pagination_aria")}>
       <ListPaginationStep
         href={
           page.previousToken
@@ -139,7 +137,7 @@ export const EpisodeComments = async ({
 
   const commentedAt = (comment: EpisodeCommentItem) =>
     formatDateTime(comment.createdAt, {
-      fallback: getMessage(messages, "host.common.unset"),
+      fallback: t("host.common.unset"),
       locale,
       timeZone,
     });
@@ -148,33 +146,21 @@ export const EpisodeComments = async ({
   // here rather than per comment. Each reason is looked up by its own key so
   // the catalog checks it, which a key built from the reason would not be.
   const reportCopy: CommentReportButtonCopy = {
-    cancel: getMessage(messages, "host.common.cancel"),
-    confirm: getMessage(messages, "host.episode.comments.report_confirm"),
-    description: getMessage(
-      messages,
-      "host.episode.comments.report_description"
-    ),
-    noteLabel: getMessage(messages, "host.episode.comments.report_note_label"),
-    notePlaceholder: getMessage(
-      messages,
-      "host.episode.comments.report_note_placeholder"
-    ),
-    pending: getMessage(messages, "host.episode.comments.reporting"),
-    reasonLabel: getMessage(
-      messages,
-      "host.episode.comments.report_reason_label"
-    ),
+    cancel: t("host.common.cancel"),
+    confirm: t("host.episode.comments.report_confirm"),
+    description: t("host.episode.comments.report_description"),
+    noteLabel: t("host.episode.comments.report_note_label"),
+    notePlaceholder: t("host.episode.comments.report_note_placeholder"),
+    pending: t("host.episode.comments.reporting"),
+    reasonLabel: t("host.episode.comments.report_reason_label"),
     reasons: {
-      abuse: getMessage(messages, "host.episode.comments.report_reason_abuse"),
-      other: getMessage(messages, "host.episode.comments.report_reason_other"),
-      spam: getMessage(messages, "host.episode.comments.report_reason_spam"),
-      spoiler: getMessage(
-        messages,
-        "host.episode.comments.report_reason_spoiler"
-      ),
+      abuse: t("host.episode.comments.report_reason_abuse"),
+      other: t("host.episode.comments.report_reason_other"),
+      spam: t("host.episode.comments.report_reason_spam"),
+      spoiler: t("host.episode.comments.report_reason_spoiler"),
     },
-    submit: getMessage(messages, "host.episode.comments.report"),
-    title: getMessage(messages, "host.episode.comments.report_title"),
+    submit: t("host.episode.comments.report"),
+    title: t("host.episode.comments.report_title"),
   };
 
   return (
@@ -215,10 +201,7 @@ export const EpisodeComments = async ({
                 checks the real limit and says so next to the box. */}
             <Textarea
               name="body"
-              placeholder={getMessage(
-                messages,
-                "host.episode.comments.body_placeholder"
-              )}
+              placeholder={t("host.episode.comments.body_placeholder")}
               rows={4}
             />
           </Field>
@@ -327,19 +310,11 @@ export const EpisodeComments = async ({
                   <CommentDeleteButton
                     commentPublicId={comment.publicId}
                     copy={{
-                      ariaLabel: getMessage(
-                        messages,
-                        "host.episode.comments.delete_aria",
-                        { date: commentedAt(comment) }
-                      ),
-                      pending: getMessage(
-                        messages,
-                        "host.episode.comments.deleting"
-                      ),
-                      submit: getMessage(
-                        messages,
-                        "host.episode.comments.delete"
-                      ),
+                      ariaLabel: t("host.episode.comments.delete_aria", {
+                        date: commentedAt(comment),
+                      }),
+                      pending: t("host.episode.comments.deleting"),
+                      submit: t("host.episode.comments.delete"),
                     }}
                     episodePublicId={episodePublicId}
                     returnTo={episodePath}
@@ -351,14 +326,10 @@ export const EpisodeComments = async ({
                     delete it instead. */}
                 {viewer && comment.authorPublicId !== viewer.publicId ? (
                   <CommentReportButton
-                    ariaLabel={getMessage(
-                      messages,
-                      "host.episode.comments.report_aria",
-                      {
-                        author: comment.authorName,
-                        date: commentedAt(comment),
-                      }
-                    )}
+                    ariaLabel={t("host.episode.comments.report_aria", {
+                      author: comment.authorName,
+                      date: commentedAt(comment),
+                    })}
                     commentPublicId={comment.publicId}
                     copy={reportCopy}
                     returnTo={episodePath}

@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -25,8 +24,8 @@ import {
   localeFormSchema,
   requireFormLocale,
 } from "#lib/locale-form";
-import { loadHostMessages } from "#lib/messages";
-import type { HostMessages } from "#lib/messages";
+import { getMessagesFor } from "#lib/messages";
+import type { HostMessageAccessor } from "#lib/messages";
 
 /**
  * The body limit the API enforces, counted the same way it counts it: Unicode
@@ -42,16 +41,16 @@ const publicIdFormSchema = z.string().trim().min(1).max(64);
  * The comment form's own rules. It is a function of the catalog rather than a
  * module constant: its wording follows the locale the form was submitted from.
  */
-const postCommentSchema = (messages: HostMessages) =>
+const postCommentSchema = (t: HostMessageAccessor) =>
   z.object({
     body: z
       .string()
       .trim()
       .min(1, {
-        error: getMessage(messages, "host.episode.comments.body_required"),
+        error: t("host.episode.comments.body_required"),
       })
       .refine((value) => [...value].length <= MAX_COMMENT_BODY_LENGTH, {
-        error: getMessage(messages, "host.episode.comments.body_too_long", {
+        error: t("host.episode.comments.body_too_long", {
           max: MAX_COMMENT_BODY_LENGTH,
         }),
       }),
@@ -76,7 +75,7 @@ const MAX_COMMENT_REPORT_NOTE_LENGTH = 1000;
  * that chooser, and the RPC would answer it with a generic rejection the reader
  * could do nothing with.
  */
-const reportCommentSchema = (messages: HostMessages) =>
+const reportCommentSchema = (t: HostMessageAccessor) =>
   z.object({
     commentPublicId: publicIdFormSchema,
     locale: localeFormSchema,
@@ -84,17 +83,12 @@ const reportCommentSchema = (messages: HostMessages) =>
       .string()
       .trim()
       .refine((value) => [...value].length <= MAX_COMMENT_REPORT_NOTE_LENGTH, {
-        error: getMessage(
-          messages,
-          "host.episode.comments.report_note_too_long",
-          { max: MAX_COMMENT_REPORT_NOTE_LENGTH }
-        ),
+        error: t("host.episode.comments.report_note_too_long", {
+          max: MAX_COMMENT_REPORT_NOTE_LENGTH,
+        }),
       }),
     reason: z.enum(EPISODE_COMMENT_REPORT_REASONS, {
-      error: getMessage(
-        messages,
-        "host.episode.comments.report_reason_required"
-      ),
+      error: t("host.episode.comments.report_reason_required"),
     }),
     returnTo: returnToFormSchema,
     tenantId: tenantIdSchema,
@@ -124,8 +118,8 @@ export const postEpisodeCommentAction = async (
   // so every answer below is worded in the reader's language, the rejections
   // included.
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = postCommentSchema(messages).safeParse(
+  const t = await getMessagesFor(submittedLocale);
+  const parsed = postCommentSchema(t).safeParse(
     toFormDataInput(formData, {
       body: "value",
       episodePublicId: "value",
@@ -155,8 +149,7 @@ export const postEpisodeCommentAction = async (
 
   updateTag(tenantEpisodeCommentsTag(tenantId, episodePublicId));
   return {
-    message: getMessage(
-      messages,
+    message: t(
       result.awaitingApproval
         ? "host.episode.comments.posted_awaiting_approval"
         : "host.episode.comments.posted"
@@ -205,9 +198,9 @@ export const withdrawEpisodeCommentAction = async (
   }
 
   updateTag(tenantEpisodeCommentsTag(tenantId, episodePublicId));
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
   return {
-    message: getMessage(messages, "host.episode.comments.deleted"),
+    message: t("host.episode.comments.deleted"),
     ok: true,
   };
 };
@@ -227,8 +220,8 @@ export const reportEpisodeCommentAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = reportCommentSchema(messages).safeParse(
+  const t = await getMessagesFor(submittedLocale);
+  const parsed = reportCommentSchema(t).safeParse(
     toFormDataInput(formData, {
       commentPublicId: "value",
       locale: "value",
@@ -260,7 +253,7 @@ export const reportEpisodeCommentAction = async (
   }
 
   return {
-    message: getMessage(messages, "host.episode.comments.reported"),
+    message: t("host.episode.comments.reported"),
     ok: true,
   };
 };

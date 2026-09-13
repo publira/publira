@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -15,29 +14,29 @@ import {
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
-import { loadHostMessages } from "#lib/messages";
-import type { HostMessages } from "#lib/messages";
+import { getMessagesFor } from "#lib/messages";
+import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const tokenOrEmpty = (
-  messages: HostMessages,
+  t: HostMessageAccessor,
   value: string | undefined
 ): string => {
-  const parsed = authTokenFormSchema(messages).safeParse(value);
+  const parsed = authTokenFormSchema(t).safeParse(value);
   return parsed.success ? parsed.data : "";
 };
 
-const confirmPasswordFormSchema = (messages: HostMessages) =>
+const confirmPasswordFormSchema = (t: HostMessageAccessor) =>
   z
     .object({
-      confirmPassword: passwordFormSchema(messages),
+      confirmPassword: passwordFormSchema(t),
       locale: localeFormSchema,
-      newPassword: passwordFormSchema(messages),
-      tenantId: tenantIdFormSchema(messages),
-      token: authTokenFormSchema(messages),
+      newPassword: passwordFormSchema(t),
+      tenantId: tenantIdFormSchema(t),
+      token: authTokenFormSchema(t),
     })
     .refine((value) => value.newPassword === value.confirmPassword, {
-      error: getMessage(messages, "host.auth.errors.password_mismatch"),
+      error: t("host.auth.errors.password_mismatch"),
       path: ["confirmPassword"],
     });
 
@@ -78,10 +77,10 @@ export const confirmPasswordAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(input.locale);
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = confirmPasswordFormSchema(messages).safeParse(input);
+  const t = await getMessagesFor(submittedLocale);
+  const parsed = confirmPasswordFormSchema(t).safeParse(input);
   if (!parsed.success) {
-    const token = tokenOrEmpty(messages, input.token);
+    const token = tokenOrEmpty(t, input.token);
     const errorPath = await buildConfirmPasswordErrorPath(
       submittedLocale,
       String(input.tenantId ?? ""),
@@ -102,7 +101,7 @@ export const confirmPasswordAction = async (
       locale,
       tenantId,
       token,
-      getMessage(messages, "host.auth.errors.reset_confirm_failed")
+      t("host.auth.errors.reset_confirm_failed")
     );
     redirect(errorPath);
   }

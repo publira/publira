@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   EmptyState,
@@ -24,9 +23,11 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
+import { getMessages } from "#lib/get-messages";
 import { getPublishedLabelDetail } from "#lib/labels";
 import type { PublishedLabelDetail } from "#lib/labels";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
@@ -72,11 +73,11 @@ export const generateMetadata = async ({
   const labelId = parseLabelDetailParams({ label_id });
   const { token } = parseLabelDetailSearchParams(resolvedSearchParams);
 
-  const [result, messages] = await Promise.all([
+  const [result, t] = await Promise.all([
     labelId
       ? loadPublishedLabelDetail(tenantId, labelId, locale, token)
       : { ok: true as const, value: null },
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   // An unavailable label reads as "not found" for the `<title>` alone; the
@@ -85,12 +86,12 @@ export const generateMetadata = async ({
 
   if (!label) {
     return {
-      title: getMessage(messages, "host.labels.not_found_title"),
+      title: t("host.labels.not_found_title"),
     };
   }
 
   return {
-    description: getMessage(messages, "host.labels.detail_description", {
+    description: t("host.labels.detail_description", {
       count: label.seriesCount,
       name: label.name,
     }),
@@ -110,21 +111,18 @@ const LabelDetailSkeleton = () => (
 
 /**
  * The pagination's `<nav>`, and the one component on this screen that resolves
- * the catalog: an `aria-label` cannot be a node. The key stays written out
- * here, beside the `getMessage` that reads it.
+ * the accessor: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the call that reads it.
  */
 const LabelSeriesPaginationNav = async ({
   children,
 }: {
   children: ReactNode;
 }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
-    <ListPagination
-      aria-label={getMessage(messages, "host.labels.series_pagination_aria")}
-    >
+    <ListPagination aria-label={t("host.labels.series_pagination_aria")}>
       {children}
     </ListPagination>
   );

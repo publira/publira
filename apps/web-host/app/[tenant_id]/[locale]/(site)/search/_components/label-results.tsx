@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -22,7 +21,8 @@ import {
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { searchPublishedLabels } from "#lib/catalog";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import type { SearchGroupView } from "../_lib/search-group";
@@ -49,18 +49,15 @@ export const LabelResultsSkeleton = () => (
 );
 
 /**
- * The pagination's `<nav>`, and the one place this group resolves the catalog
+ * The pagination's `<nav>`, and the one place this group resolves the accessor
  * for a value that cannot be a node: an `aria-label`. The key stays written out
- * here, beside the `getMessage` that reads it.
+ * here, beside the call that reads it.
  */
 const LabelPaginationNav = async ({ children }: { children: ReactNode }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
-    <ListPagination
-      aria-label={getMessage(messages, "host.search.labels_pagination_aria")}
-    >
+    <ListPagination aria-label={t("host.search.labels_pagination_aria")}>
       {children}
     </ListPagination>
   );

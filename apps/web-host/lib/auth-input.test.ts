@@ -1,3 +1,4 @@
+import { bindMessages } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
@@ -12,12 +13,12 @@ import {
   tenantIdFormSchema,
   tenantIdSchema,
 } from "./auth-input";
-import type { HostMessages } from "./messages";
+import type { HostMessageAccessor } from "./messages";
 
 const VALID_TOKEN = "a".repeat(64);
 const VALID_TENANT_ID = "01234567-89ab-cdef-0123-456789abcdef";
-const JA: HostMessages = sharedCatalog("ja");
-const EN: HostMessages = sharedCatalog("en");
+const JA: HostMessageAccessor = bindMessages(sharedCatalog("ja"));
+const EN: HostMessageAccessor = bindMessages(sharedCatalog("en"));
 
 describe("returnToSearchParamSchema", () => {
   it("keeps a same-origin path", () => {

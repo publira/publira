@@ -7,7 +7,6 @@ import type {
   RecentSeries,
   SeriesProgress,
 } from "@publira/api-client/public/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cache } from "react";
 
@@ -20,7 +19,7 @@ import {
 } from "./api-client";
 import { toEyeCatchImageVariants } from "./catalog";
 import type { EyeCatchImageVariant } from "./catalog";
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 
 const defaultRecentSeriesLimit = 20;
 
@@ -176,13 +175,11 @@ export const listMyRecentSeries = async (
     if (isUnauthenticatedRpcError(error)) {
       return { ok: true, series: [] };
     }
-    const messages = await loadHostMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "host.top.continue_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("host.top.continue_failed"), {
+        locale: input.locale,
+      }),
       ok: false,
     };
   }
@@ -241,13 +238,11 @@ export const getMySeriesProgress = cache(
           signedIn: false,
         };
       }
-      const messages = await loadHostMessages(locale);
+      const t = await getMessagesFor(locale);
       return {
-        message: rpcErrorMessage(
-          error,
-          getMessage(messages, "host.series.progress_failed"),
-          { locale }
-        ),
+        message: rpcErrorMessage(error, t("host.series.progress_failed"), {
+          locale,
+        }),
         ok: false,
       };
     }

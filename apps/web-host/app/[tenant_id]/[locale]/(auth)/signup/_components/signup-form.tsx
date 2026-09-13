@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -15,24 +14,23 @@ import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { TenantIdField } from "#components/tenant-id-field";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
 
 import { signupAction } from "../_lib/actions";
 
 /**
  * The one control in this form whose copy cannot be a node: `placeholder` is
- * an attribute, so this input resolves the catalog itself. Its label does not
+ * an attribute, so this input resolves the accessor itself. Its label does not
  * — that is a `<Message>` at the call site — so the wait is the input alone.
  */
 const NameInput = async () => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
     <Input
       id="name"
       name="name"
-      placeholder={getMessage(messages, "host.auth.signup.name_placeholder")}
+      placeholder={t("host.auth.signup.name_placeholder")}
       type="text"
     />
   );

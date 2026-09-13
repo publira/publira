@@ -5,7 +5,6 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import { EpisodeRatingMode } from "@publira/api-client/public/catalog";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -17,7 +16,7 @@ import {
 import { applyCacheTag, tenantEpisodeRatingsTag } from "./cache-tags";
 import type { EpisodeReactionMode } from "./episode-rating-state";
 import { MAX_EPISODE_REACTION_SCORE } from "./episode-rating-state";
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 
 export {
   applyReactionPress,
@@ -34,14 +33,6 @@ export type {
  * Action refreshes only this member's reaction island.
  */
 export const episodeRatingsCacheTag = tenantEpisodeRatingsTag;
-
-const ratingMessage = async (
-  locale: Locale,
-  key:
-    | "errors.rpc.unauthenticated"
-    | "host.episode.reaction.failed"
-    | "host.episode.reaction.status_failed"
-): Promise<string> => getMessage(await loadHostMessages(locale), key);
 
 const isUnexpectedError = (error: unknown): boolean =>
   rpcErrorDisposition(error) === "unexpected";
@@ -91,7 +82,10 @@ const readMyEpisodeRating = async (
   "use cache: private";
   applyCacheTag(episodeRatingsCacheTag(tenantId));
 
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       mode: "single",
@@ -135,7 +129,7 @@ const readMyEpisodeRating = async (
     return {
       message: rpcErrorMessage(
         error,
-        await ratingMessage(locale, "host.episode.reaction.status_failed"),
+        t("host.episode.reaction.status_failed"),
         { locale }
       ),
       ok: false,
@@ -161,16 +155,13 @@ export const getMyEpisodeRating = async (
   episodePublicId: string,
   locale: Locale
 ): Promise<EpisodeRatingStatusResult> => {
-  const { unexpected, ...result } = await readMyEpisodeRating(
-    tenantId,
-    episodePublicId,
-    locale
-  );
+  const [{ unexpected, ...result }, t] = await Promise.all([
+    readMyEpisodeRating(tenantId, episodePublicId, locale),
+    getMessagesFor(locale),
+  ]);
   throwIfUnexpected(
     unexpected,
-    result.ok
-      ? await ratingMessage(locale, "host.episode.reaction.status_failed")
-      : result.message
+    result.ok ? t("host.episode.reaction.status_failed") : result.message
   );
   return result;
 };
@@ -184,10 +175,13 @@ export const rateEpisode = async (input: {
   | { mode: EpisodeReactionMode; ok: true; ratingCount: number; score: number }
   | { message: string; ok: false }
 > => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: await ratingMessage(input.locale, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -213,11 +207,9 @@ export const rateEpisode = async (input: {
     }
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(
-        error,
-        await ratingMessage(input.locale, "host.episode.reaction.failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("host.episode.reaction.failed"), {
+        locale: input.locale,
+      }),
       ok: false,
     };
   }
