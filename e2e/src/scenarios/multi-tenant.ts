@@ -52,6 +52,20 @@ export const SEED_TENANT = {
   labelName: "Seed Label 01",
   name: "Seed Tenant",
   publicId: "SeedTNNTAAA1",
+  /** R15-rated series for age confirmation tests (`db/seeds/dev/010_catalog.sql`). */
+  r15Series: {
+    freeEpisodeId: "SeedEPSDAA51",
+    freeEpisodeTitle: "Seed Episode 006-01",
+    publicId: "SeedSERSAAA6",
+    title: "Seed Series 006",
+  },
+  /** R18-rated series for age confirmation tests (`db/seeds/dev/010_catalog.sql`). */
+  r18Series: {
+    freeEpisodeId: "SeedEPSDAA61",
+    freeEpisodeTitle: "Seed Episode 007-01",
+    publicId: "SeedSERSAAA7",
+    title: "Seed Series 007",
+  },
   series: {
     /** `Seed Episode 001-10` is the priced one; 001-01 is free. */
     freeEpisodeId: "SeedEPSDAAA1",

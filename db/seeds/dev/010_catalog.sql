@@ -122,6 +122,10 @@ SET tenant_id = EXCLUDED.tenant_id,
 -- The two rounds that have ended or are paused keep none: they are expecting
 -- nothing. A pair is written in ascending order, which the column's CHECK
 -- cannot enforce.
+--
+-- The round ending in six is rated r15 and the round ending in seven is rated
+-- r18, so the storefront has both ratings to confirm and the remaining rounds
+-- stay all-ages so covers still fill the home shelves.
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
@@ -143,6 +147,7 @@ INSERT INTO series_listings (
     reading_period_hours,
     status,
     schedule_weekdays,
+    age_rating,
     tenant_id
 )
 SELECT
@@ -165,6 +170,11 @@ SELECT
         WHEN 9 THEN ARRAY[1, 4]
         ELSE ARRAY[]::int[]
     END::smallint[],
+    CASE ss.series_no % 10
+        WHEN 6 THEN 'r15'
+        WHEN 7 THEN 'r18'
+        ELSE 'all'
+    END,
     ss.tenant_id
 FROM seed_series ss
 ON CONFLICT (series_id) DO UPDATE
@@ -172,6 +182,7 @@ SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours,
     status = EXCLUDED.status,
     schedule_weekdays = EXCLUDED.schedule_weekdays,
+    age_rating = EXCLUDED.age_rating,
     tenant_id = EXCLUDED.tenant_id;
 
 WITH tenant_scope AS (
