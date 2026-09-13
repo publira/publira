@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/viewer/episode_reaction_control.dart';
 
 /// What the reader is offered once the pages run out: the next episode, or the
 /// news that there is none yet, and the way back to the series either way.
@@ -47,7 +48,9 @@ class EpisodeEndPanel extends StatelessWidget {
     return Center(
       key: const ValueKey('episode-end-panel'),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 72),
+        // The reader's page controls stay overlaid at the bottom. Keep every
+        // end-of-episode action, including the reaction button, above them.
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -60,6 +63,8 @@ class EpisodeEndPanel extends StatelessWidget {
                 savedOffline: nextSavedOffline,
                 onOpen: () => onOpenNext(next),
               ),
+            const SizedBox(height: 24),
+            EpisodeReactionControl(episode: detail.episode),
             const SizedBox(height: 24),
             if (onOpenComments != null)
               OutlinedButton.icon(

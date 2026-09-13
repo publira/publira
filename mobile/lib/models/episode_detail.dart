@@ -110,3 +110,19 @@ class EpisodeDetail {
   /// pages without the confirmation.
   final SeriesAgeRating? ageRating;
 }
+
+/// A member's reaction state for an episode, as `RatingService` reports it.
+class EpisodeReaction {
+  const EpisodeReaction({
+    required this.score,
+    required this.ratingCount,
+    required this.allowsMultiplePresses,
+  });
+
+  /// Zero before this reader reacts, otherwise their score from one to five.
+  final int score;
+  final int ratingCount;
+
+  /// Whether another press raises the score instead of being a no-op.
+  final bool allowsMultiplePresses;
+}

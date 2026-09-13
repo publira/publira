@@ -76,6 +76,14 @@ abstract class CatalogRepository {
     int pageIndex,
   );
 
+  /// This signed-in reader's reaction state for an episode. A signed-out
+  /// reader has no private state, so this returns `null` without a request.
+  Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId);
+
+  /// Adds one reaction press for the signed-in reader. A reaction is never
+  /// removed or lowered; the server applies the series' press mode.
+  Future<EpisodeReaction> reactToEpisode(String episodePublicId);
+
   /// The series the signed-in reader was in the middle of, newest activity
   /// first, each with the episode to continue from.
   ///

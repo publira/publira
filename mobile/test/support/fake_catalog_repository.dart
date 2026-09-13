@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -20,6 +22,8 @@ class FakeCatalogRepository implements CatalogRepository {
     this.episodeError,
     this.readingPositionError,
     this.recentSeriesError,
+    this.reactionError,
+    this.reactions = const {},
   });
 
   List<SeriesItem> series;
@@ -50,6 +54,12 @@ class FakeCatalogRepository implements CatalogRepository {
   CatalogFailure? episodeError;
   CatalogFailure? readingPositionError;
   CatalogFailure? recentSeriesError;
+  CatalogFailure? reactionError;
+
+  /// Held open by a test that switches readers while a reaction is loading.
+  Completer<EpisodeReaction?>? reactionGate;
+
+  Map<String, EpisodeReaction> reactions;
 
   /// Limits [listRecentSeries] was called with, in order.
   final List<int> recentSeriesLimits = <int>[];
@@ -141,6 +151,44 @@ class FakeCatalogRepository implements CatalogRepository {
       ...readingPositions,
       episodeKey(seriesPublicId, episodePublicId): pageIndex,
     };
+  }
+
+  @override
+  Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId) async {
+    final gate = reactionGate;
+    if (gate != null) {
+      return gate.future;
+    }
+    final error = reactionError;
+    if (error != null) {
+      throw error;
+    }
+    return reactions[episodePublicId];
+  }
+
+  @override
+  Future<EpisodeReaction> reactToEpisode(String episodePublicId) async {
+    final error = reactionError;
+    if (error != null) {
+      throw error;
+    }
+    final current =
+        reactions[episodePublicId] ??
+        const EpisodeReaction(
+          score: 0,
+          ratingCount: 0,
+          allowsMultiplePresses: false,
+        );
+    final score = current.allowsMultiplePresses
+        ? (current.score < 5 ? current.score + 1 : 5)
+        : 5;
+    final next = EpisodeReaction(
+      score: score,
+      ratingCount: current.ratingCount + (current.score == 0 ? 1 : 0),
+      allowsMultiplePresses: current.allowsMultiplePresses,
+    );
+    reactions = {...reactions, episodePublicId: next};
+    return next;
   }
 
   @override

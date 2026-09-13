@@ -2494,6 +2494,8 @@
       "age_rating_r18": "R18",
       "episode_count": "{$count} episodes",
       "episodes_empty": "No episodes have been published yet.",
+      "rating": "Rating: {$average} · {$count} readers",
+      "rating_single": "Rating: {$average} · {$count} reader",
       "episodes_heading": "Episodes",
       "load_failed": "Could not show the series. Try again.",
       "not_found": "Series not found ({$id})",
@@ -2517,6 +2519,15 @@
     },
     "viewer": {
       "back_to_series": "Back to the series",
+      "reaction": {
+        "count": "{$count} readers reacted",
+        "count_single": "{$count} reader reacted",
+        "failed": "Could not record the reaction. Try again.",
+        "press": "React",
+        "score": "React ({$score}/5)",
+        "sign_in": "Sign in to react",
+        "submitting": "Reacting…"
+      },
       "end": {
         "up_next": "Up next",
         "up_to_date_description": "“{$title}” has no episode after this one yet.",

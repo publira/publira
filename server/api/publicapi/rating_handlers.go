@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -272,12 +273,33 @@ func (s *apiServer) RateEpisode(
 		return nil, s.internalDBError(ctx, "failed to record the episode rating", err,
 			"tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
+	s.revalidateSeriesRating(ctx, tenant.ID, row.SeriesPublicID)
 
 	return noStorePrivateResponse(&publirav1.RateEpisodeResponse{
 		Score:       int32(rating.score),
 		RatingCount: rating.count,
 		Mode:        mode,
 	}), nil
+}
+
+// revalidateSeriesRating drops the public reads whose derived aggregate changes
+// after a reader reacts. Every client records ratings through RateEpisode, so
+// this shared boundary keeps mobile and web mutations consistent.
+func (s *apiServer) revalidateSeriesRating(ctx context.Context, tenantID uuid.UUID, seriesPublicID string) {
+	if s.reval == nil {
+		return
+	}
+	tags := seriesRatingRevalidateTags(tenantID.String(), seriesPublicID)
+	if err := s.reval.RevalidateTags(ctx, tags); err != nil {
+		s.logger.Warn("failed to request next revalidate after episode rating", "tenant_id", tenantID.String(), "series_public_id", seriesPublicID, "error", err)
+	}
+}
+
+func seriesRatingRevalidateTags(tenantID, seriesPublicID string) []string {
+	return []string{
+		fmt.Sprintf("tenant:%s:series:detail", strings.TrimSpace(tenantID)),
+		fmt.Sprintf("tenant:%s:series:%s", strings.TrimSpace(tenantID), strings.TrimSpace(seriesPublicID)),
+	}
 }
 
 // storedRating is what a press leaves behind: the reader's own score and the
