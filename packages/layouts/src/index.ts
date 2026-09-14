@@ -41,6 +41,7 @@ export {
 } from "./site-layout-actions";
 export {
   SiteLayoutUserMenu,
+  SiteLayoutUserMenuAccount,
   SiteLayoutUserMenuAnnouncementsLink,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,

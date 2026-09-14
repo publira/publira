@@ -34,6 +34,7 @@ import {
   SiteLayoutPrimaryAction,
   SiteLayoutSecondaryAction,
   SiteLayoutUserMenu,
+  SiteLayoutUserMenuAccount,
   SiteLayoutUserMenuAnnouncementsLink,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,
@@ -77,6 +78,7 @@ import {
 } from "#components/notification-bell";
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
+import { getMe } from "#lib/auth";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getMessages } from "#lib/get-messages";
 import { getLocale, tenantDefaultLocale } from "#lib/locale";
@@ -194,6 +196,33 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
   );
 };
 
+/**
+ * Whose account the menu belongs to.
+ *
+ * It is the only place on the site that names the reader, which is why the
+ * separator belongs to it: an account this read cannot resolve leaves the menu
+ * as the links alone rather than with a rule over nothing. An account with no
+ * display name yet is known by its public ID, the identifier the reader gives
+ * when they ask for help.
+ */
+const AccountMenuName = async () => {
+  const tenantId = await getTenantId();
+  const me = await getMe(tenantId);
+
+  if (!me) {
+    return null;
+  }
+
+  return (
+    <>
+      <SiteLayoutUserMenuAccount>
+        {me.name.trim() || me.publicId}
+      </SiteLayoutUserMenuAccount>
+      <SiteLayoutUserMenuSeparator />
+    </>
+  );
+};
+
 /** The account menu's trigger, which shows an icon and carries its name as an attribute. */
 const AccountMenuTrigger = async () => {
   const t = await getMessages();
@@ -250,6 +279,11 @@ const HeaderActions = async () => {
             <AccountMenuTrigger />
           </Suspense>
           <SiteLayoutUserMenuContent>
+            <Suspense
+              fallback={<SkeletonLine className="mx-3 my-2 h-4 w-24" />}
+            >
+              <AccountMenuName />
+            </Suspense>
             <SiteLayoutUserMenuMyPageLink
               href={withLocalePrefix(locale, defaultLocale, "/my")}
             >

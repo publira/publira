@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   SiteLayoutUserMenu,
+  SiteLayoutUserMenuAccount,
   SiteLayoutUserMenuAnnouncementsLink,
   SiteLayoutUserMenuContent,
   SiteLayoutUserMenuLogout,
@@ -31,6 +32,8 @@ const renderMenu = (logoutAction = () => {}) =>
     <SiteLayoutUserMenu>
       <SiteLayoutUserMenuTrigger aria-label="Account menu" />
       <SiteLayoutUserMenuContent>
+        <SiteLayoutUserMenuAccount>Reader One</SiteLayoutUserMenuAccount>
+        <SiteLayoutUserMenuSeparator />
         <SiteLayoutUserMenuMyPageLink href="/en/my">
           My Page
         </SiteLayoutUserMenuMyPageLink>
@@ -63,6 +66,14 @@ describe("SiteLayoutUserMenu slots", () => {
         .getAttribute("href")
     ).toBe("/en/announcements");
     expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeTruthy();
+  });
+
+  it("names the account the menu belongs to, without offering it as an item", () => {
+    renderMenu();
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+
+    expect(screen.getByText("Reader One")).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Reader One" })).toBeNull();
   });
 
   it("the sign-out slot carries the Server Action form", () => {

@@ -41,6 +41,21 @@ export const SiteLayoutUserMenuContent = ({
   </Menu.Portal>
 );
 
+/**
+ * Who the menu belongs to, above the links out of it. It is a label rather
+ * than an item: there is nothing here to activate, and the reader's own
+ * details are what the links below lead to.
+ */
+export const SiteLayoutUserMenuAccount = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <div className="truncate px-3 py-2 text-sm font-medium text-foreground">
+    {children}
+  </div>
+);
+
 export const SiteLayoutUserMenuMyPageLink = ({
   children,
   href,

@@ -29,3 +29,20 @@ export const parseMySearchParams = (
  */
 export const myPageHref = (token: string): string =>
   cursorPageHref("/my", token);
+
+/** What `/my` hands its sections so each can resolve the page it is on. */
+export type MyPageSearchParams =
+  PageProps<"/[tenant_id]/[locale]/my">["searchParams"];
+
+/**
+ * The history page the request names, resolved inside the section that needs
+ * it. `/my` has no component above its `<Suspense>` boundaries that could
+ * resolve it once: reading the search params up there would cost the page its
+ * static shell, so each section awaits them behind its own boundary.
+ */
+export const resolveMyPageToken = async (
+  searchParams: MyPageSearchParams
+): Promise<string> => {
+  const resolved = await searchParams;
+  return parseMySearchParams(resolved).token;
+};

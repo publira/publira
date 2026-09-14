@@ -197,6 +197,8 @@ test.describe("web-host email address change", () => {
     );
 
     await expect(page).toHaveURL(/\/my\/?$/u);
-    await expect(page.getByText(EMAIL_CHANGE_MEMBER.publicId)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Reading history" })
+    ).toBeVisible();
   });
 });
