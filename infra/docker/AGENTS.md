@@ -10,7 +10,7 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | --- | --- |
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `api/Dockerfile` | Long-running Go HTTP servers (`server/cmd/*`) that stay `CGO_ENABLED=0` |
-| `image/Dockerfile` | Image servers that link Manael / libvips (`image-server`, `admin-image-server`) |
+| `image/Dockerfile` | The image server, which links Manael / libvips (`image-server`) |
 | `batch/Dockerfile` | Every batch job, as one image (`server/cmd/batch`) |
 | `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
@@ -42,7 +42,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 1. **Multi-stage**: build on Debian toolchain images; run on **distroless `nonroot`**.
    - Web / Node: `node:*-bookworm-slim` → `gcr.io/distroless/nodejs*-debian12:nonroot`
    - Go API / batch: `golang:*-bookworm` → `gcr.io/distroless/static:nonroot`
-   - Go image servers: `golang:*-bookworm` + `libvips-dev` → `debian:bookworm-slim` + `libvips42` (CGO; distroless/static cannot load libvips)
+   - Go image server: `golang:*-bookworm` + `libvips-dev` → `debian:bookworm-slim` + `libvips42` (CGO; distroless/static cannot load libvips)
 2. **Pin base images by digest** (`image:tag@sha256:…`). Match existing files and Renovate Docker updates.
 3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, same style as `.devcontainer/Dockerfile`:
 
@@ -59,7 +59,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    - Anything the compiled output imports at runtime must sit in a `dependencies` field. A `devDependencies` / unmet `peerDependencies` entry disappears under `--prod` and the container dies on `Cannot find package`.
    - `turbo prune` does not carry repo-root assets. `@publira/email-templates` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
 7. **Go API / batch**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
-8. **Go image servers**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42` because Manael links libvips.
+8. **Go image server**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42` because Manael links libvips.
 9. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.
 
 ## Verification after Dockerfile changes

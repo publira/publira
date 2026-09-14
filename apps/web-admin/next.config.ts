@@ -19,8 +19,8 @@ const nextConfig: NextConfig = {
     turbopackRustReactCompiler: true,
   },
   images: {
-    // admin-image-server converts and resizes through Manael, so `next/image`
-    // asks it for the width it needs instead of re-encoding through
+    // image-server converts and resizes through Manael, so `next/image` asks
+    // it for the width it needs instead of re-encoding through
     // `/_next/image`.
     loader: "custom",
     loaderFile: "./lib/image-loader.ts",

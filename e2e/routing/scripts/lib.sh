@@ -109,7 +109,6 @@ ROUTING_ROUTERS=(
   web-platform
   api
   image-server
-  admin-image-server
 )
 
 # Middleware names from the same file. `strip-trace-context` is attached to

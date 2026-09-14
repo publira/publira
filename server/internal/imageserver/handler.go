@@ -121,21 +121,25 @@ type ObjectStore interface {
 	GetObject(ctx context.Context, key string) (ObjectResult, error)
 }
 
+// SiteDB is how one of a tenant's two host names reaches the database. The
+// pool belongs to that site's PostgreSQL login — publira_public for the
+// storefront, publira_admin for the console — and Tenants opens the
+// tenant-scoped queries on it.
+type SiteDB struct {
+	Pool    *sql.DB
+	Tenants TenantScopedQuerierFactory
+}
+
 type Handler struct {
 	resolverQuerier ResolverQuerier
-	tenantFactory   TenantScopedQuerierFactory
+	public          SiteDB
+	admin           SiteDB
 	objects         ObjectStore
 	logger          *slog.Logger
 	tokens          *auth.TokenManager
 	cache           ImageCache
 	proxy           http.Handler
 	maxConverted    int
-	// previewForTenantStaff is set on admin-image-server. It accepts
-	// AudienceAdminMedia query tokens and serves an episode image when the
-	// named user holds a tenant staff role, ignoring publish state and price.
-	// Public image-server leaves it false, so those tokens never unlock a body
-	// there.
-	previewForTenantStaff bool
 }
 
 type imageCredential struct {
@@ -143,30 +147,23 @@ type imageCredential struct {
 	rawToken string
 }
 
-func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) (*Server, error) {
-	return newHandler(resolver, tenantFactory, objects, logger, db, tokens, false)
-}
-
-// NewAdminHandler is the admin-image-server constructor. Episode bodies are
-// still gated, but a tenant-staff admin-media token unlocks them regardless of
-// publish state or price.
-func NewAdminHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) (*Server, error) {
-	return newHandler(resolver, tenantFactory, objects, logger, db, tokens, true)
-}
-
-func newHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager, previewForTenantStaff bool) (*Server, error) {
+// NewHandler builds the handler both of a tenant's host names are served by.
+// Which of the two a request arrived on is decided per request by
+// resolveTenantFromHost, and that answer picks the pool the request is
+// answered from as well as the rules the episode body route applies.
+func NewHandler(resolver ResolverQuerier, public, admin SiteDB, objects ObjectStore, logger *slog.Logger, tokens *auth.TokenManager) (*Server, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	h := &Handler{
-		resolverQuerier:       resolver,
-		tenantFactory:         tenantFactory,
-		objects:               objects,
-		logger:                logger,
-		tokens:                tokens,
-		cache:                 newImageCacheFromEnv(logger),
-		maxConverted:          defaultMaxConvertedBytes,
-		previewForTenantStaff: previewForTenantStaff,
+		resolverQuerier: resolver,
+		public:          public,
+		admin:           admin,
+		objects:         objects,
+		logger:          logger,
+		tokens:          tokens,
+		cache:           newImageCacheFromEnv(logger),
+		maxConverted:    defaultMaxConvertedBytes,
 	}
 	origin, proxy, err := startOriginAndProxy(h)
 	if err != nil {
@@ -174,7 +171,12 @@ func newHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFacto
 	}
 	h.proxy = proxy
 	mux := http.NewServeMux()
-	health.Register(mux, health.WithDB(db))
+	// One check per pool: with two logins behind one listener, a single "db"
+	// could not say which of them stopped answering.
+	health.Register(mux,
+		health.WithDBNamed("db.public", public.Pool),
+		health.WithDBNamed("db.admin", admin.Pool),
+	)
 	mux.HandleFunc("GET /images/creators/{media_id}", h.handleGetCreatorImage)
 	mux.HandleFunc("GET /images/episodes/{media_id}", h.handleGetEpisodeImage)
 	mux.HandleFunc("GET /images/labels/{media_id}/{variant_type}/{width}", h.handleGetLabelImage)
@@ -186,7 +188,7 @@ func newHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFacto
 func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, err := h.resolveTenantFromHost(ctx, r)
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "tenant not found", http.StatusNotFound)
@@ -203,7 +205,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -235,7 +237,10 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if objectKey == "" && h.previewForTenantStaff {
+	// A staff preview is honoured on the console host alone, so an admin-media
+	// token cannot unlock a body on the storefront, where the response would
+	// be a shared cache entry.
+	if objectKey == "" && adminHost {
 		if claims, ok := h.adminEpisodeImageClaims(r, tenant.ID); ok {
 			access, err := h.grantedAdminEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, claims)
 			if err != nil {
@@ -301,10 +306,10 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			cacheControl = freeWindowCacheControl(publicAccess.FreeUntil.Time, time.Now())
 		}
 		// A free body leaves as ciphertext too, so what a page costs to
-		// extract does not depend on whether its episode is sold. The admin
-		// preview host is left out: it renders bodies with an <img>, which
-		// cannot decrypt.
-		if !h.previewForTenantStaff {
+		// extract does not depend on whether its episode is sold. The console
+		// host is left out: it renders bodies with an <img>, which cannot
+		// decrypt.
+		if !adminHost {
 			freeCipher, cipherErr := h.freeEpisodeImageCipher(r, tenant.ID, publicAccess.EpisodeID)
 			if cipherErr != nil {
 				h.logger.ErrorContext(ctx, "failed to derive free episode image cipher", "error", cipherErr, "media_id", mediaID.String())
@@ -443,7 +448,7 @@ func (h *Handler) grantedEpisodeImage(
 	return &access, nil
 }
 
-// adminEpisodeImageClaims is the admin-image-server counterpart of
+// adminEpisodeImageClaims is the console host's counterpart of
 // episodeImageCredential. Only AudienceAdminMedia on the query is accepted: an
 // admin access token in the URL would be a session, and a reader media token
 // is evaluated on the public path instead.
@@ -540,7 +545,7 @@ func (h *Handler) activeUserForClaims(
 func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, err := h.resolveTenantFromHost(ctx, r)
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "tenant not found", http.StatusNotFound)
@@ -557,7 +562,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -595,7 +600,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, err := h.resolveTenantFromHost(ctx, r)
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "tenant not found", http.StatusNotFound)
@@ -617,7 +622,7 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -650,7 +655,7 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, err := h.resolveTenantFromHost(ctx, r)
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "tenant not found", http.StatusNotFound)
@@ -677,7 +682,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -711,7 +716,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, err := h.resolveTenantFromHost(ctx, r)
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "tenant not found", http.StatusNotFound)
@@ -738,7 +743,7 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -769,20 +774,36 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
-func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, error) {
+// resolveTenantFromHost names the tenant a request belongs to and reports
+// whether it arrived on that tenant's console host: a `domain` match is the
+// storefront and an `admin_domain` match is the console.
+//
+// It runs on the public pool because it has to run before the site is known,
+// and it reads `tenants`, which carries no row-level security and which both
+// logins may select from.
+func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, bool, error) {
 	candidates := requestmeta.HostCandidatesFromRequest(r)
 	tenant, err := h.resolverQuerier.GetTenantByDomains(ctx, candidates)
 	if err == nil {
 		tracing.SetTenant(ctx, tenant.PublicID)
-		return tenant, nil
+		return tenant, false, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return dbmodels.Tenant{}, err
+		return dbmodels.Tenant{}, false, err
 	}
 	tenant, err = h.resolverQuerier.GetAdminTenantByDomains(ctx, candidates)
 	if err != nil {
-		return dbmodels.Tenant{}, err
+		return dbmodels.Tenant{}, false, err
 	}
 	tracing.SetTenant(ctx, tenant.PublicID)
-	return tenant, nil
+	return tenant, true, nil
+}
+
+// tenantQueries opens the tenant-scoped queries on the pool belonging to the
+// login the site a request arrived on is answered as.
+func (h *Handler) tenantQueries(ctx context.Context, adminHost bool, tenantID uuid.UUID) (TenantScopedQuerier, func(), error) {
+	if adminHost {
+		return h.admin.Tenants.ForTenant(ctx, tenantID)
+	}
+	return h.public.Tenants.ForTenant(ctx, tenantID)
 }

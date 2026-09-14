@@ -25,17 +25,27 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
+// stubResolver answers one of the two tenant lookups and leaves the other
+// empty, which is how the handler decides the site a request arrived on: a
+// `domain` match is the storefront and an `admin_domain` match is the console.
 type stubResolver struct {
-	tenant dbmodels.Tenant
-	err    error
+	tenant  dbmodels.Tenant
+	err     error
+	console bool
 }
 
 func (s stubResolver) GetTenantByDomains(context.Context, []string) (dbmodels.Tenant, error) {
+	if s.console {
+		return dbmodels.Tenant{}, sql.ErrNoRows
+	}
 	return s.tenant, s.err
 }
 
 func (s stubResolver) GetAdminTenantByDomains(context.Context, []string) (dbmodels.Tenant, error) {
-	return dbmodels.Tenant{}, sql.ErrNoRows
+	if !s.console {
+		return dbmodels.Tenant{}, sql.ErrNoRows
+	}
+	return s.tenant, s.err
 }
 
 type stubTenantQueries struct {
@@ -188,22 +198,20 @@ func newTestServer(t *testing.T, resolver ResolverQuerier, factory TenantScopedQ
 	return newTestServerWithTokens(t, resolver, factory, store, auth.NewTokenManager([]byte(testMediaJWTSecret)))
 }
 
+// newTestServerWithTokens gives both sites the same stub queries, so what a
+// test varies is the resolver: the site a request is answered as follows from
+// which of the two tenant lookups answered it, not from how the handler was
+// built.
 func newTestServerWithTokens(t *testing.T, resolver ResolverQuerier, factory TenantScopedQuerierFactory, store ObjectStore, tokens *auth.TokenManager) *Server {
 	t.Helper()
-	return newTestServerWithConstructor(t, resolver, factory, store, tokens, NewHandler)
+	site := SiteDB{Tenants: factory}
+	return newTestServerWithSites(t, resolver, site, site, store, tokens)
 }
 
-func newTestServerWithConstructor(
-	t *testing.T,
-	resolver ResolverQuerier,
-	factory TenantScopedQuerierFactory,
-	store ObjectStore,
-	tokens *auth.TokenManager,
-	construct func(ResolverQuerier, TenantScopedQuerierFactory, ObjectStore, *slog.Logger, *sql.DB, *auth.TokenManager) (*Server, error),
-) *Server {
+func newTestServerWithSites(t *testing.T, resolver ResolverQuerier, public, admin SiteDB, store ObjectStore, tokens *auth.TokenManager) *Server {
 	t.Helper()
 	t.Setenv("PUBLIRA_REDIS_URL", "disabled")
-	srv, err := construct(resolver, factory, store, nil, nil, tokens)
+	srv, err := NewHandler(resolver, public, admin, store, nil, tokens)
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
 	}
@@ -735,17 +743,16 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 		}
 	})
 
-	// admin-image-server renders bodies with an <img>, which cannot decrypt,
-	// so its responses stay ordinary images.
-	t.Run("admin-image-server serves the same body unencrypted", func(t *testing.T) {
-		srv := newTestServerWithConstructor(t,
-			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "admin.example.test"}},
+	// The console renders bodies with an <img>, which cannot decrypt, so
+	// responses on that host stay ordinary images.
+	t.Run("the console host serves the same body unencrypted", func(t *testing.T) {
+		srv := newTestServerWithTokens(t,
+			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}, console: true},
 			stubFactory{q: anonymousQueries},
 			&countingStore{objects: map[string]storedObject{
 				"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
 			}},
 			tokens,
-			NewAdminHandler,
 		)
 		req := httptest.NewRequest(http.MethodGet, "/images/episodes/"+mediaID.String(), nil)
 		req.Host = "admin.example.test"
@@ -904,16 +911,21 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 	userID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
 	tokens := auth.NewTokenManager([]byte(testMediaJWTSecret))
 
-	serve := func(t *testing.T, queries stubTenantQueries, token string, construct func(ResolverQuerier, TenantScopedQuerierFactory, ObjectStore, *slog.Logger, *sql.DB, *auth.TokenManager) (*Server, error)) *httptest.ResponseRecorder {
+	// The site is the resolver's answer, so a request reaches the staff
+	// preview rules by arriving on a host the console lookup matches and
+	// nothing else.
+	consoleHost := stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}, console: true}
+	storefrontHost := stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}}
+
+	serve := func(t *testing.T, queries stubTenantQueries, token string, resolver ResolverQuerier) *httptest.ResponseRecorder {
 		t.Helper()
-		srv := newTestServerWithConstructor(t,
-			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "admin.example.test"}},
+		srv := newTestServerWithTokens(t,
+			resolver,
 			stubFactory{q: queries},
 			&countingStore{objects: map[string]storedObject{
 				"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
 			}},
 			tokens,
-			construct,
 		)
 		target := "/images/episodes/" + mediaID.String() +
 			"?" + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
@@ -939,7 +951,7 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 	for _, role := range []string{auth.RoleTenantAdmin, auth.RoleTenantEditor, auth.RoleTenantAuditor} {
 		t.Run("serves a draft paid body to "+role, func(t *testing.T) {
 			queries := unpublishedPaidEpisodeQueries(mediaID, episodeID, userID, 4, tenantID, []string{role})
-			rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), NewAdminHandler)
+			rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), consoleHost)
 			if rec.Code != http.StatusOK {
 				t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
 			}
@@ -952,19 +964,19 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 		})
 	}
 
-	t.Run("public image-server ignores an admin-media token", func(t *testing.T) {
-		rec := serve(t, staffQueries, issue(t, episodeID, 4, time.Now()), NewHandler)
+	t.Run("the storefront host ignores an admin-media token", func(t *testing.T) {
+		rec := serve(t, staffQueries, issue(t, episodeID, 4, time.Now()), storefrontHost)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}
 	})
 
-	t.Run("a reader media token does not unlock a draft on admin-image-server", func(t *testing.T) {
+	t.Run("a reader media token does not unlock a draft on the console host", func(t *testing.T) {
 		token, _, err := tokens.IssueMediaToken("admin-public-id", tenantID.String(), episodeID.String(), 4, time.Now())
 		if err != nil {
 			t.Fatalf("IssueMediaToken() error = %v", err)
 		}
-		rec := serve(t, staffQueries, token, NewAdminHandler)
+		rec := serve(t, staffQueries, token, consoleHost)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}
@@ -972,7 +984,7 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 
 	t.Run("a token issued for another episode does not unlock this one", func(t *testing.T) {
 		otherEpisodeID := uuid.MustParse("88888888-8888-8888-8888-888888888888")
-		rec := serve(t, staffQueries, issue(t, otherEpisodeID, 4, time.Now()), NewAdminHandler)
+		rec := serve(t, staffQueries, issue(t, otherEpisodeID, 4, time.Now()), consoleHost)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}
@@ -980,14 +992,14 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 
 	t.Run("an expired token stops working", func(t *testing.T) {
 		issuedAt := time.Now().Add(-auth.MediaTokenTTL - time.Minute)
-		rec := serve(t, staffQueries, issue(t, episodeID, 4, issuedAt), NewAdminHandler)
+		rec := serve(t, staffQueries, issue(t, episodeID, 4, issuedAt), consoleHost)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}
 	})
 
 	t.Run("a token from before a password change stops working", func(t *testing.T) {
-		rec := serve(t, staffQueries, issue(t, episodeID, 3, time.Now()), NewAdminHandler)
+		rec := serve(t, staffQueries, issue(t, episodeID, 3, time.Now()), consoleHost)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}
@@ -995,7 +1007,7 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 
 	t.Run("a user without a tenant staff role does not unlock the body", func(t *testing.T) {
 		queries := unpublishedPaidEpisodeQueries(mediaID, episodeID, userID, 4, tenantID, nil)
-		rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), NewAdminHandler)
+		rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), consoleHost)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}
@@ -1004,7 +1016,7 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 	t.Run("another tenant's image is not found", func(t *testing.T) {
 		otherTenantID := uuid.MustParse("99999999-9999-9999-9999-999999999999")
 		queries := unpublishedPaidEpisodeQueries(mediaID, episodeID, userID, 4, otherTenantID, []string{auth.RoleTenantAdmin})
-		rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), NewAdminHandler)
+		rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), consoleHost)
 		if rec.Code != http.StatusNotFound {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 		}
@@ -1015,11 +1027,68 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Issue() error = %v", err)
 		}
-		rec := serve(t, staffQueries, accessToken, NewAdminHandler)
+		rec := serve(t, staffQueries, accessToken, consoleHost)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}
 	})
+}
+
+// recordingFactory names the login whose pool a request was answered from.
+type recordingFactory struct {
+	login string
+	q     TenantScopedQuerier
+	used  *string
+}
+
+func (f recordingFactory) ForTenant(context.Context, uuid.UUID) (TenantScopedQuerier, func(), error) {
+	*f.used = f.login
+	return f.q, func() {}, nil
+}
+
+// The two pools are two PostgreSQL logins, and the host a request arrived on
+// is what picks between them. One process serving both sites is only as
+// separated as this choice: a console host answered as publira_public would
+// read the console's rows through the storefront's login.
+func TestTenantScopedQueriesFollowTheHostTheRequestArrivedOn(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	queries := stubTenantQueries{
+		creator: dbmodels.GetCreatorImageByIDForTenantRow{
+			ObjectKey:   "creators/avatar.jpg",
+			ContentType: "image/jpeg",
+		},
+	}
+
+	for name, resolver := range map[string]stubResolver{
+		"publira_public": {tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		"publira_admin":  {tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}, console: true},
+	} {
+		t.Run("a request is answered as "+name, func(t *testing.T) {
+			used := ""
+			srv := newTestServerWithSites(t,
+				resolver,
+				SiteDB{Tenants: recordingFactory{login: "publira_public", q: queries, used: &used}},
+				SiteDB{Tenants: recordingFactory{login: "publira_admin", q: queries, used: &used}},
+				&countingStore{objects: map[string]storedObject{
+					"creators/avatar.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+				}},
+				auth.NewTokenManager([]byte(testMediaJWTSecret)),
+			)
+
+			req := httptest.NewRequest(http.MethodGet, "/images/creators/"+mediaID.String(), nil)
+			req.Host = "example.test"
+			req.Header.Set("Accept", "image/webp")
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+			}
+			if used != name {
+				t.Errorf("answered as %q, want %q", used, name)
+			}
+		})
+	}
 }
 
 func TestCreatorImageConvertsToWebP(t *testing.T) {

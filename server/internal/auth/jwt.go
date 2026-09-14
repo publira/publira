@@ -61,9 +61,9 @@ const (
 	// against the API, and an API access token cannot be pasted into an image
 	// URL.
 	AudienceMedia = "media"
-	// AudienceAdminMedia is the admin-image-server counterpart: a URL-borne
-	// credential for tenant staff, not a reader. Public image-server never
-	// verifies this audience, so a copied admin preview URL cannot unlock
+	// AudienceAdminMedia is the console's counterpart: a URL-borne credential
+	// for tenant staff, not a reader. image-server verifies this audience only
+	// on a console host, so a copied admin preview URL cannot unlock
 	// unpublished bodies on the public host.
 	AudienceAdminMedia = "admin-media"
 	// MediaTokenQueryParam is where an AudienceMedia or AudienceAdminMedia
@@ -169,9 +169,9 @@ func (m *TokenManager) IssueMediaToken(
 	return m.issueScopedMediaToken(subjectPublicID, tenantID, episodeID, credentialsVersion, now, AudienceMedia)
 }
 
-// IssueAdminMediaToken is the admin-image-server counterpart of
-// IssueMediaToken. The grant it names is tenant staff membership, not a
-// purchase or ticket, and only admin-image-server verifies this audience.
+// IssueAdminMediaToken is the console's counterpart of IssueMediaToken. The
+// grant it names is tenant staff membership, not a purchase or ticket, and it
+// is verified only on a console host.
 func (m *TokenManager) IssueAdminMediaToken(
 	subjectPublicID string,
 	tenantID string,

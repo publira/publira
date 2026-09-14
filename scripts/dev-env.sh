@@ -75,7 +75,7 @@ start_profile() {
   for port in \
     "${PUBLIRA_WEB_HOST_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_WEB_PLATFORM_PORT}" \
     "${PUBLIRA_PUBLIC_API_PORT}" "${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
-    "${PUBLIRA_IMAGE_SERVER_PORT}" "${PUBLIRA_ADMIN_IMAGE_SERVER_PORT}" \
+    "${PUBLIRA_IMAGE_SERVER_PORT}" \
     "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_OUTBOX_WORKER_PORT}"; do
     if ss -ltn 2>/dev/null | grep -qE ":${port}\\b" || netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"; then
       dev_env_die "port ${port} is already in use; select a different profile"
@@ -103,21 +103,13 @@ start_profile() {
   dev_env_start_background "${run_dir}" image-server env \
     PUBLIRA_IMAGE_SERVER_ADDR=":${PUBLIRA_IMAGE_SERVER_PORT}" \
     PUBLIRA_IMAGE_DB_URL="${PUBLIRA_IMAGE_DB_URL}" \
-    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
-    PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET}" \
-    PUBLIRA_S3_ENDPOINT="${PUBLIRA_S3_ENDPOINT}" \
-    PUBLIRA_S3_FORCE_PATH_STYLE="${PUBLIRA_S3_FORCE_PATH_STYLE}" \
-    PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
-    "${REPO_ROOT}/server/bin/image-server"
-  dev_env_start_background "${run_dir}" admin-image-server env \
-    PUBLIRA_ADMIN_IMAGE_SERVER_ADDR=":${PUBLIRA_ADMIN_IMAGE_SERVER_PORT}" \
     PUBLIRA_ADMIN_IMAGE_DB_URL="${PUBLIRA_ADMIN_IMAGE_DB_URL}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
     PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET}" \
     PUBLIRA_S3_ENDPOINT="${PUBLIRA_S3_ENDPOINT}" \
     PUBLIRA_S3_FORCE_PATH_STYLE="${PUBLIRA_S3_FORCE_PATH_STYLE}" \
     PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
-    "${REPO_ROOT}/server/bin/admin-image-server"
+    "${REPO_ROOT}/server/bin/image-server"
   dev_env_start_background "${run_dir}" outbox-worker env \
     PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
     PUBLIRA_WORKER_ADDR=":${PUBLIRA_OUTBOX_WORKER_PORT}" \

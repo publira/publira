@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -29,7 +30,9 @@ const (
 	serviceName = "publira-image-server"
 
 	defaultImageServerAddr = ":8200"
-	defaultPublicDBURL     = "postgres://publira_public:publicpass@db:5432/publira?sslmode=disable"
+
+	defaultPublicDBURL = "postgres://publira_public:publicpass@db:5432/publira?sslmode=disable"
+	defaultAdminDBURL  = "postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
@@ -54,12 +57,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := sqldb.Open(resolveImageDBURL())
+	// One pool per PostgreSQL login, because the login is what the database
+	// enforces a site's reach with. Which pool a request lands on is decided
+	// by the host it arrived on: a tenant's storefront is answered as
+	// publira_public and its console as publira_admin.
+	pools, err := openPools()
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close() //nolint:errcheck
+	defer pools.close() //nolint:errcheck
 
 	objectStore, err := newObjectStore(context.Background(), cfg.Storage)
 	if err != nil {
@@ -67,15 +74,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	resolverQueries := dbmodels.New(db)
-	tenantFactory := imageserver.NewDBTenantScopedFactory(db, logger)
-
 	imageHandler, err := imageserver.NewHandler(
-		resolverQueries,
-		tenantFactory,
+		dbmodels.New(pools.public),
+		imageserver.SiteDB{Pool: pools.public, Tenants: imageserver.NewDBTenantScopedFactory(pools.public, logger)},
+		imageserver.SiteDB{Pool: pools.admin, Tenants: imageserver.NewDBTenantScopedFactory(pools.admin, logger)},
 		objectStore,
 		logger,
-		db,
 		tokens,
 	)
 	if err != nil {
@@ -83,10 +87,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr := strings.TrimSpace(os.Getenv("PUBLIRA_IMAGE_SERVER_ADDR"))
-	if addr == "" {
-		addr = defaultImageServerAddr
-	}
+	addr := addrFromEnv("PUBLIRA_IMAGE_SERVER_ADDR", defaultImageServerAddr)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -95,21 +96,56 @@ func main() {
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
 		httpserver.New(addr, tracing.HTTPMiddleware(imageHandler)),
 	}, shutdownTracing, func(context.Context) error {
-		return errors.Join(imageHandler.Close(), db.Close())
+		return errors.Join(imageHandler.Close(), pools.close())
 	}); err != nil {
 		logger.Error("image server failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-func resolveImageDBURL() string {
-	if url := strings.TrimSpace(os.Getenv("PUBLIRA_IMAGE_DB_URL")); url != "" {
+// dbPools is one pool per PostgreSQL login this process answers a site as.
+type dbPools struct {
+	public *sql.DB
+	admin  *sql.DB
+}
+
+func openPools() (dbPools, error) {
+	public, err := sqldb.Open(dbURLFromEnv("PUBLIRA_IMAGE_DB_URL", "PUBLIRA_PUBLIC_DB_URL", defaultPublicDBURL))
+	if err != nil {
+		return dbPools{}, err
+	}
+	admin, err := sqldb.Open(dbURLFromEnv("PUBLIRA_ADMIN_IMAGE_DB_URL", "PUBLIRA_ADMIN_DB_URL", defaultAdminDBURL))
+	if err != nil {
+		return dbPools{}, errors.Join(err, public.Close())
+	}
+	return dbPools{public: public, admin: admin}, nil
+}
+
+func (p dbPools) close() error {
+	var errs []error
+	for _, db := range []*sql.DB{p.public, p.admin} {
+		if db != nil {
+			errs = append(errs, db.Close())
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func dbURLFromEnv(name, sharedName, fallback string) string {
+	if url := strings.TrimSpace(os.Getenv(name)); url != "" {
 		return url
 	}
-	if url := strings.TrimSpace(os.Getenv("PUBLIRA_PUBLIC_DB_URL")); url != "" {
+	if url := strings.TrimSpace(os.Getenv(sharedName)); url != "" {
 		return url
 	}
-	return defaultPublicDBURL
+	return fallback
+}
+
+func addrFromEnv(name, fallback string) string {
+	if addr := strings.TrimSpace(os.Getenv(name)); addr != "" {
+		return addr
+	}
+	return fallback
 }
 
 func newObjectStore(ctx context.Context, cfg config.Storage) (imageserver.ObjectStore, error) {

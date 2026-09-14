@@ -35,7 +35,6 @@ BACKENDS: dict[int, str] = {
     4100: "web-platform",
     8000: "api",
     8200: "image-server",
-    8201: "admin-image-server",
 }
 
 

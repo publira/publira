@@ -1,6 +1,6 @@
 # Edge routing
 
-Every Publira deployment puts one reverse proxy in front of six backends, and this directory is that proxy's configuration. The contract below is what the edge has to do; each subdirectory writes it for one proxy.
+Every Publira deployment puts one reverse proxy in front of five backends, and this directory is that proxy's configuration. The contract below is what the edge has to do; each subdirectory writes it for one proxy.
 
 | Proxy | Files | Where it runs |
 | --- | --- | --- |
@@ -22,8 +22,7 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 | `web-admin` | The tenant console | `4000` |
 | `web-platform` | The platform console | `4100` |
 | `api` | The public API — `api-server`, Connect RPC plus `/readyz` | `8000` |
-| `image-server` | Public image delivery | `8200` |
-| `admin-image-server` | Image delivery for the tenant console | `8201` |
+| `image-server` | Image delivery for the tenant site and the tenant console alike | `8200` |
 
 ### Host rules
 
@@ -39,13 +38,12 @@ The hostname decides which Next.js app answers. Matching ignores the port the `H
 
 ### Path rules
 
-| Path | Backend | Prefix removal |
-| --- | --- | --- |
-| `/images…` on an admin host | `admin-image-server` | none |
-| `/images…` on any other host | `image-server` | none |
-| `/api/v1…` | the app the host rules picked | none |
-| `/api`, `/api/…` otherwise | `api` | `/api` |
-| Everything else | the app the host rules picked | none |
+| Path                       | Backend                       | Prefix removal |
+| -------------------------- | ----------------------------- | -------------- |
+| `/images…`                 | `image-server`                | none           |
+| `/api/v1…`                 | the app the host rules picked | none           |
+| `/api`, `/api/…` otherwise | `api`                         | `/api`         |
+| Everything else            | the app the host rules picked | none           |
 
 `/api` is host-agnostic: the public API answers on the tenant site, the tenant console, and the platform console alike.
 
@@ -55,11 +53,10 @@ The hostname decides which Next.js app answers. Matching ignores the port the `H
 
 Highest first. A proxy with no numeric priorities reaches the same result by ordering its blocks this way.
 
-1. Admin host and `/images…`
-2. `/images…`
-3. `/api` minus the `/api/v1…` exception
-4. Admin or platform host
-5. Everything else
+1. `/images…`
+2. `/api` minus the `/api/v1…` exception
+3. Admin or platform host
+4. Everything else
 
 ### Request headers
 
@@ -87,4 +84,4 @@ Two things are deployment decisions, and each proxy's files mark them.
 
 ## Verification
 
-`task e2e:routing` runs the contract against all three proxies. It starts each one in front of an echo server that answers on the six backend ports and reports which backend and which path a request reached, so every row above is a probe. See [`e2e/routing/README.md`](../../e2e/routing/README.md).
+`task e2e:routing` runs the contract against all three proxies. It starts each one in front of an echo server that answers on the five backend ports and reports which backend and which path a request reached, so every row above is a probe. See [`e2e/routing/README.md`](../../e2e/routing/README.md).

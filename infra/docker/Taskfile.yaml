@@ -127,8 +127,6 @@ tasks:
         vars: { APP_NAME: email-renderer, PORT: "8080" }
       - task: build:image
         vars: { CMD_NAME: image-server, PORT: "8200" }
-      - task: build:image
-        vars: { CMD_NAME: admin-image-server, PORT: "8201" }
 
   smoke:web:
     desc: Run a short /livez smoke check against a built web image (APP_NAME, optional PORT)
