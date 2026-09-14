@@ -22,8 +22,8 @@ import (
 
 const defaultFreeWindowIntervalSeconds = 60
 
-func runApplyFreeWindows(ctx context.Context, logger *slog.Logger, cfg *config.Config) error {
-	db, err := sqldb.Open(cfg.DB.URL)
+func runApplyFreeWindows(ctx context.Context, logger *slog.Logger, _ *config.Config) error {
+	db, err := sqldb.Open(resolveTickerDBURL())
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
 		return err

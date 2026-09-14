@@ -566,20 +566,21 @@ Each namespace connects with its own dedicated PostgreSQL login user, which keep
 | batch purge-withdrawn-comments | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_COMMENT_PURGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch publish-episodes | none — the connection `PUBLIRA_DB_URL` names | `PUBLIRA_DB_URL` | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
-| batch apply-free-windows | none — the connection `PUBLIRA_DB_URL` names | `PUBLIRA_DB_URL` | `postgres://postgres:password@db:5432/publira?sslmode=disable` |
+| batch publish-episodes | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
+| batch apply-free-windows | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
+| batch roll-tenant-day | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
 
-`publira_platform`, `publira_content_stats`, and `publira_outbox` carry the BYPASSRLS attribute and access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID.
+`publira_platform`, `publira_content_stats`, `publira_outbox`, and `publira_ticker` carry the BYPASSRLS attribute and access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID.
 
 `PUBLIRA_WORKER_DB_URL` resolves on its own, with no fallback to `PUBLIRA_DB_URL`: leaving it unset lands on the development default in the table above and fails to authenticate anywhere that role's password is not `outboxpass`, rather than silently running the worker on the migration tooling's connection. Local development sets it to `publira_outbox` too — a `dev-env` profile writes that URL, and the Dev Container leaves the variable unset and takes the same role from the default — so the grants that role holds, `CREATE ON SCHEMA public` among them, are exercised on the first local run instead of on a production deploy.
 
-`batch publish-episodes` and `batch apply-free-windows` are the processes with no role of their own; they read `PUBLIRA_DB_URL` directly and therefore run as whatever that connection names. Giving them a dedicated login is [#1688](https://github.com/publira/publira/issues/1688).
+`PUBLIRA_TICKER_DB_URL` resolves on its own for the same reason, and `publira_ticker` is the one role the seed grants table by table: it is named in no blanket `GRANT ... ON ALL TABLES` and in no `ALTER DEFAULT PRIVILEGES`, so a table a later migration adds reaches it only when someone puts it in that list. The three ticker jobs read a known set of catalog, follow, and recipient tables and write four of them, which is little enough to enumerate — and `TestTickerRole*` in `internal/db` runs the real jobs on this connection, so a query that starts reading a table the seed never granted fails there rather than in production.
 
 River's tables, sequences, enum, and function belong to whichever role created them, and `rivermigrate` alters them in place on a later River release. A database that ran the worker on another connection before it had a role of its own therefore keeps an owner the worker cannot alter, which surfaces as `must be owner of table river_job` at startup the next time River ships a schema change. `db/seeds/baseline/010_river_object_owner.sql` hands those objects to `publira_outbox`; it runs with the rest of the seed, so re-running `task db:setup` against an existing database is the fix.
 
 ### Local development
 
-`task db:setup` applies `db/seeds/baseline/000_rls_bypass_role.sql`, which creates the five login users in the table above.
+`task db:setup` applies `db/seeds/baseline/000_rls_bypass_role.sql`, which creates the six login users in the table above.
 
 ### Production
 
@@ -589,11 +590,12 @@ After running the seed, change each user's password to a secure value:
 ALTER ROLE publira_platform PASSWORD '<secure_password>';
 ALTER ROLE publira_content_stats PASSWORD '<secure_password>';
 ALTER ROLE publira_outbox PASSWORD '<secure_password>';
+ALTER ROLE publira_ticker PASSWORD '<secure_password>';
 ALTER ROLE publira_admin    PASSWORD '<secure_password>';
 ALTER ROLE publira_public   PASSWORD '<secure_password>';
 ```
 
-Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and outbox-worker read only the variables named for the roles they serve as, and never fall back from one to another, so an unset one leaves that namespace on a development password it cannot authenticate with; the batches fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
+Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers, outbox-worker, and the ticker jobs read only the variables named for the roles they serve as, and never fall back from one to another, so an unset one leaves that process on a development password it cannot authenticate with; the one-shot batches fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
 
 ## Notes on initial data
 

@@ -54,6 +54,22 @@ BEGIN
 END
 $$;
 
+-- Ticker jobs: a BYPASSRLS login for the three jobs that act the moment a
+-- stored instant passes — publishing due episodes, applying free window
+-- boundaries, and rolling each tenant's calendar day. Each one spans every
+-- tenant, so it has to bypass RLS, and none of them creates anything: the
+-- grants below name the tables they read and write rather than handing over
+-- the schema the way the blanket grants do.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_ticker') THEN
+        CREATE ROLE publira_ticker LOGIN PASSWORD 'tickerpass' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
+    ELSE
+        ALTER ROLE publira_ticker LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
+    END IF;
+END
+$$;
+
 -- Admin API user: subject to RLS (tenant-scoped).
 DO $$
 BEGIN
@@ -81,12 +97,12 @@ $$;
 DO $$
 BEGIN
     EXECUTE format(
-        'GRANT CONNECT ON DATABASE %I TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public',
+        'GRANT CONNECT ON DATABASE %I TO publira_platform, publira_content_stats, publira_outbox, publira_ticker, publira_admin, publira_public',
         current_database()
     );
 END
 $$;
-GRANT USAGE ON SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
+GRANT USAGE ON SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_ticker, publira_admin, publira_public;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 
@@ -116,3 +132,36 @@ REVOKE INSERT, UPDATE, DELETE ON episode_rating_counts, series_rating_counts FRO
 -- applies it with rivermigrate at startup, so that role needs to create tables,
 -- types, indexes, and functions in the schema. No other app role does.
 GRANT CREATE ON SCHEMA public TO publira_outbox;
+
+-- publira_ticker is deliberately absent from every grant above. The blanket
+-- ALL TABLES grants and the ALTER DEFAULT PRIVILEGES that follows them hand a
+-- role whatever the schema holds now and whatever a later migration adds, and
+-- the three ticker jobs read and write a known, small set of tables. So they
+-- are named one by one here: a table added to the schema reaches this role only
+-- when someone puts it in this list, and a job that starts reading a table it
+-- was never granted fails in its integration test rather than in production.
+--
+-- Reads: the due listings and windows, the catalog rows the log lines name, and
+-- the recipients each notification fans out to.
+GRANT SELECT ON
+    episode_listings,
+    episodes,
+    series,
+    tenants,
+    platform_config,
+    episode_free_windows,
+    episode_follows,
+    series_follows,
+    creator_follows,
+    episode_creators,
+    tenant_user_roles,
+    platform_users,
+    platform_user_roles
+TO publira_ticker;
+
+-- Writes: the listing a publish promotes, the window boundary a drop answers
+-- for, and the rows the fan-out files. SELECT rides along on the last three
+-- because each insert is an ON CONFLICT DO NOTHING with a RETURNING clause.
+GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
+GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;
+
