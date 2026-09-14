@@ -71,6 +71,43 @@ export const selectComboboxOption = async (
   await page.getByRole("option", { name: optionLabel }).click();
 };
 
+/**
+ * The two pickers of one credit row on the series form, by the position the
+ * row sits at. Neither carries a visible label — the value in the box is the
+ * answer — so each is named after its position, counting from 1.
+ */
+export const creditRowFields = (
+  page: Page,
+  position: number
+): { creatorCombobox: Locator; roleCombobox: Locator } => ({
+  creatorCombobox: page.getByRole("combobox", {
+    exact: true,
+    name: `Author ${position}`,
+  }),
+  roleCombobox: page.getByRole("combobox", {
+    exact: true,
+    name: `Role ${position}`,
+  }),
+});
+
+/**
+ * Open an empty credit row and fill it in. The row lands last, so `position`
+ * is the number of rows the form held before this one.
+ */
+export const creditAuthorViaUi = async (
+  page: Page,
+  position: number,
+  input: { creatorName: string; roleName?: string }
+): Promise<void> => {
+  await page.getByRole("button", { exact: true, name: "Add author" }).click();
+
+  const row = creditRowFields(page, position);
+  await selectComboboxOption(page, row.creatorCombobox, input.creatorName);
+  if (input.roleName) {
+    await selectComboboxOption(page, row.roleCombobox, input.roleName);
+  }
+};
+
 /** Pick an option of a `Select` trigger by label. */
 export const selectOption = async (
   page: Page,
@@ -93,8 +130,6 @@ export interface SeriesFormFields {
   commentModeSelect: Locator;
   readingPeriodHours: Locator;
   synopsis: Locator;
-  creatorCombobox: Locator;
-  creatorRoleCombobox: Locator;
   labelCombobox: Locator;
   publishedAt: Locator;
   statusSelect: Locator;
@@ -114,13 +149,6 @@ export interface SeriesFormFields {
 export const seriesFormFields = (page: Page): SeriesFormFields => ({
   ageRatingSelect: page.getByRole("combobox", { name: /Age rating/u }),
   commentModeSelect: page.getByRole("combobox", { name: /Comments/u }),
-  // The picker one credit is composed in, beside the role it is credited in.
-  // Both are matched exactly, so neither catches the other's label.
-  creatorCombobox: page.getByRole("combobox", { exact: true, name: "Author" }),
-  creatorRoleCombobox: page.getByRole("combobox", {
-    exact: true,
-    name: "Role",
-  }),
   genreCombobox: page.getByRole("combobox", { name: /Genres/u }),
   labelCombobox: page.getByRole("combobox", { name: /Label/u }),
   // `datetime-local` has no ARIA role, so this one filters on visibility.
@@ -179,21 +207,12 @@ export const createSeriesViaUi = async (
     fields.labelCombobox,
     input.labelName ?? SEED_CATALOG.labelName
   );
-  await selectComboboxOption(
-    page,
-    fields.creatorCombobox,
-    input.creatorName ?? SEED_CATALOG.creatorName
-  );
-  if (input.creatorRoleName) {
-    await selectComboboxOption(
-      page,
-      fields.creatorRoleCombobox,
-      input.creatorRoleName
-    );
-  }
-  // The credit is only on the form once it is added to the list; the picker
-  // beside it is where the next one is composed.
-  await page.getByRole("button", { exact: true, name: "Add author" }).click();
+  // The create form opens with no credits at all, so the first row is this
+  // one.
+  await creditAuthorViaUi(page, 1, {
+    creatorName: input.creatorName ?? SEED_CATALOG.creatorName,
+    roleName: input.creatorRoleName,
+  });
 
   if (input.genreName) {
     await selectComboboxOption(page, fields.genreCombobox, input.genreName);

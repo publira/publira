@@ -95,6 +95,10 @@
       "types": "./dist/minimize-icon.d.mts",
       "default": "./dist/minimize-icon.mjs"
     },
+    "./plus-icon": {
+      "types": "./dist/plus-icon.d.mts",
+      "default": "./dist/plus-icon.mjs"
+    },
     "./settings-icon": {
       "types": "./dist/settings-icon.d.mts",
       "default": "./dist/settings-icon.mjs"

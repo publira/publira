@@ -16,8 +16,8 @@ import {
   genreNamesInOrder,
   genreRow,
   labelFormFields,
-  selectComboboxOption,
-  seriesFormFields,
+  creditAuthorViaUi,
+  creditRowFields,
   signInAsSeedAdmin,
 } from "../src/admin";
 import {
@@ -244,7 +244,8 @@ test.describe("admin catalog masters", () => {
     // The series form's picker reads the same tenant creator list, so a
     // creator is attachable to a series as soon as it is registered.
     await page.goto(adminUrl("/series/new"));
-    const { creatorCombobox } = seriesFormFields(page);
+    await page.getByRole("button", { exact: true, name: "Add author" }).click();
+    const { creatorCombobox } = creditRowFields(page, 1);
     await creatorCombobox.click();
     await creatorCombobox.fill(name);
     await expect(page.getByRole("option", { name })).toBeVisible();
@@ -277,29 +278,27 @@ test.describe("admin catalog masters", () => {
       })
     );
 
-    const creditAsArtist = async (creatorName: string) => {
-      const fields = seriesFormFields(page);
-      await selectComboboxOption(page, fields.creatorCombobox, creatorName);
-      await selectComboboxOption(page, fields.creatorRoleCombobox, "Artist");
-      await page
-        .getByRole("button", { exact: true, name: "Add author" })
-        .click();
-    };
-
-    await creditAsArtist(artistOne);
-    await creditAsArtist(artistTwo);
+    // The seeded author already holds row 1, so these land at 2 and 3.
+    await creditAuthorViaUi(page, 2, {
+      creatorName: artistOne,
+      roleName: "Artist",
+    });
+    await creditAuthorViaUi(page, 3, {
+      creatorName: artistTwo,
+      roleName: "Artist",
+    });
 
     // Ordering inside a role, driven from the keyboard: the handle picks the
     // row up, an arrow moves it, and the second press drops it. Asserted this
     // way rather than with a pointer drag because it is the path a list of
     // drag handles is most likely to lose.
-    await page.getByRole("button", { name: `Reorder ${artistTwo}` }).focus();
+    await page.getByRole("button", { name: "Reorder author 3" }).focus();
     await page.keyboard.press("Space");
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("Space");
-    await expect(
-      page.getByRole("combobox", { name: /^Role of /u }).nth(1)
-    ).toHaveAccessibleName(`Role of ${artistTwo}`);
+    await expect(creditRowFields(page, 2).creatorCombobox).toHaveValue(
+      artistTwo
+    );
 
     await page.getByRole("button", { name: "Update series" }).click();
     await expect(page.getByText("Series updated.")).toBeVisible({
@@ -309,21 +308,22 @@ test.describe("admin catalog masters", () => {
     // Read back from the API rather than from the list the form was left
     // holding: what is asserted is the order the series was stored in.
     await page.goto(adminUrl(`/series/${seriesId}`));
-    const roleComboboxes = page.getByRole("combobox", { name: /^Role of /u });
-    await expect(roleComboboxes).toHaveCount(3);
-    await expect(roleComboboxes.nth(0)).toHaveAccessibleName(
-      `Role of ${SEED_CATALOG.creatorName}`
+    await expect(
+      page.getByRole("combobox", { name: /^Author \d+$/u })
+    ).toHaveCount(3);
+
+    const firstRow = creditRowFields(page, 1);
+    await expect(firstRow.creatorCombobox).toHaveValue(
+      SEED_CATALOG.creatorName
     );
-    await expect(roleComboboxes.nth(0)).toHaveValue("Original Author");
+    await expect(firstRow.roleCombobox).toHaveValue("Original Author");
     // The move above, as the API stored it: `display_order` inside the role.
-    await expect(roleComboboxes.nth(1)).toHaveAccessibleName(
-      `Role of ${artistTwo}`
-    );
-    await expect(roleComboboxes.nth(1)).toHaveValue("Artist");
-    await expect(roleComboboxes.nth(2)).toHaveAccessibleName(
-      `Role of ${artistOne}`
-    );
-    await expect(roleComboboxes.nth(2)).toHaveValue("Artist");
+    const secondRow = creditRowFields(page, 2);
+    await expect(secondRow.creatorCombobox).toHaveValue(artistTwo);
+    await expect(secondRow.roleCombobox).toHaveValue("Artist");
+    const thirdRow = creditRowFields(page, 3);
+    await expect(thirdRow.creatorCombobox).toHaveValue(artistOne);
+    await expect(thirdRow.roleCombobox).toHaveValue("Artist");
   });
 
   test("editing a creator reaches the creator detail page on web-host", async ({

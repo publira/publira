@@ -19,6 +19,7 @@ export { MaximizeIcon } from "./maximize-icon";
 export { MegaphoneIcon } from "./megaphone-icon";
 export { MenuIcon } from "./menu-icon";
 export { MinimizeIcon } from "./minimize-icon";
+export { PlusIcon } from "./plus-icon";
 export { SettingsIcon } from "./settings-icon";
 export type { IconProps } from "./types";
 export { UserIcon } from "./user-icon";

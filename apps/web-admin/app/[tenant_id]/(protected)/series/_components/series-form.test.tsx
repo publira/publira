@@ -166,8 +166,10 @@ it("finds each input by its role and label", async () => {
     screen.getAllByRole("spinbutton", { name: /Reading period/u })
   ).toHaveLength(2);
   expect(screen.getAllByRole("combobox", { name: /Label/u })).toHaveLength(2);
-  // "Authors" is the group the two sit in, so each is matched exactly.
-  expect(screen.getAllByRole("combobox", { name: "Author" })).toHaveLength(2);
+  // The create form opens with no credits and the edit form with the one the
+  // series carries, so this pair is the edit form's only row.
+  expect(screen.getAllByRole("combobox", { name: "Author 1" })).toHaveLength(1);
+  expect(screen.getAllByRole("combobox", { name: "Role 1" })).toHaveLength(1);
   expect(screen.getAllByLabelText(/Publication date/u)).toHaveLength(2);
   // The weekday names come from `Intl` and are on screen at once; the labels of
   // the classification controls are catalog strings, each behind a `<Suspense>`
@@ -347,34 +349,4 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
   // The weekday names come from `Intl` rather than from the catalog, so the
   // provider's locale has to reach them too.
   expect(screen.getByRole("checkbox", { name: "月" })).toBeDefined();
-});
-
-// A credit written before roles existed states none, and a save has no way to
-// say that. The form opens it on the tenant's leading role, so the editor sees
-// what is about to be stored instead of having the save refused over a field
-// nothing on screen mentions.
-it("opens a credit that states no role on the tenant's leading role", () => {
-  render(
-    <SeriesForm
-      action={action}
-      creatorRoles={creatorRoles}
-      creators={creators}
-      defaultReadingPeriodHours={72}
-      genres={genres}
-      initialSeries={{
-        ...series,
-        creatorCredits: [{ creatorPublicId: "CREATOR001", rolePublicId: "" }],
-      }}
-      labels={labels}
-      mode="update"
-      tagSuggestions={tagSuggestions}
-      timeZone="Asia/Tokyo"
-    />
-  );
-
-  expect(posted("creator_credits")).toEqual([
-    JSON.stringify([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
-    ]),
-  ]);
 });

@@ -48,11 +48,7 @@ import type { SeriesCommentMode } from "#lib/series-comment-mode";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import type {
-  SeriesActionState,
-  SeriesCreatorCredit,
-  SeriesListItem,
-} from "../series-types";
+import type { SeriesActionState, SeriesListItem } from "../series-types";
 import {
   SeriesAgeRatingField,
   SeriesGenreField,
@@ -295,47 +291,12 @@ const EyeCatchImageField = ({
   );
 };
 
-/**
- * The credit rows the form opens on.
- *
- * A credit written before roles existed states none, and a save has no way to
- * say that, so it opens on the tenant's leading role — where the editor sees
- * it and can change it before saving. A pair that then duplicates one the
- * series already holds is dropped, because the pair is the identity of a
- * credit and the API refuses the same person twice in one role.
- */
-const toInitialCreatorCredits = (
-  credits: SeriesCreatorCredit[],
-  creatorRoles: CreatorRoleOption[]
-): SeriesCreatorCredit[] => {
-  const leadingRolePublicId = creatorRoles.at(0)?.publicId ?? "";
-  const seen = new Set<string>();
-
-  return credits.flatMap((credit) => {
-    const rolePublicId = credit.rolePublicId || leadingRolePublicId;
-    const pair = `${credit.creatorPublicId}/${rolePublicId}`;
-    if (rolePublicId.length === 0 || seen.has(pair)) {
-      return [];
-    }
-    seen.add(pair);
-    return [{ creatorPublicId: credit.creatorPublicId, rolePublicId }];
-  });
-};
-
 const useSeriesFormState = ({
-  creatorRoles,
   initialCommentMode,
   initialSeries,
-}: Pick<
-  SeriesFormProps,
-  "creatorRoles" | "initialCommentMode" | "initialSeries"
->) => {
+}: Pick<SeriesFormProps, "initialCommentMode" | "initialSeries">) => {
   // Seeded once per mount: the edit route keys this form by the series' public
-  // id, so switching to another series remounts it with that series' credits
-  // and label.
-  const [creatorCredits, setCreatorCredits] = useState(() =>
-    toInitialCreatorCredits(initialSeries?.creatorCredits ?? [], creatorRoles)
-  );
+  // id, so switching to another series remounts it with that series' label.
   const [selectedLabelPublicId, setSelectedLabelPublicId] = useState(
     initialSeries?.labelPublicId ?? ""
   );
@@ -394,7 +355,6 @@ const useSeriesFormState = ({
   return {
     ageRating,
     commentMode,
-    creatorCredits,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
@@ -403,7 +363,6 @@ const useSeriesFormState = ({
     selectedLabelPublicId,
     setAgeRating,
     setCommentMode,
-    setCreatorCredits,
     setScheduleWeekdays,
     setSelectedGenrePublicIds,
     setSelectedLabelPublicId,
@@ -455,7 +414,6 @@ export const SeriesForm = ({
   const {
     ageRating,
     commentMode,
-    creatorCredits,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
@@ -464,7 +422,6 @@ export const SeriesForm = ({
     selectedLabelPublicId,
     setAgeRating,
     setCommentMode,
-    setCreatorCredits,
     setScheduleWeekdays,
     setSelectedGenrePublicIds,
     setSelectedLabelPublicId,
@@ -472,7 +429,7 @@ export const SeriesForm = ({
     setTagNames,
     status,
     tagNames,
-  } = useSeriesFormState({ creatorRoles, initialCommentMode, initialSeries });
+  } = useSeriesFormState({ initialCommentMode, initialSeries });
 
   const useLabelFallbackInput =
     Boolean(labelsErrorMessage) || labelItems.length === 0;
@@ -563,8 +520,7 @@ export const SeriesForm = ({
           creatorRolesErrorMessage={creatorRolesErrorMessage}
           creators={creators}
           creatorsErrorMessage={creatorsErrorMessage}
-          onChange={setCreatorCredits}
-          value={creatorCredits}
+          initialCredits={initialSeries?.creatorCredits ?? []}
         />
 
         <LabelField
