@@ -1,11 +1,23 @@
 "use client";
 
-import { ChevronDownIcon, ChevronUpIcon } from "@publira/icons";
-import { Button } from "@publira/ui-components/button";
+import type { DragEndEvent } from "@dnd-kit/react";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useCallback, useOptimistic, useState, useTransition } from "react";
+import {
+  Suspense,
+  useCallback,
+  useOptimistic,
+  useState,
+  useTransition,
+} from "react";
 
 import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
+import {
+  SortableItem,
+  SortableItemHandle,
+  SortableList,
+  withItemMoved,
+} from "#components/sortable-list";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { reorderGenresAction } from "../_lib/actions";
@@ -17,24 +29,7 @@ interface GenreListProps {
   genres: GenreListItem[];
 }
 
-/** Where a move button sends the genre it sits on. */
-type MoveDirection = -1 | 1;
-
-const withGenreMoved = (
-  genres: GenreListItem[],
-  index: number,
-  direction: MoveDirection
-): GenreListItem[] | null => {
-  const target = index + direction;
-  if (target < 0 || target >= genres.length) {
-    return null;
-  }
-
-  const moved = [...genres];
-  const [genre] = moved.splice(index, 1);
-  moved.splice(target, 0, genre);
-  return moved;
-};
+const genreId = (genre: GenreListItem): string => genre.publicId;
 
 /**
  * The tenant's genres in their own order, with the controls that write it.
@@ -55,11 +50,11 @@ export const GenreList = ({ genres }: GenreListProps) => {
   );
   const [reorderErrorMessage, setReorderErrorMessage] = useState("");
 
-  const moveGenre = useCallback(
-    (index: number, direction: MoveDirection) => {
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
       const currentGenres = optimisticGenres;
-      const nextGenres = withGenreMoved(currentGenres, index, direction);
-      if (!nextGenres) {
+      const nextGenres = withItemMoved(currentGenres, genreId, event);
+      if (nextGenres === currentGenres) {
         return;
       }
 
@@ -70,13 +65,13 @@ export const GenreList = ({ genres }: GenreListProps) => {
         formData.set("tenant_id", tenantId);
         formData.set(
           "genre_public_ids",
-          JSON.stringify(nextGenres.map((genre) => genre.publicId))
+          JSON.stringify(nextGenres.map(genreId))
         );
-        // The order the buttons were rendered from, so a console left open
-        // while someone else moved a genre is refused rather than merged.
+        // The order the list was rendered from, so a console left open while
+        // someone else moved a genre is refused rather than merged.
         formData.set(
           "expected_genre_public_ids",
-          JSON.stringify(currentGenres.map((genre) => genre.publicId))
+          JSON.stringify(currentGenres.map(genreId))
         );
 
         const result = await reorderGenresAction(formData);
@@ -91,43 +86,32 @@ export const GenreList = ({ genres }: GenreListProps) => {
       {reorderErrorMessage ? (
         <FormMessage variant="destructive">{reorderErrorMessage}</FormMessage>
       ) : null}
-      <ul aria-label={t("admin.genres.list_title")} className="grid gap-3">
+      <SortableList
+        aria-label={t("admin.genres.list_title")}
+        className="grid gap-3"
+        onDragEnd={handleDragEnd}
+      >
         {optimisticGenres.map((genre, index) => (
-          <li
+          <SortableItem
             className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
+            disabled={isPending}
+            id={genre.publicId}
+            index={index}
             key={genre.publicId}
           >
+            <SortableItemHandle>
+              <Suspense fallback={null}>
+                <ClientMessage
+                  message="admin.genres.reorder_action"
+                  values={{ name: genre.name }}
+                />
+              </Suspense>
+            </SortableItemHandle>
             <GenreRenameForm genre={genre} />
-            <div className="flex items-start gap-2">
-              <Button
-                aria-label={t("admin.genres.move_up_action", {
-                  name: genre.name,
-                })}
-                disabled={isPending || index === 0}
-                onClick={() => moveGenre(index, -1)}
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                <ChevronUpIcon className="size-4" />
-              </Button>
-              <Button
-                aria-label={t("admin.genres.move_down_action", {
-                  name: genre.name,
-                })}
-                disabled={isPending || index === optimisticGenres.length - 1}
-                onClick={() => moveGenre(index, 1)}
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                <ChevronDownIcon className="size-4" />
-              </Button>
-              <GenreDeleteButton name={genre.name} publicId={genre.publicId} />
-            </div>
-          </li>
+            <GenreDeleteButton name={genre.name} publicId={genre.publicId} />
+          </SortableItem>
         ))}
-      </ul>
+      </SortableList>
     </div>
   );
 };

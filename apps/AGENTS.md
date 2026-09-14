@@ -597,6 +597,16 @@ Barrel vs subpath is existing drift, not a rule — follow whatever the surround
 - **Sizing** → lucide is always `viewBox="0 0 24 24"` at `strokeWidth={2}`. Pick a `size-*` / `h-* w-*` class that suits the layout and leave the rest at lucide's defaults. Do not carry dimensions or stroke widths over from markup you are deleting.
 - **A genuine non-icon SVG** (decorative artwork, a chart, a generated image) is a real exception. Add its path to the grep step's exclusions in `.github/workflows/ci.yml`, with a comment saying why — the same way the `Date` boundary exemptions are handled in `oxlint.config.ts`.
 
+## Reorderable lists: dnd-kit, dragged by a handle
+
+A list whose order a person can change is a dnd-kit sortable list with a drag handle. Never build one on the native HTML5 drag and drop — `draggable`, `onDragStart`, and a `onDragOver` / `onDrop` pair standing in for a drop target — and never on a pair of move buttons. The native API fires no event from a touch screen and has no keyboard equivalent, so such a list cannot be reordered on a phone or without a pointer at all; dnd-kit binds a pointer sensor and a keyboard sensor, and the handle is a `button` the keyboard reaches. Move buttons are reachable but are a second control for the same job, so a console ends up with two ways to order a list.
+
+`web-admin` builds every one of them from `#components/sortable-list`: `SortableList` around the rows, `SortableItem` for each one, and `SortableItemHandle` inside it carrying that row's own accessible name ("Reorder {$name}"). `withItemMoved` from the same module turns a drop into the next order, and returns the array it was given when the drop moved nothing.
+
+A file drop zone is not a sortable list: it keeps `onDragOver` / `onDrop`, which is how a browser reports a dropped file.
+
+No lint covers this — `draggable` is a legitimate attribute, and `draggable={false}` is how a pointer-dragged control such as the crop frame turns the native behaviour off. `git grep 'draggable\|onDragStart'` under `apps/` finds a regression.
+
 ## Global unmatched 404 (`global-not-found.tsx`)
 
 All three apps enable `experimental.globalNotFound` and ship `app/global-not-found.tsx`.

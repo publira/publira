@@ -312,9 +312,13 @@ test.describe("admin publish flow", () => {
       title: episodeTitle,
     });
 
-    // Admin list shows the scheduled listing before the worker runs.
+    // Admin list shows the scheduled listing before the worker runs. The row
+    // is addressed by its drag handle: the title is also on the row itself, so
+    // the text alone matches twice.
     await page.goto(adminUrl(`/series/${seriesId}/episodes`));
-    await expect(page.getByText(episodeTitle)).toBeVisible();
+    await expect(
+      page.getByRole("button", { exact: true, name: `Reorder ${episodeTitle}` })
+    ).toBeVisible();
     await expect(page.getByText(/status: scheduled/u)).toBeVisible();
 
     // Do not fetch the host URL while the episode is still scheduled: web-host

@@ -60,6 +60,26 @@ export const signOutAdmin = async (page: Page): Promise<void> => {
   await page.waitForURL((url) => url.pathname.endsWith("/login"));
 };
 
+/**
+ * Move a row of a sortable list with the keyboard: the handle picks the row
+ * up, an arrow moves it, and the second press drops it.
+ *
+ * Every reorderable list in the console is a dnd-kit sortable list with such a
+ * handle, and the keyboard is the path asserted rather than a pointer drag
+ * because it lands the same way on every runner — and because it is the path a
+ * list of drag handles is most likely to lose.
+ */
+export const reorderWithKeyboard = async (
+  page: Page,
+  handleName: string,
+  arrowKey: "ArrowDown" | "ArrowLeft" | "ArrowRight" | "ArrowUp"
+): Promise<void> => {
+  await page.getByRole("button", { name: handleName }).focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press(arrowKey);
+  await page.keyboard.press("Space");
+};
+
 /** Select a Combobox or MultiCombobox option by label. */
 export const selectComboboxOption = async (
   page: Page,
@@ -515,8 +535,10 @@ export const createPageViaUi = async (
 };
 
 export const formMessage = (page: Page): Locator =>
-  // FormMessage renders a <p role="status">.
-  page.getByRole("status");
+  // FormMessage renders a <p role="status">, and so does the live region
+  // dnd-kit appends to <body> on every screen holding a sortable list. Scoping
+  // to the page body keeps that announcement out of the match.
+  page.getByRole("main").getByRole("status");
 
 /**
  * The genre list on `/genres`, which is one `<ul>` named after the card it
