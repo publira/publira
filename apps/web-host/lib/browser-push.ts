@@ -81,16 +81,21 @@ const registerPushServiceWorker =
   };
 
 /**
- * Ask the reader for permission and subscribe, or answer `"denied"` when they
- * refuse. The prompt is raised here and nowhere else, so it only ever follows
- * the reader turning the switch on.
+ * Ask the reader for permission and subscribe. The prompt is raised here and
+ * nowhere else, so it only ever follows the reader turning the switch on.
+ *
+ * The two refusals are kept apart because only one of them can be undone where
+ * the copy would send the reader. `"denied"` is a decision the browser has
+ * stored, and its settings are where it is taken back; `"dismissed"` is the
+ * reader closing the prompt without answering — nothing is stored, nothing is
+ * there to turn on, and pressing the switch again asks them once more.
  */
 export const subscribeToPush = async (
   vapidPublicKey: string
-): Promise<PushSubscription | "denied"> => {
+): Promise<PushSubscription | "denied" | "dismissed"> => {
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
-    return "denied";
+    return permission === "denied" ? "denied" : "dismissed";
   }
 
   const registration = await registerPushServiceWorker();

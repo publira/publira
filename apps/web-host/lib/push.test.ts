@@ -113,9 +113,21 @@ describe("unregisterWebPushDevice", () => {
     );
   });
 
-  it("reports a registration the server has already dropped", async () => {
+  it("treats a registration the server no longer holds as taken off", async () => {
+    // `UnregisterPushDevice` answers `unregistered: false` rather than failing
+    // when the row was already gone — removing nothing is not an error. That is
+    // what lets the browser give up its own subscription either way, instead of
+    // being stuck subscribed to a registration nothing will ever deliver to.
+    mockUnregister.mockResolvedValue({ unregistered: false });
+
+    await expect(
+      unregisterWebPushDevice({ endpoint, locale: "en", tenantId })
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it("reports a request the server rejected", async () => {
     mockUnregister.mockRejectedValue(
-      new ConnectError("no such device", Code.NotFound)
+      new ConnectError("endpoint is required", Code.InvalidArgument)
     );
 
     const result = await unregisterWebPushDevice({

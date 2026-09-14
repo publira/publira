@@ -90,6 +90,26 @@ describe("registerBrowserPushAction", () => {
       registerBrowserPushAction({ ...subscriptionInput, locale: "de" })
     ).rejects.toThrow();
   });
+
+  it.each([
+    ["null", null],
+    ["a string", "not an object"],
+    ["nothing at all", undefined],
+  ])(
+    "refuses a body that is %s the way it refuses a bad field, not with a TypeError",
+    async (_label, body) => {
+      // The parameter type describes this app's own call sites; anything that
+      // can POST to the endpoint decides what actually arrives.
+      const { registerBrowserPushAction } = await import("./push-actions");
+
+      await expect(
+        registerBrowserPushAction(
+          body as unknown as Parameters<typeof registerBrowserPushAction>[0]
+        )
+      ).rejects.toThrow(/locale/u);
+      expect(mockRegisterWebPushDevice).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe("unregisterBrowserPushAction", () => {

@@ -9,6 +9,21 @@ export const STUB_PUSH_ENDPOINT =
   "https://push.e2e.test/subscriptions/host-e2e";
 
 /**
+ * The VAPID public key this stack's API publishes, which is what the browser
+ * has to subscribe with. `lib.sh` defaults it, so a run that overrides the
+ * variable is still checked against the key its own server answered with.
+ */
+const vapidPublicKey = (): string => {
+  const key = process.env.PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY?.trim();
+  if (!key) {
+    throw new Error(
+      "PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY is required to stub the Push API (set by e2e scripts)"
+    );
+  }
+  return key;
+};
+
+/**
  * Stand in for the browser's Push API, so a run can drive the notification
  * switch end to end.
  *
@@ -18,18 +33,60 @@ export const STUB_PUSH_ENDPOINT =
  * network. The stub keeps everything the app does around them — the service
  * worker registration, the subscription's JSON form, the unsubscribe — so what
  * the spec asserts is still the app's own sequence.
+ *
+ * `subscribe` checks its arguments rather than ignoring them. A stub that
+ * accepted anything would pass just as well if web-host stopped sending
+ * `userVisibleOnly`, or sent a key that was not this tenant's — the two things
+ * a real push service would reject the subscription over, and the two a test
+ * against a stub would otherwise never see.
  */
 export const stubPushApi = async (
   page: Page,
   permission: "denied" | "granted"
 ): Promise<void> => {
   await page.addInitScript(
-    ([endpoint, granted]) => {
+    ([endpoint, expectedKey, granted]) => {
+      // The key as `pushManager.subscribe` receives it: base64url off the
+      // wire, bytes in the call.
+      const base64 = (expectedKey as string)
+        .replaceAll("-", "+")
+        .replaceAll("_", "/");
+      const padded = base64.padEnd(
+        base64.length + ((4 - (base64.length % 4)) % 4),
+        "="
+      );
+      const binary = window.atob(padded);
+      const expectedKeyBytes = new Uint8Array(binary.length);
+      expectedKeyBytes.set(
+        Array.from(binary, (character) => character.codePointAt(0) ?? 0)
+      );
+
       let subscription: unknown = null;
       const registration = {
         pushManager: {
           getSubscription: () => Promise.resolve(subscription),
-          subscribe: () => {
+          subscribe: (options?: {
+            applicationServerKey?: unknown;
+            userVisibleOnly?: unknown;
+          }) => {
+            if (options?.userVisibleOnly !== true) {
+              return Promise.reject(
+                new Error("stub push service: userVisibleOnly must be true")
+              );
+            }
+            const key = options.applicationServerKey;
+            const actual = key instanceof Uint8Array ? key : new Uint8Array();
+            const matches =
+              actual.length === expectedKeyBytes.length &&
+              expectedKeyBytes.every((byte, index) => actual[index] === byte);
+            if (!matches) {
+              return Promise.reject(
+                new Error(
+                  "stub push service: applicationServerKey is not this tenant's VAPID key"
+                )
+              );
+            }
+
             subscription = {
               endpoint,
               toJSON: () => ({
@@ -63,6 +120,6 @@ export const stubPushApi = async (
         },
       });
     },
-    [STUB_PUSH_ENDPOINT, permission === "granted"] as const
+    [STUB_PUSH_ENDPOINT, vapidPublicKey(), permission === "granted"] as const
   );
 };

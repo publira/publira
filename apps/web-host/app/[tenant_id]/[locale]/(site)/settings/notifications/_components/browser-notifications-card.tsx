@@ -94,6 +94,13 @@ export const BrowserNotificationsCard = ({
       setErrorMessage(copy.denied);
       return;
     }
+    if (subscription === "dismissed") {
+      // Pointing at the browser's settings here would name a switch that is not
+      // there: closing the prompt stores no decision. "Try again" is what the
+      // reader can actually do, and pressing it asks them once more.
+      setErrorMessage(copy.turnOnFailed);
+      return;
+    }
 
     // Past this point the browser holds a subscription, and every way out that
     // does not end in a registration has to give it back: one the server has no

@@ -119,21 +119,29 @@ const parsePushMessage = (event: PushWorkerPushEvent): PushMessage | null => {
  *
  * The server's `route` is a locale-less path (`/series/SR01/episodes/EP01`),
  * the same shape a stored `returnTo` has, so it lands on whichever language
- * the tenant serves its unprefixed URLs in. Anything that is not such a path —
- * an absolute URL, a protocol-relative one, an absent `route` — falls back to
- * the site root rather than sending the reader off the origin.
+ * the tenant serves its unprefixed URLs in. Anything else falls back to the
+ * site root rather than sending the reader off the origin.
+ *
+ * What decides that is the **resolved** origin, not the shape of the string.
+ * A path is spelled in more ways than a pattern can enumerate: `/\host/path`
+ * starts with a single slash and is not protocol-relative, and `URL` still
+ * resolves it to `https://host/path`, because a special scheme reads a
+ * backslash as a separator.
  */
 const clickTargetUrl = (scope: PushWorkerScope, data: unknown): string => {
   const route =
     typeof data === "object" && data !== null && "route" in data
       ? (data as { route?: unknown }).route
       : undefined;
-  const isSitePath =
-    typeof route === "string" &&
-    route.startsWith("/") &&
-    !route.startsWith("//");
+  const siteRoot = new URL("/", scope.location.origin);
+  if (typeof route !== "string" || !route.startsWith("/")) {
+    return siteRoot.toString();
+  }
 
-  return new URL(isSitePath ? route : "/", scope.location.origin).toString();
+  const target = new URL(route, siteRoot);
+  return target.origin === siteRoot.origin
+    ? target.toString()
+    : siteRoot.toString();
 };
 
 const showPushNotification = async (

@@ -152,6 +152,12 @@ describe("registerPushHandlers", () => {
   it.each([
     ["an absolute URL", { route: "https://elsewhere.test/steal" }],
     ["a protocol-relative URL", { route: "//elsewhere.test/steal" }],
+    // `URL` reads a backslash as a separator under a special scheme, so this
+    // resolves off the origin while looking like an ordinary path.
+    [
+      "a backslash standing in for the second slash",
+      { route: "/\\elsewhere.test/steal" },
+    ],
     ["no route at all", { notification_id: "abc" }],
   ])("opens the site root for %s", async (_label, data) => {
     const { listeners, openWindow } = createScope();

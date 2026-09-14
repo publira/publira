@@ -110,6 +110,16 @@ describe("subscribeToPush", () => {
     await expect(subscribeToPush(VAPID_PUBLIC_KEY)).resolves.toBe("denied");
     expect(register).not.toHaveBeenCalled();
   });
+
+  it("keeps a dismissed prompt apart from a refusal the browser stored", async () => {
+    // `requestPermission()` resolves `"default"` when the reader closes the
+    // prompt without answering. Nothing is stored, so the browser's settings
+    // hold nothing for them to turn back on.
+    installPushApi({});
+    installNotificationApi("default");
+
+    await expect(subscribeToPush(VAPID_PUBLIC_KEY)).resolves.toBe("dismissed");
+  });
 });
 
 describe("toWebPushSubscriptionKeys", () => {

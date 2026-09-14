@@ -133,6 +133,20 @@ describe("BrowserNotificationsCard", () => {
     expect(mockRegisterAction).not.toHaveBeenCalled();
   });
 
+  it("says to try again, not to visit settings, when the prompt is dismissed", async () => {
+    // Closing the prompt stores no decision, so there is nothing in the
+    // browser's settings for the denied copy to point the reader at.
+    mockSubscribe.mockResolvedValue("dismissed");
+
+    renderCard();
+    await toggle(false);
+
+    expect(await screen.findByText(copy.turnOnFailed)).toBeTruthy();
+    expect(screen.queryByText(copy.denied)).toBeNull();
+    expect(await findSwitch(false)).toBeTruthy();
+    expect(mockRegisterAction).not.toHaveBeenCalled();
+  });
+
   it("drops the subscription again when the server refuses the registration", async () => {
     const subscription = { endpoint: ENDPOINT, unsubscribe: vi.fn() };
     mockSubscribe.mockResolvedValue(subscription);

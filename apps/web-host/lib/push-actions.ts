@@ -45,13 +45,30 @@ const unregisterInputSchema = z.object({
  */
 export type BrowserPushInput = z.input<typeof registerInputSchema>;
 
+/**
+ * The locale an Action words its rejection in, read before the schema has said
+ * anything about the shape around it.
+ *
+ * An Action's parameter type describes what this app's own call sites pass, not
+ * what reaches the endpoint: anything that can POST to it decides the runtime
+ * value. So the read is written against `unknown` — `input.locale` on a `null`
+ * body would throw a `TypeError` where the reader should have been handed a
+ * validation message.
+ */
+const requireInputLocale = (input: unknown) =>
+  requireFormLocale(
+    typeof input === "object" && input !== null && "locale" in input
+      ? input.locale
+      : undefined
+  );
+
 export const registerBrowserPushAction = async (
   input: BrowserPushInput
 ): Promise<PushDeviceResult> => {
   await assertSameOrigin();
   // Read first, so a rejected subscription is still worded in the reader's
   // language.
-  const submittedLocale = requireFormLocale(input.locale);
+  const submittedLocale = requireInputLocale(input);
   const parsed = registerInputSchema.safeParse(input);
   if (!parsed.success) {
     return { message: validationErrorMessage(submittedLocale), ok: false };
@@ -80,7 +97,7 @@ export const unregisterBrowserPushAction = async (
   input: z.input<typeof unregisterInputSchema>
 ): Promise<PushDeviceResult> => {
   await assertSameOrigin();
-  const submittedLocale = requireFormLocale(input.locale);
+  const submittedLocale = requireInputLocale(input);
   const parsed = unregisterInputSchema.safeParse(input);
   if (!parsed.success) {
     return { message: validationErrorMessage(submittedLocale), ok: false };
