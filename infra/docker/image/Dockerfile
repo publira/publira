@@ -13,8 +13,7 @@
 #     .
 #
 # Examples:
-#   CMD_NAME=image-server        PORT=8200
-#   CMD_NAME=admin-image-server  PORT=8201
+#   CMD_NAME=image-server  PORT=8200
 #
 # CGO cannot be cross-compiled without a matching toolchain, so this
 # Dockerfile does not set GOOS/GOARCH. Buildx --platform must match the

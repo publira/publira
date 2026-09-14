@@ -692,8 +692,8 @@ func (s *adminServer) ReorderEpisodeImages(
 
 // attachAdminMediaToken puts the short-lived credential a browser <img> needs
 // onto each image URL. The admin access token cannot travel with that
-// request, and without this query token admin-image-server would apply the
-// public publish/price rule.
+// request, and without this query token image-server would apply the public
+// publish/price rule.
 func (s *adminServer) attachAdminMediaToken(
 	ctx context.Context,
 	tenantID uuid.UUID,

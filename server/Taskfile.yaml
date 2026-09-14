@@ -30,13 +30,8 @@ tasks:
     desc: Run all server development APIs together
     deps:
       - task: dev-api
-      - task: dev-admin-image-server
       - task: dev-image-server
       - task: dev-outbox-worker
-
-  dev-admin-image-server:
-    desc: Run the admin image server in development mode
-    cmds: [{ task: run, vars: { NAME: admin-image-server } }]
 
   dev-api:
     desc: Run the API server in development mode

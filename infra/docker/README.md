@@ -12,7 +12,7 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 | --- | --- | --- | --- |
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
 | API (long-running) | [`api/Dockerfile`](./api/Dockerfile) | HTTP servers in `server/cmd/*` without CGO | `CMD_NAME`, `PORT` |
-| Image (long-running) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` / `admin-image-server` (Manael / libvips) | `CMD_NAME`, `PORT` |
+| Image (long-running) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` (Manael / libvips) | `CMD_NAME`, `PORT` |
 | Batch | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/batch` (all batch jobs) | none |
 | Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
 
@@ -49,7 +49,7 @@ What is being containerized?
 │    → --build-arg CMD_NAME=<name>
 │    → Set PORT when needed (default: 8000)
 │
-├─ A Go image server (image-server / admin-image-server)
+├─ The Go image server (image-server)
 │    → infra/docker/image/Dockerfile
 │    → --build-arg CMD_NAME=<name>
 │    → Set PORT when needed (default: 8200)
@@ -116,10 +116,6 @@ docker build -f infra/docker/api/Dockerfile \
 docker build -f infra/docker/image/Dockerfile \
   --build-arg CMD_NAME=image-server --build-arg PORT=8200 \
   -t publira/image-server:local .
-
-docker build -f infra/docker/image/Dockerfile \
-  --build-arg CMD_NAME=admin-image-server --build-arg PORT=8201 \
-  -t publira/admin-image-server:local .
 
 # Batch (all jobs share one image; choose the job with a container argument)
 docker build -f infra/docker/batch/Dockerfile \

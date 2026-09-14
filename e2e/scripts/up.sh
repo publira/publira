@@ -42,13 +42,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://localhost:${E2E_IMAGE_SERVER_PORT}"
-    # This stack starts no admin image server, and no suite asks the edge for
-    # an image on an admin host. The address keeps every router in the
-    # contract resolvable, which is what stops Traefik logging one as broken.
-    admin-image-server:
-      loadBalancer:
-        servers:
-          - url: "http://localhost:${E2E_IMAGE_SERVER_PORT}"
 EOF
 
 e2e_log "starting compose project ${COMPOSE_PROJECT_NAME}"

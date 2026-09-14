@@ -48,12 +48,13 @@ assert_route "bare /api/v1 stays on web-host" GET localhost /api/v1 web-host /ap
 # Handlers, so it is the public API like any other /api path.
 assert_route "api keeps /api/v1abc" GET localhost /api/v1abc api /v1abc
 
-# /images outranks the host routers. An admin host takes it further, to the
-# image server the console reads from.
+# /images outranks the host routers and is host-agnostic: one image server
+# answers for every host, and picks the rules it applies from the host name the
+# edge forwarded unrewritten.
 assert_route "images on default host" GET localhost /images/cover image-server /images/cover
 assert_route "images on platform host" GET platform.localhost /images/cover image-server /images/cover
-assert_route "images on admin host" GET admin.localhost /images/cover admin-image-server /images/cover
-assert_route "images on numbered admin host" GET admin1.localhost /images/x admin-image-server /images/x
+assert_route "images on admin host" GET admin.localhost /images/cover image-server /images/cover
+assert_route "images on numbered admin host" GET admin1.localhost /images/x image-server /images/x
 
 # Inbound W3C Trace Context is dropped at the edge, before any route runs. The
 # Go servers adopt an inbound `traceparent` as the parent span, so a caller
@@ -67,7 +68,7 @@ assert_trace_context_stripped "api drops trace context" GET localhost /api/ready
 assert_trace_context_stripped "api on admin host drops trace context" GET admin.localhost /api/readyz api /readyz
 assert_trace_context_stripped "revalidate drops trace context" POST localhost /api/v1/revalidate web-host /api/v1/revalidate
 assert_trace_context_stripped "image-server drops trace context" GET localhost /images/cover image-server /images/cover
-assert_trace_context_stripped "admin-image-server drops trace context" GET admin.localhost /images/cover admin-image-server /images/cover
+assert_trace_context_stripped "image-server on admin host drops trace context" GET admin.localhost /images/cover image-server /images/cover
 
 # The headers the edge sets for the backend, on requests that forge all of
 # them. Tenant resolution reads `Host` and `X-Forwarded-Host`, the CSRF origin
@@ -80,6 +81,6 @@ assert_forwarded_headers "web-admin is given the edge's forwarded headers" GET a
 assert_forwarded_headers "web-platform is given the edge's forwarded headers" GET platform.localhost / web-platform
 assert_forwarded_headers "api is given the edge's forwarded headers" GET localhost /api/readyz api
 assert_forwarded_headers "image-server is given the edge's forwarded headers" GET localhost /images/cover image-server
-assert_forwarded_headers "admin-image-server is given the edge's forwarded headers" GET admin.localhost /images/cover admin-image-server
+assert_forwarded_headers "image-server on admin host is given the edge's forwarded headers" GET admin.localhost /images/cover image-server
 
 routing_log "=== route probes passed ==="

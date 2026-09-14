@@ -58,14 +58,11 @@ http:
       middlewares: [api-strip]
       service: api
 
+    # Host-agnostic, like the API: one image server answers for the tenant
+    # site and the tenant console alike, and picks the rules it applies from
+    # the host name it was given.
     image-server:
       rule: "PathPrefix(`/images`)"
       priority: 110
       entryPoints: [web]
       service: image-server
-
-    admin-image-server:
-      rule: 'HostRegexp(`^admin\d*\..*$`) && PathPrefix(`/images`)'
-      priority: 130
-      entryPoints: [web]
-      service: admin-image-server

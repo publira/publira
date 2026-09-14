@@ -41,10 +41,6 @@
 	@admin header_regexp Host ^admin\d*\..*$
 	@platform header_regexp Host ^platform\..*$
 
-	@admin_images {
-		header_regexp Host ^admin\d*\..*$
-		path /images*
-	}
 	@images path /images*
 
 	# Everything under /api except the Next.js Route Handlers on /api/v1:
@@ -56,12 +52,8 @@
 	}
 
 	route {
-		handle @admin_images {
-			reverse_proxy {$PUBLIRA_UPSTREAM_ADMIN_IMAGE_SERVER:app:8201} {
-				import publira_forwarded
-			}
-		}
-
+		# Host-agnostic, like the API: one image server answers for the tenant
+		# site and the tenant console alike.
 		handle @images {
 			reverse_proxy {$PUBLIRA_UPSTREAM_IMAGE_SERVER:app:8200} {
 				import publira_forwarded

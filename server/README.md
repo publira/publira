@@ -8,8 +8,7 @@ The Go backend. It is operated as a single module, `github.com/publira/publira/s
 server/
 ├── cmd/
 │   ├── api-server/        # ConnectRPC API server (public / admin / platform namespaces)
-│   ├── image-server/      # Public image delivery (Manael conversion)
-│   ├── admin-image-server/ # Admin image delivery
+│   ├── image-server/      # Image delivery for both host names (Manael conversion)
 │   ├── batch/             # Single binary bundling every batch job (selected by subcommand)
 │   └── outbox-worker/     # Long-lived Outbox + River worker
 ├── bin/                   # Binaries produced by task build
@@ -70,14 +69,13 @@ task server:test
 ## Entrypoint details
 
 - API server: [cmd/api-server/README.md](cmd/api-server/README.md)
-- Public image server: [cmd/image-server/README.md](cmd/image-server/README.md)
-- Admin image server: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
+- Image server: [cmd/image-server/README.md](cmd/image-server/README.md)
 - Batch (scheduled publishing / daily content stats / ranking aggregation / content event purge / recommend feature build): [cmd/batch/README.md](cmd/batch/README.md)
 - Outbox worker: [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
 
 ## Graceful shutdown
 
-On SIGINT / SIGTERM the long-lived processes (`api-server` / `image-server` / `admin-image-server` / `outbox-worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
+On SIGINT / SIGTERM the long-lived processes (`api-server` / `image-server` / `outbox-worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
 
 Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernetes, a `terminationGracePeriodSeconds` of 45 or more). Draining readiness at the load balancer is configured separately.
 
@@ -128,9 +126,9 @@ The Go integration tests against RustFS use the Testcontainers helper `StartRust
 
 ## Image delivery (Manael)
 
-After checking permissions, `image-server` / `admin-image-server` convert JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
+After checking permissions, `image-server` converts JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
 
-For episode body images, the cached converted plaintext is never returned as-is: `image-server` encrypts it just before the response, bound to a JWT and its `sub`. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response from `admin-image-server` remain ordinary image responses.
+For episode body images on a tenant site, the cached converted plaintext is never returned as-is: `image-server` encrypts it just before the response, bound to a JWT and its `sub`. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response on a console host remain ordinary image responses, because the console renders bodies with an `<img>` that cannot decrypt.
 
 | Header | Value / meaning |
 | --- | --- |
@@ -213,7 +211,7 @@ Every process under `cmd/*` emits OpenTelemetry traces. **It is disabled by defa
 | Layer | Instrumentation | Span |
 | --- | --- | --- |
 | Inbound Connect / gRPC | `connectrpc.com/otelconnect` | One per RPC, named `AdminSeriesService/ListSeries` (the proto package is dropped from the name because the `rpc.service` attribute carries it) |
-| Inbound plain HTTP (image-server / admin-image-server) | `otelhttp` | One per route pattern (`GET /images/creators/{media_id}`). `/livez` and `/readyz` are excluded |
+| Inbound plain HTTP (image-server) | `otelhttp` | One per route pattern (`GET /images/creators/{media_id}`). `/livez` and `/readyz` are excluded |
 | DB queries | `XSAM/otelsql` (wrapping the pgx driver in `internal/sqldb`) | One `db.query` per statement |
 | The scheduled publication batch | `internal/publishepisodes` | One parent span per `RunOnce` cycle |
 | The Outbox worker | `internal/outbox` | One per drain and one per processed event (`outbox.drain` / `outbox.process`) |
@@ -256,7 +254,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-apply-free-windows` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | A default per process (`publira-image-server` / `publira-outbox-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-apply-free-windows` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
@@ -380,12 +378,12 @@ Episode image previews in the admin UI also go through the browser's `<img>` / `
 
 | Item | Value |
 | --- | --- |
-| Audience | `admin-media` (separate from both `media` and `admin`; it does not pass to the public image-server or to the admin API) |
+| Audience | `admin-media` (separate from both `media` and `admin`; it unlocks nothing on a tenant site and does not pass to the admin API) |
 | TTL | 15 minutes |
 | Scope | Only the single episode it was issued for (claim `eid`) |
 | Revocation | The same `users.credentials_version` as the access token |
 
-The token only states who the administrator is; `admin-image-server` consults the tenant membership and the admin role (`tenant_admin` / `tenant_editor` / `tenant_auditor`) on every request. It does not look at the publication state or the price.
+The token only states who the administrator is; on a console host `image-server` consults the tenant membership and the admin role (`tenant_admin` / `tenant_editor` / `tenant_auditor`) on every request. It does not look at the publication state or the price.
 
 ## Admin MFA (TOTP)
 
