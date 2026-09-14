@@ -351,7 +351,7 @@ describe("the classification a series carries", () => {
       {
         ageRating: "r15",
         commentMode: "",
-        creatorPublicIds: [],
+        creatorCredits: [],
         genrePublicIds: ["GENRE001"],
         isPublished: true,
         labelPublicId: "LABEL001",
@@ -457,7 +457,7 @@ describe("the comment mode a series states", () => {
       {
         ageRating: "all",
         commentMode: "disabled",
-        creatorPublicIds: [],
+        creatorCredits: [],
         genrePublicIds: [],
         isPublished: true,
         labelPublicId: "LABEL001",
@@ -489,7 +489,7 @@ describe("the comment mode a series states", () => {
       {
         ageRating: "all",
         commentMode: "",
-        creatorPublicIds: [],
+        creatorCredits: [],
         genrePublicIds: [],
         isPublished: true,
         labelPublicId: "LABEL001",

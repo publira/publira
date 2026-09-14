@@ -16,6 +16,8 @@ import {
   genreNamesInOrder,
   genreRow,
   labelFormFields,
+  selectComboboxOption,
+  selectOption,
   seriesFormFields,
   signInAsSeedAdmin,
 } from "../src/admin";
@@ -28,6 +30,7 @@ import {
 } from "../src/db";
 import {
   publishedAtOneHourAgo,
+  SEED_CATALOG,
   uniqueSuffix,
 } from "../src/scenarios/admin-publish";
 import { EYE_CATCH_SOURCE_FIXTURE } from "../src/scenarios/eye-catch";
@@ -246,6 +249,70 @@ test.describe("admin catalog masters", () => {
     await creatorCombobox.click();
     await creatorCombobox.fill(name);
     await expect(page.getByRole("option", { name })).toBeVisible();
+  });
+
+  test("credits three authors in two roles and reads them back in role order", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const artistOne = `E2E Artist One ${suffix}`;
+    const artistTwo = `E2E Artist Two ${suffix}`;
+    trackCreator(
+      await createCreatorViaUi(page, {
+        name: artistOne,
+        profileText: `E2E artist profile ${suffix}`,
+      })
+    );
+    trackCreator(
+      await createCreatorViaUi(page, {
+        name: artistTwo,
+        profileText: `E2E artist profile ${suffix}`,
+      })
+    );
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        creatorRoleName: "Original Author",
+        synopsis: `E2E credits synopsis ${suffix}`,
+        title: `E2E Credits ${suffix}`,
+      })
+    );
+
+    const creditAsArtist = async (creatorName: string) => {
+      const fields = seriesFormFields(page);
+      await selectComboboxOption(page, fields.creatorCombobox, creatorName);
+      await selectOption(page, fields.creatorRoleSelect, "Artist");
+      await page
+        .getByRole("button", { exact: true, name: "Add author" })
+        .click();
+    };
+
+    // Added in this order so the reading below proves the order inside the
+    // role is the editor's, not whatever the list happened to come back in.
+    await creditAsArtist(artistOne);
+    await creditAsArtist(artistTwo);
+    await page.getByRole("button", { name: "Update series" }).click();
+    await expect(page.getByText("Series updated.")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Read back from the API rather than from the list the form was left
+    // holding: what is asserted is the order the series was stored in.
+    await page.goto(adminUrl(`/series/${seriesId}`));
+    const roleSelects = page.getByRole("combobox", { name: /^Role of /u });
+    await expect(roleSelects).toHaveCount(3);
+    await expect(roleSelects.nth(0)).toHaveAccessibleName(
+      `Role of ${SEED_CATALOG.creatorName}`
+    );
+    await expect(roleSelects.nth(0)).toHaveText("Original Author");
+    await expect(roleSelects.nth(1)).toHaveAccessibleName(
+      `Role of ${artistOne}`
+    );
+    await expect(roleSelects.nth(1)).toHaveText("Artist");
+    await expect(roleSelects.nth(2)).toHaveAccessibleName(
+      `Role of ${artistTwo}`
+    );
+    await expect(roleSelects.nth(2)).toHaveText("Artist");
   });
 
   test("editing a creator reaches the creator detail page on web-host", async ({

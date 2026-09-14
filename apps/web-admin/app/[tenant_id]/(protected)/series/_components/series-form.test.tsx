@@ -57,6 +57,10 @@ const render = (ui: React.ReactNode) =>
 
 const labels = [{ name: "Label A", publicId: "LABEL001" }];
 const creators = [{ name: "Creator A", publicId: "CREATOR001" }];
+const creatorRoles = [
+  { name: "Original Author", publicId: "ROLE001" },
+  { name: "Artist", publicId: "ROLE002" },
+];
 const genres = [
   { name: "Fantasy", publicId: "GENRE001" },
   { name: "Mystery", publicId: "GENRE002" },
@@ -65,8 +69,8 @@ const tagSuggestions = ["seaside", "letterpress"];
 
 const series: SeriesListItem = {
   ageRating: "r15",
+  creatorCredits: [{ creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" }],
   creatorNames: ["Creator A"],
-  creatorPublicIds: ["CREATOR001"],
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],
   genrePublicIds: ["GENRE002"],
@@ -93,6 +97,7 @@ const renderBothForms = () =>
     <>
       <SeriesForm
         action={action}
+        creatorRoles={creatorRoles}
         creators={creators}
         defaultReadingPeriodHours={72}
         genres={genres}
@@ -103,6 +108,7 @@ const renderBothForms = () =>
       />
       <SeriesForm
         action={action}
+        creatorRoles={creatorRoles}
         creators={creators}
         defaultReadingPeriodHours={72}
         genres={genres}
@@ -160,7 +166,8 @@ it("finds each input by its role and label", async () => {
     screen.getAllByRole("spinbutton", { name: /Reading period/u })
   ).toHaveLength(2);
   expect(screen.getAllByRole("combobox", { name: /Label/u })).toHaveLength(2);
-  expect(screen.getAllByRole("combobox", { name: /Authors/u })).toHaveLength(2);
+  // "Authors" is the group the two sit in, so each is matched exactly.
+  expect(screen.getAllByRole("combobox", { name: "Author" })).toHaveLength(2);
   expect(screen.getAllByLabelText(/Publication date/u)).toHaveLength(2);
   // The weekday names come from `Intl` and are on screen at once; the labels of
   // the classification controls are catalog strings, each behind a `<Suspense>`
@@ -192,6 +199,7 @@ it("opens on the classification the series carries", () => {
   render(
     <SeriesForm
       action={action}
+      creatorRoles={creatorRoles}
       creators={creators}
       defaultReadingPeriodHours={72}
       genres={genres}
@@ -207,6 +215,11 @@ it("opens on the classification the series carries", () => {
   expect(posted("age_rating")).toEqual(["r15"]);
   expect(posted("schedule_weekdays")).toEqual(["1", "4"]);
   expect(posted("genre_public_ids")).toEqual(["GENRE002"]);
+  expect(posted("creator_credits")).toEqual([
+    JSON.stringify([
+      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" },
+    ]),
+  ]);
   expect(posted("tag_names")).toEqual(["letterpress"]);
   expect(screen.getByRole("checkbox", { name: "Mon" }).dataset.checked).toBe(
     ""
@@ -224,6 +237,7 @@ it("opens on the comment mode the series states", () => {
   render(
     <SeriesForm
       action={action}
+      creatorRoles={creatorRoles}
       creators={creators}
       defaultReadingPeriodHours={72}
       genres={genres}
@@ -246,6 +260,7 @@ it("names the tenant's own mode in the option that follows it", async () => {
   render(
     <SeriesForm
       action={action}
+      creatorRoles={creatorRoles}
       creators={creators}
       defaultReadingPeriodHours={72}
       genres={genres}
@@ -271,6 +286,7 @@ it("leaves that option unnamed when the tenant setting could not be read", async
   render(
     <SeriesForm
       action={action}
+      creatorRoles={creatorRoles}
       creators={creators}
       defaultReadingPeriodHours={72}
       genres={genres}
@@ -290,6 +306,7 @@ it("names the empty schedule as irregular", async () => {
   render(
     <SeriesForm
       action={action}
+      creatorRoles={creatorRoles}
       creators={creators}
       defaultReadingPeriodHours={72}
       genres={genres}
@@ -313,6 +330,7 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
     <AdminLocaleProvider locale="ja">
       <SeriesForm
         action={action}
+        creatorRoles={creatorRoles}
         creators={creators}
         defaultReadingPeriodHours={72}
         genres={genres}
@@ -329,4 +347,34 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
   // The weekday names come from `Intl` rather than from the catalog, so the
   // provider's locale has to reach them too.
   expect(screen.getByRole("checkbox", { name: "月" })).toBeDefined();
+});
+
+// A credit written before roles existed states none, and a save has no way to
+// say that. The form opens it on the tenant's leading role, so the editor sees
+// what is about to be stored instead of having the save refused over a field
+// nothing on screen mentions.
+it("opens a credit that states no role on the tenant's leading role", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      initialSeries={{
+        ...series,
+        creatorCredits: [{ creatorPublicId: "CREATOR001", rolePublicId: "" }],
+      }}
+      labels={labels}
+      mode="update"
+      tagSuggestions={tagSuggestions}
+      timeZone="Asia/Tokyo"
+    />
+  );
+
+  expect(posted("creator_credits")).toEqual([
+    JSON.stringify([
+      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
+    ]),
+  ]);
 });

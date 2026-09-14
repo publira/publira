@@ -19,7 +19,6 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { getLeadingCreatorRolePublicId } from "./creator-roles";
 import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -62,6 +61,16 @@ export const seriesCacheTag = (tenantId: string, publicId: string): string =>
 export const seriesListCacheTag = (tenantId: string): string =>
   `series-list-${tenantId}`;
 
+/**
+ * One credit line of a series: who, and in what role. The pair is the identity
+ * of a credit, which is why one person can appear twice under two roles and
+ * never twice under the same one.
+ */
+export interface SeriesCreatorCredit {
+  creatorPublicId: string;
+  rolePublicId: string;
+}
+
 export interface SeriesItem {
   publicId: string;
   title: string;
@@ -71,7 +80,12 @@ export interface SeriesItem {
   labelPublicId: string;
   labelName: string;
   creatorNames: string[];
-  creatorPublicIds: string[];
+  /**
+   * In role priority order, then the order the editor gave within a role —
+   * the order the API reads them back in and the order a credit list is shown
+   * in everywhere.
+   */
+  creatorCredits: SeriesCreatorCredit[];
   isPublished: boolean;
   status: SeriesStatusValue;
   /**
@@ -280,13 +294,18 @@ const WEEKDAY_COUNT = 7;
 
 const mapSeries = (series: RawSeries): SeriesItem => ({
   ageRating: toSeriesAgeRatingValue(series.ageRating),
+  creatorCredits: (series.creators ?? []).flatMap((creator) => {
+    const creatorPublicId = creator.publicId.trim();
+    // A credit written before roles existed states none. It is kept, so the
+    // person stays credited and the form is where a role is chosen for them.
+    const rolePublicId = creator.role?.publicId?.trim() ?? "";
+    return creatorPublicId.length > 0
+      ? [{ creatorPublicId, rolePublicId }]
+      : [];
+  }),
   creatorNames: (series.creators ?? []).flatMap((creator) => {
     const name = creator.name.trim();
     return name.length > 0 ? [name] : [];
-  }),
-  creatorPublicIds: (series.creators ?? []).flatMap((creator) => {
-    const publicId = creator.publicId.trim();
-    return publicId.length > 0 ? [publicId] : [];
   }),
   eyeCatchImageUpdatedAt: series.eyeCatchImageUpdatedAt ?? "",
   eyeCatchImageVariants: (series.eyeCatchImageVariants ?? []).flatMap(
@@ -561,92 +580,6 @@ export const getSeries = async (
   }
 };
 
-interface CreatorCredit {
-  creatorPublicId: string;
-  rolePublicId: string;
-}
-
-/**
- * The credit list a new series is created with. The form picks creators and
- * cannot yet say in what capacity, so each one is credited in the tenant's
- * leading role — which is what a series credited to one person means.
- */
-const toNewCreatorCredits = async (
-  tenantId: string,
-  sessionId: string,
-  creatorPublicIds: string[]
-): Promise<CreatorCredit[]> => {
-  if (creatorPublicIds.length === 0) {
-    return [];
-  }
-
-  const rolePublicId = await getLeadingCreatorRolePublicId(tenantId, sessionId);
-  return creatorPublicIds.map((creatorPublicId) => ({
-    creatorPublicId,
-    rolePublicId,
-  }));
-};
-
-/**
- * The credit list an update sends.
- *
- * An update replaces every credit the series holds, and the form still carries
- * creators alone — so building this list from the leading role would rewrite
- * what each of them is credited as every time somebody saved the title. The
- * credits the series already holds are sent back instead, roles and all, and a
- * role is only chosen for a creator this save added.
- *
- * The read goes straight to the API rather than through `getSeries`, whose
- * result is cached: a stale credit list here would be written back as the new
- * one.
- *
- * A credit the series has held since before roles existed states none, and the
- * request has no way to say that, so sending it back gives it the leading role.
- * That is the one thing this does not preserve, and it adds a role rather than
- * losing a credit.
- */
-const toUpdatedCreatorCredits = async (
-  tenantId: string,
-  publicId: string,
-  sessionId: string,
-  creatorPublicIds: string[]
-): Promise<CreatorCredit[]> => {
-  if (creatorPublicIds.length === 0) {
-    return [];
-  }
-
-  const current = await apiClient.series.getSeries(
-    { publicId, tenant: { tenantId } },
-    withSessionHeaders(sessionId)
-  );
-  const heldRoles = new Map<string, string[]>();
-  for (const creator of current.series?.creators ?? []) {
-    const rolePublicId = creator.role?.publicId?.trim();
-    if (rolePublicId) {
-      const held = heldRoles.get(creator.publicId) ?? [];
-      held.push(rolePublicId);
-      heldRoles.set(creator.publicId, held);
-    }
-  }
-
-  // Resolved once, before the list is built, and only when this save added a
-  // creator the series was not already crediting.
-  const needsLeadingRole = creatorPublicIds.some(
-    (creatorPublicId) => !heldRoles.has(creatorPublicId)
-  );
-  const leadingRolePublicId = needsLeadingRole
-    ? await getLeadingCreatorRolePublicId(tenantId, sessionId)
-    : "";
-
-  return creatorPublicIds.flatMap((creatorPublicId) => {
-    const held = heldRoles.get(creatorPublicId);
-    if (!held) {
-      return [{ creatorPublicId, rolePublicId: leadingRolePublicId }];
-    }
-    return held.map((rolePublicId) => ({ creatorPublicId, rolePublicId }));
-  });
-};
-
 /**
  * The classification every save carries.
  *
@@ -680,7 +613,7 @@ export const createSeries = async (
     synopsis: string;
     readingPeriodHours: number;
     labelPublicId: string;
-    creatorPublicIds: string[];
+    creatorCredits: SeriesCreatorCredit[];
     isPublished: boolean;
     publishedAt?: string;
     eyeCatchImageContentType?: string;
@@ -701,16 +634,11 @@ export const createSeries = async (
   }
 
   try {
-    const creatorCredits = await toNewCreatorCredits(
-      input.tenantId,
-      sessionId,
-      input.creatorPublicIds
-    );
     const response = await apiClient.series.createSeries(
       {
         ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
         commentMode: SERIES_COMMENT_MODE_ENUM[input.commentMode],
-        creatorCredits,
+        creatorCredits: input.creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
         genrePublicIds: input.genrePublicIds,
@@ -764,7 +692,7 @@ export const updateSeries = async (
     synopsis: string;
     readingPeriodHours: number;
     labelPublicId: string;
-    creatorPublicIds: string[];
+    creatorCredits: SeriesCreatorCredit[];
     isPublished: boolean;
     publishedAt?: string;
     clearEyeCatchImage?: boolean;
@@ -786,18 +714,12 @@ export const updateSeries = async (
   }
 
   try {
-    const creatorCredits = await toUpdatedCreatorCredits(
-      input.tenantId,
-      input.publicId,
-      sessionId,
-      input.creatorPublicIds
-    );
     const response = await apiClient.series.updateSeries(
       {
         ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
         clearEyeCatchImage: input.clearEyeCatchImage,
         commentMode: SERIES_COMMENT_MODE_ENUM[input.commentMode],
-        creatorCredits,
+        creatorCredits: input.creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
         genrePublicIds: input.genrePublicIds,

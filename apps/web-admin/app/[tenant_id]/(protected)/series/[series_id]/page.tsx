@@ -33,6 +33,7 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
+import { listCreatorRoles } from "#lib/creator-roles";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { listGenres } from "#lib/genre";
 import { listAllLabels } from "#lib/label";
@@ -194,6 +195,7 @@ const EditSeriesFormData = async ({
   const [
     result,
     creatorsResult,
+    creatorRolesResult,
     labelsResult,
     genresResult,
     tagsResult,
@@ -203,6 +205,9 @@ const EditSeriesFormData = async ({
     getSeries({ publicId: seriesId, tenantId }, locale),
     // Walk every cursor page so the Combobox can search past the first 100.
     listAllCreators(tenantId, locale),
+    // In the tenant's priority order, which is the order the credit list on
+    // the form is shown in.
+    listCreatorRoles(tenantId, locale),
     listAllLabels(tenantId, locale),
     listGenres(tenantId, locale),
     listTagSuggestions(tenantId, locale),
@@ -223,6 +228,7 @@ const EditSeriesFormData = async ({
 
   await redirectToLoginIfSessionRejected(
     creatorsResult,
+    creatorRolesResult,
     labelsResult,
     genresResult
   );
@@ -230,6 +236,10 @@ const EditSeriesFormData = async ({
   return (
     <SeriesForm
       action={updateSeriesAction}
+      creatorRoles={creatorRolesResult.creatorRoles}
+      creatorRolesErrorMessage={
+        creatorRolesResult.ok ? undefined : creatorRolesResult.message
+      }
       creators={creatorsResult.creators}
       creatorsErrorMessage={
         creatorsResult.ok ? undefined : creatorsResult.message

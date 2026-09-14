@@ -6,6 +6,16 @@ import type {
 
 export type SeriesEyeCatchVariantItem = EyeCatchVariantItem;
 
+/**
+ * One credit line of a series: who, and in what role. The pair is the identity
+ * of a credit, which is why one person can appear twice under two roles and
+ * never twice under the same one.
+ */
+export interface SeriesCreatorCredit {
+  creatorPublicId: string;
+  rolePublicId: string;
+}
+
 export interface SeriesListItem {
   publicId: string;
   title: string;
@@ -15,7 +25,8 @@ export interface SeriesListItem {
   labelPublicId: string;
   labelName: string;
   creatorNames: string[];
-  creatorPublicIds: string[];
+  /** In role priority order, then the order the editor gave within a role. */
+  creatorCredits: SeriesCreatorCredit[];
   isPublished: boolean;
   status: SeriesStatusValue;
   scheduleWeekdays: number[];
