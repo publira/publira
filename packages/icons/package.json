@@ -59,6 +59,10 @@
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"
     },
+    "./grip-vertical-icon": {
+      "types": "./dist/grip-vertical-icon.d.mts",
+      "default": "./dist/grip-vertical-icon.mjs"
+    },
     "./heart-icon": {
       "types": "./dist/heart-icon.d.mts",
       "default": "./dist/heart-icon.mjs"

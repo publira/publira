@@ -94,7 +94,7 @@ export interface SeriesFormFields {
   readingPeriodHours: Locator;
   synopsis: Locator;
   creatorCombobox: Locator;
-  creatorRoleSelect: Locator;
+  creatorRoleCombobox: Locator;
   labelCombobox: Locator;
   publishedAt: Locator;
   statusSelect: Locator;
@@ -117,7 +117,10 @@ export const seriesFormFields = (page: Page): SeriesFormFields => ({
   // The picker one credit is composed in, beside the role it is credited in.
   // Both are matched exactly, so neither catches the other's label.
   creatorCombobox: page.getByRole("combobox", { exact: true, name: "Author" }),
-  creatorRoleSelect: page.getByRole("combobox", { exact: true, name: "Role" }),
+  creatorRoleCombobox: page.getByRole("combobox", {
+    exact: true,
+    name: "Role",
+  }),
   genreCombobox: page.getByRole("combobox", { name: /Genres/u }),
   labelCombobox: page.getByRole("combobox", { name: /Label/u }),
   // `datetime-local` has no ARIA role, so this one filters on visibility.
@@ -182,7 +185,11 @@ export const createSeriesViaUi = async (
     input.creatorName ?? SEED_CATALOG.creatorName
   );
   if (input.creatorRoleName) {
-    await selectOption(page, fields.creatorRoleSelect, input.creatorRoleName);
+    await selectComboboxOption(
+      page,
+      fields.creatorRoleCombobox,
+      input.creatorRoleName
+    );
   }
   // The credit is only on the form once it is added to the list; the picker
   // beside it is where the next one is composed.

@@ -35,13 +35,14 @@ vi.mock("#components/client-message", () => ({
   useClientMessages: () => bindMessages(sharedCatalog("en")),
 }));
 
-// Both controls render a floating popup that jsdom cannot drive, and what is
+// The real combobox drops a floating popup jsdom cannot drive, and what is
 // under test is which options this field offers and what it does with the one
-// that is chosen — so each stands in as the native control with the same
-// accessible name.
+// that is chosen — so it stands in as a native control keeping the accessible
+// name its label gives it. The blank entry is what "nothing picked yet" is.
 vi.mock("@publira/ui-components/combobox", () => ({
   Combobox: ({
     id,
+    items,
     onValueChange,
     value,
   }: {
@@ -51,35 +52,14 @@ vi.mock("@publira/ui-components/combobox", () => ({
     onValueChange: (next: string) => void;
     value: string;
   }) => (
-    <input
-      id={id}
-      onChange={(event) => onValueChange(event.target.value)}
-      value={value}
-    />
-  ),
-  ComboboxEmpty: () => null,
-  ComboboxInput: () => null,
-  ComboboxItems: () => null,
-  ComboboxPopup: () => null,
-}));
-
-vi.mock("@publira/ui-components/select", () => ({
-  Select: ({
-    id,
-    items,
-    onValueChange,
-    value,
-  }: {
-    id?: string;
-    items: { label: ReactNode; value: string }[];
-    onValueChange: (next: string) => void;
-    value: string;
-  }) => (
     <select
       id={id}
       onChange={(event) => onValueChange(event.target.value)}
       value={value}
     >
+      {/* "Nothing picked yet"; a label keeps it from reading as a nameless
+          control. */}
+      <option value="">-</option>
       {items.map((item) => (
         <option key={item.value} value={item.value}>
           {item.label}
@@ -87,6 +67,25 @@ vi.mock("@publira/ui-components/select", () => ({
       ))}
     </select>
   ),
+  ComboboxEmpty: () => null,
+  ComboboxInput: () => null,
+  ComboboxItems: () => null,
+  ComboboxPopup: () => null,
+}));
+
+// dnd-kit measures the elements it sorts, which jsdom cannot do. Dragging is
+// covered by the e2e suite; here the provider and the handle only have to
+// render, so the list around them can be asserted on.
+vi.mock("@dnd-kit/react", () => ({
+  DragDropProvider: ({ children }: { children: ReactNode }) => children,
+}));
+
+vi.mock("@dnd-kit/react/sortable", () => ({
+  useSortable: () => ({
+    handleRef: vi.fn(),
+    isDragging: false,
+    ref: vi.fn(),
+  }),
 }));
 
 const creators = [
@@ -141,22 +140,22 @@ const namesOnScreen = () =>
     .getAllByRole("listitem")
     .map((row) => row.querySelector("p")?.textContent);
 
-const roleSelect = (creatorName: string) =>
+const roleCombobox = (creatorName: string) =>
   screen.getByRole<HTMLSelectElement>("combobox", {
     name: `Role of ${creatorName}`,
   });
 
-const draftCreatorInput = () =>
-  screen.getByRole<HTMLInputElement>("textbox", { name: "Author" });
+const draftCreatorCombobox = () =>
+  screen.getByRole<HTMLSelectElement>("combobox", { name: "Author" });
 
-const draftRoleSelect = () =>
+const draftRoleCombobox = () =>
   screen.getByRole<HTMLSelectElement>("combobox", { name: "Role" });
 
-const optionLabels = (select: HTMLSelectElement) =>
-  [...select.options].map((option) => option.textContent);
-
-const moveDisabled = (name: string) =>
-  screen.getByRole<HTMLButtonElement>("button", { name }).disabled;
+/** The roles on offer; the mock's blank entry is not one of them. */
+const optionLabels = (control: HTMLSelectElement) =>
+  [...control.options]
+    .filter((option) => option.value !== "")
+    .map((option) => option.textContent);
 
 afterEach(cleanup);
 
@@ -179,26 +178,26 @@ describe("SeriesCreatorCreditsField", () => {
     ]);
   });
 
-  // The select carries no visible label — the row already names the author —
+  // The picker carries no visible label — the row already names the author —
   // so the only thing that names it for a screen reader is the visually hidden
   // label `Field` ties to it.
-  it("names each role select after the author it credits and opens it on that role", () => {
+  it("names each role picker after the author it credits and opens it on that role", () => {
     render([
       { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
       { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" },
     ]);
 
-    expect(roleSelect("Original A").value).toBe("ROLE001");
-    expect(roleSelect("Artist B").value).toBe("ROLE002");
+    expect(roleCombobox("Original A").value).toBe("ROLE001");
+    expect(roleCombobox("Artist B").value).toBe("ROLE002");
   });
 
   it("credits an author in the role the picker states", () => {
     render([]);
 
-    fireEvent.change(draftCreatorInput(), {
+    fireEvent.change(draftCreatorCombobox(), {
       target: { value: "CREATOR002" },
     });
-    fireEvent.change(draftRoleSelect(), { target: { value: "ROLE002" } });
+    fireEvent.change(draftRoleCombobox(), { target: { value: "ROLE002" } });
     fireEvent.click(screen.getByRole("button", { name: "Add author" }));
 
     expect(postedCredits()).toEqual([
@@ -212,11 +211,11 @@ describe("SeriesCreatorCreditsField", () => {
   it("keeps offering the roles an author does not hold yet", () => {
     render([{ creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" }]);
 
-    fireEvent.change(draftCreatorInput(), {
+    fireEvent.change(draftCreatorCombobox(), {
       target: { value: "CREATOR001" },
     });
 
-    expect(optionLabels(draftRoleSelect())).toEqual(["Artist"]);
+    expect(optionLabels(draftRoleCombobox())).toEqual(["Artist"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Add author" }));
 
@@ -232,7 +231,7 @@ describe("SeriesCreatorCreditsField", () => {
       { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" },
     ]);
 
-    fireEvent.change(draftCreatorInput(), {
+    fireEvent.change(draftCreatorCombobox(), {
       target: { value: "CREATOR001" },
     });
 
@@ -245,44 +244,29 @@ describe("SeriesCreatorCreditsField", () => {
     ).toBeDefined();
   });
 
-  it("moves one of two authors sharing a role past the other", () => {
+  // Only the handle drags, so the role picker inside the row still takes a
+  // pointer. The drag itself is an e2e concern; what belongs here is that
+  // every row offers the handle at all.
+  it("gives every credit a drag handle named after its author", () => {
     render([
       { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
       { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" },
-      { creatorPublicId: "CREATOR003", rolePublicId: "ROLE002" },
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Move Artist C up" }));
-
-    expect(namesOnScreen()).toEqual(["Original A", "Artist C", "Artist B"]);
-    expect(postedCredits()).toEqual([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
-      { creatorPublicId: "CREATOR003", rolePublicId: "ROLE002" },
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" },
-    ]);
-  });
-
-  // The editor orders inside a role and nowhere else: the roles themselves are
-  // ordered on the author roles page, so a move that would cross into another
-  // role is closed rather than left to be undone by the next render.
-  it("closes the moves that would leave the role", () => {
-    render([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" },
-      { creatorPublicId: "CREATOR003", rolePublicId: "ROLE002" },
-    ]);
-
-    expect(moveDisabled("Move Original A up")).toBe(true);
-    expect(moveDisabled("Move Original A down")).toBe(true);
-    expect(moveDisabled("Move Artist B up")).toBe(true);
-    expect(moveDisabled("Move Artist B down")).toBe(false);
-    expect(moveDisabled("Move Artist C down")).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Reorder Original A" })
+    ).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: "Reorder Artist B" })
+    ).toBeDefined();
   });
 
   it("re-credits an author by changing the role on their row", () => {
     render([{ creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" }]);
 
-    fireEvent.change(roleSelect("Artist B"), { target: { value: "ROLE001" } });
+    fireEvent.change(roleCombobox("Artist B"), {
+      target: { value: "ROLE001" },
+    });
 
     expect(postedCredits()).toEqual([
       { creatorPublicId: "CREATOR002", rolePublicId: "ROLE001" },

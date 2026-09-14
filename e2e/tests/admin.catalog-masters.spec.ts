@@ -17,7 +17,6 @@ import {
   genreRow,
   labelFormFields,
   selectComboboxOption,
-  selectOption,
   seriesFormFields,
   signInAsSeedAdmin,
 } from "../src/admin";
@@ -251,7 +250,7 @@ test.describe("admin catalog masters", () => {
     await expect(page.getByRole("option", { name })).toBeVisible();
   });
 
-  test("credits three authors in two roles and reads them back in role order", async ({
+  test("credits three authors in two roles and stores the order inside a role", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -281,16 +280,27 @@ test.describe("admin catalog masters", () => {
     const creditAsArtist = async (creatorName: string) => {
       const fields = seriesFormFields(page);
       await selectComboboxOption(page, fields.creatorCombobox, creatorName);
-      await selectOption(page, fields.creatorRoleSelect, "Artist");
+      await selectComboboxOption(page, fields.creatorRoleCombobox, "Artist");
       await page
         .getByRole("button", { exact: true, name: "Add author" })
         .click();
     };
 
-    // Added in this order so the reading below proves the order inside the
-    // role is the editor's, not whatever the list happened to come back in.
     await creditAsArtist(artistOne);
     await creditAsArtist(artistTwo);
+
+    // Ordering inside a role, driven from the keyboard: the handle picks the
+    // row up, an arrow moves it, and the second press drops it. Asserted this
+    // way rather than with a pointer drag because it is the path a list of
+    // drag handles is most likely to lose.
+    await page.getByRole("button", { name: `Reorder ${artistTwo}` }).focus();
+    await page.keyboard.press("Space");
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Space");
+    await expect(
+      page.getByRole("combobox", { name: /^Role of /u }).nth(1)
+    ).toHaveAccessibleName(`Role of ${artistTwo}`);
+
     await page.getByRole("button", { name: "Update series" }).click();
     await expect(page.getByText("Series updated.")).toBeVisible({
       timeout: 30_000,
@@ -299,20 +309,21 @@ test.describe("admin catalog masters", () => {
     // Read back from the API rather than from the list the form was left
     // holding: what is asserted is the order the series was stored in.
     await page.goto(adminUrl(`/series/${seriesId}`));
-    const roleSelects = page.getByRole("combobox", { name: /^Role of /u });
-    await expect(roleSelects).toHaveCount(3);
-    await expect(roleSelects.nth(0)).toHaveAccessibleName(
+    const roleComboboxes = page.getByRole("combobox", { name: /^Role of /u });
+    await expect(roleComboboxes).toHaveCount(3);
+    await expect(roleComboboxes.nth(0)).toHaveAccessibleName(
       `Role of ${SEED_CATALOG.creatorName}`
     );
-    await expect(roleSelects.nth(0)).toHaveText("Original Author");
-    await expect(roleSelects.nth(1)).toHaveAccessibleName(
-      `Role of ${artistOne}`
-    );
-    await expect(roleSelects.nth(1)).toHaveText("Artist");
-    await expect(roleSelects.nth(2)).toHaveAccessibleName(
+    await expect(roleComboboxes.nth(0)).toHaveValue("Original Author");
+    // The move above, as the API stored it: `display_order` inside the role.
+    await expect(roleComboboxes.nth(1)).toHaveAccessibleName(
       `Role of ${artistTwo}`
     );
-    await expect(roleSelects.nth(2)).toHaveText("Artist");
+    await expect(roleComboboxes.nth(1)).toHaveValue("Artist");
+    await expect(roleComboboxes.nth(2)).toHaveAccessibleName(
+      `Role of ${artistOne}`
+    );
+    await expect(roleComboboxes.nth(2)).toHaveValue("Artist");
   });
 
   test("editing a creator reaches the creator detail page on web-host", async ({

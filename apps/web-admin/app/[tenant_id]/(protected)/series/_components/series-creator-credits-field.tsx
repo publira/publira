@@ -1,7 +1,11 @@
 "use client";
 
+import { move } from "@dnd-kit/helpers";
+import { DragDropProvider } from "@dnd-kit/react";
+import type { DragEndEvent } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
 import { toIntlLocale } from "@publira/i18n";
-import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from "@publira/icons";
+import { CloseIcon, GripVerticalIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
 import {
   Combobox,
@@ -10,10 +14,11 @@ import {
   ComboboxItems,
   ComboboxPopup,
 } from "@publira/ui-components/combobox";
+import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
 import {
   Suspense,
   useCallback,
@@ -38,8 +43,14 @@ export interface CreatorRoleOption {
   name: string;
 }
 
-/** Where a move button sends the credit it sits on. */
-type MoveDirection = -1 | 1;
+/**
+ * What identifies one credit to the sortable list.
+ *
+ * The pair is the identity of a credit, and a public id is Base58, so the two
+ * joined by a separator outside that alphabet cannot collide with another pair.
+ */
+const creditId = (credit: SeriesCreatorCredit): string =>
+  `${credit.creatorPublicId}/${credit.rolePublicId}`;
 
 /**
  * The roles each creator is already credited in. The pair is the identity of a
@@ -61,7 +72,7 @@ const toRolesByCreator = (
 /**
  * Role priority order, keeping the order the editor gave inside each role.
  *
- * `toSorted` is stable, so moving one of two artists past the other survives
+ * `toSorted` is stable, so dragging one of two artists past the other survives
  * the sort. The API orders a save the same way and stores the position as
  * `display_order`, so the list on screen is the list the series reads back as.
  */
@@ -87,7 +98,7 @@ const toRoleItems = (
   creatorRoles: CreatorRoleOption[],
   heldRoles: Set<string> | undefined,
   currentRolePublicId: string
-): { label: string; value: string }[] =>
+): ComboboxItem[] =>
   creatorRoles.flatMap((role) =>
     role.publicId === currentRolePublicId || !heldRoles?.has(role.publicId)
       ? [{ label: role.name, value: role.publicId }]
@@ -105,14 +116,57 @@ const CreatorComboboxInput = () => {
   return <ComboboxInput placeholder={t("admin.series.form.creators_search")} />;
 };
 
+/** The search slot of a role picker, for the reason above. */
+const RoleComboboxInput = () => {
+  const t = useClientMessages();
+
+  return (
+    <ComboboxInput placeholder={t("admin.series.form.creators_role_search")} />
+  );
+};
+
+interface RoleComboboxProps {
+  id: string;
+  items: ComboboxItem[];
+  onValueChange: (nextRolePublicId: string) => void;
+  value: string;
+}
+
+/**
+ * The role one credit is held in, searchable.
+ *
+ * A combobox rather than a select because the roles are a vocabulary the
+ * tenant curates: the four a tenant starts with fit in a list, and the
+ * twentieth does not.
+ */
+const RoleCombobox = ({
+  id,
+  items,
+  onValueChange,
+  value,
+}: RoleComboboxProps) => (
+  <Combobox id={id} items={items} onValueChange={onValueChange} value={value}>
+    <Suspense fallback={<ComboboxInput />}>
+      <RoleComboboxInput />
+    </Suspense>
+    <ComboboxPopup>
+      <ComboboxEmpty>
+        <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+          <ClientMessage message="admin.series.form.creators_role_no_match" />
+        </Suspense>
+      </ComboboxEmpty>
+      <ComboboxItems />
+    </ComboboxPopup>
+  </Combobox>
+);
+
 interface CreatorCreditRowProps {
-  canMoveDown: boolean;
-  canMoveUp: boolean;
   creatorName: string;
-  onMove: (direction: MoveDirection) => void;
+  id: string;
+  index: number;
   onRemove: () => void;
   onRoleChange: (nextRolePublicId: string) => void;
-  roleItems: { label: string; value: string }[];
+  roleItems: ComboboxItem[];
   rolePublicId: string;
 }
 
@@ -120,31 +174,62 @@ interface CreatorCreditRowProps {
  * One credit: who, in what role, and where it sits among the credits sharing
  * that role.
  *
- * A component of its own because the role select needs an id for its label to
- * point at, and `useId` cannot be called from inside the list's `map`. Each
- * button is named by the text inside it rather than by an `aria-label`, so the
- * copy keeps a boundary of its own and the control is usable before the
- * catalog arrives.
+ * A component of its own because the role picker needs an id for its label to
+ * point at, and `useId` cannot be called from inside the list's `map`.
+ *
+ * The row is dragged by its handle alone, so the combobox inside it still
+ * takes a pointer, and the handle is focusable so the keyboard sensor can move
+ * the row without a pointer at all. `type` and `accept` are the role, which is
+ * what keeps a drag inside one role: the editor orders the artists among
+ * themselves, and the roles themselves are ordered on the author roles page.
  */
 const CreatorCreditRow = ({
-  canMoveDown,
-  canMoveUp,
   creatorName,
-  onMove,
+  id,
+  index,
   onRemove,
   onRoleChange,
   roleItems,
   rolePublicId,
 }: CreatorCreditRowProps) => {
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
+  // `Combobox` renders its own input rather than a Field control, so the label
+  // needs an id to point at.
+  const comboboxId = useId();
+  const { handleRef, isDragging, ref } = useSortable({
+    accept: rolePublicId,
+    id,
+    index,
+    type: rolePublicId,
+  });
 
   return (
-    <li className="grid gap-2 border border-border bg-background px-3 py-2 sm:flex sm:items-center sm:gap-3">
+    <li
+      className={cn(
+        "flex items-center gap-2 border border-border bg-background px-2 py-2 sm:gap-3 sm:px-3",
+        isDragging && "opacity-60"
+      )}
+      ref={ref}
+    >
+      <button
+        className="cursor-grab touch-none rounded-control p-1 text-muted-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        ref={handleRef}
+        type="button"
+      >
+        <GripVerticalIcon aria-hidden="true" className="size-4" />
+        {/* The handle's own name, as a node rather than an `aria-label`, so the
+            copy keeps a boundary of its own. */}
+        <span className="sr-only">
+          <Suspense fallback={null}>
+            <ClientMessage
+              message="admin.series.form.creators_reorder"
+              values={{ name: creatorName }}
+            />
+          </Suspense>
+        </span>
+      </button>
       <p className="flex-1 text-sm text-foreground">{creatorName}</p>
-      <Field className="sm:w-48">
-        <FieldLabel className="sr-only" htmlFor={selectId}>
+      <Field className="w-32 sm:w-48">
+        <FieldLabel className="sr-only" htmlFor={comboboxId}>
           <Suspense fallback={null}>
             <ClientMessage
               message="admin.series.form.creators_role_field_label"
@@ -153,61 +238,25 @@ const CreatorCreditRow = ({
           </Suspense>
         </FieldLabel>
         <FieldContent>
-          <Select
-            id={selectId}
+          <RoleCombobox
+            id={comboboxId}
             items={roleItems}
             onValueChange={onRoleChange}
             value={rolePublicId}
           />
         </FieldContent>
       </Field>
-      <div className="flex items-center gap-2">
-        <Button
-          disabled={!canMoveUp}
-          onClick={() => onMove(-1)}
-          size="icon"
-          type="button"
-          variant="outline"
-        >
-          <ChevronUpIcon aria-hidden="true" className="size-4" />
-          <span className="sr-only">
-            <Suspense fallback={null}>
-              <ClientMessage
-                message="admin.series.form.creators_move_up"
-                values={{ name: creatorName }}
-              />
-            </Suspense>
-          </span>
-        </Button>
-        <Button
-          disabled={!canMoveDown}
-          onClick={() => onMove(1)}
-          size="icon"
-          type="button"
-          variant="outline"
-        >
-          <ChevronDownIcon aria-hidden="true" className="size-4" />
-          <span className="sr-only">
-            <Suspense fallback={null}>
-              <ClientMessage
-                message="admin.series.form.creators_move_down"
-                values={{ name: creatorName }}
-              />
-            </Suspense>
-          </span>
-        </Button>
-        <Button onClick={onRemove} size="icon" type="button" variant="outline">
-          <CloseIcon aria-hidden="true" className="size-4" />
-          <span className="sr-only">
-            <Suspense fallback={null}>
-              <ClientMessage
-                message="admin.series.form.creators_remove"
-                values={{ name: creatorName }}
-              />
-            </Suspense>
-          </span>
-        </Button>
-      </div>
+      <Button onClick={onRemove} size="icon" type="button" variant="outline">
+        <CloseIcon aria-hidden="true" className="size-4" />
+        <span className="sr-only">
+          <Suspense fallback={null}>
+            <ClientMessage
+              message="admin.series.form.creators_remove"
+              values={{ name: creatorName }}
+            />
+          </Suspense>
+        </span>
+      </Button>
     </li>
   );
 };
@@ -244,10 +293,10 @@ export const SeriesCreatorCreditsField = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  // `Combobox` and `Select` render their own controls instead of a Field
-  // control, so each label needs an id to point at.
+  // `Combobox` renders its own input rather than a Field control, so each
+  // label needs an id to point at.
   const creatorComboboxId = useId();
-  const roleSelectId = useId();
+  const roleComboboxId = useId();
   const [draftCreatorPublicId, setDraftCreatorPublicId] = useState("");
   const [draftRolePublicId, setDraftRolePublicId] = useState(
     () => creatorRoles.at(0)?.publicId ?? ""
@@ -256,7 +305,7 @@ export const SeriesCreatorCreditsField = ({
   // is not left written in the search box.
   const [addedCount, setAddedCount] = useState(0);
 
-  const creatorItems = useMemo(
+  const creatorItems = useMemo<ComboboxItem[]>(
     () =>
       creators
         .map((creator) => ({ label: creator.name, value: creator.publicId }))
@@ -281,7 +330,7 @@ export const SeriesCreatorCreditsField = ({
     ""
   );
   // Choosing another creator can take the drafted role out of the offer, so
-  // the select falls back to the first one still on it rather than showing a
+  // the picker falls back to the first one still on it rather than showing a
   // role the Add button would refuse.
   const effectiveDraftRolePublicId = draftRoleItems.some(
     (item) => item.value === draftRolePublicId
@@ -313,13 +362,26 @@ export const SeriesCreatorCreditsField = ({
     orderedCredits,
   ]);
 
-  const handleMove = useCallback(
-    (index: number, direction: MoveDirection) => {
-      const target = index + direction;
-      const moved = [...orderedCredits];
-      const [credit] = moved.splice(index, 1);
-      moved.splice(target, 0, credit);
-      onChange(moved);
+  /**
+   * A drop reorders the ids and the credits follow, so the list the form posts
+   * is the list the editor just dragged into place.
+   */
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const currentIds = orderedCredits.map(creditId);
+      const nextIds = move(currentIds, event);
+      if (nextIds === currentIds) {
+        return;
+      }
+      const byId = new Map(
+        orderedCredits.map((credit) => [creditId(credit), credit])
+      );
+      onChange(
+        nextIds.flatMap((id) => {
+          const credit = byId.get(id);
+          return credit ? [credit] : [];
+        })
+      );
     },
     [onChange, orderedCredits]
   );
@@ -368,39 +430,34 @@ export const SeriesCreatorCreditsField = ({
           </Suspense>
         </p>
       ) : (
-        <ul className="grid gap-2">
-          {orderedCredits.map((credit, index) => {
-            const creatorName =
-              creatorNames.get(credit.creatorPublicId) ??
-              credit.creatorPublicId;
-            return (
-              <CreatorCreditRow
-                canMoveDown={
-                  orderedCredits.at(index + 1)?.rolePublicId ===
-                  credit.rolePublicId
-                }
-                canMoveUp={
-                  index > 0 &&
-                  orderedCredits.at(index - 1)?.rolePublicId ===
+        <DragDropProvider onDragEnd={handleDragEnd}>
+          <ul className="grid gap-2">
+            {orderedCredits.map((credit, index) => {
+              const creatorName =
+                creatorNames.get(credit.creatorPublicId) ??
+                credit.creatorPublicId;
+              const id = creditId(credit);
+              return (
+                <CreatorCreditRow
+                  creatorName={creatorName}
+                  id={id}
+                  index={index}
+                  key={id}
+                  onRemove={() => handleRemove(index)}
+                  onRoleChange={(nextRolePublicId) =>
+                    handleRoleChange(index, nextRolePublicId)
+                  }
+                  roleItems={toRoleItems(
+                    creatorRoles,
+                    heldRoles.get(credit.creatorPublicId),
                     credit.rolePublicId
-                }
-                creatorName={creatorName}
-                key={`${credit.creatorPublicId}-${credit.rolePublicId}`}
-                onMove={(direction) => handleMove(index, direction)}
-                onRemove={() => handleRemove(index)}
-                onRoleChange={(nextRolePublicId) =>
-                  handleRoleChange(index, nextRolePublicId)
-                }
-                roleItems={toRoleItems(
-                  creatorRoles,
-                  heldRoles.get(credit.creatorPublicId),
-                  credit.rolePublicId
-                )}
-                rolePublicId={credit.rolePublicId}
-              />
-            );
-          })}
-        </ul>
+                  )}
+                  rolePublicId={credit.rolePublicId}
+                />
+              );
+            })}
+          </ul>
+        </DragDropProvider>
       )}
 
       {creatorItems.length === 0 ? (
@@ -449,14 +506,14 @@ export const SeriesCreatorCreditsField = ({
             </FieldContent>
           </Field>
           <Field className="sm:w-48">
-            <FieldLabel htmlFor={roleSelectId}>
+            <FieldLabel htmlFor={roleComboboxId}>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <ClientMessage message="admin.series.form.creators_add_role" />
               </Suspense>
             </FieldLabel>
             <FieldContent>
-              <Select
-                id={roleSelectId}
+              <RoleCombobox
+                id={roleComboboxId}
                 items={draftRoleItems}
                 onValueChange={handleDraftRoleChange}
                 value={effectiveDraftRolePublicId}

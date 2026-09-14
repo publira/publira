@@ -16,6 +16,7 @@ export default defineConfig({
     "src/comment-icon.tsx",
     "src/copy-icon.tsx",
     "src/dashboard-icon.tsx",
+    "src/grip-vertical-icon.tsx",
     "src/heart-icon.tsx",
     "src/image-icon.tsx",
     "src/language-icon.tsx",
