@@ -1,7 +1,8 @@
 import type { Locale } from "@publira/i18n";
 
-import { getLocale, loadAdminMessages } from "./locale";
-import type { AdminMessages } from "./locale";
+import { getLocale } from "./locale";
+import { getMessagesFor } from "./messages";
+import type { AdminMessageAccessor } from "./messages";
 
 /**
  * The UI locale a Server Action's response should be worded in.
@@ -28,8 +29,16 @@ export const getActionLocale = (formData: FormData): Promise<Locale> => {
  * Shorthand for an Action whose only use of the locale is its own copy. An
  * Action that also hands the locale to `lib/` — so the wording of an RPC
  * failure follows the operator's language too — calls {@link getActionLocale}
- * and resolves the catalog from it.
+ * and binds the accessor from it with `getMessagesFor`.
+ *
+ * This is the Action-side counterpart of `getMessages()`, and it answers the
+ * same accessor: `next/root-params` is what the two differ in, not the shape of
+ * what comes back.
  */
 export const getActionMessages = async (
   formData: FormData
-): Promise<AdminMessages> => loadAdminMessages(await getActionLocale(formData));
+): Promise<AdminMessageAccessor> => {
+  const locale = await getActionLocale(formData);
+
+  return getMessagesFor(locale);
+};

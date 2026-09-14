@@ -41,6 +41,7 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | The saved platform default | `lib/platform-settings.ts`, behind the Default language card on `/settings/general` |
 | The locale a screen with nothing saved yet opens on | `getInitialLocaleCandidate()` in `lib/initial-locale.ts`, over the request's `Accept-Language` |
 | The catalog | `loadPlatformMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md); this app's copy is the `platform.*` namespace |
+| One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one |
 | One string on the server | `<Message>` in `components/message.tsx`, and `SetupMessage` in `app/setup/_components/` for `/setup` |
 | One string in the browser | `<ClientMessage>` in `components/client-message.tsx`, for `app/error.tsx` |
 | `<html lang>` | The inline `<head>` script in `app/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`) |

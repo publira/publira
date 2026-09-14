@@ -1,8 +1,7 @@
-import { getMessage } from "@publira/i18n";
 import type { MessageValues } from "@publira/i18n";
 
-import { getLocale, loadHostMessages } from "#lib/locale";
-import type { HostMessageKey } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import type { HostMessageKey } from "#lib/messages";
 
 export interface MessageProps {
   message: HostMessageKey;
@@ -27,8 +26,7 @@ export interface MessageProps {
  * headings, and the links all wait on a message they do not depend on.
  */
 export const Message = async ({ message, values }: MessageProps) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return getMessage(messages, message, values);
+  return t(message, values);
 };

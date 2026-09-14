@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  getMessage,
+  bindMessages,
   LOCALE_COOKIE_NAME,
   negotiateInitialLocale,
   parseLocale,
@@ -111,8 +111,9 @@ export const ClientMessage = ({
   values?: MessageValues;
 }) => {
   const messages = use(adminCatalog(readClientLocale()));
+  const t = bindMessages(messages);
 
-  return getMessage(messages, message, values);
+  return t(message, values);
 };
 
 /**

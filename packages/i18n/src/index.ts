@@ -1,5 +1,6 @@
 export { negotiateInitialLocale } from "./accept-language";
 export {
+  bindMessages,
   formatMessage,
   getLocales,
   getLocaleLabel,
@@ -20,6 +21,7 @@ export type {
   ExactCatalog,
   Locale,
   LocaleCatalogImporters,
+  MessageAccessor,
   MessageKey,
   MessageTree,
   MessageValues,

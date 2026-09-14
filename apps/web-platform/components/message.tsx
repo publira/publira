@@ -1,8 +1,7 @@
-import { getMessage } from "@publira/i18n";
 import type { MessageValues } from "@publira/i18n";
 
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessageKey } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import type { PlatformMessageKey } from "#lib/messages";
 
 export type { PlatformMessageKey } from "#lib/locale";
 
@@ -31,8 +30,7 @@ export interface MessageProps {
  * the count of them costs a page nothing.
  */
 export const Message = async ({ message, values }: MessageProps) => {
-  const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessages();
 
-  return getMessage(messages, message, values);
+  return t(message, values);
 };

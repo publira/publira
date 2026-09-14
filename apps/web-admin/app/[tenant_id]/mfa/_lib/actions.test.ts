@@ -27,10 +27,11 @@ vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/action-messages", async () => {
+  const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
   return {
     getActionLocale: () => Promise.resolve("en"),
-    getActionMessages: () => Promise.resolve(sharedCatalog("en")),
+    getActionMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
   };
 });
 

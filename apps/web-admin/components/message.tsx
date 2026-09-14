@@ -1,9 +1,7 @@
-import { getMessage } from "@publira/i18n";
 import type { MessageValues } from "@publira/i18n";
 
-import { getLocale, loadAdminMessages } from "#lib/locale";
-import type { AdminMessageKey } from "#lib/locale";
-import { getTenantId } from "#lib/tenant-id";
+import { getMessages } from "#lib/get-messages";
+import type { AdminMessageKey } from "#lib/messages";
 
 export type { AdminMessageKey } from "#lib/locale";
 
@@ -25,9 +23,7 @@ interface MessageProps {
  * `getTenantId()` answers that with the 404 the route was heading for anyway.
  */
 export const Message = async ({ message, values }: MessageProps) => {
-  const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessages();
 
-  return getMessage(messages, message, values);
+  return t(message, values);
 };
