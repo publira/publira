@@ -29,7 +29,6 @@
   "devDependencies": {
     "@publira/brand": "workspace:*",
     "@publira/tsconfig": "workspace:*",
-    "@publira/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

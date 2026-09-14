@@ -1,10 +1,19 @@
-import { sharedTestOptions } from "@publira/vitest-config";
 import { defineConfig } from "vitest/config";
+
+const name = "@publira/email-renderer";
 
 export default defineConfig({
   test: {
-    ...sharedTestOptions,
-    clearMocks: true,
-    setupFiles: ["./vitest.setup.ts"],
+    name,
+    projects: [
+      {
+        extends: "../../vitest.shared.ts",
+        test: {
+          clearMocks: true,
+          name,
+          setupFiles: ["./vitest.setup.ts"],
+        },
+      },
+    ],
   },
 });
