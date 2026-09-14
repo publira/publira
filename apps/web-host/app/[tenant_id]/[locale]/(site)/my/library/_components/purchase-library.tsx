@@ -1,4 +1,4 @@
-import { getMessage, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -12,7 +12,7 @@ import { Suspense } from "react";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import type { PurchaseItem } from "#lib/purchases";
 
@@ -146,15 +146,13 @@ const PurchaseCard = async ({
   );
 };
 
-export const PurchaseLibrary = async ({
+export const PurchaseLibrary = ({
   listErrorMessage,
   nextToken,
   previousToken,
   purchases,
   timeZone,
 }: PurchaseLibraryProps) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
   const activePurchases = purchases.filter((purchase) => purchase.isActive);
   const expiredPurchases = purchases.filter((purchase) => !purchase.isActive);
 
@@ -177,16 +175,22 @@ export const PurchaseLibrary = async ({
       {!listErrorMessage && purchases.length === 0 ? (
         <section className="border border-dashed border-border bg-muted/20 p-6">
           <h2 className="text-lg font-semibold">
-            {getMessage(messages, "host.library.empty_title")}
+            <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+              <Message message="host.library.empty_title" />
+            </Suspense>
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {getMessage(messages, "host.library.empty_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="host.library.empty_description" />
+            </Suspense>
           </p>
           <LocaleLink
             className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
             href="/series"
           >
-            {getMessage(messages, "host.common.find_series")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="host.common.find_series" />
+            </Suspense>
           </LocaleLink>
         </section>
       ) : null}
@@ -194,10 +198,14 @@ export const PurchaseLibrary = async ({
         <section className="border border-border bg-card p-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">
-              {getMessage(messages, "host.library.shelf_heading")}
+              <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+                <Message message="host.library.shelf_heading" />
+              </Suspense>
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {getMessage(messages, "host.library.shelf_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message message="host.library.shelf_description" />
+              </Suspense>
             </p>
           </div>
           <div className="grid gap-3">
@@ -215,10 +223,14 @@ export const PurchaseLibrary = async ({
         <section className="border border-border bg-card p-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">
-              {getMessage(messages, "host.library.history_heading")}
+              <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+                <Message message="host.library.history_heading" />
+              </Suspense>
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {getMessage(messages, "host.library.history_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message message="host.library.history_description" />
+              </Suspense>
             </p>
           </div>
           <div className="grid gap-3">

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -17,8 +16,7 @@ import {
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
-import { getLocale, loadHostMessages } from "#lib/locale";
-import type { HostMessageKey } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getTenantId } from "#lib/tenant-id";
 
 import { ReadingHistorySection } from "./_components/reading-history";
@@ -26,42 +24,49 @@ import { myPageHref, parseMySearchParams } from "./_lib/search-params";
 
 type MyPageProps = PageProps<"/[tenant_id]/[locale]/my">;
 
-const ProfileSection = async ({ me }: { me: MeInfo }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-
-  return (
-    <section className="border border-border bg-card p-6">
-      <h2 className="mb-4 text-lg font-semibold">
-        {getMessage(messages, "host.my.profile_heading")}
-      </h2>
-      <dl className="grid gap-3 text-sm sm:grid-cols-2">
-        <div className="rounded-lg border border-border/60 p-3">
-          <dt className="text-muted-foreground">
-            {getMessage(messages, "host.my.profile_name")}
-          </dt>
-          <dd className="mt-1 font-medium">
-            {me?.name ?? getMessage(messages, "host.common.unset")}
-          </dd>
-        </div>
-        <div className="rounded-lg border border-border/60 p-3">
-          <dt className="text-muted-foreground">
-            {getMessage(messages, "host.my.profile_user_id")}
-          </dt>
-          <dd className="mt-1 font-medium">{me?.publicId ?? "-"}</dd>
-        </div>
-      </dl>
-      <div className="mt-4 flex justify-end">
-        <LocaleLink
-          className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
-          href="/settings"
-        >
-          {getMessage(messages, "host.my.to_settings_page")}
-        </LocaleLink>
+const ProfileSection = ({ me }: { me: MeInfo }) => (
+  <section className="border border-border bg-card p-6">
+    <h2 className="mb-4 text-lg font-semibold">
+      <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+        <Message message="host.my.profile_heading" />
+      </Suspense>
+    </h2>
+    <dl className="grid gap-3 text-sm sm:grid-cols-2">
+      <div className="rounded-lg border border-border/60 p-3">
+        <dt className="text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="host.my.profile_name" />
+          </Suspense>
+        </dt>
+        <dd className="mt-1 font-medium">
+          {me?.name ?? (
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="host.common.unset" />
+            </Suspense>
+          )}
+        </dd>
       </div>
-    </section>
-  );
-};
+      <div className="rounded-lg border border-border/60 p-3">
+        <dt className="text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="host.my.profile_user_id" />
+          </Suspense>
+        </dt>
+        <dd className="mt-1 font-medium">{me?.publicId ?? "-"}</dd>
+      </div>
+    </dl>
+    <div className="mt-4 flex justify-end">
+      <LocaleLink
+        className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+        href="/settings"
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <Message message="host.my.to_settings_page" />
+        </Suspense>
+      </LocaleLink>
+    </div>
+  </section>
+);
 
 const SectionSkeleton = ({ bodyClassName }: { bodyClassName: string }) => (
   <section className="border border-border bg-card p-6">
@@ -74,51 +79,78 @@ const ProfileSectionFallback = () => (
   <SectionSkeleton bodyClassName="h-24 w-full animate-pulse rounded-md bg-muted" />
 );
 
-/** The subscription state picks a key, so the copy still comes from the catalog. */
-const notificationStatusKey = (
-  settings: NotificationSettings | null
-): HostMessageKey => {
+/**
+ * The subscription state decides which sentence is rendered, so each branch
+ * writes its own `<Message>` with the key spelled out. A key chosen by a helper
+ * and handed to one element is invisible to anything that reads this file for
+ * the copy the screen uses.
+ */
+const NotificationStatus = ({
+  settings,
+}: {
+  settings: NotificationSettings | null;
+}) => {
   if (settings === null) {
-    return "host.my.email_notifications_unknown";
+    return (
+      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+        <Message message="host.my.email_notifications_unknown" />
+      </Suspense>
+    );
   }
-  return settings.emailNotificationsEnabled === false
-    ? "host.my.email_notifications_off"
-    : "host.my.email_notifications_on";
+
+  if (settings.emailNotificationsEnabled === false) {
+    return (
+      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+        <Message message="host.my.email_notifications_off" />
+      </Suspense>
+    );
+  }
+
+  return (
+    <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+      <Message message="host.my.email_notifications_on" />
+    </Suspense>
+  );
 };
 
 const SubscriptionSection = async ({ returnTo }: { returnTo: string }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [notificationSettings, messages] = await Promise.all([
-    withPublicSessionReauth(
-      locale,
-      returnTo,
-      () => getNotificationSettings(tenantId),
-      tenantId
-    ),
-    loadHostMessages(locale),
-  ]);
+  const notificationSettings = await withPublicSessionReauth(
+    locale,
+    returnTo,
+    () => getNotificationSettings(tenantId),
+    tenantId
+  );
 
   return (
     <section className="border border-border bg-card p-6">
       <h2 className="mb-4 text-lg font-semibold">
-        {getMessage(messages, "host.my.subscription_heading")}
+        <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+          <Message message="host.my.subscription_heading" />
+        </Suspense>
       </h2>
       <div className="rounded-lg border border-border/60 p-3 text-sm">
         <p className="text-muted-foreground">
-          {getMessage(messages, "host.my.email_notifications_label")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="host.my.email_notifications_label" />
+          </Suspense>
         </p>
         <p className="mt-1 font-medium">
-          {getMessage(messages, notificationStatusKey(notificationSettings))}
+          <NotificationStatus settings={notificationSettings} />
         </p>
       </div>
       <div className="mt-4">
         <EmptyState>
           <EmptyStateHeading>
             <EmptyStateTitle>
-              {getMessage(messages, "host.my.subscription_empty_title")}
+              <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+                <Message message="host.my.subscription_empty_title" />
+              </Suspense>
             </EmptyStateTitle>
             <EmptyStateDescription>
-              {getMessage(messages, "host.my.subscription_empty_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message message="host.my.subscription_empty_description" />
+              </Suspense>
             </EmptyStateDescription>
           </EmptyStateHeading>
         </EmptyState>
@@ -149,10 +181,12 @@ const MyContent = async ({
   // page 1.
   const returnTo = myPageHref(token);
   await requirePublicSession(locale, returnTo, tenantId);
-  const [me, messages] = await Promise.all([
-    withPublicSessionReauth(locale, returnTo, () => getMe(tenantId), tenantId),
-    loadHostMessages(locale),
-  ]);
+  const me = await withPublicSessionReauth(
+    locale,
+    returnTo,
+    () => getMe(tenantId),
+    tenantId
+  );
 
   return (
     <>
@@ -162,17 +196,23 @@ const MyContent = async ({
         ) : (
           <section className="border border-border bg-card p-6">
             <h2 className="mb-3 text-lg font-semibold">
-              {getMessage(messages, "host.my.profile_heading")}
+              <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+                <Message message="host.my.profile_heading" />
+              </Suspense>
             </h2>
             <p className="text-sm text-muted-foreground">
-              {getMessage(messages, "host.my.session_expired")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                <Message message="host.my.session_expired" />
+              </Suspense>
             </p>
             <div className="mt-4">
               <LocaleLink
                 className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                 href={`/login?returnTo=${encodeURIComponent(returnTo)}`}
               >
-                {getMessage(messages, "host.my.to_login")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                  <Message message="host.my.to_login" />
+                </Suspense>
               </LocaleLink>
             </div>
           </section>

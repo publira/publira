@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { ChevronDownIcon, ChevronUpIcon } from "@publira/icons";
 import { Badge } from "@publira/ui-components/badge";
 import {
@@ -26,7 +25,7 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listRankedSeries } from "#lib/catalog";
 import type { RankingPeriodName } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -263,7 +262,7 @@ const RankingList = async ({
   ]);
   const { period, token } = parseRankingSearchParams(resolvedSearchParams);
 
-  const [result, timeZone, messages] = await Promise.all([
+  const [result, timeZone] = await Promise.all([
     listRankedSeries(tenantId, {
       limit: RANKING_PAGE_SIZE,
       locale,
@@ -271,7 +270,6 @@ const RankingList = async ({
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
-    loadHostMessages(locale),
   ]);
 
   if (!result.ok) {
@@ -310,7 +308,9 @@ const RankingList = async ({
     return (
       <div className="py-20 text-center">
         <p className="mb-4 text-muted-foreground">
-          {getMessage(messages, "host.ranking.page_empty")}
+          <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
+            <Message message="host.ranking.page_empty" />
+          </Suspense>
         </p>
         {previousToken || nextToken ? (
           <RankingPagination
@@ -323,7 +323,9 @@ const RankingList = async ({
             className="text-sm text-primary underline-offset-4 hover:underline"
             href={rankingHref(period)}
           >
-            {getMessage(messages, "host.ranking.first_page")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="host.ranking.first_page" />
+            </Suspense>
           </LocaleLink>
         )}
       </div>
