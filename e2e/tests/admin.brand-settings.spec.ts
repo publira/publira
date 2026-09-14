@@ -144,6 +144,10 @@ const disableThemeCssHttpCache = async (page: Page): Promise<void> => {
  * Read a web-host page again and again until it reports what the console just
  * saved. Same reason as `admin.catalog-masters.spec.ts`: revalidation serves
  * the stale entry once while the refresh runs behind it.
+ *
+ * `read` has to answer "not yet" rather than wait for what is missing: a read
+ * that blocks spends the whole budget on one load, because `expect.poll` never
+ * aborts its callback.
  */
 const pollHostPage = <T>(page: Page, url: string, read: () => Promise<T>) =>
   expect.poll(
@@ -267,6 +271,31 @@ const iconLink = (page: Page): Locator => page.locator('link[rel="icon"]');
 
 const appleTouchIconLink = (page: Page): Locator =>
   page.locator('link[rel="apple-touch-icon"]');
+
+/**
+ * The header's brand: the logo's path, or the site-name text when there is no
+ * logo. The path comes from the `src` property because `next/image` rewrites
+ * the attribute to an absolute URL once an image with an `onError` handler
+ * mounts.
+ */
+const headerBrandMark = (page: Page): Promise<string> =>
+  headerBrand(page).evaluate((brand) => {
+    const logo = brand.querySelector("img");
+    return logo ? new URL(logo.src).pathname : (brand.textContent ?? "").trim();
+  });
+
+/**
+ * The `rel="icon"` this document declares, or an empty string when it declares
+ * none. Metadata arrives after `load`, so the read waits for the title that
+ * same pass writes rather than for the link itself.
+ */
+const declaredIconHref = async (page: Page): Promise<string> => {
+  await page.locator("head title").waitFor({ state: "attached" });
+  const link = iconLink(page);
+  return (await link.count()) > 0
+    ? ((await link.getAttribute("href")) ?? "")
+    : "";
+};
 
 /**
  * Tenant brand settings reaching the public site: a colour saved on
@@ -423,10 +452,9 @@ test.describe("admin brand settings", () => {
     restoreLogo = true;
     await uploadBranding(page, "logo", "Save the logo", "The logo was saved.");
 
-    await pollHostPage(page, edgeUrl("/"), async () => {
-      const src = await headerLogo(page).getAttribute("src");
-      return src ?? "";
-    }).toMatch(/^\/images\/tenants\/[^/]+\/logo(?:\?|$)/u);
+    await pollHostPage(page, edgeUrl("/"), () => headerBrandMark(page)).toMatch(
+      /^\/images\/tenants\/[^/]+\/logo$/u
+    );
 
     const logoSrc = await headerLogo(page).getAttribute("src");
     expect(logoSrc).toBeTruthy();
@@ -443,10 +471,9 @@ test.describe("admin brand settings", () => {
     await deleteBrandingIfSet(page, "logo", "The logo was deleted.");
     restoreLogo = false;
 
-    await pollHostPage(page, edgeUrl("/"), async () => {
-      const text = await headerBrand(page).textContent();
-      return text?.trim();
-    }).toBe(SEED_TENANT_NAME);
+    await pollHostPage(page, edgeUrl("/"), () => headerBrandMark(page)).toBe(
+      SEED_TENANT_NAME
+    );
     await expect(headerLogo(page)).toHaveCount(0);
   });
 
@@ -455,17 +482,16 @@ test.describe("admin brand settings", () => {
     request,
   }) => {
     await page.goto(otherHostUrl("/"));
-    await expect(iconLink(page)).toHaveCount(0);
+    expect(await declaredIconHref(page)).toBe("");
     await expect(appleTouchIconLink(page)).toHaveCount(0);
 
     restoreIcon = true;
     await openThemeSettings(page);
     await uploadBranding(page, "icon", "Save the icon", "The icon was saved.");
 
-    await pollHostPage(page, hostUrl("/"), async () => {
-      const href = await iconLink(page).getAttribute("href");
-      return href ?? "";
-    }).toMatch(/\/images\/tenants\/[^/]+\/icon(?:\?|$)/u);
+    await pollHostPage(page, hostUrl("/"), () =>
+      declaredIconHref(page)
+    ).toMatch(/\/images\/tenants\/[^/]+\/icon(?:\?|$)/u);
 
     const iconHref = await iconLink(page).getAttribute("href");
     const appleHref = await appleTouchIconLink(page).getAttribute("href");
@@ -482,8 +508,8 @@ test.describe("admin brand settings", () => {
     await deleteBrandingIfSet(page, "icon", "The icon was deleted.");
     restoreIcon = false;
 
-    await pollHostPage(page, hostUrl("/"), () => iconLink(page).count()).toBe(
-      0
+    await pollHostPage(page, hostUrl("/"), () => declaredIconHref(page)).toBe(
+      ""
     );
     await expect(appleTouchIconLink(page)).toHaveCount(0);
   });
