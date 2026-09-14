@@ -42,6 +42,17 @@ describe("parseNotificationPayload", () => {
       )
     ).toEqual({ series_id: "SR01" });
   });
+
+  it("keeps a known hidden_reason and drops a category this build does not have", () => {
+    expect(
+      parseNotificationPayload(
+        JSON.stringify({ hidden_reason: "auto_reports" })
+      )
+    ).toEqual({ hidden_reason: "auto_reports" });
+    expect(
+      parseNotificationPayload(JSON.stringify({ hidden_reason: "someday" }))
+    ).toEqual({});
+  });
 });
 
 describe("notificationHref", () => {
@@ -89,6 +100,77 @@ describe("notificationDisplay", () => {
       description: "「Chapter 1」（Work A）が公開されました。",
       href: "/series/SR01",
       title: "新しいエピソードが公開されました",
+    });
+  });
+
+  it("tells the author their comment went live, and links to the episode", async () => {
+    await expect(
+      notificationDisplay(
+        "comment_approved",
+        {
+          episode_id: "EP01",
+          episode_title: "Episode 1",
+          series_id: "SR01",
+          series_title: "Series A",
+        },
+        EN
+      )
+    ).resolves.toEqual({
+      description:
+        "Your comment on “Episode 1” (Series A) is now visible to everyone.",
+      href: "/series/SR01/episodes/EP01",
+      title: "Your comment is now public",
+    });
+  });
+
+  it("names what took a comment down, per hidden_reason", async () => {
+    const payload = {
+      episode_id: "EP01",
+      episode_title: "Episode 1",
+      series_id: "SR01",
+    };
+
+    await expect(
+      notificationDisplay(
+        "comment_hidden",
+        { ...payload, hidden_reason: "staff" as const },
+        EN
+      )
+    ).resolves.toEqual({
+      description: "Your comment on “Episode 1” was removed by the operator.",
+      href: "/series/SR01/episodes/EP01",
+      title: "Your comment was removed",
+    });
+
+    await expect(
+      notificationDisplay(
+        "comment_hidden",
+        { ...payload, hidden_reason: "auto_reports" as const },
+        EN
+      )
+    ).resolves.toEqual({
+      description:
+        "Your comment on “Episode 1” was removed after reports from other readers.",
+      href: "/series/SR01/episodes/EP01",
+      title: "Your comment was removed",
+    });
+
+    await expect(
+      notificationDisplay("comment_hidden", payload, EN)
+    ).resolves.toEqual({
+      description: "Your comment on “Episode 1” was removed.",
+      href: "/series/SR01/episodes/EP01",
+      title: "Your comment was removed",
+    });
+  });
+
+  it("still words a comment row when the payload carries no title", async () => {
+    await expect(
+      notificationDisplay("comment_approved", {}, JA)
+    ).resolves.toEqual({
+      description: "エピソードへのコメントが公開されました。",
+      href: undefined,
+      title: "コメントが公開されました",
     });
   });
 

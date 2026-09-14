@@ -61,8 +61,8 @@ export interface EpisodeCommentsProps {
  *
  * Nothing here marks a comment as removed. A comment staff took down keeps
  * rendering to its author exactly as it did before — same place in the list,
- * same wording around it — because telling the author is a decision the
- * platform deliberately does not make (`proto/publira/v1/comment.proto`).
+ * same wording around it — because the removal reaches them as a notification
+ * rather than as the comment changing shape under them.
  *
  * A series that has not turned commenting on gets nothing at all rather than
  * an empty section: the resolved setting answers "does this series take
