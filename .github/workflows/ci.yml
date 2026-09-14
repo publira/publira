@@ -973,6 +973,9 @@ jobs:
         with:
           name: routing-artifacts
           path: e2e/routing/.run/
+          # The path ends at a hidden segment, and the walk that resolves it
+          # starts there: without this it stops on `.run` and uploads nothing.
+          include-hidden-files: true
           if-no-files-found: ignore
 
   build:
