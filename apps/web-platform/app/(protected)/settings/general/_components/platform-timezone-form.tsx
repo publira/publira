@@ -21,7 +21,6 @@ import { listSupportedTimeZones } from "@publira/utils";
 import { Suspense, useActionState, useMemo, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import { Message } from "#components/message";
 import {
   PlatformSection,
   PlatformSectionDescription,
@@ -102,7 +101,7 @@ export const PlatformTimezoneForm = ({
               <ComboboxPopup>
                 <ComboboxEmpty>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="platform.settings.default_timezone_empty" />
+                    <ClientMessage message="platform.settings.default_timezone_empty" />
                   </Suspense>
                 </ComboboxEmpty>
                 <ComboboxItems />
