@@ -832,6 +832,21 @@ func (s *apiServer) RequestEmailChange(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
+	// The delete below locks only the rows it finds, so two requests arriving at
+	// once each insert a token and leave two live links behind. Locking the
+	// account row orders them: the second one's statements then run on a
+	// snapshot that already holds the first one's token.
+	if _, err := txq.GetUserByIDForUpdate(ctx, user.ID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// The account was closed while this request waited, so the session
+			// it came with is over and there is no address left to move.
+			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "account_gone")
+			return nil, invalidSessionError()
+		}
+		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the account for an email change request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
 	if err := txq.DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
 		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -1044,6 +1059,21 @@ func (s *apiServer) RequestPasswordReset(
 	}
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
+
+	// The delete below locks only the rows it finds, so two requests arriving at
+	// once each insert a token and leave two live links behind. Locking the
+	// account row orders them: the second one's statements then run on a
+	// snapshot that already holds the first one's token.
+	if _, err := txq.GetUserByIDForUpdate(ctx, user.ID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// The account was deleted while this request waited, and the answer
+			// says nothing about that either.
+			auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, user.PublicID, "account_gone")
+			return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
+		}
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		return nil, s.internalDBError(ctx, "failed to lock the account for a password reset request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
 
 	if err := txq.DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
