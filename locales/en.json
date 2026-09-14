@@ -1416,10 +1416,10 @@
       },
       "default_locale": {
         "title": "Default language",
-        "description": "The language this console uses for an administrator who has not chosen one. It does not change a language already chosen.",
+        "description": "The language this console and the public site start in for an administrator or a reader who has not chosen one. It does not change a language already chosen.",
         "label": "Default language",
         "placeholder": "Select a language",
-        "field_description": "The starting point for an administrator who has not chosen a language; it does not change one already stored in the cookie.",
+        "field_description": "The starting point for anyone who has not chosen a language; it does not change one already stored in the cookie.",
         "load_error_hint": "Saving now would overwrite the stored setting, so reload the page before changing it.",
         "submit": "Save the default language",
         "saved": "The default language was saved.",
