@@ -1,8 +1,14 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { querySql, runSql } from "../src/db";
 import { signInAsMember } from "../src/host";
+import {
+  revalidateHostTags,
+  tenantSeriesDetailTag,
+  tenantSeriesTag,
+} from "../src/revalidate";
+import { SEED_TENANT_ID } from "../src/scenarios/auth";
 import { SEED_MEMBER } from "../src/scenarios/member-announcements";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
@@ -79,8 +85,12 @@ const REACTION_SCOPE = `
  * The events go first, because they are found through the rating they came
  * from and `content_events` keeps no foreign key to `episode_ratings` that
  * would take them along. The headcount trigger follows the rating row.
+ *
+ * The headcount a guest is shown comes from the cached public episode read
+ * rather than from Postgres, so the tags that read carries are dropped after
+ * the delete the way the Server Action behind the control drops them.
  */
-const clearEpisodeReaction = (): void => {
+const clearEpisodeReaction = async (): Promise<void> => {
   runSql(`
     BEGIN;
     DELETE FROM content_events ce
@@ -97,6 +107,10 @@ const clearEpisodeReaction = (): void => {
     );
     COMMIT;
   `);
+  await revalidateHostTags([
+    tenantSeriesDetailTag(SEED_TENANT_ID),
+    tenantSeriesTag(SEED_TENANT_ID, SEED_TENANT.series.publicId),
+  ]);
 };
 
 /**
@@ -143,6 +157,29 @@ const clearReadingPosition = (): void => {
     );
   `);
 };
+
+/**
+ * Read the episode again and again until `control` is on the page after its
+ * last one.
+ *
+ * The reader headcount is part of the control's accessible name and comes from
+ * a cached read. Revalidation marks such an entry stale rather than dropping
+ * it, so a single navigation can be left waiting on a name that never changes.
+ */
+const pollEndPageControl = (
+  page: Page,
+  control: Locator,
+  message: string
+): Promise<void> =>
+  expect
+    .poll(
+      async () => {
+        await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+        return await turnToEndPage(page, control);
+      },
+      { message, timeout: 60_000 }
+    )
+    .toBe(true);
 
 const readingProgress = (page: Page) => page.getByLabel(VIEWER_PROGRESS_LABEL);
 
@@ -265,9 +302,9 @@ const isStrictlyAscending = (values: readonly number[]): boolean =>
  * itself, which is also what makes a retry start from an unopened episode.
  */
 test.describe("web-host episode reading", () => {
-  test.afterAll(() => {
+  test.afterAll(async () => {
     clearEpisodeReadState();
-    clearEpisodeReaction();
+    await clearEpisodeReaction();
     clearReadingPosition();
   });
 
@@ -596,7 +633,7 @@ test.describe("web-host episode reading", () => {
   test("a reader reacts to an episode, and the reaction survives a reload", async ({
     page,
   }) => {
-    clearEpisodeReaction();
+    await clearEpisodeReaction();
     await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
 
@@ -608,7 +645,11 @@ test.describe("web-host episode reading", () => {
       loginLink,
       "a reaction is a reader's, so a guest reaches it only by finishing the episode"
     ).toHaveCount(0);
-    await turnToEndPage(page, loginLink);
+    await pollEndPageControl(
+      page,
+      loginLink,
+      "the headcount a guest is shown never went back to no readers"
+    );
     await expect(loginLink).toHaveAttribute(
       "href",
       new RegExp(`returnTo=${encodeURIComponent(VIEWER_EPISODE_PATH)}`, "u")
@@ -628,7 +669,11 @@ test.describe("web-host episode reading", () => {
       exact: true,
       name: "React to this episode. Readers who reacted: 0",
     });
-    await turnToEndPage(page, reactButton);
+    await pollEndPageControl(
+      page,
+      reactButton,
+      "the member was never offered the episode with no reaction of their own"
+    );
     await reactButton.click();
 
     const reacted = page.getByRole("button", {
@@ -643,11 +688,10 @@ test.describe("web-host episode reading", () => {
     await reacted.click();
     await expect(reacted, "a second press changes nothing").toBeVisible();
 
-    await page.reload();
-    await turnToEndPage(page, reacted);
-    await expect(
+    await pollEndPageControl(
+      page,
       reacted,
-      "the reaction is still there after a reload"
-    ).toBeVisible();
+      "the reaction was not there when the episode was opened again"
+    );
   });
 });

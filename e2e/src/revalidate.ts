@@ -52,3 +52,17 @@ export const episodeCommentsTag = (
   tenantId: string,
   episodePublicId: string
 ): string => `tenant:${tenantId}:episode:${episodePublicId}:comments`;
+
+/**
+ * The tag every series and episode read of one tenant carries. The reader
+ * headcount is part of the cached episode read, so a spec that writes
+ * `episode_ratings` directly has to drop this tag and the one below.
+ */
+export const tenantSeriesDetailTag = (tenantId: string): string =>
+  `tenant:${tenantId}:series:detail`;
+
+/** The tag one series and its episodes carry on top of that one. */
+export const tenantSeriesTag = (
+  tenantId: string,
+  seriesPublicId: string
+): string => `tenant:${tenantId}:series:${seriesPublicId}`;
