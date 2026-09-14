@@ -150,7 +150,7 @@ S3 互換の **RustFS** コンテナは依存サービス（`compose.yaml`）の
 
 - コンソール UI: `http://localhost:9001/rustfs/console/`
 - S3 エンドポイント: コンテナ内からは `http://rustfs:9000`、ホストからは `http://127.0.0.1:9000`（path-style）
-- バケット: `publira`。`task setup` / `task dev` が `task storage:init` で冪等に作成します
+- バケット: `publira`。`task dev` が `task storage:init` で冪等に作成し、`task setup` はさらに `task storage:seed` で開発シードの画像を配置します
 - データは `rustfs-data` volume に永続します
 
 app コンテナに渡す既定値は `.devcontainer/compose.yaml` にあります。

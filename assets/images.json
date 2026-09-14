@@ -1,43 +1,43 @@
 [
   {
-    "source": "comic-pages/page-01.svg",
+    "source": "seeds/episode-page/page-01.svg",
     "monochrome": true,
-    "outputs": ["e2e/fixtures/viewer-pages/page-01.jpg"]
+    "outputs": ["db/seeds/objects/episode-page/page-01.jpg"]
   },
   {
-    "source": "comic-pages/page-02.svg",
+    "source": "seeds/episode-page/page-02.svg",
     "monochrome": true,
-    "outputs": ["e2e/fixtures/viewer-pages/page-02.jpg"]
+    "outputs": ["db/seeds/objects/episode-page/page-02.jpg"]
   },
   {
-    "source": "comic-pages/page-03.svg",
+    "source": "seeds/episode-page/page-03.svg",
     "monochrome": true,
-    "outputs": ["e2e/fixtures/viewer-pages/page-03.jpg"]
+    "outputs": ["db/seeds/objects/episode-page/page-03.jpg"]
   },
   {
-    "source": "comic-pages/page-04.svg",
+    "source": "seeds/episode-page/page-04.svg",
     "monochrome": true,
-    "outputs": ["e2e/fixtures/viewer-pages/page-04.jpg"]
+    "outputs": ["db/seeds/objects/episode-page/page-04.jpg"]
   },
   {
-    "source": "comic-pages/page-05.svg",
+    "source": "seeds/episode-page/page-05.svg",
     "monochrome": true,
-    "outputs": ["e2e/fixtures/viewer-pages/page-05.jpg"]
+    "outputs": ["db/seeds/objects/episode-page/page-05.jpg"]
   },
   {
-    "source": "comic-pages/page-06.svg",
+    "source": "seeds/episode-page/page-06.svg",
     "monochrome": true,
-    "outputs": ["e2e/fixtures/viewer-pages/page-06.jpg"]
+    "outputs": ["db/seeds/objects/episode-page/page-06.jpg"]
   },
   {
-    "source": "comic-pages/page-07.svg",
+    "source": "seeds/episode-page/page-07.svg",
     "monochrome": true,
-    "outputs": ["e2e/fixtures/viewer-pages/page-07.jpg"]
+    "outputs": ["db/seeds/objects/episode-page/page-07.jpg"]
   },
   {
-    "source": "comic-pages/page-08.svg",
+    "source": "seeds/episode-page/page-08.svg",
     "monochrome": true,
-    "outputs": ["e2e/fixtures/viewer-pages/page-08.jpg"]
+    "outputs": ["db/seeds/objects/episode-page/page-08.jpg"]
   },
   {
     "source": "eye-catch/landscape-1600x900.svg",
@@ -62,5 +62,350 @@
   {
     "source": "eye-catch/square-1200x1200.svg",
     "outputs": ["e2e/fixtures/eye-catch/square-1200x1200.jpg"]
+  },
+  {
+    "source": "seeds/eye-catch/card-1.svg",
+    "outputs": [
+      {
+        "height": 800,
+        "path": "db/seeds/objects/eye-catch/card-1-portrait-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-1-portrait-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1600,
+        "path": "db/seeds/objects/eye-catch/card-1-portrait-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 600,
+        "path": "db/seeds/objects/eye-catch/card-1-square-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-1-square-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-1-square-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 450,
+        "path": "db/seeds/objects/eye-catch/card-1-landscape-w800.jpg",
+        "width": 800
+      },
+      {
+        "height": 675,
+        "path": "db/seeds/objects/eye-catch/card-1-landscape-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-1-landscape-w1600.jpg",
+        "width": 1600
+      },
+      {
+        "height": 315,
+        "path": "db/seeds/objects/eye-catch/card-1-og-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 473,
+        "path": "db/seeds/objects/eye-catch/card-1-og-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 630,
+        "path": "db/seeds/objects/eye-catch/card-1-og-w1200.jpg",
+        "width": 1200
+      }
+    ]
+  },
+  {
+    "source": "seeds/eye-catch/card-2.svg",
+    "outputs": [
+      {
+        "height": 800,
+        "path": "db/seeds/objects/eye-catch/card-2-portrait-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-2-portrait-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1600,
+        "path": "db/seeds/objects/eye-catch/card-2-portrait-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 600,
+        "path": "db/seeds/objects/eye-catch/card-2-square-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-2-square-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-2-square-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 450,
+        "path": "db/seeds/objects/eye-catch/card-2-landscape-w800.jpg",
+        "width": 800
+      },
+      {
+        "height": 675,
+        "path": "db/seeds/objects/eye-catch/card-2-landscape-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-2-landscape-w1600.jpg",
+        "width": 1600
+      },
+      {
+        "height": 315,
+        "path": "db/seeds/objects/eye-catch/card-2-og-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 473,
+        "path": "db/seeds/objects/eye-catch/card-2-og-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 630,
+        "path": "db/seeds/objects/eye-catch/card-2-og-w1200.jpg",
+        "width": 1200
+      }
+    ]
+  },
+  {
+    "source": "seeds/eye-catch/card-3.svg",
+    "outputs": [
+      {
+        "height": 800,
+        "path": "db/seeds/objects/eye-catch/card-3-portrait-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-3-portrait-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1600,
+        "path": "db/seeds/objects/eye-catch/card-3-portrait-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 600,
+        "path": "db/seeds/objects/eye-catch/card-3-square-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-3-square-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-3-square-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 450,
+        "path": "db/seeds/objects/eye-catch/card-3-landscape-w800.jpg",
+        "width": 800
+      },
+      {
+        "height": 675,
+        "path": "db/seeds/objects/eye-catch/card-3-landscape-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-3-landscape-w1600.jpg",
+        "width": 1600
+      },
+      {
+        "height": 315,
+        "path": "db/seeds/objects/eye-catch/card-3-og-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 473,
+        "path": "db/seeds/objects/eye-catch/card-3-og-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 630,
+        "path": "db/seeds/objects/eye-catch/card-3-og-w1200.jpg",
+        "width": 1200
+      }
+    ]
+  },
+  {
+    "source": "seeds/eye-catch/card-4.svg",
+    "outputs": [
+      {
+        "height": 800,
+        "path": "db/seeds/objects/eye-catch/card-4-portrait-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-4-portrait-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1600,
+        "path": "db/seeds/objects/eye-catch/card-4-portrait-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 600,
+        "path": "db/seeds/objects/eye-catch/card-4-square-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-4-square-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-4-square-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 450,
+        "path": "db/seeds/objects/eye-catch/card-4-landscape-w800.jpg",
+        "width": 800
+      },
+      {
+        "height": 675,
+        "path": "db/seeds/objects/eye-catch/card-4-landscape-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-4-landscape-w1600.jpg",
+        "width": 1600
+      },
+      {
+        "height": 315,
+        "path": "db/seeds/objects/eye-catch/card-4-og-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 473,
+        "path": "db/seeds/objects/eye-catch/card-4-og-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 630,
+        "path": "db/seeds/objects/eye-catch/card-4-og-w1200.jpg",
+        "width": 1200
+      }
+    ]
+  },
+  {
+    "source": "seeds/eye-catch/card-5.svg",
+    "outputs": [
+      {
+        "height": 800,
+        "path": "db/seeds/objects/eye-catch/card-5-portrait-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-5-portrait-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1600,
+        "path": "db/seeds/objects/eye-catch/card-5-portrait-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 600,
+        "path": "db/seeds/objects/eye-catch/card-5-square-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-5-square-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 1200,
+        "path": "db/seeds/objects/eye-catch/card-5-square-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 450,
+        "path": "db/seeds/objects/eye-catch/card-5-landscape-w800.jpg",
+        "width": 800
+      },
+      {
+        "height": 675,
+        "path": "db/seeds/objects/eye-catch/card-5-landscape-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/eye-catch/card-5-landscape-w1600.jpg",
+        "width": 1600
+      },
+      {
+        "height": 315,
+        "path": "db/seeds/objects/eye-catch/card-5-og-w600.jpg",
+        "width": 600
+      },
+      {
+        "height": 473,
+        "path": "db/seeds/objects/eye-catch/card-5-og-w900.jpg",
+        "width": 900
+      },
+      {
+        "height": 630,
+        "path": "db/seeds/objects/eye-catch/card-5-og-w1200.jpg",
+        "width": 1200
+      }
+    ]
+  },
+  {
+    "source": "seeds/creator-icon/icon-1.svg",
+    "outputs": ["db/seeds/objects/creator-icon/icon-1.jpg"]
+  },
+  {
+    "source": "seeds/creator-icon/icon-2.svg",
+    "outputs": ["db/seeds/objects/creator-icon/icon-2.jpg"]
+  },
+  {
+    "source": "seeds/creator-icon/icon-3.svg",
+    "outputs": ["db/seeds/objects/creator-icon/icon-3.jpg"]
+  },
+  {
+    "source": "seeds/creator-icon/icon-4.svg",
+    "outputs": ["db/seeds/objects/creator-icon/icon-4.jpg"]
+  },
+  {
+    "source": "seeds/creator-icon/icon-5.svg",
+    "outputs": ["db/seeds/objects/creator-icon/icon-5.jpg"]
   }
 ]

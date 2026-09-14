@@ -14,14 +14,15 @@ mkdir -p "${ART_DIR}"
 
 export PUBLIRA_LIVE_API="${PUBLIRA_LIVE_API:-true}"
 
-if [[ -z "${PUBLIRA_API_BASE_URL:-}" ]]; then
-  if adb devices 2>/dev/null | grep -q 'emulator'; then
-    PUBLIRA_API_BASE_URL="http://10.0.2.2:${E2E_PUBLIC_API_PORT}"
-  else
-    PUBLIRA_API_BASE_URL="http://127.0.0.1:${E2E_PUBLIC_API_PORT}"
-  fi
+# `10.0.2.2` is the host as an emulator sees it; loopback there is the emulator
+# itself. image-server needs the same treatment as the API: every seeded episode
+# carries a body, so the reader fetches pages on any run that opens one.
+host_address="127.0.0.1"
+if adb devices 2>/dev/null | grep -q 'emulator'; then
+  host_address="10.0.2.2"
 fi
-export PUBLIRA_API_BASE_URL
+export PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host_address}:${E2E_PUBLIC_API_PORT}}"
+export PUBLIRA_IMAGE_BASE_URL="${PUBLIRA_IMAGE_BASE_URL:-http://${host_address}:${E2E_IMAGE_SERVER_PORT}}"
 export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
 
 device="${MOBILE_E2E_DEVICE:-}"
@@ -44,7 +45,7 @@ if [[ -z "${device}" ]]; then
   exit 1
 fi
 
-e2e_log "flutter test integration_test -d ${device} (API=${PUBLIRA_API_BASE_URL} live=${PUBLIRA_LIVE_API})"
+e2e_log "flutter test integration_test -d ${device} (API=${PUBLIRA_API_BASE_URL} images=${PUBLIRA_IMAGE_BASE_URL} live=${PUBLIRA_LIVE_API})"
 
 collect_failure_artifacts() {
   e2e_err "collecting mobile E2E artifacts under ${ART_DIR}"
@@ -68,6 +69,7 @@ set +e
     --reporter expanded \
     --dart-define="PUBLIRA_LIVE_API=${PUBLIRA_LIVE_API}" \
     --dart-define="PUBLIRA_API_BASE_URL=${PUBLIRA_API_BASE_URL}" \
+    --dart-define="PUBLIRA_IMAGE_BASE_URL=${PUBLIRA_IMAGE_BASE_URL}" \
     --dart-define="PUBLIRA_TENANT_HOST=${PUBLIRA_TENANT_HOST}"
 )
 status=$?

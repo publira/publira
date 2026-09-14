@@ -64,7 +64,7 @@ Outside the Dev Container you install the toolchain yourself. Install the versio
 | [buf](https://buf.build/) | `BUF_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task gen` |
 | [golang-migrate](https://github.com/golang-migrate/migrate) | `MIGRATE_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task db:*` |
 | PostgreSQL client (`psql`) | Not pinned | `task db:setup` (the seeds) and `task db:console` |
-| AWS CLI | Not pinned | `task storage:init` |
+| AWS CLI | Not pinned | `task storage:init`, `task storage:seed` |
 | [Flutter](https://docs.flutter.dev/get-started/install) | `FLUTTER_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); [`mobile/pubspec.yaml`](mobile/pubspec.yaml) states the Dart SDK constraint | The mobile app; [`scripts/setup-flutter.sh`](scripts/setup-flutter.sh) installs the pinned SDK on a workstation as it does in CI |
 | [wait4x](https://github.com/wait4x/wait4x) | `WAIT4X_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task e2e` and `task e2e:bootstrap` |
 
@@ -72,7 +72,7 @@ With the tools installed:
 
 1. Start the dependency services with `docker compose up -d` from the repository root.
 2. Export the environment variables listed under [Running `task setup` / `task dev` on the host](README.md#running-task-setup--task-dev-on-the-host) in the README. The defaults name the Compose services, which resolve only inside the Dev Container.
-3. Run `task setup`. It installs the Node.js and Go dependencies, runs `flutter pub get`, applies the migrations and the seed, and creates the storage bucket. Without Flutter, run the pieces you need instead: `task deps`, `task db:setup`, and `task storage:init`.
+3. Run `task setup`. It installs the Node.js and Go dependencies, runs `flutter pub get`, applies the migrations and the seed, and fills the storage bucket with the images that seed's rows name. Without Flutter, run the pieces you need instead: `task deps`, `task db:setup`, and `task storage:seed`.
 4. Run `task dev` to start every server and web app, or the per-area tasks that `task --list` shows.
 
 The shortest path to a green check needs only Task, pnpm, Go, and libvips: `task deps` followed by the commands in the next section.

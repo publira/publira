@@ -28,6 +28,41 @@ AuthSession memberSession() => AuthSession(
   expiresAt: DateTime.now().toUtc().add(const Duration(hours: 24)),
 );
 
+/// Waits for the reader to draw the pages it built.
+///
+/// [pumpUntilFound] on the page view returns on the first frame the reader
+/// exists, which is while its pages are still being fetched. A fetch still in
+/// flight when a test ends is cancelled with the widget tree —
+/// `EpisodeReader.dispose` closes the image client on purpose — and the error
+/// that cancellation raises has no listener left to take it, so it lands on
+/// whichever test happens to be running by then.
+Future<void> pumpUntilPagesDrawn(
+  WidgetTester tester, {
+  // Longer than the waits that only cover a request: a page is fetched,
+  // decrypted, and then decoded, and an emulator decodes in software.
+  Duration timeout = const Duration(seconds: 30),
+}) async {
+  await pumpUntilFound(
+    tester,
+    find.byKey(const ValueKey('episode-page-view')),
+    timeout: timeout,
+  );
+  await pumpUntilTrue(
+    tester,
+    () {
+      final pages = tester.widgetList<RawImage>(
+        find.descendant(
+          of: find.byKey(const ValueKey('episode-page-view')),
+          matching: find.byType(RawImage),
+        ),
+      );
+      return pages.isNotEmpty && pages.every((page) => page.image != null);
+    },
+    description: 'the reader to draw the pages it built',
+    timeout: timeout,
+  );
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -579,6 +614,14 @@ void main() {
       'PUBLIRA_TENANT_HOST',
       defaultValue: AppConfig.defaultTenantHost,
     );
+    // Every seeded episode carries a body, so the reader fetches pages from
+    // image-server as soon as it opens one, and it has to be told where that
+    // is for the same reason as the API: loopback inside an emulator is the
+    // emulator.
+    const liveImageBaseUrl = String.fromEnvironment(
+      'PUBLIRA_IMAGE_BASE_URL',
+      defaultValue: AppConfig.androidEmulatorImageBaseUrl,
+    );
 
     Future<void> pumpLive(
       WidgetTester tester, {
@@ -588,6 +631,7 @@ void main() {
         PubliraApp.fromConfig(
           config: const AppConfig(
             apiBaseUrl: liveBaseUrl,
+            imageBaseUrl: liveImageBaseUrl,
             tenantHost: liveTenantHost,
           ),
           router: createAppRouter(
@@ -672,13 +716,9 @@ void main() {
             ConnectFixtureServer.seedEpisodeId,
           ),
         );
-        // The dev seed publishes the episode without body images, so the
-        // reader's empty state is what a working round trip looks like here.
-        await pumpUntilFound(
-          tester,
-          find.byKey(const ValueKey('episode-empty')),
-          timeout: const Duration(seconds: 20),
-        );
+        // The dev seed gives every episode a body, so a drawn page is what a
+        // working round trip looks like here.
+        await pumpUntilPagesDrawn(tester);
       });
     });
 
@@ -747,14 +787,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
 
         // `db/seeds/dev/050_access_tickets.sql` gives this member an access
-        // ticket for the episode, and the development seed publishes it
-        // without body images, so the reader's empty state is what a granted
-        // body looks like here.
-        await pumpUntilFound(
-          tester,
-          find.byKey(const ValueKey('episode-empty')),
-          timeout: const Duration(seconds: 20),
-        );
+        // ticket for the episode, so the pages the development seed gave it
+        // are what a granted body looks like here.
+        await pumpUntilPagesDrawn(tester);
       });
     });
 

@@ -11,13 +11,16 @@
  *
  * `assets/images.json` maps each source to the paths it renders to. One source
  * can have several, which is why the mapping is a file rather than a rule about
- * where an output sits relative to its source: the comic pages are both the
- * E2E viewer fixtures and, once the development seed puts objects in storage,
- * the bodies that seed uploads.
+ * where an output sits relative to its source: the comic pages are the bodies
+ * the development seed uploads.
  *
- * The output size is the SVG's own `width` and `height`, which keeps each
- * image's dimensions where a reader of the source can see them — the eye-catch
- * cards are named after theirs, and the console validates against them.
+ * An output's size is the SVG's own `width` and `height` unless it names one,
+ * so each image's dimensions stay where a reader can see them — the eye-catch
+ * fixtures are named after theirs, and the console validates against them. A
+ * named size is what lets one seed card cover every aspect ratio and delivery
+ * width an eye-catch is served in without a source file per size; those cards
+ * are drawn with `preserveAspectRatio="none"` so the ratio is the render's
+ * decision rather than the drawing's.
  */
 
 import { readFile, writeFile } from "node:fs/promises";
@@ -42,6 +45,12 @@ const JPEG = {
   quality: 82,
 } as const;
 
+/**
+ * One rendered file. A bare string is the path, rendered at the SVG's own
+ * size; an object renders at the size it names instead.
+ */
+type ImageOutput = string | { height: number; path: string; width: number };
+
 /** One entry of `assets/images.json`. */
 interface ImageEntry {
   /**
@@ -50,7 +59,7 @@ interface ImageEntry {
    */
   monochrome?: boolean;
   /** Paths the render is written to, relative to the repository root. */
-  outputs: string[];
+  outputs: ImageOutput[];
   /** The SVG to render, relative to `assets/`. */
   source: string;
 }
@@ -62,18 +71,32 @@ const manifest: ImageEntry[] = JSON.parse(
   await readFile(new URL("images.json", ASSETS), "utf-8")
 );
 
-const renderEntry = async (entry: ImageEntry): Promise<string[]> => {
-  const svg = await readFile(new URL(entry.source, ASSETS));
-  const pipeline = sharp(svg);
+const renderOutput = async (
+  svg: Buffer,
+  entry: ImageEntry,
+  output: ImageOutput
+): Promise<string> => {
+  const path = typeof output === "string" ? output : output.path;
+  // `fill` rather than a fitted resize: a card that names a size is drawn to
+  // be stretched into it, and a fitted one would letterbox instead.
+  const pipeline =
+    typeof output === "string"
+      ? sharp(svg)
+      : sharp(svg).resize(output.width, output.height, { fit: "fill" });
   const jpeg = await (
     entry.monochrome ? pipeline.toColourspace("b-w") : pipeline
   )
     .jpeg(JPEG)
     .toBuffer();
-  await Promise.all(
-    entry.outputs.map((output) => writeFile(new URL(output, ROOT), jpeg))
+  await writeFile(new URL(path, ROOT), jpeg);
+  return `${path} (${jpeg.length} bytes)`;
+};
+
+const renderEntry = async (entry: ImageEntry): Promise<string[]> => {
+  const svg = await readFile(new URL(entry.source, ASSETS));
+  return await Promise.all(
+    entry.outputs.map((output) => renderOutput(svg, entry, output))
   );
-  return entry.outputs.map((output) => `${output} (${jpeg.length} bytes)`);
 };
 
 const rendered = await Promise.all(manifest.map(renderEntry));

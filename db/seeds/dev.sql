@@ -12,4 +12,5 @@ BEGIN;
 \ir dev/030_smtp_config.sql
 \ir dev/040_pages.sql
 \ir dev/050_access_tickets.sql
+\ir dev/060_images.sql
 COMMIT;

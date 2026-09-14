@@ -150,7 +150,7 @@ An S3-compatible **RustFS** container is part of the dependency stack (`compose.
 
 - Console UI: `http://localhost:9001/rustfs/console/`
 - S3 endpoint: `http://rustfs:9000` from inside a container, `http://127.0.0.1:9000` from the host (path-style)
-- Bucket: `publira`. `task setup` / `task dev` create it idempotently through `task storage:init`
+- Bucket: `publira`. `task dev` creates it idempotently through `task storage:init`, and `task setup` goes on to fill it with the development seed's images through `task storage:seed`
 - Data is persisted in the `rustfs-data` volume
 
 The defaults passed to the app container live in `.devcontainer/compose.yaml`.
