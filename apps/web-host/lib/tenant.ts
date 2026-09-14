@@ -96,6 +96,12 @@ export interface TenantSiteInfo {
   siteTagline?: string;
   /** IANA zone every tenant-facing wall clock on the public site is rendered in. */
   timeZone: string;
+  /**
+   * The VAPID key a browser subscribes with. Absent while the deployment has
+   * no Web Push credentials, which is what the settings screen reads as "this
+   * site cannot offer browser notifications".
+   */
+  webPushVapidPublicKey?: string;
 }
 
 /**
@@ -210,6 +216,7 @@ export const getTenantSiteInfo = async (
       // The server resolves the zone before answering (`tenanttz.Resolve`), so
       // the fallback only covers a response shape that predates the field.
       timeZone: nonEmpty(response.timezone) ?? DEFAULT_TIME_ZONE,
+      webPushVapidPublicKey: nonEmpty(response.webPushVapidPublicKey),
     };
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {
@@ -346,4 +353,23 @@ export const getTenantCommentMode = async (
 ): Promise<TenantCommentMode> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.commentMode ?? "disabled";
+};
+
+/**
+ * The VAPID public key a browser subscribes to Web Push with, or `null` when
+ * this deployment has none. One entry point, the way
+ * {@link getTenantDisplayTimeZone} is, so no screen decides on its own whether
+ * browser notifications can be offered.
+ *
+ * An unavailable tenant read degrades to `null`, the same answer an unset key
+ * gives: a switch whose subscription the API would refuse is worse for the
+ * reader than one that is briefly missing. The read carries `tenant:<id>:site`,
+ * so a deployment that gains the key serves the switch as soon as that entry
+ * ages out.
+ */
+export const getTenantWebPushPublicKey = async (
+  tenantId: string
+): Promise<string | null> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant?.webPushVapidPublicKey ?? null;
 };

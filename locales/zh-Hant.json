@@ -2300,6 +2300,12 @@
       }
     },
     "settings": {
+      "browser_notifications_denied": "本站的通知已關閉。請在瀏覽器設定中開啟。",
+      "browser_notifications_failed": "無法開啟通知。請重試。",
+      "browser_notifications_heading": "瀏覽器通知",
+      "browser_notifications_help": "有新話發布時在此瀏覽器中通知您。",
+      "browser_notifications_label": "新話通知",
+      "browser_notifications_off_failed": "無法關閉通知。請重試。",
       "cancel": "取消",
       "current_password_label": "目前的密碼",
       "delete_confirm_description": "請輸入目前的密碼以刪除您的帳戶。",

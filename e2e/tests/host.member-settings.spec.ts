@@ -2,7 +2,8 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql } from "../src/db";
-import { openHostUserMenu, signInAsMember } from "../src/host";
+import { openHostUserMenu, signInAsMember, signOutHost } from "../src/host";
+import { STUB_PUSH_ENDPOINT, stubPushApi } from "../src/push";
 import {
   MEMBER_SETTINGS_MEMBER,
   MEMBER_SETTINGS_NEW_EMAIL,
@@ -65,16 +66,36 @@ const emailChangeTokenCount = (): string =>
     WHERE u.public_id = '${MEMBER_SETTINGS_MEMBER.publicId}';
   `);
 
+/** What the server holds for this member's browser, if anything. */
+const webPushDevices = (column: string): string =>
+  querySql(`
+    SELECT ${column}
+    FROM user_push_devices d
+    JOIN users u ON u.id = d.user_id
+    WHERE u.public_id = '${MEMBER_SETTINGS_MEMBER.publicId}'
+      AND d.platform = 'web';
+  `);
+
+const webPushDeviceCount = (): string => webPushDevices("COUNT(*)");
+const webPushEndpoint = (): string => webPushDevices("d.endpoint");
+
 /**
  * The member area: My Page and the four `/settings` tabs.
  *
  * Every test here rewrites the account it signs in as — the display name, the
- * notification preference, the follow list, the password — so the suite owns a
- * member no other spec signs in as, and re-applies its scenario afterwards to
- * put the starting values back. `mode: "serial"` stops a failed write from
- * being read back as a pass by the test after it. The password test re-applies
- * that scenario itself rather than waiting for `afterAll`, because every test
- * after it signs in with the password it moved off.
+ * notification preference, the follow list, the password, the browser this
+ * reader has registered for push — so the suite owns a member no other spec
+ * signs in as, and re-applies its scenario afterwards to put the starting
+ * values back. `mode: "serial"` stops a failed write from being read back as a
+ * pass by the test after it. The password test re-applies that scenario itself
+ * rather than waiting for `afterAll`, because every test after it signs in with
+ * the password it moved off.
+ *
+ * The browser notification tests stand in for the Push API rather than using
+ * Chromium's own: a permission prompt has no answer a test can give, and a real
+ * subscription is a round trip to Google's push service. What is asserted is
+ * everything on this side of it — the registration the server stores, the line a
+ * refusal shows, and the row signing out takes away.
  *
  * `/settings/security` carries both an email change and a password change.
  * What the email form is asserted on here is the gate in front of the send: a
@@ -163,6 +184,66 @@ test.describe("web-host member settings", () => {
 
     await page.goto(hostUrl("/settings/notifications"));
     await expect(page.getByRole("checkbox")).not.toBeChecked();
+  });
+
+  test("the browser notification switch registers this browser and takes it off again", async ({
+    page,
+  }) => {
+    await stubPushApi(page, "granted");
+    await signIn(page, "/settings/notifications");
+
+    const browserNotifications = page.getByRole("switch", {
+      name: "New episode notifications",
+    });
+    await expect(browserNotifications).not.toBeChecked();
+    expect(webPushDeviceCount()).toBe("0");
+
+    // `click`, not `check`: the switch follows the registration rather than the
+    // pointer, so it is still off when `check` verifies its own click.
+    await browserNotifications.click();
+    await expect(browserNotifications).toBeChecked();
+    await expect.poll(webPushDeviceCount).toBe("1");
+    expect(webPushEndpoint()).toBe(STUB_PUSH_ENDPOINT);
+
+    await browserNotifications.click();
+    await expect(browserNotifications).not.toBeChecked();
+    await expect.poll(webPushDeviceCount).toBe("0");
+  });
+
+  test("a refused permission settles the switch back and points at browser settings", async ({
+    page,
+  }) => {
+    await stubPushApi(page, "denied");
+    await signIn(page, "/settings/notifications");
+
+    const browserNotifications = page.getByRole("switch", {
+      name: "New episode notifications",
+    });
+    await browserNotifications.click();
+
+    await expect(
+      page.getByText(
+        "Notifications are turned off for this site. Turn them on in your browser settings."
+      )
+    ).toBeVisible();
+    await expect(browserNotifications).not.toBeChecked();
+    expect(webPushDeviceCount()).toBe("0");
+  });
+
+  test("signing out takes this browser off the delivery list", async ({
+    page,
+  }) => {
+    await stubPushApi(page, "granted");
+    await signIn(page, "/settings/notifications");
+
+    await page
+      .getByRole("switch", { name: "New episode notifications" })
+      .click();
+    await expect.poll(webPushDeviceCount).toBe("1");
+
+    await signOutHost(page);
+
+    await expect.poll(webPushDeviceCount).toBe("0");
   });
 
   test("the security screen refuses an email change whose current password is wrong", async ({

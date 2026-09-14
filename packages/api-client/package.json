@@ -43,6 +43,10 @@
       "types": "./dist/public/comment.d.mts",
       "default": "./dist/public/comment.mjs"
     },
+    "./public/notification": {
+      "types": "./dist/public/notification.d.mts",
+      "default": "./dist/public/notification.mjs"
+    },
     "./public/page": {
       "types": "./dist/public/page.d.mts",
       "default": "./dist/public/page.mjs"

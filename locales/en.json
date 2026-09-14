@@ -2300,6 +2300,12 @@
       }
     },
     "settings": {
+      "browser_notifications_denied": "Notifications are turned off for this site. Turn them on in your browser settings.",
+      "browser_notifications_failed": "Could not turn notifications on. Try again.",
+      "browser_notifications_heading": "Browser notifications",
+      "browser_notifications_help": "Be told in this browser when a new episode is published.",
+      "browser_notifications_label": "New episode notifications",
+      "browser_notifications_off_failed": "Could not turn notifications off. Try again.",
       "cancel": "Cancel",
       "current_password_label": "Current password",
       "delete_confirm_description": "Enter your current password to delete your account.",

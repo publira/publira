@@ -100,6 +100,17 @@ image-server encrypts every body it serves, free and entitled alike. A page that
 
 `link rel="icon"` and `link rel="apple-touch-icon"` are resolved by `lib/tenant-icon.ts`, and the header's brand mark by `lib/tenant-logo.ts`. Both read the tenant's branding variants from `getTenantSiteInfo()`, and image-server delivers them (`/images/tenants/{media_id}/icon`, `/images/tenants/{media_id}/logo`).
 
+### Browser notifications (Web Push)
+
+A signed-in reader can be told in the browser when a new episode is published. The switch is on `/settings/notifications`, and it appears only where the public API answers `GetTenant` with a VAPID public key — `getTenantWebPushPublicKey()` in `lib/tenant.ts`, over [the server's Web Push credentials](../../server/README.md#web-push).
+
+| File | What it holds |
+| --- | --- |
+| `lib/service-worker.ts` | The worker's entry point, which Next.js compiles and serves from `_next/static/service-worker/` |
+| `lib/service-worker-handlers.ts` | `push` and `notificationclick`: what is drawn, and where a tap lands |
+| `lib/browser-push.ts` | The registration, the permission prompt, the subscription, and the shape `RegisterPushDevice` is given |
+| `lib/push.ts` / `lib/push-actions.ts` | `RegisterPushDevice` / `UnregisterPushDevice`, and the Server Actions the switch and sign-out call |
+
 ### Episode purchase
 
 The checkout button on a paid episode leads to Stripe Checkout. After the reader comes back from Stripe, the purchase recorded by the `checkout.session.completed` webhook grants access to the body images. web-host itself holds no Stripe secret key. The return URL and the webhook are received on the tenant's public domain; for the procedure, see the [server README](../../server/README.md#stripe-checkout-episode-purchases).

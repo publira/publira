@@ -135,6 +135,16 @@ export PUBLIRA_PLATFORM_APP_URL="${E2E_WEB_PLATFORM_BASE_URL}"
 export PUBLIRA_SECRET_ENCRYPTION_KEYS="${PUBLIRA_SECRET_ENCRYPTION_KEYS:-e2e:ZTJlLW9ubHktaW5zZWN1cmUtc2VjcmV0LWtleS0zMmI}"
 export PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID:-e2e}"
 
+# Web Push. Without these the public API publishes no VAPID key and the browser
+# notification switch is left out of `/settings/notifications`, so the screen
+# `host.browser-notifications.spec.ts` drives would not exist. A matching P-256
+# pair, because the outbox worker validates the pair at startup and refuses to
+# run on a broken one. Nothing is ever delivered through it: that spec stubs the
+# Push API, so the endpoint it registers belongs to no push service.
+export PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY="${PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY:-BLA9H4ThVuX8uYA1HMTOe0q51POeLNEvc-TtqSb5TKuztJM_UfKKQLLfbpm9Kr7jzikhThqoipdhx0NQgzfBDs0}"
+export PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY="${PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY:-MbA3EQ7bhB1QWgq_d8DjY5bbuF616HplHhnj7yhC_Co}"
+export PUBLIRA_WEBPUSH_SUBJECT="${PUBLIRA_WEBPUSH_SUBJECT:-mailto:e2e@publira.test}"
+
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share

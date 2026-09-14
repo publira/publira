@@ -12,6 +12,7 @@ export default defineConfig({
     "src/public/auth.ts",
     "src/public/catalog.ts",
     "src/public/comment.ts",
+    "src/public/notification.ts",
     "src/public/page.ts",
     "src/public/types.ts",
     "src/admin/index.ts",
