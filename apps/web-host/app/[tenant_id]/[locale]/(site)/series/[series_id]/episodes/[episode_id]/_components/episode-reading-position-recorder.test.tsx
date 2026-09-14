@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  EndPage,
   NextPageButton,
   PageStatus,
   PreviousPageButton,
@@ -45,13 +46,14 @@ const buildPages = (pageCount: number): ViewerPage[] =>
     title: `Page ${index + 1}`,
   }));
 
-const renderViewer = (initialPageIndex = 0) =>
+const renderViewer = (initialPageIndex = 0, endPage = false) =>
   render(
     <ViewerProvider
       initialIndex={initialPageIndex}
       pages={buildPages(8)}
       spreadStartIndex={SPREAD_START_INDEX}
     >
+      {endPage ? <EndPage>Leave a comment</EndPage> : null}
       <PreviousPageButton>Previous</PreviousPageButton>
       <NextPageButton>Next</NextPageButton>
       <PageStatus />
@@ -140,6 +142,19 @@ describe("EpisodeReadingPositionRecorder", () => {
 
     expect(sendBeacon).toHaveBeenCalledOnce();
     await expect(savedPageIndex(0)).resolves.toBe(4);
+  });
+
+  it("saves the last page of the episode for a reader on the page after it", () => {
+    renderViewer(7, true);
+    settle();
+    sendBeacon.mockClear();
+
+    turnPage("Next page");
+    settle();
+
+    // The page after the last one belongs to the viewer rather than to the
+    // episode, so the saved position stays where the episode ends.
+    expect(sendBeacon).not.toHaveBeenCalled();
   });
 
   it("saves nothing more while the reader stays on the page it already saved", () => {

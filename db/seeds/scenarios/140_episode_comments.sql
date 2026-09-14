@@ -191,6 +191,62 @@ SET price = EXCLUDED.price,
     published_at = EXCLUDED.published_at,
     tenant_id = EXCLUDED.tenant_id;
 
+-- Three pages, so the suite can turn past the last one: the comment section is
+-- the page after it. The objects themselves are uploaded by
+-- `e2e/scripts/upload-episode-pages.sh`, which reads these object keys back out
+-- of the database, so the two cannot drift apart.
+INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
+SELECT
+    ('018f0f66-0001-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    e.tenant_id,
+    e.id,
+    page_number
+FROM episodes e
+CROSS JOIN generate_series(1, 3) AS page_number
+WHERE e.id = '018f0f64-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    episode_id = EXCLUDED.episode_id,
+    display_order = EXCLUDED.display_order;
+
+INSERT INTO episode_image_variants (
+    id,
+    episode_image_id,
+    label,
+    storage_provider,
+    object_key,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+)
+SELECT
+    ('018f0f67-0001-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    ('018f0f66-0001-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    'original',
+    's3',
+    'tenants/CmntTNNTAAA1/episodes/CmntEPSDAAA1/page-'
+        || lpad(page_number::text, 2, '0')
+        || '-original.jpg',
+    'image/jpeg',
+    -- Reported to the reader as the page's byte size. What the browser
+    -- downloads is image-server's rendition rather than this JPEG, so the
+    -- fixture's own size only has to be in the right range.
+    120000,
+    -- db/seeds/objects/episode-page/page-NN.jpg
+    1050,
+    1500
+FROM generate_series(1, 3) AS page_number
+ON CONFLICT (id) DO UPDATE
+SET episode_image_id = EXCLUDED.episode_image_id,
+    label = EXCLUDED.label,
+    storage_provider = EXCLUDED.storage_provider,
+    object_key = EXCLUDED.object_key,
+    content_type = EXCLUDED.content_type,
+    file_size_bytes = EXCLUDED.file_size_bytes,
+    width = EXCLUDED.width,
+    height = EXCLUDED.height;
+
 \ir ../episode_creators.sql
 
 WITH member_seed (id, public_id, email, name) AS (

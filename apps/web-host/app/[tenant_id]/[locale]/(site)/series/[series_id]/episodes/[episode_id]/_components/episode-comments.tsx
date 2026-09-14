@@ -3,29 +3,20 @@ import {
   EmptyState,
   EmptyStateDescription,
 } from "@publira/ui-components/empty-state";
-import { Field, FieldLabel } from "@publira/ui-components/field";
 import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Textarea } from "@publira/ui-components/textarea";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
 import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "#components/action-form";
-import {
   ListPagination,
   ListPaginationStep,
 } from "#components/list-pagination";
-import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getMe } from "#lib/auth";
@@ -41,11 +32,14 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 
 import { episodeLoginHref } from "../_lib/access-gate";
-import { postEpisodeCommentAction } from "../_lib/comment-actions";
 import { episodeCommentsHref } from "../_lib/comment-search-params";
 import { CommentDeleteButton } from "./comment-delete-button";
 import { CommentReportButton } from "./comment-report-button";
 import type { CommentReportButtonCopy } from "./comment-report-button";
+import { EpisodeCommentDialog } from "./episode-comment-dialog";
+
+/** The control that opens the comments, at the size it takes. */
+export const EpisodeCommentsSkeleton = () => <Skeleton className="h-9 w-32" />;
 
 export interface EpisodeCommentsProps {
   /** The series' resolved comment mode from GetSeriesDetail. */
@@ -73,6 +67,12 @@ export interface EpisodeCommentsProps {
  * A series that has not turned commenting on gets nothing at all rather than
  * an empty section: the resolved setting answers "does this series take
  * comments", and an empty list would read as "nobody has commented yet".
+ *
+ * It is drawn as the page after the last page of the episode, so a comment
+ * about the ending only reaches a reader who has read it, and the comments
+ * themselves open from there in a dialog — that page is one screen of the
+ * reader and no taller, while the list is as long as the episode is talked
+ * about.
  */
 export const EpisodeComments = async ({
   commentMode,
@@ -164,79 +164,48 @@ export const EpisodeComments = async ({
   };
 
   return (
-    <section className="grid gap-4" id="comments">
-      <div className="grid gap-1">
-        <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
-          <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
-            <Message message="host.episode.comments.title" />
-          </Suspense>
-        </h2>
-        {commentMode === "approval_required" ? (
-          <p className="text-sm text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <Message message="host.episode.comments.approval_notice" />
+    <EpisodeCommentDialog
+      copy={{
+        bodyLabel: t("host.episode.comments.body_label"),
+        bodyPlaceholder: t("host.episode.comments.body_placeholder"),
+        close: t("host.common.close"),
+        pending: t("host.episode.comments.posting"),
+        submit: t("host.episode.comments.submit"),
+        title: t("host.episode.comments.title"),
+      }}
+      episodePublicId={episodePublicId}
+      initialOpen={Boolean(token)}
+      prompt={
+        viewer ? undefined : (
+          <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <Message message="host.episode.comments.sign_in_prompt" />
             </Suspense>
+            <LinkButton
+              render={
+                <LocaleLink
+                  href={episodeLoginHref(seriesPublicId, episodePublicId)}
+                />
+              }
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="host.episode.comments.sign_in" />
+              </Suspense>
+            </LinkButton>
           </p>
-        ) : null}
-      </div>
-
-      {viewer ? (
-        <ActionForm
-          action={postEpisodeCommentAction}
-          className="grid max-w-(--measure-prose) gap-3"
-        >
-          <LocaleField />
-          <input name="episodePublicId" type="hidden" value={episodePublicId} />
-          <input name="returnTo" type="hidden" value={episodePath} />
-          <input name="tenantId" type="hidden" value={tenantId} />
-          <Field>
-            <FieldLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <Message message="host.episode.comments.body_label" />
-              </Suspense>
-            </FieldLabel>
-            {/* No `maxLength`: it counts UTF-16 code units, while the API
-                counts Unicode code points, so it would cut an emoji-heavy
-                comment off at half the length the server allows. The Action
-                checks the real limit and says so next to the box. */}
-            <Textarea
-              name="body"
-              placeholder={t("host.episode.comments.body_placeholder")}
-              rows={4}
-            />
-          </Field>
-          <ActionFormSubmit className="justify-self-start">
-            <ActionFormIdle>
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="host.episode.comments.submit" />
-              </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="host.episode.comments.posting" />
-              </Suspense>
-            </ActionFormPending>
-          </ActionFormSubmit>
-        </ActionForm>
-      ) : (
-        <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-            <Message message="host.episode.comments.sign_in_prompt" />
+        )
+      }
+      returnTo={episodePath}
+      tenantId={tenantId}
+    >
+      {commentMode === "approval_required" ? (
+        <p className="pb-4 text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="host.episode.comments.approval_notice" />
           </Suspense>
-          <LinkButton
-            render={
-              <LocaleLink
-                href={episodeLoginHref(seriesPublicId, episodePublicId)}
-              />
-            }
-            variant="outline"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="host.episode.comments.sign_in" />
-            </Suspense>
-          </LinkButton>
         </p>
-      )}
+      ) : null}
 
       {publicResult.ok ? null : (
         <SectionError>
@@ -285,9 +254,9 @@ export const EpisodeComments = async ({
       ) : null}
 
       {comments.length > 0 ? (
-        <ol className="divide-y divide-border border-t border-border">
+        <ol className="divide-y divide-border">
           {comments.map((comment) => (
-            <li className="py-4" key={comment.publicId}>
+            <li className="py-4 first:pt-0" key={comment.publicId}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium">{comment.authorName}</p>
@@ -337,9 +306,7 @@ export const EpisodeComments = async ({
                   />
                 ) : null}
               </div>
-              <p className="mt-3 max-w-(--measure-prose) text-sm whitespace-pre-wrap">
-                {comment.body}
-              </p>
+              <p className="mt-3 text-sm whitespace-pre-wrap">{comment.body}</p>
             </li>
           ))}
         </ol>
@@ -348,6 +315,6 @@ export const EpisodeComments = async ({
       {publicResult.ok && (page.previousToken || page.nextToken)
         ? pagination
         : null}
-    </section>
+    </EpisodeCommentDialog>
   );
 };

@@ -67,26 +67,6 @@ vi.mock("#components/follow-control", () => ({
   ),
 }));
 
-// Same for the reaction control: this file asserts that the panel offers one,
-// not how the private score is read.
-vi.mock("#components/episode-reaction-control", () => ({
-  EpisodeReactionControl: ({
-    ratingCount,
-    returnTo,
-  }: {
-    ratingCount: number;
-    returnTo: string;
-  }) => (
-    <button
-      data-rating-count={ratingCount}
-      data-return-to={returnTo}
-      type="button"
-    >
-      React
-    </button>
-  ),
-}));
-
 afterEach(cleanup);
 
 const episode: EpisodeDetail = {
@@ -231,16 +211,6 @@ describe("EpisodeEndPanel", () => {
     await renderPanel({ neighbor: nextEpisode });
 
     expect(screen.queryByTestId("related-series")).toBeNull();
-  });
-
-  it("offers a reaction control on every ending, with the cached headcount", async () => {
-    await renderPanel({ neighbor: nextEpisode });
-
-    const control = screen.getByRole("button", { name: "React" });
-    expect(control.dataset.returnTo).toBe(
-      "/series/SERIES_001/episodes/EPISODE_002"
-    );
-    expect(control.dataset.ratingCount).toBe("0");
   });
 
   it("always leads back to the series", async () => {

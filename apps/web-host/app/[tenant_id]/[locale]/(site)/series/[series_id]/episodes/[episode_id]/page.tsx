@@ -13,7 +13,6 @@ import { z } from "zod";
 
 import { AgeRatingGate } from "#components/age-rating-gate";
 import { ContentViewTracker } from "#components/content-view-tracker";
-import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -28,7 +27,6 @@ import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { EpisodeBody } from "./_components/episode-body";
-import { EpisodeComments } from "./_components/episode-comments";
 import { EpisodeEndPanel } from "./_components/episode-end-panel";
 import {
   COMMENT_TOKEN_PARAM,
@@ -48,26 +46,9 @@ const episodeDetailParamsSchema = z.object({
 /** Both neighbours, which is the most the section under the pages holds. */
 const NEIGHBOR_SKELETON_COUNT = 2;
 
-/** Two rows of comments, which is what a phone shows of the list at once. */
-const COMMENT_SKELETON_COUNT = 2;
-
 /** The page under the reader, which is one column of ordinary text. */
 const EpisodeColumn = ({ children }: { children: ReactNode }) => (
   <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10">{children}</div>
-);
-
-const CommentsSkeleton = () => (
-  <div className="grid gap-4">
-    <SkeletonLine className="h-6 w-32" />
-    <div className="divide-y divide-border border-t border-border">
-      {Array.from({ length: COMMENT_SKELETON_COUNT }, (_, index) => (
-        <div className="grid gap-2 py-4" key={index}>
-          <SkeletonLine className="h-4 w-32" />
-          <SkeletonLine className="h-4 w-full max-w-(--measure-prose)" />
-        </div>
-      ))}
-    </div>
-  </div>
 );
 
 const EpisodeBodySkeleton = () => (
@@ -199,6 +180,8 @@ const EpisodeContent = async (
                     ? purchaseSearchParams.session_id
                     : ""
                 }
+                commentMode={commentMode}
+                commentToken={commentSearchParams[COMMENT_TOKEN_PARAM]}
                 episode={episode}
                 images={images}
                 nextEpisode={nextEpisode}
@@ -236,19 +219,12 @@ const EpisodeContent = async (
             </p>
           ) : null}
 
-          {/* A running head: which work this is, then which instalment of it.
-            The number is part of the title line rather than a chip beside it,
-            because a serial numbers its instalments the way a book numbers its
-            chapters. */}
+          {/* A running head: which instalment this is. The number is part of
+            the title line rather than a chip beside it, because a serial
+            numbers its instalments the way a book numbers its chapters. The
+            work is not named again here — the panel below ends on the link
+            back to it. */}
           <header className="grid gap-2">
-            <p className="text-sm text-muted-foreground">
-              <LocaleLink
-                className="underline underline-offset-4"
-                href={`/series/${series.publicId}`}
-              >
-                {series.title}
-              </LocaleLink>
-            </p>
             <h1 className="font-serif text-3xl leading-tight">
               <span className="tabular-nums">
                 <Suspense fallback={<SkeletonLine className="h-7 w-28" />}>
@@ -326,28 +302,6 @@ const EpisodeContent = async (
             series={series}
             tenantId={tenantId}
           />
-
-          {commentMode === "disabled" ? null : (
-            <SectionErrorBoundary
-              title={
-                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                  <Message message="host.episode.comments.list_error" />
-                </Suspense>
-              }
-            >
-              {/* Its own boundary, so the pages and the episode metadata above
-                reach the reader without waiting on the comment reads. */}
-              <Suspense fallback={<CommentsSkeleton />}>
-                <EpisodeComments
-                  commentMode={commentMode}
-                  episodePublicId={episode.publicId}
-                  seriesPublicId={series.publicId}
-                  tenantId={tenantId}
-                  token={commentSearchParams[COMMENT_TOKEN_PARAM]}
-                />
-              </Suspense>
-            </SectionErrorBoundary>
-          )}
         </EpisodeColumn>
       </main>
     </AgeRatingGate>

@@ -1887,6 +1887,7 @@
       "age_rating_r18": "R18",
       "back_to_top": "返回首頁",
       "cancel": "取消",
+      "close": "關閉",
       "episode_number": "第 {$number} 章",
       "error_id": "錯誤 ID：",
       "find_series": "瀏覽系列",
@@ -2022,6 +2023,7 @@
       "scheduled_at": "預約發布",
       "to_series_detail": "前往該系列",
       "viewer": {
+        "end_page": "完",
         "enter_fullscreen": "進入全螢幕",
         "exit_fullscreen": "結束全螢幕",
         "loading": "正在載入…",

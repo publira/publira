@@ -1887,6 +1887,7 @@
       "age_rating_r18": "R18",
       "back_to_top": "홈으로 돌아가기",
       "cancel": "취소",
+      "close": "닫기",
       "episode_number": "{$number}화",
       "error_id": "오류 ID:",
       "find_series": "시리즈 둘러보기",
@@ -2022,6 +2023,7 @@
       "scheduled_at": "공개 예정",
       "to_series_detail": "시리즈 상세로 이동",
       "viewer": {
+        "end_page": "끝",
         "enter_fullscreen": "전체 화면으로 보기",
         "exit_fullscreen": "전체 화면 종료",
         "loading": "불러오는 중…",

@@ -20,13 +20,15 @@ export const parseCommentSearchParams = (input: unknown): CommentSearchParams =>
 
 /**
  * The episode page again, at one page of its comment list. An empty token
- * drops the parameter, i.e. back to the newest comments, and the link keeps
- * the reader's place by ending on the section's own anchor.
+ * drops the parameter, i.e. back to the newest comments.
+ *
+ * The parameter is what puts the reader back where they were: the viewer opens
+ * on the page the comments are read from, and the comments open with it.
  */
 export const episodeCommentsHref = (
   episodePath: string,
   token: string
 ): string =>
   token
-    ? `${episodePath}?${COMMENT_TOKEN_PARAM}=${encodeURIComponent(token)}#comments`
-    : `${episodePath}#comments`;
+    ? `${episodePath}?${COMMENT_TOKEN_PARAM}=${encodeURIComponent(token)}`
+    : episodePath;

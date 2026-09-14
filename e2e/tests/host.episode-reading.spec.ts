@@ -20,6 +20,7 @@ import {
   viewerPageLabel,
 } from "../src/scenarios/viewer-pages";
 import { hostPath, WEB_HOST_EDGE_BASE_URL } from "../src/urls";
+import { turnToEndPage } from "../src/viewer";
 
 /**
  * A body image is `/images/episodes/{id}` on the reader's own origin, so the
@@ -572,7 +573,7 @@ test.describe("web-host episode reading", () => {
     ).toHaveCount(0);
   });
 
-  test("the running head below the viewer names its series and links back to it", async ({
+  test("the running head below the viewer names the instalment and leads back to the work", async ({
     page,
   }) => {
     await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
@@ -584,8 +585,8 @@ test.describe("web-host episode reading", () => {
     );
     await expect(
       page.getByRole("link", { exact: true, name: SEED_TENANT.series.title }),
-      "the work the episode belongs to is the line above its title"
-    ).toHaveAttribute("href", hostPath(seriesPath));
+      "the work is named once, by the link the panel ends on"
+    ).toHaveCount(0);
     await expect(
       page.getByRole("link", { name: "Back to the series" })
     ).toHaveAttribute("href", hostPath(seriesPath));
@@ -599,14 +600,16 @@ test.describe("web-host episode reading", () => {
     await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
 
-    const loginLinks = page.getByRole("link", {
+    const loginLink = page.getByRole("link", {
+      exact: true,
       name: "Sign in to react to this episode. Readers who reacted: 0",
     });
     await expect(
-      loginLinks,
-      "the heart in the viewer chrome and the one in the end panel both send a guest to login"
-    ).toHaveCount(2);
-    await expect(loginLinks.first()).toHaveAttribute(
+      loginLink,
+      "a reaction is a reader's, so a guest reaches it only by finishing the episode"
+    ).toHaveCount(0);
+    await turnToEndPage(page, loginLink);
+    await expect(loginLink).toHaveAttribute(
       "href",
       new RegExp(`returnTo=${encodeURIComponent(VIEWER_EPISODE_PATH)}`, "u")
     );
@@ -619,39 +622,32 @@ test.describe("web-host episode reading", () => {
     );
     await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
 
-    // The member may resume a page another reading scenario saved. The reaction
-    // control is independent of that position, and its own accessible state is
-    // what this scenario verifies.
-    const reactButtons = page.getByRole("button", {
+    // The member may resume a page another reading scenario saved, so the end
+    // page is reached by turning rather than assumed to be on screen.
+    const reactButton = page.getByRole("button", {
+      exact: true,
       name: "React to this episode. Readers who reacted: 0",
     });
-    await expect(reactButtons).toHaveCount(2);
-    await reactButtons.last().click();
+    await turnToEndPage(page, reactButton);
+    await reactButton.click();
 
     const reacted = page.getByRole("button", {
+      exact: true,
       name: "You have reacted to this episode. Readers who reacted: 1",
     });
     await expect(
-      reacted.last(),
+      reacted,
       "one press in single mode fills the control and counts the reader once"
     ).toBeVisible();
 
-    await reacted.last().click();
-    await expect(
-      page
-        .getByRole("button", {
-          name: "You have reacted to this episode. Readers who reacted: 1",
-        })
-        .last(),
-      "a second press changes nothing"
-    ).toBeVisible();
+    await reacted.click();
+    await expect(reacted, "a second press changes nothing").toBeVisible();
 
     await page.reload();
+    await turnToEndPage(page, reacted);
     await expect(
-      page.getByRole("button", {
-        name: "You have reacted to this episode. Readers who reacted: 1",
-      }),
+      reacted,
       "the reaction is still there after a reload"
-    ).toHaveCount(2);
+    ).toBeVisible();
   });
 });
