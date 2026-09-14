@@ -15,6 +15,10 @@ env:
   WAIT4X_VERSION: 3.7.1
   # renovate: datasource=flutter-version depName=flutter
   FLUTTER_VERSION: 3.47.4
+  # Retry flags for every release download below, unquoted at each call site so
+  # they split into separate arguments. A transient response from github.com is
+  # not what the job downloading the archive is testing.
+  CURL_RETRY_FLAGS: "--retry 5 --retry-delay 2 --retry-all-errors"
 
 on:
   pull_request:
@@ -562,8 +566,8 @@ jobs:
             *) echo "Unsupported architecture: $arch"; exit 1 ;;
           esac
           archive="migrate.linux-${migrate_arch}.tar.gz"
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
           (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
           tar -xzf "/tmp/${archive}" -C /tmp migrate
           sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
@@ -706,8 +710,8 @@ jobs:
             *) echo "Unsupported architecture: $arch"; exit 1 ;;
           esac
           archive="migrate.linux-${migrate_arch}.tar.gz"
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
           (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
           tar -xzf "/tmp/${archive}" -C /tmp migrate
           sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
@@ -808,8 +812,8 @@ jobs:
             *) echo "Unsupported architecture: $arch"; exit 1 ;;
           esac
           archive="migrate.linux-${migrate_arch}.tar.gz"
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
           (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
           tar -xzf "/tmp/${archive}" -C /tmp migrate
           sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
@@ -825,8 +829,8 @@ jobs:
             *) echo "Unsupported architecture: $arch"; exit 1 ;;
           esac
           archive="wait4x-linux-${wait4x_arch}.tar.gz"
-          curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
-          curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
           (cd /tmp && sha256sum -c "${archive}.sha256sum")
           tar -xzf "/tmp/${archive}" -C /tmp wait4x
           sudo install -m 0755 /tmp/wait4x /usr/local/bin/wait4x
@@ -903,8 +907,8 @@ jobs:
             *) echo "Unsupported architecture: $arch"; exit 1 ;;
           esac
           archive="migrate.linux-${migrate_arch}.tar.gz"
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
           (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
           tar -xzf "/tmp/${archive}" -C /tmp migrate
           sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
@@ -920,8 +924,8 @@ jobs:
             *) echo "Unsupported architecture: $arch"; exit 1 ;;
           esac
           archive="wait4x-linux-${wait4x_arch}.tar.gz"
-          curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
-          curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL ${CURL_RETRY_FLAGS} "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
           (cd /tmp && sha256sum -c "${archive}.sha256sum")
           tar -xzf "/tmp/${archive}" -C /tmp wait4x
           sudo install -m 0755 /tmp/wait4x /usr/local/bin/wait4x
