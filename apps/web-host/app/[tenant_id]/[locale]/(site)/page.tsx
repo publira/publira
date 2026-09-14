@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -44,8 +43,9 @@ import type {
   CatalogTopPopularSeries,
   CatalogTopUpdatedSeriesItem,
 } from "#lib/catalog-top";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import type { HostMessageKey } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { listMyRecentSeries } from "#lib/reading-progress";
 import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -161,16 +161,16 @@ export const generateStaticParams = () =>
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [siteLabel, messages] = await Promise.all([
+  const [siteLabel, t] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   // This page shares a route segment with `(site)/layout.tsx`, so Next.js does
   // not apply that layout's `title.template`. Compose the full tab title here.
   return {
     title: {
-      absolute: `${getMessage(messages, "host.top.metadata_title")} | ${siteLabel}`,
+      absolute: `${t("host.top.metadata_title")} | ${siteLabel}`,
     },
   };
 };
@@ -402,9 +402,9 @@ const GenresSection = async () => {
  */
 const WeeklyScheduleSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [timeZone, messages] = await Promise.all([
+  const [timeZone, t] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
   const result = await getCatalogTopWeeklySchedule(tenantId, {
     locale,
@@ -437,9 +437,7 @@ const WeeklyScheduleSection = async () => {
       </div>
       <div className="mt-4">
         <WeeklySchedule defaultWeekday={openWeekday}>
-          <WeeklyScheduleDays
-            aria-label={getMessage(messages, "host.top.schedule_days_aria")}
-          >
+          <WeeklyScheduleDays aria-label={t("host.top.schedule_days_aria")}>
             {days.map((day) => (
               <WeeklyScheduleDay key={day.weekday} weekday={day.weekday}>
                 {/* A weekday is calendar data, so it comes from `Intl` in the

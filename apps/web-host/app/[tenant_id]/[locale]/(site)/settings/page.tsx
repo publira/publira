@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { redirect } from "next/navigation";
@@ -13,8 +12,10 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { requireFormLocale } from "#lib/locale-form";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
@@ -34,8 +35,10 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = parseDeleteAccountForm(messages, formData);
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    parseDeleteAccountForm(submittedLocale, formData),
+  ]);
   if (!parsed.success) {
     const errorPath = await buildSettingsPath(
       submittedLocale,
@@ -65,14 +68,14 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
       locale,
       tenantId,
       "error",
-      getMessage(messages, "host.settings.delete_failed")
+      t("host.settings.delete_failed")
     );
     redirect(errorPath);
   }
 
   await clearPublicSessionCookie();
   const params = new URLSearchParams({
-    message: getMessage(messages, "host.settings.deleted"),
+    message: t("host.settings.deleted"),
     status: "success",
   });
   const loginPath = await tenantLocalePath(tenantId, locale, "/login");
@@ -81,21 +84,21 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
 
 const ProfileSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [me, messages] = await Promise.all([
+  const [me, t] = await Promise.all([
     withPublicSessionReauth(
       locale,
       SETTINGS_RETURN_TO,
       () => getMe(tenantId),
       tenantId
     ),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
   const displayName = me?.name?.trim() ?? "";
 
   return (
     <section className="border border-border bg-card p-6">
       <h2 className="mb-4 text-lg font-semibold">
-        {getMessage(messages, "host.settings.profile_heading")}
+        {t("host.settings.profile_heading")}
       </h2>
       <form action={updateProfileAction} className="space-y-4">
         <LocaleField />
@@ -103,7 +106,7 @@ const ProfileSection = async () => {
 
         <div className="space-y-2">
           <label htmlFor="name" className="text-sm font-medium">
-            {getMessage(messages, "host.settings.name_label")}
+            {t("host.settings.name_label")}
           </label>
           <input
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -112,12 +115,12 @@ const ProfileSection = async () => {
             maxLength={100}
             minLength={1}
             name="name"
-            placeholder={getMessage(messages, "host.settings.name_placeholder")}
+            placeholder={t("host.settings.name_placeholder")}
             required
             type="text"
           />
           <p className="text-xs text-muted-foreground">
-            {getMessage(messages, "host.settings.name_help")}
+            {t("host.settings.name_help")}
           </p>
         </div>
 
@@ -126,7 +129,7 @@ const ProfileSection = async () => {
             className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             type="submit"
           >
-            {getMessage(messages, "host.settings.save")}
+            {t("host.settings.save")}
           </button>
         </div>
       </form>
@@ -142,27 +145,17 @@ const ProfileSectionFallback = () => (
 );
 
 const DeleteSectionCopy = async () => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
     <DeleteAccountModal
       copy={{
-        cancel: getMessage(messages, "host.settings.cancel"),
-        confirmDescription: getMessage(
-          messages,
-          "host.settings.delete_confirm_description"
-        ),
-        confirmTitle: getMessage(
-          messages,
-          "host.settings.delete_confirm_title"
-        ),
-        open: getMessage(messages, "host.settings.delete_open"),
-        passwordLabel: getMessage(
-          messages,
-          "host.settings.current_password_label"
-        ),
-        submit: getMessage(messages, "host.settings.delete_submit"),
+        cancel: t("host.settings.cancel"),
+        confirmDescription: t("host.settings.delete_confirm_description"),
+        confirmTitle: t("host.settings.delete_confirm_title"),
+        open: t("host.settings.delete_open"),
+        passwordLabel: t("host.settings.current_password_label"),
+        submit: t("host.settings.delete_submit"),
       }}
       deleteAction={deleteAccountAction}
     />

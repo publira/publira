@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -18,7 +17,9 @@ import { GenreChips } from "#components/genre-chips";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listPublishedGenres } from "#lib/catalog";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -29,10 +30,9 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return { title: getMessage(messages, "host.genres.list_title") };
+  return { title: t("host.genres.list_title") };
 };
 
 const GenreChipsSkeleton = () => (
@@ -50,12 +50,12 @@ const GenreChipsSkeleton = () => (
  */
 const GenresListDescription = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [siteLabel, messages] = await Promise.all([
+  const [siteLabel, t] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
-  return getMessage(messages, "host.genres.list_description", {
+  return t("host.genres.list_description", {
     site: siteLabel,
   });
 };

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   EmptyState,
@@ -35,7 +34,9 @@ import {
 import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
 import { listPublishedGenres, listPublishedSeries } from "#lib/catalog";
 import type { PublishedGenreItem } from "#lib/catalog";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
@@ -78,11 +79,11 @@ export const generateMetadata = async ({
   guardPlaceholders({ genre_id });
 
   const genreId = parseGenreDetailParams({ genre_id });
-  const [genres, messages] = await Promise.all([
+  const [genres, t] = await Promise.all([
     genreId
       ? listPublishedGenres(tenantId, locale)
       : { ok: true as const, value: [] },
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   // An unavailable genre reads as "not found" for the `<title>` alone; the
@@ -90,7 +91,7 @@ export const generateMetadata = async ({
   const genre = genreId && genres.ok ? findGenre(genres.value, genreId) : null;
 
   if (!genre) {
-    return { title: getMessage(messages, "host.genres.not_found_title") };
+    return { title: t("host.genres.not_found_title") };
   }
 
   return { title: genre.name };
@@ -109,21 +110,18 @@ const GenreDetailSkeleton = () => (
 
 /**
  * The pagination's `<nav>`, and the one component on this screen that resolves
- * the catalog: an `aria-label` cannot be a node. The key stays written out
- * here, beside the `getMessage` that reads it.
+ * the accessor: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the call that reads it.
  */
 const GenreSeriesPaginationNav = async ({
   children,
 }: {
   children: ReactNode;
 }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
-    <ListPagination
-      aria-label={getMessage(messages, "host.genres.series_pagination_aria")}
-    >
+    <ListPagination aria-label={t("host.genres.series_pagination_aria")}>
       {children}
     </ListPagination>
   );

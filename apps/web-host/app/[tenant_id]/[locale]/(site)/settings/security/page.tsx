@@ -1,9 +1,8 @@
-import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { Message } from "#components/message";
 import { getTenantId } from "#lib/tenant-id";
 
 import { changePasswordAction, requestEmailChangeAction } from "./_lib/actions";
@@ -24,8 +23,7 @@ const EMAIL_CHANGE_HEADING_ID = "email-change-heading";
 const PASSWORD_CHANGE_HEADING_ID = "password-change-heading";
 
 const EmailChangeSection = async () => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const messages = await loadHostMessages(locale);
+  const tenantId = await getTenantId();
 
   return (
     <section
@@ -33,7 +31,9 @@ const EmailChangeSection = async () => {
       className="border border-border bg-card p-6"
     >
       <h2 className="mb-4 text-lg font-semibold" id={EMAIL_CHANGE_HEADING_ID}>
-        {getMessage(messages, "host.settings.email_change_heading")}
+        <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+          <Message message="host.settings.email_change_heading" />
+        </Suspense>
       </h2>
       <form action={requestEmailChangeAction} className="space-y-4">
         <LocaleField />
@@ -41,7 +41,9 @@ const EmailChangeSection = async () => {
 
         <div className="space-y-2">
           <label htmlFor="currentEmail" className="text-sm font-medium">
-            {getMessage(messages, "host.settings.email_current_label")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="host.settings.email_current_label" />
+            </Suspense>
           </label>
           <input
             autoComplete="email"
@@ -56,7 +58,9 @@ const EmailChangeSection = async () => {
 
         <div className="space-y-2">
           <label htmlFor="newEmail" className="text-sm font-medium">
-            {getMessage(messages, "host.settings.email_new_label")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="host.settings.email_new_label" />
+            </Suspense>
           </label>
           <input
             autoComplete="email"
@@ -71,7 +75,9 @@ const EmailChangeSection = async () => {
 
         <div className="space-y-2">
           <label htmlFor="currentPassword" className="text-sm font-medium">
-            {getMessage(messages, "host.settings.current_password_label")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+              <Message message="host.settings.current_password_label" />
+            </Suspense>
           </label>
           <input
             autoComplete="current-password"
@@ -83,13 +89,17 @@ const EmailChangeSection = async () => {
             type="password"
           />
           <p className="text-xs text-muted-foreground">
-            {getMessage(messages, "host.settings.password_required_help")}
+            <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+              <Message message="host.settings.password_required_help" />
+            </Suspense>
           </p>
         </div>
 
         <div className="flex justify-end">
           <button className={submitClassName} type="submit">
-            {getMessage(messages, "host.settings.email_change_submit")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="host.settings.email_change_submit" />
+            </Suspense>
           </button>
         </div>
       </form>
@@ -105,8 +115,7 @@ const EmailChangeSectionFallback = () => (
 );
 
 const PasswordChangeSection = async () => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const messages = await loadHostMessages(locale);
+  const tenantId = await getTenantId();
 
   return (
     <section
@@ -117,7 +126,9 @@ const PasswordChangeSection = async () => {
         className="mb-4 text-lg font-semibold"
         id={PASSWORD_CHANGE_HEADING_ID}
       >
-        {getMessage(messages, "host.settings.password_change_heading")}
+        <Suspense fallback={<SkeletonLine className="h-6 w-36" />}>
+          <Message message="host.settings.password_change_heading" />
+        </Suspense>
       </h2>
       <form action={changePasswordAction} className="space-y-4">
         <LocaleField />
@@ -128,7 +139,9 @@ const PasswordChangeSection = async () => {
             htmlFor="passwordChangeCurrent"
             className="text-sm font-medium"
           >
-            {getMessage(messages, "host.settings.current_password_label")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+              <Message message="host.settings.current_password_label" />
+            </Suspense>
           </label>
           <input
             autoComplete="current-password"
@@ -143,7 +156,9 @@ const PasswordChangeSection = async () => {
 
         <div className="space-y-2">
           <label htmlFor="passwordChangeNew" className="text-sm font-medium">
-            {getMessage(messages, "host.settings.password_new_label")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="host.settings.password_new_label" />
+            </Suspense>
           </label>
           <input
             autoComplete="new-password"
@@ -161,7 +176,9 @@ const PasswordChangeSection = async () => {
             htmlFor="passwordChangeConfirm"
             className="text-sm font-medium"
           >
-            {getMessage(messages, "host.settings.password_confirm_label")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="host.settings.password_confirm_label" />
+            </Suspense>
           </label>
           <input
             autoComplete="new-password"
@@ -176,7 +193,9 @@ const PasswordChangeSection = async () => {
 
         <div className="flex justify-end">
           <button className={submitClassName} type="submit">
-            {getMessage(messages, "host.settings.password_change_submit")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="host.settings.password_change_submit" />
+            </Suspense>
           </button>
         </div>
       </form>

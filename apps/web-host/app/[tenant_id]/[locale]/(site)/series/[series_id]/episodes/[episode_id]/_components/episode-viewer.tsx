@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -18,7 +17,8 @@ import type {
   EpisodeNeighborItem,
   EpisodeSeriesSummary,
 } from "#lib/catalog";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getMyReadingPosition } from "#lib/reading-position";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -75,8 +75,8 @@ export const EpisodeViewer = async ({
   }
 
   const locale = await getLocale();
-  const [messages, tenantId, accessToken] = await Promise.all([
-    loadHostMessages(locale),
+  const [t, tenantId, accessToken] = await Promise.all([
+    getMessagesFor(locale),
     getTenantId(),
     resolveAccessToken(),
   ]);
@@ -96,31 +96,22 @@ export const EpisodeViewer = async ({
     <div className={cn(VIEWER_HEIGHT_CLASS, "w-full")}>
       <EpisodeComicViewer
         copy={{
-          enterFullscreen: getMessage(
-            messages,
-            "host.episode.viewer.enter_fullscreen"
-          ),
-          exitFullscreen: getMessage(
-            messages,
-            "host.episode.viewer.exit_fullscreen"
-          ),
-          loading: getMessage(messages, "host.episode.viewer.loading"),
-          navigation: getMessage(messages, "host.episode.viewer.navigation"),
-          nextPage: getMessage(messages, "host.common.next_page"),
-          noPages: getMessage(messages, "host.episode.viewer.no_pages"),
-          pageError: getMessage(messages, "host.episode.viewer.page_error"),
-          pageStatus: getMessage(messages, "host.episode.viewer.page_status"),
-          pageStatusRange: getMessage(
-            messages,
-            "host.episode.viewer.page_status_range"
-          ),
-          previousPage: getMessage(messages, "host.common.previous_page"),
-          progress: getMessage(messages, "host.episode.viewer.progress"),
-          reload: getMessage(messages, "host.episode.viewer.reload"),
+          enterFullscreen: t("host.episode.viewer.enter_fullscreen"),
+          exitFullscreen: t("host.episode.viewer.exit_fullscreen"),
+          loading: t("host.episode.viewer.loading"),
+          navigation: t("host.episode.viewer.navigation"),
+          nextPage: t("host.common.next_page"),
+          noPages: t("host.episode.viewer.no_pages"),
+          pageError: t("host.episode.viewer.page_error"),
+          pageStatus: t("host.episode.viewer.page_status"),
+          pageStatusRange: t("host.episode.viewer.page_status_range"),
+          previousPage: t("host.common.previous_page"),
+          progress: t("host.episode.viewer.progress"),
+          reload: t("host.episode.viewer.reload"),
         }}
         initialPageIndex={resumePageIndex(savedPageIndex, images.length)}
         pages={toViewerPages(episode.title, images, (values) =>
-          getMessage(messages, "host.episode.viewer.page_title", values)
+          t("host.episode.viewer.page_title", values)
         )}
       >
         <EpisodeReadRecorder episode={episode} series={series} />
@@ -129,9 +120,9 @@ export const EpisodeViewer = async ({
         ) : null}
         <EpisodeNeighborLinks
           copy={{
-            label: getMessage(messages, "host.episode.navigation.label"),
-            next: getMessage(messages, "host.episode.navigation.next"),
-            previous: getMessage(messages, "host.episode.navigation.previous"),
+            label: t("host.episode.navigation.label"),
+            next: t("host.episode.navigation.next"),
+            previous: t("host.episode.navigation.previous"),
           }}
           nextHref={nextHref}
           previousHref={previousHref}
@@ -160,11 +151,8 @@ export const EpisodeViewer = async ({
         </div>
         <EpisodeNeighborKeyNavigation
           copy={{
-            nextHint: getMessage(messages, "host.episode.navigation.next_hint"),
-            previousHint: getMessage(
-              messages,
-              "host.episode.navigation.previous_hint"
-            ),
+            nextHint: t("host.episode.navigation.next_hint"),
+            previousHint: t("host.episode.navigation.previous_hint"),
           }}
           nextHref={nextHref}
           previousHref={previousHref}

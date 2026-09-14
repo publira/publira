@@ -143,7 +143,8 @@ const ConsoleSidebarNavigationCurrentLink = ({
   href: string;
 }) => {
   const hrefs = useContext(ConsoleNavigationHrefsContext);
-  const current = isCurrentPath(toConsolePathname(usePathname()), href, hrefs);
+  const pathname = usePathname();
+  const current = isCurrentPath(toConsolePathname(pathname), href, hrefs);
 
   return (
     <ConsoleSidebarNavigationLink current={current} href={href}>

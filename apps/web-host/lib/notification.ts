@@ -1,3 +1,11 @@
+/**
+ * The signed-in member's notification inbox.
+ *
+ * `locale` reaches every read here as an argument rather than being resolved
+ * inside the cached scope, so both the row copy and the failure wording belong
+ * to the cache key instead of to whichever request filled the entry.
+ */
+
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   Code,
@@ -7,7 +15,6 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { NotificationItem as NotificationItemMessage } from "@publira/api-client/public/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -22,27 +29,11 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { applyCacheTag, tenantNotificationsTag } from "./cache-tags";
-import { loadHostMessages } from "./messages";
-import type { HostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 import {
   notificationDisplay,
   parseNotificationPayload,
 } from "./notification-copy";
-
-/**
- * `locale` reaches every read below as an argument rather than being resolved
- * inside the cached scope, so both the row copy and the failure wording belong
- * to the cache key instead of to whichever request filled the entry.
- */
-const notificationMessage = async (
-  locale: Locale,
-  key:
-    | "errors.rpc.unauthenticated"
-    | "host.notifications.count_failed"
-    | "host.notifications.list_failed"
-    | "host.notifications.mark_all_read_failed"
-    | "host.notifications.mark_read_failed"
-): Promise<string> => getMessage(await loadHostMessages(locale), key);
 
 const defaultPageSize = 20;
 
@@ -94,14 +85,14 @@ type RawNotification = Pick<
   "createdAt" | "id" | "isRead" | "notificationType" | "payload"
 >;
 
-const mapNotification = (
+const mapNotification = async (
   item: RawNotification,
-  messages: HostMessages
-): NotificationItem => {
-  const display = notificationDisplay(
+  locale: Locale
+): Promise<NotificationItem> => {
+  const display = await notificationDisplay(
     item.notificationType,
     parseNotificationPayload(item.payload),
-    messages
+    locale
   );
 
   return {
@@ -144,14 +135,14 @@ const readNotificationList = async (
   applyCacheTag(notificationsCacheTag(tenantId));
 
   const { locale } = input;
-  const [messages, sessionId] = await Promise.all([
-    loadHostMessages(locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
       ...emptyListPage,
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       unexpected: false,
@@ -168,11 +159,15 @@ const readNotificationList = async (
       buildSessionHeaders(sessionId)
     );
 
+    const notifications = await Promise.all(
+      (response.notifications ?? []).map((item) =>
+        mapNotification(item, locale)
+      )
+    );
+
     return {
       nextToken: response.nextToken ?? "",
-      notifications: (response.notifications ?? []).map((item) =>
-        mapNotification(item, messages)
-      ),
+      notifications,
       ok: true,
       previousToken: response.previousToken ?? "",
       unexpected: false,
@@ -183,7 +178,7 @@ const readNotificationList = async (
       ...emptyListPage,
       message: mapErrorMessage(
         error,
-        getMessage(messages, "host.notifications.list_failed"),
+        t("host.notifications.list_failed"),
         locale
       ),
       ok: false,
@@ -200,13 +195,13 @@ const readUnreadNotificationCount = async (
   "use cache: private";
   applyCacheTag(notificationsCacheTag(tenantId));
 
-  const [messages, sessionId] = await Promise.all([
-    loadHostMessages(locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       unexpected: false,
       unreadCount: 0,
@@ -229,7 +224,7 @@ const readUnreadNotificationCount = async (
     return {
       message: mapErrorMessage(
         error,
-        getMessage(messages, "host.notifications.count_failed"),
+        t("host.notifications.count_failed"),
         locale
       ),
       ok: false,
@@ -249,15 +244,13 @@ export const listNotifications = async (
   tenantId: string,
   input: ListNotificationsInput
 ): Promise<ListNotificationsResult> => {
-  const { unexpected, ...result } = await readNotificationList(tenantId, input);
+  const [{ unexpected, ...result }, t] = await Promise.all([
+    readNotificationList(tenantId, input),
+    getMessagesFor(input.locale),
+  ]);
   throwIfUnexpected(
     unexpected,
-    result.ok
-      ? await notificationMessage(
-          input.locale,
-          "host.notifications.list_failed"
-        )
-      : result.message
+    result.ok ? t("host.notifications.list_failed") : result.message
   );
   return result;
 };
@@ -271,15 +264,13 @@ export const countUnreadNotifications = async (
   tenantId: string,
   locale: Locale
 ): Promise<CountUnreadNotificationsResult> => {
-  const { unexpected, ...result } = await readUnreadNotificationCount(
-    tenantId,
-    locale
-  );
+  const [{ unexpected, ...result }, t] = await Promise.all([
+    readUnreadNotificationCount(tenantId, locale),
+    getMessagesFor(locale),
+  ]);
   throwIfUnexpected(
     unexpected,
-    result.ok
-      ? await notificationMessage(locale, "host.notifications.count_failed")
-      : result.message
+    result.ok ? t("host.notifications.count_failed") : result.message
   );
   return result;
 };
@@ -289,13 +280,13 @@ export const markNotificationAsRead = async (input: {
   notificationId: string;
   tenantId: string;
 }): Promise<{ message: string; ok: false } | { ok: true }> => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: await notificationMessage(
-        input.locale,
-        "errors.rpc.unauthenticated"
-      ),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -317,10 +308,7 @@ export const markNotificationAsRead = async (input: {
     return {
       message: mapErrorMessage(
         error,
-        await notificationMessage(
-          input.locale,
-          "host.notifications.mark_read_failed"
-        ),
+        t("host.notifications.mark_read_failed"),
         input.locale
       ),
       ok: false,
@@ -334,10 +322,13 @@ export const markAllNotificationsAsRead = async (
 ): Promise<
   { message: string; ok: false } | { markedCount: number; ok: true }
 > => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: await notificationMessage(locale, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -359,10 +350,7 @@ export const markAllNotificationsAsRead = async (
     return {
       message: mapErrorMessage(
         error,
-        await notificationMessage(
-          locale,
-          "host.notifications.mark_all_read_failed"
-        ),
+        t("host.notifications.mark_all_read_failed"),
         locale
       ),
       ok: false,

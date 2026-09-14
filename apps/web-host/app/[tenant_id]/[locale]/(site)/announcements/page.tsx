@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -16,7 +15,8 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listMyAnnouncements } from "#lib/announcements";
 import { redirectToLogin } from "#lib/auth-session";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -33,10 +33,9 @@ import {
 const ANNOUNCEMENTS_PAGE_SIZE = 20;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return { title: getMessage(messages, "host.announcements.title") };
+  return { title: t("host.announcements.title") };
 };
 
 /*
@@ -58,12 +57,11 @@ const AnnouncementsPagination = async ({
   nextToken: string;
   previousToken: string;
 }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
     <nav
-      aria-label={getMessage(messages, "host.announcements.pagination_aria")}
+      aria-label={t("host.announcements.pagination_aria")}
       className="mt-6 flex items-center justify-center gap-6"
     >
       {previousToken ? (
@@ -71,11 +69,11 @@ const AnnouncementsPagination = async ({
           className="text-sm text-primary underline-offset-4 hover:underline"
           href={announcementsListHref(previousToken)}
         >
-          {getMessage(messages, "host.common.previous_page")}
+          {t("host.common.previous_page")}
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.previous_page")}
+          {t("host.common.previous_page")}
         </span>
       )}
 
@@ -84,18 +82,18 @@ const AnnouncementsPagination = async ({
           className="text-sm text-primary underline-offset-4 hover:underline"
           href={announcementsListHref(nextToken)}
         >
-          {getMessage(messages, "host.common.next_page")}
+          {t("host.common.next_page")}
         </LocaleLink>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "host.common.next_page")}
+          {t("host.common.next_page")}
         </span>
       )}
     </nav>
   );
 };
 
-const AnnouncementsEmptyState = async ({
+const AnnouncementsEmptyState = ({
   nextToken,
   previousToken,
   token,
@@ -104,13 +102,12 @@ const AnnouncementsEmptyState = async ({
   previousToken: string;
   token: string;
 }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-
   if (!token) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
-        {getMessage(messages, "host.announcements.list_empty")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+          <Message message="host.announcements.list_empty" />
+        </Suspense>
       </div>
     );
   }
@@ -120,7 +117,11 @@ const AnnouncementsEmptyState = async ({
   // the only way out is the first page (`proto/README.md`).
   return (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
-      <p>{getMessage(messages, "host.announcements.page_empty")}</p>
+      <p>
+        <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
+          <Message message="host.announcements.page_empty" />
+        </Suspense>
+      </p>
       {previousToken || nextToken ? (
         <AnnouncementsPagination
           nextToken={nextToken}
@@ -131,7 +132,9 @@ const AnnouncementsEmptyState = async ({
           className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
           href={announcementsListHref("")}
         >
-          {getMessage(messages, "host.announcements.first_page")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="host.announcements.first_page" />
+          </Suspense>
         </LocaleLink>
       )}
     </div>
@@ -150,14 +153,13 @@ const AnnouncementsSection = async ({
   ]);
   const { token } = parseAnnouncementsListSearchParams(resolvedSearchParams);
 
-  const [result, timeZone, messages] = await Promise.all([
+  const [result, timeZone] = await Promise.all([
     listMyAnnouncements(tenantId, undefined, {
       limit: ANNOUNCEMENTS_PAGE_SIZE,
       locale,
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
-    loadHostMessages(locale),
   ]);
   if (!result.ok && result.requiresSignIn) {
     // Come back to the page the reader was actually on, not just the first one.
@@ -176,7 +178,9 @@ const AnnouncementsSection = async ({
     <section className="border border-border bg-card p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">
-          {getMessage(messages, "host.announcements.list_heading")}
+          <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
+            <Message message="host.announcements.list_heading" />
+          </Suspense>
         </h2>
         <div className="flex items-center gap-2">
           <span
@@ -186,9 +190,12 @@ const AnnouncementsSection = async ({
                 : "rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
             }
           >
-            {getMessage(messages, "host.announcements.unread_on_page", {
-              count: String(unreadCount),
-            })}
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message
+                message="host.announcements.unread_on_page"
+                values={{ count: String(unreadCount) }}
+              />
+            </Suspense>
           </span>
           {result.announcements.length > 0 ? (
             // Offered on every non-empty page: the unread count above covers
@@ -201,7 +208,9 @@ const AnnouncementsSection = async ({
                 className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
                 type="submit"
               >
-                {getMessage(messages, "host.common.mark_all_read")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="host.common.mark_all_read" />
+                </Suspense>
               </button>
             </form>
           ) : null}
@@ -248,7 +257,9 @@ const AnnouncementsSection = async ({
                     className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
                     href={announcement.linkUrl}
                   >
-                    {getMessage(messages, "host.announcements.open_link")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                      <Message message="host.announcements.open_link" />
+                    </Suspense>
                   </LocaleLink>
                 );
               }
@@ -266,10 +277,9 @@ const AnnouncementsSection = async ({
                     className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
                     type="submit"
                   >
-                    {getMessage(
-                      messages,
-                      "host.announcements.open_and_mark_read"
-                    )}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="host.announcements.open_and_mark_read" />
+                    </Suspense>
                   </button>
                 </form>
               );
@@ -290,12 +300,13 @@ const AnnouncementsSection = async ({
                           : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
                       }
                     >
-                      {getMessage(
-                        messages,
-                        announcement.isRead
-                          ? "host.common.read"
-                          : "host.common.unread"
-                      )}
+                      <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
+                        {announcement.isRead ? (
+                          <Message message="host.common.read" />
+                        ) : (
+                          <Message message="host.common.unread" />
+                        )}
+                      </Suspense>
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatDateTime(announcement.createdAt, {
@@ -323,7 +334,11 @@ const AnnouncementsSection = async ({
                         className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
                         type="submit"
                       >
-                        {getMessage(messages, "host.common.mark_read")}
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-16" />}
+                        >
+                          <Message message="host.common.mark_read" />
+                        </Suspense>
                       </button>
                     </form>
                   )}

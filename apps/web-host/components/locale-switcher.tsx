@@ -1,6 +1,6 @@
 "use client";
 
-import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { getLocaleLabel, getLocales } from "@publira/i18n";
 import { LanguageIcon } from "@publira/icons/language-icon";
 import { SiteLayoutMobileNavigationLink } from "@publira/layouts";
 import {
@@ -52,10 +52,11 @@ export const LocaleSwitcherSkeleton = () => (
 export const LocaleSwitcher = () => {
   const currentLocale = useLocale();
   const defaultLocale = useTenantDefaultLocale();
-  const messages = useHostMessages();
-  const barePathname = toBarePathname(usePathname());
+  const t = useHostMessages();
+  const pathname = usePathname();
+  const barePathname = toBarePathname(pathname);
 
-  const label = getMessage(messages, "host.nav.locale_switcher");
+  const label = t("host.nav.locale_switcher");
 
   return (
     <Popover>
@@ -115,7 +116,8 @@ export const LocaleSwitcherLinksSkeleton = () => (
 export const LocaleSwitcherLinks = () => {
   const currentLocale = useLocale();
   const defaultLocale = useTenantDefaultLocale();
-  const barePathname = toBarePathname(usePathname());
+  const pathname = usePathname();
+  const barePathname = toBarePathname(pathname);
 
   return getLocales().map((locale) => (
     <SiteLayoutMobileNavigationLink

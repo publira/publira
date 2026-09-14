@@ -30,7 +30,8 @@ export const SettingsTabs = ({ labels }: { labels: Record<TabId, string> }) => {
   // locale come off first: a prerendered shell reports the rewritten pathname
   // while the browser reports the public one, and only the bare form is the
   // same on both sides of hydration.
-  const pathname = toBarePathname(usePathname());
+  const currentPathname = usePathname();
+  const pathname = toBarePathname(currentPathname);
 
   return (
     <nav className="flex gap-1 overflow-x-auto">

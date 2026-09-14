@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -15,7 +14,8 @@ import {
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import {
   CreatorResults,
@@ -47,14 +47,14 @@ export const generateMetadata = async ({
     getLocale(),
   ]);
   const { query } = parseSearchPageSearchParams(resolvedSearchParams);
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
 
   if (!query) {
-    return { title: getMessage(messages, "host.search.title") };
+    return { title: t("host.search.title") };
   }
 
   return {
-    title: getMessage(messages, "host.search.results_title", { query }),
+    title: t("host.search.results_title", { query }),
   };
 };
 

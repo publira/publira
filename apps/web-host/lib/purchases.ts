@@ -5,7 +5,6 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { MyPurchase } from "@publira/api-client/public/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -14,17 +13,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
-import { loadHostMessages } from "./messages";
-
-/**
- * `locale` reaches the read as an argument rather than being resolved inside
- * the cached scope, so the failure wording belongs to the cache key instead of
- * to whichever request filled the entry.
- */
-const purchaseMessage = async (
-  locale: Locale,
-  key: "errors.rpc.unauthenticated" | "host.library.list_failed"
-): Promise<string> => getMessage(await loadHostMessages(locale), key);
+import { getMessagesFor } from "./messages";
 
 const defaultPurchasePageSize = 20;
 
@@ -113,14 +102,14 @@ const readPurchaseList = async (
   "use cache: private";
 
   const { locale } = input;
-  const [messages, sessionId] = await Promise.all([
-    loadHostMessages(locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
       ...emptyPurchasePage,
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       unexpected: false,
@@ -147,11 +136,9 @@ const readPurchaseList = async (
     dropFailedCacheEntry();
     return {
       ...emptyPurchasePage,
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "host.library.list_failed"),
-        { locale }
-      ),
+      message: rpcErrorMessage(error, t("host.library.list_failed"), {
+        locale,
+      }),
       ok: false,
       requiresSignIn: isRpcError(error, Code.Unauthenticated),
       unexpected: rpcErrorDisposition(error) === "unexpected",
@@ -165,11 +152,9 @@ export const listMyPurchases = async (
 ): Promise<ListPurchasesResult> => {
   const { unexpected, ...result } = await readPurchaseList(tenantId, input);
   if (unexpected) {
-    throw new Error(
-      result.ok
-        ? await purchaseMessage(input.locale, "host.library.list_failed")
-        : result.message
-    );
+    const t = await getMessagesFor(input.locale);
+
+    throw new Error(result.ok ? t("host.library.list_failed") : result.message);
   }
   return result;
 };

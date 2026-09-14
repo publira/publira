@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenBody,
@@ -22,7 +21,9 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { TenantIdField } from "#components/tenant-id-field";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -30,10 +31,9 @@ import { confirmPasswordAction } from "./_lib/actions";
 import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return { title: getMessage(messages, "host.auth.confirm_password.title") };
+  return { title: t("host.auth.confirm_password.title") };
 };
 
 /**
@@ -188,17 +188,17 @@ const ConfirmPasswordFormContent = async ({
 /** The tenant's own name and tagline, which only the site read can supply. */
 const ConfirmPasswordHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [info, siteLabel, messages] = await Promise.all([
+  const [info, siteLabel, t] = await Promise.all([
     getTenantSiteInfo(tenantId),
     getTenantSiteLabel(tenantId, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
   const siteTagline = info?.siteTagline?.trim();
 
   return (
     <>
       <TenantDocumentTitle
-        pageTitle={getMessage(messages, "host.auth.confirm_password.title")}
+        pageTitle={t("host.auth.confirm_password.title")}
         siteLabel={siteLabel}
       />
       <AuthScreenTitle>{siteLabel}</AuthScreenTitle>

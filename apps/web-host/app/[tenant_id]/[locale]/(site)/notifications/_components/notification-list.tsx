@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -11,7 +10,8 @@ import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { notificationsListHref } from "../_lib/search-params";
 import type { NotificationItem } from "../notification-types";
@@ -44,7 +44,7 @@ const NotificationTitle = ({ item }: { item: NotificationItem }) => {
 };
 
 /**
- * The whole list resolves the catalog once, and the pieces that repeat — the
+ * The whole list resolves the accessor once, and the pieces that repeat — the
  * pager above all — are JSX values in this scope rather than components taking
  * a `messages` prop. The page renders this inside the section's own boundary,
  * so nothing here reaches the static shell.
@@ -60,15 +60,15 @@ export const NotificationList = async ({
   unreadCount,
 }: NotificationListProps) => {
   const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
   const hasUnread =
     unreadCount > 0 || notifications.some((item) => !item.isRead);
-  const previousLabel = getMessage(messages, "host.common.previous_page");
-  const nextLabel = getMessage(messages, "host.common.next_page");
+  const previousLabel = t("host.common.previous_page");
+  const nextLabel = t("host.common.next_page");
 
   const pagination = (
     <nav
-      aria-label={getMessage(messages, "host.notifications.pagination_aria")}
+      aria-label={t("host.notifications.pagination_aria")}
       className="mt-6 flex items-center justify-center gap-6"
     >
       {previousToken ? (
@@ -100,7 +100,7 @@ export const NotificationList = async ({
   // the only way out is the first page (`proto/README.md`).
   const emptyState = token ? (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
-      <p>{getMessage(messages, "host.notifications.page_empty")}</p>
+      <p>{t("host.notifications.page_empty")}</p>
       {previousToken || nextToken ? (
         pagination
       ) : (
@@ -108,18 +108,16 @@ export const NotificationList = async ({
           className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
           href={notificationsListHref("")}
         >
-          {getMessage(messages, "host.notifications.first_page")}
+          {t("host.notifications.first_page")}
         </LocaleLink>
       )}
     </div>
   ) : (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
       <p className="font-medium text-foreground">
-        {getMessage(messages, "host.notifications.empty_title")}
+        {t("host.notifications.empty_title")}
       </p>
-      <p className="mt-1">
-        {getMessage(messages, "host.notifications.empty_description")}
-      </p>
+      <p className="mt-1">{t("host.notifications.empty_description")}</p>
     </div>
   );
 
@@ -127,13 +125,13 @@ export const NotificationList = async ({
     <section className="border border-border bg-card p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">
-          {getMessage(messages, "host.notifications.list_heading")}
+          {t("host.notifications.list_heading")}
         </h2>
         {hasUnread && !listErrorMessage ? (
           <MarkAllNotificationsAsReadButton
             copy={{
-              pending: getMessage(messages, "host.common.updating"),
-              submit: getMessage(messages, "host.common.mark_all_read"),
+              pending: t("host.common.updating"),
+              submit: t("host.common.mark_all_read"),
             }}
             tenantId={tenantId}
           />
@@ -174,10 +172,7 @@ export const NotificationList = async ({
                         : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
                     }
                   >
-                    {getMessage(
-                      messages,
-                      item.isRead ? "host.common.read" : "host.common.unread"
-                    )}
+                    {t(item.isRead ? "host.common.read" : "host.common.unread")}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {formatDateTime(item.createdAt, {
@@ -195,13 +190,11 @@ export const NotificationList = async ({
                 <div className="mt-3">
                   <MarkNotificationAsReadButton
                     copy={{
-                      ariaLabel: getMessage(
-                        messages,
-                        "host.notifications.mark_read_aria",
-                        { title: item.title }
-                      ),
-                      pending: getMessage(messages, "host.common.updating"),
-                      submit: getMessage(messages, "host.common.mark_read"),
+                      ariaLabel: t("host.notifications.mark_read_aria", {
+                        title: item.title,
+                      }),
+                      pending: t("host.common.updating"),
+                      submit: t("host.common.mark_read"),
                     }}
                     notificationId={item.id}
                     tenantId={tenantId}

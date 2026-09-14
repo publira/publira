@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -18,7 +17,8 @@ import { Suspense } from "react";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { redirectToLogin } from "#lib/auth-session";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { listMyEpisodeReads } from "#lib/reading-history";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -45,13 +45,13 @@ const HISTORY_HEADING_ID = "reading-history-heading";
  */
 export const ReadingHistorySection = async ({ token }: { token: string }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [result, messages, timeZone] = await Promise.all([
+  const [result, t, timeZone] = await Promise.all([
     listMyEpisodeReads(tenantId, {
       limit: defaultReadingHistoryPageSize,
       locale,
       token,
     }),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -65,7 +65,7 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
       className="border border-border bg-card p-6"
     >
       <h2 className="mb-4 text-lg font-semibold" id={HISTORY_HEADING_ID}>
-        {getMessage(messages, "host.my.history_heading")}
+        {t("host.my.history_heading")}
       </h2>
       {result.ok ? null : (
         <SectionError>
@@ -83,10 +83,10 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
         <EmptyState>
           <EmptyStateHeading>
             <EmptyStateTitle>
-              {getMessage(messages, "host.my.history_empty_title")}
+              {t("host.my.history_empty_title")}
             </EmptyStateTitle>
             <EmptyStateDescription>
-              {getMessage(messages, "host.my.history_empty_description")}
+              {t("host.my.history_empty_description")}
             </EmptyStateDescription>
           </EmptyStateHeading>
         </EmptyState>
@@ -110,7 +110,7 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
                 </LocaleLink>
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                {getMessage(messages, "host.my.history_finished_at")}{" "}
+                {t("host.my.history_finished_at")}{" "}
                 <span className="text-foreground">
                   {formatDateTime(read.readAt, {
                     fallback: "-",
@@ -125,7 +125,7 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
       ) : null}
       {result.ok && result.reads.length > 0 ? (
         <nav
-          aria-label={getMessage(messages, "host.my.history_pagination_aria")}
+          aria-label={t("host.my.history_pagination_aria")}
           className="mt-6 flex items-center justify-center gap-6"
         >
           {result.previousToken ? (
@@ -133,11 +133,11 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
               className="text-sm text-primary underline-offset-4 hover:underline"
               href={myPageHref(result.previousToken)}
             >
-              {getMessage(messages, "host.common.previous_page")}
+              {t("host.common.previous_page")}
             </LocaleLink>
           ) : (
             <span className="text-sm text-muted-foreground">
-              {getMessage(messages, "host.common.previous_page")}
+              {t("host.common.previous_page")}
             </span>
           )}
           {result.nextToken ? (
@@ -145,11 +145,11 @@ export const ReadingHistorySection = async ({ token }: { token: string }) => {
               className="text-sm text-primary underline-offset-4 hover:underline"
               href={myPageHref(result.nextToken)}
             >
-              {getMessage(messages, "host.common.next_page")}
+              {t("host.common.next_page")}
             </LocaleLink>
           ) : (
             <span className="text-sm text-muted-foreground">
-              {getMessage(messages, "host.common.next_page")}
+              {t("host.common.next_page")}
             </span>
           )}
         </nav>

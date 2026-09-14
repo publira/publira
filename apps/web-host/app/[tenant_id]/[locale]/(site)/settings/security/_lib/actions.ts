@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   toFormErrorMessage,
@@ -23,8 +22,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
-import { loadHostMessages } from "#lib/messages";
-import type { HostMessages } from "#lib/messages";
+import { getMessagesFor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const SECURITY_SETTINGS_RETURN_TO = "/settings/security";
@@ -44,14 +42,24 @@ const buildSettingsPath = async (
   return `${path}?${params.toString()}`;
 };
 
-const requestEmailChangeFormSchema = (messages: HostMessages) =>
-  z.object({
-    currentEmail: emailFormSchema(messages),
-    currentPassword: passwordFormSchema(messages),
+const requestEmailChangeFormSchema = async (locale: Locale) => {
+  const [currentEmail, currentPassword, newEmail, tenantId] = await Promise.all(
+    [
+      emailFormSchema(locale),
+      passwordFormSchema(locale),
+      emailFormSchema(locale),
+      tenantIdFormSchema(locale),
+    ]
+  );
+
+  return z.object({
+    currentEmail,
+    currentPassword,
     locale: localeFormSchema,
-    newEmail: emailFormSchema(messages),
-    tenantId: tenantIdFormSchema(messages),
+    newEmail,
+    tenantId,
   });
+};
 
 export const requestEmailChangeAction = async (
   formData: FormData
@@ -60,8 +68,11 @@ export const requestEmailChangeAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = requestEmailChangeFormSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    requestEmailChangeFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currentEmail: "value",
       currentPassword: "value",
@@ -110,7 +121,7 @@ export const requestEmailChangeAction = async (
       locale,
       tenantId,
       "error",
-      getMessage(messages, "host.settings.email_change_failed")
+      t("host.settings.email_change_failed")
     );
     redirect(errorPath);
   }
@@ -119,31 +130,43 @@ export const requestEmailChangeAction = async (
     locale,
     tenantId,
     "success",
-    getMessage(messages, "host.settings.email_change_requested")
+    t("host.settings.email_change_requested")
   );
   redirect(successPath);
 };
 
-const changePasswordFormSchema = (messages: HostMessages) =>
-  z
-    .object({
-      confirmPassword: passwordFormSchema(messages),
-      currentPassword: passwordFormSchema(messages),
-      locale: localeFormSchema,
-      newPassword: passwordFormSchema(messages),
-      tenantId: tenantIdFormSchema(messages),
-    })
-    .refine((value) => value.newPassword === value.confirmPassword, {
-      error: getMessage(messages, "host.auth.errors.password_mismatch"),
-      path: ["confirmPassword"],
-    })
-    // The API refuses this too, on the same grounds. Checking it here is what
-    // gives the reader the reason: whatever the RPC rejects comes back as the
-    // one message this form has for a refused submission.
-    .refine((value) => value.newPassword !== value.currentPassword, {
-      error: getMessage(messages, "host.settings.password_unchanged"),
-      path: ["newPassword"],
-    });
+const changePasswordFormSchema = async (locale: Locale) => {
+  const [t, confirmPassword, currentPassword, newPassword, tenantId] =
+    await Promise.all([
+      getMessagesFor(locale),
+      passwordFormSchema(locale),
+      passwordFormSchema(locale),
+      passwordFormSchema(locale),
+      tenantIdFormSchema(locale),
+    ]);
+
+  return (
+    z
+      .object({
+        confirmPassword,
+        currentPassword,
+        locale: localeFormSchema,
+        newPassword,
+        tenantId,
+      })
+      .refine((value) => value.newPassword === value.confirmPassword, {
+        error: t("host.auth.errors.password_mismatch"),
+        path: ["confirmPassword"],
+      })
+      // The API refuses this too, on the same grounds. Checking it here is what
+      // gives the reader the reason: whatever the RPC rejects comes back as the
+      // one message this form has for a refused submission.
+      .refine((value) => value.newPassword !== value.currentPassword, {
+        error: t("host.settings.password_unchanged"),
+        path: ["newPassword"],
+      })
+  );
+};
 
 export const changePasswordAction = async (
   formData: FormData
@@ -152,8 +175,11 @@ export const changePasswordAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = changePasswordFormSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    changePasswordFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
       currentPassword: "value",
@@ -195,7 +221,7 @@ export const changePasswordAction = async (
       locale,
       tenantId,
       "error",
-      getMessage(messages, "host.settings.password_change_failed")
+      t("host.settings.password_change_failed")
     );
     redirect(errorPath);
   }
@@ -209,7 +235,7 @@ export const changePasswordAction = async (
     locale,
     tenantId,
     "success",
-    getMessage(messages, "host.settings.password_changed")
+    t("host.settings.password_changed")
   );
   redirect(successPath);
 };

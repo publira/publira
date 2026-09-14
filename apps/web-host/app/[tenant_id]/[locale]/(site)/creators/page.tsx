@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -26,7 +25,9 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listPublishedCreators } from "#lib/creators";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -44,10 +45,9 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return { title: getMessage(messages, "host.creators.list_title") };
+  return { title: t("host.creators.list_title") };
 };
 
 const CreatorRowsSkeleton = () => (
@@ -71,29 +71,26 @@ const CreatorRowsSkeleton = () => (
  */
 const CreatorsListDescription = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [siteLabel, messages] = await Promise.all([
+  const [siteLabel, t] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
-  return getMessage(messages, "host.creators.list_description", {
+  return t("host.creators.list_description", {
     site: siteLabel,
   });
 };
 
 /**
  * The pagination's `<nav>`, and the one component on this screen that resolves
- * the catalog: an `aria-label` cannot be a node. The key stays written out
- * here, beside the `getMessage` that reads it.
+ * the accessor: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the call that reads it.
  */
 const CreatorsPaginationNav = async ({ children }: { children: ReactNode }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
-    <ListPagination
-      aria-label={getMessage(messages, "host.creators.pagination_aria")}
-    >
+    <ListPagination aria-label={t("host.creators.pagination_aria")}>
       {children}
     </ListPagination>
   );

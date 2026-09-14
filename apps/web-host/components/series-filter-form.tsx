@@ -1,10 +1,10 @@
-import { getMessage } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { cn } from "@publira/utils";
 import Form from "next/form";
 
 import type { PublishedGenreItem } from "#lib/catalog";
-import { getLocale, loadHostMessages, localePath } from "#lib/locale";
+import { getLocale, localePath } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { seriesListQueryHref } from "#lib/series-filters";
 import type { SeriesListQuery } from "#lib/series-filters";
 
@@ -33,7 +33,7 @@ export const SeriesFilterFormSkeleton = () => (
  *
  * Every option label, every `<label>`, and the form's own accessible name is an
  * attribute or a text node of a control that has to submit as one unit, so the
- * whole row resolves the catalog at once behind the `<Suspense>` whose fallback
+ * whole row resolves the accessor at once behind the `<Suspense>` whose fallback
  * is {@link SeriesFilterFormSkeleton} rather than streaming string by string.
  *
  * The controls are native `<select>` and `<input>` elements: this row is the
@@ -61,15 +61,15 @@ export const SeriesFilterForm = async ({
   query: SeriesListQuery;
 }) => {
   const locale = await getLocale();
-  const [messages, action] = await Promise.all([
-    loadHostMessages(locale),
+  const [t, action] = await Promise.all([
+    getMessagesFor(locale),
     localePath(basePath),
   ]);
 
   return (
     <Form
       action={action}
-      aria-label={getMessage(messages, "host.series.filter_aria")}
+      aria-label={t("host.series.filter_aria")}
       className="grid gap-4 rounded-surface border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4"
       // The controls are uncontrolled, so a navigation that changes the query
       // has to bring new elements with it rather than new default values.
@@ -78,7 +78,7 @@ export const SeriesFilterForm = async ({
       {genres.length > 0 && (
         <div className="grid gap-1.5">
           <label className={CONTROL_LABEL} htmlFor="series-filter-genre">
-            {getMessage(messages, "host.series.filter_genre")}
+            {t("host.series.filter_genre")}
           </label>
           <select
             className={CONTROL}
@@ -86,9 +86,7 @@ export const SeriesFilterForm = async ({
             id="series-filter-genre"
             name="genre"
           >
-            <option value="">
-              {getMessage(messages, "host.series.filter_genre_all")}
-            </option>
+            <option value="">{t("host.series.filter_genre_all")}</option>
             {genres.map((genre) => (
               <option key={genre.publicId} value={genre.publicId}>
                 {genre.name}
@@ -100,7 +98,7 @@ export const SeriesFilterForm = async ({
 
       <div className="grid gap-1.5">
         <label className={CONTROL_LABEL} htmlFor="series-filter-order">
-          {getMessage(messages, "host.series.filter_order")}
+          {t("host.series.filter_order")}
         </label>
         <select
           className={CONTROL}
@@ -108,21 +106,15 @@ export const SeriesFilterForm = async ({
           id="series-filter-order"
           name="order"
         >
-          <option value="newest">
-            {getMessage(messages, "host.series.order_newest")}
-          </option>
-          <option value="updated">
-            {getMessage(messages, "host.series.order_updated")}
-          </option>
-          <option value="title">
-            {getMessage(messages, "host.series.order_title")}
-          </option>
+          <option value="newest">{t("host.series.order_newest")}</option>
+          <option value="updated">{t("host.series.order_updated")}</option>
+          <option value="title">{t("host.series.order_title")}</option>
         </select>
       </div>
 
       <div className="grid gap-1.5">
         <label className={CONTROL_LABEL} htmlFor="series-filter-status">
-          {getMessage(messages, "host.series.filter_status")}
+          {t("host.series.filter_status")}
         </label>
         <select
           className={CONTROL}
@@ -130,18 +122,10 @@ export const SeriesFilterForm = async ({
           id="series-filter-status"
           name="status"
         >
-          <option value="">
-            {getMessage(messages, "host.series.filter_status_all")}
-          </option>
-          <option value="ongoing">
-            {getMessage(messages, "host.series.status_ongoing")}
-          </option>
-          <option value="completed">
-            {getMessage(messages, "host.series.status_completed")}
-          </option>
-          <option value="hiatus">
-            {getMessage(messages, "host.series.status_hiatus")}
-          </option>
+          <option value="">{t("host.series.filter_status_all")}</option>
+          <option value="ongoing">{t("host.series.status_ongoing")}</option>
+          <option value="completed">{t("host.series.status_completed")}</option>
+          <option value="hiatus">{t("host.series.status_hiatus")}</option>
         </select>
       </div>
 
@@ -158,17 +142,17 @@ export const SeriesFilterForm = async ({
             type="checkbox"
             value="1"
           />
-          {getMessage(messages, "host.series.filter_free")}
+          {t("host.series.filter_free")}
         </label>
         <div className="flex items-center gap-2">
           {/* Outlined rather than filled: the one filled control a storefront
               screen is allowed is the Shu the reading action takes, and the
               band above already carries the site's own. */}
           <Button type="submit" variant="outline">
-            {getMessage(messages, "host.series.filter_apply")}
+            {t("host.series.filter_apply")}
           </Button>
           <LinkButton href={action} variant="ghost">
-            {getMessage(messages, "host.series.filter_reset")}
+            {t("host.series.filter_reset")}
           </LinkButton>
         </div>
       </div>

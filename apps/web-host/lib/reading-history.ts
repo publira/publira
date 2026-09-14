@@ -5,7 +5,6 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import type { MyEpisodeRead } from "@publira/api-client/public/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
 import {
@@ -13,7 +12,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 
 const defaultEpisodeReadsPageSize = 20;
 
@@ -95,14 +94,14 @@ export const listMyEpisodeReads = async (
   input: ListEpisodeReadsInput
 ): Promise<ListEpisodeReadsResult> => {
   const { locale } = input;
-  const [messages, sessionId] = await Promise.all([
-    loadHostMessages(locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
       ...emptyEpisodeReadPage,
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -127,11 +126,7 @@ export const listMyEpisodeReads = async (
     rethrowUnclassifiedRpcError(error);
     return {
       ...emptyEpisodeReadPage,
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "host.my.history_failed"),
-        { locale }
-      ),
+      message: rpcErrorMessage(error, t("host.my.history_failed"), { locale }),
       ok: false,
       requiresSignIn: isRpcError(error, Code.Unauthenticated),
     };

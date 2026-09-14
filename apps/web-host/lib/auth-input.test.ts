@@ -1,4 +1,3 @@
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,12 +11,11 @@ import {
   tenantIdFormSchema,
   tenantIdSchema,
 } from "./auth-input";
-import type { HostMessages } from "./messages";
 
 const VALID_TOKEN = "a".repeat(64);
 const VALID_TENANT_ID = "01234567-89ab-cdef-0123-456789abcdef";
-const JA: HostMessages = sharedCatalog("ja");
-const EN: HostMessages = sharedCatalog("en");
+const JA = "ja" as const;
+const EN = "en" as const;
 
 describe("returnToSearchParamSchema", () => {
   it("keeps a same-origin path", () => {
@@ -72,14 +70,15 @@ describe("authTokenSearchParamSchema", () => {
 });
 
 describe("authTokenFormSchema", () => {
-  it("rejects a missing or malformed token", () => {
-    expect(authTokenFormSchema(JA).safeParse(null).success).toBe(false);
-    expect(authTokenFormSchema(JA).safeParse("short").success).toBe(false);
-    expect(authTokenFormSchema(JA).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+  it("rejects a missing or malformed token", async () => {
+    const ja = await authTokenFormSchema(JA);
+    const en = await authTokenFormSchema(EN);
 
-    expect(
-      authTokenFormSchema(EN).safeParse("short").error?.issues[0]?.message
-    ).toBe(
+    expect(ja.safeParse(null).success).toBe(false);
+    expect(ja.safeParse("short").success).toBe(false);
+    expect(ja.parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+
+    expect(en.safeParse("short").error?.issues[0]?.message).toBe(
       "This confirmation link is not valid. Request a new confirmation email."
     );
   });
@@ -103,36 +102,43 @@ describe("tenantIdSchema", () => {
 });
 
 describe("tenantIdFormSchema", () => {
-  it("accepts a UUID tenant id and rejects other strings", () => {
-    expect(tenantIdFormSchema(JA).parse(VALID_TENANT_ID)).toBe(VALID_TENANT_ID);
-    expect(tenantIdFormSchema(JA).safeParse("favicon.ico").success).toBe(false);
-    expect(tenantIdFormSchema(JA).safeParse("").success).toBe(false);
+  it("accepts a UUID tenant id and rejects other strings", async () => {
+    const ja = await tenantIdFormSchema(JA);
+    const en = await tenantIdFormSchema(EN);
 
-    expect(tenantIdFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
+    expect(ja.parse(VALID_TENANT_ID)).toBe(VALID_TENANT_ID);
+    expect(ja.safeParse("favicon.ico").success).toBe(false);
+    expect(ja.safeParse("").success).toBe(false);
+
+    expect(en.safeParse("").error?.issues[0]?.message).toBe(
       "Tenant ID not found. Check the URL and try again."
     );
   });
 });
 
 describe("emailFormSchema", () => {
-  it("trims and requires an email", () => {
-    expect(emailFormSchema(JA).parse("  user@example.com  ")).toBe(
-      "user@example.com"
-    );
-    expect(emailFormSchema(JA).safeParse("").success).toBe(false);
-    expect(emailFormSchema(JA).safeParse("not-an-email").success).toBe(false);
+  it("trims and requires an email", async () => {
+    const ja = await emailFormSchema(JA);
+    const en = await emailFormSchema(EN);
 
-    expect(emailFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
+    expect(ja.parse("  user@example.com  ")).toBe("user@example.com");
+    expect(ja.safeParse("").success).toBe(false);
+    expect(ja.safeParse("not-an-email").success).toBe(false);
+
+    expect(en.safeParse("").error?.issues[0]?.message).toBe(
       "Enter your email address."
     );
   });
 });
 
 describe("passwordFormSchema", () => {
-  it("does not trim, and rejects an empty value", () => {
-    expect(passwordFormSchema(JA).parse(" secret ")).toBe(" secret ");
-    expect(passwordFormSchema(JA).safeParse("").success).toBe(false);
-    expect(passwordFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
+  it("does not trim, and rejects an empty value", async () => {
+    const ja = await passwordFormSchema(JA);
+    const en = await passwordFormSchema(EN);
+
+    expect(ja.parse(" secret ")).toBe(" secret ");
+    expect(ja.safeParse("").success).toBe(false);
+    expect(en.safeParse("").error?.issues[0]?.message).toBe(
       "Enter your password."
     );
   });

@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -19,38 +19,37 @@ import {
   SIGNUP_PENDING_EMAIL_COOKIE,
 } from "#lib/email-flash-cookie";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
-import { loadHostMessages } from "#lib/messages";
-import type { HostMessages } from "#lib/messages";
+import { getMessagesFor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
-const signupFormSchema = (messages: HostMessages) => {
-  const confirmRequired = getMessage(
-    messages,
-    "host.auth.errors.password_confirm_required"
-  );
-  const nameRequired = getMessage(messages, "host.auth.errors.name_required");
+const signupFormSchema = async (locale: Locale) => {
+  const [t, email, password, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    emailFormSchema(locale),
+    passwordFormSchema(locale),
+    tenantIdFormSchema(locale),
+  ]);
+  const confirmRequired = t("host.auth.errors.password_confirm_required");
+  const nameRequired = t("host.auth.errors.name_required");
 
   return z
     .object({
       confirmPassword: z
         .string({ error: confirmRequired })
         .min(1, confirmRequired)
-        .max(
-          1024,
-          getMessage(messages, "host.auth.errors.password_confirm_too_long")
-        ),
-      email: emailFormSchema(messages),
+        .max(1024, t("host.auth.errors.password_confirm_too_long")),
+      email,
       locale: localeFormSchema,
       name: z
         .string({ error: nameRequired })
         .trim()
         .min(1, nameRequired)
-        .max(100, getMessage(messages, "host.auth.errors.name_too_long")),
-      password: passwordFormSchema(messages),
-      tenantId: tenantIdFormSchema(messages),
+        .max(100, t("host.auth.errors.name_too_long")),
+      password,
+      tenantId,
     })
     .refine((value) => value.password === value.confirmPassword, {
-      error: getMessage(messages, "host.auth.errors.password_mismatch"),
+      error: t("host.auth.errors.password_mismatch"),
       path: ["confirmPassword"],
     });
 };
@@ -63,8 +62,11 @@ export const signupAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = signupFormSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    signupFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
       email: "value",
@@ -85,7 +87,7 @@ export const signupAction = async (
   const accepted = await signupPublic(name, email, password, tenantId);
   if (!accepted) {
     return {
-      message: getMessage(messages, "host.auth.errors.signup_failed"),
+      message: t("host.auth.errors.signup_failed"),
       ok: false,
     };
   }

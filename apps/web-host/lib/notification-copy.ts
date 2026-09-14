@@ -1,7 +1,7 @@
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import type { HostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
 
@@ -54,38 +54,29 @@ export interface NotificationDisplay {
  * order of the two titles differ per language, so each shape is its own key
  * rather than a string this module assembles.
  */
-const episodeSubject = (
-  messages: HostMessages,
+const episodeSubject = async (
+  locale: Locale,
   payload: NotificationPayload
-): string => {
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
   if (payload.episode_title && payload.series_title) {
-    return getMessage(
-      messages,
-      "host.notifications.episode_published_subject_with_series",
-      {
-        episode_title: payload.episode_title,
-        series_title: payload.series_title,
-      }
-    );
+    return t("host.notifications.episode_published_subject_with_series", {
+      episode_title: payload.episode_title,
+      series_title: payload.series_title,
+    });
   }
   if (payload.episode_title) {
-    return getMessage(
-      messages,
-      "host.notifications.episode_published_subject",
-      { episode_title: payload.episode_title }
-    );
+    return t("host.notifications.episode_published_subject", {
+      episode_title: payload.episode_title,
+    });
   }
   if (payload.series_title) {
-    return getMessage(
-      messages,
-      "host.notifications.episode_published_subject_series",
-      { series_title: payload.series_title }
-    );
+    return t("host.notifications.episode_published_subject_series", {
+      series_title: payload.series_title,
+    });
   }
-  return getMessage(
-    messages,
-    "host.notifications.episode_published_subject_unknown"
-  );
+  return t("host.notifications.episode_published_subject_unknown");
 };
 
 export const notificationHref = (
@@ -119,29 +110,30 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
  * Inbox copy is assembled here from `notification_type` + payload. The API
  * does not store title/body. Unknown types stay in the list as a generic row.
  */
-export const notificationDisplay = (
+export const notificationDisplay = async (
   notificationType: string,
   payload: NotificationPayload,
-  messages: HostMessages
-): NotificationDisplay => {
+  locale: Locale
+): Promise<NotificationDisplay> => {
+  const t = await getMessagesFor(locale);
   const href = notificationHref(payload);
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISHED) {
+    const subject = await episodeSubject(locale, payload);
+
     return {
-      description: getMessage(
-        messages,
-        "host.notifications.episode_published_description",
-        { subject: episodeSubject(messages, payload) }
-      ),
+      description: t("host.notifications.episode_published_description", {
+        subject,
+      }),
       href,
-      title: getMessage(messages, "host.notifications.episode_published_title"),
+      title: t("host.notifications.episode_published_title"),
     };
   }
 
   return {
-    description: getMessage(messages, "host.notifications.unknown_description"),
+    description: t("host.notifications.unknown_description"),
     href,
-    title: getMessage(messages, "host.notifications.unknown_title"),
+    title: t("host.notifications.unknown_title"),
   };
 };

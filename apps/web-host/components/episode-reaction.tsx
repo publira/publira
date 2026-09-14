@@ -1,6 +1,6 @@
 "use client";
 
-import { getMessage, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import { HeartIcon } from "@publira/icons";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -359,7 +359,7 @@ export const EpisodeReactionNameProgress = ({
 }: {
   message: HostMessageKey;
 }) => {
-  const messages = useHostMessages();
+  const t = useHostMessages();
   const { mode, score } = useEpisodeReactionFace();
   if (
     mode !== "multiple" ||
@@ -369,7 +369,7 @@ export const EpisodeReactionNameProgress = ({
     return null;
   }
 
-  return getMessage(messages, message, {
+  return t(message, {
     max: MAX_EPISODE_REACTION_SCORE,
     score,
   });
@@ -393,11 +393,11 @@ export const EpisodeReactionNameReaders = ({
   message: HostMessageKey;
 }) => {
   const locale = useLocale();
-  const messages = useHostMessages();
+  const t = useHostMessages();
   const { ratingCount } = useEpisodeReactionFace();
   const count = ratingCount.toLocaleString(toIntlLocale(locale));
 
-  return `. ${getMessage(messages, message, { count })}`;
+  return `. ${t(message, { count })}`;
 };
 
 export const EpisodeReactionError = () => {

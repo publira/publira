@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -13,8 +12,9 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import type { FollowTargetKind } from "#lib/follow";
 import type { FollowListItem } from "#lib/follow-list";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
 import type { HostMessageKey } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { followsListHref } from "../_lib/search-params";
 import { UnfollowButton } from "./unfollow-button";
@@ -47,7 +47,7 @@ const FollowTitle = ({ item }: { item: FollowListItem }) => {
 };
 
 /**
- * The whole list resolves the catalog once, and the pieces that repeat — the
+ * The whole list resolves the accessor once, and the pieces that repeat — the
  * pager above all — are JSX values in this scope rather than components taking
  * a `messages` prop. The page renders this inside the section's own boundary,
  * so nothing here reaches the static shell.
@@ -62,14 +62,14 @@ export const FollowList = async ({
   token,
 }: FollowListProps) => {
   const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-  const previousLabel = getMessage(messages, "host.common.previous_page");
-  const nextLabel = getMessage(messages, "host.common.next_page");
+  const t = await getMessagesFor(locale);
+  const previousLabel = t("host.common.previous_page");
+  const nextLabel = t("host.common.next_page");
   const returnTo = followsListHref(token);
 
   const pagination = (
     <nav
-      aria-label={getMessage(messages, "host.settings.follows_pagination_aria")}
+      aria-label={t("host.settings.follows_pagination_aria")}
       className="mt-6 flex items-center justify-center gap-6"
     >
       {previousToken ? (
@@ -97,7 +97,7 @@ export const FollowList = async ({
 
   const emptyState = token ? (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
-      <p>{getMessage(messages, "host.settings.follows_page_empty")}</p>
+      <p>{t("host.settings.follows_page_empty")}</p>
       {previousToken || nextToken ? (
         pagination
       ) : (
@@ -105,23 +105,21 @@ export const FollowList = async ({
           className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
           href={followsListHref("")}
         >
-          {getMessage(messages, "host.settings.follows_first_page")}
+          {t("host.settings.follows_first_page")}
         </LocaleLink>
       )}
     </div>
   ) : (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
       <p className="font-medium text-foreground">
-        {getMessage(messages, "host.settings.follows_empty_title")}
+        {t("host.settings.follows_empty_title")}
       </p>
-      <p className="mt-1">
-        {getMessage(messages, "host.settings.follows_empty_description")}
-      </p>
+      <p className="mt-1">{t("host.settings.follows_empty_description")}</p>
       <LocaleLink
         className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
         href="/series"
       >
-        {getMessage(messages, "host.common.find_series")}
+        {t("host.common.find_series")}
       </LocaleLink>
     </div>
   );
@@ -130,10 +128,10 @@ export const FollowList = async ({
     <section className="border border-border bg-card p-6">
       <div className="mb-4">
         <h2 className="text-lg font-semibold">
-          {getMessage(messages, "host.settings.follows_heading")}
+          {t("host.settings.follows_heading")}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {getMessage(messages, "host.settings.follows_description")}
+          {t("host.settings.follows_description")}
         </p>
       </div>
 
@@ -164,28 +162,23 @@ export const FollowList = async ({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">
-                    {getMessage(messages, kindLabelKey[item.targetKind])}
+                    {t(kindLabelKey[item.targetKind])}
                   </p>
                   <FollowTitle item={item} />
                   {item.unavailable ? (
                     <p className="text-sm text-muted-foreground">
-                      {getMessage(
-                        messages,
-                        "host.settings.follows_unavailable"
-                      )}
+                      {t("host.settings.follows_unavailable")}
                     </p>
                   ) : null}
                 </div>
                 {item.unavailable ? null : (
                   <UnfollowButton
                     copy={{
-                      ariaLabel: getMessage(
-                        messages,
-                        "host.follow.unfollow_aria",
-                        { name: item.title }
-                      ),
-                      pending: getMessage(messages, "host.follow.pending"),
-                      submit: getMessage(messages, "host.follow.unfollow"),
+                      ariaLabel: t("host.follow.unfollow_aria", {
+                        name: item.title,
+                      }),
+                      pending: t("host.follow.pending"),
+                      submit: t("host.follow.unfollow"),
                     }}
                     publicId={item.publicId}
                     returnTo={returnTo}
@@ -195,7 +188,7 @@ export const FollowList = async ({
                 )}
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                {getMessage(messages, "host.settings.follows_followed_at")}{" "}
+                {t("host.settings.follows_followed_at")}{" "}
                 <time dateTime={item.followedAt}>
                   {formatDateTime(item.followedAt, {
                     fallback: "-",

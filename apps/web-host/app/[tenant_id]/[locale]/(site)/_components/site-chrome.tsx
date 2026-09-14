@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   SiteLayout,
   SiteLayoutActions,
@@ -79,9 +78,11 @@ import {
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
-import { getLocale, loadHostMessages, tenantDefaultLocale } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale, tenantDefaultLocale } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
+import { getMessagesFor } from "#lib/messages";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
 import {
@@ -195,14 +196,9 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
 
 /** The account menu's trigger, which shows an icon and carries its name as an attribute. */
 const AccountMenuTrigger = async () => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return (
-    <SiteLayoutUserMenuTrigger
-      aria-label={getMessage(messages, "host.nav.account_menu")}
-    />
-  );
+  return <SiteLayoutUserMenuTrigger aria-label={t("host.nav.account_menu")} />;
 };
 
 const HeaderActions = async () => {
@@ -287,10 +283,10 @@ const HeaderActions = async () => {
 
 const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [defaultLocale, links, messages] = await Promise.all([
+  const [defaultLocale, links, t] = await Promise.all([
     getTenantDefaultLocale(tenantId),
     listPublishedPageLinks(tenantId),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   if (links.length === 0) {
@@ -298,9 +294,7 @@ const TenantFooterLinks = async () => {
   }
 
   return (
-    <SiteLayoutFooterLinks
-      aria-label={getMessage(messages, "host.nav.footer_links")}
-    >
+    <SiteLayoutFooterLinks aria-label={t("host.nav.footer_links")}>
       {links.map((link) => (
         <SiteLayoutFooterLink
           href={withLocalePrefix(locale, defaultLocale, link.href)}
@@ -397,24 +391,22 @@ const MobileNavigationAccountActionsSkeleton = () => (
 
 /** The drawer's close button, which carries its name as an attribute. */
 const MobileNavigationCloseButton = async () => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
     <SiteLayoutMobileNavigationCloseButton
-      aria-label={getMessage(messages, "host.nav.navigation_close")}
+      aria-label={t("host.nav.navigation_close")}
     />
   );
 };
 
 /** The band's menu button, which carries its name as an attribute. */
 const MobileNavigationOpenButton = async () => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
   return (
     <SiteLayoutMobileNavigationOpenButton
-      aria-label={getMessage(messages, "host.nav.navigation_open")}
+      aria-label={t("host.nav.navigation_open")}
     />
   );
 };
@@ -568,14 +560,14 @@ const TenantBrand = async () => {
     return tenantInfo?.name.trim() || undefined;
   }
 
-  const [siteLabel, messages] = await Promise.all([
+  const [siteLabel, t] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
-    loadHostMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   return (
     <TenantBrandLogo
-      alt={getMessage(messages, "host.nav.logo_alt", { name: siteLabel })}
+      alt={t("host.nav.logo_alt", { name: siteLabel })}
       fallbackLabel={siteLabel}
       priority
       variant={variant}

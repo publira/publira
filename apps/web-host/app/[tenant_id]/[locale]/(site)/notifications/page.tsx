@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -6,7 +5,8 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLogin } from "#lib/auth-session";
-import { getLocale, loadHostMessages } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { getLocale } from "#lib/locale";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -19,10 +19,9 @@ import {
 } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
+  const t = await getMessages();
 
-  return { title: getMessage(messages, "host.notifications.title") };
+  return { title: t("host.notifications.title") };
 };
 
 type NotificationsPageProps = PageProps<"/[tenant_id]/[locale]/notifications">;

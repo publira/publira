@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -15,8 +14,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
-import { loadHostMessages } from "#lib/messages";
-import type { HostMessages } from "#lib/messages";
+import { getMessagesFor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
@@ -36,20 +34,23 @@ const buildSettingsPath = async (
   return `${path}?${params.toString()}`;
 };
 
-const updateNotificationSettingsFormSchema = (messages: HostMessages) =>
-  z.object({
+const updateNotificationSettingsFormSchema = async (locale: Locale) => {
+  const [t, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
+
+  return z.object({
     emailNotificationsEnabled: z
       .literal("on", {
-        error: getMessage(
-          messages,
-          "host.settings.email_notifications_invalid"
-        ),
+        error: t("host.settings.email_notifications_invalid"),
       })
       .optional()
       .transform((value) => value === "on"),
     locale: localeFormSchema,
-    tenantId: tenantIdFormSchema(messages),
+    tenantId,
   });
+};
 
 export const updateNotificationSettingsAction = async (
   formData: FormData
@@ -58,8 +59,11 @@ export const updateNotificationSettingsAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const messages = await loadHostMessages(submittedLocale);
-  const parsed = updateNotificationSettingsFormSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    updateNotificationSettingsFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       emailNotificationsEnabled: "value",
       locale: "value",
@@ -98,7 +102,7 @@ export const updateNotificationSettingsAction = async (
       locale,
       tenantId,
       "error",
-      getMessage(messages, "host.settings.email_notifications_update_failed")
+      t("host.settings.email_notifications_update_failed")
     );
     redirect(errorPath);
   }
@@ -107,7 +111,7 @@ export const updateNotificationSettingsAction = async (
     locale,
     tenantId,
     "success",
-    getMessage(messages, "host.settings.email_notifications_updated")
+    t("host.settings.email_notifications_updated")
   );
   redirect(successPath);
 };

@@ -1,8 +1,8 @@
-import { getMessage } from "@publira/i18n";
 import Form from "next/form";
 
 import { SEARCH_QUERY_MAX_LENGTH } from "#lib/catalog";
-import { getLocale, loadHostMessages, localePath } from "#lib/locale";
+import { getMessages } from "#lib/get-messages";
+import { localePath } from "#lib/locale";
 
 /** Same footprint as the rendered control, so the header does not shift. */
 export const CatalogSearchFormSkeleton = () => (
@@ -16,7 +16,7 @@ export const CatalogSearchFormSkeleton = () => (
 );
 
 /**
- * The whole control resolves the catalog at once rather than per string: the
+ * The whole control resolves the accessor at once rather than per string: the
  * label and the placeholder are attributes, which cannot stream, and the form's
  * own action needs the locale prefix. The caller wraps this in the
  * `<Suspense>` whose fallback is {@link CatalogSearchFormSkeleton}.
@@ -30,9 +30,8 @@ export const CatalogSearchForm = async ({
   defaultQuery?: string;
   id?: string;
 }) => {
-  const locale = await getLocale();
-  const messages = await loadHostMessages(locale);
-  const label = getMessage(messages, "host.nav.search_label");
+  const t = await getMessages();
+  const label = t("host.nav.search_label");
   const action = await localePath("/search");
 
   return (
@@ -59,7 +58,7 @@ export const CatalogSearchForm = async ({
           className="h-9 shrink-0 rounded-control border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted"
           type="submit"
         >
-          {getMessage(messages, "host.nav.search_submit")}
+          {t("host.nav.search_submit")}
         </button>
       </Form>
     </search>

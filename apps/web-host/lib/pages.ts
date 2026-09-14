@@ -1,12 +1,11 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantPageTag, tenantPagesTag } from "./cache-tags";
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 import { localizedReadFailure } from "./read-failure";
 
 export interface PublishedPage {
@@ -219,7 +218,7 @@ export const getPublishedPage = async (
 
   applyCacheTag(tenantPageTag(normalizedTenantId, page.id));
 
-  const messages = await loadHostMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return {
     ok: true,
@@ -228,7 +227,7 @@ export const getPublishedPage = async (
       id: page.id,
       publishedAt: version.publishedAt ?? "",
       slug: page.slug ?? normalizedSlug,
-      title: page.title?.trim() || getMessage(messages, "host.pages.untitled"),
+      title: page.title?.trim() || t("host.pages.untitled"),
       versionId: version.id ?? "",
       versionNumber: version.versionNumber ?? 0,
     },

@@ -9,7 +9,6 @@ import type {
   EpisodeComment,
   MyEpisodeComment,
 } from "@publira/api-client/public/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -21,7 +20,7 @@ import {
 } from "./api-client";
 import { applyCacheTag, tenantEpisodeCommentsTag } from "./cache-tags";
 import type { EpisodeCommentReportReason } from "./comment-report-reason";
-import { loadHostMessages } from "./messages";
+import { getMessagesFor } from "./messages";
 import { localizedReadFailure } from "./read-failure";
 
 /**
@@ -29,15 +28,6 @@ import { localizedReadFailure } from "./read-failure";
  * the fallback `rpcErrorMessage` uses for the categories its shared table has
  * no wording for.
  */
-const commentMessage = async (
-  locale: Locale,
-  key:
-    | "host.episode.comments.delete_failed"
-    | "host.episode.comments.own_failed"
-    | "host.episode.comments.post_failed"
-    | "host.episode.comments.report_failed"
-): Promise<string> => getMessage(await loadHostMessages(locale), key);
-
 /** Rows one comment page asks the API for. The server caps this at 100. */
 const COMMENT_PAGE_SIZE = 20;
 
@@ -196,7 +186,10 @@ export const listMyEpisodeComments = async (
   tenantId: string,
   input: ListMyEpisodeCommentsInput
 ): Promise<CachedReadResult<EpisodeCommentItem[]>> => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     // Not a failure: a reader without a session has no comments of their own,
     // and the section renders the sign-in prompt rather than a message.
@@ -229,11 +222,9 @@ export const listMyEpisodeComments = async (
     }
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(
-        error,
-        await commentMessage(input.locale, "host.episode.comments.own_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("host.episode.comments.own_failed"), {
+        locale: input.locale,
+      }),
       ok: false,
     };
   }
@@ -366,15 +357,15 @@ export type PostEpisodeCommentResult =
 export const postEpisodeComment = async (
   input: PostEpisodeCommentInput
 ): Promise<PostEpisodeCommentResult> => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     // The Action resolves the session before calling this, so an empty token
     // here means it expired in between; the caller sends the reader to sign in.
     return {
-      message: await commentMessage(
-        input.locale,
-        "host.episode.comments.post_failed"
-      ),
+      message: t("host.episode.comments.post_failed"),
       ok: false,
     };
   }
@@ -398,11 +389,9 @@ export const postEpisodeComment = async (
     }
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(
-        error,
-        await commentMessage(input.locale, "host.episode.comments.post_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("host.episode.comments.post_failed"), {
+        locale: input.locale,
+      }),
       ok: false,
     };
   }
@@ -425,13 +414,13 @@ export type WithdrawEpisodeCommentResult =
 export const withdrawEpisodeComment = async (
   input: WithdrawEpisodeCommentInput
 ): Promise<WithdrawEpisodeCommentResult> => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: await commentMessage(
-        input.locale,
-        "host.episode.comments.delete_failed"
-      ),
+      message: t("host.episode.comments.delete_failed"),
       ok: false,
     };
   }
@@ -453,10 +442,7 @@ export const withdrawEpisodeComment = async (
     return {
       message: rpcErrorMessage(
         error,
-        await commentMessage(
-          input.locale,
-          "host.episode.comments.delete_failed"
-        ),
+        t("host.episode.comments.delete_failed"),
         { locale: input.locale }
       ),
       ok: false,
@@ -504,13 +490,13 @@ export type ReportEpisodeCommentResult =
 export const reportEpisodeComment = async (
   input: ReportEpisodeCommentInput
 ): Promise<ReportEpisodeCommentResult> => {
-  const sessionId = await resolveAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
+    resolveAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: await commentMessage(
-        input.locale,
-        "host.episode.comments.report_failed"
-      ),
+      message: t("host.episode.comments.report_failed"),
       ok: false,
     };
   }
@@ -534,10 +520,7 @@ export const reportEpisodeComment = async (
     return {
       message: rpcErrorMessage(
         error,
-        await commentMessage(
-          input.locale,
-          "host.episode.comments.report_failed"
-        ),
+        t("host.episode.comments.report_failed"),
         { locale: input.locale }
       ),
       ok: false,
