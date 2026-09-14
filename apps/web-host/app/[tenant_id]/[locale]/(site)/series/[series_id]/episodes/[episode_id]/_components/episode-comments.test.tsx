@@ -70,15 +70,33 @@ vi.mock("#lib/comments", async (importOriginal) => {
 });
 
 // A client component with `useActionState`, which the server render below
-// cannot mount.
-vi.mock("#components/action-form", () => ({
-  ActionForm: ({ children }: { children: React.ReactNode }) => (
-    <form>{children}</form>
-  ),
-  ActionFormIdle: ({ children }: { children: React.ReactNode }) => children,
-  ActionFormPending: () => null,
-  ActionFormSubmit: ({ children }: { children: React.ReactNode }) => (
-    <button type="submit">{children}</button>
+// cannot mount. The copy it was handed is rendered so the wording the reader
+// meets can still be asserted on.
+vi.mock("./episode-comment-dialog", () => ({
+  EpisodeCommentDialog: ({
+    children,
+    copy,
+    initialOpen,
+    prompt,
+    returnTo,
+  }: {
+    children: React.ReactNode;
+    copy: { title: string };
+    initialOpen?: boolean;
+    prompt?: React.ReactNode;
+    returnTo: string;
+  }) => (
+    <section>
+      <button
+        data-initial-open={initialOpen}
+        data-return-to={returnTo}
+        type="button"
+      >
+        {copy.title}
+      </button>
+      {prompt ?? <textarea aria-label="Your comment" />}
+      {children}
+    </section>
   ),
 }));
 
@@ -177,7 +195,7 @@ describe("EpisodeComments", () => {
     expect(mockListEpisodeComments).not.toHaveBeenCalled();
   });
 
-  it("offers a signed-out reader a way in instead of a posting form", async () => {
+  it("offers a signed-out reader a way in instead of a box to write in", async () => {
     await renderSection();
 
     expect(screen.getByText("Sign in to leave a comment.")).toBeDefined();
@@ -188,13 +206,21 @@ describe("EpisodeComments", () => {
     expect(screen.queryByLabelText("Your comment")).toBeNull();
   });
 
-  it("gives a signed-in reader the posting form", async () => {
+  it("gives a signed-in reader the box to write in", async () => {
     mockGetMe.mockResolvedValueOnce(viewer);
 
     await renderSection();
 
     expect(screen.getByLabelText("Your comment")).toBeDefined();
     expect(screen.queryByText("Sign in to leave a comment.")).toBeNull();
+  });
+
+  it("opens itself where the URL asks for a page of comments", async () => {
+    await renderSection("next");
+
+    expect(
+      screen.getByRole("button", { name: "Comments" }).dataset.initialOpen
+    ).toBe("true");
   });
 
   it("says a comment is waiting where the tenant reviews them first", async () => {
@@ -345,7 +371,7 @@ describe("EpisodeComments", () => {
 
     const next = screen.getByRole("link", { name: "Next page" });
     expect(next.getAttribute("href")).toBe(
-      "/series/SeedSERSAAA1/episodes/SeedEPSDAAA1?comments=next#comments"
+      "/series/SeedSERSAAA1/episodes/SeedEPSDAAA1?comments=next"
     );
   });
 });

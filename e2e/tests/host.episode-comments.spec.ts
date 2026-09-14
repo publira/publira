@@ -1,8 +1,15 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { uniqueCommentBody } from "../src/comments";
+import {
+  commentBox,
+  commentsTrigger,
+  openComments,
+  postComment,
+  uniqueCommentBody,
+} from "../src/comments";
 import { applyScenarioSql, querySql, quoteSqlLiteral, runSql } from "../src/db";
+import { uploadEpisodePages } from "../src/episode-pages";
 import { signInAsMember } from "../src/host";
 import { episodeCommentsTag, revalidateHostTags } from "../src/revalidate";
 import {
@@ -28,22 +35,6 @@ import { hostPath, WEB_HOST_EPISODE_COMMENTS_BASE_URL } from "../src/urls";
  */
 
 const episodeUrl = `${WEB_HOST_EPISODE_COMMENTS_BASE_URL}${hostPath(EPISODE_COMMENTS_PATH)}`;
-
-const commentsSection = (page: Page) =>
-  page.getByRole("heading", { level: 2, name: "Comments" });
-
-/**
- * `exact`: Playwright matches an accessible name as a case-insensitive
- * substring, and the delete control on a comment is labelled "Delete your
- * comment posted on …".
- */
-const commentBox = (page: Page) =>
-  page.getByLabel("Your comment", { exact: true });
-
-const postComment = async (page: Page, body: string): Promise<void> => {
-  await commentBox(page).fill(body);
-  await page.getByRole("button", { name: "Post comment" }).click();
-};
 
 /** Remove one comment the way staff moderation will. */
 const hideComment = (body: string): void => {
@@ -105,7 +96,7 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
   expect.poll(
     async () => {
       await page.goto(episodeUrl);
-      await expect(commentsSection(page)).toBeVisible();
+      await openComments(page);
       return await read();
     },
     {
@@ -120,9 +111,16 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
  * The scenario file deletes the comments a previous run wrote, which is a
  * write the app never saw: without the tag the cached public list would still
  * be serving that run's comments to this one.
+ *
+ * It also describes the episode's pages, and the reader has to turn past the
+ * last of them to reach the comments at all, so the fixtures behind those rows
+ * are uploaded here rather than by `task e2e:db`: seeding this tenant for the
+ * whole stack would put it in the tenant list the platform baseline
+ * photographs.
  */
 const resetComments = async (): Promise<void> => {
   applyScenarioSql(EPISODE_COMMENTS_SCENARIO);
+  uploadEpisodePages(EPISODE_COMMENTS_EPISODE.publicId);
   await revalidateHostTags([
     episodeCommentsTag(
       EPISODE_COMMENTS_TENANT.id,
@@ -144,12 +142,21 @@ test.describe("web-host episode comments", () => {
     await resetComments();
   });
 
-  test("a signed-out reader is invited to sign in instead of being shown a form", async ({
+  test("a reader who has not turned the last page is offered no comments at all", async ({
     page,
   }) => {
     await page.goto(episodeUrl);
 
-    await expect(commentsSection(page)).toBeVisible();
+    // A comment is about the ending, so nothing on the way to it may carry one.
+    await expect(commentsTrigger(page)).toHaveCount(0);
+  });
+
+  test("a signed-out reader is invited to sign in instead of being shown a form", async ({
+    page,
+  }) => {
+    await page.goto(episodeUrl);
+    await openComments(page);
+
     await expect(page.getByText("Sign in to leave a comment.")).toBeVisible();
     await expect(commentBox(page)).toHaveCount(0);
   });
@@ -221,6 +228,7 @@ test.describe("web-host episode comments", () => {
     // The author's own read is uncached, so the comment is back on their page
     // the moment they reload — with nothing on it saying it was removed.
     await page.goto(episodeUrl);
+    await openComments(page);
     const comment = page.getByRole("listitem").filter({ hasText: body });
     await expect(comment).toBeVisible();
     await expect(comment.getByText("Awaiting approval")).toHaveCount(0);
@@ -296,6 +304,7 @@ test.describe("web-host episode comments", () => {
       // platform has since done about the earlier report is not something a
       // second submission may reveal.
       await readerPage.goto(episodeUrl);
+      await openComments(readerPage);
       await reportComment(readerPage, body);
       expect(openReportCount(body)).toBe("1");
       expect(storedReports(body)).toBe("1");

@@ -144,12 +144,10 @@ test.describe("web-host catalog browsing", () => {
         name: SEED_TENANT.series.freeEpisodeTitle,
       })
     ).toBeVisible();
-    // The running head names the work above the episode's own title, and it
-    // is the way back to it.
+    // The work is not named again above the episode's own title; the panel
+    // under the reader ends on the way back to it.
     await expect(
-      page
-        .getByRole("link", { exact: true, name: SEED_TENANT.series.title })
-        .first()
+      page.getByRole("link", { name: "Back to the series" })
     ).toHaveAttribute(
       "href",
       hostPath(`/series/${SEED_TENANT.series.publicId}`)

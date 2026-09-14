@@ -2,8 +2,14 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { signInAsAdmin } from "../src/admin";
-import { uniqueCommentBody } from "../src/comments";
+import {
+  openComments,
+  postComment,
+  turnTowardComments,
+  uniqueCommentBody,
+} from "../src/comments";
 import { applyScenarioSql } from "../src/db";
+import { uploadEpisodePages } from "../src/episode-pages";
 import { signInAsMember } from "../src/host";
 import {
   episodeCommentsTag,
@@ -36,22 +42,6 @@ import {
  */
 
 const episodeUrl = `${WEB_HOST_COMMENT_MODERATION_BASE_URL}${hostPath(COMMENT_MODERATION_PATH)}`;
-
-const commentsSection = (page: Page) =>
-  page.getByRole("heading", { level: 2, name: "Comments" });
-
-/**
- * `exact`: Playwright matches an accessible name as a case-insensitive
- * substring, and the delete control on a comment is labelled "Delete your
- * comment posted on …".
- */
-const commentBox = (page: Page) =>
-  page.getByLabel("Your comment", { exact: true });
-
-const postComment = async (page: Page, body: string): Promise<void> => {
-  await commentBox(page).fill(body);
-  await page.getByRole("button", { name: "Post comment" }).click();
-};
 
 /** Choose one mode on the settings card and submit it. */
 const saveCommentMode = async (page: Page, option: string): Promise<void> => {
@@ -124,7 +114,7 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
   expect.poll(
     async () => {
       await page.goto(episodeUrl);
-      await expect(commentsSection(page)).toBeVisible();
+      await openComments(page);
       return await read();
     },
     {
@@ -134,35 +124,16 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
   );
 
 /**
- * How long one navigation may take to stream the comment heading.
+ * Whether this load of the episode offers commenting.
  *
- * `EpisodeComments` sits behind a Suspense boundary, and the heading's copy
- * sits behind another, so `goto`'s load event is not the last paint of this
- * section. Five seconds covers a cache fill; the outer poll is what waits for
- * revalidation itself.
- */
-const COMMENTS_SECTION_STREAM_TIMEOUT_MS = 5000;
-
-/**
- * Whether this load of the episode page offers commenting.
- *
- * Waits for the heading to stream in. Returning `count()` at `load` reads the
- * skeleton, which is 0 whether commenting is on or off.
+ * The section is the page after the last page, so the answer is read by turning
+ * to the end rather than by looking at the page the episode opens on. A series
+ * with commenting off simply ends on its last page, which is what the `false`
+ * means.
  */
 const commentsSectionCountAfterStream = async (page: Page): Promise<number> => {
   await page.goto(episodeUrl);
-  try {
-    await commentsSection(page).waitFor({
-      state: "visible",
-      timeout: COMMENTS_SECTION_STREAM_TIMEOUT_MS,
-    });
-    return 1;
-  } catch (error) {
-    if (error instanceof Error && error.name === "TimeoutError") {
-      return 0;
-    }
-    throw error;
-  }
+  return (await turnTowardComments(page)) ? 1 : 0;
 };
 
 /**
@@ -184,9 +155,15 @@ const pollCommentsSection = (page: Page) =>
  * saw: without the tags the cached public list would still be serving that
  * run's approved comments, and the site chrome would still be carrying the mode
  * the last run left behind.
+ *
+ * It also describes the episode's pages, and the reader has to turn past the
+ * last of them to reach the comment box, so the fixtures behind those rows are
+ * uploaded here rather than by `task e2e:db`: seeding this tenant for the whole
+ * stack would put it in the tenant list the platform baseline photographs.
  */
 const resetComments = async (): Promise<void> => {
   applyScenarioSql(COMMENT_MODERATION_SCENARIO);
+  uploadEpisodePages(COMMENT_MODERATION_EPISODE.publicId);
   await revalidateHostTags([
     episodeCommentsTag(
       COMMENT_MODERATION_TENANT.id,
@@ -508,7 +485,7 @@ test.describe("web-admin comment moderation", () => {
     const readerPage = await readerContext.newPage();
     try {
       await readerPage.goto(episodeUrl);
-      await expect(commentsSection(readerPage)).toBeVisible();
+      await openComments(readerPage);
 
       await saveCommentMode(page, "Do not accept comments");
       await expect(
@@ -521,6 +498,7 @@ test.describe("web-admin comment moderation", () => {
       // over from the first one would satisfy an assertion about this one.
       await saveCommentMode(page, "Publish after approval");
       await pollCommentsSection(readerPage).toBe(1);
+      await openComments(readerPage);
       await expect(
         readerPage.getByText(
           "A comment appears here once a moderator approves it."

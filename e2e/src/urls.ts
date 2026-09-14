@@ -42,7 +42,7 @@ export const WEB_HOST_BASE_URL = envUrl(
  *
  * An episode body image is `/images/episodes/{id}` on the reader's own origin,
  * and only the edge joins web-host and image-server under one host and port.
- * Suites that never load a body image keep using WEB_HOST_BASE_URL, so one
+ * Suites that never open an episode body keep using WEB_HOST_BASE_URL, so one
  * more hop does not sit in front of every navigation they time out on.
  *
  * It is the `viewer-performance` project's `baseURL`. A suite that reads a body
@@ -194,10 +194,14 @@ export const WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL = envUrl(
  *
  * `tenant_config.comment_mode` is tenant-wide, so the one tenant that takes
  * comments is not a tenant any other suite reads episode pages on.
+ *
+ * Through the edge, because the comment section is the page after the last one
+ * of the episode: reaching it means turning pages, and a body image resolves on
+ * the reader's own origin alone.
  */
 export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
   "E2E_WEB_HOST_EPISODE_COMMENTS_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "comment.localhost")
+  withHostname(WEB_HOST_EDGE_BASE_URL, "comment.localhost")
 );
 
 /**
@@ -206,10 +210,12 @@ export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
  *
  * `tenant_config.comment_mode` is tenant-wide, so the tenant that holds
  * comments for approval cannot be the one whose comments publish immediately.
+ *
+ * Through the edge, for the reason the commenting tenant above is.
  */
 export const WEB_HOST_COMMENT_MODERATION_BASE_URL = envUrl(
   "E2E_WEB_HOST_COMMENT_MODERATION_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "moderate.localhost")
+  withHostname(WEB_HOST_EDGE_BASE_URL, "moderate.localhost")
 );
 
 /** Admin console of the same moderation tenant. */

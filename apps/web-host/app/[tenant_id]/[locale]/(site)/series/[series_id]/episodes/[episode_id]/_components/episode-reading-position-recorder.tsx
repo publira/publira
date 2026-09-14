@@ -39,7 +39,10 @@ export const EpisodeReadingPositionRecorder = ({
   episode: EpisodeDetail;
   series: EpisodeSeriesSummary;
 }) => {
-  const { currentIndex } = useViewerContext();
+  const { currentIndex, pages } = useViewerContext();
+  // The viewer also holds pages of its own after the last one of the episode,
+  // and the API refuses a position that names none of the episode's pages.
+  const pageIndex = Math.max(0, Math.min(currentIndex, pages.length - 1));
   const beaconPath = readingPositionBeaconPath(
     series.publicId,
     episode.publicId
@@ -48,7 +51,7 @@ export const EpisodeReadingPositionRecorder = ({
 
   useEffect(() => {
     const saver = createReadingPositionSaver({
-      send: (pageIndex) => sendReadingPositionBeacon(beaconPath, pageIndex),
+      send: (index) => sendReadingPositionBeacon(beaconPath, index),
     });
     saverRef.current = saver;
 
@@ -70,8 +73,8 @@ export const EpisodeReadingPositionRecorder = ({
   }, [beaconPath]);
 
   useEffect(() => {
-    saverRef.current?.save(currentIndex);
-  }, [currentIndex]);
+    saverRef.current?.save(pageIndex);
+  }, [pageIndex]);
 
   return null;
 };

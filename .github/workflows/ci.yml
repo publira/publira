@@ -181,6 +181,7 @@ jobs:
               - 'e2e/scripts/lib.sh'
               - 'e2e/scripts/stop-apps.sh'
               - 'e2e/scripts/up.sh'
+              - 'e2e/scripts/upload-episode-pages.sh'
               - 'scripts/storage-init.sh'
               # db-setup.sh uploads the images the seed's rows name, and the
               # reader this job drives draws them.

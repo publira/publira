@@ -1887,6 +1887,7 @@
       "age_rating_r18": "R18",
       "back_to_top": "トップへ戻る",
       "cancel": "キャンセル",
+      "close": "閉じる",
       "episode_number": "第{$number}話",
       "error_id": "エラー ID:",
       "find_series": "シリーズを探す",
@@ -2022,6 +2023,7 @@
       "scheduled_at": "公開予定",
       "to_series_detail": "シリーズを開く",
       "viewer": {
+        "end_page": "おわり",
         "enter_fullscreen": "全画面表示にする",
         "exit_fullscreen": "全画面表示を終了",
         "loading": "読み込み中…",

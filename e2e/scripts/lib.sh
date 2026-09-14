@@ -73,8 +73,8 @@ export E2E_WEB_HOST_BASE_URL="${E2E_WEB_HOST_BASE_URL:-http://localhost:${E2E_WE
 export E2E_WEB_ADMIN_BASE_URL="${E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${E2E_WEB_ADMIN_PORT}}"
 export E2E_WEB_PLATFORM_BASE_URL="${E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${E2E_WEB_PLATFORM_PORT}}"
 export E2E_PUBLIC_API_BASE_URL="${E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
-# Same web-host, reached through the edge. Only the viewer performance suite
-# uses it, because it is the only one that needs `/images` to resolve.
+# Same web-host, reached through the edge, by every suite that opens an
+# episode body: `/images` resolves on no other origin.
 export E2E_WEB_HOST_EDGE_BASE_URL="${E2E_WEB_HOST_EDGE_BASE_URL:-http://localhost:${E2E_EDGE_PORT}}"
 # Mailpit's HTTP API. A spec reads the confirmation link out of the message a
 # flow mailed, because the database keeps only the token's hash.

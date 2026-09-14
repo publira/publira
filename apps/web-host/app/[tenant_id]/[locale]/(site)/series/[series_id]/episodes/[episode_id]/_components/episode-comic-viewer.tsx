@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  EndPage,
   NextPageButton,
   PageCanvas,
   PageNavigation,
@@ -35,7 +36,7 @@ import {
   useRef,
   useSyncExternalStore,
 } from "react";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
 
@@ -46,6 +47,8 @@ import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
  * status format both need plain strings.
  */
 export interface EpisodeComicViewerCopy {
+  /** Where the reader is while the page after the last one is on screen. */
+  endPageStatus: string;
   enterFullscreen: string;
   exitFullscreen: string;
   loading: string;
@@ -86,11 +89,21 @@ const SPREAD_START_INDEX = 1;
 
 const VIEWER_PLUGINS = [acceptNegotiatedImages];
 
+const stopClick = (event: MouseEvent) => {
+  event.stopPropagation();
+};
+
 const buildPageStatusFormatter =
   (copy: EpisodeComicViewerCopy): NonNullable<PageStatusProps["format"]> =>
-  ({ firstPage, lastPage, pageCount }) => {
+  ({ firstPage, lastPage, pageCount, slot }) => {
     if (pageCount === 0) {
       return copy.noPages;
+    }
+
+    // An extra page is counted in neither the numbers nor the total, so a
+    // screen holding nothing else has no page number to report.
+    if (firstPage === 0) {
+      return slot === "end" ? copy.endPageStatus : copy.noPages;
     }
 
     return firstPage === lastPage
@@ -307,15 +320,22 @@ const ViewerPageNavigation = () => {
  * server. It is the page the viewer mounts on rather than a page it moves to
  * afterwards, so the reader never sees the first page of an episode they are
  * in the middle of.
+ *
+ * `endPage` is turned to after the last page, which is where the comment form
+ * lives. It is drawn on paper rather than on the mat, so the site's own
+ * controls read there exactly as they do under the reader.
  */
 export const EpisodeComicViewer = ({
   children,
   copy,
+  endPage,
   initialPageIndex = 0,
   pages,
 }: {
   children?: ReactNode;
   copy: EpisodeComicViewerCopy;
+  /** Absent where the episode ends on its last page. */
+  endPage?: ReactNode;
   /** Zero-based page the reader opens at. */
   initialPageIndex?: number;
   pages: ViewerPage[];
@@ -353,6 +373,22 @@ export const EpisodeComicViewer = ({
           <ViewerRail>
             <ViewerPageTemplate />
           </ViewerRail>
+          {endPage === undefined ? null : (
+            /* A click here reads and scrolls rather than turns: the reader
+               leaves this page with the page-turn controls, not by tapping its
+               edge, and the same exception the viewport makes for a control
+               applies to the text between them. */
+            <EndPage
+              className="size-full min-w-0 overflow-y-auto overscroll-contain bg-background text-foreground"
+              onClick={stopClick}
+            >
+              {/* The chrome the viewer draws over its top and bottom edges
+                  reaches this page too, so the content clears both. */}
+              <div className="mx-auto w-full max-w-(--measure-prose) px-6 pt-20 pb-24">
+                {endPage}
+              </div>
+            </EndPage>
+          )}
           <ViewerToolbar onToggleFullscreen={toggleFullscreen} />
           <ViewerPageNavigation />
           {children}

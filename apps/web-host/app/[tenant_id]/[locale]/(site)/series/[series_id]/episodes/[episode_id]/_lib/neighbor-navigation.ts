@@ -29,8 +29,8 @@ export const resolveNeighborSide = (
 
 /**
  * Whether a key press should be left alone because the reader is working a
- * control rather than the pages — a comment box below the viewer, a link in
- * the viewer's own chrome, the page-turn buttons.
+ * control rather than the pages — the comment box the episode ends on, a link
+ * in the viewer's own chrome, the page-turn buttons.
  *
  * The viewer applies the same exception to its own keyboard handling, so
  * without this an arrow key typed into the comment form would move the reader

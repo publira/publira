@@ -16,6 +16,7 @@ import type {
   EpisodeImageItem,
   EpisodeNeighborItem,
   EpisodeSeriesSummary,
+  SeriesCommentMode,
 } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
@@ -28,6 +29,8 @@ export const EpisodeBody = async ({
   acceptsPayments,
   access,
   checkoutSessionId,
+  commentMode,
+  commentToken,
   episode,
   images,
   nextEpisode,
@@ -38,6 +41,10 @@ export const EpisodeBody = async ({
   acceptsPayments: boolean;
   access: EpisodeAccessState;
   checkoutSessionId: string;
+  /** Passed to the viewer, which ends the episode on the comment section. */
+  commentMode: SeriesCommentMode;
+  /** Cursor of the comment page the URL asks for. Empty on the newest page. */
+  commentToken: string;
   episode: EpisodeDetail;
   images: EpisodeImageItem[];
   /** Absent at the ends of the series; the viewer's own chrome links to them. */
@@ -49,6 +56,8 @@ export const EpisodeBody = async ({
   if (isPublicEpisodeBody(access)) {
     return (
       <EpisodeViewer
+        commentMode={commentMode}
+        commentToken={commentToken}
         episode={episode}
         images={images}
         nextEpisode={nextEpisode}
@@ -106,6 +115,8 @@ export const EpisodeBody = async ({
   if (viewer.value.access === "entitled") {
     return (
       <EpisodeViewer
+        commentMode={commentMode}
+        commentToken={commentToken}
         episode={episode}
         images={viewer.value.images}
         nextEpisode={nextEpisode}

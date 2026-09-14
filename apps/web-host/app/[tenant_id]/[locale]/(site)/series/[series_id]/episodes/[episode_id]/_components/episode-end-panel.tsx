@@ -4,8 +4,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { EpisodeReactionSkeleton } from "#components/episode-reaction";
-import { EpisodeReactionControl } from "#components/episode-reaction-control";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
@@ -147,28 +145,6 @@ export const EpisodeEndPanel = async ({
 
   return (
     <div className="grid gap-10">
-      <div className="justify-self-start">
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="host.episode.reaction.control_error" />
-            </Suspense>
-          }
-        >
-          {/* Member-specific, so it sits in a boundary of its own: the
-              section around it stays on the shared public cache. */}
-          <Suspense fallback={<EpisodeReactionSkeleton />}>
-            <EpisodeReactionControl
-              episodePublicId={episode.publicId}
-              ratingCount={episode.ratingCount}
-              returnTo={returnTo}
-              seriesPublicId={series.publicId}
-              tenantId={tenantId}
-            />
-          </Suspense>
-        </SectionErrorBoundary>
-      </div>
-
       {previousEpisode || nextEpisode ? (
         <section className="grid gap-4">
           <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">

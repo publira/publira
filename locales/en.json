@@ -1887,6 +1887,7 @@
       "age_rating_r18": "R18",
       "back_to_top": "Back to home",
       "cancel": "Cancel",
+      "close": "Close",
       "episode_number": "Episode {$number}",
       "error_id": "Error ID:",
       "find_series": "Browse series",
@@ -2022,6 +2023,7 @@
       "scheduled_at": "Scheduled",
       "to_series_detail": "Open the series",
       "viewer": {
+        "end_page": "The end",
         "enter_fullscreen": "Enter full screen",
         "exit_fullscreen": "Exit full screen",
         "loading": "Loading…",
