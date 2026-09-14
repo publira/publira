@@ -910,6 +910,32 @@ type Querier interface {
 	// in it marks nothing. What the query is scoped to is the reader, through the
 	// member RLS policy episode_reads carries and the columns repeated here.
 	ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, arg ListMyFinishedEpisodePublicIDsInSeriesParams) ([]string, error)
+	// The backward direction of ListMyFollowUpdatesDesc.
+	ListMyFollowUpdatesAsc(ctx context.Context, arg ListMyFollowUpdatesAscParams) ([]ListMyFollowUpdatesAscRow, error)
+	// The episodes that have arrived in what this member follows, most recently
+	// published first.
+	//
+	// The two branches are the two follows an episode can arrive through: the
+	// series it belongs to, and a creator credited on the episode itself. The
+	// credits come from episode_creators for the reason ListEpisodeFollowerIDs
+	// takes them from there — a guest who appears on one episode reaches the
+	// people who follow them, and someone who has since left the series team is
+	// not announced with an episode they were not on. UNION rather than UNION ALL,
+	// so a member who follows both a series and one of its creators sees the
+	// episode once.
+	//
+	// Publication is re-checked on both the series and the listing, so the list
+	// never names something the storefront has taken down; that is the same rule
+	// ListMyEpisodeReads applies to a history entry.
+	//
+	// Each branch starts from the member's own follows, on
+	// idx_series_follows_tenant_user_created_at and
+	// idx_creator_follows_tenant_user_created_at, so the scan is bounded by what
+	// one member follows rather than by the tenant's catalogue.
+	//
+	// Backward calls ListMyFollowUpdatesAsc, and the caller sorts the rows back.
+	// cursor rules: proto/README.md.
+	ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowUpdatesDescParams) ([]ListMyFollowUpdatesDescRow, error)
 	ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error)
 	ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error)
 	// The backward direction of ListMyRecentSeriesDesc.

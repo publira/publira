@@ -362,3 +362,173 @@ FROM (
 ) AS followers
 ORDER BY user_id
 LIMIT sqlc.arg('limit');
+
+-- name: ListMyFollowUpdatesDesc :many
+-- The episodes that have arrived in what this member follows, most recently
+-- published first.
+--
+-- The two branches are the two follows an episode can arrive through: the
+-- series it belongs to, and a creator credited on the episode itself. The
+-- credits come from episode_creators for the reason ListEpisodeFollowerIDs
+-- takes them from there — a guest who appears on one episode reaches the
+-- people who follow them, and someone who has since left the series team is
+-- not announced with an episode they were not on. UNION rather than UNION ALL,
+-- so a member who follows both a series and one of its creators sees the
+-- episode once.
+--
+-- Publication is re-checked on both the series and the listing, so the list
+-- never names something the storefront has taken down; that is the same rule
+-- ListMyEpisodeReads applies to a history entry.
+--
+-- Each branch starts from the member's own follows, on
+-- idx_series_follows_tenant_user_created_at and
+-- idx_creator_follows_tenant_user_created_at, so the scan is bounded by what
+-- one member follows rather than by the tenant's catalogue.
+--
+-- Backward calls ListMyFollowUpdatesAsc, and the caller sorts the rows back.
+-- cursor rules: proto/README.md.
+SELECT series_id,
+    episode_id,
+    episode_public_id,
+    episode_title,
+    episode_order_index,
+    published_at
+FROM (
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.public_id AS episode_public_id,
+        e.title AS episode_title,
+        e.order_index AS episode_order_index,
+        el.published_at AS published_at
+    FROM series_follows sf
+        JOIN episodes e ON e.tenant_id = sf.tenant_id
+            AND e.series_id = sf.series_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND sf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    UNION
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.public_id AS episode_public_id,
+        e.title AS episode_title,
+        e.order_index AS episode_order_index,
+        el.published_at AS published_at
+    FROM creator_follows cf
+        JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
+            AND ec.creator_id = cf.creator_id
+        JOIN episodes e ON e.tenant_id = ec.tenant_id
+            AND e.id = ec.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND cf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+) AS updates
+WHERE sqlc.narg('cursor_published_at')::timestamptz IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (published_at, episode_id) <= (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_episode_id')::uuid
+        )
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (published_at, episode_id) < (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_episode_id')::uuid
+        )
+    )
+ORDER BY published_at DESC,
+    episode_id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyFollowUpdatesAsc :many
+-- The backward direction of ListMyFollowUpdatesDesc.
+SELECT series_id,
+    episode_id,
+    episode_public_id,
+    episode_title,
+    episode_order_index,
+    published_at
+FROM (
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.public_id AS episode_public_id,
+        e.title AS episode_title,
+        e.order_index AS episode_order_index,
+        el.published_at AS published_at
+    FROM series_follows sf
+        JOIN episodes e ON e.tenant_id = sf.tenant_id
+            AND e.series_id = sf.series_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE sf.tenant_id = sqlc.arg('tenant_id')
+        AND sf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    UNION
+    SELECT e.series_id,
+        e.id AS episode_id,
+        e.public_id AS episode_public_id,
+        e.title AS episode_title,
+        e.order_index AS episode_order_index,
+        el.published_at AS published_at
+    FROM creator_follows cf
+        JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
+            AND ec.creator_id = cf.creator_id
+        JOIN episodes e ON e.tenant_id = ec.tenant_id
+            AND e.id = ec.episode_id
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE cf.tenant_id = sqlc.arg('tenant_id')
+        AND cf.user_id = sqlc.arg('user_id')
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+) AS updates
+WHERE sqlc.narg('cursor_published_at')::timestamptz IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (published_at, episode_id) >= (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_episode_id')::uuid
+        )
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (published_at, episode_id) > (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_episode_id')::uuid
+        )
+    )
+ORDER BY published_at ASC,
+    episode_id ASC
+LIMIT sqlc.arg('limit');
