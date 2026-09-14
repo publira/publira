@@ -196,6 +196,36 @@ func TestReaderEmailVerificationEmailRendersTheStoredSignup(t *testing.T) {
 	}
 }
 
+// A worker configured with no renderer is a deployment that runs none: the
+// handler delivers the text it composed and reports success, so the event ends
+// done rather than spending attempts until it dead-letters.
+func TestReaderEmailVerificationEmailDeliversWithoutARenderer(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedUnverifiedEndUser(t, tenant.ID, "READEROUTB01", "reader@example.com", "Reader")
+	tokenID := seedReaderVerificationToken(t, pg, tenant.ID, reader.ID, "verify-token", time.Now().Add(time.Hour))
+
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderEmailVerificationEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer,
+	})
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderEmailVerificationEmail,
+		outbox.ReaderEmailVerificationEmailPayload{TenantID: tenant.ID.String(), TokenID: tokenID.String(), Token: "verify-token"},
+		"reader_email_verification_email:"+tokenID.String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(mailer.emails) != 1 {
+		t.Fatalf("delivered %d emails, want 1", len(mailer.emails))
+	}
+	if mailer.emails[0].HTML != "" {
+		t.Errorf("html = %q, want none", mailer.emails[0].HTML)
+	}
+	if mailer.emails[0].Subject == "" || mailer.emails[0].Text == "" {
+		t.Errorf("delivered email = %+v, want a subject and a text body", mailer.emails[0])
+	}
+}
+
 // An address confirmed before the worker got to the event has nothing left to
 // announce, and neither has one whose link has already expired.
 func TestReaderEmailVerificationEmailSkipsASpentRequest(t *testing.T) {
