@@ -1,7 +1,9 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
+import { ClientMessage } from "#components/client-message";
 import type { QrCodePath } from "#lib/qr-code";
 
 import { useAdminMessages } from "./admin-locale-context";
@@ -21,22 +23,26 @@ export const MfaEnrollmentSecret = ({
   qr,
   secret,
 }: MfaEnrollmentSecretProps) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <div className="grid gap-4">
       <div className="grid gap-1">
         <p className="text-sm font-medium text-foreground">
-          {getMessage(messages, "admin.auth.mfa.enroll_scan_title")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <ClientMessage message="admin.auth.mfa.enroll_scan_title" />
+          </Suspense>
         </p>
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.auth.mfa.enroll_scan_description")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <ClientMessage message="admin.auth.mfa.enroll_scan_description" />
+          </Suspense>
         </p>
       </div>
 
       <div className="flex justify-center">
         <QrCode
-          label={getMessage(messages, "admin.auth.mfa.enroll_qr_label")}
+          label={t("admin.auth.mfa.enroll_qr_label")}
           path={qr.path}
           size={qr.size}
         />
@@ -44,7 +50,9 @@ export const MfaEnrollmentSecret = ({
 
       <div className="grid gap-1">
         <p className="text-sm font-medium text-foreground">
-          {getMessage(messages, "admin.auth.mfa.enroll_secret_label")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <ClientMessage message="admin.auth.mfa.enroll_secret_label" />
+          </Suspense>
         </p>
         {/*
           The secret is typed into an authenticator by hand when the QR code
@@ -55,7 +63,9 @@ export const MfaEnrollmentSecret = ({
           {secret}
         </code>
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.auth.mfa.enroll_secret_help")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <ClientMessage message="admin.auth.mfa.enroll_secret_help" />
+          </Suspense>
         </p>
       </div>
     </div>

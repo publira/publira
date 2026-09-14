@@ -1,4 +1,3 @@
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -13,12 +12,11 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "./auth-input";
-import type { AdminMessages } from "./locale";
 
 const VALID_TOKEN = "a".repeat(64);
 const VALID_TENANT_ID = "01234567-89ab-cdef-0123-456789abcdef";
-const JA: AdminMessages = sharedCatalog("en");
-const EN: AdminMessages = sharedCatalog("en");
+const JA = "ja" as const;
+const EN = "en" as const;
 
 describe("nextPathSearchParamSchema", () => {
   it("keeps a same-origin path", () => {
@@ -66,19 +64,23 @@ describe("authTokenSearchParamSchema", () => {
 });
 
 describe("authTokenFormSchema", () => {
-  it("rejects a missing or malformed token", () => {
-    expect(authTokenFormSchema(JA).safeParse(null).success).toBe(false);
-    expect(authTokenFormSchema(JA).safeParse("short").success).toBe(false);
-    expect(authTokenFormSchema(JA).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+  it("rejects a missing or malformed token", async () => {
+    const authTokenJA = await authTokenFormSchema(JA);
+
+    expect(authTokenJA.safeParse(null).success).toBe(false);
+    expect(authTokenJA.safeParse("short").success).toBe(false);
+    expect(authTokenJA.parse(VALID_TOKEN)).toBe(VALID_TOKEN);
   });
 });
 
 describe("inviteTokenFormSchema", () => {
-  it("rejects a missing or malformed invite token", () => {
-    expect(
-      inviteTokenFormSchema(JA).safeParse("").error?.issues[0]?.message
-    ).toBe("The invitation token was not found.");
-    expect(inviteTokenFormSchema(JA).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+  it("rejects a missing or malformed invite token", async () => {
+    const inviteTokenEN = await inviteTokenFormSchema(EN);
+
+    expect(inviteTokenEN.safeParse("").error?.issues[0]?.message).toBe(
+      "The invitation token was not found."
+    );
+    expect(inviteTokenEN.parse(VALID_TOKEN)).toBe(VALID_TOKEN);
   });
 });
 
@@ -102,32 +104,38 @@ describe("errorSearchParamSchema", () => {
 });
 
 describe("tenantIdFormSchema", () => {
-  it("accepts a UUID tenant id and rejects other strings", () => {
-    expect(tenantIdFormSchema(JA).parse(VALID_TENANT_ID)).toBe(VALID_TENANT_ID);
-    expect(tenantIdFormSchema(JA).safeParse("TENANT001").success).toBe(false);
-    expect(tenantIdFormSchema(JA).safeParse("").success).toBe(false);
+  it("accepts a UUID tenant id and rejects other strings", async () => {
+    const tenantIdJA = await tenantIdFormSchema(JA);
+
+    expect(tenantIdJA.parse(VALID_TENANT_ID)).toBe(VALID_TENANT_ID);
+    expect(tenantIdJA.safeParse("TENANT001").success).toBe(false);
+    expect(tenantIdJA.safeParse("").success).toBe(false);
   });
 });
 
 describe("emailFormSchema", () => {
-  it("trims and requires an email", () => {
-    expect(emailFormSchema(JA).parse("  admin@example.com  ")).toBe(
-      "admin@example.com"
-    );
-    expect(emailFormSchema(JA).safeParse("").success).toBe(false);
-    expect(emailFormSchema(JA).safeParse("not-an-email").success).toBe(false);
+  it("trims and requires an email", async () => {
+    const emailEN = await emailFormSchema(EN);
+    const emailJA = await emailFormSchema(JA);
 
-    expect(emailFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
+    expect(emailJA.parse("  admin@example.com  ")).toBe("admin@example.com");
+    expect(emailJA.safeParse("").success).toBe(false);
+    expect(emailJA.safeParse("not-an-email").success).toBe(false);
+
+    expect(emailEN.safeParse("").error?.issues[0]?.message).toBe(
       "Enter your email address."
     );
   });
 });
 
 describe("passwordFormSchema", () => {
-  it("does not trim, and rejects an empty value", () => {
-    expect(passwordFormSchema(JA).parse(" secret ")).toBe(" secret ");
-    expect(passwordFormSchema(JA).safeParse("").success).toBe(false);
-    expect(passwordFormSchema(EN).safeParse("").error?.issues[0]?.message).toBe(
+  it("does not trim, and rejects an empty value", async () => {
+    const passwordEN = await passwordFormSchema(EN);
+    const passwordJA = await passwordFormSchema(JA);
+
+    expect(passwordJA.parse(" secret ")).toBe(" secret ");
+    expect(passwordJA.safeParse("").success).toBe(false);
+    expect(passwordEN.safeParse("").error?.issues[0]?.message).toBe(
       "Enter your password."
     );
   });

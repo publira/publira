@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
@@ -13,8 +11,10 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ChangeEvent } from "react";
 import {
+  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -22,7 +22,10 @@ import {
   useState,
 } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -30,6 +33,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { ClientMessage } from "#components/client-message";
 import type { AdminMessageKey } from "#lib/locale";
 import {
   paymentSettingsStatus,
@@ -84,7 +88,7 @@ const PaymentSecretField = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const inputId = useId();
   const [isEditing, setIsEditing] = useState(false);
   const showInput = !configured || isEditing;
@@ -100,7 +104,7 @@ const PaymentSecretField = ({
   return (
     <Field>
       <FieldLabel htmlFor={inputId} required={canEdit && required && showInput}>
-        {getMessage(messages, labelKey)}
+        {t(labelKey)}
       </FieldLabel>
       <FieldContent>
         {showInput ? (
@@ -120,10 +124,7 @@ const PaymentSecretField = ({
                 type="button"
                 variant="outline"
               >
-                {getMessage(
-                  messages,
-                  "admin.settings.payment.secret_change_cancel"
-                )}
+                {t("admin.settings.payment.secret_change_cancel")}
               </Button>
             ) : null}
           </div>
@@ -136,7 +137,7 @@ const PaymentSecretField = ({
               type="button"
               variant="outline"
             >
-              {getMessage(messages, "admin.settings.payment.secret_change")}
+              {t("admin.settings.payment.secret_change")}
             </Button>
           </div>
         )}
@@ -145,7 +146,7 @@ const PaymentSecretField = ({
         ) : null}
       </FieldContent>
       <FieldDescription>
-        {getMessage(messages, "admin.settings.payment.secret_description")}
+        {t("admin.settings.payment.secret_description")}
       </FieldDescription>
     </Field>
   );
@@ -174,7 +175,7 @@ const PaymentSettingsFields = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const enabledId = useId();
   const [enabledOverride, setEnabledOverride] = useState<boolean | null>(null);
@@ -211,32 +212,35 @@ const PaymentSettingsFields = ({
       {loadErrorMessage ? null : (
         <div className="flex flex-wrap items-center gap-3">
           <StatusChip status={statusTone[status]}>
-            {getMessage(messages, statusCopy.labelKey)}
+            {t(statusCopy.labelKey)}
           </StatusChip>
           <p className="text-sm text-muted-foreground">
-            {getMessage(messages, statusCopy.descriptionKey)}
+            {t(statusCopy.descriptionKey)}
           </p>
         </div>
       )}
 
       <Field>
         <FieldLabel>
-          {getMessage(messages, "admin.settings.payment.provider")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.settings.payment.provider" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input disabled readOnly type="text" value="Stripe" />
           <FieldDescription>
-            {getMessage(
-              messages,
-              "admin.settings.payment.provider_description"
-            )}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.payment.provider_description" />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel htmlFor={enabledId}>
-          {getMessage(messages, "admin.settings.payment.enabled")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.settings.payment.enabled" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <label className="inline-flex items-center gap-2 text-sm text-foreground">
@@ -248,10 +252,14 @@ const PaymentSettingsFields = ({
               onChange={handleEnabledChange}
               type="checkbox"
             />
-            {getMessage(messages, "admin.settings.payment.enabled_checkbox")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.payment.enabled_checkbox" />
+            </Suspense>
           </label>
           <FieldDescription>
-            {getMessage(messages, "admin.settings.payment.enabled_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.payment.enabled_description" />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>
@@ -279,15 +287,16 @@ const PaymentSettingsFields = ({
       {webhookUrl ? (
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.settings.payment.webhook_url")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.payment.webhook_url" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input disabled readOnly type="text" value={webhookUrl} />
             <FieldDescription>
-              {getMessage(
-                messages,
-                "admin.settings.payment.webhook_url_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.settings.payment.webhook_url_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -295,7 +304,9 @@ const PaymentSettingsFields = ({
 
       {canEdit ? null : (
         <FormMessage variant="destructive">
-          {getMessage(messages, "admin.settings.admin_only")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.settings.admin_only" />
+          </Suspense>
         </FormMessage>
       )}
 
@@ -311,9 +322,7 @@ const PaymentSettingsFields = ({
 
       <div className="flex flex-wrap gap-3">
         <Button disabled={fieldsDisabled || isSaving} type="submit">
-          {isSaving
-            ? getMessage(messages, "admin.settings.saving")
-            : getMessage(messages, "admin.settings.save")}
+          {isSaving ? t("admin.settings.saving") : t("admin.settings.save")}
         </Button>
       </div>
     </form>
@@ -331,7 +340,7 @@ export const TenantPaymentSettingsForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const [saveState, saveFormAction, isSaving] = useActionState(action, null);
   const settings = saveState?.ok ? saveState.settings : initialSettings;
 
@@ -340,10 +349,10 @@ export const TenantPaymentSettingsForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            {getMessage(messages, "admin.settings.payment.title")}
+            {t("admin.settings.payment.title")}
           </AdminSectionTitle>
           <AdminSectionDescription>
-            {getMessage(messages, "admin.settings.payment.description")}
+            {t("admin.settings.payment.description")}
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>

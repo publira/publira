@@ -1,6 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -25,6 +23,7 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 import type { LabelListItem } from "../label-types";
 
@@ -35,7 +34,7 @@ type LabelManagerProps = CursorPageHrefs & {
   pageSize: number;
 };
 
-const LabelListBody = ({
+const LabelListBody = async ({
   hasPageLinks,
   labels,
   listErrorMessage,
@@ -46,7 +45,6 @@ const LabelListBody = ({
   listErrorMessage?: string;
   locale: Locale;
 }) => {
-  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `labels` array; do not show the empty
   // list state alongside the error or operators will read it as "no labels".
   if (listErrorMessage) {
@@ -64,13 +62,15 @@ const LabelListBody = ({
     );
   }
 
+  const t = await getMessagesFor(locale);
+
   if (labels.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(messages, "admin.labels.empty_description")}
+        description={t("admin.labels.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.labels.title")}
-        title={getMessage(messages, "admin.labels.empty_title")}
+        itemLabel={t("admin.labels.title")}
+        title={t("admin.labels.empty_title")}
       />
     );
   }
@@ -80,10 +80,14 @@ const LabelListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead>
-            {getMessage(messages, "admin.labels.columns.name")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.labels.columns.name" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-56">
-            {getMessage(messages, "admin.labels.columns.actions")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.labels.columns.actions" />
+            </Suspense>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -97,7 +101,9 @@ const LabelListBody = ({
                   render={<Link href={`/labels/${label.publicId}`} />}
                   variant="outline"
                 >
-                  {getMessage(messages, "admin.labels.edit_action")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.labels.edit_action" />
+                  </Suspense>
                 </LinkButton>
               </div>
             </TableCell>
@@ -108,7 +114,7 @@ const LabelListBody = ({
   );
 };
 
-export const LabelManager = ({
+export const LabelManager = async ({
   labels,
   listErrorMessage,
   nextHref,
@@ -116,7 +122,7 @@ export const LabelManager = ({
   previousHref,
   locale,
 }: LabelManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -134,14 +140,10 @@ export const LabelManager = ({
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(messages, "admin.labels.pagination_aria")}
-          description={getMessage(
-            messages,
-            "admin.labels.pagination_description",
-            {
-              count: pageSize,
-            }
-          )}
+          ariaLabel={t("admin.labels.pagination_aria")}
+          description={t("admin.labels.pagination_description", {
+            count: pageSize,
+          })}
           nextHref={nextHref}
           previousHref={previousHref}
         />

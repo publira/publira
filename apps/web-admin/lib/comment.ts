@@ -4,10 +4,7 @@ import type {
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 
 import {
   COMMENT_REPORT_STATUSES,
@@ -38,6 +35,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 /*
@@ -52,35 +50,27 @@ import { getAccessToken } from "./session";
  * `updateTag()` because there is no entry to invalidate.
  */
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.comments.list_failed");
-const reportListErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.comments.reports.list_failed");
-const countErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.comments.count_failed");
-
 /**
  * The wording each moderation action falls back to when the RPC error has no
  * shared category of its own.
  */
-const actionErrorMessage = (
+const actionErrorMessage = async (
   action: CommentModerationAction,
-  messages: SharedMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
   switch (action) {
     case "approve": {
-      return getMessage(messages, "admin.comments.approve_failed");
+      return t("admin.comments.approve_failed");
     }
     case "hide": {
-      return getMessage(messages, "admin.comments.hide_failed");
+      return t("admin.comments.hide_failed");
     }
     case "restore": {
-      return getMessage(messages, "admin.comments.restore_failed");
+      return t("admin.comments.restore_failed");
     }
     default: {
-      return getMessage(messages, "admin.comments.purge_failed");
+      return t("admin.comments.purge_failed");
     }
   }
 };
@@ -240,13 +230,15 @@ export const listComments = async (
   locale: Locale,
   filters: ListCommentsFilters = {}
 ): Promise<ListCommentsResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       comments: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -274,7 +266,9 @@ export const listComments = async (
     return {
       ...emptyCursorPageTokens,
       comments: [],
-      message: rpcErrorMessage(error, listErrorMessage(messages), { locale }),
+      message: rpcErrorMessage(error, t("admin.comments.list_failed"), {
+        locale,
+      }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -298,12 +292,14 @@ export const listCommentReports = async (
   locale: Locale,
   filters: ListCommentReportsFilters = {}
 ): Promise<ListCommentReportsResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       reports: [],
       requiresSignIn: true,
@@ -329,7 +325,7 @@ export const listCommentReports = async (
     rethrowUnclassifiedRpcError(error);
     return {
       ...emptyCursorPageTokens,
-      message: rpcErrorMessage(error, reportListErrorMessage(messages), {
+      message: rpcErrorMessage(error, t("admin.comments.reports.list_failed"), {
         locale,
       }),
       ok: false,
@@ -358,10 +354,12 @@ export const resolveCommentReport = async (
   input: ResolveCommentReportInput,
   locale: Locale
 ): Promise<ModerateCommentResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -381,16 +379,13 @@ export const resolveCommentReport = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "admin.comments.reports.resolve_failed"),
+        t("admin.comments.reports.resolve_failed"),
         {
           locale,
           // The report was decided between the queue being rendered and the
           // button being pressed — another moderator got there first.
           overrides: {
-            precondition: getMessage(
-              messages,
-              "admin.comments.reports.already_decided"
-            ),
+            precondition: t("admin.comments.reports.already_decided"),
           },
         }
       ),
@@ -416,11 +411,13 @@ export const countPendingComments = async (
   tenantId: string,
   locale: Locale
 ): Promise<CountPendingCommentsResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       pendingCount: 0,
       requiresSignIn: true,
@@ -437,7 +434,9 @@ export const countPendingComments = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(error, countErrorMessage(messages), { locale }),
+      message: rpcErrorMessage(error, t("admin.comments.count_failed"), {
+        locale,
+      }),
       ok: false,
       pendingCount: 0,
       requiresSignIn: isUnauthenticatedError(error),
@@ -502,10 +501,12 @@ export const moderateComment = async (
   input: ModerateCommentInput,
   locale: Locale
 ): Promise<ModerateCommentResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -517,13 +518,13 @@ export const moderateComment = async (
     return {
       message: rpcErrorMessage(
         error,
-        actionErrorMessage(input.action, messages),
+        await actionErrorMessage(input.action, locale),
         {
           locale,
           // The comment moved between the screen being rendered and the button
           // being pressed — another moderator got there first.
           overrides: {
-            precondition: getMessage(messages, "admin.comments.already_moved"),
+            precondition: t("admin.comments.already_moved"),
           },
         }
       ),

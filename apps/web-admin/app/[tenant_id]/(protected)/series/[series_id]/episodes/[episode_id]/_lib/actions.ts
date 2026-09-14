@@ -1,7 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -25,7 +24,7 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type {
@@ -33,24 +32,28 @@ import type {
   EpisodeEditMode,
 } from "../episode-edit-types";
 
-const hiddenParamsSchema = (messages: AdminMessages) =>
-  z.object({
+const hiddenParamsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     episodePublicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.episode_missing")
+      t("admin.series.episodes.validation.episode_missing")
     ),
     seriesPublicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.series_missing")
+      t("admin.series.episodes.validation.series_missing")
     ),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.tenant_missing")
+      t("admin.series.episodes.validation.tenant_missing")
     ),
   });
+};
+const scheduleFormSchema = async (locale: Locale) => {
+  const base = await hiddenParamsSchema(locale);
 
-const scheduleFormSchema = (messages: AdminMessages) =>
-  hiddenParamsSchema(messages).extend({
+  return base.extend({
     publishAt: optionalTrimmedString(),
   });
-
+};
 const uploadModeSchema = z.preprocess(
   (value) => {
     if (value === "zip" || value === "epub" || value === "pages") {
@@ -62,27 +65,31 @@ const uploadModeSchema = z.preprocess(
   z.enum(["pages", "zip", "epub"])
 );
 
-const uploadPagesFormSchema = (messages: AdminMessages) =>
-  hiddenParamsSchema(messages).extend({
+const uploadPagesFormSchema = async (locale: Locale) => {
+  const base = await hiddenParamsSchema(locale);
+
+  return base.extend({
     archive: optionalFileFormSchema,
     pages: fileListFormSchema,
     uploadMode: uploadModeSchema,
   });
+};
+const reorderImagesSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const reorderImagesSchema = (messages: AdminMessages) =>
-  z.object({
+  return z.object({
     episodePublicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+      t("admin.series.episodes.validation.sort_data_missing")
     ),
     orderedImageIds: jsonStringArrayFormSchema,
     seriesPublicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+      t("admin.series.episodes.validation.sort_data_missing")
     ),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+      t("admin.series.episodes.validation.sort_data_missing")
     ),
   });
-
+};
 const hiddenFormFields = {
   episodePublicId: { kind: "value", name: "episode_public_id" },
   seriesPublicId: { kind: "value", name: "series_public_id" },
@@ -101,7 +108,7 @@ const toFailure = (
 const parsePublishAtToRFC3339 = async (
   value: string,
   tenantId: string,
-  messages: AdminMessages
+  locale: Locale
 ): Promise<{ ok: true; iso: string } | ReturnType<typeof toFailure>> => {
   if (!value) {
     return { iso: "", ok: true };
@@ -110,25 +117,22 @@ const parsePublishAtToRFC3339 = async (
   // The form posts an absolute instant resolved against the zone it was
   // rendered in. A leftover `datetime-local` wall clock (no JS) is still
   // accepted and read in the tenant's current display zone.
-  const timeZone = await getTenantDisplayTimeZone(tenantId);
+  const [t, timeZone] = await Promise.all([
+    getMessagesFor(locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
   const iso = toInstantIsoString(value, timeZone);
   const parsed = parseInstant(iso);
   if (!parsed) {
     return toFailure(
-      getMessage(
-        messages,
-        "admin.series.episodes.validation.publish_at_invalid"
-      ),
+      t("admin.series.episodes.validation.publish_at_invalid"),
       "schedule"
     );
   }
 
   if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
     return toFailure(
-      getMessage(
-        messages,
-        "admin.series.episodes.validation.publish_at_future"
-      ),
+      t("admin.series.episodes.validation.publish_at_future"),
       "schedule"
     );
   }
@@ -142,8 +146,8 @@ export const updateEpisodeScheduleAction = async (
 ): Promise<EpisodeEditActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = scheduleFormSchema(messages).safeParse(
+  const schema = await scheduleFormSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       publishAt: { kind: "value", name: "publish_at" },
@@ -156,7 +160,7 @@ export const updateEpisodeScheduleAction = async (
   const schedule = await parsePublishAtToRFC3339(
     parsed.data.publishAt,
     parsed.data.tenantId,
-    messages
+    locale
   );
   if (!schedule.ok) {
     return schedule;
@@ -190,8 +194,11 @@ export const uploadEpisodePagesAction = async (
 ): Promise<EpisodeEditActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = uploadPagesFormSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    uploadPagesFormSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       archive: { kind: "file", name: "archive" },
@@ -216,14 +223,8 @@ export const uploadEpisodePagesAction = async (
     if (!archive) {
       return toFailure(
         uploadMode === "zip"
-          ? getMessage(
-              messages,
-              "admin.series.episodes.validation.zip_required"
-            )
-          : getMessage(
-              messages,
-              "admin.series.episodes.validation.epub_required"
-            ),
+          ? t("admin.series.episodes.validation.zip_required")
+          : t("admin.series.episodes.validation.epub_required"),
         "pages"
       );
     }
@@ -239,11 +240,8 @@ export const uploadEpisodePagesAction = async (
     if (!isValidArchive) {
       return toFailure(
         uploadMode === "zip"
-          ? getMessage(messages, "admin.series.episodes.validation.zip_invalid")
-          : getMessage(
-              messages,
-              "admin.series.episodes.validation.epub_invalid"
-            ),
+          ? t("admin.series.episodes.validation.zip_invalid")
+          : t("admin.series.episodes.validation.epub_invalid"),
         "pages"
       );
     }
@@ -271,7 +269,7 @@ export const uploadEpisodePagesAction = async (
 
   if (pages.length === 0) {
     return toFailure(
-      getMessage(messages, "admin.series.episodes.validation.pages_required"),
+      t("admin.series.episodes.validation.pages_required"),
       "pages"
     );
   }
@@ -301,8 +299,11 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
 
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = reorderImagesSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    reorderImagesSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       orderedImageIds: { kind: "value", name: "ordered_image_ids" },
@@ -311,10 +312,7 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
-        fallback: getMessage(
-          messages,
-          "admin.series.episodes.validation.sort_data_missing"
-        ),
+        fallback: t("admin.series.episodes.validation.sort_data_missing"),
         locale,
       }),
       ok: false,
@@ -323,10 +321,7 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
 
   if (parsed.data.orderedImageIds.length === 0) {
     return {
-      message: getMessage(
-        messages,
-        "admin.series.episodes.validation.no_images_to_sort"
-      ),
+      message: t("admin.series.episodes.validation.no_images_to_sort"),
       ok: false,
     };
   }

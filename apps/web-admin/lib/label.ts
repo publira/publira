@@ -5,10 +5,8 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { getMessage, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 import { z } from "zod";
 
@@ -28,6 +26,7 @@ import {
   mentionsAspectImageRejection,
   mentionsImageRejection,
 } from "./image-rejection";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -86,32 +85,29 @@ export type GetLabelResult =
       requiresSignIn?: boolean;
     };
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.labels.list_failed");
-const mutationErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.labels.save_failed");
-
-const invalidArgumentMessage = (
+const invalidArgumentMessage = async (
   error: unknown,
-  messages: SharedMessages
-): string =>
-  mentionsImageRejection(error)
-    ? getMessage(messages, "admin.labels.image_invalid")
-    : getMessage(messages, "errors.rpc.invalid-argument");
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
-const mapErrorToMessage = (
+  return mentionsImageRejection(error)
+    ? t("admin.labels.image_invalid")
+    : t("errors.rpc.invalid-argument");
+};
+
+const mapErrorToMessage = async (
   error: unknown,
   fallbackMessage: string,
   locale: Locale
-): string =>
-  rpcErrorMessage(error, fallbackMessage, {
+): Promise<string> => {
+  const invalidArgument = await invalidArgumentMessage(error, locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
     locale,
-    overrides: {
-      "invalid-argument": invalidArgumentMessage(error, sharedCatalog(locale)),
-    },
+    overrides: { "invalid-argument": invalidArgument },
   });
+};
 
 /** The generated `Label` fields {@link mapLabel} reads (see `series.ts`). */
 type RawLabel = Pick<
@@ -156,13 +152,15 @@ export const listLabels = async (
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       labels: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -187,7 +185,11 @@ export const listLabels = async (
     return {
       ...emptyCursorPageTokens,
       labels: [],
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -212,13 +214,15 @@ export const listAllLabels = async (
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       labels: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -254,7 +258,7 @@ export const listAllLabels = async (
       return {
         ...emptyCursorPageTokens,
         labels: [],
-        message: listErrorMessage(messages),
+        message: t("admin.labels.list_failed"),
         ok: false,
         requiresSignIn: false,
       };
@@ -272,7 +276,11 @@ export const listAllLabels = async (
     return {
       ...emptyCursorPageTokens,
       labels: [],
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -288,11 +296,13 @@ export const createLabel = async (
   },
   locale: Locale
 ): Promise<CreateLabelResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -310,7 +320,7 @@ export const createLabel = async (
 
     if (!response.label?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.labels.save_failed"),
         ok: false,
       };
     }
@@ -323,7 +333,11 @@ export const createLabel = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -340,11 +354,13 @@ export const updateLabel = async (
   },
   locale: Locale
 ): Promise<UpdateLabelResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -364,7 +380,7 @@ export const updateLabel = async (
 
     if (!response.label?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.labels.save_failed"),
         ok: false,
       };
     }
@@ -377,7 +393,11 @@ export const updateLabel = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -407,11 +427,13 @@ export const getLabel = async (
   cacheTag(`labels-${parsed.data.tenantId}`);
   cacheTag(`label-${parsed.data.tenantId}-${parsed.data.publicId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -428,7 +450,7 @@ export const getLabel = async (
 
     if (!response.label?.publicId?.trim()) {
       return {
-        message: listErrorMessage(messages),
+        message: t("admin.labels.list_failed"),
         ok: false,
       };
     }
@@ -443,7 +465,11 @@ export const getLabel = async (
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -477,11 +503,13 @@ export const uploadLabelEyeCatchAspectImage = async (
   },
   locale: Locale
 ): Promise<LabelEyeCatchAspectResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -501,7 +529,7 @@ export const uploadLabelEyeCatchAspectImage = async (
 
     if (!response.label?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.labels.save_failed"),
         ok: false,
       };
     }
@@ -514,7 +542,11 @@ export const uploadLabelEyeCatchAspectImage = async (
       return { imageRejected: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.labels.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }

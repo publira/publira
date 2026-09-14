@@ -1,7 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -25,7 +24,7 @@ import {
   requiredTrimmedString,
   trimmedStringListFormSchema,
 } from "#lib/form-schemas";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import {
   createSeries,
   seriesCacheTag,
@@ -69,65 +68,67 @@ const scheduleWeekdaysFormSchema = z
  * current display zone rather than being glued to a hardcoded `+09:00` or
  * reinterpreted in the server's local zone.
  */
-const seriesCommonSchema = (messages: AdminMessages) =>
-  z.object({
+const seriesCommonSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     ageRating: z.enum(SERIES_AGE_RATING_VALUES, {
-      error: getMessage(messages, "admin.series.validation.age_rating_invalid"),
+      error: t("admin.series.validation.age_rating_invalid"),
     }),
     // The empty value is one of the four: it is the series stating no mode of
     // its own and so following the tenant's.
     commentMode: z.enum(SERIES_COMMENT_MODES, {
-      error: getMessage(
-        messages,
-        "admin.series.validation.comment_mode_invalid"
-      ),
+      error: t("admin.series.validation.comment_mode_invalid"),
     }),
     creatorPublicIds: trimmedStringListFormSchema,
     eyeCatchImage: optionalFileFormSchema,
     genrePublicIds: trimmedStringListFormSchema,
     isPublished: checkboxOnFormSchema,
     labelPublicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.validation.label_required")
+      t("admin.series.validation.label_required")
     ),
     publishedAt: optionalTrimmedString(),
     readingPeriodHours: nonNegativeIntFormSchema(
-      getMessage(messages, "admin.series.validation.reading_period_invalid")
+      t("admin.series.validation.reading_period_invalid")
     ),
     scheduleWeekdays: scheduleWeekdaysFormSchema,
     status: z.enum(SERIES_STATUS_VALUES, {
-      error: getMessage(messages, "admin.series.validation.status_invalid"),
+      error: t("admin.series.validation.status_invalid"),
     }),
     synopsis: requiredTrimmedString(
-      getMessage(messages, "admin.series.validation.synopsis_required"),
+      t("admin.series.validation.synopsis_required"),
       10_000
     ),
     tagNames: trimmedStringListFormSchema.refine(
       (values) => values.length <= MAX_SERIES_TAGS,
-      getMessage(messages, "admin.series.validation.tags_too_many", {
+      t("admin.series.validation.tags_too_many", {
         count: String(MAX_SERIES_TAGS),
       })
     ),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.series.validation.tenant_missing")
+      t("admin.series.validation.tenant_missing")
     ),
-    title: requiredTrimmedString(
-      getMessage(messages, "admin.series.validation.title_required")
-    ),
+    title: requiredTrimmedString(t("admin.series.validation.title_required")),
   });
+};
+const seriesUpdateSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    seriesCommonSchema(locale),
+  ]);
 
-const seriesUpdateSchema = (messages: AdminMessages) =>
-  seriesCommonSchema(messages).extend({
-    publicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.validation.id_missing")
-    ),
+  return base.extend({
+    publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
   });
+};
+const seriesEyeCatchSchema = async (locale: Locale) => {
+  const base = await seriesUpdateSchema(locale);
 
-const seriesEyeCatchSchema = (messages: AdminMessages) =>
-  seriesUpdateSchema(messages).extend({
+  return base.extend({
     clearEyeCatchImage: flagOneFormSchema,
     currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
   });
-
+};
 const seriesFormFields = {
   ageRating: { kind: "value", name: "age_rating" },
   commentMode: { kind: "value", name: "comment_mode" },
@@ -173,7 +174,7 @@ const resolvePublishedAt = async (
   publishedAtRaw: string,
   tenantId: string,
   mode: SeriesMutationMode,
-  messages: AdminMessages
+  locale: Locale
 ): Promise<
   { ok: true; publishedAt: string } | ReturnType<typeof toFailure>
 > => {
@@ -181,13 +182,13 @@ const resolvePublishedAt = async (
     return { ok: true, publishedAt: "" };
   }
 
-  const timeZone = await getTenantDisplayTimeZone(tenantId);
+  const [t, timeZone] = await Promise.all([
+    getMessagesFor(locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
   const publishedAt = toInstantIsoString(publishedAtRaw, timeZone);
   if (publishedAtRaw.length > 0 && publishedAt.length === 0) {
-    return toFailure(
-      getMessage(messages, "admin.series.validation.published_at_invalid"),
-      mode
-    );
+    return toFailure(t("admin.series.validation.published_at_invalid"), mode);
   }
 
   return { ok: true, publishedAt };
@@ -199,10 +200,8 @@ export const createSeriesAction = async (
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = seriesCommonSchema(messages).safeParse(
-    toFormDataInput(formData, seriesFormFields)
-  );
+  const schema = await seriesCommonSchema(locale);
+  const parsed = schema.safeParse(toFormDataInput(formData, seriesFormFields));
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
@@ -211,7 +210,7 @@ export const createSeriesAction = async (
     parsed.data.publishedAt,
     parsed.data.tenantId,
     "create",
-    messages
+    locale
   );
   if (!schedule.ok) {
     return schedule;
@@ -261,8 +260,8 @@ export const updateSeriesAction = async (
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = seriesUpdateSchema(messages).safeParse(
+  const schema = await seriesUpdateSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
       publicId: { kind: "value", name: "public_id" },
@@ -276,7 +275,7 @@ export const updateSeriesAction = async (
     parsed.data.publishedAt,
     parsed.data.tenantId,
     "update",
-    messages
+    locale
   );
   if (!schedule.ok) {
     return schedule;
@@ -328,8 +327,11 @@ export const updateSeriesEyeCatchAction = async (
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = seriesEyeCatchSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    seriesEyeCatchSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
       clearEyeCatchImage: { kind: "value", name: "clear_eye_catch_image" },
@@ -348,7 +350,7 @@ export const updateSeriesEyeCatchAction = async (
     parsed.data.publishedAt,
     parsed.data.tenantId,
     "update",
-    messages
+    locale
   );
   if (!schedule.ok) {
     return schedule;
@@ -359,10 +361,7 @@ export const updateSeriesEyeCatchAction = async (
   );
 
   if (!parsed.data.clearEyeCatchImage && !eyeCatchImageData) {
-    return toFailure(
-      getMessage(messages, "admin.series.eye_catch_choice_required"),
-      "update"
-    );
+    return toFailure(t("admin.series.eye_catch_choice_required"), "update");
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -400,10 +399,7 @@ export const updateSeriesEyeCatchAction = async (
     !parsed.data.clearEyeCatchImage &&
     (result.series.eyeCatchImageVariants?.length ?? 0) === 0
   ) {
-    return toFailure(
-      getMessage(messages, "admin.series.eye_catch_variants_missing"),
-      "update"
-    );
+    return toFailure(t("admin.series.eye_catch_variants_missing"), "update");
   }
 
   if (
@@ -414,7 +410,7 @@ export const updateSeriesEyeCatchAction = async (
       parsed.data.currentEyeCatchImageUpdatedAt
   ) {
     return toFailure(
-      getMessage(messages, "admin.series.eye_catch_upload_not_reflected"),
+      t("admin.series.eye_catch_upload_not_reflected"),
       "update"
     );
   }
@@ -423,29 +419,27 @@ export const updateSeriesEyeCatchAction = async (
   updateTag(seriesListCacheTag(parsed.data.tenantId));
 
   return {
-    message: getMessage(messages, "admin.series.eye_catch_updated"),
+    message: t("admin.series.eye_catch_updated"),
     mode: "update",
     ok: true,
     series: result.series,
   };
 };
 
-const eyeCatchAspectSchema = (messages: AdminMessages) =>
-  z.object({
-    crop: optionalCropRectFormSchema(
-      getMessage(messages, "admin.image_crop.invalid")
-    ),
-    publicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.validation.id_missing")
-    ),
+const eyeCatchAspectSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
+    publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.series.validation.tenant_missing")
+      t("admin.series.validation.tenant_missing")
     ),
     variantType: requiredTrimmedString(
-      getMessage(messages, "admin.eye_catch.aspect.variant_type_missing")
+      t("admin.eye_catch.aspect.variant_type_missing")
     ),
   });
-
+};
 const eyeCatchAspectFormFields = {
   crop: { kind: "value", name: CROP_RECT_FIELD },
   publicId: { kind: "value", name: "public_id" },
@@ -468,8 +462,11 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
 ): Promise<EyeCatchAspectActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = eyeCatchAspectSchema(messages)
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    eyeCatchAspectSchema(locale),
+  ]);
+  const parsed = schema
     .extend({ aspectImage: optionalFileFormSchema })
     .safeParse(
       toFormDataInput(formData, {
@@ -484,7 +481,7 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
   const { aspectImage, crop, publicId, tenantId, variantType } = parsed.data;
   if (!aspectImage) {
     return toAspectFailure(
-      getMessage(messages, "admin.eye_catch.aspect.image_required"),
+      t("admin.eye_catch.aspect.image_required"),
       variantType
     );
   }
@@ -514,7 +511,7 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
   updateTag(seriesListCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.eye_catch.aspect.uploaded"),
+    message: t("admin.eye_catch.aspect.uploaded"),
     ok: true,
     variantType,
   };

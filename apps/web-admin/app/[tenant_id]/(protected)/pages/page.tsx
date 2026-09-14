@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { TableSkeleton } from "@publira/ui-components/table";
@@ -23,7 +22,8 @@ import {
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { listPages } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -35,9 +35,9 @@ type PagesPageProps = PageProps<"/[tenant_id]/pages">;
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.pages.title") };
+  return { title: t("admin.pages.title") };
 };
 
 export const generateStaticParams = () =>

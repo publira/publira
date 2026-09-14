@@ -1,8 +1,8 @@
-import { getMessage } from "@publira/i18n";
-import type { SharedMessages } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import type { BadgeTone } from "@publira/ui-components/badge";
 
 import { Message } from "#components/message";
+import { getMessagesFor } from "#lib/messages";
 
 import type { CommentStatus } from "../comment-types";
 
@@ -40,22 +40,23 @@ export const CommentStatusMessage = ({ status }: { status: CommentStatus }) => {
  * checked against the catalog, so a state renamed in the proto would render an
  * empty cell instead of failing the build.
  */
-export const commentStatusLabel = (
+export const commentStatusLabel = async (
   status: CommentStatus,
-  messages: SharedMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
   switch (status) {
     case "pending": {
-      return getMessage(messages, "admin.comments.status_pending");
+      return t("admin.comments.status_pending");
     }
     case "published": {
-      return getMessage(messages, "admin.comments.status_published");
+      return t("admin.comments.status_published");
     }
     case "hidden": {
-      return getMessage(messages, "admin.comments.status_hidden");
+      return t("admin.comments.status_hidden");
     }
     default: {
-      return getMessage(messages, "admin.comments.status_withdrawn");
+      return t("admin.comments.status_withdrawn");
     }
   }
 };

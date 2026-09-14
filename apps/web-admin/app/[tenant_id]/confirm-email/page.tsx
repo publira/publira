@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenBody,
@@ -16,7 +15,8 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { confirmAdminEmailChange } from "#lib/admin-auth";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
@@ -24,9 +24,9 @@ import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.auth.confirm_email.title") };
+  return { title: t("admin.auth.confirm_email.title") };
 };
 
 interface ConfirmEmailPageProps {

@@ -12,7 +12,11 @@ import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
 
 import { loadAdminMessages } from "#lib/messages";
-import type { AdminMessageKey, AdminMessages } from "#lib/messages";
+import type {
+  AdminMessageAccessor,
+  AdminMessageKey,
+  AdminMessages,
+} from "#lib/messages";
 
 const readCookie = (name: string): string => {
   if (typeof document === "undefined") {
@@ -103,6 +107,11 @@ const adminCatalog = (locale: Locale): Promise<AdminMessages> => {
  * The cookie the proxy publishes is a copy of that same server-resolved value,
  * so an ordinary control reads the language the console is already served in.
  */
+export const useClientMessages = (): AdminMessageAccessor => {
+  const messages = use(adminCatalog(readClientLocale()));
+
+  return bindMessages(messages);
+};
 export const ClientMessage = ({
   message,
   values,
@@ -110,14 +119,13 @@ export const ClientMessage = ({
   message: AdminMessageKey;
   values?: MessageValues;
 }) => {
-  const messages = use(adminCatalog(readClientLocale()));
-  const t = bindMessages(messages);
+  const t = useClientMessages();
 
   return t(message, values);
 };
 
 /**
- * The catalog itself, for the one element that carries a string-only attribute.
+ * The accessor itself, for the one element that carries a string-only attribute.
  *
  * `aria-label` on a shared component's slot cannot be a node, so the string has
  * to be resolved by a component rather than rendered by one. Keep that
@@ -130,5 +138,3 @@ export const ClientMessage = ({
  * whether the attribute can be a node at all: an icon-only button names itself
  * with an `sr-only` `<span>`, and a list can be `aria-labelledby` its heading.
  */
-export const useClientMessages = (): AdminMessages =>
-  use(adminCatalog(readClientLocale()));

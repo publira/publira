@@ -1,9 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { parseInstant } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -23,6 +20,7 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import { getMessagesFor } from "#lib/messages";
 
 import type {
   IssueAccessTicketActionState,
@@ -30,22 +28,21 @@ import type {
   RevokeAccessTicketActionState,
 } from "../ticket-types";
 
-const issueTicketSchema = (messages: SharedMessages) =>
-  z
+const issueTicketSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .object({
       episodePublicId: requiredTrimmedString(
-        getMessage(
-          messages,
-          "admin.access_tickets.validation.episode_id_required"
-        )
+        t("admin.access_tickets.validation.episode_id_required")
       ),
       expiresAt: optionalTrimmedString(),
       note: optionalTrimmedString(1000),
       tenantId: requiredTrimmedString(
-        getMessage(messages, "admin.access_tickets.validation.tenant_missing")
+        t("admin.access_tickets.validation.tenant_missing")
       ),
       userPublicId: requiredTrimmedString(
-        getMessage(messages, "admin.access_tickets.validation.user_id_required")
+        t("admin.access_tickets.validation.user_id_required")
       ),
     })
     .superRefine((value, ctx) => {
@@ -59,10 +56,7 @@ const issueTicketSchema = (messages: SharedMessages) =>
       if (!parsed) {
         ctx.addIssue({
           code: "custom",
-          message: getMessage(
-            messages,
-            "admin.access_tickets.validation.expires_at_invalid"
-          ),
+          message: t("admin.access_tickets.validation.expires_at_invalid"),
           path: ["expiresAt"],
         });
         return;
@@ -70,47 +64,49 @@ const issueTicketSchema = (messages: SharedMessages) =>
       if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
         ctx.addIssue({
           code: "custom",
-          message: getMessage(
-            messages,
-            "admin.access_tickets.validation.expires_at_past"
-          ),
+          message: t("admin.access_tickets.validation.expires_at_past"),
           path: ["expiresAt"],
         });
       }
     });
+};
+const revokeTicketSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const revokeTicketSchema = (messages: SharedMessages) =>
-  z.object({
+  return z.object({
     publicId: requiredTrimmedString(
-      getMessage(messages, "admin.access_tickets.validation.revoke_target")
+      t("admin.access_tickets.validation.revoke_target")
     ),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.access_tickets.validation.revoke_target")
+      t("admin.access_tickets.validation.revoke_target")
     ),
   });
+};
+const listEpisodeOptionsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const listEpisodeOptionsSchema = (messages: SharedMessages) =>
-  z.object({
+  return z.object({
     seriesPublicId: requiredTrimmedString(
-      getMessage(messages, "admin.access_tickets.validation.series_required")
+      t("admin.access_tickets.validation.series_required")
     ),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.access_tickets.validation.tenant_missing")
+      t("admin.access_tickets.validation.tenant_missing")
     ),
   });
-
-const existingNonActiveTicketMessage = (
+};
+const existingNonActiveTicketMessage = async (
   publicId: string,
   status: string,
-  messages: SharedMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
   if (status === "expired") {
-    return getMessage(messages, "admin.access_tickets.existing_expired", {
+    return t("admin.access_tickets.existing_expired", {
       id: publicId,
     });
   }
 
-  return getMessage(messages, "admin.access_tickets.existing_ticket", {
+  return t("admin.access_tickets.existing_ticket", {
     id: publicId,
   });
 };
@@ -121,8 +117,8 @@ export const issueAccessTicketAction = async (
 ): Promise<IssueAccessTicketActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = issueTicketSchema(messages).safeParse(
+  const schema = await issueTicketSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       episodePublicId: { kind: "value", name: "episode_public_id" },
       expiresAt: { kind: "value", name: "expires_at" },
@@ -162,10 +158,10 @@ export const issueAccessTicketAction = async (
   // the unique slot, so treat that as a form error instead of a new grant.
   if (result.ticket.status !== "active") {
     return {
-      message: existingNonActiveTicketMessage(
+      message: await existingNonActiveTicketMessage(
         result.ticket.publicId,
         result.ticket.status,
-        messages
+        locale
       ),
       ok: false,
     };
@@ -182,7 +178,8 @@ export const listEpisodeOptionsAction = async (
 ): Promise<ListTicketEpisodeOptionsResult> => {
   // This Server Action only reads episode options; the same-origin check
   // applies to mutations.
-  const parsed = listEpisodeOptionsSchema(sharedCatalog(locale)).safeParse({
+  const schema = await listEpisodeOptionsSchema(locale);
+  const parsed = schema.safeParse({
     seriesPublicId,
     tenantId,
   });
@@ -229,7 +226,8 @@ export const revokeAccessTicketAction = async (
     publicId: { kind: "value", name: "public_id" },
     tenantId: { kind: "value", name: "tenant_id" },
   });
-  const parsed = revokeTicketSchema(sharedCatalog(locale)).safeParse(input);
+  const schema = await revokeTicketSchema(locale);
+  const parsed = schema.safeParse(input);
   const publicId =
     typeof input.publicId === "string" ? input.publicId.trim() : "";
   if (!parsed.success) {
@@ -252,8 +250,9 @@ export const revokeAccessTicketAction = async (
   }
 
   updateTag(`access-tickets-${parsed.data.tenantId}`);
+  const t = await getMessagesFor(locale);
   return {
-    message: getMessage(sharedCatalog(locale), "admin.access_tickets.revoked"),
+    message: t("admin.access_tickets.revoked"),
     ok: true,
     publicId: parsed.data.publicId,
   };

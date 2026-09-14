@@ -1,9 +1,12 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import { getMessagesFor } from "#lib/messages";
 
 import type { CommentFilters } from "../_lib/search-params";
 import { COMMENT_STATUSES } from "../comment-types";
@@ -23,34 +26,43 @@ interface CommentFilterFormProps {
  * often judged next to its neighbours: an operator who wants only the approval
  * queue picks it, and the link from the navigation badge already does.
  */
-const statusOptions = (locale: Locale): { label: string; value: string }[] => {
-  const messages = sharedCatalog(locale);
+const statusOptions = async (
+  locale: Locale
+): Promise<{ label: string; value: string }[]> => {
+  const t = await getMessagesFor(locale);
 
   return [
     {
-      label: getMessage(messages, "admin.comments.filter.status_all"),
+      label: t("admin.comments.filter.status_all"),
       value: "",
     },
-    ...COMMENT_STATUSES.map((status) => ({
-      label: commentStatusLabel(status, messages),
-      value: status,
-    })),
+    ...(await Promise.all(
+      COMMENT_STATUSES.map(async (status) => ({
+        label: await commentStatusLabel(status, locale),
+        value: status,
+      }))
+    )),
   ];
 };
 
-export const CommentFilterForm = ({
+export const CommentFilterForm = async ({
   filters,
   locale,
   timeZone,
 }: CommentFilterFormProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <section className="grid gap-3">
       <p className="max-w-3xl text-sm text-muted-foreground">
-        {getMessage(messages, "admin.comments.filter.description", {
-          time_zone: timeZone,
-        })}
+        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          <Message
+            message="admin.comments.filter.description"
+            values={{
+              time_zone: timeZone,
+            }}
+          />
+        </Suspense>
       </p>
       <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {/*
@@ -69,21 +81,20 @@ export const CommentFilterForm = ({
 
         <CommentStatusSelect
           defaultValue={filters.status}
-          options={statusOptions(locale)}
+          options={await statusOptions(locale)}
         />
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.comments.filter.series")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.filter.series" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               defaultValue={filters.series}
               name="series"
-              placeholder={getMessage(
-                messages,
-                "admin.comments.filter.series_placeholder"
-              )}
+              placeholder={t("admin.comments.filter.series_placeholder")}
               type="text"
             />
           </FieldContent>
@@ -91,16 +102,15 @@ export const CommentFilterForm = ({
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.comments.filter.episode")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.filter.episode" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               defaultValue={filters.episode}
               name="episode"
-              placeholder={getMessage(
-                messages,
-                "admin.comments.filter.episode_placeholder"
-              )}
+              placeholder={t("admin.comments.filter.episode_placeholder")}
               type="text"
             />
           </FieldContent>
@@ -108,10 +118,14 @@ export const CommentFilterForm = ({
 
         <div className="flex items-end gap-2">
           <Button type="submit">
-            {getMessage(messages, "admin.comments.filter.apply")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.filter.apply" />
+            </Suspense>
           </Button>
           <LinkButton href="/comments" variant="outline">
-            {getMessage(messages, "admin.comments.filter.reset")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.filter.reset" />
+            </Suspense>
           </LinkButton>
         </div>
       </form>

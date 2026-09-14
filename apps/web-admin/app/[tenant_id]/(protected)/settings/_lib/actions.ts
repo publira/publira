@@ -1,8 +1,7 @@
 "use server";
 
-import { getLocales, getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
+import { getLocales } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { isValidTimeZone } from "@publira/utils";
 import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -36,6 +35,7 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import type { AdminMessageKey } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import {
   tenantPaymentSettingsCacheTag,
   updateTenantPaymentSettings,
@@ -100,53 +100,54 @@ interface ParsedTenantSmtpFormData {
   recipientEmail: string;
 }
 
-const hexColorCodeSchema = (messages: SharedMessages) =>
-  z
+const hexColorCodeSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .string()
     .trim()
-    .regex(
-      /^#[0-9a-fA-F]{6}$/u,
-      getMessage(messages, "admin.settings.theme.validation.hex_color")
-    )
+    .regex(/^#[0-9a-fA-F]{6}$/u, t("admin.settings.theme.validation.hex_color"))
     .transform((value) => value.toLowerCase());
+};
+const tenantThemeSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const tenantThemeSchema = (messages: SharedMessages) =>
-  z.object({
-    accentColor: hexColorCodeSchema(messages),
-    accentForegroundColor: hexColorCodeSchema(messages),
-    backgroundColor: hexColorCodeSchema(messages),
-    borderColor: hexColorCodeSchema(messages),
-    cardColor: hexColorCodeSchema(messages),
-    cardForegroundColor: hexColorCodeSchema(messages),
-    destructiveColor: hexColorCodeSchema(messages),
-    destructiveForegroundColor: hexColorCodeSchema(messages),
-    foregroundColor: hexColorCodeSchema(messages),
-    infoColor: hexColorCodeSchema(messages),
-    infoForegroundColor: hexColorCodeSchema(messages),
-    inputColor: hexColorCodeSchema(messages),
-    mutedColor: hexColorCodeSchema(messages),
-    mutedForegroundColor: hexColorCodeSchema(messages),
-    popoverColor: hexColorCodeSchema(messages),
-    popoverForegroundColor: hexColorCodeSchema(messages),
-    primaryColor: hexColorCodeSchema(messages),
-    primaryForegroundColor: hexColorCodeSchema(messages),
-    ringColor: hexColorCodeSchema(messages),
+  return z.object({
+    accentColor: await hexColorCodeSchema(locale),
+    accentForegroundColor: await hexColorCodeSchema(locale),
+    backgroundColor: await hexColorCodeSchema(locale),
+    borderColor: await hexColorCodeSchema(locale),
+    cardColor: await hexColorCodeSchema(locale),
+    cardForegroundColor: await hexColorCodeSchema(locale),
+    destructiveColor: await hexColorCodeSchema(locale),
+    destructiveForegroundColor: await hexColorCodeSchema(locale),
+    foregroundColor: await hexColorCodeSchema(locale),
+    infoColor: await hexColorCodeSchema(locale),
+    infoForegroundColor: await hexColorCodeSchema(locale),
+    inputColor: await hexColorCodeSchema(locale),
+    mutedColor: await hexColorCodeSchema(locale),
+    mutedForegroundColor: await hexColorCodeSchema(locale),
+    popoverColor: await hexColorCodeSchema(locale),
+    popoverForegroundColor: await hexColorCodeSchema(locale),
+    primaryColor: await hexColorCodeSchema(locale),
+    primaryForegroundColor: await hexColorCodeSchema(locale),
+    ringColor: await hexColorCodeSchema(locale),
     sansFontFamily: tenantThemeFontFamilySchema(
-      getMessage(messages, "admin.settings.theme.validation.font_family")
+      t("admin.settings.theme.validation.font_family")
     ),
-    secondaryColor: hexColorCodeSchema(messages),
-    secondaryForegroundColor: hexColorCodeSchema(messages),
+    secondaryColor: await hexColorCodeSchema(locale),
+    secondaryForegroundColor: await hexColorCodeSchema(locale),
     serifFontFamily: tenantThemeFontFamilySchema(
-      getMessage(messages, "admin.settings.theme.validation.font_family")
+      t("admin.settings.theme.validation.font_family")
     ),
-    successColor: hexColorCodeSchema(messages),
-    successForegroundColor: hexColorCodeSchema(messages),
-    surfaceColor: hexColorCodeSchema(messages),
-    surfaceForegroundColor: hexColorCodeSchema(messages),
-    warningColor: hexColorCodeSchema(messages),
-    warningForegroundColor: hexColorCodeSchema(messages),
+    successColor: await hexColorCodeSchema(locale),
+    successForegroundColor: await hexColorCodeSchema(locale),
+    surfaceColor: await hexColorCodeSchema(locale),
+    surfaceForegroundColor: await hexColorCodeSchema(locale),
+    warningColor: await hexColorCodeSchema(locale),
+    warningForegroundColor: await hexColorCodeSchema(locale),
   });
-
+};
 const themeColorLabelKeys: Record<keyof TenantThemeColors, AdminMessageKey> = {
   accentColor: "admin.settings.theme.colors.accent.label",
   accentForegroundColor: "admin.settings.theme.colors.accent_foreground.label",
@@ -202,100 +203,90 @@ const BRANDING_IMAGE_CONTENT_TYPES = new Set([
   "image/webp",
 ]);
 
-const brandingImageFileSchema = (messages: SharedMessages) =>
-  z
+const brandingImageFileSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .custom<File>((value) => value instanceof File, {
-      error: getMessage(messages, "admin.settings.image.file_required"),
+      error: t("admin.settings.image.file_required"),
     })
     .refine((file) => file.size <= BRANDING_IMAGE_MAX_BYTES, {
-      error: getMessage(messages, "admin.settings.image.too_large"),
+      error: t("admin.settings.image.too_large"),
     })
     .refine((file) => BRANDING_IMAGE_CONTENT_TYPES.has(file.type), {
-      error: getMessage(messages, "admin.settings.image.unsupported_type"),
+      error: t("admin.settings.image.unsupported_type"),
     });
-
+};
 /**
  * Upload and delete share one Action so the card renders the current icon
  * straight from the Action state: with a state per operation there is no way to
  * tell which of the two ran last.
  */
-const tenantIconSchema = (messages: SharedMessages) =>
-  z.discriminatedUnion("intent", [
+const tenantIconSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.discriminatedUnion("intent", [
     z.object({
-      icon: brandingImageFileSchema(messages),
+      icon: await brandingImageFileSchema(locale),
       intent: z.literal("upload"),
-      tenantId: requiredTrimmedString(
-        getMessage(messages, "admin.settings.tenant_missing")
-      ),
+      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
     }),
     z.object({
       intent: z.literal("delete"),
-      tenantId: requiredTrimmedString(
-        getMessage(messages, "admin.settings.tenant_missing")
-      ),
+      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
     }),
   ]);
-
+};
 /** Upload and delete share one Action, for the reason the icon's does. */
-const tenantLogoSchema = (messages: SharedMessages) =>
-  z.discriminatedUnion("intent", [
+const tenantLogoSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.discriminatedUnion("intent", [
     z.object({
       intent: z.literal("upload"),
-      logo: brandingImageFileSchema(messages),
-      tenantId: requiredTrimmedString(
-        getMessage(messages, "admin.settings.tenant_missing")
-      ),
+      logo: await brandingImageFileSchema(locale),
+      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
     }),
     z.object({
       intent: z.literal("delete"),
-      tenantId: requiredTrimmedString(
-        getMessage(messages, "admin.settings.tenant_missing")
-      ),
+      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
     }),
   ]);
-
+};
 /**
  * The Go server validates against the IANA tzdata it embeds
  * (`server/internal/tenanttz`) and stays the authority; this only gives the
  * operator immediate feedback instead of a round trip.
  */
-const tenantTimezoneSchema = (messages: SharedMessages) =>
-  z.object({
+const tenantTimezoneSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     timezone: z
       .string({
-        error: getMessage(
-          messages,
-          "admin.settings.timezone.validation.required"
-        ),
+        error: t("admin.settings.timezone.validation.required"),
       })
       .trim()
-      .min(
-        1,
-        getMessage(messages, "admin.settings.timezone.validation.required")
-      )
+      .min(1, t("admin.settings.timezone.validation.required"))
       .refine(isValidTimeZone, {
-        error: getMessage(
-          messages,
-          "admin.settings.timezone.validation.invalid"
-        ),
+        error: t("admin.settings.timezone.validation.invalid"),
       }),
   });
-
+};
 /**
  * The Go server validates against the supported locale list
  * (`server/internal/locale`) and stays the authority; this only gives the
  * operator immediate feedback instead of a round trip.
  */
-const tenantDefaultLocaleSchema = (messages: SharedMessages) =>
-  z.object({
+const tenantDefaultLocaleSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     defaultLocale: z.enum(getLocales(), {
-      error: getMessage(
-        messages,
-        "admin.settings.default_locale.validation.required"
-      ),
+      error: t("admin.settings.default_locale.validation.required"),
     }),
   });
-
+};
 /**
  * The Go server validates what it is sent and stays the authority; this only
  * gives the operator immediate feedback instead of a round trip.
@@ -305,9 +296,9 @@ const tenantDefaultLocaleSchema = (messages: SharedMessages) =>
  * "many" are told apart from a count and reported instead of being rounded or
  * read as 0 — the value that turns the automatic removal off.
  */
-const tenantCommentSettingsSchema = (messages: SharedMessages) => {
-  const thresholdError = getMessage(
-    messages,
+const tenantCommentSettingsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const thresholdError = t(
     "admin.settings.comments.validation.auto_hide_range",
     { max: MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD }
   );
@@ -323,10 +314,7 @@ const tenantCommentSettingsSchema = (messages: SharedMessages) => {
         { error: thresholdError }
       ),
     commentMode: z.enum(TENANT_COMMENT_MODES, {
-      error: getMessage(
-        messages,
-        "admin.settings.comments.validation.mode_required"
-      ),
+      error: t("admin.settings.comments.validation.mode_required"),
     }),
   });
 };
@@ -380,34 +368,27 @@ const mapThemeFieldErrors = (
     tenantThemeFormFieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
   ) as ThemeSettingsFieldErrors;
 
-const mapThemeContrastFieldErrors = (
+const mapThemeContrastFieldErrors = async (
   issues: ReturnType<typeof findThemeTextContrastIssues>,
-  messages: SharedMessages
-): ThemeSettingsFieldErrors =>
-  Object.fromEntries(
+  locale: Locale
+): Promise<ThemeSettingsFieldErrors> => {
+  const t = await getMessagesFor(locale);
+
+  return Object.fromEntries(
     issues.flatMap((issue) => {
-      const message = getMessage(
-        messages,
-        "admin.settings.theme.validation.contrast",
-        {
-          actual: issue.ratio.toFixed(2),
-          background: getMessage(
-            messages,
-            themeColorLabelKeys[issue.background]
-          ),
-          foreground: getMessage(
-            messages,
-            themeColorLabelKeys[issue.foreground]
-          ),
-          minimum: String(THEME_TEXT_CONTRAST_MIN_RATIO),
-        }
-      );
+      const message = t("admin.settings.theme.validation.contrast", {
+        actual: issue.ratio.toFixed(2),
+        background: t(themeColorLabelKeys[issue.background]),
+        foreground: t(themeColorLabelKeys[issue.foreground]),
+        minimum: String(THEME_TEXT_CONTRAST_MIN_RATIO),
+      });
       return [
         [issue.background, message],
         [issue.foreground, message],
       ];
     })
   ) as ThemeSettingsFieldErrors;
+};
 
 const parseIntOrFallback = (value: string, fallback: number): number => {
   const parsed = Math.trunc(Number(value));
@@ -466,7 +447,7 @@ export const updateSiteSettingsAction = async (
 ): Promise<SiteSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const copyrightText = String(formData.get("copyright_text") ?? "");
   const siteDescription = String(formData.get("site_description") ?? "");
@@ -474,7 +455,7 @@ export const updateSiteSettingsAction = async (
 
   if (!tenantId) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
@@ -501,7 +482,7 @@ export const updateSiteSettingsAction = async (
   updateTag(tenantSiteSettingsCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.settings.site.saved"),
+    message: t("admin.settings.site.saved"),
     ok: true,
   };
 };
@@ -512,23 +493,22 @@ export const updateTenantThemeSettingsAction = async (
 ): Promise<ThemeSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
-  const parsed = tenantThemeSchema(messages).safeParse(
-    parseTenantThemeFormData(formData)
-  );
+  const schema = await tenantThemeSchema(locale);
+  const parsed = schema.safeParse(parseTenantThemeFormData(formData));
 
   if (!parsed.success) {
     return {
       fieldErrors: mapThemeFieldErrors(parsed.error.flatten().fieldErrors),
-      message: getMessage(messages, "errors.validation"),
+      message: t("errors.validation"),
       ok: false,
     };
   }
@@ -536,11 +516,8 @@ export const updateTenantThemeSettingsAction = async (
   const contrastIssues = findThemeTextContrastIssues(parsed.data);
   if (contrastIssues.length > 0) {
     return {
-      fieldErrors: mapThemeContrastFieldErrors(contrastIssues, messages),
-      message: getMessage(
-        messages,
-        "admin.settings.theme.validation.contrast_summary"
-      ),
+      fieldErrors: await mapThemeContrastFieldErrors(contrastIssues, locale),
+      message: t("admin.settings.theme.validation.contrast_summary"),
       ok: false,
     };
   }
@@ -567,7 +544,7 @@ export const updateTenantThemeSettingsAction = async (
   updateTag(tenantThemeCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.settings.theme.saved"),
+    message: t("admin.settings.theme.saved"),
     ok: true,
     theme: result.theme,
   };
@@ -579,8 +556,11 @@ export const updateTenantIconAction = async (
 ): Promise<TenantIconActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = tenantIconSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIconSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       icon: { kind: "file", name: "icon" },
       intent: { kind: "value", name: "intent" },
@@ -628,8 +608,7 @@ export const updateTenantIconAction = async (
 
   return {
     icon: result.icon,
-    message: getMessage(
-      messages,
+    message: t(
       isDelete ? "admin.settings.icon.deleted" : "admin.settings.icon.saved"
     ),
     ok: true,
@@ -642,8 +621,11 @@ export const updateTenantLogoAction = async (
 ): Promise<TenantLogoActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = tenantLogoSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantLogoSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       intent: { kind: "value", name: "intent" },
       logo: { kind: "file", name: "logo" },
@@ -691,8 +673,7 @@ export const updateTenantLogoAction = async (
 
   return {
     logo: result.logo,
-    message: getMessage(
-      messages,
+    message: t(
       isDelete ? "admin.settings.logo.deleted" : "admin.settings.logo.saved"
     ),
     ok: true,
@@ -705,16 +686,17 @@ export const updateTenantTimezoneAction = async (
 ): Promise<TenantTimezoneActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
-  const parsed = tenantTimezoneSchema(messages).safeParse(
+  const schema = await tenantTimezoneSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, { timezone: "value" })
   );
   if (!parsed.success) {
@@ -747,7 +729,7 @@ export const updateTenantTimezoneAction = async (
   updateTag(tenantTimezoneCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.settings.timezone.saved"),
+    message: t("admin.settings.timezone.saved"),
     ok: true,
     timezone: result.timezone,
   };
@@ -759,16 +741,17 @@ export const updateTenantDefaultLocaleAction = async (
 ): Promise<TenantDefaultLocaleActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
-  const parsed = tenantDefaultLocaleSchema(messages).safeParse(
+  const schema = await tenantDefaultLocaleSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       defaultLocale: { kind: "value", name: "default_locale" },
     })
@@ -805,7 +788,7 @@ export const updateTenantDefaultLocaleAction = async (
 
   return {
     defaultLocale: result.defaultLocale,
-    message: getMessage(messages, "admin.settings.default_locale.saved"),
+    message: t("admin.settings.default_locale.saved"),
     ok: true,
   };
 };
@@ -816,16 +799,17 @@ export const updateTenantCommentSettingsAction = async (
 ): Promise<TenantCommentSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   if (!tenantId) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
-  const parsed = tenantCommentSettingsSchema(messages).safeParse(
+  const schema = await tenantCommentSettingsSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       autoHideReportThreshold: {
         kind: "value",
@@ -867,7 +851,7 @@ export const updateTenantCommentSettingsAction = async (
   return {
     autoHideReportThreshold: result.autoHideReportThreshold,
     commentMode: result.commentMode,
-    message: getMessage(messages, "admin.settings.comments.saved"),
+    message: t("admin.settings.comments.saved"),
     ok: true,
   };
 };
@@ -877,15 +861,15 @@ const optionalSecretSchema = z.preprocess(
   z.string()
 );
 
-const tenantPaymentSettingsSchema = (messages: SharedMessages) =>
-  z
+const tenantPaymentSettingsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .object({
       enabled: checkboxOnFormSchema,
       secretKey: optionalSecretSchema,
       secretKeyConfigured: flagOneFormSchema,
-      tenantId: requiredTrimmedString(
-        getMessage(messages, "admin.settings.tenant_missing")
-      ),
+      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
       webhookSecret: optionalSecretSchema,
       webhookSecretConfigured: flagOneFormSchema,
     })
@@ -896,25 +880,21 @@ const tenantPaymentSettingsSchema = (messages: SharedMessages) =>
       if (!value.secretKeyConfigured && value.secretKey.trim() === "") {
         ctx.addIssue({
           code: "custom",
-          message: getMessage(
-            messages,
-            "admin.settings.payment.validation.secret_key_required"
-          ),
+          message: t("admin.settings.payment.validation.secret_key_required"),
           path: ["secretKey"],
         });
       }
       if (!value.webhookSecretConfigured && value.webhookSecret.trim() === "") {
         ctx.addIssue({
           code: "custom",
-          message: getMessage(
-            messages,
+          message: t(
             "admin.settings.payment.validation.webhook_secret_required"
           ),
           path: ["webhookSecret"],
         });
       }
     });
-
+};
 const tenantPaymentSettingsFormFields = {
   enabled: "value",
   secretKey: { kind: "value", name: "secret_key" },
@@ -938,14 +918,17 @@ export const updateTenantPaymentSettingsAction = async (
 ): Promise<TenantPaymentSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = tenantPaymentSettingsSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantPaymentSettingsSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, tenantPaymentSettingsFormFields)
   );
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
-      message: getMessage(messages, "errors.validation"),
+      message: t("errors.validation"),
       ok: false,
     };
   }
@@ -976,7 +959,7 @@ export const updateTenantPaymentSettingsAction = async (
   updateTag(tenantPaymentSettingsCacheTag(parsed.data.tenantId));
 
   return {
-    message: getMessage(messages, "admin.settings.payment.saved"),
+    message: t("admin.settings.payment.saved"),
     ok: true,
     settings: result.settings,
   };
@@ -988,12 +971,12 @@ export const updateTenantEmailSettingsAction = async (
 ): Promise<TenantEmailSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const input = parseTenantSmtpFormData(formData);
 
   if (!input.tenantId) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
@@ -1011,7 +994,7 @@ export const updateTenantEmailSettingsAction = async (
   updateTag(tenantEmailSettingsCacheTag(input.tenantId));
 
   return {
-    message: getMessage(messages, "admin.settings.email.saved"),
+    message: t("admin.settings.email.saved"),
     ok: true,
     settings: result.settings,
   };
@@ -1023,12 +1006,12 @@ export const sendTenantSmtpTestEmailAction = async (
 ): Promise<TenantSmtpTestFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const input = parseTenantSmtpFormData(formData);
 
   if (!input.tenantId) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
@@ -1044,7 +1027,7 @@ export const sendTenantSmtpTestEmailAction = async (
   }
 
   return {
-    message: getMessage(messages, "admin.settings.email.test_sent", {
+    message: t("admin.settings.email.test_sent", {
       recipient: result.recipientEmail,
     }),
     ok: true,
@@ -1058,7 +1041,7 @@ export const requestEmailChangeAction = async (
 ): Promise<EmailChangeActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const currentEmail = String(formData.get("current_email") ?? "").trim();
   const newEmail = String(formData.get("new_email") ?? "").trim();
@@ -1066,17 +1049,14 @@ export const requestEmailChangeAction = async (
 
   if (!tenantId) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
   if (!currentEmail || !newEmail || !currentPassword) {
     return {
-      message: getMessage(
-        messages,
-        "admin.settings.email_change.all_fields_required"
-      ),
+      message: t("admin.settings.email_change.all_fields_required"),
       ok: false,
     };
   }
@@ -1099,7 +1079,7 @@ export const requestEmailChangeAction = async (
   }
 
   return {
-    message: getMessage(messages, "admin.settings.email_change.requested"),
+    message: t("admin.settings.email_change.requested"),
     ok: true,
   };
 };

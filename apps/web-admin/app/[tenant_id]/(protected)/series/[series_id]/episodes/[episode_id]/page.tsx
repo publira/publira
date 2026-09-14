@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -32,7 +31,8 @@ import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getEpisode, listEpisodeImages } from "#lib/episode";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -48,9 +48,9 @@ import {
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.series.episodes.edit_title") };
+  return { title: t("admin.series.episodes.edit_title") };
 };
 
 export const generateStaticParams = () =>
@@ -72,7 +72,7 @@ const EditEpisodePage = async ({
   const { episode_id, series_id } = parsedParams;
 
   const locale = await getLocale(tenantId);
-  const [episodeResult, imagesResult, timeZone, messages] = await Promise.all([
+  const [episodeResult, imagesResult, timeZone, t] = await Promise.all([
     getEpisode(
       {
         publicId: episode_id,
@@ -89,7 +89,7 @@ const EditEpisodePage = async ({
       locale
     ),
     getTenantDisplayTimeZone(tenantId),
-    loadAdminMessages(locale),
+    getMessagesFor(locale),
   ]);
   if (!episodeResult.ok && episodeResult.notFound) {
     notFound();
@@ -103,10 +103,14 @@ const EditEpisodePage = async ({
         <AdminPageHeading>
           <AdminPageContext>{`Series ${series_id}, episode ${episode_id}`}</AdminPageContext>
           <AdminPageTitle>
-            {getMessage(messages, "admin.series.episodes.edit_title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.episodes.edit_title" />
+            </Suspense>
           </AdminPageTitle>
           <AdminPageDescription>
-            {getMessage(messages, "admin.series.episodes.edit_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.episodes.edit_description" />
+            </Suspense>
           </AdminPageDescription>
         </AdminPageHeading>
         <AdminPageActions>
@@ -115,13 +119,17 @@ const EditEpisodePage = async ({
               render={<Link href={`/series/${series_id}/episodes`} />}
               variant="outline"
             >
-              {getMessage(messages, "admin.series.episodes.back_to_list")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.back_to_list" />
+              </Suspense>
             </LinkButton>
             <LinkButton
               render={<Link href={`/series/${series_id}/episodes/new`} />}
               variant="outline"
             >
-              {getMessage(messages, "admin.series.episodes.new_action")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.new_action" />
+              </Suspense>
             </LinkButton>
           </div>
         </AdminPageActions>
@@ -129,26 +137,23 @@ const EditEpisodePage = async ({
       <AdminPageContent>
         <FlashToast
           keyName="created"
-          title={getMessage(messages, "admin.series.episodes.created")}
+          title={t("admin.series.episodes.created")}
         />
         <FlashToast
           keyName="schedule_updated"
-          title={getMessage(messages, "admin.series.episodes.schedule_updated")}
+          title={t("admin.series.episodes.schedule_updated")}
         />
         <FlashToast
           keyName="pages_uploaded"
-          title={getMessage(messages, "admin.series.episodes.pages_uploaded")}
+          title={t("admin.series.episodes.pages_uploaded")}
         />
         <FlashToast
           keyName="images_reordered"
-          title={getMessage(messages, "admin.series.episodes.image_reordered")}
+          title={t("admin.series.episodes.image_reordered")}
         />
         <FlashToast
           keyName="image_reorder_error"
-          title={getMessage(
-            messages,
-            "admin.series.episodes.image_reorder_error"
-          )}
+          title={t("admin.series.episodes.image_reorder_error")}
         />
 
         <div className="grid gap-6">
@@ -182,13 +187,14 @@ const EditEpisodePage = async ({
 
           <section className="grid gap-3 border border-border p-4">
             <h2 className="text-sm font-medium">
-              {getMessage(messages, "admin.series.episodes.image_list_title")}
+              <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+                <Message message="admin.series.episodes.image_list_title" />
+              </Suspense>
             </h2>
             <p className="text-xs text-muted-foreground">
-              {getMessage(
-                messages,
-                "admin.series.episodes.image_list_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                <Message message="admin.series.episodes.image_list_description" />
+              </Suspense>
             </p>
 
             {/*
@@ -214,7 +220,9 @@ const EditEpisodePage = async ({
 
             {imagesResult.ok && imagesResult.images.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {getMessage(messages, "admin.series.episodes.image_list_empty")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                  <Message message="admin.series.episodes.image_list_empty" />
+                </Suspense>
               </p>
             ) : null}
 

@@ -1,20 +1,17 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   useActionState,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
 import type { SeriesCommentMode } from "#lib/series-comment-mode";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -41,11 +38,7 @@ export const SeriesEyeCatchForm = ({
   commentMode,
   action,
 }: SeriesEyeCatchFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);
@@ -174,8 +167,8 @@ export const SeriesEyeCatchForm = ({
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit">
           {isPending
-            ? getMessage(messages, "admin.series.form.submitting")
-            : getMessage(messages, "admin.series.form.eye_catch_update")}
+            ? t("admin.series.form.submitting")
+            : t("admin.series.form.eye_catch_update")}
         </Button>
       </div>
     </form>

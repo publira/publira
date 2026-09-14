@@ -1,7 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -20,46 +19,47 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { EpisodeActionState } from "../episode-types";
 
-const createEpisodeSchema = (messages: AdminMessages) =>
-  z.object({
+const createEpisodeSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     price: nonNegativeIntFormSchema(
-      getMessage(messages, "admin.series.episodes.validation.price_invalid")
+      t("admin.series.episodes.validation.price_invalid")
     ),
     publishAt: optionalTrimmedString(),
     readingPeriodHours: nonNegativeIntFormSchema(
-      getMessage(
-        messages,
-        "admin.series.episodes.validation.reading_period_invalid"
-      )
+      t("admin.series.episodes.validation.reading_period_invalid")
     ),
     seriesPublicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.series_missing")
+      t("admin.series.episodes.validation.series_missing")
     ),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.tenant_missing")
+      t("admin.series.episodes.validation.tenant_missing")
     ),
     title: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.title_required")
+      t("admin.series.episodes.validation.title_required")
     ),
   });
+};
+const reorderEpisodesSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const reorderEpisodesSchema = (messages: AdminMessages) =>
-  z.object({
+  return z.object({
     currentEpisodeIds: jsonStringArrayFormSchema,
     orderedEpisodeIds: jsonStringArrayFormSchema,
     seriesPublicId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+      t("admin.series.episodes.validation.sort_data_missing")
     ),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.series.episodes.validation.sort_data_missing")
+      t("admin.series.episodes.validation.sort_data_missing")
     ),
   });
-
+};
 const toCreateFailure = (
   message: string
 ): { message: string; mode: "create"; ok: false } => ({
@@ -71,7 +71,7 @@ const toCreateFailure = (
 const toScheduledAt = async (
   publishAtRaw: string,
   tenantId: string,
-  messages: AdminMessages
+  locale: Locale
 ): Promise<
   { ok: true; value: string } | ReturnType<typeof toCreateFailure>
 > => {
@@ -82,21 +82,21 @@ const toScheduledAt = async (
   // The form posts an absolute instant resolved against the zone it was
   // rendered in. A leftover `datetime-local` wall clock (no JS) is still
   // accepted and read in the tenant's current display zone.
-  const timeZone = await getTenantDisplayTimeZone(tenantId);
+  const [t, timeZone] = await Promise.all([
+    getMessagesFor(locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
   const value = toInstantIsoString(publishAtRaw, timeZone);
   const parsed = parseInstant(value);
   if (!parsed) {
     return toCreateFailure(
-      getMessage(
-        messages,
-        "admin.series.episodes.validation.publish_at_invalid"
-      )
+      t("admin.series.episodes.validation.publish_at_invalid")
     );
   }
 
   if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
     return toCreateFailure(
-      getMessage(messages, "admin.series.episodes.validation.publish_at_future")
+      t("admin.series.episodes.validation.publish_at_future")
     );
   }
 
@@ -109,8 +109,8 @@ export const createEpisodeAction = async (
 ): Promise<EpisodeActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = createEpisodeSchema(messages).safeParse(
+  const schema = await createEpisodeSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       price: "value",
       publishAt: { kind: "value", name: "publish_at" },
@@ -127,7 +127,7 @@ export const createEpisodeAction = async (
   const scheduledAt = await toScheduledAt(
     parsed.data.publishAt,
     parsed.data.tenantId,
-    messages
+    locale
   );
   if (!scheduledAt.ok) {
     return scheduledAt;
@@ -166,8 +166,11 @@ export const reorderEpisodesAction = async (formData: FormData) => {
 
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = reorderEpisodesSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    reorderEpisodesSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currentEpisodeIds: { kind: "value", name: "current_episode_public_ids" },
       orderedEpisodeIds: { kind: "value", name: "ordered_episode_public_ids" },
@@ -178,10 +181,7 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
-        fallback: getMessage(
-          messages,
-          "admin.series.episodes.validation.sort_data_missing"
-        ),
+        fallback: t("admin.series.episodes.validation.sort_data_missing"),
         locale,
       }),
       ok: false,
@@ -190,10 +190,7 @@ export const reorderEpisodesAction = async (formData: FormData) => {
 
   if (parsed.data.orderedEpisodeIds.length === 0) {
     return {
-      message: getMessage(
-        messages,
-        "admin.series.episodes.validation.no_episodes_to_sort"
-      ),
+      message: t("admin.series.episodes.validation.no_episodes_to_sort"),
       ok: false,
     };
   }
@@ -203,10 +200,7 @@ export const reorderEpisodesAction = async (formData: FormData) => {
     parsed.data.orderedEpisodeIds.length
   ) {
     return {
-      message: getMessage(
-        messages,
-        "admin.series.episodes.validation.sort_data_missing"
-      ),
+      message: t("admin.series.episodes.validation.sort_data_missing"),
       ok: false,
     };
   }

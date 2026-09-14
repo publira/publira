@@ -1,6 +1,7 @@
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 
-import type { AdminMessageKey, AdminMessages } from "./messages";
+import { getMessagesFor } from "./messages";
+import type { AdminMessageKey } from "./messages";
 
 /**
  * Roles a tenant console can show. Platform roles never reach this console, so
@@ -19,16 +20,17 @@ const tenantRoleKeys = {
   tenant_owner: "admin.common.roles.tenant_owner",
 } as const satisfies Record<string, AdminMessageKey>;
 
-export const getTenantRoleLabel = (
+export const getTenantRoleLabel = async (
   role: string,
-  messages: AdminMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
   const normalized = role.trim().toLowerCase();
   if (!normalized) {
-    return getMessage(messages, "admin.common.roles.unset");
+    return t("admin.common.roles.unset");
   }
 
   const key = tenantRoleKeys[normalized as keyof typeof tenantRoleKeys];
 
-  return key ? getMessage(messages, key) : role.trim();
+  return key ? t(key) : role.trim();
 };

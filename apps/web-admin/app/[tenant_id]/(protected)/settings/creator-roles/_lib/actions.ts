@@ -1,7 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -23,58 +22,58 @@ import {
   jsonStringArrayFormSchema,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import type {
   CreatorRoleReorderResult,
   CreatorRoleRowActionState,
 } from "../creator-role-types";
 
-const nameSchema = (messages: AdminMessages) =>
-  requiredTrimmedString(
-    getMessage(messages, "admin.creator_roles.validation.name_required"),
+const nameSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return requiredTrimmedString(
+    t("admin.creator_roles.validation.name_required"),
     CREATOR_ROLE_NAME_MAX_LENGTH,
-    getMessage(messages, "admin.creator_roles.validation.name_too_long", {
+    t("admin.creator_roles.validation.name_too_long", {
       count: String(CREATOR_ROLE_NAME_MAX_LENGTH),
     })
   );
+};
+const tenantIdSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const tenantIdSchema = (messages: AdminMessages) =>
-  requiredTrimmedString(
-    getMessage(messages, "admin.creator_roles.validation.tenant_missing")
+  return requiredTrimmedString(
+    t("admin.creator_roles.validation.tenant_missing")
   );
+};
+const publicIdSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const publicIdSchema = (messages: AdminMessages) =>
-  requiredTrimmedString(
-    getMessage(messages, "admin.creator_roles.validation.id_missing")
-  );
-
-const createCreatorRoleSchema = (messages: AdminMessages) =>
+  return requiredTrimmedString(t("admin.creator_roles.validation.id_missing"));
+};
+const createCreatorRoleSchema = async (locale: Locale) =>
   z.object({
-    name: nameSchema(messages),
-    tenantId: tenantIdSchema(messages),
+    name: await nameSchema(locale),
+    tenantId: await tenantIdSchema(locale),
   });
-
-const renameCreatorRoleSchema = (messages: AdminMessages) =>
+const renameCreatorRoleSchema = async (locale: Locale) =>
   z.object({
-    name: nameSchema(messages),
-    publicId: publicIdSchema(messages),
-    tenantId: tenantIdSchema(messages),
+    name: await nameSchema(locale),
+    publicId: await publicIdSchema(locale),
+    tenantId: await tenantIdSchema(locale),
   });
-
-const deleteCreatorRoleSchema = (messages: AdminMessages) =>
+const deleteCreatorRoleSchema = async (locale: Locale) =>
   z.object({
-    publicId: publicIdSchema(messages),
-    tenantId: tenantIdSchema(messages),
+    publicId: await publicIdSchema(locale),
+    tenantId: await tenantIdSchema(locale),
   });
-
-const reorderCreatorRolesSchema = (messages: AdminMessages) =>
+const reorderCreatorRolesSchema = async (locale: Locale) =>
   z.object({
     expectedPublicIds: jsonStringArrayFormSchema,
     publicIds: jsonStringArrayFormSchema,
-    tenantId: tenantIdSchema(messages),
+    tenantId: await tenantIdSchema(locale),
   });
-
 const rowFormFields = {
   publicId: { kind: "value", name: "public_id" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -86,8 +85,11 @@ export const createCreatorRoleAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = createCreatorRoleSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    createCreatorRoleSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       name: "value",
       tenantId: { kind: "value", name: "tenant_id" },
@@ -108,7 +110,7 @@ export const createCreatorRoleAction = async (
   updateTag(creatorRolesCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.creator_roles.created"),
+    message: t("admin.creator_roles.created"),
     ok: true,
   };
 };
@@ -119,8 +121,11 @@ export const renameCreatorRoleAction = async (
 ): Promise<CreatorRoleRowActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = renameCreatorRoleSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    renameCreatorRoleSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, { ...rowFormFields, name: "value" })
   );
   if (!parsed.success) {
@@ -145,7 +150,7 @@ export const renameCreatorRoleAction = async (
   updateTag(creatorRolesCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.creator_roles.updated"),
+    message: t("admin.creator_roles.updated"),
     ok: true,
     publicId,
   };
@@ -157,10 +162,11 @@ export const deleteCreatorRoleAction = async (
 ): Promise<CreatorRoleRowActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = deleteCreatorRoleSchema(messages).safeParse(
-    toFormDataInput(formData, rowFormFields)
-  );
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    deleteCreatorRoleSchema(locale),
+  ]);
+  const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
   if (!parsed.success) {
     const publicId = formData.get("public_id");
     return {
@@ -181,7 +187,7 @@ export const deleteCreatorRoleAction = async (
   updateTag(creatorRolesCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.creator_roles.deleted"),
+    message: t("admin.creator_roles.deleted"),
     ok: true,
     publicId,
   };
@@ -192,8 +198,11 @@ export const reorderCreatorRolesAction = async (
 ): Promise<CreatorRoleReorderResult> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = reorderCreatorRolesSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    reorderCreatorRolesSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       expectedPublicIds: {
         kind: "value",
@@ -206,7 +215,7 @@ export const reorderCreatorRolesAction = async (
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
-        fallback: getMessage(messages, "admin.creator_roles.reorder_failed"),
+        fallback: t("admin.creator_roles.reorder_failed"),
         locale,
       }),
       ok: false,
@@ -216,7 +225,7 @@ export const reorderCreatorRolesAction = async (
   const { expectedPublicIds, publicIds, tenantId } = parsed.data;
   if (publicIds.length === 0 || publicIds.length !== expectedPublicIds.length) {
     return {
-      message: getMessage(messages, "admin.creator_roles.reorder_failed"),
+      message: t("admin.creator_roles.reorder_failed"),
       ok: false,
     };
   }

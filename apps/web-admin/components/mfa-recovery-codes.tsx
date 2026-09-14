@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-
 import { useAdminMessages } from "./admin-locale-context";
 
 interface MfaRecoveryCodesProps {
@@ -15,16 +13,16 @@ interface MfaRecoveryCodesProps {
  * heading and the warning are resolved here rather than passed in.
  */
 export const MfaRecoveryCodes = ({ codes }: MfaRecoveryCodesProps) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <div className="grid gap-3 border border-border bg-muted/40 p-4">
       <div className="grid gap-1">
         <p className="text-sm font-medium text-foreground">
-          {getMessage(messages, "admin.auth.mfa.recovery_codes_title")}
+          {t("admin.auth.mfa.recovery_codes_title")}
         </p>
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.auth.mfa.recovery_codes_description")}
+          {t("admin.auth.mfa.recovery_codes_description")}
         </p>
       </div>
       <ul className="grid grid-cols-2 gap-2">

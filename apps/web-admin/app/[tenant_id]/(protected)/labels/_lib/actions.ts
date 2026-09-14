@@ -1,7 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -25,30 +24,33 @@ import {
   updateLabel,
   uploadLabelEyeCatchAspectImage,
 } from "#lib/label";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import type { LabelActionState, LabelMutationMode } from "../label-types";
 
-const labelCommonSchema = (messages: AdminMessages) =>
-  z.object({
+const labelCommonSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     eyeCatchImage: optionalFileFormSchema,
-    name: requiredTrimmedString(
-      getMessage(messages, "admin.labels.validation.name_required")
-    ),
+    name: requiredTrimmedString(t("admin.labels.validation.name_required")),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.labels.validation.tenant_missing")
+      t("admin.labels.validation.tenant_missing")
     ),
   });
+};
+const labelUpdateSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    labelCommonSchema(locale),
+  ]);
 
-const labelUpdateSchema = (messages: AdminMessages) =>
-  labelCommonSchema(messages).extend({
+  return base.extend({
     clearEyeCatchImage: flagOneFormSchema,
     currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
-    publicId: requiredTrimmedString(
-      getMessage(messages, "admin.labels.validation.id_missing")
-    ),
+    publicId: requiredTrimmedString(t("admin.labels.validation.id_missing")),
   });
-
+};
 const labelFormFields = {
   eyeCatchImage: { kind: "file", name: "eye_catch_image" },
   name: "value",
@@ -84,10 +86,8 @@ export const createLabelAction = async (
 ): Promise<LabelActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = labelCommonSchema(messages).safeParse(
-    toFormDataInput(formData, labelFormFields)
-  );
+  const schema = await labelCommonSchema(locale);
+  const parsed = schema.safeParse(toFormDataInput(formData, labelFormFields));
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
@@ -123,8 +123,11 @@ export const updateLabelAction = async (
 ): Promise<LabelActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = labelUpdateSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    labelUpdateSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...labelFormFields,
       clearEyeCatchImage: { kind: "value", name: "clear_eye_catch_image" },
@@ -173,10 +176,7 @@ export const updateLabelAction = async (
     !clearEyeCatchImage &&
     (result.label.eyeCatchImageVariants?.length ?? 0) === 0
   ) {
-    return toFailure(
-      getMessage(messages, "admin.labels.eye_catch_variants_missing"),
-      "update"
-    );
+    return toFailure(t("admin.labels.eye_catch_variants_missing"), "update");
   }
 
   if (
@@ -186,7 +186,7 @@ export const updateLabelAction = async (
     result.label.eyeCatchImageUpdatedAt === currentEyeCatchImageUpdatedAt
   ) {
     return toFailure(
-      getMessage(messages, "admin.labels.eye_catch_upload_not_reflected"),
+      t("admin.labels.eye_catch_upload_not_reflected"),
       "update"
     );
   }
@@ -196,28 +196,26 @@ export const updateLabelAction = async (
 
   return {
     label: result.label,
-    message: getMessage(messages, "admin.labels.updated"),
+    message: t("admin.labels.updated"),
     mode: "update",
     ok: true,
   };
 };
 
-const eyeCatchAspectSchema = (messages: AdminMessages) =>
-  z.object({
-    crop: optionalCropRectFormSchema(
-      getMessage(messages, "admin.image_crop.invalid")
-    ),
-    publicId: requiredTrimmedString(
-      getMessage(messages, "admin.labels.validation.id_missing")
-    ),
+const eyeCatchAspectSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
+    publicId: requiredTrimmedString(t("admin.labels.validation.id_missing")),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.labels.validation.tenant_missing")
+      t("admin.labels.validation.tenant_missing")
     ),
     variantType: requiredTrimmedString(
-      getMessage(messages, "admin.eye_catch.aspect.variant_type_missing")
+      t("admin.eye_catch.aspect.variant_type_missing")
     ),
   });
-
+};
 const eyeCatchAspectFormFields = {
   crop: { kind: "value", name: CROP_RECT_FIELD },
   publicId: { kind: "value", name: "public_id" },
@@ -240,8 +238,11 @@ export const uploadLabelEyeCatchAspectImageAction = async (
 ): Promise<EyeCatchAspectActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = eyeCatchAspectSchema(messages)
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    eyeCatchAspectSchema(locale),
+  ]);
+  const parsed = schema
     .extend({ aspectImage: optionalFileFormSchema })
     .safeParse(
       toFormDataInput(formData, {
@@ -256,7 +257,7 @@ export const uploadLabelEyeCatchAspectImageAction = async (
   const { aspectImage, crop, publicId, tenantId, variantType } = parsed.data;
   if (!aspectImage) {
     return toAspectFailure(
-      getMessage(messages, "admin.eye_catch.aspect.image_required"),
+      t("admin.eye_catch.aspect.image_required"),
       variantType
     );
   }
@@ -286,7 +287,7 @@ export const uploadLabelEyeCatchAspectImageAction = async (
   updateTag(`label-${tenantId}-${publicId}`);
 
   return {
-    message: getMessage(messages, "admin.eye_catch.aspect.uploaded"),
+    message: t("admin.eye_catch.aspect.uploaded"),
     ok: true,
     variantType,
   };

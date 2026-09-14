@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { AuthScreenNote } from "@publira/layouts/auth-screen";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -7,7 +6,8 @@ import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { Message } from "#components/message";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import { acceptInviteAction } from "../_lib/actions";
@@ -16,7 +16,7 @@ import { acceptInviteAction } from "../_lib/actions";
 const NameField = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <Field>
@@ -29,10 +29,7 @@ const NameField = async () => {
         <Input
           id="name"
           name="name"
-          placeholder={getMessage(
-            messages,
-            "admin.auth.accept_invite.name_placeholder"
-          )}
+          placeholder={t("admin.auth.accept_invite.name_placeholder")}
           required
           type="text"
         />

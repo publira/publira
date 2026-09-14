@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -19,7 +18,8 @@ import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listGenres } from "#lib/genre";
 import { listAllLabels } from "#lib/label";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { listSeries } from "#lib/series";
 import { listTagSuggestions } from "#lib/tag";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
@@ -32,9 +32,9 @@ import { createSeriesAction } from "../_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.series.new_title") };
+  return { title: t("admin.series.new_title") };
 };
 
 export const generateStaticParams = () =>

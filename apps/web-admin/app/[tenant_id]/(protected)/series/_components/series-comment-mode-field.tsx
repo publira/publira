@@ -1,6 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
 import {
   Field,
   FieldContent,
@@ -9,40 +8,16 @@ import {
 } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useCallback, useId, useMemo } from "react";
+import { Suspense, useCallback, useContext, useId, useMemo } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import type { AdminMessages } from "#lib/messages";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { isSeriesCommentMode } from "#lib/series-comment-mode";
 import type { SeriesCommentMode } from "#lib/series-comment-mode";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
-
-/**
- * How the tenant's own choice is worded inside the option that follows it.
- * Each branch names its key, so the key stays where a reader — and a
- * translation extractor — sees it.
- */
-const tenantModeLabel = (
-  messages: AdminMessages,
-  tenantCommentMode: TenantCommentMode
-): string => {
-  if (tenantCommentMode === "disabled") {
-    return getMessage(
-      messages,
-      "admin.series.form.comment_mode_options.disabled"
-    );
-  }
-  if (tenantCommentMode === "immediate") {
-    return getMessage(
-      messages,
-      "admin.series.form.comment_mode_options.immediate"
-    );
-  }
-  return getMessage(
-    messages,
-    "admin.series.form.comment_mode_options.approval_required"
-  );
-};
 
 /**
  * The option that leaves the series following its tenant, naming what the
@@ -56,13 +31,28 @@ const TenantDefaultOptionLabel = ({
 }: {
   tenantCommentMode: TenantCommentMode;
 }) => {
-  const messages = useClientMessages();
+  const locale = useContext(AdminLocaleContext);
+  if (locale === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
+  const t = useAdminMessages();
 
-  return getMessage(
-    messages,
-    "admin.series.form.comment_mode_options.tenant_default_known",
-    { mode: tenantModeLabel(messages, tenantCommentMode) }
-  );
+  // The tenant's own wording is written into another message, so each branch
+  // names its key here rather than behind a helper the accessor cannot reach.
+  const tenantModeLabel = (): string => {
+    if (tenantCommentMode === "disabled") {
+      return t("admin.series.form.comment_mode_options.disabled");
+    }
+    if (tenantCommentMode === "immediate") {
+      return t("admin.series.form.comment_mode_options.immediate");
+    }
+
+    return t("admin.series.form.comment_mode_options.approval_required");
+  };
+
+  return t("admin.series.form.comment_mode_options.tenant_default_known", {
+    mode: tenantModeLabel(),
+  });
 };
 
 /**

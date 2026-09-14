@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenBody,
@@ -14,7 +13,8 @@ import { Suspense } from "react";
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { readMfaChallenge } from "#lib/mfa-challenge";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -24,9 +24,9 @@ import { MfaVerifyForm } from "./_components/mfa-verify-form";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.auth.mfa.title") };
+  return { title: t("admin.auth.mfa.title") };
 };
 
 const MfaPageFallback = () => (

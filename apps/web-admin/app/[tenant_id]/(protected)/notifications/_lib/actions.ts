@@ -1,7 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
@@ -9,6 +7,7 @@ import { z } from "zod";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { getMessagesFor } from "#lib/messages";
 import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -34,7 +33,7 @@ export const markNotificationAsReadAction = async (
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       notificationId: { kind: "value", name: "notification_id" },
@@ -43,7 +42,7 @@ export const markNotificationAsReadAction = async (
   );
   if (!parsed.success) {
     return {
-      message: getMessage(messages, "errors.validation"),
+      message: t("errors.validation"),
       ok: false,
     };
   }
@@ -68,7 +67,7 @@ export const markAllNotificationsAsReadAction = async (
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const parsed = markAllSchema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
@@ -76,7 +75,7 @@ export const markAllNotificationsAsReadAction = async (
   );
   if (!parsed.success) {
     return {
-      message: getMessage(messages, "errors.validation"),
+      message: t("errors.validation"),
       ok: false,
     };
   }

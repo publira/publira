@@ -1,7 +1,6 @@
 "use client";
 
-import { getMessage, toIntlLocale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import { toIntlLocale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import {
   Combobox,
@@ -28,10 +27,12 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { toDateTimeLocalValue } from "@publira/utils";
 import Image from "next/image";
 import {
+  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -42,7 +43,11 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import {
   DEFAULT_SERIES_AGE_RATING,
@@ -102,17 +107,22 @@ interface SeriesFormProps {
   timeZone: string;
 }
 
-const getSubmitLabel = (
-  messages: ReturnType<typeof sharedCatalog>,
-  mode: "create" | "update",
-  isPending: boolean
-): string => {
+const SeriesFormSubmitLabel = ({
+  isPending,
+  isUpdate,
+}: {
+  isPending: boolean;
+  isUpdate: boolean;
+}) => {
   if (isPending) {
-    return getMessage(messages, "admin.series.form.submitting");
+    return <ClientMessage message="admin.series.form.submitting" />;
   }
-  return mode === "update"
-    ? getMessage(messages, "admin.series.form.update")
-    : getMessage(messages, "admin.series.form.create");
+
+  return isUpdate ? (
+    <ClientMessage message="admin.series.form.update" />
+  ) : (
+    <ClientMessage message="admin.series.form.create" />
+  );
 };
 
 interface CreatorFieldProps {
@@ -132,7 +142,7 @@ const CreatorField = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   // MultiCombobox renders its own input instead of a Field control, so the
   // label needs an id to point at.
   const comboboxId = useId();
@@ -140,7 +150,9 @@ const CreatorField = ({
   return (
     <Field>
       <FieldLabel htmlFor={comboboxId}>
-        {getMessage(messages, "admin.series.form.creators")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <ClientMessage message="admin.series.form.creators" />
+        </Suspense>
       </FieldLabel>
       <FieldContent>
         {creatorsErrorMessage ? (
@@ -151,7 +163,9 @@ const CreatorField = ({
 
         {creatorItems.length === 0 ? (
           <FieldDescription>
-            {getMessage(messages, "admin.series.form.creators_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.form.creators_empty" />
+            </Suspense>
           </FieldDescription>
         ) : (
           <MultiCombobox
@@ -168,10 +182,7 @@ const CreatorField = ({
                       <MultiComboboxChip item={item} key={item.value}>
                         {item.label}
                         <MultiComboboxChipRemove
-                          aria-label={getMessage(
-                            messages,
-                            "admin.series.form.creators_remove"
-                          )}
+                          aria-label={t("admin.series.form.creators_remove")}
                         />
                       </MultiComboboxChip>
                     ))}
@@ -179,10 +190,7 @@ const CreatorField = ({
                       placeholder={
                         selected.length > 0
                           ? ""
-                          : getMessage(
-                              messages,
-                              "admin.series.form.creators_search"
-                            )
+                          : t("admin.series.form.creators_search")
                       }
                     />
                   </>
@@ -191,7 +199,9 @@ const CreatorField = ({
             </MultiComboboxInputGroup>
             <ComboboxPopup>
               <ComboboxEmpty>
-                {getMessage(messages, "admin.series.form.creators_no_match")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.series.form.creators_no_match" />
+                </Suspense>
               </ComboboxEmpty>
               <ComboboxItems />
             </ComboboxPopup>
@@ -208,7 +218,9 @@ const CreatorField = ({
         ))}
 
         <FieldDescription>
-          {getMessage(messages, "admin.series.form.creators_description")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.series.form.creators_description" />
+          </Suspense>
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -236,7 +248,7 @@ const LabelField = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   // Combobox renders its own input instead of a Field control, so the label
   // needs an id to point at. The fallback Input is a Field control and wires
   // itself up.
@@ -248,7 +260,9 @@ const LabelField = ({
         htmlFor={useLabelFallbackInput ? undefined : comboboxId}
         required
       >
-        {getMessage(messages, "admin.series.form.label")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <ClientMessage message="admin.series.form.label" />
+        </Suspense>
       </FieldLabel>
       <FieldContent>
         {labelsErrorMessage ? (
@@ -260,19 +274,15 @@ const LabelField = ({
             <Input
               name="label_public_id"
               onChange={onFallbackChange}
-              placeholder={getMessage(
-                messages,
-                "admin.series.form.label_fallback_placeholder"
-              )}
+              placeholder={t("admin.series.form.label_fallback_placeholder")}
               required
               type="text"
               value={selectedLabelPublicId}
             />
             <FieldDescription>
-              {getMessage(
-                messages,
-                "admin.series.form.label_fallback_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.series.form.label_fallback_description" />
+              </Suspense>
             </FieldDescription>
           </>
         ) : (
@@ -284,14 +294,13 @@ const LabelField = ({
               value={selectedLabelPublicId}
             >
               <ComboboxInput
-                placeholder={getMessage(
-                  messages,
-                  "admin.series.form.label_placeholder"
-                )}
+                placeholder={t("admin.series.form.label_placeholder")}
               />
               <ComboboxPopup>
                 <ComboboxEmpty>
-                  {getMessage(messages, "admin.series.form.label_empty")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.series.form.label_empty" />
+                  </Suspense>
                 </ComboboxEmpty>
                 <ComboboxItems />
               </ComboboxPopup>
@@ -304,7 +313,9 @@ const LabelField = ({
             />
 
             <FieldDescription>
-              {getMessage(messages, "admin.series.form.label_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.series.form.label_description" />
+              </Suspense>
             </FieldDescription>
           </>
         )}
@@ -328,27 +339,28 @@ const EyeCatchImageField = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const hasPreviewImage = previewImageUrl.length > 0;
 
   return (
     <Field>
       <FieldLabel>
-        {getMessage(messages, "admin.series.form.eye_catch")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <ClientMessage message="admin.series.form.eye_catch" />
+        </Suspense>
       </FieldLabel>
       <FieldContent>
         <div className="grid gap-4 border border-border bg-muted/20 p-4">
           <div className="border border-border bg-background p-3">
             <p className="mb-2 text-sm font-medium">
-              {getMessage(messages, "admin.series.form.eye_catch_preview")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                <ClientMessage message="admin.series.form.eye_catch_preview" />
+              </Suspense>
             </p>
             <div className="relative aspect-[3/4] max-w-52 overflow-hidden rounded-surface border border-border bg-muted/50">
               {hasPreviewImage ? (
                 <Image
-                  alt={getMessage(
-                    messages,
-                    "admin.series.form.eye_catch_preview_alt"
-                  )}
+                  alt={t("admin.series.form.eye_catch_preview_alt")}
                   className="h-full w-full object-cover"
                   fill
                   sizes="(max-width: 768px) 100vw, 240px"
@@ -357,10 +369,9 @@ const EyeCatchImageField = ({
                 />
               ) : (
                 <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-                  {getMessage(
-                    messages,
-                    "admin.series.form.eye_catch_preview_empty"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.series.form.eye_catch_preview_empty" />
+                  </Suspense>
                 </div>
               )}
             </div>
@@ -379,7 +390,9 @@ const EyeCatchImageField = ({
           value={clearEyeCatchImage ? "1" : "0"}
         />
         <FieldDescription>
-          {getMessage(messages, "admin.series.form.eye_catch_description")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.series.form.eye_catch_description" />
+          </Suspense>
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -495,7 +508,7 @@ export const SeriesForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const creatorItems = useMemo<MultiComboboxItem[]>(
@@ -548,7 +561,6 @@ export const SeriesForm = ({
     Boolean(labelsErrorMessage) || labelItems.length === 0;
 
   const isUpdate = mode === "update";
-  const submitLabel = getSubmitLabel(messages, mode, isPending);
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -573,16 +585,15 @@ export const SeriesForm = ({
       <div className="grid gap-4">
         <Field>
           <FieldLabel required>
-            {getMessage(messages, "admin.series.form.title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.form.title" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               defaultValue={initialSeries?.title ?? ""}
               name="title"
-              placeholder={getMessage(
-                messages,
-                "admin.series.form.title_placeholder"
-              )}
+              placeholder={t("admin.series.form.title_placeholder")}
               required
               type="text"
             />
@@ -591,7 +602,9 @@ export const SeriesForm = ({
 
         <Field>
           <FieldLabel required>
-            {getMessage(messages, "admin.series.form.reading_period")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.form.reading_period" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -604,26 +617,24 @@ export const SeriesForm = ({
               type="number"
             />
             <FieldDescription>
-              {getMessage(
-                messages,
-                "admin.series.form.reading_period_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.series.form.reading_period_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel required>
-            {getMessage(messages, "admin.series.form.synopsis")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.form.synopsis" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Textarea
               defaultValue={initialSeries?.synopsis ?? ""}
               name="synopsis"
-              placeholder={getMessage(
-                messages,
-                "admin.series.form.synopsis_placeholder"
-              )}
+              placeholder={t("admin.series.form.synopsis_placeholder")}
               required
               rows={5}
             />
@@ -648,7 +659,9 @@ export const SeriesForm = ({
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.series.form.published_at")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.form.published_at" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <input defaultValue="" name="published_at" type="hidden" />
@@ -663,13 +676,14 @@ export const SeriesForm = ({
               type="datetime-local"
             />
             <FieldDescription>
-              {getMessage(
-                messages,
-                "admin.series.form.published_at_description",
-                {
-                  time_zone: timeZone,
-                }
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage
+                  message="admin.series.form.published_at_description"
+                  values={{
+                    time_zone: timeZone,
+                  }}
+                />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -720,7 +734,9 @@ export const SeriesForm = ({
 
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit">
-          {submitLabel}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <SeriesFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
+          </Suspense>
         </Button>
       </div>
     </form>

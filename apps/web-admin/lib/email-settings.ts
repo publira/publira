@@ -7,10 +7,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -19,6 +16,7 @@ import {
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { TenantSmtpSettings } from "./email-settings-shared";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export type { TenantSmtpSettings } from "./email-settings-shared";
@@ -78,19 +76,18 @@ export type TenantSmtpTestResult =
 export const tenantEmailSettingsCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:email-settings`;
 
-const genericErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.email.failed");
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-
 /**
  * SMTP failures carry the detail an operator needs to fix the settings ("dial
  * tcp: connection refused", "from_address is required"), so validation and
  * precondition errors pass the server's own text through. Other categories take
  * the shared copy — a raw `[internal]` message is not something to show.
  */
-const parseErrorMessage = (error: unknown, locale: Locale): string => {
-  const fallback = genericErrorMessage(sharedCatalog(locale));
+const parseErrorMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+  const fallback = t("admin.settings.email.failed");
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
   return rpcErrorMessage(error, fallback, {
     locale,
@@ -101,8 +98,12 @@ const parseErrorMessage = (error: unknown, locale: Locale): string => {
   });
 };
 
-const parseSmtpTestErrorMessage = (error: unknown, locale: Locale): string => {
-  const fallback = genericErrorMessage(sharedCatalog(locale));
+const parseSmtpTestErrorMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+  const fallback = t("admin.settings.email.failed");
 
   return (
     smtpTestFailureErrorMessage(error, locale) ??
@@ -152,13 +153,15 @@ export const getTenantEmailSettings = async (
 ): Promise<TenantSmtpSettingsResult> => {
   "use cache: private";
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: !sessionId,
     };
@@ -178,7 +181,7 @@ export const getTenantEmailSettings = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, locale),
+      message: await parseErrorMessage(error, locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -189,12 +192,14 @@ export const updateTenantEmailSettings = async (
   input: UpdateTenantSmtpSettingsInput,
   locale: Locale
 ): Promise<TenantSmtpSettingsResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -219,7 +224,7 @@ export const updateTenantEmailSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: parseErrorMessage(error, locale), ok: false };
+    return { message: await parseErrorMessage(error, locale), ok: false };
   }
 };
 
@@ -227,12 +232,14 @@ export const sendTenantSmtpTestEmail = async (
   input: SendTenantSmtpTestInput,
   locale: Locale
 ): Promise<TenantSmtpTestResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -259,6 +266,9 @@ export const sendTenantSmtpTestEmail = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    return { message: parseSmtpTestErrorMessage(error, locale), ok: false };
+    return {
+      message: await parseSmtpTestErrorMessage(error, locale),
+      ok: false,
+    };
   }
 };

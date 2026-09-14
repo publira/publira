@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -21,7 +20,8 @@ import {
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
 
@@ -38,9 +38,9 @@ import {
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.settings.theme_title") };
+  return { title: t("admin.settings.theme_title") };
 };
 
 export const generateStaticParams = () =>

@@ -1,7 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   SectionError,
   SectionErrorDescription,
@@ -25,6 +22,7 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 import type { AnnouncementItem } from "../announcement-types";
 
@@ -36,19 +34,25 @@ type AnnouncementManagerProps = CursorPageHrefs & {
   timeZone: string;
 };
 
-const formatAudience = (
-  item: AnnouncementItem,
-  messages: SharedMessages
-): string => {
+/**
+ * Who the announcement went to, worded one branch at a time. Each branch names
+ * its key inside the `<Message>` it returns, so the key stays where anything
+ * reading this file for the strings the screen uses can see it.
+ */
+const AudienceLabel = ({ item }: { item: AnnouncementItem }) => {
   if (item.audienceType === "all") {
-    return getMessage(messages, "admin.announcements.audience_all");
+    return <Message message="admin.announcements.audience_all" />;
   }
   if (item.targetUserName) {
-    return getMessage(messages, "admin.announcements.audience_selected_user", {
-      name: item.targetUserName,
-    });
+    return (
+      <Message
+        message="admin.announcements.audience_selected_user"
+        values={{ name: item.targetUserName }}
+      />
+    );
   }
-  return getMessage(messages, "admin.announcements.audience_selected");
+
+  return <Message message="admin.announcements.audience_selected" />;
 };
 
 const excerpt = (text: string, maxLength: number): string => {
@@ -68,19 +72,25 @@ const formatAnnouncementDateTime = (
 ): string => (value ? formatDateTime(value, { locale, timeZone }) : "—");
 
 const AnnouncementListBody = ({
-  hasPageLinks,
-  listErrorMessage,
   announcements,
+  emptyDescription,
+  emptyTitle,
+  hasPageLinks,
+  itemLabel,
+  listErrorMessage,
   locale,
   timeZone,
 }: {
-  hasPageLinks: boolean;
-  listErrorMessage?: string;
+  /** The empty state's copy, resolved by the async parent. */
   announcements: AnnouncementItem[];
+  emptyDescription: string;
+  emptyTitle: string;
+  hasPageLinks: boolean;
+  itemLabel: string;
+  listErrorMessage?: string;
   locale: Locale;
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `announcements` array; do not show the
   // empty list state alongside the error or operators will read it as "none".
   if (listErrorMessage) {
@@ -101,13 +111,10 @@ const AnnouncementListBody = ({
   if (announcements.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(
-          messages,
-          "admin.announcements.empty_description"
-        )}
+        description={emptyDescription}
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.announcements.title")}
-        title={getMessage(messages, "admin.announcements.empty_title")}
+        itemLabel={itemLabel}
+        title={emptyTitle}
       />
     );
   }
@@ -117,19 +124,29 @@ const AnnouncementListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead className="w-44">
-            {getMessage(messages, "admin.announcements.columns.created_at")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.announcements.columns.created_at" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.announcements.columns.title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.announcements.columns.title" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.announcements.columns.body")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.announcements.columns.body" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-52">
-            {getMessage(messages, "admin.announcements.columns.audience")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.announcements.columns.audience" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-60">
-            {getMessage(messages, "admin.announcements.columns.link")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.announcements.columns.link" />
+            </Suspense>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -145,7 +162,11 @@ const AnnouncementListBody = ({
             </TableCell>
             <TableCell className="font-medium">{announcement.title}</TableCell>
             <TableCell>{excerpt(announcement.body, 72)}</TableCell>
-            <TableCell>{formatAudience(announcement, messages)}</TableCell>
+            <TableCell>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <AudienceLabel item={announcement} />
+              </Suspense>
+            </TableCell>
             <TableCell>{announcement.linkUrl || "—"}</TableCell>
           </TableRow>
         ))}
@@ -154,7 +175,11 @@ const AnnouncementListBody = ({
   );
 };
 
-export const AnnouncementManager = ({
+/**
+ * One announcement's audience, as its own async component: the label is a
+ * string the catalog resolves, and a row rendered inside `.map()` cannot await.
+ */
+export const AnnouncementManager = async ({
   listErrorMessage,
   nextHref,
   announcements,
@@ -163,7 +188,7 @@ export const AnnouncementManager = ({
   previousHref,
   timeZone,
 }: AnnouncementManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -173,24 +198,22 @@ export const AnnouncementManager = ({
   return (
     <div className="grid gap-6">
       <AnnouncementListBody
-        hasPageLinks={hasPageLinks}
-        listErrorMessage={listErrorMessage}
         announcements={announcements}
+        emptyDescription={t("admin.announcements.empty_description")}
+        emptyTitle={t("admin.announcements.empty_title")}
+        hasPageLinks={hasPageLinks}
+        itemLabel={t("admin.announcements.title")}
+        listErrorMessage={listErrorMessage}
         locale={locale}
         timeZone={timeZone}
       />
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(
-            messages,
-            "admin.announcements.pagination_aria"
-          )}
-          description={getMessage(
-            messages,
-            "admin.announcements.pagination_description",
-            { count: pageSize }
-          )}
+          ariaLabel={t("admin.announcements.pagination_aria")}
+          description={t("admin.announcements.pagination_description", {
+            count: pageSize,
+          })}
           nextHref={nextHref}
           previousHref={previousHref}
         />

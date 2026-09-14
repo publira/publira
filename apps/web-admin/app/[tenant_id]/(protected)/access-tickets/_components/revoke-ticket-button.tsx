@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -16,9 +14,11 @@ import {
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState, useContext, useRef } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense, useActionState, useRef } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { revokeAccessTicketAction } from "../_lib/actions";
@@ -29,11 +29,7 @@ interface RevokeTicketButtonProps {
 }
 
 export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const { add } = useToastManager();
   const formRef = useRef<HTMLFormElement>(null);
@@ -47,7 +43,7 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
       const nextState = await revokeAccessTicketAction(previousState, formData);
       if (nextState?.ok) {
         add({
-          title: getMessage(messages, "admin.access_tickets.revoked"),
+          title: t("admin.access_tickets.revoked"),
           type: "success",
         });
       }
@@ -72,39 +68,38 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
               variant="outline"
             >
               {isPending
-                ? getMessage(messages, "admin.access_tickets.revoking")
-                : getMessage(messages, "admin.access_tickets.revoke")}
+                ? t("admin.access_tickets.revoking")
+                : t("admin.access_tickets.revoke")}
             </Button>
           }
         />
         <ConfirmDialogContent>
           <ConfirmDialogHeader>
             <ConfirmDialogTitle>
-              {getMessage(
-                messages,
-                "admin.access_tickets.revoke_confirm_title"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.access_tickets.revoke_confirm_title" />
+              </Suspense>
             </ConfirmDialogTitle>
             <ConfirmDialogDescription>
-              {getMessage(
-                messages,
-                "admin.access_tickets.revoke_confirm_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.access_tickets.revoke_confirm_description" />
+              </Suspense>
             </ConfirmDialogDescription>
           </ConfirmDialogHeader>
           <ConfirmDialogFooter>
             <ConfirmDialogCancel>
-              {getMessage(messages, "admin.common.cancel")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.common.cancel" />
+              </Suspense>
             </ConfirmDialogCancel>
             <ConfirmDialogAction
               onClick={() => {
                 formRef.current?.requestSubmit();
               }}
             >
-              {getMessage(
-                messages,
-                "admin.access_tickets.revoke_confirm_action"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.access_tickets.revoke_confirm_action" />
+              </Suspense>
             </ConfirmDialogAction>
           </ConfirmDialogFooter>
         </ConfirmDialogContent>

@@ -1,7 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
@@ -27,6 +24,7 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 import type { AccessTicketItem } from "../ticket-types";
 import { RevokeTicketButton } from "./revoke-ticket-button";
@@ -39,16 +37,21 @@ type TicketManagerProps = CursorPageHrefs & {
   timeZone: string;
 };
 
-const statusLabel = (status: string, messages: SharedMessages): string => {
+/**
+ * The ticket's status, worded one branch at a time. Each branch names its key
+ * inside the `<Message>` it returns, so the key stays where anything reading
+ * this file for the strings the screen uses can see it.
+ */
+const TicketStatusLabel = ({ status }: { status: string }) => {
   switch (status) {
     case "active": {
-      return getMessage(messages, "admin.access_tickets.status_active");
+      return <Message message="admin.access_tickets.status_active" />;
     }
     case "expired": {
-      return getMessage(messages, "admin.access_tickets.status_expired");
+      return <Message message="admin.access_tickets.status_expired" />;
     }
     case "revoked": {
-      return getMessage(messages, "admin.access_tickets.status_revoked");
+      return <Message message="admin.access_tickets.status_revoked" />;
     }
     default: {
       return status;
@@ -82,19 +85,25 @@ const formatTicketDateTime = (
 ): string => (value ? formatDateTime(value, { locale, timeZone }) : "—");
 
 const TicketListBody = ({
+  emptyDescription,
+  emptyTitle,
   hasPageLinks,
+  itemLabel,
   listErrorMessage,
   locale,
   tickets,
   timeZone,
 }: {
+  /** The empty state's copy, resolved by the async parent. */
+  emptyDescription: string;
+  emptyTitle: string;
   hasPageLinks: boolean;
+  itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
   tickets: AccessTicketItem[];
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(locale);
   if (listErrorMessage) {
     return (
       <SectionError>
@@ -113,13 +122,10 @@ const TicketListBody = ({
   if (tickets.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(
-          messages,
-          "admin.access_tickets.empty_description"
-        )}
+        description={emptyDescription}
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.access_tickets.item_label")}
-        title={getMessage(messages, "admin.access_tickets.empty_title")}
+        itemLabel={itemLabel}
+        title={emptyTitle}
       />
     );
   }
@@ -129,25 +135,39 @@ const TicketListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead className="w-40">
-            {getMessage(messages, "admin.access_tickets.columns.status")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.columns.status" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.access_tickets.columns.user")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.columns.user" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.access_tickets.columns.episode")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.columns.episode" />
+            </Suspense>
           </TableHead>
           <TableHead className="min-w-40">
-            {getMessage(messages, "admin.access_tickets.columns.note")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.columns.note" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-44">
-            {getMessage(messages, "admin.access_tickets.columns.expires_at")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.columns.expires_at" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-44">
-            {getMessage(messages, "admin.access_tickets.columns.created_at")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.columns.created_at" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-28">
-            {getMessage(messages, "admin.access_tickets.columns.actions")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.columns.actions" />
+            </Suspense>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -157,20 +177,27 @@ const TicketListBody = ({
             <TableCell>
               <div className="grid gap-1">
                 <StatusChip status={statusTone(ticket.status)}>
-                  {statusLabel(ticket.status, messages)}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <TicketStatusLabel status={ticket.status} />
+                  </Suspense>
                 </StatusChip>
                 <span className="text-xs text-muted-foreground">
                   {ticket.publicId}
                 </span>
                 {ticket.status === "revoked" ? (
                   <span className="text-xs text-muted-foreground">
-                    {getMessage(messages, "admin.access_tickets.revoked_at", {
-                      at: formatTicketDateTime(
-                        ticket.revokedAt,
-                        locale,
-                        timeZone
-                      ),
-                    })}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                      <Message
+                        message="admin.access_tickets.revoked_at"
+                        values={{
+                          at: formatTicketDateTime(
+                            ticket.revokedAt,
+                            locale,
+                            timeZone
+                          ),
+                        }}
+                      />
+                    </Suspense>
                   </span>
                 ) : null}
               </div>
@@ -224,7 +251,11 @@ const TicketListBody = ({
   );
 };
 
-export const TicketManager = ({
+/**
+ * One ticket's status, as its own async component: the label is a string the
+ * catalog resolves, and a row rendered inside `.map()` cannot await.
+ */
+export const TicketManager = async ({
   listErrorMessage,
   locale,
   nextHref,
@@ -233,7 +264,7 @@ export const TicketManager = ({
   tickets,
   timeZone,
 }: TicketManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination =
     !listErrorMessage && (tickets.length > 0 || hasPageLinks);
@@ -241,7 +272,10 @@ export const TicketManager = ({
   return (
     <div className="grid gap-6">
       <TicketListBody
+        emptyDescription={t("admin.access_tickets.empty_description")}
+        emptyTitle={t("admin.access_tickets.empty_title")}
         hasPageLinks={hasPageLinks}
+        itemLabel={t("admin.access_tickets.item_label")}
         listErrorMessage={listErrorMessage}
         locale={locale}
         tickets={tickets}
@@ -250,15 +284,10 @@ export const TicketManager = ({
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(
-            messages,
-            "admin.access_tickets.pagination_aria"
-          )}
-          description={getMessage(
-            messages,
-            "admin.access_tickets.pagination_description",
-            { count: pageSize }
-          )}
+          ariaLabel={t("admin.access_tickets.pagination_aria")}
+          description={t("admin.access_tickets.pagination_description", {
+            count: pageSize,
+          })}
           nextHref={nextHref}
           previousHref={previousHref}
         />

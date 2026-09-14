@@ -5,10 +5,8 @@ import type {
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { getMessage, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import type {
@@ -28,16 +26,9 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.announcements.list_failed");
-const createErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.announcements.create_failed");
-const targetUsersErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.announcements.target_users_failed");
 const audienceTypeAllUsers = 1;
 const audienceTypeSelectedUsers = 2;
 
@@ -95,11 +86,13 @@ export const listAllAnnouncementTargetUsers = async (
   tenantId: string,
   locale: Locale
 ): Promise<ListAnnouncementTargetUsersResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       users: [],
@@ -137,7 +130,7 @@ export const listAllAnnouncementTargetUsers = async (
     // option list that operators read as the whole tenant.
     if (walkStop !== "completed") {
       return {
-        message: targetUsersErrorMessage(messages),
+        message: t("admin.announcements.target_users_failed"),
         ok: false,
         requiresSignIn: false,
         users: [],
@@ -155,7 +148,7 @@ export const listAllAnnouncementTargetUsers = async (
     return {
       message: mapErrorMessage(
         error,
-        targetUsersErrorMessage(messages),
+        t("admin.announcements.target_users_failed"),
         locale
       ),
       ok: false,
@@ -180,13 +173,15 @@ export const listAnnouncements = async (
   "use cache: private";
   cacheTag(`announcements-${tenantId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       announcements: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -213,7 +208,11 @@ export const listAnnouncements = async (
     return {
       ...emptyCursorPageTokens,
       announcements: [],
-      message: mapErrorMessage(error, listErrorMessage(messages), locale),
+      message: mapErrorMessage(
+        error,
+        t("admin.announcements.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -233,11 +232,13 @@ export const createAnnouncement = async (
 ): Promise<
   { ok: true; createdCount: number } | { ok: false; message: string }
 > => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -268,7 +269,11 @@ export const createAnnouncement = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, createErrorMessage(messages), locale),
+      message: mapErrorMessage(
+        error,
+        t("admin.announcements.create_failed"),
+        locale
+      ),
       ok: false,
     };
   }

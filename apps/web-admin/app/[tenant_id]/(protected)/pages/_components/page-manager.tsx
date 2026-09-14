@@ -1,6 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -25,6 +23,7 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 import type { PageListItem } from "../page-types";
 import { formatPageDateTime, formatPagePath } from "../page-types";
@@ -37,7 +36,7 @@ type PageManagerProps = CursorPageHrefs & {
   timeZone: string;
 };
 
-const PageListBody = ({
+const PageListBody = async ({
   hasPageLinks,
   listErrorMessage,
   locale,
@@ -50,7 +49,6 @@ const PageListBody = ({
   pages: PageListItem[];
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `pages` array; do not show the empty
   // list state alongside the error or operators will read it as "no pages".
   if (listErrorMessage) {
@@ -68,13 +66,15 @@ const PageListBody = ({
     );
   }
 
+  const t = await getMessagesFor(locale);
+
   if (pages.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(messages, "admin.pages.empty_description")}
+        description={t("admin.pages.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.pages.title")}
-        title={getMessage(messages, "admin.pages.empty_title")}
+        itemLabel={t("admin.pages.title")}
+        title={t("admin.pages.empty_title")}
       />
     );
   }
@@ -84,22 +84,34 @@ const PageListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead>
-            {getMessage(messages, "admin.pages.columns.title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.pages.columns.title" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.pages.columns.slug")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.pages.columns.slug" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-32">
-            {getMessage(messages, "admin.pages.columns.status")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.pages.columns.status" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-28">
-            {getMessage(messages, "admin.pages.columns.footer")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.pages.columns.footer" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-40">
-            {getMessage(messages, "admin.pages.columns.updated_at")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.pages.columns.updated_at" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-32">
-            {getMessage(messages, "admin.pages.columns.actions")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.pages.columns.actions" />
+            </Suspense>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -113,18 +125,22 @@ const PageListBody = ({
                 tone={page.publishedVersionId.length > 0 ? "info" : "muted"}
               >
                 {page.publishedVersionId.length > 0
-                  ? getMessage(messages, "admin.pages.published")
-                  : getMessage(messages, "admin.pages.draft")}
+                  ? t("admin.pages.published")
+                  : t("admin.pages.draft")}
               </Badge>
             </TableCell>
             <TableCell>
               {page.displayInFooter ? (
                 <Badge tone="info">
-                  {getMessage(messages, "admin.pages.visible")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.pages.visible" />
+                  </Suspense>
                 </Badge>
               ) : (
                 <Badge tone="muted">
-                  {getMessage(messages, "admin.pages.hidden")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.pages.hidden" />
+                  </Suspense>
                 </Badge>
               )}
             </TableCell>
@@ -133,7 +149,9 @@ const PageListBody = ({
             </TableCell>
             <TableCell>
               <LinkButton href={`/pages/${page.id}`} variant="outline">
-                {getMessage(messages, "admin.pages.edit_action")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.pages.edit_action" />
+                </Suspense>
               </LinkButton>
             </TableCell>
           </TableRow>
@@ -143,7 +161,7 @@ const PageListBody = ({
   );
 };
 
-export const PageManager = ({
+export const PageManager = async ({
   listErrorMessage,
   nextHref,
   pageSize,
@@ -152,7 +170,7 @@ export const PageManager = ({
   timeZone,
   locale,
 }: PageManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -171,14 +189,10 @@ export const PageManager = ({
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(messages, "admin.pages.pagination_aria")}
-          description={getMessage(
-            messages,
-            "admin.pages.pagination_description",
-            {
-              count: pageSize,
-            }
-          )}
+          ariaLabel={t("admin.pages.pagination_aria")}
+          description={t("admin.pages.pagination_description", {
+            count: pageSize,
+          })}
           nextHref={nextHref}
           previousHref={previousHref}
         />

@@ -1,6 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
   SectionError,
@@ -26,6 +24,7 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 import type { NotificationItem } from "../notification-types";
 import {
@@ -65,21 +64,27 @@ const NotificationTitle = ({ item }: { item: NotificationItem }) => {
 };
 
 const NotificationListBody = ({
+  emptyDescription,
+  emptyTitle,
   hasPageLinks,
+  itemLabel,
   listErrorMessage,
   locale,
   notifications,
   tenantId,
   timeZone,
 }: {
+  /** The empty state's copy, resolved by the async parent. */
+  emptyDescription: string;
+  emptyTitle: string;
   hasPageLinks: boolean;
+  itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
   notifications: NotificationItem[];
   tenantId: string;
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(locale);
   if (listErrorMessage) {
     return (
       <SectionError>
@@ -98,13 +103,10 @@ const NotificationListBody = ({
   if (notifications.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(
-          messages,
-          "admin.notifications.empty_description"
-        )}
+        description={emptyDescription}
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.notifications.title")}
-        title={getMessage(messages, "admin.notifications.empty_title")}
+        itemLabel={itemLabel}
+        title={emptyTitle}
       />
     );
   }
@@ -114,17 +116,25 @@ const NotificationListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead className="w-24">
-            {getMessage(messages, "admin.notifications.columns.status")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.notifications.columns.status" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-44">
-            {getMessage(messages, "admin.notifications.columns.created_at")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.notifications.columns.created_at" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.notifications.columns.content")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.notifications.columns.content" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-36">
             <span className="sr-only">
-              {getMessage(messages, "admin.notifications.columns.actions")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.notifications.columns.actions" />
+              </Suspense>
             </span>
           </TableHead>
         </TableRow>
@@ -135,11 +145,15 @@ const NotificationListBody = ({
             <TableCell>
               {item.isRead ? (
                 <StatusChip status="muted">
-                  {getMessage(messages, "admin.notifications.read")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.notifications.read" />
+                  </Suspense>
                 </StatusChip>
               ) : (
                 <StatusChip status="info">
-                  {getMessage(messages, "admin.notifications.unread")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.notifications.unread" />
+                  </Suspense>
                 </StatusChip>
               )}
             </TableCell>
@@ -170,7 +184,7 @@ const NotificationListBody = ({
   );
 };
 
-export const NotificationManager = ({
+export const NotificationManager = async ({
   listErrorMessage,
   locale,
   nextHref,
@@ -181,7 +195,7 @@ export const NotificationManager = ({
   timeZone,
   unreadCount,
 }: NotificationManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination =
     !listErrorMessage && (notifications.length > 0 || hasPageLinks);
@@ -197,7 +211,10 @@ export const NotificationManager = ({
       ) : null}
 
       <NotificationListBody
+        emptyDescription={t("admin.notifications.empty_description")}
+        emptyTitle={t("admin.notifications.empty_title")}
         hasPageLinks={hasPageLinks}
+        itemLabel={t("admin.notifications.title")}
         listErrorMessage={listErrorMessage}
         locale={locale}
         notifications={notifications}
@@ -207,15 +224,10 @@ export const NotificationManager = ({
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(
-            messages,
-            "admin.notifications.pagination_aria"
-          )}
-          description={getMessage(
-            messages,
-            "admin.notifications.pagination_description",
-            { count: pageSize }
-          )}
+          ariaLabel={t("admin.notifications.pagination_aria")}
+          description={t("admin.notifications.pagination_description", {
+            count: pageSize,
+          })}
           nextHref={nextHref}
           previousHref={previousHref}
         />

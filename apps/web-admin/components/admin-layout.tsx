@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   ConsoleHeader,
   ConsoleHeaderActions,
@@ -29,14 +28,17 @@ import {
   ConsoleUserMenuSeparator,
   ConsoleUserMenuTrigger,
 } from "@publira/layouts/admin";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { Message } from "#components/message";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+
 import { getAdminCurrentUser } from "../lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
-import { getLocale, loadAdminMessages } from "../lib/locale";
 import { logoutAction } from "../lib/logout-action";
 import { getTenantRoleLabel } from "../lib/role-labels";
 import { tenantBrandingVariant } from "../lib/tenant-branding-image";
@@ -76,12 +78,12 @@ export const AdminUser = async ({
   }
 
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <ConsoleHeaderUser>
       <ConsoleUserMenuTrigger
-        aria-label={getMessage(messages, "admin.shell.account_menu", {
+        aria-label={t("admin.shell.account_menu", {
           name: result.user.name,
         })}
       >
@@ -94,16 +96,20 @@ export const AdminUser = async ({
             {result.user.publicId}
           </ConsoleUserMenuPublicId>
           <ConsoleUserMenuRole>
-            {getTenantRoleLabel(result.user.role, messages)}
+            {await getTenantRoleLabel(result.user.role, locale)}
           </ConsoleUserMenuRole>
         </ConsoleUserMenuIdentity>
         <ConsoleUserMenuSeparator />
         <ConsoleUserMenuAccountLink href="/settings/account">
-          {getMessage(messages, "admin.shell.account_settings")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.shell.account_settings" />
+          </Suspense>
         </ConsoleUserMenuAccountLink>
         <ConsoleUserMenuLogout action={logout}>
           <ConsoleUserMenuLogoutButton>
-            {getMessage(messages, "admin.shell.logout")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.shell.logout" />
+            </Suspense>
           </ConsoleUserMenuLogoutButton>
         </ConsoleUserMenuLogout>
       </ConsoleUserMenuContent>
@@ -113,17 +119,17 @@ export const AdminUser = async ({
 
 const AdminMobileNavigation = async ({ tenantId }: { tenantId: string }) => {
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <>
       <ConsoleMobileNavigation>
         <ConsoleMobileNavigationCloseButton
-          aria-label={getMessage(messages, "admin.shell.navigation_close")}
+          aria-label={t("admin.shell.navigation_close")}
         />
       </ConsoleMobileNavigation>
       <ConsoleMobileNavigationOpenButton
-        aria-label={getMessage(messages, "admin.shell.navigation_open")}
+        aria-label={t("admin.shell.navigation_open")}
       />
     </>
   );

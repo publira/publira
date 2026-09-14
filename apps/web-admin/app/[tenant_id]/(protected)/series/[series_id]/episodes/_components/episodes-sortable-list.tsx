@@ -1,21 +1,25 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Suspense,
   useCallback,
+  useContext,
   useOptimistic,
   useRef,
   useTransition,
-  useContext,
 } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import type { EpisodeItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -59,7 +63,7 @@ export const EpisodesSortableList = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();
@@ -89,9 +93,7 @@ export const EpisodesSortableList = ({
         const result = await reorderAction(formData);
         if (!result.ok) {
           add({
-            title:
-              result.message ??
-              getMessage(messages, "admin.series.episodes.reorder_error"),
+            title: result.message ?? t("admin.series.episodes.reorder_error"),
             type: "error",
           });
           router.refresh();
@@ -99,19 +101,19 @@ export const EpisodesSortableList = ({
         }
 
         add({
-          title: getMessage(messages, "admin.series.episodes.reordered"),
+          title: t("admin.series.episodes.reordered"),
           type: "success",
         });
         router.refresh();
       } catch {
         add({
-          title: getMessage(messages, "admin.series.episodes.reorder_error"),
+          title: t("admin.series.episodes.reorder_error"),
           type: "error",
         });
         router.refresh();
       }
     },
-    [add, messages, reorderAction, router, seriesPublicId, tenantId]
+    [add, t, reorderAction, router, seriesPublicId, tenantId]
   );
 
   const handleDragOver = useCallback(
@@ -188,19 +190,29 @@ export const EpisodesSortableList = ({
               {episode.orderIndex}. {episode.title}
             </p>
             <p className="text-xs text-muted-foreground">
-              {getMessage(messages, "admin.series.episodes.status_price", {
-                price: episode.price,
-                status: episode.status,
-              })}
+              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                <ClientMessage
+                  message="admin.series.episodes.status_price"
+                  values={{
+                    price: episode.price,
+                    status: episode.status,
+                  }}
+                />
+              </Suspense>
             </p>
             {episode.status === "scheduled" && episode.scheduledAt ? (
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                {getMessage(messages, "admin.series.episodes.scheduled_at", {
-                  date: formatDateTime(episode.scheduledAt, {
-                    locale,
-                    timeZone,
-                  }),
-                })}
+                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                  <ClientMessage
+                    message="admin.series.episodes.scheduled_at"
+                    values={{
+                      date: formatDateTime(episode.scheduledAt, {
+                        locale,
+                        timeZone,
+                      }),
+                    }}
+                  />
+                </Suspense>
               </p>
             ) : null}
           </div>
@@ -214,7 +226,9 @@ export const EpisodesSortableList = ({
               }
               variant="outline"
             >
-              {getMessage(messages, "admin.series.episodes.edit_action")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.series.episodes.edit_action" />
+              </Suspense>
             </LinkButton>
           </div>
         </div>

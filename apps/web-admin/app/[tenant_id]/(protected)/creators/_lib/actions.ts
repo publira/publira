@@ -1,7 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -20,33 +19,34 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import type { CreatorActionState, CreatorMutationMode } from "../creator-types";
 
-const creatorCommonSchema = (messages: AdminMessages) =>
-  z.object({
+const creatorCommonSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     clearIconImage: flagOneFormSchema,
     iconImage: optionalFileFormSchema,
-    iconImageCrop: optionalCropRectFormSchema(
-      getMessage(messages, "admin.image_crop.invalid")
-    ),
-    name: requiredTrimmedString(
-      getMessage(messages, "admin.creators.validation.name_required")
-    ),
+    iconImageCrop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
+    name: requiredTrimmedString(t("admin.creators.validation.name_required")),
     profileText: optionalTrimmedString(10_000),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.creators.validation.tenant_missing")
+      t("admin.creators.validation.tenant_missing")
     ),
   });
+};
+const creatorUpdateSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    creatorCommonSchema(locale),
+  ]);
 
-const creatorUpdateSchema = (messages: AdminMessages) =>
-  creatorCommonSchema(messages).extend({
-    publicId: requiredTrimmedString(
-      getMessage(messages, "admin.creators.validation.id_missing")
-    ),
+  return base.extend({
+    publicId: requiredTrimmedString(t("admin.creators.validation.id_missing")),
   });
-
+};
 const creatorFormFields = {
   clearIconImage: { kind: "value", name: "clear_icon_image" },
   iconImage: { kind: "file", name: "icon_image" },
@@ -82,10 +82,8 @@ export const createCreatorAction = async (
 ): Promise<CreatorActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = creatorCommonSchema(messages).safeParse(
-    toFormDataInput(formData, creatorFormFields)
-  );
+  const schema = await creatorCommonSchema(locale);
+  const parsed = schema.safeParse(toFormDataInput(formData, creatorFormFields));
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
@@ -122,8 +120,11 @@ export const updateCreatorAction = async (
 ): Promise<CreatorActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = creatorUpdateSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    creatorUpdateSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...creatorFormFields,
       publicId: { kind: "value", name: "public_id" },
@@ -169,7 +170,7 @@ export const updateCreatorAction = async (
 
   return {
     creator: result.creator,
-    message: getMessage(messages, "admin.creators.updated"),
+    message: t("admin.creators.updated"),
     mode: "update",
     ok: true,
   };

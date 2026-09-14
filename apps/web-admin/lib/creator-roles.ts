@@ -3,10 +3,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { RpcErrorMessageOverrides } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -15,6 +12,7 @@ import {
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { CREATOR_ROLE_NAME_MAX_LENGTH } from "./creator-roles-shared";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface CreatorRoleItem {
@@ -52,25 +50,24 @@ export type DeleteCreatorRoleResult =
 export const creatorRolesCacheTag = (tenantId: string): string =>
   `creator-roles-${tenantId}`;
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.creator_roles.list_failed");
-const saveErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.creator_roles.save_failed");
-
 /**
  * The name rules the API enforces, worded once for both writes that carry a
  * name. `invalid-argument` is an empty name or one past the bound, and
  * `conflict` is a name another role of the tenant already holds — compared
  * without case, so the two need not look alike on screen.
  */
-const nameOverrides = (messages: SharedMessages): RpcErrorMessageOverrides => ({
-  conflict: getMessage(messages, "admin.creator_roles.name_taken"),
-  "invalid-argument": getMessage(messages, "admin.creator_roles.name_invalid", {
-    count: String(CREATOR_ROLE_NAME_MAX_LENGTH),
-  }),
-});
+const nameOverrides = async (
+  locale: Locale
+): Promise<RpcErrorMessageOverrides> => {
+  const t = await getMessagesFor(locale);
+
+  return {
+    conflict: t("admin.creator_roles.name_taken"),
+    "invalid-argument": t("admin.creator_roles.name_invalid", {
+      count: String(CREATOR_ROLE_NAME_MAX_LENGTH),
+    }),
+  };
+};
 
 const mapErrorToMessage = (
   error: unknown,
@@ -106,12 +103,14 @@ export const listCreatorRoles = async (
   "use cache: private";
   cacheTag(creatorRolesCacheTag(tenantId));
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       creatorRoles: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -144,7 +143,7 @@ export const listCreatorRoles = async (
     if (walkStop !== "completed") {
       return {
         creatorRoles: [],
-        message: listErrorMessage(messages),
+        message: t("admin.creator_roles.list_failed"),
         ok: false,
         requiresSignIn: false,
       };
@@ -155,7 +154,11 @@ export const listCreatorRoles = async (
     rethrowUnclassifiedRpcError(error);
     return {
       creatorRoles: [],
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.creator_roles.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -193,10 +196,12 @@ export const createCreatorRole = async (
   input: { tenantId: string; name: string },
   locale: Locale
 ): Promise<CreateCreatorRoleResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -209,7 +214,7 @@ export const createCreatorRole = async (
     );
 
     if (!response.creatorRole?.publicId?.trim()) {
-      return { message: saveErrorMessage(messages), ok: false };
+      return { message: t("admin.creator_roles.save_failed"), ok: false };
     }
 
     return { creatorRole: mapCreatorRole(response.creatorRole), ok: true };
@@ -217,11 +222,11 @@ export const createCreatorRole = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        saveErrorMessage(messages),
+        t("admin.creator_roles.save_failed"),
         locale,
-        nameOverrides(messages)
+        await nameOverrides(locale)
       ),
       ok: false,
     };
@@ -239,10 +244,12 @@ export const updateCreatorRole = async (
   input: { tenantId: string; publicId: string; name: string },
   locale: Locale
 ): Promise<UpdateCreatorRoleResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -256,7 +263,7 @@ export const updateCreatorRole = async (
     );
 
     if (!response.creatorRole?.publicId?.trim()) {
-      return { message: saveErrorMessage(messages), ok: false };
+      return { message: t("admin.creator_roles.save_failed"), ok: false };
     }
 
     return { creatorRole: mapCreatorRole(response.creatorRole), ok: true };
@@ -264,11 +271,11 @@ export const updateCreatorRole = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        saveErrorMessage(messages),
+        t("admin.creator_roles.save_failed"),
         locale,
-        nameOverrides(messages)
+        await nameOverrides(locale)
       ),
       ok: false,
     };
@@ -292,10 +299,12 @@ export const reorderCreatorRoles = async (
   },
   locale: Locale
 ): Promise<ReorderCreatorRolesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -318,15 +327,12 @@ export const reorderCreatorRoles = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        getMessage(messages, "admin.creator_roles.reorder_failed"),
+        t("admin.creator_roles.reorder_failed"),
         locale,
         {
-          precondition: getMessage(
-            messages,
-            "admin.creator_roles.reorder_conflict"
-          ),
+          precondition: t("admin.creator_roles.reorder_conflict"),
         }
       ),
       ok: false,
@@ -347,10 +353,12 @@ export const deleteCreatorRole = async (
   input: { tenantId: string; publicId: string },
   locale: Locale
 ): Promise<DeleteCreatorRoleResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -367,15 +375,12 @@ export const deleteCreatorRole = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        getMessage(messages, "admin.creator_roles.delete_failed"),
+        t("admin.creator_roles.delete_failed"),
         locale,
         {
-          precondition: getMessage(
-            messages,
-            "admin.creator_roles.delete_in_use"
-          ),
+          precondition: t("admin.creator_roles.delete_in_use"),
         }
       ),
       ok: false,

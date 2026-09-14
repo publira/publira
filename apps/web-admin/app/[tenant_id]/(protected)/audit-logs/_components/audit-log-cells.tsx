@@ -1,13 +1,11 @@
 import { smtpTestFailureMessage } from "@publira/api-client/error-messages";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { TableCell } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 
 import type { AdminMessageKey } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantRoleLabel } from "#lib/role-labels";
 
 /**
@@ -45,12 +43,11 @@ const actionMessageKeys: Record<string, AdminMessageKey> = Object.fromEntries(
     .map((option) => [option.value, option.messageKey])
 );
 
-const actionLabel = (action: string, messages: SharedMessages): string => {
+const actionLabel = async (action: string, locale: Locale): Promise<string> => {
+  const t = await getMessagesFor(locale);
   const key = actionMessageKeys[action];
 
-  return key
-    ? getMessage(messages, key)
-    : getMessage(messages, "admin.audit.actions.other");
+  return key ? t(key) : t("admin.audit.actions.other");
 };
 
 const outcomeToneMap = {
@@ -103,36 +100,38 @@ export const AuditLogDateCell = ({
   </TableCell>
 );
 
-export const AuditLogActorCell = ({
+export const AuditLogActorCell = async ({
   actorName,
   actorRole,
   actorUserPublicId,
   locale,
 }: AuditLogActorCellProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <TableCell>
       <div className="font-medium">
-        {actorName || getMessage(messages, "admin.audit.actor_unnamed")}
+        {actorName || t("admin.audit.actor_unnamed")}
       </div>
       <div className="text-xs text-muted-foreground">
-        {actorUserPublicId ||
-          getMessage(messages, "admin.audit.actor_id_unknown")}
-        {actorRole ? ` / ${getTenantRoleLabel(actorRole, messages)}` : ""}
+        {actorUserPublicId || t("admin.audit.actor_id_unknown")}
+        {actorRole ? ` / ${await getTenantRoleLabel(actorRole, locale)}` : ""}
       </div>
     </TableCell>
   );
 };
 
-export const AuditLogActionCell = ({
+export const AuditLogActionCell = async ({
   action,
   locale,
   reason,
   targetId,
   targetType,
 }: AuditLogActionCellProps) => {
-  const messages = sharedCatalog(locale);
+  const [t, label] = await Promise.all([
+    getMessagesFor(locale),
+    actionLabel(action, locale),
+  ]);
   const reasonLabel =
     action === "tenant_smtp_test_email_sent"
       ? (smtpTestFailureMessage(reason, locale) ?? reason)
@@ -140,10 +139,10 @@ export const AuditLogActionCell = ({
 
   return (
     <TableCell>
-      <div className="font-medium">{actionLabel(action, messages)}</div>
+      <div className="font-medium">{label}</div>
       {(targetType || targetId || reasonLabel) && (
         <div className="text-xs text-muted-foreground">
-          {targetType || getMessage(messages, "admin.audit.target_type_none")}
+          {targetType || t("admin.audit.target_type_none")}
           {targetId ? ` / ${targetId}` : ""}
           {reasonLabel ? ` / ${reasonLabel}` : ""}
         </div>
@@ -152,13 +151,17 @@ export const AuditLogActionCell = ({
   );
 };
 
-export const AuditLogOutcomeCell = ({
+export const AuditLogOutcomeCell = async ({
   locale,
   outcome,
-}: AuditLogOutcomeCellProps) => (
-  <TableCell>
-    <Badge tone={outcomeToneMap[outcome]}>
-      {getMessage(sharedCatalog(locale), outcomeMessageKeys[outcome])}
-    </Badge>
-  </TableCell>
-);
+}: AuditLogOutcomeCellProps) => {
+  const t = await getMessagesFor(locale);
+
+  return (
+    <TableCell>
+      <Badge tone={outcomeToneMap[outcome]}>
+        {t(outcomeMessageKeys[outcome])}
+      </Badge>
+    </TableCell>
+  );
+};

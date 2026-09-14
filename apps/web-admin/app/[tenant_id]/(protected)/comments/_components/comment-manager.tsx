@@ -1,7 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
   SectionError,
@@ -34,11 +31,15 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 import type { CommentItem } from "../comment-types";
 import { CommentActionButton } from "./comment-action-button";
 import { CommentReasonDialog } from "./comment-reason-dialog";
-import { commentStatusLabel, commentStatusTone } from "./comment-status-label";
+import {
+  commentStatusTone,
+  CommentStatusMessage,
+} from "./comment-status-label";
 
 type CommentManagerProps = CursorPageHrefs & {
   comments: CommentItem[];
@@ -85,21 +86,29 @@ const daysUntilPurge = (
  * Three keys rather than one interpolated count, because "1 days left" is
  * wrong in English and the message syntax here carries no plural selection.
  */
-const purgeNotice = (
-  comment: CommentItem,
-  locale: Locale,
-  messages: SharedMessages,
-  timeZone: string
-): string => {
+const PurgeNotice = ({
+  comment,
+  locale,
+  timeZone,
+}: {
+  comment: CommentItem;
+  locale: Locale;
+  timeZone: string;
+}) => {
   const at = formatCommentDateTime(comment.purgeDueAt, locale, timeZone);
   const days = daysUntilPurge(comment.purgeDueAt, timeZone);
   if (days === null || days <= 0) {
-    return getMessage(messages, "admin.comments.purge_due_now", { at });
+    return <Message message="admin.comments.purge_due_now" values={{ at }} />;
   }
   if (days === 1) {
-    return getMessage(messages, "admin.comments.purge_due_one_day", { at });
+    return (
+      <Message message="admin.comments.purge_due_one_day" values={{ at }} />
+    );
   }
-  return getMessage(messages, "admin.comments.purge_due_days", { at, days });
+
+  return (
+    <Message message="admin.comments.purge_due_days" values={{ at, days }} />
+  );
 };
 
 /**
@@ -113,29 +122,38 @@ const purgeNotice = (
 const CommentStateNotes = ({
   comment,
   locale,
-  messages,
   timeZone,
 }: {
   comment: CommentItem;
   locale: Locale;
-  messages: SharedMessages;
   timeZone: string;
 }) => {
   if (comment.status === "hidden") {
     return (
       <>
         <span className="text-xs text-muted-foreground">
-          {comment.hiddenReason === "auto_reports"
-            ? getMessage(messages, "admin.comments.hidden_by_reports")
-            : getMessage(messages, "admin.comments.hidden_by_staff")}
+          <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
+            {comment.hiddenReason === "auto_reports" ? (
+              <Message message="admin.comments.hidden_by_reports" />
+            ) : (
+              <Message message="admin.comments.hidden_by_staff" />
+            )}
+          </Suspense>
         </span>
         <span className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.comments.hidden_author_notice")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.comments.hidden_author_notice" />
+          </Suspense>
         </span>
         <span className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.comments.hidden_at", {
-            at: formatCommentDateTime(comment.hiddenAt, locale, timeZone),
-          })}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message
+              message="admin.comments.hidden_at"
+              values={{
+                at: formatCommentDateTime(comment.hiddenAt, locale, timeZone),
+              }}
+            />
+          </Suspense>
         </span>
       </>
     );
@@ -145,12 +163,27 @@ const CommentStateNotes = ({
     return (
       <>
         <span className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.comments.withdrawn_by_author", {
-            at: formatCommentDateTime(comment.withdrawnAt, locale, timeZone),
-          })}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message
+              message="admin.comments.withdrawn_by_author"
+              values={{
+                at: formatCommentDateTime(
+                  comment.withdrawnAt,
+                  locale,
+                  timeZone
+                ),
+              }}
+            />
+          </Suspense>
         </span>
         <span className="text-xs text-muted-foreground">
-          {purgeNotice(comment, locale, messages, timeZone)}
+          <Suspense fallback={<SkeletonLine className="h-3 w-56" />}>
+            <PurgeNotice
+              comment={comment}
+              locale={locale}
+              timeZone={timeZone}
+            />
+          </Suspense>
         </span>
       </>
     );
@@ -184,18 +217,24 @@ const CommentRowActions = ({ comment }: { comment: CommentItem }) => (
 
 const CommentListBody = ({
   comments,
+  emptyDescription,
+  emptyTitle,
   hasPageLinks,
+  itemLabel,
   listErrorMessage,
   locale,
   timeZone,
 }: {
+  /** The empty state's copy, resolved by the async parent. */
   comments: CommentItem[];
+  emptyDescription: string;
+  emptyTitle: string;
   hasPageLinks: boolean;
+  itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(locale);
   if (listErrorMessage) {
     return (
       <SectionError>
@@ -214,10 +253,10 @@ const CommentListBody = ({
   if (comments.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(messages, "admin.comments.empty_description")}
+        description={emptyDescription}
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.comments.item_label")}
-        title={getMessage(messages, "admin.comments.empty_title")}
+        itemLabel={itemLabel}
+        title={emptyTitle}
       />
     );
   }
@@ -227,22 +266,34 @@ const CommentListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead className="w-56">
-            {getMessage(messages, "admin.comments.columns.status")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.columns.status" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.comments.columns.comment")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.columns.comment" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-48">
-            {getMessage(messages, "admin.comments.columns.author")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.columns.author" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-56">
-            {getMessage(messages, "admin.comments.columns.episode")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.columns.episode" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-44">
-            {getMessage(messages, "admin.comments.columns.created_at")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.columns.created_at" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-36">
-            {getMessage(messages, "admin.comments.columns.actions")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.columns.actions" />
+            </Suspense>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -252,12 +303,13 @@ const CommentListBody = ({
             <TableCell>
               <div className="grid gap-1">
                 <StatusChip status={commentStatusTone(comment.status)}>
-                  {commentStatusLabel(comment.status, messages)}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <CommentStatusMessage status={comment.status} />
+                  </Suspense>
                 </StatusChip>
                 <CommentStateNotes
                   comment={comment}
                   locale={locale}
-                  messages={messages}
                   timeZone={timeZone}
                 />
               </div>
@@ -301,7 +353,7 @@ const CommentListBody = ({
   );
 };
 
-export const CommentManager = ({
+export const CommentManager = async ({
   comments,
   listErrorMessage,
   locale,
@@ -310,7 +362,7 @@ export const CommentManager = ({
   previousHref,
   timeZone,
 }: CommentManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination =
     !listErrorMessage && (comments.length > 0 || hasPageLinks);
@@ -320,17 +372,24 @@ export const CommentManager = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            {getMessage(messages, "admin.comments.list_title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.list_title" />
+            </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
-            {getMessage(messages, "admin.comments.list_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.list_description" />
+            </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
 
       <CommentListBody
         comments={comments}
+        emptyDescription={t("admin.comments.empty_description")}
+        emptyTitle={t("admin.comments.empty_title")}
         hasPageLinks={hasPageLinks}
+        itemLabel={t("admin.comments.item_label")}
         listErrorMessage={listErrorMessage}
         locale={locale}
         timeZone={timeZone}
@@ -338,12 +397,10 @@ export const CommentManager = ({
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(messages, "admin.comments.pagination_aria")}
-          description={getMessage(
-            messages,
-            "admin.comments.pagination_description",
-            { count: pageSize }
-          )}
+          ariaLabel={t("admin.comments.pagination_aria")}
+          description={t("admin.comments.pagination_description", {
+            count: pageSize,
+          })}
           nextHref={nextHref}
           previousHref={previousHref}
         />

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   Figure,
@@ -53,8 +52,8 @@ import {
   parseCursorSearchParams,
 } from "#lib/cursor-page";
 import { listEpisodeReadThrough, readThroughRate } from "#lib/engagement";
-import { getLocale, loadAdminMessages } from "#lib/locale";
-import type { AdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 type EngagementPageProps = PageProps<"/[tenant_id]/engagement">;
@@ -62,9 +61,9 @@ type EngagementPageProps = PageProps<"/[tenant_id]/engagement">;
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.engagement.title") };
+  return { title: t("admin.engagement.title") };
 };
 
 export const generateStaticParams = () =>
@@ -74,14 +73,35 @@ export const generateStaticParams = () =>
  * The rate as the console words it. `null` is not zero: no member opened the
  * episode in the period, so there is nothing a completion could be a share of.
  */
-const formatReadThroughRate = (
+const formatReadThroughRate = async (
   rate: number | null,
-  locale: Locale,
-  messages: AdminMessages
-): string =>
-  rate === null
-    ? getMessage(messages, "admin.engagement.rate_unavailable")
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rate === null
+    ? t("admin.engagement.rate_unavailable")
     : formatPercent(rate, { locale });
+};
+
+/**
+ * One episode's read-through rate, as its own async component: the "no reader
+ * opened it" wording comes from the catalog, and a row rendered inside `.map()`
+ * cannot await.
+ */
+const ReadThroughRateCell = async ({
+  completeCount,
+  locale,
+  memberViewCount,
+}: {
+  completeCount: number;
+  locale: Locale;
+  memberViewCount: number;
+}) =>
+  await formatReadThroughRate(
+    readThroughRate(completeCount, memberViewCount),
+    locale
+  );
 
 const EngagementSkeleton = () => (
   <AdminSections>
@@ -131,12 +151,12 @@ const EngagementContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [result, messages] = await Promise.all([
+  const [result, t] = await Promise.all([
     listEpisodeReadThrough(tenantId, locale, {
       limit: DEFAULT_PAGE_SIZE,
       token,
     }),
-    loadAdminMessages(locale),
+    getMessagesFor(locale),
   ]);
 
   await redirectToLoginIfSessionRejected(result);
@@ -167,36 +187,49 @@ const EngagementContent = async ({
     <AdminSections>
       <AdminSection>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          {getMessage(messages, "admin.engagement.period", {
-            end: formatPlainDate(result.period.end, { locale }),
-            start: formatPlainDate(result.period.start, { locale }),
-            time_zone: result.period.timeZone,
-          })}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <Message
+              message="admin.engagement.period"
+              values={{
+                end: formatPlainDate(result.period.end, { locale }),
+                start: formatPlainDate(result.period.start, { locale }),
+                time_zone: result.period.timeZone,
+              }}
+            />
+          </Suspense>
         </p>
         <FigureLine>
           <Figure>
             <FigureLabel>
-              {getMessage(messages, "admin.engagement.complete_count_label")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.engagement.complete_count_label" />
+              </Suspense>
             </FigureLabel>
             <FigureValue>{result.totalCompleteCount}</FigureValue>
           </Figure>
           <Figure>
             <FigureLabel>
-              {getMessage(messages, "admin.engagement.member_view_count_label")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.engagement.member_view_count_label" />
+              </Suspense>
             </FigureLabel>
             <FigureValue>{result.totalMemberViewCount}</FigureValue>
           </Figure>
           <Figure>
             <FigureLabel>
-              {getMessage(messages, "admin.engagement.rate_label")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.engagement.rate_label" />
+              </Suspense>
             </FigureLabel>
             <FigureValue>
-              {formatReadThroughRate(totalRate, locale, messages)}
+              {await formatReadThroughRate(totalRate, locale)}
             </FigureValue>
           </Figure>
         </FigureLine>
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.engagement.definition")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <Message message="admin.engagement.definition" />
+          </Suspense>
         </p>
       </AdminSection>
 
@@ -204,10 +237,14 @@ const EngagementContent = async ({
         <AdminSectionHeader>
           <AdminSectionHeading>
             <AdminSectionTitle>
-              {getMessage(messages, "admin.engagement.list_title")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.engagement.list_title" />
+              </Suspense>
             </AdminSectionTitle>
             <AdminSectionDescription>
-              {getMessage(messages, "admin.engagement.list_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.engagement.list_description" />
+              </Suspense>
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
@@ -217,33 +254,37 @@ const EngagementContent = async ({
               <Message message="admin.engagement.empty_description" />
             }
             hasPageLinks={hasPageLinks}
-            itemLabel={getMessage(messages, "admin.engagement.title")}
-            title={getMessage(messages, "admin.engagement.empty_title")}
+            itemLabel={t("admin.engagement.title")}
+            title={t("admin.engagement.empty_title")}
           />
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>
-                  {getMessage(messages, "admin.engagement.columns.series")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.engagement.columns.series" />
+                  </Suspense>
                 </TableHead>
                 <TableHead>
-                  {getMessage(messages, "admin.engagement.columns.episode")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.engagement.columns.episode" />
+                  </Suspense>
                 </TableHead>
                 <TableHead className="w-32">
-                  {getMessage(
-                    messages,
-                    "admin.engagement.columns.complete_count"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.engagement.columns.complete_count" />
+                  </Suspense>
                 </TableHead>
                 <TableHead className="w-32">
-                  {getMessage(
-                    messages,
-                    "admin.engagement.columns.member_view_count"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.engagement.columns.member_view_count" />
+                  </Suspense>
                 </TableHead>
                 <TableHead className="w-32">
-                  {getMessage(messages, "admin.engagement.columns.rate")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.engagement.columns.rate" />
+                  </Suspense>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -259,11 +300,11 @@ const EngagementContent = async ({
                   <TableCell>{item.completeCount}</TableCell>
                   <TableCell>{item.memberViewCount}</TableCell>
                   <TableCell>
-                    {formatReadThroughRate(
-                      readThroughRate(item.completeCount, item.memberViewCount),
-                      locale,
-                      messages
-                    )}
+                    <ReadThroughRateCell
+                      completeCount={item.completeCount}
+                      locale={locale}
+                      memberViewCount={item.memberViewCount}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -274,12 +315,10 @@ const EngagementContent = async ({
         {result.episodes.length > 0 || hasPageLinks ? (
           <PaginationFooter
             {...pageHrefs}
-            ariaLabel={getMessage(messages, "admin.engagement.pagination_aria")}
-            description={getMessage(
-              messages,
-              "admin.engagement.pagination_description",
-              { count: DEFAULT_PAGE_SIZE }
-            )}
+            ariaLabel={t("admin.engagement.pagination_aria")}
+            description={t("admin.engagement.pagination_description", {
+              count: DEFAULT_PAGE_SIZE,
+            })}
           />
         ) : null}
       </AdminSection>

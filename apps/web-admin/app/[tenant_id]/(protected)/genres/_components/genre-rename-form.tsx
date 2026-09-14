@@ -1,12 +1,13 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense, useActionState } from "react";
 
 import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -28,7 +29,7 @@ interface GenreRenameFormProps {
  * taken.
  */
 export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(
     renameGenreAction,
@@ -41,7 +42,7 @@ export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
       <input name="public_id" type="hidden" value={genre.publicId} />
       <div className="flex flex-wrap items-center gap-2">
         <Input
-          aria-label={getMessage(messages, "admin.genres.name_field_label", {
+          aria-label={t("admin.genres.name_field_label", {
             name: genre.name,
           })}
           className="w-full sm:max-w-xs"
@@ -53,12 +54,15 @@ export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
           type="text"
         />
         <Button disabled={isPending} size="sm" type="submit" variant="outline">
-          {isPending
-            ? getMessage(messages, "admin.genres.saving")
-            : getMessage(messages, "admin.genres.save_action")}
+          {isPending ? t("admin.genres.saving") : t("admin.genres.save_action")}
         </Button>
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.genres.slug_hint", { slug: genre.slug })}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <ClientMessage
+              message="admin.genres.slug_hint"
+              values={{ slug: genre.slug }}
+            />
+          </Suspense>
         </p>
       </div>
       {state && state.publicId === genre.publicId ? (

@@ -1,8 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -23,7 +20,10 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useContext, useRef } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { hideCommentAction, purgeCommentAction } from "../_lib/actions";
@@ -55,28 +55,6 @@ interface ReasonDialogCopy {
   title: string;
 }
 
-const hideCopy = (messages: SharedMessages): ReasonDialogCopy => ({
-  confirm: getMessage(messages, "admin.comments.hide_confirm_action"),
-  description: getMessage(messages, "admin.comments.hide_confirm_description"),
-  done: getMessage(messages, "admin.comments.hidden"),
-  idle: getMessage(messages, "admin.comments.hide"),
-  pending: getMessage(messages, "admin.comments.hiding"),
-  reasonLabel: getMessage(messages, "admin.comments.reason_optional"),
-  reasonPlaceholder: getMessage(messages, "admin.comments.reason_placeholder"),
-  title: getMessage(messages, "admin.comments.hide_confirm_title"),
-});
-
-const purgeCopy = (messages: SharedMessages): ReasonDialogCopy => ({
-  confirm: getMessage(messages, "admin.comments.purge_confirm_action"),
-  description: getMessage(messages, "admin.comments.purge_confirm_description"),
-  done: getMessage(messages, "admin.comments.purged"),
-  idle: getMessage(messages, "admin.comments.purge"),
-  pending: getMessage(messages, "admin.comments.purging"),
-  reasonLabel: getMessage(messages, "admin.comments.reason_required"),
-  reasonPlaceholder: getMessage(messages, "admin.comments.reason_placeholder"),
-  title: getMessage(messages, "admin.comments.purge_confirm_title"),
-});
-
 export const CommentReasonDialog = ({
   action,
   publicId,
@@ -85,8 +63,29 @@ export const CommentReasonDialog = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
-  const copy = action === "hide" ? hideCopy(messages) : purgeCopy(messages);
+  const t = useAdminMessages();
+  const copy: ReasonDialogCopy =
+    action === "hide"
+      ? {
+          confirm: t("admin.comments.hide_confirm_action"),
+          description: t("admin.comments.hide_confirm_description"),
+          done: t("admin.comments.hidden"),
+          idle: t("admin.comments.hide"),
+          pending: t("admin.comments.hiding"),
+          reasonLabel: t("admin.comments.reason_optional"),
+          reasonPlaceholder: t("admin.comments.reason_placeholder"),
+          title: t("admin.comments.hide_confirm_title"),
+        }
+      : {
+          confirm: t("admin.comments.purge_confirm_action"),
+          description: t("admin.comments.purge_confirm_description"),
+          done: t("admin.comments.purged"),
+          idle: t("admin.comments.purge"),
+          pending: t("admin.comments.purging"),
+          reasonLabel: t("admin.comments.reason_required"),
+          reasonPlaceholder: t("admin.comments.reason_placeholder"),
+          title: t("admin.comments.purge_confirm_title"),
+        };
   const tenantId = useTenantId();
   const { add } = useToastManager();
   // A public id is unique across the tenant, so it is enough to keep the two
@@ -166,7 +165,7 @@ export const CommentReasonDialog = ({
                 <DialogClose
                   render={
                     <Button type="button" variant="outline">
-                      {getMessage(messages, "admin.common.cancel")}
+                      {t("admin.common.cancel")}
                     </Button>
                   }
                 />

@@ -7,10 +7,7 @@ import {
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 
 import {
   isUnauthenticatedError,
@@ -23,6 +20,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface EpisodeItem {
@@ -111,53 +109,32 @@ export type ReorderEpisodeImagesResult =
  */
 const reorderScanPageSize = 100;
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const mutationErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.create_failed");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.list_failed");
-const getErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.get_failed");
-const scheduleErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.schedule_failed");
-const uploadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.upload_failed");
-const episodeImagesErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.image_list_failed");
-const episodeReorderErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.reorder_failed");
-const episodeImageReorderErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.image_reorder_failed");
-const episodeOrderConflictMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.episodes.reorder_conflict");
-
-const mapErrorToMessage = (
+const mapErrorToMessage = async (
   error: unknown,
   fallbackMessage: string,
   locale: Locale
-): string =>
-  rpcErrorMessage(error, fallbackMessage, {
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
     locale,
     overrides: {
-      "not-found": getMessage(
-        sharedCatalog(locale),
-        "admin.series.episodes.series_not_found"
-      ),
+      "not-found": t("admin.series.episodes.series_not_found"),
     },
   });
+};
 
-const mapReorderErrorToMessage = (error: unknown, locale: Locale): string => {
-  const messages = sharedCatalog(locale);
+const mapReorderErrorToMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, episodeReorderErrorMessage(messages), {
+  return rpcErrorMessage(error, t("admin.series.episodes.reorder_failed"), {
     locale,
     overrides: {
-      "not-found": getMessage(
-        messages,
-        "admin.series.episodes.series_not_found"
-      ),
-      precondition: episodeOrderConflictMessage(messages),
+      "not-found": t("admin.series.episodes.series_not_found"),
+      precondition: t("admin.series.episodes.reorder_conflict"),
     },
   });
 };
@@ -214,33 +191,34 @@ const mapEpisodeImage = (image: RawEpisodeImage): EpisodeImageItem => ({
  * escapes the archive — and an uploader needs to know which. The server sends
  * those cases as stable `google.rpc.ErrorInfo` reasons.
  */
-const archiveRejectionMessage = (
+const archiveRejectionMessage = async (
   error: unknown,
-  messages: SharedMessages
-): string | undefined => {
+  locale: Locale
+): Promise<string | undefined> => {
+  const t = await getMessagesFor(locale);
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUB)) {
-    return getMessage(messages, "admin.series.episodes.epub_invalid");
+    return t("admin.series.episodes.epub_invalid");
   }
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUBSpine)) {
-    return getMessage(messages, "admin.series.episodes.epub_spine_invalid");
+    return t("admin.series.episodes.epub_spine_invalid");
   }
   return rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidPath)
-    ? getMessage(messages, "admin.series.episodes.archive_path_invalid")
+    ? t("admin.series.episodes.archive_path_invalid")
     : undefined;
 };
 
-const mapEpisodeUploadErrorMessage = (
+const mapEpisodeUploadErrorMessage = async (
   error: unknown,
   locale: Locale
-): string => {
-  const messages = sharedCatalog(locale);
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, uploadErrorMessage(messages), {
+  return rpcErrorMessage(error, t("admin.series.episodes.upload_failed"), {
     locale,
     overrides: {
       "invalid-argument":
-        archiveRejectionMessage(error, messages) ??
-        getMessage(messages, "errors.rpc.invalid-argument"),
+        (await archiveRejectionMessage(error, locale)) ??
+        t("errors.rpc.invalid-argument"),
     },
   });
 };
@@ -300,11 +278,13 @@ export const createEpisode = async (
   },
   locale: Locale
 ): Promise<CreateEpisodeResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -325,7 +305,7 @@ export const createEpisode = async (
 
     if (!response.episode?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.series.episodes.create_failed"),
         ok: false,
       };
     }
@@ -338,7 +318,11 @@ export const createEpisode = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.create_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -358,13 +342,15 @@ export const listEpisodes = async (
   } & CursorPageOptions,
   locale: Locale
 ): Promise<ListEpisodesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       episodes: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -390,7 +376,11 @@ export const listEpisodes = async (
     return {
       ...emptyCursorPageTokens,
       episodes: [],
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -415,13 +405,15 @@ export const listAllEpisodes = async (
   },
   locale: Locale
 ): Promise<ListEpisodesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       episodes: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -456,7 +448,7 @@ export const listAllEpisodes = async (
       return {
         ...emptyCursorPageTokens,
         episodes: [],
-        message: listErrorMessage(messages),
+        message: t("admin.series.episodes.list_failed"),
         ok: false,
         requiresSignIn: false,
       };
@@ -472,7 +464,11 @@ export const listAllEpisodes = async (
     return {
       ...emptyCursorPageTokens,
       episodes: [],
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -487,11 +483,13 @@ export const getEpisode = async (
   },
   locale: Locale
 ): Promise<GetEpisodeResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -509,7 +507,7 @@ export const getEpisode = async (
 
     if (!response.episode?.publicId?.trim()) {
       return {
-        message: getErrorMessage(messages),
+        message: t("admin.series.episodes.get_failed"),
         ok: false,
       };
     }
@@ -524,7 +522,11 @@ export const getEpisode = async (
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, getErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.get_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -539,11 +541,13 @@ export const updateEpisodePublishSchedule = async (
   },
   locale: Locale
 ): Promise<UpdateEpisodePublishScheduleResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -560,7 +564,7 @@ export const updateEpisodePublishSchedule = async (
 
     if (!response.episode?.publicId?.trim()) {
       return {
-        message: scheduleErrorMessage(messages),
+        message: t("admin.series.episodes.schedule_failed"),
         ok: false,
       };
     }
@@ -573,7 +577,11 @@ export const updateEpisodePublishSchedule = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, scheduleErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.schedule_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -589,21 +597,20 @@ export const uploadEpisodePages = async (
   },
   locale: Locale
 ): Promise<UploadEpisodePagesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (!input.archive && (!input.pages || input.pages.length === 0)) {
     return {
-      message: getMessage(
-        messages,
-        "admin.series.episodes.validation.pages_required"
-      ),
+      message: t("admin.series.episodes.validation.pages_required"),
       ok: false,
     };
   }
@@ -632,7 +639,7 @@ export const uploadEpisodePages = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapEpisodeUploadErrorMessage(error, locale),
+      message: await mapEpisodeUploadErrorMessage(error, locale),
       ok: false,
     };
   }
@@ -645,12 +652,14 @@ export const listEpisodeImages = async (
   },
   locale: Locale
 ): Promise<ListEpisodeImagesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       images: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -673,9 +682,9 @@ export const listEpisodeImages = async (
     rethrowUnclassifiedRpcError(error);
     return {
       images: [],
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        episodeImagesErrorMessage(messages),
+        t("admin.series.episodes.image_list_failed"),
         locale
       ),
       ok: false,
@@ -693,21 +702,20 @@ const reorderEpisodes = async (
   },
   locale: Locale
 ): Promise<ReorderEpisodesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (input.episodePublicIds.length === 0) {
     return {
-      message: getMessage(
-        messages,
-        "admin.series.episodes.validation.no_episodes_to_sort"
-      ),
+      message: t("admin.series.episodes.validation.no_episodes_to_sort"),
       ok: false,
     };
   }
@@ -731,7 +739,7 @@ const reorderEpisodes = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapReorderErrorToMessage(error, locale),
+      message: await mapReorderErrorToMessage(error, locale),
       ok: false,
     };
   }
@@ -871,21 +879,20 @@ export const reorderEpisodePage = async (
   },
   locale: Locale
 ): Promise<ReorderEpisodesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (input.episodePublicIds.length === 0) {
     return {
-      message: getMessage(
-        messages,
-        "admin.series.episodes.validation.no_episodes_to_sort"
-      ),
+      message: t("admin.series.episodes.validation.no_episodes_to_sort"),
       ok: false,
     };
   }
@@ -901,9 +908,9 @@ export const reorderEpisodePage = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        episodeReorderErrorMessage(messages),
+        t("admin.series.episodes.reorder_failed"),
         locale
       ),
       ok: false,
@@ -912,7 +919,7 @@ export const reorderEpisodePage = async (
 
   if (!seriesPublicIds) {
     return {
-      message: getMessage(messages, "admin.series.episodes.reorder_too_many"),
+      message: t("admin.series.episodes.reorder_too_many"),
       ok: false,
     };
   }
@@ -924,7 +931,7 @@ export const reorderEpisodePage = async (
   );
   if (!episodePublicIds) {
     return {
-      message: episodeOrderConflictMessage(messages),
+      message: t("admin.series.episodes.reorder_conflict"),
       ok: false,
     };
   }
@@ -948,21 +955,20 @@ export const reorderEpisodeImages = async (
   },
   locale: Locale
 ): Promise<ReorderEpisodeImagesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (input.imageIds.length === 0) {
     return {
-      message: getMessage(
-        messages,
-        "admin.series.episodes.validation.no_images_to_sort"
-      ),
+      message: t("admin.series.episodes.validation.no_images_to_sort"),
       ok: false,
     };
   }
@@ -985,9 +991,9 @@ export const reorderEpisodeImages = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        episodeImageReorderErrorMessage(messages),
+        t("admin.series.episodes.image_reorder_failed"),
         locale
       ),
       ok: false,

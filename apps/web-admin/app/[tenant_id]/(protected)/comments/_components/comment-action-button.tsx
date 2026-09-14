@@ -1,14 +1,11 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState, useContext } from "react";
+import { useActionState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { approveCommentAction, restoreCommentAction } from "../_lib/actions";
@@ -31,32 +28,23 @@ interface CommentActionButtonProps {
   publicId: string;
 }
 
-const labels = (
-  action: PlainCommentAction,
-  messages: SharedMessages
-): { done: string; idle: string; pending: string } =>
-  action === "approve"
-    ? {
-        done: getMessage(messages, "admin.comments.approved"),
-        idle: getMessage(messages, "admin.comments.approve"),
-        pending: getMessage(messages, "admin.comments.approving"),
-      }
-    : {
-        done: getMessage(messages, "admin.comments.restored"),
-        idle: getMessage(messages, "admin.comments.restore"),
-        pending: getMessage(messages, "admin.comments.restoring"),
-      };
-
 export const CommentActionButton = ({
   action,
   publicId,
 }: CommentActionButtonProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
-  const copy = labels(action, messages);
+  const t = useAdminMessages();
+  const copy =
+    action === "approve"
+      ? {
+          done: t("admin.comments.approved"),
+          idle: t("admin.comments.approve"),
+          pending: t("admin.comments.approving"),
+        }
+      : {
+          done: t("admin.comments.restored"),
+          idle: t("admin.comments.restore"),
+          pending: t("admin.comments.restoring"),
+        };
   const tenantId = useTenantId();
   const { add } = useToastManager();
   // The Action drops the comment cache tag itself, so the list and the

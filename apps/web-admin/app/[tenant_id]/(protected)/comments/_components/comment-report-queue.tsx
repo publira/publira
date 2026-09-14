@@ -1,6 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -35,6 +33,7 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 import type { CommentReportItem, CommentReportStatus } from "../comment-types";
 import { CommentActionButton } from "./comment-action-button";
@@ -263,12 +262,14 @@ const ReportedComment = ({ report }: { report: CommentReportItem }) => (
 
 const CommentReportListBody = ({
   hasPageLinks,
+  itemLabel,
   listErrorMessage,
   locale,
   reports,
   timeZone,
 }: {
   hasPageLinks: boolean;
+  itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
   reports: CommentReportItem[];
@@ -298,11 +299,7 @@ const CommentReportListBody = ({
           </Suspense>
         }
         hasPageLinks={hasPageLinks}
-        // Interpolated into another message, so this one has to be a string.
-        itemLabel={getMessage(
-          sharedCatalog(locale),
-          "admin.comments.reports.item_label"
-        )}
+        itemLabel={itemLabel}
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message="admin.comments.reports.empty_title" />
@@ -400,7 +397,7 @@ const CommentReportListBody = ({
   );
 };
 
-export const CommentReportQueue = ({
+export const CommentReportQueue = async ({
   listErrorMessage,
   locale,
   nextHref,
@@ -411,6 +408,7 @@ export const CommentReportQueue = ({
   statusOptions,
   timeZone,
 }: CommentReportQueueProps) => {
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination =
     !listErrorMessage && (reports.length > 0 || hasPageLinks);
@@ -433,10 +431,7 @@ export const CommentReportQueue = ({
         <AdminSectionActions>
           {/* An `aria-label` cannot be a node, so it is resolved as a string. */}
           <CommentReportStatusFilter
-            ariaLabel={getMessage(
-              sharedCatalog(locale),
-              "admin.comments.reports.filter_aria"
-            )}
+            ariaLabel={t("admin.comments.reports.filter_aria")}
             status={status}
             statusOptions={statusOptions}
           />
@@ -445,6 +440,8 @@ export const CommentReportQueue = ({
 
       <CommentReportListBody
         hasPageLinks={hasPageLinks}
+        // Interpolated into another message, so this one has to be a string.
+        itemLabel={t("admin.comments.reports.item_label")}
         listErrorMessage={listErrorMessage}
         locale={locale}
         reports={reports}
@@ -453,10 +450,7 @@ export const CommentReportQueue = ({
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(
-            sharedCatalog(locale),
-            "admin.comments.reports.pagination_aria"
-          )}
+          ariaLabel={t("admin.comments.reports.pagination_aria")}
           description={
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message

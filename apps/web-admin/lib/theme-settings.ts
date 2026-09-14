@@ -3,10 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { cacheTag } from "next/cache";
@@ -20,6 +17,7 @@ import {
   mentionsIconRejection,
   mentionsLogoRejection,
 } from "./image-rejection";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 import { toTenantBrandingImage } from "./tenant-branding-image";
 import type { TenantBrandingImage } from "./tenant-branding-image";
@@ -66,25 +64,6 @@ export interface UploadTenantLogoInput {
   logoData: Uint8Array;
 }
 
-const genericLoadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.theme.load_failed");
-const genericUpdateErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.theme.save_failed");
-const genericIconUploadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.icon.upload_failed");
-const genericIconDeleteErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.icon.delete_failed");
-const genericLogoUploadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.logo.upload_failed");
-const genericLogoDeleteErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.logo.delete_failed");
-const rejectedIconMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.icon.rejected");
-const rejectedLogoMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.logo.rejected");
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in a Server
  * Action makes a saved theme or a replaced icon visible in the same session
@@ -120,30 +99,36 @@ const parseErrorMessage = (
  * naming what the screen accepts. The `icon_data` field violation is what
  * separates a rejected image from any other `invalid_argument`.
  */
-const parseIconErrorMessage = (
+const parseIconErrorMessage = async (
   error: unknown,
   fallback: string,
   locale: Locale
-): string =>
-  rpcErrorMessage(error, fallback, {
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallback, {
     locale,
     overrides: mentionsIconRejection(error)
-      ? { "invalid-argument": rejectedIconMessage(sharedCatalog(locale)) }
+      ? { "invalid-argument": t("admin.settings.icon.rejected") }
       : undefined,
   });
+};
 
 /** The logo rejections are worded here for the same reason as the icon's. */
-const parseLogoErrorMessage = (
+const parseLogoErrorMessage = async (
   error: unknown,
   fallback: string,
   locale: Locale
-): string =>
-  rpcErrorMessage(error, fallback, {
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallback, {
     locale,
     overrides: mentionsLogoRejection(error)
-      ? { "invalid-argument": rejectedLogoMessage(sharedCatalog(locale)) }
+      ? { "invalid-argument": t("admin.settings.logo.rejected") }
       : undefined,
   });
+};
 
 const toTenantTheme = (theme?: Partial<TenantTheme> | null): TenantTheme =>
   resolveTenantThemeColors(theme);
@@ -156,12 +141,14 @@ export const getTenantThemeSettings = async (
 
   cacheTag(tenantThemeCacheTag(tenantId));
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: !sessionId,
     };
@@ -192,7 +179,7 @@ export const getTenantThemeSettings = async (
     return {
       message: parseErrorMessage(
         error,
-        genericLoadErrorMessage(messages),
+        t("admin.settings.theme.load_failed"),
         locale
       ),
       ok: false,
@@ -222,11 +209,13 @@ export const updateTenantThemeSettings = async (
   input: UpdateTenantThemeSettingsInput,
   locale: Locale
 ): Promise<TenantThemeSettingsResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -286,7 +275,7 @@ export const updateTenantThemeSettings = async (
     return {
       message: parseErrorMessage(
         error,
-        genericUpdateErrorMessage(messages),
+        t("admin.settings.theme.save_failed"),
         locale
       ),
       ok: false,
@@ -298,11 +287,13 @@ export const uploadTenantIcon = async (
   input: UploadTenantIconInput,
   locale: Locale
 ): Promise<TenantIconResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -326,9 +317,9 @@ export const uploadTenantIcon = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseIconErrorMessage(
+      message: await parseIconErrorMessage(
         error,
-        genericIconUploadErrorMessage(messages),
+        t("admin.settings.icon.upload_failed"),
         locale
       ),
       ok: false,
@@ -340,11 +331,13 @@ export const deleteTenantIcon = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantIconResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -364,9 +357,9 @@ export const deleteTenantIcon = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseIconErrorMessage(
+      message: await parseIconErrorMessage(
         error,
-        genericIconDeleteErrorMessage(messages),
+        t("admin.settings.icon.delete_failed"),
         locale
       ),
       ok: false,
@@ -378,11 +371,13 @@ export const uploadTenantLogo = async (
   input: UploadTenantLogoInput,
   locale: Locale
 ): Promise<TenantLogoResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -406,9 +401,9 @@ export const uploadTenantLogo = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseLogoErrorMessage(
+      message: await parseLogoErrorMessage(
         error,
-        genericLogoUploadErrorMessage(messages),
+        t("admin.settings.logo.upload_failed"),
         locale
       ),
       ok: false,
@@ -420,11 +415,13 @@ export const deleteTenantLogo = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantLogoResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -444,9 +441,9 @@ export const deleteTenantLogo = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseLogoErrorMessage(
+      message: await parseLogoErrorMessage(
         error,
-        genericLogoDeleteErrorMessage(messages),
+        t("admin.settings.logo.delete_failed"),
         locale
       ),
       ok: false,

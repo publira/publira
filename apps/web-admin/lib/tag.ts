@@ -1,11 +1,10 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
+import { getMessagesFor } from "./messages";
 import { publicApiClient } from "./public-api";
 
 export type ListTagSuggestionsResult =
@@ -65,12 +64,11 @@ export const listTagSuggestions = async (
     // request. The entry is dropped instead, so the suggestions come back as
     // soon as the public API does.
     dropFailedCacheEntry();
+    const t = await getMessagesFor(locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(sharedCatalog(locale), "admin.series.tags_unavailable"),
-        { locale }
-      ),
+      message: rpcErrorMessage(error, t("admin.series.tags_unavailable"), {
+        locale,
+      }),
       ok: false,
       tagNames: [],
     };

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -18,7 +17,8 @@ import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantEmailSettings } from "#lib/email-settings";
 import type { TenantSmtpSettings } from "#lib/email-settings";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -32,9 +32,9 @@ import {
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.settings.email_title") };
+  return { title: t("admin.settings.email_title") };
 };
 
 export const generateStaticParams = () =>

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import {
   EmptyState,
@@ -43,16 +42,17 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getDashboard } from "#lib/dashboard";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.dashboard.title") };
+  return { title: t("admin.dashboard.title") };
 };
 
 export const generateStaticParams = () =>

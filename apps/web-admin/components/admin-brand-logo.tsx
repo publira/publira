@@ -1,6 +1,5 @@
-import { getMessage } from "@publira/i18n";
-
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import type { TenantBrandingImageVariant } from "#lib/tenant-branding-image";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -27,11 +26,11 @@ export const AdminBrandLogo = async ({
 }) => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <TenantBrandLogo
-      alt={getMessage(messages, "admin.shell.logo_alt", { name: tenantName })}
+      alt={t("admin.shell.logo_alt", { name: tenantName })}
       className={className}
       priority={priority}
       variant={variant}

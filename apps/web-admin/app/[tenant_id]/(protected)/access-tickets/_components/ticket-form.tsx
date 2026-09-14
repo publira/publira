@@ -1,8 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import type { SharedMessages } from "@publira/i18n/catalog";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
@@ -20,8 +17,10 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import {
+  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -31,7 +30,11 @@ import {
   useTransition,
 } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -52,30 +55,6 @@ interface TicketFormProps {
   timeZone: string;
 }
 
-const toSeriesItems = (
-  series: TicketSeriesOption[],
-  messages: SharedMessages
-): ComboboxItem[] =>
-  series.map((item) => ({
-    label: getMessage(messages, "admin.access_tickets.form.option", {
-      id: item.publicId,
-      title: item.title,
-    }),
-    value: item.publicId,
-  }));
-
-const toEpisodeItems = (
-  episodes: TicketEpisodeOption[],
-  messages: SharedMessages
-): ComboboxItem[] =>
-  episodes.map((item) => ({
-    label: getMessage(messages, "admin.access_tickets.form.option", {
-      id: item.publicId,
-      title: item.title,
-    }),
-    value: item.publicId,
-  }));
-
 export const TicketForm = ({
   action,
   series,
@@ -86,7 +65,7 @@ export const TicketForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [isEpisodePending, startEpisodeTransition] = useTransition();
@@ -96,13 +75,27 @@ export const TicketForm = ({
   const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
   const episodeRequestIdRef = useRef(0);
 
-  const seriesItems = useMemo(
-    () => toSeriesItems(series, messages),
-    [messages, series]
+  const seriesItems = useMemo<ComboboxItem[]>(
+    () =>
+      series.map((item) => ({
+        label: t("admin.access_tickets.form.option", {
+          id: item.publicId,
+          title: item.title,
+        }),
+        value: item.publicId,
+      })),
+    [series, t]
   );
-  const episodeItems = useMemo(
-    () => toEpisodeItems(episodes, messages),
-    [episodes, messages]
+  const episodeItems = useMemo<ComboboxItem[]>(
+    () =>
+      episodes.map((item) => ({
+        label: t("admin.access_tickets.form.option", {
+          id: item.publicId,
+          title: item.title,
+        }),
+        value: item.publicId,
+      })),
+    [episodes, t]
   );
   // Only the missing catalog falls back to a public_id field. An episode-list
   // failure must keep the pickers so the operator can retry without a reload.
@@ -179,20 +172,21 @@ export const TicketForm = ({
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.access_tickets.form.user")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.access_tickets.form.user" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
             name="user_public_id"
-            placeholder={getMessage(
-              messages,
-              "admin.access_tickets.form.user_placeholder"
-            )}
+            placeholder={t("admin.access_tickets.form.user_placeholder")}
             required
             type="text"
           />
           <FieldDescription>
-            {getMessage(messages, "admin.access_tickets.form.user_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.access_tickets.form.user_description" />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>
@@ -200,7 +194,9 @@ export const TicketForm = ({
       {useEpisodeFallbackInput ? (
         <Field>
           <FieldLabel required>
-            {getMessage(messages, "admin.access_tickets.form.episode_id")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.access_tickets.form.episode_id" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             {seriesErrorMessage ? (
@@ -210,16 +206,14 @@ export const TicketForm = ({
             ) : null}
             <Input
               name="episode_public_id"
-              placeholder={getMessage(
-                messages,
+              placeholder={t(
                 "admin.access_tickets.form.episode_id_placeholder"
               )}
               required
               type="text"
             />
             <FieldDescription>
-              {getMessage(
-                messages,
+              {t(
                 seriesItems.length === 0 && !seriesErrorMessage
                   ? "admin.access_tickets.form.episode_id_no_series"
                   : "admin.access_tickets.form.episode_id_description"
@@ -231,7 +225,9 @@ export const TicketForm = ({
         <>
           <Field>
             <FieldLabel required>
-              {getMessage(messages, "admin.access_tickets.form.series")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.access_tickets.form.series" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <Combobox
@@ -240,33 +236,32 @@ export const TicketForm = ({
                 value={seriesPublicId}
               >
                 <ComboboxInput
-                  placeholder={getMessage(
-                    messages,
+                  placeholder={t(
                     "admin.access_tickets.form.series_placeholder"
                   )}
                 />
                 <ComboboxPopup>
                   <ComboboxEmpty>
-                    {getMessage(
-                      messages,
-                      "admin.access_tickets.form.series_empty"
-                    )}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage message="admin.access_tickets.form.series_empty" />
+                    </Suspense>
                   </ComboboxEmpty>
                   <ComboboxItems />
                 </ComboboxPopup>
               </Combobox>
               <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.access_tickets.form.series_description"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.access_tickets.form.series_description" />
+                </Suspense>
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
             <FieldLabel required>
-              {getMessage(messages, "admin.access_tickets.form.episode")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.access_tickets.form.episode" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <Combobox
@@ -276,8 +271,7 @@ export const TicketForm = ({
                 value={episodePublicId}
               >
                 <ComboboxInput
-                  placeholder={getMessage(
-                    messages,
+                  placeholder={t(
                     isEpisodePending
                       ? "admin.access_tickets.form.episode_loading"
                       : "admin.access_tickets.form.episode_placeholder"
@@ -285,10 +279,9 @@ export const TicketForm = ({
                 />
                 <ComboboxPopup>
                   <ComboboxEmpty>
-                    {getMessage(
-                      messages,
-                      "admin.access_tickets.form.episode_empty"
-                    )}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage message="admin.access_tickets.form.episode_empty" />
+                    </Suspense>
                   </ComboboxEmpty>
                   <ComboboxItems />
                 </ComboboxPopup>
@@ -308,13 +301,14 @@ export const TicketForm = ({
                     type="button"
                     variant="outline"
                   >
-                    {getMessage(messages, "admin.common.retry")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage message="admin.common.retry" />
+                    </Suspense>
                   </Button>
                 </>
               ) : null}
               <FieldDescription>
-                {getMessage(
-                  messages,
+                {t(
                   seriesPublicId === ""
                     ? "admin.access_tickets.form.episode_needs_series"
                     : "admin.access_tickets.form.episode_description"
@@ -327,33 +321,35 @@ export const TicketForm = ({
 
       <Field>
         <FieldLabel>
-          {getMessage(messages, "admin.access_tickets.form.expires_at")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.access_tickets.form.expires_at" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input name="expires_at_local" type="datetime-local" />
           <input defaultValue="" name="expires_at" type="hidden" />
           <FieldDescription>
-            {getMessage(
-              messages,
-              "admin.access_tickets.form.expires_at_description",
-              { time_zone: timeZone }
-            )}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage
+                message="admin.access_tickets.form.expires_at_description"
+                values={{ time_zone: timeZone }}
+              />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel>
-          {getMessage(messages, "admin.access_tickets.form.note")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.access_tickets.form.note" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Textarea
             maxLength={1000}
             name="note"
-            placeholder={getMessage(
-              messages,
-              "admin.access_tickets.form.note_placeholder"
-            )}
+            placeholder={t("admin.access_tickets.form.note_placeholder")}
             rows={3}
           />
         </FieldContent>
@@ -366,8 +362,8 @@ export const TicketForm = ({
       <div className="flex justify-end">
         <Button disabled={!canSubmit} type="submit">
           {isPending
-            ? getMessage(messages, "admin.access_tickets.form.submitting")
-            : getMessage(messages, "admin.access_tickets.form.submit")}
+            ? t("admin.access_tickets.form.submitting")
+            : t("admin.access_tickets.form.submit")}
         </Button>
       </div>
     </form>

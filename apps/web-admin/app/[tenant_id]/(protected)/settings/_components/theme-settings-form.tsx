@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -11,6 +9,7 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   DEFAULT_TENANT_THEME_FONT_FAMILIES,
   toPubliraThemeCssVariables,
@@ -20,15 +19,9 @@ import type {
   TenantThemeColors,
   TenantThemeFontFamilies,
 } from "@publira/utils/theme-css-variables";
-import {
-  useActionState,
-  useCallback,
-  useContext,
-  useId,
-  useState,
-} from "react";
+import { Suspense, useActionState, useCallback, useId, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -37,6 +30,7 @@ import {
   AdminSections,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { ClientMessage } from "#components/client-message";
 import type { AdminMessageKey } from "#lib/locale";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -338,12 +332,8 @@ export const ThemeSettingsForm = ({
   action,
   initialTheme,
 }: ThemeSettingsFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
-  const pickerLabel = getMessage(messages, "admin.settings.theme.color_picker");
+  const t = useAdminMessages();
+  const pickerLabel = t("admin.settings.theme.color_picker");
   const tenantId = useTenantId();
   // Seeded once per mount; submitting is what replaces it, with the palette the
   // server stored — normalization included, so the pickers show what a reload
@@ -395,10 +385,14 @@ export const ThemeSettingsForm = ({
         <AdminSectionHeader>
           <AdminSectionHeading>
             <AdminSectionTitle>
-              {getMessage(messages, "admin.settings.theme.preview.title")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.settings.theme.preview.title" />
+              </Suspense>
             </AdminSectionTitle>
             <AdminSectionDescription>
-              {getMessage(messages, "admin.settings.theme.preview.description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.settings.theme.preview.description" />
+              </Suspense>
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
@@ -412,23 +406,23 @@ export const ThemeSettingsForm = ({
           <AdminSectionHeader>
             <AdminSectionHeading>
               <AdminSectionTitle>
-                {getMessage(messages, "admin.settings.theme.typefaces.title")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.settings.theme.typefaces.title" />
+                </Suspense>
               </AdminSectionTitle>
               <AdminSectionDescription>
-                {getMessage(
-                  messages,
-                  "admin.settings.theme.typefaces.description"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.settings.theme.typefaces.description" />
+                </Suspense>
               </AdminSectionDescription>
             </AdminSectionHeading>
           </AdminSectionHeader>
           <div className="grid gap-5 sm:max-w-3xl">
             <Field>
               <FieldLabel>
-                {getMessage(
-                  messages,
-                  "admin.settings.theme.typefaces.serif.label"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.settings.theme.typefaces.serif.label" />
+                </Suspense>
               </FieldLabel>
               <FieldContent>
                 <Input
@@ -442,10 +436,9 @@ export const ThemeSettingsForm = ({
                   value={theme.serifFontFamily}
                 />
                 <FieldDescription>
-                  {getMessage(
-                    messages,
-                    "admin.settings.theme.typefaces.serif.description"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.settings.theme.typefaces.serif.description" />
+                  </Suspense>
                 </FieldDescription>
                 {fieldErrors?.serifFontFamily ? (
                   <FormMessage variant="destructive">
@@ -456,10 +449,9 @@ export const ThemeSettingsForm = ({
             </Field>
             <Field>
               <FieldLabel>
-                {getMessage(
-                  messages,
-                  "admin.settings.theme.typefaces.sans.label"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.settings.theme.typefaces.sans.label" />
+                </Suspense>
               </FieldLabel>
               <FieldContent>
                 <Input
@@ -473,10 +465,9 @@ export const ThemeSettingsForm = ({
                   value={theme.sansFontFamily}
                 />
                 <FieldDescription>
-                  {getMessage(
-                    messages,
-                    "admin.settings.theme.typefaces.sans.description"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.settings.theme.typefaces.sans.description" />
+                  </Suspense>
                 </FieldDescription>
                 {fieldErrors?.sansFontFamily ? (
                   <FormMessage variant="destructive">
@@ -492,11 +483,9 @@ export const ThemeSettingsForm = ({
           <AdminSection key={group.titleKey}>
             <AdminSectionHeader>
               <AdminSectionHeading>
-                <AdminSectionTitle>
-                  {getMessage(messages, group.titleKey)}
-                </AdminSectionTitle>
+                <AdminSectionTitle>{t(group.titleKey)}</AdminSectionTitle>
                 <AdminSectionDescription>
-                  {getMessage(messages, group.descriptionKey)}
+                  {t(group.descriptionKey)}
                 </AdminSectionDescription>
               </AdminSectionHeading>
             </AdminSectionHeader>
@@ -514,9 +503,7 @@ export const ThemeSettingsForm = ({
                       key={`${field.key}-${pair.key}`}
                     >
                       <Field>
-                        <FieldLabel required>
-                          {getMessage(messages, field.labelKey)}
-                        </FieldLabel>
+                        <FieldLabel required>{t(field.labelKey)}</FieldLabel>
                         <FieldContent>
                           <ColorSwatchInput
                             name={field.formName}
@@ -526,7 +513,7 @@ export const ThemeSettingsForm = ({
                           />
                           {field.descriptionKey ? (
                             <FieldDescription>
-                              {getMessage(messages, field.descriptionKey)}
+                              {t(field.descriptionKey)}
                             </FieldDescription>
                           ) : null}
                           {fieldErrors?.[field.key] ? (
@@ -537,9 +524,7 @@ export const ThemeSettingsForm = ({
                         </FieldContent>
                       </Field>
                       <Field>
-                        <FieldLabel required>
-                          {getMessage(messages, pair.labelKey)}
-                        </FieldLabel>
+                        <FieldLabel required>{t(pair.labelKey)}</FieldLabel>
                         <FieldContent>
                           <ColorSwatchInput
                             name={pair.formName}
@@ -549,7 +534,7 @@ export const ThemeSettingsForm = ({
                           />
                           {pair.descriptionKey ? (
                             <FieldDescription>
-                              {getMessage(messages, pair.descriptionKey)}
+                              {t(pair.descriptionKey)}
                             </FieldDescription>
                           ) : null}
                           {fieldErrors?.[pair.key] ? (
@@ -565,9 +550,7 @@ export const ThemeSettingsForm = ({
 
                 return (
                   <Field key={field.key}>
-                    <FieldLabel required>
-                      {getMessage(messages, field.labelKey)}
-                    </FieldLabel>
+                    <FieldLabel required>{t(field.labelKey)}</FieldLabel>
                     <FieldContent>
                       <ColorSwatchInput
                         name={field.formName}
@@ -577,7 +560,7 @@ export const ThemeSettingsForm = ({
                       />
                       {field.descriptionKey ? (
                         <FieldDescription>
-                          {getMessage(messages, field.descriptionKey)}
+                          {t(field.descriptionKey)}
                         </FieldDescription>
                       ) : null}
                       {fieldErrors?.[field.key] ? (
@@ -602,8 +585,8 @@ export const ThemeSettingsForm = ({
         <div className="flex justify-end">
           <Button disabled={isPending} type="submit">
             {isPending
-              ? getMessage(messages, "admin.settings.saving")
-              : getMessage(messages, "admin.settings.theme.submit")}
+              ? t("admin.settings.saving")
+              : t("admin.settings.theme.submit")}
           </Button>
         </div>
       </form>

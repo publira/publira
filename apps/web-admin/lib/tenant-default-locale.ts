@@ -1,9 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { getMessage, parseLocale } from "@publira/i18n";
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -11,6 +9,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export type GetTenantDefaultLocaleResult =
@@ -30,13 +29,6 @@ export type UpdateTenantDefaultLocaleResult =
   | { ok: true; defaultLocale: Locale }
   | { ok: false; message: string };
 
-const genericLoadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.default_locale.load_failed");
-const genericUpdateErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.default_locale.save_failed");
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in the Server
  * Action makes the saved value visible in the same session instead of leaving
@@ -54,12 +46,14 @@ export const getTenantDefaultLocale = async (
 ): Promise<GetTenantDefaultLocaleResult> => {
   "use cache: private";
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: !sessionId,
     };
@@ -78,7 +72,7 @@ export const getTenantDefaultLocale = async (
     const defaultLocale = resolveDefaultLocale(response.defaultLocale);
     if (defaultLocale === undefined) {
       return {
-        message: genericLoadErrorMessage(messages),
+        message: t("admin.settings.default_locale.load_failed"),
         ok: false,
         requiresSignIn: false,
       };
@@ -88,9 +82,13 @@ export const getTenantDefaultLocale = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(error, genericLoadErrorMessage(messages), {
-        locale,
-      }),
+      message: rpcErrorMessage(
+        error,
+        t("admin.settings.default_locale.load_failed"),
+        {
+          locale,
+        }
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -104,11 +102,13 @@ export const updateTenantDefaultLocale = async (
   },
   locale: Locale
 ): Promise<UpdateTenantDefaultLocaleResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -121,7 +121,10 @@ export const updateTenantDefaultLocale = async (
     );
     const saved = resolveDefaultLocale(response.defaultLocale);
     if (saved === undefined) {
-      return { message: genericUpdateErrorMessage(messages), ok: false };
+      return {
+        message: t("admin.settings.default_locale.save_failed"),
+        ok: false,
+      };
     }
 
     return { defaultLocale: saved, ok: true };
@@ -129,9 +132,13 @@ export const updateTenantDefaultLocale = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(error, genericUpdateErrorMessage(messages), {
-        locale,
-      }),
+      message: rpcErrorMessage(
+        error,
+        t("admin.settings.default_locale.save_failed"),
+        {
+          locale,
+        }
+      ),
       ok: false,
     };
   }

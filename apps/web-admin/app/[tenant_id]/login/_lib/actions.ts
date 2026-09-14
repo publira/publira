@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -16,18 +16,16 @@ import {
   tenantIdFormSchema,
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
-import { loadAdminMessages } from "#lib/locale";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { MFA_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
 
-const loginFormSchema = (messages: AdminMessages) =>
+const loginFormSchema = async (locale: Locale) =>
   z.object({
-    email: emailFormSchema(messages),
+    email: await emailFormSchema(locale),
     next: nextPathFormSchema,
-    password: passwordFormSchema(messages),
-    tenantId: tenantIdFormSchema(messages),
+    password: await passwordFormSchema(locale),
+    tenantId: await tenantIdFormSchema(locale),
   });
-
 const buildLoginErrorPath = (message: string, nextPath: string): string => {
   const params = new URLSearchParams({
     error: message,
@@ -39,24 +37,24 @@ const buildLoginErrorPath = (message: string, nextPath: string): string => {
 export const loginAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
   const input = toFormDataInput(formData, {
     email: "value",
     next: "value",
     password: "value",
     tenantId: { kind: "value", name: "tenant_id" },
   });
-  const parsed = loginFormSchema(messages).safeParse(input);
+  const schema = await loginFormSchema(locale);
+  const parsed = schema.safeParse(input);
   if (!parsed.success) {
     const nextPath = nextPathFormSchema.parse(input.next);
-    const tenantIdResult = tenantIdFormSchema(messages).safeParse(
-      input.tenantId
-    );
+    const tenantIdResultSchema = await tenantIdFormSchema(locale);
+    const tenantIdResult = tenantIdResultSchema.safeParse(input.tenantId);
     redirect(
       buildLoginErrorPath(
         tenantIdResult.success
           ? toFormErrorMessage(parsed.error, { locale })
-          : getMessage(messages, "admin.auth.errors.tenant_missing"),
+          : t("admin.auth.errors.tenant_missing"),
         nextPath
       )
     );
@@ -84,7 +82,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
       console.error("[web-admin] mfa challenge seal failed", error);
       redirect(
         buildLoginErrorPath(
-          getMessage(messages, "admin.auth.errors.login_processing_failed"),
+          t("admin.auth.errors.login_processing_failed"),
           nextPath
         )
       );
@@ -101,7 +99,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     console.error("[web-admin] login cookie seal failed", error);
     redirect(
       buildLoginErrorPath(
-        getMessage(messages, "admin.auth.errors.login_processing_failed"),
+        t("admin.auth.errors.login_processing_failed"),
         nextPath
       )
     );

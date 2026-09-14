@@ -1,7 +1,6 @@
-import { getMessage } from "@publira/i18n";
-
 import { countPendingComments } from "#lib/comment";
 import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 /**
@@ -20,12 +19,13 @@ import { getTenantId } from "#lib/tenant-id";
 export const PendingCommentBadge = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const [result, messages] = await Promise.all([
+  const [result] = await Promise.all([
     countPendingComments(tenantId, locale),
     loadAdminMessages(locale),
   ]);
 
   const count = Math.max(0, result.pendingCount);
+  const t = await getMessagesFor(locale);
   if (!result.ok || count === 0) {
     return null;
   }
@@ -34,7 +34,7 @@ export const PendingCommentBadge = async () => {
     <span className="text-xs font-medium text-secondary tabular-nums">
       <span aria-hidden="true">{count}</span>
       <span className="sr-only">
-        {getMessage(messages, "admin.nav.comments_pending", { count })}
+        {t("admin.nav.comments_pending", { count })}
       </span>
     </span>
   );

@@ -1,11 +1,9 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { useContext, useId } from "react";
+import { useId } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 
 interface CommentStatusOption {
   label: string;
@@ -21,17 +19,14 @@ export const CommentStatusSelect = ({
   defaultValue,
   options,
 }: CommentStatusSelectProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const t = useAdminMessages();
   // Native <select> is not a Field control, so the label needs an id to point at.
   const statusSelectId = useId();
 
   return (
     <Field>
       <FieldLabel htmlFor={statusSelectId}>
-        {getMessage(sharedCatalog(locale), "admin.comments.filter.status")}
+        {t("admin.comments.filter.status")}
       </FieldLabel>
       <FieldContent>
         <select

@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { Locale, MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render as renderBase, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -8,6 +12,35 @@ import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import type { SeriesListItem } from "../series-types";
 import { SeriesForm } from "./series-form";
+
+const mockLocale = vi.hoisted(() => ({ current: "en" as Locale }));
+
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog(mockLocale.current))(message, values),
+}));
+
+vi.mock("#lib/messages", () => ({
+  getMessagesFor: () =>
+    Promise.resolve(bindMessages(sharedCatalog(mockLocale.current))),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog(mockLocale.current)),
+}));
+
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog(mockLocale.current))(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog(mockLocale.current)),
+}));
 
 vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "TENANT001",
@@ -91,6 +124,7 @@ const posted = (name: string) =>
   ].map((input) => input.value);
 
 afterEach(() => {
+  mockLocale.current = "en";
   cleanup();
 });
 
@@ -273,6 +307,8 @@ it("names the empty schedule as irregular", async () => {
 // provider. Without it a form that ignored the provider and always read the
 // `en` catalog would still pass every one of them.
 it("renders in the tenant locale handed down by the protected layout, so locale=ja is Japanese", () => {
+  mockLocale.current = "ja";
+
   renderBase(
     <AdminLocaleProvider locale="ja">
       <SeriesForm

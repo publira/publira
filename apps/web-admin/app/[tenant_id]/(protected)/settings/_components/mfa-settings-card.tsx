@@ -1,6 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -49,7 +48,7 @@ const MfaStartForm = ({
   state,
   tenantId,
 }: MfaFormProps & { state: MfaEnrollmentStartState }) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <form action={action} className="grid gap-3">
@@ -59,8 +58,7 @@ const MfaStartForm = ({
       ) : null}
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit">
-          {getMessage(
-            messages,
+          {t(
             isPending
               ? "admin.auth.mfa.enroll_starting"
               : "admin.settings.mfa.enable_submit"
@@ -83,7 +81,7 @@ const MfaConfirmForm = ({
   secret: string;
   state: MfaEnrollmentConfirmState;
 }) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <form action={action} className="grid gap-4">
@@ -95,8 +93,7 @@ const MfaConfirmForm = ({
       ) : null}
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit">
-          {getMessage(
-            messages,
+          {t(
             isPending
               ? "admin.auth.mfa.enroll_confirm_submitting"
               : "admin.auth.mfa.enroll_confirm_submit"
@@ -113,17 +110,17 @@ const MfaRegenerateForm = ({
   state,
   tenantId,
 }: MfaFormProps & { state: MfaRecoveryCodesState }) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <form action={action} className="grid gap-3">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <div className="grid gap-1">
         <p className="text-sm font-medium text-foreground">
-          {getMessage(messages, "admin.settings.mfa.regenerate_title")}
+          {t("admin.settings.mfa.regenerate_title")}
         </p>
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.settings.mfa.regenerate_description")}
+          {t("admin.settings.mfa.regenerate_description")}
         </p>
       </div>
       <MfaCodeField allowRecoveryCode={false} disabled={isPending} />
@@ -132,8 +129,7 @@ const MfaRegenerateForm = ({
       ) : null}
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit" variant="outline">
-          {getMessage(
-            messages,
+          {t(
             isPending
               ? "admin.settings.mfa.regenerate_submitting"
               : "admin.settings.mfa.regenerate_submit"
@@ -150,17 +146,17 @@ const MfaDisableForm = ({
   state,
   tenantId,
 }: MfaFormProps & { state: FormActionState }) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <form action={action} className="grid gap-3">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <div className="grid gap-1">
         <p className="text-sm font-medium text-foreground">
-          {getMessage(messages, "admin.settings.mfa.disable_title")}
+          {t("admin.settings.mfa.disable_title")}
         </p>
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.settings.mfa.disable_description")}
+          {t("admin.settings.mfa.disable_description")}
         </p>
       </div>
       <MfaCodeField allowRecoveryCode disabled={isPending} />
@@ -169,8 +165,7 @@ const MfaDisableForm = ({
       ) : null}
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit" variant="destructive">
-          {getMessage(
-            messages,
+          {t(
             isPending
               ? "admin.settings.mfa.disable_submitting"
               : "admin.settings.mfa.disable_submit"
@@ -222,13 +217,12 @@ const MfaSetupSection = ({
 };
 
 const MfaStatusSummary = ({ status }: MfaSettingsCardProps) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <div className="grid gap-1">
       <p className="text-sm text-foreground">
-        {getMessage(
-          messages,
+        {t(
           status.enabled
             ? "admin.settings.mfa.status_enabled"
             : "admin.settings.mfa.status_disabled"
@@ -236,12 +230,12 @@ const MfaStatusSummary = ({ status }: MfaSettingsCardProps) => {
       </p>
       {status.required ? (
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.settings.mfa.status_required")}
+          {t("admin.settings.mfa.status_required")}
         </p>
       ) : null}
       {status.enabled ? (
         <p className="text-xs text-muted-foreground">
-          {getMessage(messages, "admin.settings.mfa.remaining_recovery_codes", {
+          {t("admin.settings.mfa.remaining_recovery_codes", {
             count: String(status.remainingRecoveryCodes),
           })}
         </p>
@@ -259,13 +253,13 @@ const MfaNotices = ({
   disableState: FormActionState;
   regenerateState: MfaRecoveryCodesState;
 }) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <>
       {confirmState?.ok ? (
         <FormMessage variant="success">
-          {getMessage(messages, "admin.settings.mfa.enabled_done")}
+          {t("admin.settings.mfa.enabled_done")}
         </FormMessage>
       ) : null}
       {regenerateState?.ok ? (
@@ -305,7 +299,7 @@ const issuedRecoveryCodes = (
  * the switch from "off" to "on", taking the only copy of those codes with it.
  */
 export const MfaSettingsCard = ({ status }: MfaSettingsCardProps) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
   const tenantId = useTenantId();
 
   const [startState, startAction, isStarting] = useActionState(
@@ -331,11 +325,9 @@ export const MfaSettingsCard = ({ status }: MfaSettingsCardProps) => {
     <AdminSection>
       <AdminSectionHeader>
         <AdminSectionHeading>
-          <AdminSectionTitle>
-            {getMessage(messages, "admin.settings.mfa.title")}
-          </AdminSectionTitle>
+          <AdminSectionTitle>{t("admin.settings.mfa.title")}</AdminSectionTitle>
           <AdminSectionDescription>
-            {getMessage(messages, "admin.settings.mfa.description")}
+            {t("admin.settings.mfa.description")}
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>

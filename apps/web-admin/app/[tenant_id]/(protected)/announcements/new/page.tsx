@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -18,7 +17,8 @@ import {
 import { Message } from "#components/message";
 import { listAllAnnouncementTargetUsers } from "#lib/announcement";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import { AnnouncementForm } from "../_components/announcement-form";
@@ -27,9 +27,9 @@ import { createAnnouncementAction } from "../_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.announcements.new_title") };
+  return { title: t("admin.announcements.new_title") };
 };
 
 export const generateStaticParams = () =>

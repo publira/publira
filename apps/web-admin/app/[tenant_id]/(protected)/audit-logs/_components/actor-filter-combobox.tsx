@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   ComboboxEmpty,
   ComboboxItems,
@@ -14,9 +12,11 @@ import {
   MultiComboboxInputGroup,
 } from "@publira/ui-components/combobox";
 import type { MultiComboboxItem } from "@publira/ui-components/combobox";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 
 interface ActorFilterComboboxProps {
   defaultValue: string;
@@ -27,11 +27,7 @@ export const ActorFilterCombobox = ({
   defaultValue,
   items,
 }: ActorFilterComboboxProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const [selectedValues, setSelectedValues] = useState<string[]>(
     defaultValue ? [defaultValue] : []
   );
@@ -69,10 +65,7 @@ export const ActorFilterCombobox = ({
                   <MultiComboboxChip item={item} key={item.value}>
                     {item.label}
                     <MultiComboboxChipRemove
-                      aria-label={getMessage(
-                        messages,
-                        "admin.audit.filter.actor_remove"
-                      )}
+                      aria-label={t("admin.audit.filter.actor_remove")}
                     />
                   </MultiComboboxChip>
                 ))}
@@ -80,10 +73,7 @@ export const ActorFilterCombobox = ({
                   placeholder={
                     selected.length > 0
                       ? ""
-                      : getMessage(
-                          messages,
-                          "admin.audit.filter.actor_placeholder"
-                        )
+                      : t("admin.audit.filter.actor_placeholder")
                   }
                 />
               </>
@@ -92,7 +82,9 @@ export const ActorFilterCombobox = ({
         </MultiComboboxInputGroup>
         <ComboboxPopup>
           <ComboboxEmpty>
-            {getMessage(messages, "admin.audit.filter.actor_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.audit.filter.actor_empty" />
+            </Suspense>
           </ComboboxEmpty>
           <ComboboxItems />
         </ComboboxPopup>
