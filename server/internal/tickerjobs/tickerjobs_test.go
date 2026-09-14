@@ -2,6 +2,7 @@ package tickerjobs
 
 import (
 	"database/sql"
+	"maps"
 	"slices"
 	"testing"
 	"time"
@@ -27,10 +28,11 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	periodic := jobs.PeriodicJobs()
-	if len(periodic) != 3 {
-		t.Fatalf("periodic jobs = %d, want 3", len(periodic))
-	}
+	assertIntervals(t, jobs, map[string]time.Duration{
+		kindPublishEpisodes:  5 * time.Second,
+		kindApplyFreeWindows: 7 * time.Second,
+		kindRollTenantDay:    11 * time.Second,
+	})
 }
 
 func TestPeriodicJobsFallBackToTheDefaultIntervals(t *testing.T) {
@@ -39,22 +41,41 @@ func TestPeriodicJobsFallBackToTheDefaultIntervals(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	settings := jobs.Settings()
-	for _, want := range []struct {
-		key   string
-		value any
-	}{
-		{key: "publish_interval", value: DefaultPublishInterval},
-		{key: "free_window_interval", value: DefaultFreeWindowInterval},
-		{key: "tenant_day_interval", value: DefaultTenantDayInterval},
-	} {
-		index := slices.Index(settings, any(want.key))
-		if index < 0 || index+1 >= len(settings) {
-			t.Fatalf("settings = %v, want a %q entry", settings, want.key)
+	assertIntervals(t, jobs, map[string]time.Duration{
+		kindPublishEpisodes:  DefaultPublishInterval,
+		kindApplyFreeWindows: DefaultFreeWindowInterval,
+		kindRollTenantDay:    DefaultTenantDayInterval,
+	})
+}
+
+// assertIntervals reads the interval back off each job's own schedule, so a
+// wrong one — a default where a setting was passed, or two jobs' intervals
+// swapped — fails here rather than running at the other job's cadence.
+func assertIntervals(t *testing.T, jobs *Jobs, want map[string]time.Duration) {
+	t.Helper()
+
+	entries := jobs.schedule()
+	if len(entries) != len(want) {
+		t.Fatalf("scheduled jobs = %d, want %d", len(entries), len(want))
+	}
+	if periodic := jobs.PeriodicJobs(); len(periodic) != len(entries) {
+		t.Fatalf("periodic jobs = %d, want one per scheduled job (%d)", len(periodic), len(entries))
+	}
+
+	now := time.Now()
+	for _, entry := range entries {
+		kind := entry.args.Kind()
+		wanted, ok := want[kind]
+		if !ok {
+			t.Fatalf("scheduled an unexpected job kind %q", kind)
 		}
-		if settings[index+1] != want.value {
-			t.Fatalf("%s = %v, want %v", want.key, settings[index+1], want.value)
+		if got := entry.schedule.Next(now).Sub(now); got != wanted {
+			t.Fatalf("%s interval = %s, want %s", kind, got, wanted)
 		}
+		delete(want, kind)
+	}
+	if len(want) != 0 {
+		t.Fatalf("job kinds with no schedule: %v", slices.Collect(maps.Keys(want)))
 	}
 }
 

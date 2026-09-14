@@ -157,6 +157,26 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	return nil
 }
 
+// scheduled pairs one job's args with the schedule it is enqueued on.
+//
+// The pairing is named here because River's own PeriodicJob keeps both behind
+// unexported fields: built straight into NewPeriodicJob, nothing outside this
+// package could tell which interval each kind ended up on, and swapping two of
+// them would be a silent mistake.
+type scheduled struct {
+	schedule river.PeriodicSchedule
+	args     river.JobArgs
+}
+
+// schedule is what each job runs on, one entry per job.
+func (j *Jobs) schedule() []scheduled {
+	return []scheduled{
+		{schedule: river.PeriodicInterval(j.cfg.PublishInterval), args: PublishEpisodesArgs{}},
+		{schedule: river.PeriodicInterval(j.cfg.FreeWindowInterval), args: ApplyFreeWindowsArgs{}},
+		{schedule: river.PeriodicInterval(j.cfg.TenantDayInterval), args: RollTenantDayArgs{}},
+	}
+}
+
 // PeriodicJobs is the schedule River enqueues the three on.
 //
 // RunOnStart is what the ticker processes did with their first pass, and every
@@ -164,23 +184,16 @@ func (j *Jobs) Register(workers *river.Workers) error {
 // window boundary, or a midnight catches up as soon as it comes back rather
 // than at the next interval.
 func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
-	return []*river.PeriodicJob{
-		river.NewPeriodicJob(
-			river.PeriodicInterval(j.cfg.PublishInterval),
-			func() (river.JobArgs, *river.InsertOpts) { return PublishEpisodesArgs{}, nil },
+	entries := j.schedule()
+	periodic := make([]*river.PeriodicJob, 0, len(entries))
+	for _, entry := range entries {
+		periodic = append(periodic, river.NewPeriodicJob(
+			entry.schedule,
+			func() (river.JobArgs, *river.InsertOpts) { return entry.args, nil },
 			&river.PeriodicJobOpts{RunOnStart: true},
-		),
-		river.NewPeriodicJob(
-			river.PeriodicInterval(j.cfg.FreeWindowInterval),
-			func() (river.JobArgs, *river.InsertOpts) { return ApplyFreeWindowsArgs{}, nil },
-			&river.PeriodicJobOpts{RunOnStart: true},
-		),
-		river.NewPeriodicJob(
-			river.PeriodicInterval(j.cfg.TenantDayInterval),
-			func() (river.JobArgs, *river.InsertOpts) { return RollTenantDayArgs{}, nil },
-			&river.PeriodicJobOpts{RunOnStart: true},
-		),
+		))
 	}
+	return periodic
 }
 
 // Queues is the queue the three are enqueued on, for the client that runs them.
