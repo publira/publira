@@ -17,7 +17,7 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8001` / `8101` (admin API), `8002` / `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `8300` (email-renderer), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to).
+The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (public API Connect / gRPC), `8101` (admin API), `8102` (platform API), `8003` (outbox worker), `8200` (image-server), `8300` (email-renderer), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to).
 
 PIDs and logs default to `e2e/.run/`. When `E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 

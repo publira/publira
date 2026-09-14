@@ -26,7 +26,6 @@ import (
 const (
 	serviceName = "publira-platform-api-server"
 
-	defaultPlatformServerURL     = ":8002"
 	defaultPlatformGrpcServerURL = ":8102"
 	defaultPlatformDBURL         = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
 )
@@ -75,11 +74,6 @@ func main() {
 		encryptor = manager
 	}
 
-	addr := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_API_ADDR"))
-	if addr == "" {
-		addr = defaultPlatformServerURL
-	}
-
 	grpcAddr := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_API_GRPC_ADDR"))
 	if grpcAddr == "" {
 		grpcAddr = defaultPlatformGrpcServerURL
@@ -95,10 +89,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	logger.Info("starting platform api server (Connect)", "addr", addr)
-	logger.Info("starting platform api server (gRPC)", "addr", grpcAddr)
+	logger.Info("starting platform api server", "addr", grpcAddr)
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
-		httpserver.New(addr, handler),
 		httpserver.New(grpcAddr, handler),
 	}, recorder.Shutdown, shutdownTracing, func(context.Context) error {
 		return db.Close()

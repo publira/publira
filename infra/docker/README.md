@@ -109,11 +109,11 @@ docker build -f infra/docker/api/Dockerfile \
   -t publira/api-server:local .
 
 docker build -f infra/docker/api/Dockerfile \
-  --build-arg CMD_NAME=admin-api-server --build-arg PORT=8001 \
+  --build-arg CMD_NAME=admin-api-server --build-arg PORT=8101 \
   -t publira/admin-api-server:local .
 
 docker build -f infra/docker/api/Dockerfile \
-  --build-arg CMD_NAME=platform-api-server --build-arg PORT=8002 \
+  --build-arg CMD_NAME=platform-api-server --build-arg PORT=8102 \
   -t publira/platform-api-server:local .
 
 docker build -f infra/docker/api/Dockerfile \

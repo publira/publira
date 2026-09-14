@@ -25,7 +25,6 @@ task server:build
 
 ## Main environment variables
 
-- `PUBLIRA_PLATFORM_API_ADDR` (optional, `:8002` when unset)
 - `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset)
 - `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens. The server fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
 - `PUBLIRA_REDIS_URL` (optional. Where the counters behind the mail limits below are kept. Unset / `disabled` / `off` / `false` limits each instance on its own, which is looser than a shared limit by the number of instances)
