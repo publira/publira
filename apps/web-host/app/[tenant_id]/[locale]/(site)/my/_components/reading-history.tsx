@@ -26,7 +26,9 @@ import { getTenantId } from "#lib/tenant-id";
 import {
   defaultReadingHistoryPageSize,
   myPageHref,
+  resolveMyPageToken,
 } from "../_lib/search-params";
+import type { MyPageSearchParams } from "../_lib/search-params";
 
 /**
  * The heading names the section, which is what turns the `<section>` into a
@@ -43,8 +45,16 @@ const HISTORY_HEADING_ID = "reading-history-heading";
  * already behind a session, so a rejected session sends the reader back to sign
  * in rather than showing them the empty state of someone who has read nothing.
  */
-export const ReadingHistorySection = async ({ token }: { token: string }) => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+export const ReadingHistorySection = async ({
+  searchParams,
+}: {
+  searchParams: MyPageSearchParams;
+}) => {
+  const [tenantId, locale, token] = await Promise.all([
+    getTenantId(),
+    getLocale(),
+    resolveMyPageToken(searchParams),
+  ]);
   const [result, t, timeZone] = await Promise.all([
     listMyEpisodeReads(tenantId, {
       limit: defaultReadingHistoryPageSize,

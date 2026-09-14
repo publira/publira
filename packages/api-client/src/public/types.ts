@@ -9,6 +9,7 @@ export type {
 } from "../gen/publira/v1/comment_pb.js";
 export type {
   EpisodeNeighbor,
+  FollowUpdate,
   MyEpisodeRead,
   MyFollow,
   MyPurchase,

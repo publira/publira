@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql, runSql } from "../src/db";
-import { signInAsMember } from "../src/host";
+import { openHostUserMenu, signInAsMember } from "../src/host";
 import {
   clearMessagesTo,
   countMessagesTo,
@@ -259,7 +259,10 @@ test.describe("web-host reader account lifecycle", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "My Page" })
     ).toBeVisible();
-    await expect(page.getByText(ACCOUNT_LIFECYCLE_SIGNUP.name)).toBeVisible();
+    await openHostUserMenu(page);
+    await expect(
+      page.getByRole("menu").getByText(ACCOUNT_LIFECYCLE_SIGNUP.name)
+    ).toBeVisible();
     expect(await sessionCookie(page)).toBeTruthy();
   });
 
@@ -548,7 +551,7 @@ test.describe("web-host reader account lifecycle", () => {
 
     await expect(page).toHaveURL(/\/my\/?$/u);
     await expect(
-      page.getByText(ACCOUNT_LIFECYCLE_MEMBER.publicId)
+      page.getByRole("heading", { name: "Reading history" })
     ).toBeVisible();
   });
 

@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql } from "../src/db";
-import { signInAsMember } from "../src/host";
+import { openHostUserMenu, signInAsMember } from "../src/host";
 import {
   MEMBER_SETTINGS_MEMBER,
   MEMBER_SETTINGS_NEW_EMAIL,
@@ -97,7 +97,7 @@ test.describe("web-host member settings", () => {
     applyScenarioSql(MEMBER_SETTINGS_SCENARIO);
   });
 
-  test("My Page shows the signed-in reader's own profile and subscription state", async ({
+  test("My Page opens with the reader's follows and names them in the account menu", async ({
     page,
   }) => {
     await signIn(page, "/my");
@@ -106,11 +106,16 @@ test.describe("web-host member settings", () => {
       page.getByRole("heading", { level: 1, name: "My Page" })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { exact: true, name: "Profile" })
+      page.getByRole("heading", { name: "New from your follows" })
     ).toBeVisible();
-    await expect(page.getByText(MEMBER_SETTINGS_MEMBER.name)).toBeVisible();
-    await expect(page.getByText(MEMBER_SETTINGS_MEMBER.publicId)).toBeVisible();
-    await expect(page.getByText("Subscribed", { exact: true })).toBeVisible();
+    // Nothing on the screen tells the reader who they are any more: the name
+    // is in the account menu, and the rest is on `/settings`.
+    await expect(page.getByText(MEMBER_SETTINGS_MEMBER.publicId)).toBeHidden();
+
+    await openHostUserMenu(page);
+    await expect(
+      page.getByRole("menu").getByText(MEMBER_SETTINGS_MEMBER.name)
+    ).toBeVisible();
   });
 
   test("the basic settings screen saves a display name that survives a reload", async ({
@@ -131,8 +136,13 @@ test.describe("web-host member settings", () => {
     );
     expect(memberField("name")).toBe(RENAMED_DISPLAY_NAME);
 
+    // The account menu in the site header is where the reader's own name is
+    // shown now, so that is where a rename has to land.
     await page.goto(hostUrl("/my"));
-    await expect(page.getByText(RENAMED_DISPLAY_NAME)).toBeVisible();
+    await openHostUserMenu(page);
+    await expect(
+      page.getByRole("menu").getByText(RENAMED_DISPLAY_NAME)
+    ).toBeVisible();
   });
 
   test("the notification screen turns email notifications off and keeps them off", async ({
@@ -153,9 +163,6 @@ test.describe("web-host member settings", () => {
 
     await page.goto(hostUrl("/settings/notifications"));
     await expect(page.getByRole("checkbox")).not.toBeChecked();
-
-    await page.goto(hostUrl("/my"));
-    await expect(page.getByText("Paused", { exact: true })).toBeVisible();
   });
 
   test("the security screen refuses an email change whose current password is wrong", async ({
@@ -222,7 +229,7 @@ test.describe("web-host member settings", () => {
     try {
       await signInAsMember(otherPage, MEMBER_SETTINGS_MEMBER, "/my");
       await expect(
-        otherPage.getByText(MEMBER_SETTINGS_MEMBER.publicId)
+        otherPage.getByRole("heading", { name: "Reading history" })
       ).toBeVisible();
 
       await signIn(page, "/settings/security");
@@ -248,7 +255,7 @@ test.describe("web-host member settings", () => {
       // replacement the Action sealed into the cookie that keeps it signed in.
       await page.goto(hostUrl("/my"));
       await expect(
-        page.getByText(MEMBER_SETTINGS_MEMBER.publicId)
+        page.getByRole("heading", { name: "Reading history" })
       ).toBeVisible();
 
       // `/settings` is where a revoked session surfaces: it calls GetMe through
@@ -266,7 +273,7 @@ test.describe("web-host member settings", () => {
         "/my"
       );
       await expect(
-        otherPage.getByText(MEMBER_SETTINGS_MEMBER.publicId)
+        otherPage.getByRole("heading", { name: "Reading history" })
       ).toBeVisible();
     } finally {
       await otherContext.close();
