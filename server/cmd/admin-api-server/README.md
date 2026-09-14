@@ -25,7 +25,6 @@ task server:build
 
 ## Main environment variables
 
-- `PUBLIRA_ADMIN_API_ADDR` (optional, `:8001` when unset)
 - `PUBLIRA_ADMIN_DB_URL` (optional; a development default is used when unset)
 - `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens. The server fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
 - `PUBLIRA_S3_BUCKET` (required)

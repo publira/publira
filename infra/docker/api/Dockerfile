@@ -13,8 +13,8 @@
 #
 # Examples:
 #   CMD_NAME=api-server          PORT=8000
-#   CMD_NAME=admin-api-server    PORT=8001
-#   CMD_NAME=platform-api-server PORT=8002
+#   CMD_NAME=admin-api-server    PORT=8101
+#   CMD_NAME=platform-api-server PORT=8102
 #   CMD_NAME=outbox-worker       PORT=8003
 
 FROM golang:1.27-bookworm@sha256:648f440f42a0958804efb24df176f806f9d353b41f1c0627f666428e40310f6b AS builder

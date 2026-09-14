@@ -549,7 +549,7 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
   - Default port: `:8000`
 - Admin API server: `server/cmd/admin-api-server`
   - Admin services: `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`
-  - Default port: `:8001` (changeable with `PUBLIRA_ADMIN_API_ADDR`)
+  - Default port: `:8101` (changeable with `PUBLIRA_ADMIN_API_GRPC_ADDR`)
   - Next.js revalidation on a publication state change: set `PUBLIRA_REVALIDATE_TOKEN`
   - The destinations are the internal URLs of every `web-*` app (`PUBLIRA_WEB_*_INTERNAL_URL`)
 

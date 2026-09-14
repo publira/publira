@@ -79,9 +79,7 @@ start_web_app() {
 for port in \
   "${E2E_PUBLIC_API_PORT}" \
   "${E2E_PUBLIC_API_GRPC_PORT}" \
-  "${E2E_ADMIN_API_PORT}" \
   "${E2E_ADMIN_API_GRPC_PORT}" \
-  "${E2E_PLATFORM_API_PORT}" \
   "${E2E_PLATFORM_API_GRPC_PORT}" \
   "${E2E_OUTBOX_WORKER_PORT}" \
   "${E2E_IMAGE_SERVER_PORT}" \

@@ -28,7 +28,6 @@ import (
 const (
 	serviceName = "publira-admin-api-server"
 
-	defaultAdminServerURL     = ":8001"
 	defaultAdminGrpcServerURL = ":8101"
 	defaultAdminDBURL         = "postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable"
 )
@@ -82,11 +81,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr := strings.TrimSpace(os.Getenv("PUBLIRA_ADMIN_API_ADDR"))
-	if addr == "" {
-		addr = defaultAdminServerURL
-	}
-
 	grpcAddr := strings.TrimSpace(os.Getenv("PUBLIRA_ADMIN_API_GRPC_ADDR"))
 	if grpcAddr == "" {
 		grpcAddr = defaultAdminGrpcServerURL
@@ -102,10 +96,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	logger.Info("starting admin api server (Connect)", "addr", addr)
-	logger.Info("starting admin api server (gRPC)", "addr", grpcAddr)
+	logger.Info("starting admin api server", "addr", grpcAddr)
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
-		httpserver.New(addr, handler),
 		httpserver.New(grpcAddr, handler),
 	}, recorder.Shutdown, shutdownTracing, func(context.Context) error {
 		return db.Close()

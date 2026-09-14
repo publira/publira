@@ -19,7 +19,7 @@ This check therefore starts the repository-root **`compose.yaml` itself** — th
 | Bootstrap Postgres | `5434` | Change with `BOOTSTRAP_POSTGRES_PORT`. |
 | Bootstrap Redis | `6381` | Change with `BOOTSTRAP_REDIS_PORT`. |
 | Bootstrap RustFS (S3) | `9002` | Change with `BOOTSTRAP_RUSTFS_PORT`. |
-| All services from `task dev` | `3000` `4000` `4100` `8000`–`8002` `8100`–`8102` `8200` `8201` | **Cannot change**; Next.js ports are fixed in `apps/*/package.json` `dev` commands. |
+| All services from `task dev` | `3000` `4000` `4100` `8000` `8100`–`8102` `8200` `8201` | **Cannot change**; Next.js ports are fixed in `apps/*/package.json` `dev` commands. |
 
 The data-store ports differ from Playwright E2E (`5433` / `6380` / `9003`), so both can run together. `task dev` ports are fixed, however, so phase 4 cannot run while another development `task dev` is active; the check detects the collision before startup.
 

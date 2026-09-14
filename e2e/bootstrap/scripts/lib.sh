@@ -64,7 +64,7 @@ BOOTSTRAP_DEV_INTERVAL_SEC="${BOOTSTRAP_DEV_INTERVAL_SEC:-2}"
 
 # Ports `task dev` listens on. Fixed, not configurable: the Next.js apps carry
 # their port in the `dev` script of each apps/*/package.json.
-BOOTSTRAP_DEV_PORTS=(3000 4000 4100 8000 8001 8002 8100 8101 8102 8200 8201)
+BOOTSTRAP_DEV_PORTS=(3000 4000 4100 8000 8100 8101 8102 8200 8201)
 
 bootstrap_log() {
   printf '[bootstrap] %s\n' "$*"
@@ -139,10 +139,8 @@ bootstrap_probes() {
   cat <<'EOF'
 api-server/connect	http://127.0.0.1:8000/readyz	json
 api-server/grpc	http://127.0.0.1:8100/readyz	json
-admin-api-server/connect	http://127.0.0.1:8001/readyz	json
-admin-api-server/grpc	http://127.0.0.1:8101/readyz	json
-platform-api-server/connect	http://127.0.0.1:8002/readyz	json
-platform-api-server/grpc	http://127.0.0.1:8102/readyz	json
+admin-api-server	http://127.0.0.1:8101/readyz	json
+platform-api-server	http://127.0.0.1:8102/readyz	json
 image-server	http://127.0.0.1:8200/readyz	json
 admin-image-server	http://127.0.0.1:8201/readyz	json
 web-host/livez	http://localhost:3000/livez	text

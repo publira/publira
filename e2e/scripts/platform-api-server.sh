@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start/stop only the platform-api-server process (Connect :8002, gRPC :8102).
+# Start/stop only the platform-api-server process (:8102).
 set -euo pipefail
 
 # shellcheck source=lib.sh
@@ -30,12 +30,11 @@ start_platform_api_server() {
     exit 1
   fi
 
-  e2e_log "starting platform-api-server (connect :${E2E_PLATFORM_API_PORT}, grpc :${E2E_PLATFORM_API_GRPC_PORT})"
+  e2e_log "starting platform-api-server (:${E2E_PLATFORM_API_GRPC_PORT})"
   (
     cd "${REPO_ROOT}/server"
     exec env \
       PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
-      PUBLIRA_PLATFORM_API_ADDR=":${E2E_PLATFORM_API_PORT}" \
       PUBLIRA_PLATFORM_API_GRPC_ADDR=":${E2E_PLATFORM_API_GRPC_PORT}" \
       PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
       PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_HOUR="${PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_HOUR:-}" \

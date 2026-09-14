@@ -121,9 +121,9 @@ tasks:
       - task: build:api
         vars: { CMD_NAME: api-server, PORT: "8000" }
       - task: build:api
-        vars: { CMD_NAME: admin-api-server, PORT: "8001" }
+        vars: { CMD_NAME: admin-api-server, PORT: "8101" }
       - task: build:api
-        vars: { CMD_NAME: platform-api-server, PORT: "8002" }
+        vars: { CMD_NAME: platform-api-server, PORT: "8102" }
       - task: build:api
         vars: { CMD_NAME: outbox-worker, PORT: "8003" }
       - task: build:batch
