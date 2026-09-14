@@ -119,6 +119,11 @@ const COEFFICIENTS: readonly {
     coefficient: 0.2,
     patterns: [
       "locales/*.json",
+      // Vector sources for the committed images. Coordinates and colours:
+      // what they are worth reading for is the picture `task images:gen`
+      // renders from them, not the markup. `assets/images.json` is not listed
+      // — where an image is used is a decision, and it is scored as one.
+      "assets/**/*.svg",
       "**/fixtures/**",
       "**/testdata/**",
       "**/__snapshots__/**",

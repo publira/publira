@@ -98,6 +98,11 @@ tasks:
       - sqlc generate
       - buf generate
 
+  images:gen:
+    desc: Render the images under assets/ to the paths assets/images.json maps them to
+    cmds:
+      - node scripts/render-images.ts
+
   lint:
     desc: Run frontend, shared, and server lint checks
     cmds:
