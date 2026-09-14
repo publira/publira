@@ -5,7 +5,7 @@ The ConnectRPC API server. It serves all three Connect namespaces — `publira.v
 | Listener | Default address | Serves | Reached by |
 | --- | --- | --- | --- |
 | Edge-facing | `:8000` (`PUBLIRA_PUBLIC_API_ADDR`) | `publira.v1`, `/livez`, `/readyz` | The browser, through the reverse proxy's `/api` prefix |
-| Internal | `:8100` (`PUBLIRA_PUBLIC_API_GRPC_ADDR`) | all three namespaces, `/livez`, `/readyz` | web-host, web-admin, and web-platform, over the private network |
+| Internal | `:8100` (`PUBLIRA_PUBLIC_API_GRPC_ADDR`) | all three namespaces, `/livez`, `/readyz` | web-host, web-admin, and web-platform, over the private network, each through its own `PUBLIRA_GRPC_URL` |
 
 A Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, and the edge forwards `/api` host-agnostically, so neither the port nor the protocol separates the namespaces: registering a console service on the edge-facing mux would publish it at `/api/publira.admin.v1.…` on every tenant site. What each listener carries is decided in `main.go` and nowhere else.
 

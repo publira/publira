@@ -66,9 +66,9 @@ export PUBLIRA_S3_FORCE_PATH_STYLE="true"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
-export PUBLIRA_PUBLIC_GRPC_URL="${PUBLIRA_PUBLIC_GRPC_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
-export PUBLIRA_ADMIN_GRPC_URL="${PUBLIRA_ADMIN_GRPC_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
-export PUBLIRA_PLATFORM_GRPC_URL="${PUBLIRA_PLATFORM_GRPC_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
+# The API server's internal listener, which every app dials: one process
+# carries all three Connect namespaces.
+export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
 export E2E_WEB_HOST_BASE_URL="${E2E_WEB_HOST_BASE_URL:-http://localhost:${E2E_WEB_HOST_PORT}}"
 export E2E_WEB_ADMIN_BASE_URL="${E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${E2E_WEB_ADMIN_PORT}}"
 export E2E_WEB_PLATFORM_BASE_URL="${E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${E2E_WEB_PLATFORM_PORT}}"

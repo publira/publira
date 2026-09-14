@@ -14,9 +14,7 @@ start_web_app() {
   local app_name="$1"
   local app_port="$2"
   local bind_host="$3"
-  local grpc_url_env_name="$4"
-  local grpc_url_value="$5"
-  local cache_app="$6"
+  local cache_app="$4"
 
   local app_dir="${REPO_ROOT}/apps/${app_name}"
   local standalone_server="${app_dir}/.next/standalone/apps/${app_name}/server.js"
@@ -56,7 +54,7 @@ start_web_app() {
         PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
         PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
         PUBLIRA_CACHE_APP="${cache_app}" \
-        "${grpc_url_env_name}=${grpc_url_value}" \
+        PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
         pnpm exec next dev --port "${app_port}" --hostname "${bind_host}"
     ) >"${LOG_DIR}/${app_name}.log" 2>&1 &
   else
@@ -69,7 +67,7 @@ start_web_app() {
         PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
         PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
         PUBLIRA_CACHE_APP="${cache_app}" \
-        "${grpc_url_env_name}=${grpc_url_value}" \
+        PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
         node server.js
     ) >"${LOG_DIR}/${app_name}.log" 2>&1 &
   fi
@@ -111,8 +109,6 @@ start_web_app \
   "web-host" \
   "${E2E_WEB_HOST_PORT}" \
   "${E2E_WEB_BIND_HOST:-localhost}" \
-  "PUBLIRA_PUBLIC_GRPC_URL" \
-  "${PUBLIRA_PUBLIC_GRPC_URL}" \
   "web-host"
 
 # web-admin is reached as admin.localhost (seed admin_domain). Chromium resolves
@@ -121,8 +117,6 @@ start_web_app \
   "web-admin" \
   "${E2E_WEB_ADMIN_PORT}" \
   "${E2E_WEB_ADMIN_BIND_HOST:-0.0.0.0}" \
-  "PUBLIRA_ADMIN_GRPC_URL" \
-  "${PUBLIRA_ADMIN_GRPC_URL}" \
   "web-admin"
 
 # web-platform has no tenant Host resolution; bind 0.0.0.0 so platform.localhost
@@ -131,8 +125,6 @@ start_web_app \
   "web-platform" \
   "${E2E_WEB_PLATFORM_PORT}" \
   "${E2E_WEB_PLATFORM_BIND_HOST:-0.0.0.0}" \
-  "PUBLIRA_PLATFORM_GRPC_URL" \
-  "${PUBLIRA_PLATFORM_GRPC_URL}" \
   "web-platform"
 
 e2e_log "apps started (logs under ${LOG_DIR})"

@@ -279,12 +279,7 @@ dev_env_write_profile() {
     printf 'PUBLIRA_ADMIN_IMAGE_SERVER_PORT=%s\n' "$((port_base + 21))"
     printf 'PUBLIRA_EMAIL_RENDERER_PORT=%s\n' "$((port_base + 30))"
     printf 'PUBLIRA_OUTBOX_WORKER_PORT=%s\n' "$((port_base + 40))"
-    # One API server serves all three Connect namespaces, so the three URLs
-    # name the same internal listener. They stay three variables because each
-    # app reads the one named for it.
-    printf 'PUBLIRA_PUBLIC_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
-    printf 'PUBLIRA_ADMIN_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
-    printf 'PUBLIRA_PLATFORM_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
+    printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
     printf 'PUBLIRA_WEB_HOST_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
     printf 'PUBLIRA_WEB_ADMIN_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 2))"
@@ -318,7 +313,6 @@ dev_env_load_profile() {
     PUBLIRA_WEB_ADMIN_PORT PUBLIRA_WEB_PLATFORM_PORT PUBLIRA_PUBLIC_API_PORT \
     PUBLIRA_PUBLIC_API_GRPC_PORT PUBLIRA_IMAGE_SERVER_PORT \
     PUBLIRA_ADMIN_IMAGE_SERVER_PORT PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_OUTBOX_WORKER_PORT \
-    PUBLIRA_PUBLIC_GRPC_URL PUBLIRA_ADMIN_GRPC_URL PUBLIRA_PLATFORM_GRPC_URL \
     PUBLIRA_WEB_HOST_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \
     PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
     dev_env_load_required_profile_value "${profile_path}" "${key}"
@@ -340,20 +334,19 @@ dev_env_load_profile() {
     export PUBLIRA_WORKER_DB_URL
   fi
 
-  # A profile written while the consoles had API servers of their own points
-  # them at ports nothing listens on now that one process serves all three
-  # namespaces. The comparison is against the exact strings the old
-  # dev_env_write_profile emitted for this profile's slot, so a URL a developer
-  # pointed somewhere else is left alone.
-  local port_base=$((13000 + DEV_ENV_SLOT * 100))
-  if [[ "${PUBLIRA_ADMIN_GRPC_URL}" == "http://127.0.0.1:$((port_base + 13))" ]]; then
-    PUBLIRA_ADMIN_GRPC_URL="http://127.0.0.1:$((port_base + 11))"
-    export PUBLIRA_ADMIN_GRPC_URL
+  # A profile written while each console had an API server of its own has a
+  # URL per console and none under this name. All three named the same process
+  # by then, and the ports the old ones carried are gone, so the profile's own
+  # gRPC port is the answer rather than any value stored back then.
+  local grpc_url
+  if ! grpc_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_GRPC_URL)"; then
+    PUBLIRA_GRPC_URL="http://127.0.0.1:${PUBLIRA_PUBLIC_API_GRPC_PORT}"
+  elif [[ -z "${grpc_url}" ]]; then
+    dev_env_die "profile has an empty PUBLIRA_GRPC_URL: ${profile_path}"
+  else
+    PUBLIRA_GRPC_URL="${grpc_url}"
   fi
-  if [[ "${PUBLIRA_PLATFORM_GRPC_URL}" == "http://127.0.0.1:$((port_base + 15))" ]]; then
-    PUBLIRA_PLATFORM_GRPC_URL="http://127.0.0.1:$((port_base + 11))"
-    export PUBLIRA_PLATFORM_GRPC_URL
-  fi
+  export PUBLIRA_GRPC_URL
 
   # Profiles created before the stats batch have no key of their own. They fall
   # back to the superuser connection, which is what their worker URL was when

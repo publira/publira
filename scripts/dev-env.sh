@@ -137,18 +137,17 @@ start_profile() {
     pnpm --dir "${REPO_ROOT}/apps/email-renderer" dev
   dev_env_start_background "${run_dir}" web-host env PORT="${PUBLIRA_WEB_HOST_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
-    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_PUBLIC_GRPC_URL="${PUBLIRA_PUBLIC_GRPC_URL}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     pnpm --dir "${REPO_ROOT}/apps/web-host" dev
   dev_env_start_background "${run_dir}" web-admin env PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
-    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_ADMIN_GRPC_URL="${PUBLIRA_ADMIN_GRPC_URL}" \
-    PUBLIRA_PUBLIC_GRPC_URL="${PUBLIRA_PUBLIC_GRPC_URL}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     pnpm --dir "${REPO_ROOT}/apps/web-admin" dev
   dev_env_start_background "${run_dir}" web-platform env PORT="${PUBLIRA_WEB_PLATFORM_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
-    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_PLATFORM_GRPC_URL="${PUBLIRA_PLATFORM_GRPC_URL}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     pnpm --dir "${REPO_ROOT}/apps/web-platform" dev
   printf 'started profile %q\n  host:     http://localhost:%s\n  admin:    http://admin.localhost:%s\n  platform: %s\n  logs:     %s\n' \
