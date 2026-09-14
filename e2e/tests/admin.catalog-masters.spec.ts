@@ -16,7 +16,8 @@ import {
   genreNamesInOrder,
   genreRow,
   labelFormFields,
-  seriesFormFields,
+  creditAuthorViaUi,
+  creditRowFields,
   signInAsSeedAdmin,
 } from "../src/admin";
 import {
@@ -28,6 +29,7 @@ import {
 } from "../src/db";
 import {
   publishedAtOneHourAgo,
+  SEED_CATALOG,
   uniqueSuffix,
 } from "../src/scenarios/admin-publish";
 import { EYE_CATCH_SOURCE_FIXTURE } from "../src/scenarios/eye-catch";
@@ -242,10 +244,86 @@ test.describe("admin catalog masters", () => {
     // The series form's picker reads the same tenant creator list, so a
     // creator is attachable to a series as soon as it is registered.
     await page.goto(adminUrl("/series/new"));
-    const { creatorCombobox } = seriesFormFields(page);
+    await page.getByRole("button", { exact: true, name: "Add author" }).click();
+    const { creatorCombobox } = creditRowFields(page, 1);
     await creatorCombobox.click();
     await creatorCombobox.fill(name);
     await expect(page.getByRole("option", { name })).toBeVisible();
+  });
+
+  test("credits three authors in two roles and stores the order inside a role", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const artistOne = `E2E Artist One ${suffix}`;
+    const artistTwo = `E2E Artist Two ${suffix}`;
+    trackCreator(
+      await createCreatorViaUi(page, {
+        name: artistOne,
+        profileText: `E2E artist profile ${suffix}`,
+      })
+    );
+    trackCreator(
+      await createCreatorViaUi(page, {
+        name: artistTwo,
+        profileText: `E2E artist profile ${suffix}`,
+      })
+    );
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        creatorRoleName: "Original Author",
+        synopsis: `E2E credits synopsis ${suffix}`,
+        title: `E2E Credits ${suffix}`,
+      })
+    );
+
+    // The seeded author already holds row 1, so these land at 2 and 3.
+    await creditAuthorViaUi(page, 2, {
+      creatorName: artistOne,
+      roleName: "Artist",
+    });
+    await creditAuthorViaUi(page, 3, {
+      creatorName: artistTwo,
+      roleName: "Artist",
+    });
+
+    // Ordering inside a role, driven from the keyboard: the handle picks the
+    // row up, an arrow moves it, and the second press drops it. Asserted this
+    // way rather than with a pointer drag because it is the path a list of
+    // drag handles is most likely to lose.
+    await page.getByRole("button", { name: "Reorder author 3" }).focus();
+    await page.keyboard.press("Space");
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Space");
+    await expect(creditRowFields(page, 2).creatorCombobox).toHaveValue(
+      artistTwo
+    );
+
+    await page.getByRole("button", { name: "Update series" }).click();
+    await expect(page.getByText("Series updated.")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Read back from the API rather than from the list the form was left
+    // holding: what is asserted is the order the series was stored in.
+    await page.goto(adminUrl(`/series/${seriesId}`));
+    await expect(
+      page.getByRole("combobox", { name: /^Author \d+$/u })
+    ).toHaveCount(3);
+
+    const firstRow = creditRowFields(page, 1);
+    await expect(firstRow.creatorCombobox).toHaveValue(
+      SEED_CATALOG.creatorName
+    );
+    await expect(firstRow.roleCombobox).toHaveValue("Original Author");
+    // The move above, as the API stored it: `display_order` inside the role.
+    const secondRow = creditRowFields(page, 2);
+    await expect(secondRow.creatorCombobox).toHaveValue(artistTwo);
+    await expect(secondRow.roleCombobox).toHaveValue("Artist");
+    const thirdRow = creditRowFields(page, 3);
+    await expect(thirdRow.creatorCombobox).toHaveValue(artistOne);
+    await expect(thirdRow.roleCombobox).toHaveValue("Artist");
   });
 
   test("editing a creator reaches the creator detail page on web-host", async ({

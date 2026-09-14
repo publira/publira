@@ -16,6 +16,7 @@ import {
 import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
+import { listCreatorRoles } from "#lib/creator-roles";
 import { listGenres } from "#lib/genre";
 import { listAllLabels } from "#lib/label";
 import { getLocale } from "#lib/locale";
@@ -55,6 +56,7 @@ const NewSeriesFormData = async () => {
   const [
     listResult,
     creatorsResult,
+    creatorRolesResult,
     labelsResult,
     genresResult,
     tagsResult,
@@ -67,6 +69,9 @@ const NewSeriesFormData = async () => {
     listSeries(tenantId, locale, { limit: 1 }),
     // Walk every cursor page so the Combobox can search past the first 100.
     listAllCreators(tenantId, locale),
+    // In the tenant's priority order, which is the order the credit list on
+    // the form is shown in.
+    listCreatorRoles(tenantId, locale),
     listAllLabels(tenantId, locale),
     listGenres(tenantId, locale),
     listTagSuggestions(tenantId, locale),
@@ -80,6 +85,7 @@ const NewSeriesFormData = async () => {
   await redirectToLoginIfSessionRejected(
     listResult,
     creatorsResult,
+    creatorRolesResult,
     labelsResult,
     genresResult
   );
@@ -87,6 +93,10 @@ const NewSeriesFormData = async () => {
   return (
     <SeriesForm
       action={createSeriesAction}
+      creatorRoles={creatorRolesResult.creatorRoles}
+      creatorRolesErrorMessage={
+        creatorRolesResult.ok ? undefined : creatorRolesResult.message
+      }
       creators={creatorsResult.creators}
       creatorsErrorMessage={
         creatorsResult.ok ? undefined : creatorsResult.message

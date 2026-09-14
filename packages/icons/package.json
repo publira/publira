@@ -59,6 +59,10 @@
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"
     },
+    "./grip-vertical-icon": {
+      "types": "./dist/grip-vertical-icon.d.mts",
+      "default": "./dist/grip-vertical-icon.mjs"
+    },
     "./heart-icon": {
       "types": "./dist/heart-icon.d.mts",
       "default": "./dist/heart-icon.mjs"
@@ -90,6 +94,10 @@
     "./minimize-icon": {
       "types": "./dist/minimize-icon.d.mts",
       "default": "./dist/minimize-icon.mjs"
+    },
+    "./plus-icon": {
+      "types": "./dist/plus-icon.d.mts",
+      "default": "./dist/plus-icon.mjs"
     },
     "./settings-icon": {
       "types": "./dist/settings-icon.d.mts",

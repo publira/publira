@@ -40,7 +40,11 @@ import {
 import { SERIES_COMMENT_MODES } from "#lib/series-comment-mode";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import type { SeriesActionState, SeriesMutationMode } from "../series-types";
+import type {
+  SeriesActionState,
+  SeriesCreatorCredit,
+  SeriesMutationMode,
+} from "../series-types";
 
 /**
  * A weekday as the form posts it: one decimal digit, 0 (Sunday) to 6. Anything
@@ -48,6 +52,39 @@ import type { SeriesActionState, SeriesMutationMode } from "../series-types";
  * Sunday on a schedule nobody chose.
  */
 const WEEKDAY_VALUE_RE = /^[0-6]$/u;
+
+/**
+ * The credit list, as the form posts it: one hidden JSON field holding the
+ * whole list. The pair of ids is the identity of a credit, and two repeated
+ * fields would arrive as two lists to zip back together — an entry missing from
+ * either one would shift every credit after it onto somebody else's role.
+ *
+ * A payload that is not that list fails the save rather than being compacted
+ * into the part that parsed, because the request replaces every credit the
+ * series holds: dropping a row here would un-credit the person in it.
+ */
+const creatorCreditListFormSchema = (
+  message: string
+): z.ZodType<SeriesCreatorCredit[], unknown> =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string" || value.trim() === "") {
+        return [];
+      }
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    },
+    z.array(
+      z.object({
+        creatorPublicId: requiredTrimmedString(message),
+        rolePublicId: requiredTrimmedString(message),
+      }),
+      { error: message }
+    )
+  );
 
 const scheduleWeekdaysFormSchema = z
   .array(z.string())
@@ -80,7 +117,9 @@ const seriesCommonSchema = async (locale: Locale) => {
     commentMode: z.enum(SERIES_COMMENT_MODES, {
       error: t("admin.series.validation.comment_mode_invalid"),
     }),
-    creatorPublicIds: trimmedStringListFormSchema,
+    creatorCredits: creatorCreditListFormSchema(
+      t("admin.series.validation.creator_credits_invalid")
+    ),
     eyeCatchImage: optionalFileFormSchema,
     genrePublicIds: trimmedStringListFormSchema,
     isPublished: checkboxOnFormSchema,
@@ -132,7 +171,7 @@ const seriesEyeCatchSchema = async (locale: Locale) => {
 const seriesFormFields = {
   ageRating: { kind: "value", name: "age_rating" },
   commentMode: { kind: "value", name: "comment_mode" },
-  creatorPublicIds: { kind: "values", name: "creator_public_ids" },
+  creatorCredits: { kind: "value", name: "creator_credits" },
   eyeCatchImage: { kind: "file", name: "eye_catch_image" },
   genrePublicIds: { kind: "values", name: "genre_public_ids" },
   isPublished: { kind: "value", name: "is_published" },
@@ -225,7 +264,7 @@ export const createSeriesAction = async (
       {
         ageRating: parsed.data.ageRating,
         commentMode: parsed.data.commentMode,
-        creatorPublicIds: parsed.data.creatorPublicIds,
+        creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
         eyeCatchImageData,
         genrePublicIds: parsed.data.genrePublicIds,
@@ -290,7 +329,7 @@ export const updateSeriesAction = async (
       {
         ageRating: parsed.data.ageRating,
         commentMode: parsed.data.commentMode,
-        creatorPublicIds: parsed.data.creatorPublicIds,
+        creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
         eyeCatchImageData,
         genrePublicIds: parsed.data.genrePublicIds,
@@ -370,7 +409,7 @@ export const updateSeriesEyeCatchAction = async (
         ageRating: parsed.data.ageRating,
         clearEyeCatchImage: parsed.data.clearEyeCatchImage,
         commentMode: parsed.data.commentMode,
-        creatorPublicIds: parsed.data.creatorPublicIds,
+        creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
         eyeCatchImageData,
         genrePublicIds: parsed.data.genrePublicIds,

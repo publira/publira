@@ -132,14 +132,16 @@ export const SeriesEyeCatchForm = ({
       {initialSeries.tagNames.map((tagName) => (
         <input key={tagName} name="tag_names" type="hidden" value={tagName} />
       ))}
-      {initialSeries.creatorPublicIds.map((publicId) => (
-        <input
-          key={publicId}
-          name="creator_public_ids"
-          type="hidden"
-          value={publicId}
-        />
-      ))}
+      {/* An update replaces every credit the series holds, so this tab carries
+          them back exactly as it read them. A credit written before roles
+          existed states none and makes the save report that instead — the
+          basics tab is where a role is chosen for it, and dropping the row
+          here would un-credit the person. */}
+      <input
+        name="creator_credits"
+        type="hidden"
+        value={JSON.stringify(initialSeries.creatorCredits)}
+      />
       {initialSeries.isPublished ? (
         <input name="is_published" type="hidden" value="on" />
       ) : null}

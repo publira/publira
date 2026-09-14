@@ -8,17 +8,8 @@ import {
   ComboboxInput,
   ComboboxItems,
   ComboboxPopup,
-  MultiCombobox,
-  MultiComboboxChip,
-  MultiComboboxChipRemove,
-  MultiComboboxChips,
-  MultiComboboxInput,
-  MultiComboboxInputGroup,
 } from "@publira/ui-components/combobox";
-import type {
-  ComboboxItem,
-  MultiComboboxItem,
-} from "@publira/ui-components/combobox";
+import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
   Field,
   FieldContent,
@@ -67,11 +58,11 @@ import {
 } from "./series-classification-fields";
 import type { GenreOption } from "./series-classification-fields";
 import { SeriesCommentModeField } from "./series-comment-mode-field";
-
-interface CreatorOption {
-  publicId: string;
-  name: string;
-}
+import { SeriesCreatorCreditsField } from "./series-creator-credits-field";
+import type {
+  CreatorOption,
+  CreatorRoleOption,
+} from "./series-creator-credits-field";
 
 interface LabelOption {
   publicId: string;
@@ -86,10 +77,13 @@ interface SeriesFormProps {
   ) => Promise<SeriesActionState>;
   defaultReadingPeriodHours: number;
   creators: CreatorOption[];
+  /** The tenant's roles, in the priority order the credit list is shown in. */
+  creatorRoles: CreatorRoleOption[];
   labels: LabelOption[];
   genres: GenreOption[];
   tagSuggestions: string[];
   creatorsErrorMessage?: string;
+  creatorRolesErrorMessage?: string;
   labelsErrorMessage?: string;
   genresErrorMessage?: string;
   tagSuggestionsErrorMessage?: string;
@@ -122,108 +116,6 @@ const SeriesFormSubmitLabel = ({
     <ClientMessage message="admin.series.form.update" />
   ) : (
     <ClientMessage message="admin.series.form.create" />
-  );
-};
-
-interface CreatorFieldProps {
-  creatorItems: MultiComboboxItem[];
-  creatorsErrorMessage?: string;
-  selectedCreatorPublicIds: string[];
-  onChange: (nextValue: string[]) => void;
-}
-
-const CreatorField = ({
-  creatorItems,
-  creatorsErrorMessage,
-  selectedCreatorPublicIds,
-  onChange,
-}: CreatorFieldProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const t = useAdminMessages();
-  // MultiCombobox renders its own input instead of a Field control, so the
-  // label needs an id to point at.
-  const comboboxId = useId();
-
-  return (
-    <Field>
-      <FieldLabel htmlFor={comboboxId}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ClientMessage message="admin.series.form.creators" />
-        </Suspense>
-      </FieldLabel>
-      <FieldContent>
-        {creatorsErrorMessage ? (
-          <FormMessage variant="destructive">
-            {creatorsErrorMessage}
-          </FormMessage>
-        ) : null}
-
-        {creatorItems.length === 0 ? (
-          <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.form.creators_empty" />
-            </Suspense>
-          </FieldDescription>
-        ) : (
-          <MultiCombobox
-            id={comboboxId}
-            items={creatorItems}
-            onValueChange={onChange}
-            value={selectedCreatorPublicIds}
-          >
-            <MultiComboboxInputGroup>
-              <MultiComboboxChips>
-                {(selected) => (
-                  <>
-                    {selected.map((item) => (
-                      <MultiComboboxChip item={item} key={item.value}>
-                        {item.label}
-                        <MultiComboboxChipRemove
-                          aria-label={t("admin.series.form.creators_remove")}
-                        />
-                      </MultiComboboxChip>
-                    ))}
-                    <MultiComboboxInput
-                      placeholder={
-                        selected.length > 0
-                          ? ""
-                          : t("admin.series.form.creators_search")
-                      }
-                    />
-                  </>
-                )}
-              </MultiComboboxChips>
-            </MultiComboboxInputGroup>
-            <ComboboxPopup>
-              <ComboboxEmpty>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.series.form.creators_no_match" />
-                </Suspense>
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
-          </MultiCombobox>
-        )}
-
-        {selectedCreatorPublicIds.map((publicId) => (
-          <input
-            key={publicId}
-            name="creator_public_ids"
-            type="hidden"
-            value={publicId}
-          />
-        ))}
-
-        <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.series.form.creators_description" />
-          </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
   );
 };
 
@@ -404,11 +296,7 @@ const useSeriesFormState = ({
   initialSeries,
 }: Pick<SeriesFormProps, "initialCommentMode" | "initialSeries">) => {
   // Seeded once per mount: the edit route keys this form by the series' public
-  // id, so switching to another series remounts it with that series' creators
-  // and label.
-  const [selectedCreatorPublicIds, setSelectedCreatorPublicIds] = useState(
-    () => initialSeries?.creatorPublicIds ?? []
-  );
+  // id, so switching to another series remounts it with that series' label.
   const [selectedLabelPublicId, setSelectedLabelPublicId] = useState(
     initialSeries?.labelPublicId ?? ""
   );
@@ -471,13 +359,11 @@ const useSeriesFormState = ({
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
     scheduleWeekdays,
-    selectedCreatorPublicIds,
     selectedGenrePublicIds,
     selectedLabelPublicId,
     setAgeRating,
     setCommentMode,
     setScheduleWeekdays,
-    setSelectedCreatorPublicIds,
     setSelectedGenrePublicIds,
     setSelectedLabelPublicId,
     setStatus,
@@ -492,10 +378,12 @@ export const SeriesForm = ({
   action,
   defaultReadingPeriodHours,
   creators,
+  creatorRoles,
   labels,
   genres,
   tagSuggestions,
   creatorsErrorMessage,
+  creatorRolesErrorMessage,
   labelsErrorMessage,
   genresErrorMessage,
   tagSuggestionsErrorMessage,
@@ -511,18 +399,6 @@ export const SeriesForm = ({
   const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
-  const creatorItems = useMemo<MultiComboboxItem[]>(
-    () =>
-      creators
-        .map((creator) => ({
-          label: creator.name,
-          value: creator.publicId,
-        }))
-        .toSorted((a, b) =>
-          a.label.localeCompare(b.label, toIntlLocale(locale))
-        ),
-    [creators, locale]
-  );
   const labelItems = useMemo<ComboboxItem[]>(
     () =>
       labels
@@ -542,13 +418,11 @@ export const SeriesForm = ({
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
     scheduleWeekdays,
-    selectedCreatorPublicIds,
     selectedGenrePublicIds,
     selectedLabelPublicId,
     setAgeRating,
     setCommentMode,
     setScheduleWeekdays,
-    setSelectedCreatorPublicIds,
     setSelectedGenrePublicIds,
     setSelectedLabelPublicId,
     setStatus,
@@ -641,11 +515,12 @@ export const SeriesForm = ({
           </FieldContent>
         </Field>
 
-        <CreatorField
-          creatorItems={creatorItems}
+        <SeriesCreatorCreditsField
+          creatorRoles={creatorRoles}
+          creatorRolesErrorMessage={creatorRolesErrorMessage}
+          creators={creators}
           creatorsErrorMessage={creatorsErrorMessage}
-          onChange={setSelectedCreatorPublicIds}
-          selectedCreatorPublicIds={selectedCreatorPublicIds}
+          initialCredits={initialSeries?.creatorCredits ?? []}
         />
 
         <LabelField

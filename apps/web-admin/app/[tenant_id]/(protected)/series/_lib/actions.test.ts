@@ -71,8 +71,8 @@ describe("series actions", () => {
     mockUpdateSeries.mockResolvedValueOnce({
       ok: true,
       series: {
+        creatorCredits: [],
         creatorNames: [],
-        creatorPublicIds: [],
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
@@ -105,7 +105,7 @@ describe("series actions", () => {
       {
         ageRating: "all",
         commentMode: "",
-        creatorPublicIds: [],
+        creatorCredits: [],
         eyeCatchImageContentType: undefined,
         eyeCatchImageData: undefined,
         genrePublicIds: [],
@@ -132,8 +132,8 @@ describe("series actions", () => {
     mockUpdateSeries.mockResolvedValueOnce({
       ok: true,
       series: {
+        creatorCredits: [],
         creatorNames: [],
-        creatorPublicIds: [],
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
@@ -172,8 +172,8 @@ describe("series actions", () => {
     mockUpdateSeries.mockResolvedValueOnce({
       ok: true,
       series: {
+        creatorCredits: [],
         creatorNames: [],
-        creatorPublicIds: [],
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
@@ -270,8 +270,8 @@ describe("series actions", () => {
     mockCreateSeries.mockResolvedValueOnce({
       ok: true,
       series: {
+        creatorCredits: [],
         creatorNames: [],
-        creatorPublicIds: [],
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: false,
@@ -439,6 +439,75 @@ describe("series actions", () => {
 
     expect(result).toEqual({
       message: "Select how comments on this series are published.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateSeries).not.toHaveBeenCalled();
+  });
+
+  it("sends the credit list the form posted, in the order it posted it", async () => {
+    mockCreateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { publicId: "SERIES001" },
+    });
+
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
+    // One person credited twice under two roles, which is what the pair being
+    // the identity of a credit allows.
+    formData.set(
+      "creator_credits",
+      JSON.stringify([
+        { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
+        { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" },
+        { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" },
+      ])
+    );
+
+    await createSeriesAction(null, formData);
+
+    expect(mockCreateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        creatorCredits: [
+          { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
+          { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" },
+          { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" },
+        ],
+      }),
+      "en"
+    );
+  });
+
+  // A save replaces every credit the series holds, so a half-read list is
+  // refused rather than compacted into the rows that happened to parse.
+  it("refuses a credit that names no role", async () => {
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
+    formData.set(
+      "creator_credits",
+      JSON.stringify([{ creatorPublicId: "CREATOR001", rolePublicId: "" }])
+    );
+
+    const result = await createSeriesAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Every author credit needs an author and a role.",
       mode: "create",
       ok: false,
     });
