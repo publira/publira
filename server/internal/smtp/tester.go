@@ -28,8 +28,9 @@ type Sender interface {
 	SendEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient, subject, body string) error
 }
 
-// RenderedSender sends an email with both plain-text and HTML alternatives.
-// Sender remains the plain-text interface used by existing notification flows.
+// RenderedSender sends an email with a plain-text body and, when the sender
+// composed one, an HTML alternative beside it. Sender remains the plain-text
+// interface used by existing notification flows.
 type RenderedSender interface {
 	SendRenderedEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient string, email RenderedEmail) error
 }
@@ -53,17 +54,10 @@ func (c *Client) SendTestEmail(ctx context.Context, settings emailsettings.SMTPS
 }
 
 func (c *Client) SendEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient, subject, body string) error {
-	return c.send(ctx, settings, recipient, RenderedEmail{Subject: subject, Text: body})
+	return c.SendRenderedEmail(ctx, settings, recipient, RenderedEmail{Subject: subject, Text: body})
 }
 
 func (c *Client) SendRenderedEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient string, email RenderedEmail) error {
-	if strings.TrimSpace(email.HTML) == "" {
-		return errors.New("html body is required")
-	}
-	return c.send(ctx, settings, recipient, email)
-}
-
-func (c *Client) send(ctx context.Context, settings emailsettings.SMTPSettings, recipient string, email RenderedEmail) error {
 	settings = emailsettings.Normalize(settings)
 	if err := emailsettings.Validate(settings, true); err != nil {
 		return err

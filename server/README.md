@@ -172,7 +172,7 @@ These are URLs reachable inside the private network, not the public ones meant f
 - `PUBLIRA_EMAIL_RENDERER_URL`
   - The URL of the ConnectRPC service that outbox-worker uses to render the HTML part of its emails
   - Example: `http://email-renderer:8080` (container-to-container)
-  - When unset, `http://localhost:8080` is used for local development
+  - When unset, outbox-worker delivers text-only mail. There is no default URL
 
 ## Mobile push (Firebase Cloud Messaging)
 

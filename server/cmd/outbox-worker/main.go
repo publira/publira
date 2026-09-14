@@ -112,7 +112,7 @@ func main() {
 		DB:        db,
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
-		Renderer:  emailrenderer.NewClient(resolveEmailRendererURL()),
+		Renderer:  resolveEmailRenderer(logger),
 	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger}))
 	if err != nil {
 		logger.Error("failed to start outbox worker", "error", err)
@@ -196,11 +196,18 @@ func workerConfig(
 	}
 }
 
-func resolveEmailRendererURL() string {
-	if url := strings.TrimSpace(os.Getenv("PUBLIRA_EMAIL_RENDERER_URL")); url != "" {
-		return url
+// resolveEmailRenderer answers nil for a deployment that runs no renderer, so
+// its mail goes out as the text the worker composes itself. A default URL here
+// would instead point every such deployment at a service that is not there, and
+// retry each mail event until the row dead-letters.
+func resolveEmailRenderer(logger *slog.Logger) emailrenderer.Renderer {
+	url := strings.TrimSpace(os.Getenv("PUBLIRA_EMAIL_RENDERER_URL"))
+	if url == "" {
+		logger.Info("html email parts are disabled", "reason", "no email renderer URL is configured")
+		return nil
 	}
-	return emailrenderer.DefaultURL
+	logger.Info("html email parts are enabled", "email_renderer_url", url)
+	return emailrenderer.NewClient(url)
 }
 
 func envDuration(name string, fallback time.Duration) time.Duration {

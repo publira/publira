@@ -42,6 +42,8 @@ No lint covers this. The read paths are in `api/*/`, `internal/outbox/`, and `in
 
 `emailrenderer` answers with the HTML part of a mail and nothing else. The subject line and the plain-text alternative are composed in `internal/outbox` out of `locales/*.json`, through `locale.Message` and `locale.FormatDateTime` over the tables `scripts/generate-locale-registry.ts` compiles into `internal/locale/gen/`. Putting a subject back into `RenderEmailResponse` would make a separate service the only source of one again, and a mail unsendable for as long as that service is down.
 
+The same reasoning makes the renderer optional: a worker started without `PUBLIRA_EMAIL_RENDERER_URL` delivers the text it composed and calls nothing, and no default URL may be reintroduced — one would point every deployment that runs no renderer at a service that is not there.
+
 A template is therefore two halves added together: the React component under `packages/email-templates`, and the entry in `emailTemplates` (`internal/outbox/email_copy.go`) naming, in order, the catalog keys its lines are read from. A mail whose template has no entry there fails permanently rather than going out with no subject.
 
 No lint covers this — nothing can compare a React component against a list of message keys. `TestEmailCopyCoversEveryTemplateInEveryLocale` is what fails when a catalog is missing one of them.

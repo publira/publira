@@ -88,7 +88,7 @@ The `mailpit` service is the stack's SMTP sink: intake on `E2E_MAILPIT_SMTP_PORT
 
 `src/mail.ts` reads it back over that API, at the origin `MAILPIT_BASE_URL` in `src/urls.ts` names (`E2E_MAILPIT_BASE_URL`): `waitForMessageTo(recipient)` returns the newest message for one address, `clearMessagesTo(recipient)` deletes that address's mail, and `tokenFromLink(message, pathname)` returns the `token` query value of the link whose path matches.
 
-The `email-renderer` service turns a template into the subject, HTML, and text the outbox worker delivers, so mail sent through the worker needs it running. It is a host process like the rest: `E2E_EMAIL_RENDERER_PORT` (default `8300`) is its port, and `PUBLIRA_EMAIL_RENDERER_URL` — built from that port, never inherited — is what points the worker at it. Without it the worker retries every event it picks up until the row dead-letters.
+The `email-renderer` service turns a template into the HTML part of the mail the outbox worker delivers; the subject and the plain-text body are the worker's own. It is a host process like the rest: `E2E_EMAIL_RENDERER_PORT` (default `8300`) is its port, and `PUBLIRA_EMAIL_RENDERER_URL` — built from that port, never inherited — is what points the worker at it. A run whose renderer is not up still delivers mail, as text alone, so a suite that asserts on the HTML part needs it running.
 
 ### The edge
 

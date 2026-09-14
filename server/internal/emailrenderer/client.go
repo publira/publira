@@ -15,8 +15,6 @@ import (
 	"github.com/publira/publira/server/internal/tracing"
 )
 
-const DefaultURL = "http://localhost:8080"
-
 // Renderer turns a template and its data into the HTML part of an email. The
 // subject line and the plain-text alternative are composed from the shared
 // catalogs by the process that sends the mail.
