@@ -172,6 +172,64 @@ func TestDBAdminRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *test
 	}
 }
 
+// A password set while an address change waits for the account lock ends that
+// change: it was authorized by a password the account no longer has, and the
+// lock is where it finds that out. Holding the row from the test is what makes
+// the order a step rather than a race.
+func TestDBAdminRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+
+	held, err := env.PG.DB.Begin()
+	if err != nil {
+		t.Fatalf("begin the transaction holding the account: %v", err)
+	}
+	defer held.Rollback() //nolint:errcheck
+	if _, err := held.Exec(`SELECT id FROM users WHERE id = $1 FOR UPDATE`, tenant.User.ID); err != nil {
+		t.Fatalf("hold the account row: %v", err)
+	}
+
+	errs := make(chan error, 1)
+	go func() {
+		_, err := env.authClient().RequestEmailChange(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
+			Tenant:          tenant.tenantContext(),
+			CurrentEmail:    tenant.User.Email,
+			NewEmail:        "moved@tenant-a.example.com",
+			CurrentPassword: testutil.SeededPassword,
+		}))
+		errs <- err
+	}()
+	testutil.WaitForBlockedBackend(t, env.PG.DB)
+
+	newHash, err := auth.HashPassword("a-brand-new-password")
+	if err != nil {
+		t.Fatalf("hash the replacement password: %v", err)
+	}
+	if _, err := held.Exec(`
+		UPDATE users SET password_hash = $2, credentials_version = credentials_version + 1
+		WHERE id = $1
+	`, tenant.User.ID, newHash); err != nil {
+		t.Fatalf("set the replacement password: %v", err)
+	}
+	if err := held.Commit(); err != nil {
+		t.Fatalf("commit the replacement password: %v", err)
+	}
+
+	// Unauthenticated, not invalid_argument: the session the request carried is
+	// the thing that ended, and the caller has to sign in again.
+	if err := <-errs; connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("RequestEmailChange code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+	if count := env.countRows(t, `
+		SELECT count(*) FROM user_email_change_tokens WHERE user_id = $1
+	`, tenant.User.ID); count != 0 {
+		t.Fatalf("email change requests = %d, want none", count)
+	}
+	if count := env.countRows(t, `SELECT count(*) FROM outbox_events`); count != 0 {
+		t.Fatalf("queued mails = %d, want none", count)
+	}
+}
+
 // One event per address to confirm, each with its own key, so a failure to
 // deliver to one side is retried on its own.
 func TestDBAdminRequestEmailChangeEnqueuesOneEmailPerSide(t *testing.T) {

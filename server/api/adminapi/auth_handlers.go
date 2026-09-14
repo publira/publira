@@ -634,7 +634,8 @@ func (s *adminServer) RequestEmailChange(
 	// once each insert a token and leave two live links behind. Locking the
 	// account row orders them: the second one's statements then run on a
 	// snapshot that already holds the first one's token.
-	if _, err := txq.GetUserByIDForUpdate(ctx, user.ID); err != nil {
+	locked, err := txq.GetUserByIDForUpdate(ctx, user.ID)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// The account was closed while this request waited, so the session
 			// it came with is over and there is no address left to move.
@@ -643,6 +644,18 @@ func (s *adminServer) RequestEmailChange(
 		}
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
 		return nil, s.internalDBError(ctx, "failed to lock the account for an email change request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	// The password and the address above were checked against the row this
+	// request read before the transaction, and the lock is what makes those
+	// checks current. A password set while this request waited ends the session
+	// it came with, since every path that writes one bumps credentials_version.
+	if locked.CredentialsVersion != user.CredentialsVersion {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "stale_session")
+		return nil, invalidSessionError()
+	}
+	if !strings.EqualFold(currentEmail, locked.Email) {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
 	}
 
 	if err := txq.DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
@@ -653,7 +666,7 @@ func (s *adminServer) RequestEmailChange(
 		ID:                    tokenID,
 		TenantID:              tenant.ID,
 		UserID:                user.ID,
-		CurrentEmail:          user.Email,
+		CurrentEmail:          locked.Email,
 		NewEmail:              newEmail,
 		CurrentEmailTokenHash: auth.HashToken(currentEmailToken),
 		NewEmailTokenHash:     auth.HashToken(newEmailToken),

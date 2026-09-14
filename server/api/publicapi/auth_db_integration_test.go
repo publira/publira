@@ -692,6 +692,69 @@ func TestDBRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *testing.T
 	}
 }
 
+// A password set while an address change waits for the account lock ends that
+// change: it was authorized by a password the account no longer has, and the
+// lock is where it finds that out. Holding the row from the test is what makes
+// the order a step rather than a race.
+func TestDBRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	token := tokenFor(t, tenant, member)
+
+	held, err := env.PG.DB.Begin()
+	if err != nil {
+		t.Fatalf("begin the transaction holding the account: %v", err)
+	}
+	defer held.Rollback() //nolint:errcheck
+	if _, err := held.Exec(`SELECT id FROM users WHERE id = $1 FOR UPDATE`, member.ID); err != nil {
+		t.Fatalf("hold the account row: %v", err)
+	}
+
+	errs := make(chan error, 1)
+	go func() {
+		_, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(
+			&publirav1.RequestEmailChangeRequest{
+				Tenant:          tenantContext(tenant),
+				CurrentEmail:    member.Email,
+				NewEmail:        "moved@tenant-a.example.com",
+				CurrentPassword: testutil.SeededPassword,
+			},
+			token,
+		))
+		errs <- err
+	}()
+	testutil.WaitForBlockedBackend(t, env.PG.DB)
+
+	newHash, err := auth.HashPassword("a-brand-new-password")
+	if err != nil {
+		t.Fatalf("hash the replacement password: %v", err)
+	}
+	if _, err := held.Exec(`
+		UPDATE users SET password_hash = $2, credentials_version = credentials_version + 1
+		WHERE id = $1
+	`, member.ID, newHash); err != nil {
+		t.Fatalf("set the replacement password: %v", err)
+	}
+	if err := held.Commit(); err != nil {
+		t.Fatalf("commit the replacement password: %v", err)
+	}
+
+	// Unauthenticated, not invalid_argument: the session the request carried is
+	// the thing that ended, and the caller has to sign in again.
+	if err := <-errs; connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("RequestEmailChange code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+	if count := countRows(t, env, `
+		SELECT count(*) FROM user_email_change_tokens WHERE user_id = $1
+	`, member.ID); count != 0 {
+		t.Fatalf("email change requests = %d, want none", count)
+	}
+	if count := countRows(t, env, `SELECT count(*) FROM outbox_events`); count != 0 {
+		t.Fatalf("queued mails = %d, want none", count)
+	}
+}
+
 // The current password is the whole authorization for a change: a session
 // someone walked away from must not be enough to take the account over.
 func TestDBChangePasswordRejectsAWrongCurrentPassword(t *testing.T) {

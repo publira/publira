@@ -1,8 +1,10 @@
 package testutil
 
 import (
+	"database/sql"
 	"sync"
 	"testing"
+	"time"
 )
 
 // A case about a handler that must keep one row per account submits
@@ -39,4 +41,28 @@ func RunConcurrently(t *testing.T, n int, request func() error) {
 			t.Fatalf("one of %d concurrent requests failed: %v", n, err)
 		}
 	}
+}
+
+// WaitForBlockedBackend waits until a connection to this database is waiting on
+// a lock. A case that holds a row itself uses it to know the request it started
+// has reached that row rather than merely been dispatched, which is what makes
+// "the row changed while the request waited" a step rather than a race.
+func WaitForBlockedBackend(t *testing.T, db *sql.DB) {
+	t.Helper()
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		var blocked int
+		if err := db.QueryRow(`
+			SELECT count(*) FROM pg_stat_activity
+			WHERE wait_event_type = 'Lock' AND state = 'active'
+		`).Scan(&blocked); err != nil {
+			t.Fatalf("read pg_stat_activity: %v", err)
+		}
+		if blocked > 0 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("no connection reached the held row before the timeout")
 }
