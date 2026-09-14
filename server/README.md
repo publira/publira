@@ -118,7 +118,7 @@ Creating the bucket is not the application's responsibility (it is never created
 task storage:init
 ```
 
-It creates `PUBLIRA_S3_BUCKET` with the aws CLI, and succeeds as-is when the bucket already exists. `task dev` runs it before starting each server, `task setup` runs it after `db:setup`, and the E2E and bootstrap preparation run it too. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
+It creates `PUBLIRA_S3_BUCKET` with the aws CLI, and succeeds as-is when the bucket already exists. `task dev` runs it before starting each server. `task setup`, the E2E preparation, and the bootstrap check run `task storage:seed` instead, which creates the bucket the same way and then uploads the images the development seed's rows name. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
 
 ### Development environment (RustFS)
 

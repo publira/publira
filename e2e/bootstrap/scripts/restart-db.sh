@@ -17,7 +17,7 @@ before_data_directory="$(psql_value 'SHOW data_directory')"
 
 # Storage side of the same question: the rustfs volume, not the container
 # layer, must hold the objects. A bucket alone proves nothing here — the
-# storage-init re-run below would recreate an empty one — so write a sentinel
+# storage seed re-run below would recreate one — so write a sentinel
 # object first and read it back before anything touches the bucket again.
 sentinel_key="bootstrap/restart-sentinel.txt"
 sentinel_value="restart-sentinel-$(date +%s)-$$"
@@ -58,8 +58,8 @@ assert_equals "rustfs sentinel object after restart" "${sentinel_value}" \
 
 # Re-running setup on an already-migrated database must stay a no-op, not a
 # dirty migration.
-bootstrap_log "re-running task db:setup and task storage:init on the restarted services"
-(cd "${REPO_ROOT}" && task db:setup && task storage:init)
+bootstrap_log "re-running task db:setup and task storage:seed on the restarted services"
+(cd "${REPO_ROOT}" && task db:setup && task storage:seed)
 assert_equals "schema_migrations after re-setup" "${before_migration}" "$(migration_state)"
 
 bootstrap_log "phase 3 passed"

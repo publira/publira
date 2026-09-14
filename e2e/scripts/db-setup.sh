@@ -27,11 +27,11 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
   SET host = '127.0.0.1', port = ${E2E_MAILPIT_SMTP_PORT}, updated_at = NOW();
 "
 
-e2e_log "running task storage:init"
-(cd "${REPO_ROOT}" && task storage:init)
-
-# After storage:init: the fixtures need the bucket to exist.
-bash "${E2E_SCRIPTS_DIR}/seed-viewer-pages.sh"
+# Creates the bucket and uploads the images the development seed's rows name:
+# every series' and label's eye-catch, every creator's icon, and every episode's
+# body pages.
+e2e_log "running task storage:seed"
+(cd "${REPO_ROOT}" && task storage:seed)
 
 # The development seed dates its catalogue and its accounts from the moment it
 # runs, which a screenshot compared pixel by pixel cannot absorb. Applied here

@@ -174,17 +174,17 @@ jobs:
               - *docs_excluded
               - 'mobile/**'
               - 'e2e/compose.yaml'
-              # db-setup.sh seeds the viewer page fixtures, so this job runs
-              # them even though only Test / E2E measures the reader.
-              - 'e2e/fixtures/**'
               - 'e2e/scripts/api-server.sh'
               - 'e2e/scripts/db-setup.sh'
               - 'e2e/scripts/down.sh'
+              - 'e2e/scripts/image-server.sh'
               - 'e2e/scripts/lib.sh'
-              - 'e2e/scripts/seed-viewer-pages.sh'
               - 'e2e/scripts/stop-apps.sh'
               - 'e2e/scripts/up.sh'
               - 'scripts/storage-init.sh'
+              # db-setup.sh uploads the images the seed's rows name, and the
+              # reader this job drives draws them.
+              - 'scripts/storage-seed.sh'
               - 'proto/publira/v1/catalog.proto'
               - 'proto/publira/v1/domain.proto'
               - 'server/**'
@@ -217,6 +217,7 @@ jobs:
               - 'turbo.jsonc'
               - 'Taskfile.yaml'
               - 'scripts/storage-init.sh'
+              - 'scripts/storage-seed.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_bootstrap:
@@ -236,6 +237,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.jsonc'
               - 'scripts/storage-init.sh'
+              - 'scripts/storage-seed.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_routing:
@@ -726,6 +728,7 @@ jobs:
           bash e2e/scripts/up.sh
           bash e2e/scripts/db-setup.sh
           bash e2e/scripts/api-server.sh start-wait
+          bash e2e/scripts/image-server.sh start-wait
 
       - name: Enable KVM
         run: |
@@ -748,6 +751,7 @@ jobs:
       - name: Teardown / Public API stack
         if: always()
         run: |
+          bash e2e/scripts/image-server.sh stop || true
           bash e2e/scripts/api-server.sh stop || true
           bash e2e/scripts/down.sh || true
 

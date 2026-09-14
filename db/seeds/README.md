@@ -1,12 +1,25 @@
-# SQL Seeds
+# Seeds
 
-Initial data for local development and UI checks is managed as SQL.
+Initial data for local development and UI checks, in two halves: the rows, as SQL, and the images those rows name, as files in object storage.
 
 ## Purpose
 
 - Separate the responsibilities of migrations and seeds
 - Reproduce the initial database state without a Go runtime
 - Remain safe to run repeatedly (idempotent)
+
+## The two halves
+
+| Half | What it puts where | How it is run |
+| --- | --- | --- |
+| Database | Every row, the images included: the `*_images` and `*_image_variants` rows that describe each image and name the object key it is stored at | `task db:seed`, which is plain SQL through `psql` |
+| Storage | The bytes, from `objects/` into the bucket, at the keys those rows name | `task storage:seed`, which reads the keys back out of the database |
+
+The split is what keeps the database half runnable with nothing but `psql`: a seed that had to upload its own images would need a runtime to talk to S3. It is also why neither half is useful alone — a row naming an object that is not there leaves a broken image, and an object no row names is never served — so `task setup`, `task dev-env:init`, and `task e2e:db` all run both.
+
+`objects/` mirrors the key space one directory deep: an object key is `tenants/<tenant>/seed/<path>`, and `<path>` is where the file sits under `objects/`. `task storage:seed` refuses to upload anything when the two sides disagree in either direction.
+
+The files themselves are rendered from the vector sources under [`assets/`](../../assets/README.md) by `task images:gen`, so a redrawn card is an SVG edit and a re-render rather than a new JPEG.
 
 ## Directory layout
 
@@ -19,6 +32,10 @@ Initial data for local development and UI checks is managed as SQL.
   - `010_catalog.sql`: Labels, creators, series, episodes, genres, and tags
   - `020_audit_logs.sql`: Audit logs
   - `030_smtp_config.sql`: SMTP configuration
+  - `040_pages.sql`: Published pages
+  - `050_access_tickets.sql`: The member's access ticket for the priced episode
+  - `060_images.sql`: The image rows: an eye-catch for every series and label, an icon for every creator, and eight body pages for every episode
+- `objects/`: The image files `task storage:seed` uploads, laid out as the keys `dev/060_images.sql` names
 - `scenarios/`: Scenario-specific data (run as needed) — [scenarios/README.md](./scenarios/README.md)
 
 ## Running seeds
@@ -26,9 +43,10 @@ Initial data for local development and UI checks is managed as SQL.
 ```bash
 task db:seed             # Development seeds (default: ENV=dev)
 task db:seed ENV=prod    # Production seeds (database users, roles, and object ownership only)
+task storage:seed        # The images the development seed's rows name
 ```
 
-`task db:setup` runs `db:migrate` and `db:seed` (dev).
+`task db:setup` runs `db:migrate` and `db:seed` (dev). `task storage:seed` creates the bucket first, so it needs no separate `task storage:init`.
 
 ## Principles
 
@@ -74,6 +92,11 @@ The development passwords are `platformpass`, `contentstatspass`, `outboxpass`, 
 - labels: 10
 - series: 100
 - episodes: 1,000 (10 per series)
+- eye-catches: one per series and per label, in each of the four delivered aspect ratios at three widths
+- creator icons: one per creator
+- episode pages: 8 per episode
+
+Five card designs and five icon designs are dealt round-robin over the catalogue, so a shelf tells one series from the next while the whole set stays at 73 uploaded objects.
 
 ## ID specification
 

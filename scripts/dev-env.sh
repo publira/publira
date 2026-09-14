@@ -55,7 +55,10 @@ init_profile() {
     psql "${admin_url}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${db_name}\""
   fi
   PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" task -d "${REPO_ROOT}" db:setup
-  PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET}" task -d "${REPO_ROOT}" storage:init
+  PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
+    PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET}" \
+    PUBLIRA_S3_ENDPOINT="${PUBLIRA_S3_ENDPOINT}" \
+    task -d "${REPO_ROOT}" storage:seed
   printf 'initialized profile %q (database=%s, redis-db=%s, bucket=%s)\n' \
     "${DEV_ENV_NAME}" "${db_name}" "${DEV_ENV_SLOT}" "${PUBLIRA_S3_BUCKET}"
 }

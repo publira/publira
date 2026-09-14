@@ -175,9 +175,9 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
-| `Test / Mobile E2E` | mobile, E2E lifecycle scripts and page fixtures, domain proto, server, migrations/seeds, Taskfile, storage init, `scripts/setup-flutter.sh` |
-| `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, server, db, and build inputs |
-| `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init |
+| `Test / Mobile E2E` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh` |
+| `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, server, db, build inputs, storage init and seed |
+| `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init and seed |
 | `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `infra/proxy/**`, `e2e/routing/**` |
 | `Build` | apps, packages, server, and build inputs |
 | `Docker` | The role mapping in [Docker CI execution strategy](../../infra/docker/README.md#docker-ci-execution-strategy) |

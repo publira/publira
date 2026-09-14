@@ -108,7 +108,7 @@ flutter analyze --fatal-infos
 flutter test
 ```
 
-When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E` runs integration tests on an Android emulator (`PUBLIRA_LIVE_API=true task mobile:test-integration`). The CI job starts and stops the public API and development seeds.
+When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E` runs integration tests on an Android emulator (`PUBLIRA_LIVE_API=true task mobile:test-integration`). The CI job starts and stops the public API, image-server, and development seeds.
 
 For the full CI job layout, path filters, and triage, see [.github/workflows/README.md](../.github/workflows/README.md).
 
@@ -331,4 +331,4 @@ task mobile:e2e
 task mobile:test-integration
 ```
 
-On failure, logcat and screenshots are left in `mobile/.run/artifacts/`. CI's `Test / Mobile E2E` starts the public API and development seeds, then runs `PUBLIRA_LIVE_API=true task mobile:test-integration` on an Android emulator and uploads the `mobile-e2e-artifacts` artifact on failure.
+On failure, logcat and screenshots are left in `mobile/.run/artifacts/`. CI's `Test / Mobile E2E` starts the public API, image-server, and development seeds, then runs `PUBLIRA_LIVE_API=true task mobile:test-integration` on an Android emulator and uploads the `mobile-e2e-artifacts` artifact on failure. image-server is part of the stack because every seeded episode carries a body, so the live group's reader fetches pages as soon as it opens one.

@@ -256,6 +256,9 @@ test.describe("web-host screenshots", () => {
         await expectScreenshot(page, viewport, "creator-detail");
       });
 
+      // An episode carries images and nothing else today. The novel text
+      // viewer the redesign will also have to cover is #445, and this suite
+      // grows a screen for it when that one lands.
       test("an episode with a comic body", async ({ page }) => {
         await page.goto(hostPath(VIEWER_EPISODE_PATH));
 
@@ -266,32 +269,6 @@ test.describe("web-host screenshots", () => {
         ).toHaveAttribute("data-page-status", "loaded");
 
         await expectScreenshot(page, viewport, "episode-comic");
-      });
-
-      // An episode carries images and nothing else today, so the second body
-      // this records is the notice a reader gets when it carries none. The
-      // novel text viewer the redesign will also have to cover is #445, and
-      // this suite grows a screen for it when that one lands.
-      test("an episode with no body", async ({ page }) => {
-        await page.goto(
-          hostPath(
-            `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.freeEpisodeId}`
-          )
-        );
-
-        await expect(
-          page.getByRole("heading", {
-            level: 1,
-            name: SEED_TENANT.series.freeEpisodeTitle,
-          })
-        ).toBeVisible();
-        await expect(
-          page.getByText(
-            "The pages of this episode have not been published yet."
-          )
-        ).toBeVisible();
-
-        await expectScreenshot(page, viewport, "episode-without-body");
       });
 
       test("search results", async ({ page }) => {

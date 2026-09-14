@@ -51,7 +51,7 @@ tasks:
       - bash scripts/dev-env.sh env
 
   dev-env:init:
-    desc: Create database, migrate/seed, and initialize storage for the selected profile
+    desc: Create database, migrate/seed, and seed storage for the selected profile
     cmds:
       - bash scripts/dev-env.sh init
 
@@ -115,12 +115,18 @@ tasks:
       - task: deps
       - task: mobile:deps
       - task: db:setup
-      - task: storage:init
+      - task: storage:seed
 
   storage:init:
     desc: Initialize the storage backend (create the S3 bucket)
     cmds:
       - bash scripts/storage-init.sh
+
+  storage:seed:
+    desc: Upload the development seed's images to the object keys its rows name
+    cmds:
+      - task: storage:init
+      - bash scripts/storage-seed.sh
 
   test:
     desc: Run monorepo tests and server Go tests

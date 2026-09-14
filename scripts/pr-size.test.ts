@@ -69,7 +69,7 @@ describe("coefficient", () => {
   it("ranks a path by what it costs to read", () => {
     assert.equal(coefficient("locales/ja.json"), 0.2);
     assert.equal(coefficient("e2e/fixtures/eye-catch/og-1200x630.jpg"), 0.2);
-    assert.equal(coefficient("assets/comic-pages/page-01.svg"), 0.2);
+    assert.equal(coefficient("assets/seeds/episode-page/page-01.svg"), 0.2);
     assert.equal(coefficient("assets/images.json"), 0.7);
     assert.equal(coefficient("AGENTS.md"), 0.3);
     assert.equal(coefficient("server/internal/auth/session_test.go"), 0.5);
