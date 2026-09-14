@@ -62,16 +62,10 @@ e2e_log "waiting for readiness (timeout ${TIMEOUT_SEC}s)"
 # RustFS through the published port, so a container-only probe would miss it.
 wait_http "rustfs" "http://127.0.0.1:${E2E_RUSTFS_PORT}/health"
 
-wait_http "public-api/readyz" \
+# One probe for all three namespaces: the internal listener reports a check per
+# database role, so this is ready only once every one of them answers.
+wait_http "api/readyz" \
   "http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}/readyz" \
-  --expect-body-regex "${JSON_OK_REGEX}"
-
-wait_http "admin-api/readyz" \
-  "http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}/readyz" \
-  --expect-body-regex "${JSON_OK_REGEX}"
-
-wait_http "platform-api/readyz" \
-  "http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 wait_http "email-renderer/readyz" \

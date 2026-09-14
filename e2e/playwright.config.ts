@@ -13,9 +13,9 @@ const isCi = Boolean(process.env.CI);
 const desktopChrome = devices["Desktop Chrome"];
 
 /**
- * Specs that stop a shared process (`stopApiServer`, admin-api-server.sh).
- * They cannot overlap with each other (same API) or with the three main
- * projects (those still need the APIs up). Filename is the contract: a new
+ * Specs that stop the API (`stopApiServer`). One process serves all three
+ * Connect namespaces, so they cannot overlap with each other or with the three
+ * main projects (those still need the API up). Filename is the contract: a new
  * process-killing spec must match this pattern so it is kept out of the
  * parallel projects. See the isolated projects below.
  */
@@ -186,10 +186,11 @@ export default defineConfig({
         baseURL: WEB_PLATFORM_BASE_URL,
       },
     },
-    // Public API outage: catalog.outage and catalog.error-boundary both call
-    // stopApiServer, so they are separate projects chained with `dependencies`
-    // (Playwright has no per-project workers; a single project would still
-    // fan the two files across the global worker pool).
+    // API outage. Every file below calls stopApiServer, which takes all three
+    // namespaces down with the one process, so they form a single chain
+    // through `dependencies` — one project per filename, because Playwright
+    // has no per-project workers and a shared project would still fan its
+    // files across the global worker pool.
     {
       dependencies: ["web-host", "web-admin", "web-platform"],
       fullyParallel: false,
@@ -210,11 +211,8 @@ export default defineConfig({
         baseURL: WEB_HOST_BASE_URL,
       },
     },
-    // admin-api-server, not the public API. Safe to overlap with the catalog
-    // outage projects; not safe to overlap with web-admin. One project per
-    // filename so two stop-admin-api files cannot share the worker pool.
     {
-      dependencies: ["web-host", "web-admin", "web-platform"],
+      dependencies: ["catalog-error-boundary"],
       fullyParallel: false,
       name: "admin-outage",
       testMatch: [/admin\.outage\./u],
@@ -235,9 +233,8 @@ export default defineConfig({
         baseURL: WEB_ADMIN_BASE_URL,
       },
     },
-    // platform-api-server. Same one-file-per-project chain as admin.
     {
-      dependencies: ["web-host", "web-admin", "web-platform"],
+      dependencies: ["admin-error-boundary"],
       fullyParallel: false,
       name: "platform-outage",
       testMatch: [/platform\.outage\./u],

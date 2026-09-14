@@ -275,15 +275,11 @@ dev_env_write_profile() {
     printf 'PUBLIRA_WEB_PLATFORM_PORT=%s\n' "$((port_base + 2))"
     printf 'PUBLIRA_PUBLIC_API_PORT=%s\n' "$((port_base + 10))"
     printf 'PUBLIRA_PUBLIC_API_GRPC_PORT=%s\n' "$((port_base + 11))"
-    printf 'PUBLIRA_ADMIN_API_GRPC_PORT=%s\n' "$((port_base + 13))"
-    printf 'PUBLIRA_PLATFORM_API_GRPC_PORT=%s\n' "$((port_base + 15))"
     printf 'PUBLIRA_IMAGE_SERVER_PORT=%s\n' "$((port_base + 20))"
     printf 'PUBLIRA_ADMIN_IMAGE_SERVER_PORT=%s\n' "$((port_base + 21))"
     printf 'PUBLIRA_EMAIL_RENDERER_PORT=%s\n' "$((port_base + 30))"
     printf 'PUBLIRA_OUTBOX_WORKER_PORT=%s\n' "$((port_base + 40))"
-    printf 'PUBLIRA_PUBLIC_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
-    printf 'PUBLIRA_ADMIN_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 13))"
-    printf 'PUBLIRA_PLATFORM_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 15))"
+    printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
     printf 'PUBLIRA_WEB_HOST_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
     printf 'PUBLIRA_WEB_ADMIN_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 2))"
@@ -315,10 +311,8 @@ dev_env_load_profile() {
     PUBLIRA_COOKIE_SUFFIX PUBLIRA_AUTH_SECRET \
     PUBLIRA_AUTH_JWT_SECRET PUBLIRA_REVALIDATE_TOKEN PUBLIRA_WEB_HOST_PORT \
     PUBLIRA_WEB_ADMIN_PORT PUBLIRA_WEB_PLATFORM_PORT PUBLIRA_PUBLIC_API_PORT \
-    PUBLIRA_PUBLIC_API_GRPC_PORT PUBLIRA_ADMIN_API_GRPC_PORT \
-    PUBLIRA_PLATFORM_API_GRPC_PORT PUBLIRA_IMAGE_SERVER_PORT \
+    PUBLIRA_PUBLIC_API_GRPC_PORT PUBLIRA_IMAGE_SERVER_PORT \
     PUBLIRA_ADMIN_IMAGE_SERVER_PORT PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_OUTBOX_WORKER_PORT \
-    PUBLIRA_PUBLIC_GRPC_URL PUBLIRA_ADMIN_GRPC_URL PUBLIRA_PLATFORM_GRPC_URL \
     PUBLIRA_WEB_HOST_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \
     PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
     dev_env_load_required_profile_value "${profile_path}" "${key}"
@@ -339,6 +333,20 @@ dev_env_load_profile() {
     PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@${postgres}/${database}?sslmode=disable"
     export PUBLIRA_WORKER_DB_URL
   fi
+
+  # A profile written while each console had an API server of its own has a
+  # URL per console and none under this name. All three named the same process
+  # by then, and the ports the old ones carried are gone, so the profile's own
+  # gRPC port is the answer rather than any value stored back then.
+  local grpc_url
+  if ! grpc_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_GRPC_URL)"; then
+    PUBLIRA_GRPC_URL="http://127.0.0.1:${PUBLIRA_PUBLIC_API_GRPC_PORT}"
+  elif [[ -z "${grpc_url}" ]]; then
+    dev_env_die "profile has an empty PUBLIRA_GRPC_URL: ${profile_path}"
+  else
+    PUBLIRA_GRPC_URL="${grpc_url}"
+  fi
+  export PUBLIRA_GRPC_URL
 
   # Profiles created before the stats batch have no key of their own. They fall
   # back to the superuser connection, which is what their worker URL was when

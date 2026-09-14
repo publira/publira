@@ -98,32 +98,52 @@ func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (strin
 	return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
 }
 
-// NewHandler returns the HTTP handler for the platform API. It connects to the
-// database as publira_platform, whose BYPASSRLS attribute lets it read past
+// ServiceName is the service.name this namespace's spans carry. The three
+// namespaces share a process and keep their own name, so a trace UI can still
+// tell the platform console's work from the public API's.
+const ServiceName = "publira-platform-api-server"
+
+// API is the platform console's namespace — PlatformTenantService,
+// PlatformSetupService and the rest of publira.platform.v1 — ready to be
+// mounted by [API.Register].
+type API struct {
+	server *platformServer
+}
+
+// New builds the platform console API over db, which must be the pool
+// connected as publira_platform, whose BYPASSRLS attribute lets it read past
 // row-level security.
 //
 // It fails rather than serves when the limit on the mail the console's forms
 // may cause is misconfigured, so a limit nobody can meet is caught at startup
 // instead of by the first operator who cannot get their password reset.
-func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (http.Handler, error) {
+func New(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (*API, error) {
 	mail, err := mailguard.NewFromEnv(logger)
 	if err != nil {
 		return nil, err
 	}
-	return newHandler(db, queries, logger, encryptor, tester, tokens, nil, mail), nil
+	return newAPI(db, queries, logger, encryptor, tester, tokens, nil, mail), nil
 }
 
-// NewHandlerWithAsyncRecorder creates a platform API handler with an
-// AsyncRecorder.
-func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (http.Handler, error) {
+// NewWithAsyncRecorder is New with an AsyncRecorder.
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (*API, error) {
 	mail, err := mailguard.NewFromEnv(logger)
 	if err != nil {
 		return nil, err
 	}
-	return newHandler(db, queries, logger, encryptor, tester, tokens, recorder, mail), nil
+	return newAPI(db, queries, logger, encryptor, tester, tokens, recorder, mail), nil
 }
 
-func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard) http.Handler {
+// Register mounts the publira.platform.v1 services on mux. What a mux carries
+// is what its listener serves, so this belongs on the internal listener alone:
+// the edge forwards /api host-agnostically, and a mux the edge reaches would
+// put the platform console's RPCs — PlatformSetupService among them, which is
+// served without authentication — on every tenant site.
+func (a *API) Register(mux *http.ServeMux) {
+	registerPlatformRoutes(mux, a.server)
+}
+
+func newAPI(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard) *API {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -143,6 +163,19 @@ func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		logger:    logger,
 		mail:      mail,
 	}
+	return &API{server: server}
+}
+
+// handlerFromServer is the namespace on a mux of its own, health probes
+// included, as a process serving nothing else would mount it.
+func handlerFromServer(server *platformServer) http.Handler {
+	mux := http.NewServeMux()
+	health.Register(mux, health.WithDB(server.db))
+	registerPlatformRoutes(mux, server)
+	return mux
+}
+
+func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 	authInterceptor := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			_, user, role, err := server.authenticatePlatformSession(ctx, "", req.Header())
@@ -159,10 +192,8 @@ func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		}
 	})
 
-	traced := tracing.ConnectHandlerOption()
+	traced := tracing.ConnectHandlerOption(ServiceName)
 
-	mux := http.NewServeMux()
-	health.Register(mux, health.WithDB(db))
 	tenantPath, tenantHandler := publirasplatformv1connect.NewPlatformTenantServiceHandler(
 		server,
 		traced,
@@ -209,5 +240,4 @@ func newHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 	mux.Handle(dashboardPath, dashboardHandler)
 	auditPath, auditHandler := publirasplatformv1connect.NewPlatformAuditLogServiceHandler(server, traced)
 	mux.Handle(auditPath, auditHandler)
-	return mux
 }

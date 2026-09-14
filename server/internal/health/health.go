@@ -8,6 +8,10 @@
 //
 //	{"status":"ok|unavailable|starting","checks":{"db":{"status":"ok|error","error":"..."}}}
 //
+// The key of each entry is the checker's name. A process with one pool calls
+// it "db"; one holding a pool per database role names them apart with
+// WithDBNamed.
+//
 // Status values:
 //   - ok          — all checks passed (HTTP 200)
 //   - unavailable — at least one dependency check failed (HTTP 503)
@@ -55,10 +59,18 @@ type Checker interface {
 // DBChecker pings a *sql.DB.
 type DBChecker struct {
 	DB *sql.DB
+	// CheckName is the name this pool answers under. Empty means "db",
+	// which is what a process holding a single pool reports.
+	CheckName string
 }
 
 // Name returns the check name used in /readyz JSON.
-func (c *DBChecker) Name() string { return "db" }
+func (c *DBChecker) Name() string {
+	if c == nil || c.CheckName == "" {
+		return "db"
+	}
+	return c.CheckName
+}
 
 // Check pings the database within the request context.
 func (c *DBChecker) Check(ctx context.Context) error {
@@ -91,6 +103,14 @@ type Option func(*Options)
 func WithDB(db *sql.DB) Option {
 	return func(o *Options) {
 		o.Checkers = append(o.Checkers, &DBChecker{DB: db})
+	}
+}
+
+// WithDBNamed is WithDB for a process holding a pool per database role, where
+// one "db" check could not say which of them stopped answering.
+func WithDBNamed(name string, db *sql.DB) Option {
+	return func(o *Options) {
+		o.Checkers = append(o.Checkers, &DBChecker{DB: db, CheckName: name})
 	}
 }
 

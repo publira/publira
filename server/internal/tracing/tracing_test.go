@@ -133,6 +133,46 @@ func TestSetupEnabledInstallsProviderAndPropagator(t *testing.T) {
 	}
 }
 
+// TestSetupGivesEveryServiceNameItsOwnProvider covers the API server, which
+// serves three Connect namespaces from one process: each has to report under
+// its own service.name, or a trace UI shows one service doing all of it.
+func TestSetupGivesEveryServiceNameItsOwnProvider(t *testing.T) {
+	installGlobals(t, noop.NewTracerProvider())
+	t.Setenv(EnabledEnv, "true")
+	// "none" keeps the test from reaching for a collector.
+	t.Setenv("OTEL_TRACES_EXPORTER", "none")
+
+	shutdown, err := Setup(t.Context(), "publira-api-server", "publira-admin-api-server")
+	if err != nil {
+		t.Fatalf("Setup: %v", err)
+	}
+
+	public, ok := serviceProvider("publira-api-server")
+	if !ok {
+		t.Fatal("no provider for publira-api-server")
+	}
+	admin, ok := serviceProvider("publira-admin-api-server")
+	if !ok {
+		t.Fatal("no provider for publira-admin-api-server")
+	}
+	if public == admin {
+		t.Error("the two namespaces share a provider, so they would share a service.name")
+	}
+	if got := otel.GetTracerProvider(); got != public {
+		t.Error("the global provider is not the one built for the first service name")
+	}
+	if _, ok := serviceProvider("publira-platform-api-server"); ok {
+		t.Error("a name Setup was not given resolved to a provider")
+	}
+
+	if err := shutdown(context.Background()); err != nil {
+		t.Fatalf("shutdown: %v", err)
+	}
+	if _, ok := serviceProvider("publira-api-server"); ok {
+		t.Error("the providers outlived shutdown")
+	}
+}
+
 func TestEnvironmentDefaultsToDevelopment(t *testing.T) {
 	t.Setenv(EnvironmentEnv, "")
 	if got := Environment(); got != EnvironmentDevelopment {

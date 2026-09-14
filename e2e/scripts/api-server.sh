@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Start/stop only the api-server process.
 #
-# start-apps.sh uses it for the normal lifecycle; the outage scenario
-# (e2e/src/api-server.ts) uses it to take the public API down mid-run and bring
-# it back, so web-host's behaviour with an unreachable backend is observable.
+# start-apps.sh uses it for the normal lifecycle; the outage scenarios
+# (e2e/src/api-server.ts) use it to take the API down mid-run and bring it
+# back, so each app's behaviour with an unreachable backend is observable. One
+# process now carries all three Connect namespaces, so stopping it takes the
+# tenant and platform consoles down with the tenant site — which is why the
+# specs that do it run one after another rather than beside each other.
 set -euo pipefail
 
 # shellcheck source=lib.sh
@@ -35,13 +38,15 @@ start_api_server() {
     exit 1
   fi
 
-  e2e_log "starting api-server (connect :${E2E_PUBLIC_API_PORT}, grpc :${E2E_PUBLIC_API_GRPC_PORT})"
+  e2e_log "starting api-server (edge :${E2E_PUBLIC_API_PORT}, internal :${E2E_PUBLIC_API_GRPC_PORT})"
   # `exec`: without it $! can name the subshell, and stopping it would leave the
   # server holding the port. Bash usually optimizes this away; do not rely on it.
   (
     cd "${REPO_ROOT}/server"
     exec env \
       PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
+      PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
+      PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
       PUBLIRA_PUBLIC_API_ADDR=":${E2E_PUBLIC_API_PORT}" \
       PUBLIRA_PUBLIC_API_GRPC_ADDR=":${E2E_PUBLIC_API_GRPC_PORT}" \
       PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \

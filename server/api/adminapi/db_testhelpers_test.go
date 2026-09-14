@@ -47,11 +47,11 @@ func newAdminDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *adminDBEnv
 	pg.Reset(t)
 	db := pg.OpenAdminDB(t)
 
-	handler, err := newHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, mail)
+	api, err := newAPI(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, mail)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
-	server := httptest.NewServer(handler)
+	server := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(server.Close)
 	return &adminDBEnv{Server: server, PG: pg}
 }

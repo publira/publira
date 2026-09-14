@@ -1,23 +1,8 @@
-import { execFileSync } from "node:child_process";
-import path from "node:path";
-
 import { expect, test } from "@playwright/test";
 
 import { signInAsSeedAdmin } from "../src/admin";
+import { startApiServer, stopApiServer } from "../src/api-server";
 import { WEB_ADMIN_BASE_URL } from "../src/urls";
-
-const adminApiServerScript = path.join(
-  import.meta.dirname,
-  "../scripts/admin-api-server.sh"
-);
-
-// Absolute path avoids PATH lookup (oxlint sonarjs/no-os-command-from-path).
-// `/bin/bash` rather than `/usr/bin/bash`: only the former exists on macOS.
-const bashBin = process.env.BASH_BIN?.trim() || "/bin/bash";
-
-const runAdminApiServerScript = (action: "start-wait" | "stop"): void => {
-  execFileSync(bashBin, [adminApiServerScript, action], { stdio: "inherit" });
-};
 
 /**
  * Route-level error boundary for the console.
@@ -38,7 +23,8 @@ const runAdminApiServerScript = (action: "start-wait" | "stop"): void => {
 test.describe("web-admin console error boundary", () => {
   // Isolated project `admin-error-boundary` (see playwright.config.ts).
   // Filename `.error-boundary.` is what keeps this file off the parallel
-  // web-admin project; it stops admin-api-server, not the public API.
+  // web-admin project, and the project chain keeps it off the other specs
+  // that stop the API: one process serves all three namespaces.
   test.describe.configure({ mode: "serial" });
 
   // The browser asks for English for this whole file, and every screen below is
@@ -51,7 +37,7 @@ test.describe("web-admin console error boundary", () => {
   test.use({ locale: "en-US" });
 
   test.afterAll(() => {
-    runAdminApiServerScript("start-wait");
+    startApiServer();
   });
 
   test("a direct visit while the admin API is down shows the error screen, and retry recovers", async ({
@@ -69,7 +55,7 @@ test.describe("web-admin console error boundary", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
     try {
-      runAdminApiServerScript("stop");
+      stopApiServer();
 
       const response = await page.goto(`${WEB_ADMIN_BASE_URL}/`);
 
@@ -86,7 +72,7 @@ test.describe("web-admin console error boundary", () => {
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
       // suite does not inherit the outage.
-      runAdminApiServerScript("start-wait");
+      startApiServer();
     }
 
     // "can retry" means the retry recovers, not that a button exists.

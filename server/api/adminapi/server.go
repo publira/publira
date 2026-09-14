@@ -219,29 +219,48 @@ func (s *adminServer) authenticateSession(
 	}, nil
 }
 
-// NewHandler returns the HTTP handler for the admin API alone. It serves only
-// AdminSeriesService and AdminAuthService, and none of the public API
-// (CatalogService, AuthService).
-func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (http.Handler, error) {
+// ServiceName is the service.name this namespace's spans carry. The three
+// namespaces share a process and keep their own name, so a trace UI can still
+// tell the tenant console's work from the public API's.
+const ServiceName = "publira-admin-api-server"
+
+// API is the tenant console's namespace — AdminSeriesService,
+// AdminAuthService and the rest of publira.admin.v1 — ready to be mounted by
+// [API.Register].
+type API struct {
+	server *adminServer
+}
+
+// New builds the tenant console API over db, which must be the pool connected
+// as publira_admin: every handler here reads through that role's row-level
+// security.
+func New(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (*API, error) {
 	mail, err := mailguard.NewFromEnv(logger)
 	if err != nil {
 		return nil, err
 	}
-	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, nil, mail)
+	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, nil, mail)
 }
 
-// NewHandlerWithAsyncRecorder creates an admin API handler with an
-// AsyncRecorder. The asynchronous writer acquires a fresh tenant-scoped
-// connection for every tenant audit entry.
-func NewHandlerWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (http.Handler, error) {
+// NewWithAsyncRecorder is New with an AsyncRecorder. The asynchronous writer
+// acquires a fresh tenant-scoped connection for every tenant audit entry.
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (*API, error) {
 	mail, err := mailguard.NewFromEnv(logger)
 	if err != nil {
 		return nil, err
 	}
-	return newHandler(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder, mail)
+	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder, mail)
 }
 
-func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard) (http.Handler, error) {
+// Register mounts the publira.admin.v1 services on mux. What a mux carries is
+// what its listener serves, so this belongs on the internal listener alone:
+// the edge forwards /api host-agnostically, and a mux the edge reaches would
+// put the console's RPCs on every tenant site.
+func (a *API) Register(mux *http.ServeMux) {
+	registerAdminRoutes(mux, a.server)
+}
+
+func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard) (*API, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -283,10 +302,21 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		commentRetentionDays:      commentRetentionDays,
 		mail:                      mail,
 	}
-	traced := tracing.ConnectHandlerOption()
+	return &API{server: server}, nil
+}
 
+// handlerFromServer is the namespace on a mux of its own, health probes
+// included, as a process serving nothing else would mount it.
+func handlerFromServer(server *adminServer) http.Handler {
 	mux := http.NewServeMux()
-	health.Register(mux, health.WithDB(db))
+	health.Register(mux, health.WithDB(server.db))
+	registerAdminRoutes(mux, server)
+	return mux
+}
+
+func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
+	traced := tracing.ConnectHandlerOption(ServiceName)
+
 	adminPath, adminHandler := publiraadminv1connect.NewAdminSeriesServiceHandler(
 		server,
 		traced,
@@ -493,7 +523,6 @@ func newHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(commentPath, commentHandler)
-	return mux, nil
 }
 
 func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {

@@ -5,12 +5,11 @@ import {
 } from "@publira/utils/health";
 import type { HealthCheck } from "@publira/utils/health";
 
-const platformApiBaseUrl =
-  process.env.PUBLIRA_PLATFORM_GRPC_URL ?? "http://localhost:8102";
+const apiBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100";
 
 const checks: HealthCheck[] = [
   {
-    check: (signal) => checkUpstreamReadyz(platformApiBaseUrl, signal),
+    check: (signal) => checkUpstreamReadyz(apiBaseUrl, signal),
     name: "api",
   },
   {

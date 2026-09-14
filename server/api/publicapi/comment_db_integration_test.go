@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -71,7 +72,7 @@ func (e *publicDBEnv) openAdminCommentConsole(t *testing.T, tenant testutil.Tena
 	t.Helper()
 
 	adminDB := e.PG.OpenAdminDB(t)
-	adminHandler, err := adminapi.NewHandler(
+	adminAPI, err := adminapi.New(
 		adminDB,
 		dbmodels.New(adminDB),
 		&testStorageProvider{},
@@ -83,7 +84,9 @@ func (e *publicDBEnv) openAdminCommentConsole(t *testing.T, tenant testutil.Tena
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
-	adminServer := httptest.NewServer(adminHandler)
+	adminMux := http.NewServeMux()
+	adminAPI.Register(adminMux)
+	adminServer := httptest.NewServer(adminMux)
 	t.Cleanup(adminServer.Close)
 
 	token, _, err := testutil.TokenManager().Issue(

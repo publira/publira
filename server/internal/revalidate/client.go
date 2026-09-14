@@ -1,6 +1,6 @@
 // Package revalidate sends Next.js cache tags to the internal revalidation
-// route of every web app, from admin-api-server and from the scheduled
-// publication batch.
+// route of every web app, from api-server and from the scheduled publication
+// batch.
 //
 // The three destinations are private network addresses
 // (PUBLIRA_WEB_*_INTERNAL_URL), never the public domain a browser uses and

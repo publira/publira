@@ -121,7 +121,11 @@ func newTestHandler(
 	encryptor emailsettings.SecretManager,
 	tester internalsmtp.Tester,
 ) (http.Handler, error) {
-	return newHandler(db, queries, storageProvider, logger, encryptor, tester, testutil.TokenManager(), nil, openMailGuard())
+	api, err := newAPI(db, queries, storageProvider, logger, encryptor, tester, testutil.TokenManager(), nil, openMailGuard())
+	if err != nil {
+		return nil, err
+	}
+	return handlerFromServer(api.server), nil
 }
 
 // openMailGuard allows far more than any case that is not about the mail limit

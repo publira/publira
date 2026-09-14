@@ -282,6 +282,58 @@ func (c staticChecker) Name() string { return c.name }
 
 func (c staticChecker) Check(context.Context) error { return c.err }
 
+// TestReadyzNamedDBsReportSeparately covers the API server, which holds one
+// pool per database role: a failure has to name the pool that failed, or an
+// operator reading /readyz learns only that "the database" is down.
+func TestReadyzNamedDBsReportSeparately(t *testing.T) {
+	t.Parallel()
+
+	healthy, healthyMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() { _ = healthy.Close() })
+	healthyMock.ExpectPing()
+
+	broken, brokenMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() { _ = broken.Close() })
+	brokenMock.ExpectPing().WillReturnError(errors.New("connection refused"))
+
+	mux := http.NewServeMux()
+	health.Register(
+		mux,
+		health.WithDBNamed("db.public", healthy),
+		health.WithDBNamed("db.admin", broken),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusServiceUnavailable, rec.Body.String())
+	}
+	var body struct {
+		Status string `json:"status"`
+		Checks map[string]struct {
+			Status string `json:"status"`
+			Error  string `json:"error"`
+		} `json:"checks"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("json: %v", err)
+	}
+	if body.Checks["db.public"].Status != health.StatusOK {
+		t.Fatalf("db.public status = %q, want %q", body.Checks["db.public"].Status, health.StatusOK)
+	}
+	if body.Checks["db.admin"].Status != health.StatusError {
+		t.Fatalf("db.admin status = %q, want %q", body.Checks["db.admin"].Status, health.StatusError)
+	}
+}
+
 // Ensure *sql.DB remains usable with sqlmock MonitorPings (compile-time sanity).
 var _ interface {
 	PingContext(context.Context) error

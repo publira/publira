@@ -7,9 +7,7 @@ The Go backend. It is operated as a single module, `github.com/publira/publira/s
 ```text
 server/
 ├── cmd/
-│   ├── api-server/        # Public ConnectRPC API server
-│   ├── admin-api-server/  # Admin ConnectRPC API server
-│   ├── platform-api-server/ # Platform administration ConnectRPC API server
+│   ├── api-server/        # ConnectRPC API server (public / admin / platform namespaces)
 │   ├── image-server/      # Public image delivery (Manael conversion)
 │   ├── admin-image-server/ # Admin image delivery
 │   ├── batch/             # Single binary bundling every batch job (selected by subcommand)
@@ -45,8 +43,6 @@ task db:setup
 task db:seed
 task db:create NAME=add_example_column
 task server:dev-api
-task server:dev-admin-api
-task server:dev-platform-api
 task server:dev-outbox-worker
 task server:tidy
 task server:build
@@ -73,9 +69,7 @@ task server:test
 
 ## Entrypoint details
 
-- Public API server: [cmd/api-server/README.md](cmd/api-server/README.md)
-- Admin API server: [cmd/admin-api-server/README.md](cmd/admin-api-server/README.md)
-- Platform API server: [cmd/platform-api-server/README.md](cmd/platform-api-server/README.md)
+- API server: [cmd/api-server/README.md](cmd/api-server/README.md)
 - Public image server: [cmd/image-server/README.md](cmd/image-server/README.md)
 - Admin image server: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
 - Batch (scheduled publishing / daily content stats / ranking aggregation / content event purge / recommend feature build): [cmd/batch/README.md](cmd/batch/README.md)
@@ -83,7 +77,7 @@ task server:test
 
 ## Graceful shutdown
 
-On SIGINT / SIGTERM the long-lived processes (`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server` / `outbox-worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
+On SIGINT / SIGTERM the long-lived processes (`api-server` / `image-server` / `admin-image-server` / `outbox-worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
 
 Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernetes, a `terminationGracePeriodSeconds` of 45 or more). Draining readiness at the load balancer is configured separately.
 
@@ -167,7 +161,7 @@ Building requires libvips. For the details, see [cmd/image-server/README.md](cmd
 
 ## Internal URLs for Next.js revalidation
 
-With `PUBLIRA_REVALIDATE_TOKEN` set, api, admin-api, `batch publish-episodes`, and `batch apply-free-windows` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
+With `PUBLIRA_REVALIDATE_TOKEN` set, `api-server`, `batch publish-episodes`, and `batch apply-free-windows` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
@@ -246,7 +240,7 @@ The stripping by Traefik in the development environment is verified by the conne
 
 ### Operational monitoring for the asynchronous audit log
 
-The asynchronous audit logs in `admin-api-server` and `platform-api-server` record the following low-cardinality OpenTelemetry metrics. `auditlog.entry_type` is `platform` or `tenant`, and `auditlog.drop_reason` is one of `queue_full`, `retry_exhausted`, and `shutdown`. Neither `action` nor the tenant ID is included as a metric attribute.
+The asynchronous audit logs of the tenant and the platform console namespaces record the following low-cardinality OpenTelemetry metrics. `auditlog.entry_type` is `platform` or `tenant`, and `auditlog.drop_reason` is one of `queue_full`, `retry_exhausted`, and `shutdown`. Neither `action` nor the tenant ID is included as a metric attribute.
 
 | Metric | Kind | Meaning |
 | --- | --- | --- |
@@ -262,7 +256,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-apply-free-windows` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | A default per process (`publira-image-server` / `publira-admin-image-server` / `publira-outbox-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-apply-free-windows` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
@@ -315,7 +309,7 @@ Only two variables are our own — the enable flag and the deployment environmen
 To watch the behavior without a collection backend, `OTEL_TRACES_EXPORTER=console` prints spans to standard output.
 
 ```bash
-PUBLIRA_TRACING_ENABLED=true OTEL_TRACES_EXPORTER=console task server:dev-admin-api
+PUBLIRA_TRACING_ENABLED=true OTEL_TRACES_EXPORTER=console task server:dev-api
 ```
 
 The Dev Container bundles Jaeger (its UI is at `http://localhost:16686`). For the details, see [../README.md](../README.md#distributed-tracing-jaeger).
@@ -417,7 +411,7 @@ A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_chal
 
 ### Requiring the factor
 
-`PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN` (admin-api-server, `false` when unset, and optional for any other value that is not a boolean) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
+`PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN` (api-server, `false` when unset, and optional for any other value that is not a boolean) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
 
 Taking the factor off needs the authenticator or a recovery code. Minting a new batch of recovery codes needs the authenticator.
 
@@ -542,28 +536,28 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
 | `page_count` | Counted from `episode_images` on every save, never taken from the request |
 | Access | Publication and paid-body access are checked on save and on read alike, so an unpublished episode or an expired rental has no position to resume |
 
-## API server separation
+## API namespace separation
 
-- Public API server: `server/cmd/api-server`
-  - Public services: `CatalogService`, `AuthService`
-  - Default port: `:8000`
-- Admin API server: `server/cmd/admin-api-server`
-  - Admin services: `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`
-  - Default port: `:8101` (changeable with `PUBLIRA_ADMIN_API_GRPC_ADDR`)
-  - Next.js revalidation on a publication state change: set `PUBLIRA_REVALIDATE_TOKEN`
-  - The destinations are the internal URLs of every `web-*` app (`PUBLIRA_WEB_*_INTERNAL_URL`)
+`server/cmd/api-server` serves all three Connect namespaces and keeps them apart by what it registers on each of its two listeners:
 
-This makes it possible to operate the public and the admin side as separate processes on separate paths.
+- Edge-facing listener, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`)
+  - `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API — plus `/livez` and `/readyz`
+  - This is what the reverse proxy forwards `/api` to, on every host
+- Internal listener, `:8100` (changeable with `PUBLIRA_PUBLIC_API_GRPC_ADDR`)
+  - All three namespaces: `publira.v1`, `publira.admin.v1` (`AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`), and `publira.platform.v1`
+  - web-host, web-admin, and web-platform dial it directly over the private network
+
+The proto packages produce non-colliding procedure paths, so one mux carries all three; the registration is the whole boundary, because a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on the same route. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the internal URLs of every `web-*` app (`PUBLIRA_WEB_*_INTERNAL_URL`).
 
 ## Database users
 
-Each API server connects with its own dedicated PostgreSQL login user, which keeps privileges minimal.
+Each namespace connects with its own dedicated PostgreSQL login user, which keeps privileges minimal. `api-server` holds one pool per login and picks the pool by the namespace the procedure path names, so the three never share a connection.
 
-| Server | DB user | Environment variable | Local default |
+| Namespace or process | DB user | Environment variable | Local default |
 | --- | --- | --- | --- |
-| platform-api | `publira_platform` | `PUBLIRA_PLATFORM_DB_URL` | `postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable` |
-| admin-api | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
-| api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
+| `publira.platform.v1` | `publira_platform` | `PUBLIRA_PLATFORM_DB_URL` | `postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable` |
+| `publira.admin.v1` | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
+| `publira.v1` | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
 | outbox-worker | `publira_outbox` (BYPASSRLS) | `PUBLIRA_WORKER_DB_URL` | `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable` |
 | batch project-episode-reads | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`, falling back to `PUBLIRA_CONTENT_EVENTS_DB_URL` → `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch aggregate-content-stats | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
@@ -601,7 +595,7 @@ ALTER ROLE publira_admin    PASSWORD '<secure_password>';
 ALTER ROLE publira_public   PASSWORD '<secure_password>';
 ```
 
-Then set each process's environment variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and outbox-worker read only the variable named for them, so an unset one leaves that process on a development password it cannot authenticate with; the batches fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
+Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and outbox-worker read only the variables named for the roles they serve as, and never fall back from one to another, so an unset one leaves that namespace on a development password it cannot authenticate with; the batches fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
 
 ## Notes on initial data
 
@@ -611,6 +605,7 @@ Then set each process's environment variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIR
   - `GET /livez` — process liveness. Always `200` with a plain `ok`. Intended for a K8s livenessProbe.
   - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
   - API / image-server: at minimum a DB `Ping`
+  - `api-server`'s internal listener holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. Its edge-facing listener checks the public pool alone under `db`: that is the only namespace it serves, and the state of the two consoles' pools is not an outsider's to read.
   - Web (`web-admin` / `web-host` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PUBLIRA_REDIS_URL` is disabled)
   - Example `/readyz` responses (JSON):
     - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`

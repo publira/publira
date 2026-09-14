@@ -102,12 +102,13 @@ func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmoc
 	}, mock
 }
 
-// newTestHandler builds the handler the way NewHandler does, with the limit on
-// the mail the console's forms cause given rather than read from the
-// environment: the counters would otherwise be the deployment's shared Redis,
-// where one run of these tests would charge the budget of the next.
+// newTestHandler builds the handler the way New does, with the limit on the
+// mail the console's forms cause given rather than read from the environment:
+// the counters would otherwise be the deployment's shared Redis, where one run
+// of these tests would charge the budget of the next.
 func newTestHandler(db *sql.DB, queries Querier) http.Handler {
-	return newHandler(db, queries, slog.Default(), nil, nil, testutil.TokenManager(), nil, openMailGuard())
+	api := newAPI(db, queries, slog.Default(), nil, nil, testutil.TokenManager(), nil, openMailGuard())
+	return handlerFromServer(api.server)
 }
 
 // openMailGuard allows far more than any case that is not about the mail limit

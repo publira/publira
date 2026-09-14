@@ -31,7 +31,7 @@ const request = (): UnaryRequest =>
     method: { name: "ListSeries" },
     service: { typeName: "publira.admin.v1.AdminSeriesService" },
     stream: false,
-    url: "http://127.0.0.1:8101/publira.admin.v1.AdminSeriesService/ListSeries",
+    url: "http://127.0.0.1:8100/publira.admin.v1.AdminSeriesService/ListSeries",
   }) as unknown as UnaryRequest;
 
 const invoke = async (

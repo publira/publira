@@ -55,8 +55,8 @@ func newAdminRouteTestServer(t *testing.T) *httptest.Server {
 func TestAdminHandlerRefusesAnInvalidCommentRetentionWindow(t *testing.T) {
 	for _, raw := range []string{"0", "-1", "six months"} {
 		t.Setenv(commentretention.WithdrawnDaysEnv, raw)
-		if _, err := NewHandler(nil, nil, nil, slog.Default(), nil, nil, testutil.TokenManager()); err == nil {
-			t.Fatalf("NewHandler with a retention window of %q error = nil, want an error", raw)
+		if _, err := New(nil, nil, nil, slog.Default(), nil, nil, testutil.TokenManager()); err == nil {
+			t.Fatalf("New with a retention window of %q error = nil, want an error", raw)
 		}
 	}
 }

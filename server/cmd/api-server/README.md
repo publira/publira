@@ -1,6 +1,15 @@
 # api-server
 
-The public ConnectRPC API server.
+The ConnectRPC API server. It serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — from one process, over two listeners that differ in what is registered on each.
+
+| Listener | Default address | Serves | Reached by |
+| --- | --- | --- | --- |
+| Edge-facing | `:8000` (`PUBLIRA_PUBLIC_API_ADDR`) | `publira.v1`, `/livez`, `/readyz` | The browser, through the reverse proxy's `/api` prefix |
+| Internal | `:8100` (`PUBLIRA_PUBLIC_API_GRPC_ADDR`) | all three namespaces, `/livez`, `/readyz` | web-host, web-admin, and web-platform, over the private network, each through its own `PUBLIRA_GRPC_URL` |
+
+A Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, and the edge forwards `/api` host-agnostically, so neither the port nor the protocol separates the namespaces: registering a console service on the edge-facing mux would publish it at `/api/publira.admin.v1.…` on every tenant site. What each listener carries is decided in `main.go` and nowhere else.
+
+Each namespace reaches the database through the pool opened for its own PostgreSQL login — `publira_public` and `publira_admin` under row-level security, `publira_platform` with `BYPASSRLS` — and each reports its spans under its own `service.name`, so the three stay apart in a trace UI.
 
 ## Running
 
@@ -25,13 +34,17 @@ task server:build
 
 ## Main environment variables
 
-- `PUBLIRA_PUBLIC_DB_URL` (optional; a development default is used when unset)
+- `PUBLIRA_PUBLIC_API_ADDR` (optional, `:8000` when unset. The edge-facing listener)
+- `PUBLIRA_PUBLIC_API_GRPC_ADDR` (optional, `:8100` when unset. The internal listener)
+- `PUBLIRA_PUBLIC_DB_URL` / `PUBLIRA_ADMIN_DB_URL` / `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset. One per namespace; the process never falls back from one to another)
 - `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens. The server fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
 - `PUBLIRA_S3_BUCKET` (required)
 - `AWS_REGION` (optional)
 - `PUBLIRA_S3_ENDPOINT` (optional)
 - `PUBLIRA_S3_FORCE_PATH_STYLE` (optional)
 - `PUBLIRA_S3_PUBLIC_BASE_URL` (optional)
+- `PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN` (optional, `false` when unset. With `true`, a tenant admin that has not enrolled a TOTP authenticator gets no session from a password alone; see [server/README.md](../../README.md#admin-mfa-totp))
+- `PUBLIRA_COMMENT_WITHDRAWN_RETENTION_DAYS` (optional, `180` when unset. How long a comment its author withdrew is kept, which is the deadline `AdminCommentService.ListComments` reports as `purge_due_at`. `batch purge-withdrawn-comments` reads the same variable, so a value set for one has to be set for both, and anything below `1` or non-numeric stops the server rather than have the console count down to a deadline the batch refuses to enforce)
 - `PUBLIRA_REDIS_URL` (optional. Where the counters behind the reader write limits, the step-up password limit, and the mail limits below are kept. Unset / `disabled` / `off` / `false` limits each instance on its own, which is looser than a shared limit by the number of instances)
 - `PUBLIRA_COMMENT_POST_LIMIT_PER_MINUTE` (optional, `10` when unset. How many comments one reader may post in a minute)
 - `PUBLIRA_COMMENT_POST_LIMIT_PER_DAY` (optional, `100` when unset. How many comments one reader may post in a day)
@@ -55,6 +68,17 @@ A reader write limit, a step-up password limit or a mail limit below `1`, or one
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
-## Notes
+Revalidation requests are sent to every Next.js app on a publication state update only when `PUBLIRA_REVALIDATE_TOKEN` and all three `PUBLIRA_WEB_*_INTERNAL_URL` variables are set. The fixed path at each destination is `/api/v1/revalidate`.
 
-- The default listen address is `:8000`.
+`PUBLIRA_WEB_HOST_URL` is the public URL that Stripe Checkout returns the browser to, and is separate from this set of internal URLs.
+
+## Platform console role permissions
+
+| Operation | `platform_auditor` | `platform_operator` | `platform_super_admin` |
+| --- | --- | --- | --- |
+| Viewing the dashboard, tenants, users, audit logs, settings, and notifications | Yes | Yes | Yes |
+| Changing tenants, tenant members, tenant administrator invitations, end users, SMTP, and platform settings | No | Yes | Yes |
+| Creating, changing the role of, suspending, activating, and deactivating platform operators | No | No | Yes |
+| Marking one's own notifications as read, signing out, and changing one's password and email address | Yes | Yes | Yes |
+
+The server checks mutating RPCs in a shared interceptor, so a rejected call never starts a DB update, an audit log entry, or an email.

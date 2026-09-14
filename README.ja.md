@@ -65,7 +65,7 @@ export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 ```
 
-ロールユーザーと開発用パスワードは `db/seeds/baseline` に由来します。ロール別 URL を持たないサーバーは `PUBLIRA_DB_URL` にフォールバックします。`e2e/bootstrap/scripts/lib.sh` が自前のポート向けに同じ一式を export しており、動く参照実装になっています。
+ロールユーザーと開発用パスワードは `db/seeds/baseline` に由来します。各サーバーは自分が接続するロールに対応する変数だけを読むので、そのすべてを設定する必要があります。`PUBLIRA_DB_URL` はマイグレーションツールの接続であり、フォールバック先にするのは `batch` のサブコマンドだけです。`e2e/bootstrap/scripts/lib.sh` が自前のポート向けに同じ一式を export しており、動く参照実装になっています。
 
 Dev Container 専用のままになるものが 2 つあります。
 
@@ -119,13 +119,13 @@ Mailpit コンテナは依存サービス（`compose.yaml`）の一員です。
 
 ## API アクセストークンの署名鍵 (`PUBLIRA_AUTH_JWT_SECRET`)
 
-Go の API サーバー（api-server / admin-api-server / platform-api-server）と画像サーバー（image-server / admin-image-server）は、ログイン時に **HS256 の JWT アクセストークン**を発行し、以降のリクエストで検証します。その署名鍵が `PUBLIRA_AUTH_JWT_SECRET` です。
+Go の API サーバー（api-server）と画像サーバー（image-server / admin-image-server）は、ログイン時に **HS256 の JWT アクセストークン**を発行し、以降のリクエストで検証します。その署名鍵が `PUBLIRA_AUTH_JWT_SECRET` です。
 
-- **必須**です。コード側にフォールバックは無く、未設定または 32 バイト未満なら 5 つのサーバーはいずれも起動時に終了します（`auth.NewTokenManagerFromEnv()`）
+- **必須**です。コード側にフォールバックは無く、未設定または 32 バイト未満なら 3 つのサーバーはいずれも起動時に終了します（`auth.NewTokenManagerFromEnv()`）
 - 鍵が漏れると任意の `sub` / `aud` を持つトークンを偽造でき、公開 API・管理 API・プラットフォーム API・画像サーバーを呼べます。環境ごとに払い出してください（例: `openssl rand -base64 32`）
 - Cookie 側の `PUBLIRA_AUTH_SECRET` とは別の鍵です。あちらは Next.js がセッション Cookie を封じる JWE 鍵で、読み手も用途も違います
 - Dev Container では `.devcontainer/compose.yaml` が開発専用の値を app コンテナに渡します
-- E2E は `e2e/scripts/lib.sh` が export し、各 API サーバーの起動スクリプトが `env` で渡します。bootstrap チェックは `e2e/bootstrap/scripts/lib.sh` が export します
+- E2E は `e2e/scripts/lib.sh` が export し、各サーバーの起動スクリプトが `env` で渡します。bootstrap チェックは `e2e/bootstrap/scripts/lib.sh` が export します
 
 リポジトリに書いてある値は **ローカル開発・テスト専用**です。本番へ持ち込まないでください。
 
