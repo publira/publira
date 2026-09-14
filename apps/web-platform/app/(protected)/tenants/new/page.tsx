@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -12,15 +11,16 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { CreateTenantForm } from "./_components/create-tenant-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.tenants.create_title") };
+  return { title: t("platform.tenants.create_title") };
 };
 
 const TenantNewPage = () => (

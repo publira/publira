@@ -1,6 +1,7 @@
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 
-import type { PlatformMessageKey, PlatformMessages } from "./locale";
+import type { PlatformMessageKey } from "./locale";
+import { getMessagesFor } from "./messages";
 
 export type TenantStatusTone = "destructive" | "info" | "success";
 
@@ -26,12 +27,24 @@ const tenantRoleKeys = {
   tenant_owner: "platform.common.roles.tenant_owner",
 } as const satisfies Record<string, PlatformMessageKey>;
 
-export const getTenantStatusLabel = (
+/**
+ * Each label takes the `locale` and reads the catalog itself. The value has to
+ * be a string — the same label fills a `<select>` item and a table cell — so it
+ * cannot be a `<Message>`, and an accessor passed in as an argument would make
+ * the key an attribute of whatever the caller happened to bind.
+ */
+export const getTenantStatusLabel = async (
   status: string,
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
   const key = tenantStatusKeys[status];
-  return key ? getMessage(messages, key) : status;
+  if (!key) {
+    return status;
+  }
+
+  const t = await getMessagesFor(locale);
+
+  return t(key);
 };
 
 export const getTenantStatusTone = (status: string): TenantStatusTone => {
@@ -48,18 +61,30 @@ export const getTenantStatusTone = (status: string): TenantStatusTone => {
   }
 };
 
-export const getTenantRoleLabel = (
+export const getTenantRoleLabel = async (
   role: string,
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
   const key = tenantRoleKeys[role];
-  return key ? getMessage(messages, key) : role;
+  if (!key) {
+    return role;
+  }
+
+  const t = await getMessagesFor(locale);
+
+  return t(key);
 };
 
-export const getInvitationStatusLabel = (
+export const getInvitationStatusLabel = async (
   status: string,
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
   const key = invitationStatusKeys[status];
-  return key ? getMessage(messages, key) : status;
+  if (!key) {
+    return status;
+  }
+
+  const t = await getMessagesFor(locale);
+
+  return t(key);
 };

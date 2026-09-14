@@ -5,13 +5,13 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
-import { getMessage, parseLocale } from "@publira/i18n";
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import type { ResolvedLocaleState } from "@publira/utils/resolved-locale";
 
 import { apiClient } from "./api-client";
-import { loadPlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 
 /**
  * Setup status is unknown rather than failed when the platform has not been
@@ -179,25 +179,18 @@ export const createInitialUser = async ({
     return { ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
 
     return {
       // `already_exists` is only ever raised here for "setup already completed"
       // (`server/api/platformapi/setup_handlers.go`).
       alreadyCompleted: rpcErrorDisposition(error) === "conflict",
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.auth.errors.setup_failed"),
-        {
-          locale,
-          overrides: {
-            conflict: getMessage(
-              messages,
-              "platform.auth.errors.setup_already_completed"
-            ),
-          },
-        }
-      ),
+      message: rpcErrorMessage(error, t("platform.auth.errors.setup_failed"), {
+        locale,
+        overrides: {
+          conflict: t("platform.auth.errors.setup_already_completed"),
+        },
+      }),
       ok: false,
     };
   }

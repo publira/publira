@@ -1,4 +1,3 @@
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,8 +6,8 @@ import {
   parseNotificationPayload,
 } from "./notification-copy";
 
-const en = sharedCatalog("en");
-const ja = sharedCatalog("ja");
+const en = "en" as const;
+const ja = "ja" as const;
 
 describe("parseNotificationPayload", () => {
   it("extracts only known fields", () => {
@@ -62,8 +61,8 @@ describe("notificationHref", () => {
 });
 
 describe("notificationDisplay", () => {
-  it("builds publication failure copy from tenant and episode names", () => {
-    expect(
+  it("builds publication failure copy from tenant and episode names", async () => {
+    await expect(
       notificationDisplay(
         "episode_publish_failed",
         {
@@ -74,14 +73,16 @@ describe("notificationDisplay", () => {
         },
         en
       )
-    ).toEqual({
+    ).resolves.toEqual({
       description:
         "“Episode 1” (Series A) could not be published for tenant “Acme”. Open the episode and try publishing again.",
       href: "/tenants/SeedTNNTAAA1",
       title: "An episode could not be published",
     });
 
-    expect(notificationDisplay("episode_publish_failed", {}, en)).toEqual({
+    await expect(
+      notificationDisplay("episode_publish_failed", {}, en)
+    ).resolves.toEqual({
       description:
         "the scheduled episode could not be published. Open the episode and try publishing again.",
       href: undefined,
@@ -89,8 +90,8 @@ describe("notificationDisplay", () => {
     });
   });
 
-  it("builds that copy from the catalog it is given, so locale=ja is Japanese", () => {
-    expect(
+  it("builds that copy from the catalog it is given, so locale=ja is Japanese", async () => {
+    await expect(
       notificationDisplay(
         "episode_publish_failed",
         {
@@ -100,7 +101,7 @@ describe("notificationDisplay", () => {
         },
         ja
       )
-    ).toEqual({
+    ).resolves.toEqual({
       description:
         "テナント「Acme」の「Episode 1」（Series A）を公開できませんでした。エピソードを開いて公開をやり直してください。",
       href: undefined,
@@ -108,10 +109,10 @@ describe("notificationDisplay", () => {
     });
   });
 
-  it("keeps unknown types as generic notifications", () => {
-    expect(
+  it("keeps unknown types as generic notifications", async () => {
+    await expect(
       notificationDisplay("invite_accepted", { tenant_id: "SeedTNNTAAA1" }, en)
-    ).toEqual({
+    ).resolves.toEqual({
       description: "No further details are available.",
       href: "/tenants/SeedTNNTAAA1",
       title: "Notification",

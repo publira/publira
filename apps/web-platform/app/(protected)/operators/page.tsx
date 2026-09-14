@@ -1,4 +1,4 @@
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -34,7 +34,8 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import {
   getOperatorRoleLabel,
   getOperatorStatusLabel,
@@ -48,14 +49,35 @@ import {
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.operators.title") };
+  return { title: t("platform.operators.title") };
 };
 
 const pageSize = 20;
 
 type OperatorsPageProps = PageProps<"/operators">;
+
+/**
+ * One operator's role and status, each as its own async component: the label
+ * is a string the catalog resolves, and a row rendered inside `.map()` cannot
+ * await.
+ */
+const OperatorRoleCell = async ({
+  locale,
+  role,
+}: {
+  locale: Locale;
+  role: string;
+}) => await getOperatorRoleLabel(role, locale);
+
+const OperatorStatusCell = async ({
+  locale,
+  status,
+}: {
+  locale: Locale;
+  status: string;
+}) => await getOperatorStatusLabel(status, locale);
 
 const OperatorsContent = async ({
   searchParams,
@@ -65,8 +87,8 @@ const OperatorsContent = async ({
     searchParams,
   ]);
   const { token } = parseOperatorsSearchParams(rawSearchParams);
-  const [messages, result] = await Promise.all([
-    loadPlatformMessages(locale),
+  const [t, result] = await Promise.all([
+    getMessagesFor(locale),
     listPlatformOperators({
       limit: pageSize,
       locale,
@@ -102,16 +124,24 @@ const OperatorsContent = async ({
         <TableHeader>
           <TableRow>
             <TableHead>
-              {getMessage(messages, "platform.operators.columns_name")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.operators.columns_name" />
+              </Suspense>
             </TableHead>
             <TableHead>
-              {getMessage(messages, "platform.operators.columns_email")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.operators.columns_email" />
+              </Suspense>
             </TableHead>
             <TableHead className="w-48">
-              {getMessage(messages, "platform.operators.columns_role")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.operators.columns_role" />
+              </Suspense>
             </TableHead>
             <TableHead className="w-36">
-              {getMessage(messages, "platform.operators.columns_status")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.operators.columns_status" />
+              </Suspense>
             </TableHead>
             <TableHead className="w-24" />
           </TableRow>
@@ -120,7 +150,9 @@ const OperatorsContent = async ({
           {result.ok && result.operators.length === 0 ? (
             <TableRow>
               <TableCell className="text-muted-foreground" colSpan={5}>
-                {getMessage(messages, "platform.operators.empty")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.operators.empty" />
+                </Suspense>
               </TableCell>
             </TableRow>
           ) : null}
@@ -130,7 +162,7 @@ const OperatorsContent = async ({
                 <TableCell className="font-medium">{operator.name}</TableCell>
                 <TableCell>{operator.email}</TableCell>
                 <TableCell>
-                  {getOperatorRoleLabel(operator.role, messages)}
+                  <OperatorRoleCell locale={locale} role={operator.role} />
                 </TableCell>
                 <TableCell>
                   <StatusChip
@@ -139,7 +171,10 @@ const OperatorsContent = async ({
                     }
                     variant="outline"
                   >
-                    {getOperatorStatusLabel(operator.status, messages)}
+                    <OperatorStatusCell
+                      locale={locale}
+                      status={operator.status}
+                    />
                   </StatusChip>
                 </TableCell>
                 <TableCell>
@@ -148,7 +183,9 @@ const OperatorsContent = async ({
                     size="sm"
                     variant="outline"
                   >
-                    {getMessage(messages, "platform.common.detail")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.common.detail" />
+                    </Suspense>
                   </LinkButton>
                 </TableCell>
               </TableRow>
@@ -157,11 +194,11 @@ const OperatorsContent = async ({
       </Table>
 
       <PaginationControls
-        ariaLabel={getMessage(messages, "platform.operators.pagination_aria")}
+        ariaLabel={t("platform.operators.pagination_aria")}
         nextHref={nextHref}
-        nextLabel={getMessage(messages, "platform.common.next")}
+        nextLabel={t("platform.common.next")}
         previousHref={previousHref}
-        previousLabel={getMessage(messages, "platform.common.previous")}
+        previousLabel={t("platform.common.previous")}
       />
     </div>
   );

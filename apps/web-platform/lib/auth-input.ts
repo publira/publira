@@ -17,12 +17,12 @@
  * by a fallback rather than reported — so those stay constants.
  */
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./auth-shared";
-import type { PlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 
 /** Paths in `next` can carry a query string; 255 would clip real ones. */
 const NEXT_PATH_MAX_LENGTH = 2048;
@@ -66,13 +66,16 @@ export const authTokenSearchParamSchema = searchParamString({
   maxLength: 64,
 }).transform((value) => (AUTH_TOKEN_PATTERN.test(value) ? value : ""));
 
-export const authTokenFormSchema = (messages: PlatformMessages) =>
-  z
+export const authTokenFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .string()
     .trim()
     .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
-      error: getMessage(messages, "platform.auth.fields.invalid_token"),
+      error: t("platform.auth.fields.invalid_token"),
     });
+};
 
 /**
  * Email shown on a confirmation-pending screen. Not an input we act on, so a
@@ -83,21 +86,20 @@ export const emailSearchParamSchema = searchParamString({
   maxLength: 255,
 }).transform((value) => (z.email().safeParse(value).success ? value : ""));
 
-export const emailFormSchema = (messages: PlatformMessages) => {
-  const required = getMessage(messages, "platform.auth.fields.email_required");
+export const emailFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const required = t("platform.auth.fields.email_required");
 
   return z
     .string({ error: required })
     .trim()
     .min(1, required)
-    .pipe(z.email(getMessage(messages, "platform.auth.fields.email_invalid")));
+    .pipe(z.email(t("platform.auth.fields.email_invalid")));
 };
 
-export const passwordFormSchema = (messages: PlatformMessages) => {
-  const required = getMessage(
-    messages,
-    "platform.auth.fields.password_required"
-  );
+export const passwordFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const required = t("platform.auth.fields.password_required");
 
   return z.string({ error: required }).min(1, required).max(1024);
 };

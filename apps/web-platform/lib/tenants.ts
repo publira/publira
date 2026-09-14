@@ -8,7 +8,6 @@ import type {
   Tenant,
   TenantAdminInvitation,
 } from "@publira/api-client/platform/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -21,22 +20,22 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
-import { loadPlatformMessages } from "./locale";
-import type { PlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
+import type { PlatformMessageAccessor } from "./messages";
 
 const loadTenantCopy = async (
   locale: Locale
-): Promise<{ locale: Locale; messages: PlatformMessages }> => ({
+): Promise<{ locale: Locale; t: PlatformMessageAccessor }> => ({
   locale,
-  messages: await loadPlatformMessages(locale),
+  t: await getMessagesFor(locale),
 });
 
 const loadTenantCopyAndSession = async (locale: Locale) => {
-  const [{ locale: resolvedLocale, messages }, sid] = await Promise.all([
+  const [{ locale: resolvedLocale, t }, sid] = await Promise.all([
     loadTenantCopy(locale),
     resolveAccessToken(),
   ]);
-  return { locale: resolvedLocale, messages, sid };
+  return { locale: resolvedLocale, sid, t };
 };
 
 export interface PlatformTenantSummary {
@@ -164,9 +163,9 @@ export const listPlatformTenants = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
-    const { messages } = await loadTenantCopy(input.locale);
+    const { t } = await loadTenantCopy(input.locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -205,13 +204,11 @@ export const listPlatformTenants = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
-    const { locale, messages } = await loadTenantCopy(input.locale);
+    const { locale, t } = await loadTenantCopy(input.locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.tenants.list_failed"),
-        { locale }
-      ),
+      message: rpcErrorMessage(error, t("platform.tenants.list_failed"), {
+        locale,
+      }),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -255,9 +252,9 @@ export const getPlatformTenant = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
-    const { messages } = await loadTenantCopy(locale);
+    const { t } = await loadTenantCopy(locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -284,13 +281,11 @@ export const getPlatformTenant = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
-    const { locale: resolvedLocale, messages } = await loadTenantCopy(locale);
+    const { locale: resolvedLocale, t } = await loadTenantCopy(locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.tenants.get_failed"),
-        { locale: resolvedLocale }
-      ),
+      message: rpcErrorMessage(error, t("platform.tenants.get_failed"), {
+        locale: resolvedLocale,
+      }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -330,10 +325,10 @@ export const listPlatformTenantMembers = async (
   const sid = await resolveAccessToken();
   if (!tenantId || !sid) {
     dropFailedCacheEntry();
-    const { messages } = await loadTenantCopy(input.locale);
+    const { t } = await loadTenantCopy(input.locale);
     return {
       members: [],
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -366,12 +361,12 @@ export const listPlatformTenantMembers = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
-    const { locale, messages } = await loadTenantCopy(input.locale);
+    const { locale, t } = await loadTenantCopy(input.locale);
     return {
       members: [],
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.tenants.members_list_failed"),
+        t("platform.tenants.members_list_failed"),
         { locale }
       ),
       nextToken: "",
@@ -429,19 +424,20 @@ export const resumePlatformTenant = async (
  * rejected field with `google.rpc.BadRequest`, so this wording stays stable
  * when its message changes.
  */
-const duplicateDomainMessage = (
+const duplicateDomainMessage = async (
   error: unknown,
-  messages: PlatformMessages,
+  locale: Locale,
   kind: "create" | "update"
-): string => {
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
   if (rpcErrorHasFieldViolation(error, "admin_domain")) {
-    return getMessage(messages, "platform.tenants.admin_domain_taken");
+    return t("platform.tenants.admin_domain_taken");
   }
   if (rpcErrorHasFieldViolation(error, "domain")) {
-    return getMessage(messages, "platform.tenants.domain_taken");
+    return t("platform.tenants.domain_taken");
   }
-  return getMessage(
-    messages,
+  return t(
     kind === "create"
       ? "platform.tenants.duplicate_create"
       : "platform.tenants.duplicate_update"
@@ -453,12 +449,12 @@ export const createPlatformTenant = async (
 ): Promise<CreatePlatformTenantResult> => {
   const {
     locale: resolvedLocale,
-    messages,
     sid,
+    t,
   } = await loadTenantCopyAndSession(input.locale);
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -492,17 +488,17 @@ export const createPlatformTenant = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+    const conflict = await duplicateDomainMessage(
+      error,
+      resolvedLocale,
+      "create"
+    );
+
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.tenants.create_failed"),
-        {
-          locale: resolvedLocale,
-          overrides: {
-            conflict: duplicateDomainMessage(error, messages, "create"),
-          },
-        }
-      ),
+      message: rpcErrorMessage(error, t("platform.tenants.create_failed"), {
+        locale: resolvedLocale,
+        overrides: { conflict },
+      }),
       ok: false,
     };
   }
@@ -577,14 +573,14 @@ export const listPlatformTenantAdminInvitations = async (
 ): Promise<ListPlatformTenantAdminInvitationsResult> => {
   "use cache: private";
 
-  const { locale, messages } = await loadTenantCopy(input.locale);
+  const { locale, t } = await loadTenantCopy(input.locale);
   const tenantId = input.tenantId.trim();
   const sid = await resolveAccessToken();
   if (!tenantId || !sid) {
     dropFailedCacheEntry();
     return {
       invitations: [],
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -619,7 +615,7 @@ export const listPlatformTenantAdminInvitations = async (
       invitations: [],
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.tenants.invitations_list_failed"),
+        t("platform.tenants.invitations_list_failed"),
         { locale }
       ),
       nextToken: "",
@@ -637,18 +633,18 @@ export const createPlatformTenantAdminInvitation = async (
 ): Promise<CreateTenantAdminInvitationResult> => {
   const {
     locale: resolvedLocale,
-    messages,
     sid,
+    t,
   } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
   if (!tenantId.trim() || !email.trim()) {
     return {
-      message: getMessage(messages, "platform.common.required"),
+      message: t("platform.common.required"),
       ok: false,
     };
   }
@@ -674,15 +670,12 @@ export const createPlatformTenantAdminInvitation = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.tenants.invite_create_failed"),
+        t("platform.tenants.invite_create_failed"),
         {
           locale: resolvedLocale,
           overrides: {
             // Email is the only free-form field on this call.
-            "invalid-argument": getMessage(
-              messages,
-              "platform.tenants.invite_email_invalid"
-            ),
+            "invalid-argument": t("platform.tenants.invite_email_invalid"),
           },
         }
       ),
@@ -698,18 +691,18 @@ export const resendPlatformTenantAdminInvitation = async (
 ): Promise<UpdateTenantAdminInvitationResult> => {
   const {
     locale: resolvedLocale,
-    messages,
     sid,
+    t,
   } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
   if (!tenantId.trim() || !invitationId.trim()) {
     return {
-      message: getMessage(messages, "platform.common.required"),
+      message: t("platform.common.required"),
       ok: false,
     };
   }
@@ -734,18 +727,12 @@ export const resendPlatformTenantAdminInvitation = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.tenants.resend_invite_failed"),
+        t("platform.tenants.resend_invite_failed"),
         {
           locale: resolvedLocale,
           overrides: {
-            "not-found": getMessage(
-              messages,
-              "platform.tenants.invite_not_found"
-            ),
-            precondition: getMessage(
-              messages,
-              "platform.tenants.resend_invite_precondition"
-            ),
+            "not-found": t("platform.tenants.invite_not_found"),
+            precondition: t("platform.tenants.resend_invite_precondition"),
           },
         }
       ),
@@ -761,18 +748,18 @@ export const cancelPlatformTenantAdminInvitation = async (
 ): Promise<UpdateTenantAdminInvitationResult> => {
   const {
     locale: resolvedLocale,
-    messages,
     sid,
+    t,
   } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
   if (!tenantId.trim() || !invitationId.trim()) {
     return {
-      message: getMessage(messages, "platform.common.required"),
+      message: t("platform.common.required"),
       ok: false,
     };
   }
@@ -797,18 +784,12 @@ export const cancelPlatformTenantAdminInvitation = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.tenants.cancel_invite_failed"),
+        t("platform.tenants.cancel_invite_failed"),
         {
           locale: resolvedLocale,
           overrides: {
-            "not-found": getMessage(
-              messages,
-              "platform.tenants.invite_not_found"
-            ),
-            precondition: getMessage(
-              messages,
-              "platform.tenants.cancel_invite_precondition"
-            ),
+            "not-found": t("platform.tenants.invite_not_found"),
+            precondition: t("platform.tenants.cancel_invite_precondition"),
           },
         }
       ),
@@ -826,12 +807,12 @@ export const updatePlatformTenant = async (
 ): Promise<UpdatePlatformTenantResult> => {
   const {
     locale: resolvedLocale,
-    messages,
     sid,
+    t,
   } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -840,13 +821,13 @@ export const updatePlatformTenant = async (
   const trimmedAdminDomain = adminDomain?.trim() ?? "";
   if (!trimmedName) {
     return {
-      message: getMessage(messages, "platform.tenants.name_required"),
+      message: t("platform.tenants.name_required"),
       ok: false,
     };
   }
   if (!trimmedDomain) {
     return {
-      message: getMessage(messages, "platform.tenants.domain_required"),
+      message: t("platform.tenants.domain_required"),
       ok: false,
     };
   }
@@ -865,18 +846,20 @@ export const updatePlatformTenant = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+    const conflict = await duplicateDomainMessage(
+      error,
+      resolvedLocale,
+      "update"
+    );
+
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.tenants.update_failed"),
-        {
-          locale: resolvedLocale,
-          overrides: {
-            conflict: duplicateDomainMessage(error, messages, "update"),
-            "not-found": getMessage(messages, "platform.tenants.not_found"),
-          },
-        }
-      ),
+      message: rpcErrorMessage(error, t("platform.tenants.update_failed"), {
+        locale: resolvedLocale,
+        overrides: {
+          conflict,
+          "not-found": t("platform.tenants.not_found"),
+        },
+      }),
       ok: false,
     };
   }
@@ -885,16 +868,14 @@ export const updatePlatformTenant = async (
 export const addPlatformTenantMember = async (
   input: AddPlatformTenantMemberInput
 ): Promise<AddPlatformTenantMemberResult> => {
-  const { locale: resolvedLocale, messages } = await loadTenantCopy(
-    input.locale
-  );
+  const { locale: resolvedLocale, t } = await loadTenantCopy(input.locale);
   const tenantId = input.tenantId.trim();
   const role = input.role.trim();
   const email = input.email.trim();
 
   if (!tenantId || !email || !role) {
     return {
-      message: getMessage(messages, "platform.common.required"),
+      message: t("platform.common.required"),
       ok: false,
     };
   }
@@ -902,7 +883,7 @@ export const addPlatformTenantMember = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -921,23 +902,13 @@ export const addPlatformTenantMember = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.tenants.add_member_failed"),
-        {
-          locale: resolvedLocale,
-          overrides: {
-            conflict: getMessage(
-              messages,
-              "platform.tenants.member_already_added"
-            ),
-            "not-found": getMessage(
-              messages,
-              "platform.tenants.user_not_found"
-            ),
-          },
-        }
-      ),
+      message: rpcErrorMessage(error, t("platform.tenants.add_member_failed"), {
+        locale: resolvedLocale,
+        overrides: {
+          conflict: t("platform.tenants.member_already_added"),
+          "not-found": t("platform.tenants.user_not_found"),
+        },
+      }),
       ok: false,
     };
   }
@@ -951,19 +922,19 @@ export const updatePlatformTenantMemberRole = async (
 ): Promise<UpdatePlatformTenantMemberRoleResult> => {
   const {
     locale: resolvedLocale,
-    messages,
     sid,
+    t,
   } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (!tenantId.trim() || !userPublicId.trim() || !role.trim()) {
     return {
-      message: getMessage(messages, "platform.common.required"),
+      message: t("platform.common.required"),
       ok: false,
     };
   }
@@ -985,14 +956,11 @@ export const updatePlatformTenantMemberRole = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.tenants.member_role_update_failed"),
+        t("platform.tenants.member_role_update_failed"),
         {
           locale: resolvedLocale,
           overrides: {
-            "not-found": getMessage(
-              messages,
-              "platform.tenants.member_not_found"
-            ),
+            "not-found": t("platform.tenants.member_not_found"),
           },
         }
       ),
@@ -1008,19 +976,19 @@ export const removePlatformTenantMember = async (
 ): Promise<RemovePlatformTenantMemberResult> => {
   const {
     locale: resolvedLocale,
-    messages,
     sid,
+    t,
   } = await loadTenantCopyAndSession(locale);
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (!tenantId.trim() || !userPublicId.trim()) {
     return {
-      message: getMessage(messages, "platform.common.required"),
+      message: t("platform.common.required"),
       ok: false,
     };
   }
@@ -1041,14 +1009,11 @@ export const removePlatformTenantMember = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.tenants.remove_member_failed"),
+        t("platform.tenants.remove_member_failed"),
         {
           locale: resolvedLocale,
           overrides: {
-            "not-found": getMessage(
-              messages,
-              "platform.tenants.member_not_found"
-            ),
+            "not-found": t("platform.tenants.member_not_found"),
           },
         }
       ),

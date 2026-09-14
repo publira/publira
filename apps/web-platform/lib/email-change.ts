@@ -3,7 +3,6 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
 import {
@@ -12,7 +11,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
-import { loadPlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 
 export type EmailChangeRequestResult =
   | { message: string; ok: false }
@@ -26,20 +25,20 @@ export const requestPlatformEmailChange = async (
 ): Promise<EmailChangeRequestResult> => {
   const normalizedCurrentEmail = currentEmail.trim();
   const normalizedNewEmail = newEmail.trim();
-  const [messages, sessionId] = await Promise.all([
-    loadPlatformMessages(locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
 
   if (!normalizedCurrentEmail || !normalizedNewEmail || !currentPassword) {
     return {
-      message: getMessage(messages, "platform.auth.setup.name_required"),
+      message: t("platform.auth.setup.name_required"),
       ok: false,
     };
   }
@@ -61,17 +60,17 @@ export const requestPlatformEmailChange = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.settings.email_change_failed"),
+        t("platform.settings.email_change_failed"),
         {
           locale,
           overrides: {
-            conflict: getMessage(messages, "platform.settings.email_in_use"),
+            conflict: t("platform.settings.email_in_use"),
             "invalid-argument": rpcErrorHasFieldViolation(
               error,
               "current_password"
             )
-              ? getMessage(messages, "platform.settings.wrong_password")
-              : getMessage(messages, "errors.validation"),
+              ? t("platform.settings.wrong_password")
+              : t("errors.validation"),
           },
         }
       ),

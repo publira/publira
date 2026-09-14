@@ -1,6 +1,6 @@
 "use client";
 
-import { formatMessage, getMessage } from "@publira/i18n";
+import { formatMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
@@ -51,7 +51,6 @@ import {
   useActionState,
   useCallback,
   useContext,
-  useMemo,
   useState,
   useTransition,
 } from "react";
@@ -66,12 +65,7 @@ import {
   PlatformSections,
   PlatformSectionTitle,
 } from "#components/platform-page";
-import {
-  getInvitationStatusLabel,
-  getTenantRoleLabel,
-  getTenantStatusLabel,
-  getTenantStatusTone,
-} from "#lib/tenant-labels";
+import { getTenantStatusTone } from "#lib/tenant-labels";
 import type {
   PlatformTenantAdminInvitation,
   PlatformTenantMemberSummary,
@@ -184,181 +178,99 @@ const invitationStatusTone = (status: string) => {
   return "destructive" as const;
 };
 
-const memberRoleValues = [
-  "tenant_admin",
-  "tenant_editor",
-  "tenant_auditor",
-] as const;
-const tenantRoleValues = [
-  "tenant_admin",
-  "tenant_auditor",
-  "tenant_editor",
-  "tenant_member",
-  "tenant_owner",
-] as const;
-const tenantStatusValues = [
-  "active",
-  "inactive",
-  "suspended",
-  "trial",
-] as const;
-const invitationStatusValues = [
-  "accepted",
-  "canceled",
-  "expired",
-  "pending",
-] as const;
+/**
+ * The whole copy bag this manager renders, read from the catalog here rather
+ * than handed in: an accessor travelling as an argument would make every key
+ * below an attribute of whatever the caller happened to bind.
+ */
+const useTenantMembersCopy = (): TenantMembersManagerCopy => {
+  const t = useClientMessages();
 
-const buildTenantMembersLabels = (
-  messages: ReturnType<typeof useClientMessages>
-): TenantMembersManagerCopy => ({
-  addDescription: getMessage(
-    messages,
-    "platform.tenants.add_member_description"
-  ),
-  addEmailLabel: getMessage(messages, "platform.tenants.add_member_email"),
-  addPending: getMessage(messages, "platform.tenants.add_member_pending"),
-  addSubmit: getMessage(messages, "platform.tenants.add_member_submit"),
-  addTitle: getMessage(messages, "platform.tenants.add_member"),
-  cancel: getMessage(messages, "platform.common.cancel"),
-  cancelInvite: getMessage(messages, "platform.tenants.cancel_invite"),
-  cancelInviteAction: getMessage(
-    messages,
-    "platform.tenants.cancel_invite_action"
-  ),
-  cancelInviteDescription: getMessage(
-    messages,
-    "platform.tenants.cancel_invite_description"
-  ),
-  cancelInvitePending: getMessage(
-    messages,
-    "platform.tenants.cancel_invite_pending"
-  ),
-  cancelInviteTitle: getMessage(
-    messages,
-    "platform.tenants.cancel_invite_title"
-  ),
-  changeRole: getMessage(messages, "platform.tenants.change_role"),
-  changeRoleSubmit: getMessage(messages, "platform.tenants.change_role_submit"),
-  changeRoleUpdating: getMessage(
-    messages,
-    "platform.tenants.change_role_updating"
-  ),
-  deleteMember: getMessage(messages, "platform.tenants.delete_member"),
-  deleteMemberAction: getMessage(
-    messages,
-    "platform.tenants.delete_member_action"
-  ),
-  deleteMemberDescription: getMessage(
-    messages,
-    "platform.tenants.delete_member_description"
-  ),
-  deleteMemberPending: getMessage(
-    messages,
-    "platform.tenants.delete_member_pending"
-  ),
-  deleteMemberTitle: getMessage(
-    messages,
-    "platform.tenants.delete_member_title"
-  ),
-  invitationStatusLabels: Object.fromEntries(
-    invitationStatusValues.map((status) => [
-      status,
-      getInvitationStatusLabel(status, messages),
-    ])
-  ),
-  invitationsAria: getMessage(
-    messages,
-    "platform.tenants.invitations_pagination_aria"
-  ),
-  invitationsDescription: getMessage(
-    messages,
-    "platform.tenants.invitations_description"
-  ),
-  invitationsEmpty: getMessage(messages, "platform.tenants.invitations_empty"),
-  invitationsLoadFailed: getMessage(
-    messages,
-    "platform.tenants.invitations_load_failed"
-  ),
-  invitationsTitle: getMessage(messages, "platform.tenants.invitations_title"),
-  inviteAdmin: getMessage(messages, "platform.tenants.invite_admin"),
-  inviteAdminDescription: getMessage(
-    messages,
-    "platform.tenants.invite_admin_description"
-  ),
-  inviteAdminEmail: getMessage(messages, "platform.tenants.invite_admin_email"),
-  inviteAdminPending: getMessage(
-    messages,
-    "platform.tenants.invite_admin_pending"
-  ),
-  inviteAdminTitle: getMessage(messages, "platform.tenants.invite_admin_title"),
-  membersAria: getMessage(messages, "platform.tenants.members_pagination_aria"),
-  membersColumnsActions: getMessage(
-    messages,
-    "platform.tenants.members_columns_actions"
-  ),
-  membersColumnsCreated: getMessage(
-    messages,
-    "platform.tenants.members_columns_created"
-  ),
-  membersColumnsEmail: getMessage(
-    messages,
-    "platform.tenants.members_columns_email"
-  ),
-  membersColumnsExpires: getMessage(
-    messages,
-    "platform.tenants.members_columns_expires"
-  ),
-  membersColumnsInvitedAt: getMessage(
-    messages,
-    "platform.tenants.members_columns_invited_at"
-  ),
-  membersColumnsName: getMessage(
-    messages,
-    "platform.tenants.members_columns_name"
-  ),
-  membersColumnsRole: getMessage(
-    messages,
-    "platform.tenants.members_columns_role"
-  ),
-  membersColumnsStatus: getMessage(
-    messages,
-    "platform.tenants.members_columns_status"
-  ),
-  membersEmpty: getMessage(messages, "platform.tenants.members_empty"),
-  membersListDescription: getMessage(
-    messages,
-    "platform.tenants.members_list_description"
-  ),
-  membersListFailed: getMessage(
-    messages,
-    "platform.tenants.members_load_failed"
-  ),
-  membersListTitle: getMessage(messages, "platform.tenants.members_list_title"),
-  newRole: getMessage(messages, "platform.tenants.new_role"),
-  next: getMessage(messages, "platform.common.next"),
-  previous: getMessage(messages, "platform.common.previous"),
-  resendInvite: getMessage(messages, "platform.tenants.resend_invite"),
-  role: getMessage(messages, "platform.common.role"),
-  roleLabels: Object.fromEntries(
-    tenantRoleValues.map((role) => [role, getTenantRoleLabel(role, messages)])
-  ),
-  roleOptions: memberRoleValues.map((value) => ({
-    label: getTenantRoleLabel(value, messages),
-    value,
-  })),
-  roleUpdateDescription: getMessage(
-    messages,
-    "platform.tenants.role_update_description"
-  ),
-  statusLabels: Object.fromEntries(
-    tenantStatusValues.map((status) => [
-      status,
-      getTenantStatusLabel(status, messages),
-    ])
-  ),
-  unset: getMessage(messages, "platform.common.unset"),
-});
+  return {
+    addDescription: t("platform.tenants.add_member_description"),
+    addEmailLabel: t("platform.tenants.add_member_email"),
+    addPending: t("platform.tenants.add_member_pending"),
+    addSubmit: t("platform.tenants.add_member_submit"),
+    addTitle: t("platform.tenants.add_member"),
+    cancel: t("platform.common.cancel"),
+    cancelInvite: t("platform.tenants.cancel_invite"),
+    cancelInviteAction: t("platform.tenants.cancel_invite_action"),
+    cancelInviteDescription: t("platform.tenants.cancel_invite_description"),
+    cancelInvitePending: t("platform.tenants.cancel_invite_pending"),
+    cancelInviteTitle: t("platform.tenants.cancel_invite_title"),
+    changeRole: t("platform.tenants.change_role"),
+    changeRoleSubmit: t("platform.tenants.change_role_submit"),
+    changeRoleUpdating: t("platform.tenants.change_role_updating"),
+    deleteMember: t("platform.tenants.delete_member"),
+    deleteMemberAction: t("platform.tenants.delete_member_action"),
+    deleteMemberDescription: t("platform.tenants.delete_member_description"),
+    deleteMemberPending: t("platform.tenants.delete_member_pending"),
+    deleteMemberTitle: t("platform.tenants.delete_member_title"),
+    invitationStatusLabels: {
+      accepted: t("platform.common.invitation_status.accepted"),
+      canceled: t("platform.common.invitation_status.canceled"),
+      expired: t("platform.common.invitation_status.expired"),
+      pending: t("platform.common.invitation_status.pending"),
+    },
+    invitationsAria: t("platform.tenants.invitations_pagination_aria"),
+    invitationsDescription: t("platform.tenants.invitations_description"),
+    invitationsEmpty: t("platform.tenants.invitations_empty"),
+    invitationsLoadFailed: t("platform.tenants.invitations_load_failed"),
+    invitationsTitle: t("platform.tenants.invitations_title"),
+    inviteAdmin: t("platform.tenants.invite_admin"),
+    inviteAdminDescription: t("platform.tenants.invite_admin_description"),
+    inviteAdminEmail: t("platform.tenants.invite_admin_email"),
+    inviteAdminPending: t("platform.tenants.invite_admin_pending"),
+    inviteAdminTitle: t("platform.tenants.invite_admin_title"),
+    membersAria: t("platform.tenants.members_pagination_aria"),
+    membersColumnsActions: t("platform.tenants.members_columns_actions"),
+    membersColumnsCreated: t("platform.tenants.members_columns_created"),
+    membersColumnsEmail: t("platform.tenants.members_columns_email"),
+    membersColumnsExpires: t("platform.tenants.members_columns_expires"),
+    membersColumnsInvitedAt: t("platform.tenants.members_columns_invited_at"),
+    membersColumnsName: t("platform.tenants.members_columns_name"),
+    membersColumnsRole: t("platform.tenants.members_columns_role"),
+    membersColumnsStatus: t("platform.tenants.members_columns_status"),
+    membersEmpty: t("platform.tenants.members_empty"),
+    membersListDescription: t("platform.tenants.members_list_description"),
+    membersListFailed: t("platform.tenants.members_load_failed"),
+    membersListTitle: t("platform.tenants.members_list_title"),
+    newRole: t("platform.tenants.new_role"),
+    next: t("platform.common.next"),
+    previous: t("platform.common.previous"),
+    resendInvite: t("platform.tenants.resend_invite"),
+    role: t("platform.common.role"),
+    roleLabels: {
+      tenant_admin: t("platform.common.roles.tenant_admin"),
+      tenant_auditor: t("platform.common.roles.tenant_auditor"),
+      tenant_editor: t("platform.common.roles.tenant_editor"),
+      tenant_member: t("platform.common.roles.tenant_member"),
+      tenant_owner: t("platform.common.roles.tenant_owner"),
+    },
+    roleOptions: [
+      {
+        label: t("platform.common.roles.tenant_admin"),
+        value: "tenant_admin",
+      },
+      {
+        label: t("platform.common.roles.tenant_editor"),
+        value: "tenant_editor",
+      },
+      {
+        label: t("platform.common.roles.tenant_auditor"),
+        value: "tenant_auditor",
+      },
+    ],
+    roleUpdateDescription: t("platform.tenants.role_update_description"),
+    statusLabels: {
+      active: t("platform.common.tenant_status.active"),
+      inactive: t("platform.common.tenant_status.inactive"),
+      suspended: t("platform.common.tenant_status.suspended"),
+      trial: t("platform.common.tenant_status.trial"),
+    },
+    unset: t("platform.common.unset"),
+  };
+};
 
 const TenantMembersLabelsContext =
   createContext<TenantMembersManagerCopy | null>(null);
@@ -829,8 +741,7 @@ export const TenantMembersManager = ({
   timeZone,
   updateRoleAction,
 }: TenantMembersManagerProps) => {
-  const messages = useClientMessages();
-  const copy = useMemo(() => buildTenantMembersLabels(messages), [messages]);
+  const copy = useTenantMembersCopy();
   const [addState, addFormAction, isAddPending] = useActionState(
     addAction,
     null

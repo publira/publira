@@ -1,6 +1,5 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -11,7 +10,8 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { requiredTrimmedString } from "#lib/form-schemas";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { canManageEndUsers } from "#lib/roles";
 import {
   deletePlatformEndUser,
@@ -26,13 +26,11 @@ import {
  */
 const userPublicIdSchema = async () => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return {
     locale,
-    schema: requiredTrimmedString(
-      getMessage(messages, "platform.common.required")
-    ),
+    schema: requiredTrimmedString(t("platform.common.required")),
   };
 };
 

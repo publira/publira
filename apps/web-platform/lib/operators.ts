@@ -1,7 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { PlatformOperator } from "@publira/api-client/platform/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { z } from "zod";
@@ -15,7 +14,7 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
-import { loadPlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 import { normalizePlatformRole } from "./roles";
 
 const getPlatformOperatorInputSchema = z.object({
@@ -95,9 +94,9 @@ export const listPlatformOperators = async (
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       operators: [],
@@ -126,13 +125,11 @@ export const listPlatformOperators = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.operators.list_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("platform.operators.list_failed"), {
+        locale: input.locale,
+      }),
       nextToken: "",
       ok: false,
       operators: [],
@@ -147,9 +144,9 @@ export const createPlatformOperator = async (
 ): Promise<CreatePlatformOperatorResult> => {
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -163,18 +160,14 @@ export const createPlatformOperator = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.common.generic_failed"),
-        {
-          locale: input.locale,
-          overrides: {
-            conflict: getMessage(messages, "platform.operators.email_taken"),
-          },
-        }
-      ),
+      message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
+        locale: input.locale,
+        overrides: {
+          conflict: t("platform.operators.email_taken"),
+        },
+      }),
       ok: false,
     };
   }
@@ -277,9 +270,9 @@ export const updatePlatformOperatorRole = async (
 ): Promise<UpdatePlatformOperatorRoleResult> => {
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -293,13 +286,11 @@ export const updatePlatformOperatorRole = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.common.generic_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
+        locale: input.locale,
+      }),
       ok: false,
     };
   }

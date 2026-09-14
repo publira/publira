@@ -1,4 +1,4 @@
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
@@ -38,7 +38,8 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { listPlatformTenants } from "#lib/tenants";
@@ -47,10 +48,22 @@ import { buildTenantsPath, parseTenantFilters } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.tenants.title") };
+  return { title: t("platform.tenants.title") };
 };
+
+/**
+ * One tenant's status, as its own async component: the label is a string the
+ * catalog resolves, and a row rendered inside `.map()` cannot await.
+ */
+const TenantStatusCell = async ({
+  locale,
+  status,
+}: {
+  locale: Locale;
+  status: string;
+}) => await getTenantStatusLabel(status, locale);
 
 const statusFilterValues = ["active", "trial", "suspended"] as const;
 const allowedStatusValues = new Set<string>(statusFilterValues);
@@ -75,8 +88,8 @@ const TenantsContent = async ({
   const locale = await getPlatformLocale();
   const filters = parseTenantFilters(await searchParams, allowedStatusValues);
 
-  const [messages, result, timeZone] = await Promise.all([
-    loadPlatformMessages(locale),
+  const [t, result, timeZone] = await Promise.all([
+    getMessagesFor(locale),
     listPlatformTenants({
       limit: pageSize,
       locale,
@@ -102,10 +115,12 @@ const TenantsContent = async ({
       })
     : undefined;
 
-  const statusSelectItems = statusFilterValues.map((value) => ({
-    label: getTenantStatusLabel(value, messages),
-    value,
-  }));
+  const statusSelectItems = await Promise.all(
+    statusFilterValues.map(async (value) => ({
+      label: await getTenantStatusLabel(value, locale),
+      value,
+    }))
+  );
 
   return (
     <div className="grid gap-4">
@@ -118,10 +133,7 @@ const TenantsContent = async ({
           className="w-64"
           defaultValue={filters.name}
           name="name"
-          placeholder={getMessage(
-            messages,
-            "platform.tenants.search_placeholder"
-          )}
+          placeholder={t("platform.tenants.search_placeholder")}
           type="search"
         />
         <Select
@@ -129,17 +141,21 @@ const TenantsContent = async ({
           defaultValue={filters.status || undefined}
           items={statusSelectItems}
           name="status"
-          placeholder={getMessage(messages, "platform.tenants.all_statuses")}
+          placeholder={t("platform.tenants.all_statuses")}
         />
         <Button type="submit">
-          {getMessage(messages, "platform.common.filter")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.common.filter" />
+          </Suspense>
         </Button>
         {filters.name || filters.status ? (
           <Link
             className="flex h-10 items-center rounded-control px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
             href="/tenants"
           >
-            {getMessage(messages, "platform.common.clear")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.common.clear" />
+            </Suspense>
           </Link>
         ) : null}
       </Form>
@@ -161,13 +177,19 @@ const TenantsContent = async ({
         <TableHeader>
           <TableRow>
             <TableHead>
-              {getMessage(messages, "platform.tenants.columns_tenant")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.tenants.columns_tenant" />
+              </Suspense>
             </TableHead>
             <TableHead className="w-40">
-              {getMessage(messages, "platform.tenants.columns_status")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.tenants.columns_status" />
+              </Suspense>
             </TableHead>
             <TableHead className="w-52">
-              {getMessage(messages, "platform.tenants.columns_created")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.tenants.columns_created" />
+              </Suspense>
             </TableHead>
             <TableHead className="w-40" />
           </TableRow>
@@ -177,8 +199,8 @@ const TenantsContent = async ({
             <TableRow>
               <TableCell className="text-muted-foreground" colSpan={4}>
                 {filters.name || filters.status
-                  ? getMessage(messages, "platform.tenants.empty_filtered")
-                  : getMessage(messages, "platform.tenants.empty")}
+                  ? t("platform.tenants.empty_filtered")
+                  : t("platform.tenants.empty")}
               </TableCell>
             </TableRow>
           ) : null}
@@ -191,12 +213,12 @@ const TenantsContent = async ({
                     tone={getTenantStatusTone(tenant.status)}
                     variant="outline"
                   >
-                    {getTenantStatusLabel(tenant.status, messages)}
+                    <TenantStatusCell locale={locale} status={tenant.status} />
                   </Badge>
                 </TableCell>
                 <TableCell>
                   {formatDateTime(tenant.createdAt, {
-                    fallback: getMessage(messages, "platform.common.unset"),
+                    fallback: t("platform.common.unset"),
                     locale,
                     timeZone,
                   })}
@@ -207,7 +229,9 @@ const TenantsContent = async ({
                     size="sm"
                     variant="outline"
                   >
-                    {getMessage(messages, "platform.common.detail")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.common.detail" />
+                    </Suspense>
                   </LinkButton>
                 </TableCell>
               </TableRow>
@@ -216,11 +240,11 @@ const TenantsContent = async ({
       </Table>
 
       <PaginationControls
-        ariaLabel={getMessage(messages, "platform.tenants.pagination_aria")}
+        ariaLabel={t("platform.tenants.pagination_aria")}
         nextHref={nextHref}
-        nextLabel={getMessage(messages, "platform.common.next")}
+        nextLabel={t("platform.common.next")}
         previousHref={previousHref}
-        previousLabel={getMessage(messages, "platform.common.previous")}
+        previousLabel={t("platform.common.previous")}
       />
     </div>
   );

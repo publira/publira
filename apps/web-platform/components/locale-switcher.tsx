@@ -1,8 +1,9 @@
-import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { getLocaleLabel, getLocales } from "@publira/i18n";
 
-import { getPlatformLocale, loadPlatformMessages } from "../lib/locale";
+import { getPlatformLocale } from "../lib/locale";
 import { setPlatformLocaleAction } from "../lib/locale-action";
 import { LOCALE_FIELD_NAME } from "../lib/locale-shared";
+import { getMessagesFor } from "../lib/messages";
 import {
   LocaleSwitcher,
   LocaleSwitcherContent,
@@ -15,8 +16,8 @@ import {
 /** Header display-language control backed by the existing locale cookie. */
 export const PlatformLocaleSwitcher = async () => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-  const label = getMessage(messages, "locale.label");
+  const t = await getMessagesFor(locale);
+  const label = t("locale.label");
 
   return (
     <LocaleSwitcher

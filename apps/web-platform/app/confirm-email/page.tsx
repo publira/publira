@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenBody,
@@ -16,7 +15,8 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { confirmPlatformEmailChange } from "#lib/email-change";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 
@@ -26,9 +26,9 @@ const CONFIRM_EMAIL_LINK_CLASS_NAME = cn(
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.auth.confirm_email.title") };
+  return { title: t("platform.auth.confirm_email.title") };
 };
 
 /**

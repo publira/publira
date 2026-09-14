@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenHeader,
@@ -11,16 +10,17 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { LoginForm } from "./_components/login-form";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.auth.login.title") };
+  return { title: t("platform.auth.login.title") };
 };
 
 type LoginSearchParams = PageProps<"/login">["searchParams"];

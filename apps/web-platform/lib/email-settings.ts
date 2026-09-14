@@ -7,7 +7,6 @@ import {
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -21,8 +20,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
-import { loadPlatformMessages } from "./locale";
-import type { PlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 
 export {
   SECRET_UPDATE_MODE_REPLACE,
@@ -82,15 +80,12 @@ export type PlatformSmtpTestResult =
  * the shared copy — a raw `[internal]` message is not something to show. Same
  * rule as `apps/web-admin/lib/email-settings.ts`.
  */
-const parseErrorMessage = (
+const parseErrorMessage = async (
   error: unknown,
-  messages: PlatformMessages,
   locale: Locale
-): string => {
-  const genericErrorMessage = getMessage(
-    messages,
-    "platform.common.generic_failed"
-  );
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+  const genericErrorMessage = t("platform.common.generic_failed");
   const serverMessage =
     rpcErrorRawMessage(error)?.trim() || genericErrorMessage;
   return rpcErrorMessage(error, genericErrorMessage, {
@@ -102,12 +97,12 @@ const parseErrorMessage = (
   });
 };
 
-const parseSmtpTestErrorMessage = (
+const parseSmtpTestErrorMessage = async (
   error: unknown,
-  messages: PlatformMessages,
   locale: Locale
-): string => {
-  const fallback = getMessage(messages, "platform.common.generic_failed");
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+  const fallback = t("platform.common.generic_failed");
 
   return (
     smtpTestFailureErrorMessage(error, locale) ??
@@ -155,9 +150,9 @@ export const getPlatformEmailSettings = async (
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -175,9 +170,8 @@ export const getPlatformEmailSettings = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(locale);
     return {
-      message: parseErrorMessage(error, messages, locale),
+      message: await parseErrorMessage(error, locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -187,13 +181,13 @@ export const getPlatformEmailSettings = async (
 export const updatePlatformEmailSettings = async (
   input: UpdatePlatformSmtpSettingsInput
 ): Promise<PlatformSmtpSettingsResult> => {
-  const [messages, sessionId] = await Promise.all([
-    loadPlatformMessages(input.locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -218,7 +212,7 @@ export const updatePlatformEmailSettings = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, messages, input.locale),
+      message: await parseErrorMessage(error, input.locale),
       ok: false,
     };
   }
@@ -227,13 +221,13 @@ export const updatePlatformEmailSettings = async (
 export const sendPlatformSmtpTestEmail = async (
   input: SendPlatformSmtpTestInput
 ): Promise<PlatformSmtpTestResult> => {
-  const [messages, sessionId] = await Promise.all([
-    loadPlatformMessages(input.locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -260,7 +254,7 @@ export const sendPlatformSmtpTestEmail = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseSmtpTestErrorMessage(error, messages, input.locale),
+      message: await parseSmtpTestErrorMessage(error, input.locale),
       ok: false,
     };
   }

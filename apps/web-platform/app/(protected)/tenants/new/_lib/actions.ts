@@ -1,6 +1,7 @@
 "use server";
 
-import { getLocales, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { getLocales } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -14,8 +15,8 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { createPlatformTenant } from "#lib/tenants";
 
 /**
@@ -23,20 +24,19 @@ import { createPlatformTenant } from "#lib/tenants";
  * on the server: `Accept-Language` only seeded the selector, and a hand-built
  * request can name any code at all.
  */
-const createTenantFormSchema = (messages: PlatformMessages) =>
-  z.object({
+const createTenantFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     adminDomain: optionalTrimmedString(),
     defaultLocale: z.enum(getLocales(), {
-      error: getMessage(messages, "platform.tenants.locale_required"),
+      error: t("platform.tenants.locale_required"),
     }),
-    domain: requiredTrimmedString(
-      getMessage(messages, "platform.tenants.domain_required")
-    ),
+    domain: requiredTrimmedString(t("platform.tenants.domain_required")),
     initialAdminEmails: commaOrNewlineStringListFormSchema,
-    name: requiredTrimmedString(
-      getMessage(messages, "platform.tenants.name_required")
-    ),
+    name: requiredTrimmedString(t("platform.tenants.name_required")),
   });
+};
 
 export const createTenantAction = async (
   _prevState: FormActionState,
@@ -44,9 +44,8 @@ export const createTenantAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-
-  const parsed = createTenantFormSchema(messages).safeParse(
+  const schema = await createTenantFormSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
       defaultLocale: { kind: "value", name: "tenant_default_locale" },

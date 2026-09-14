@@ -1,8 +1,9 @@
-import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { getLocaleLabel, getLocales } from "@publira/i18n";
 import { Select } from "@publira/ui-components/select";
 
 import { getInitialLocaleCandidate } from "#lib/initial-locale";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 /**
  * The new tenant's default language.
@@ -17,7 +18,7 @@ export const TenantDefaultLocaleSelect = async () => {
     getPlatformLocale(),
     getInitialLocaleCandidate(),
   ]);
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <Select
@@ -27,10 +28,7 @@ export const TenantDefaultLocaleSelect = async () => {
         value,
       }))}
       name="tenant_default_locale"
-      placeholder={getMessage(
-        messages,
-        "platform.tenants.default_locale_placeholder"
-      )}
+      placeholder={t("platform.tenants.default_locale_placeholder")}
     />
   );
 };

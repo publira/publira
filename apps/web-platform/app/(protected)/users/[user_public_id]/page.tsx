@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import { Field, FieldLabel } from "@publira/ui-components/field";
@@ -26,6 +25,7 @@ import {
   IdentifierCopy,
   IdentifierValue,
 } from "#components/identifier";
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -42,7 +42,8 @@ import {
 } from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { canManageEndUsers } from "#lib/roles";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
@@ -57,9 +58,9 @@ import {
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.users.detail_metadata") };
+  return { title: t("platform.users.detail_metadata") };
 };
 
 interface UserDetailPageProps {
@@ -125,13 +126,12 @@ const UserDetailContent = async ({
   }
   const { user_public_id: userPublicId } = parsedParams;
   const locale = await getPlatformLocale();
-  const [messages, userResult, currentOperatorResult, timeZone] =
-    await Promise.all([
-      loadPlatformMessages(locale),
-      getPlatformEndUser(userPublicId, locale),
-      getPlatformCurrentOperator(),
-      getPlatformDisplayTimeZone(),
-    ]);
+  const [t, userResult, currentOperatorResult, timeZone] = await Promise.all([
+    getMessagesFor(locale),
+    getPlatformEndUser(userPublicId, locale),
+    getPlatformCurrentOperator(),
+    getPlatformDisplayTimeZone(),
+  ]);
 
   // Before both branches below: a rejected session reads every record as
   // missing, and a 404 would hide that the operator only needs to sign in again.
@@ -140,9 +140,9 @@ const UserDetailContent = async ({
   if (!userResult.ok) {
     return (
       <UserLoadError
-        backLabel={getMessage(messages, "platform.common.back_to_list")}
+        backLabel={t("platform.common.back_to_list")}
         message={userResult.message}
-        title={getMessage(messages, "platform.users.load_one_failed")}
+        title={t("platform.users.load_one_failed")}
       />
     );
   }
@@ -157,41 +157,44 @@ const UserDetailContent = async ({
   const canSuspend = canManage && user.status === "active";
   const canUnsuspend = canManage && user.status === "suspended";
   const canDelete = canManage;
-  const cancelText = getMessage(messages, "platform.common.cancel");
+  const cancelText = t("platform.common.cancel");
 
   return (
     <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageTitle>
-            {getMessage(messages, "platform.users.detail_title", {
-              name: user.name || user.publicId,
-            })}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message
+                message="platform.users.detail_title"
+                values={{
+                  name: user.name || user.publicId,
+                }}
+              />
+            </Suspense>
           </PlatformPageTitle>
           <PlatformPageDescription>
-            {getMessage(messages, "platform.users.detail_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.detail_description" />
+            </Suspense>
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
           <LinkButton render={<Link href="/users" />} variant="outline">
-            {getMessage(messages, "platform.common.back_to_list")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.common.back_to_list" />
+            </Suspense>
           </LinkButton>
           {canUnsuspend ? (
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={unsuspendEndUserAction}
-              actionText={getMessage(
-                messages,
-                "platform.users.unsuspend_action"
-              )}
+              actionText={t("platform.users.unsuspend_action")}
               actionVariant="default"
               cancelText={cancelText}
-              description={getMessage(
-                messages,
-                "platform.users.unsuspend_description"
-              )}
-              title={getMessage(messages, "platform.users.unsuspend_title")}
-              triggerLabel={getMessage(messages, "platform.users.unsuspend")}
+              description={t("platform.users.unsuspend_description")}
+              title={t("platform.users.unsuspend_title")}
+              triggerLabel={t("platform.users.unsuspend")}
               triggerVariant="outline"
             />
           ) : null}
@@ -199,14 +202,11 @@ const UserDetailContent = async ({
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={suspendEndUserAction}
-              actionText={getMessage(messages, "platform.users.suspend_action")}
+              actionText={t("platform.users.suspend_action")}
               cancelText={cancelText}
-              description={getMessage(
-                messages,
-                "platform.users.suspend_description"
-              )}
-              title={getMessage(messages, "platform.users.suspend_title")}
-              triggerLabel={getMessage(messages, "platform.users.suspend")}
+              description={t("platform.users.suspend_description")}
+              title={t("platform.users.suspend_title")}
+              triggerLabel={t("platform.users.suspend")}
               triggerVariant="outline"
             />
           ) : null}
@@ -214,14 +214,11 @@ const UserDetailContent = async ({
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={deleteEndUserAction}
-              actionText={getMessage(messages, "platform.users.delete_action")}
+              actionText={t("platform.users.delete_action")}
               cancelText={cancelText}
-              description={getMessage(
-                messages,
-                "platform.users.delete_description"
-              )}
-              title={getMessage(messages, "platform.users.delete_title")}
-              triggerLabel={getMessage(messages, "platform.users.delete")}
+              description={t("platform.users.delete_description")}
+              title={t("platform.users.delete_title")}
+              triggerLabel={t("platform.users.delete")}
             />
           ) : null}
         </PlatformPageActions>
@@ -232,49 +229,58 @@ const UserDetailContent = async ({
             <PlatformSectionHeader>
               <PlatformSectionHeading>
                 <PlatformSectionTitle>
-                  {getMessage(messages, "platform.users.info_title")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.users.info_title" />
+                  </Suspense>
                 </PlatformSectionTitle>
                 <PlatformSectionDescription>
-                  {getMessage(messages, "platform.users.info_description")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.users.info_description" />
+                  </Suspense>
                 </PlatformSectionDescription>
               </PlatformSectionHeading>
             </PlatformSectionHeader>
             <Field>
               <FieldLabel>
-                {getMessage(messages, "platform.users.public_id")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.users.public_id" />
+                </Suspense>
               </FieldLabel>
               <Identifier>
                 <IdentifierValue>{user.publicId}</IdentifierValue>
                 <IdentifierCopy
-                  aria-label={getMessage(
-                    messages,
-                    "platform.users.copy_public_id"
-                  )}
+                  aria-label={t("platform.users.copy_public_id")}
                   value={user.publicId}
                 />
               </Identifier>
             </Field>
             <Field>
               <FieldLabel>
-                {getMessage(messages, "platform.users.columns_name")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.users.columns_name" />
+                </Suspense>
               </FieldLabel>
               <p className="text-sm">
-                {user.name || getMessage(messages, "platform.common.unset")}
+                {user.name || t("platform.common.unset")}
               </p>
             </Field>
             <Field>
               <FieldLabel>
-                {getMessage(messages, "platform.common.email")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.common.email" />
+                </Suspense>
               </FieldLabel>
               <p className="text-sm">{user.email}</p>
             </Field>
             <Field>
               <FieldLabel>
-                {getMessage(messages, "platform.users.registered_at")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.users.registered_at" />
+                </Suspense>
               </FieldLabel>
               <p className="text-sm">
                 {formatDate(user.createdAt, {
-                  fallback: getMessage(messages, "platform.common.unset"),
+                  fallback: t("platform.common.unset"),
                   locale,
                   timeZone,
                 })}
@@ -282,11 +288,13 @@ const UserDetailContent = async ({
             </Field>
             <Field>
               <FieldLabel>
-                {getMessage(messages, "platform.users.status")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.users.status" />
+                </Suspense>
               </FieldLabel>
               <p>
                 <Badge tone={getEndUserStatusTone(user.status)}>
-                  {getEndUserStatusLabel(user.status, messages)}
+                  {await getEndUserStatusLabel(user.status, locale)}
                 </Badge>
               </p>
             </Field>
@@ -296,19 +304,22 @@ const UserDetailContent = async ({
             <PlatformSectionHeader>
               <PlatformSectionHeading>
                 <PlatformSectionTitle>
-                  {getMessage(messages, "platform.users.affiliated_title")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.users.affiliated_title" />
+                  </Suspense>
                 </PlatformSectionTitle>
                 <PlatformSectionDescription>
-                  {getMessage(
-                    messages,
-                    "platform.users.affiliated_description"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.users.affiliated_description" />
+                  </Suspense>
                 </PlatformSectionDescription>
               </PlatformSectionHeading>
             </PlatformSectionHeader>
             {user.tenantIds.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {getMessage(messages, "platform.users.affiliated_empty")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                  <Message message="platform.users.affiliated_empty" />
+                </Suspense>
               </p>
             ) : (
               <ul className="grid gap-2">

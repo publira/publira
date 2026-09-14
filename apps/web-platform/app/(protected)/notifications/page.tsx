@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { TableSkeleton } from "@publira/ui-components/table";
 import type { Metadata } from "next";
@@ -15,7 +14,8 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 
@@ -27,9 +27,9 @@ import {
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.notifications.title") };
+  return { title: t("platform.notifications.title") };
 };
 
 type NotificationsPageProps = PageProps<"/notifications">;

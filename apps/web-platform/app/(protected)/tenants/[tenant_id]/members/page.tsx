@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -31,7 +30,8 @@ import {
   PlatformSection,
 } from "#components/platform-page";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import {
   getPlatformTenant,
@@ -67,13 +67,13 @@ export const generateMetadata = async ({
   params,
 }: TenantMembersPageProps): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
   const parsedParams = parseRouteParams(
     tenantMembersParamsSchema,
     await params
   );
   if (!parsedParams) {
-    return { title: getMessage(messages, "platform.tenants.members_heading") };
+    return { title: t("platform.tenants.members_heading") };
   }
 
   const tenantResult = await getPlatformTenant(parsedParams.tenant_id, locale);
@@ -82,8 +82,8 @@ export const generateMetadata = async ({
 
   return {
     title: name
-      ? getMessage(messages, "platform.tenants.members_title", { name })
-      : getMessage(messages, "platform.tenants.members_heading"),
+      ? t("platform.tenants.members_title", { name })
+      : t("platform.tenants.members_heading"),
   };
 };
 
@@ -139,9 +139,8 @@ const TenantMembersContent = async ({
   const pageFilters = parseMemberInvitationFilters(await searchParams);
   const locale = await getPlatformLocale();
 
-  const [messages, tenantResult, membersResult, invitationsResult, timeZone] =
+  const [tenantResult, membersResult, invitationsResult, timeZone] =
     await Promise.all([
-      loadPlatformMessages(locale),
       getPlatformTenant(tenantId, locale),
       listPlatformTenantMembers({
         locale,
@@ -204,17 +203,24 @@ const TenantMembersContent = async ({
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageTitle>
-            {getMessage(messages, "platform.tenants.members_title", {
-              name: tenant.name,
-            })}
+            <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+              <Message
+                message="platform.tenants.members_title"
+                values={{ name: tenant.name }}
+              />
+            </Suspense>
           </PlatformPageTitle>
           <PlatformPageDescription>
-            {getMessage(messages, "platform.tenants.members_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="platform.tenants.members_description" />
+            </Suspense>
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
           <LinkButton render={<Link href="/tenants" />} variant="outline">
-            {getMessage(messages, "platform.common.back_to_list")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="platform.common.back_to_list" />
+            </Suspense>
           </LinkButton>
         </PlatformPageActions>
       </PlatformPageHeader>

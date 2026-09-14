@@ -1,26 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { loadPlatformMessages } from "./locale";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "./user-labels";
 
-const en = await loadPlatformMessages("en");
+const en = "en" as const;
 
 describe("platform-end-user-labels", () => {
   describe("getEndUserStatusLabel", () => {
-    it("should return the label for active", () => {
-      expect(getEndUserStatusLabel("active", en)).toBe("Active");
+    it("should return the label for active", async () => {
+      await expect(getEndUserStatusLabel("active", en)).resolves.toBe("Active");
     });
 
-    it("should return the label for suspended", () => {
-      expect(getEndUserStatusLabel("suspended", en)).toBe("Suspended");
+    it("should return the label for suspended", async () => {
+      await expect(getEndUserStatusLabel("suspended", en)).resolves.toBe(
+        "Suspended"
+      );
     });
 
-    it("should return the label for inactive", () => {
-      expect(getEndUserStatusLabel("inactive", en)).toBe("Inactive");
+    it("should return the label for inactive", async () => {
+      await expect(getEndUserStatusLabel("inactive", en)).resolves.toBe(
+        "Inactive"
+      );
     });
 
-    it("should return original status for unknown status", () => {
-      expect(getEndUserStatusLabel("unknown_status", en)).toBe(
+    it("should return original status for unknown status", async () => {
+      await expect(getEndUserStatusLabel("unknown_status", en)).resolves.toBe(
         "unknown_status"
       );
     });

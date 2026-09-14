@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
@@ -28,7 +27,8 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { defaultNotificationsPageSize } from "../_lib/search-params";
 import type { NotificationItem } from "../notification-types";
@@ -216,7 +216,7 @@ export const NotificationManager = async ({
   unreadCount,
 }: NotificationManagerProps) => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = Boolean(previousHref || nextHref);
   const showPagination =
     !listErrorMessage && (notifications.length > 0 || hasPageLinks);
@@ -240,7 +240,7 @@ export const NotificationManager = async ({
         listErrorMessage,
         locale,
         markReadAriaLabel: (title) =>
-          getMessage(messages, "platform.notifications.mark_read_aria", {
+          t("platform.notifications.mark_read_aria", {
             title,
           }),
         notifications,
@@ -258,10 +258,7 @@ export const NotificationManager = async ({
             </Suspense>
           </p>
           <PaginationControls
-            ariaLabel={getMessage(
-              messages,
-              "platform.notifications.pagination_aria"
-            )}
+            ariaLabel={t("platform.notifications.pagination_aria")}
             nextHref={nextHref}
             nextLabel={
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>

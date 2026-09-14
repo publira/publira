@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -15,15 +14,16 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { CreateOperatorForm } from "./_components/create-operator-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.operators.add_title") };
+  return { title: t("platform.operators.add_title") };
 };
 
 const OperatorNewPage = () => (

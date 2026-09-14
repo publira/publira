@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   ConsoleHeader,
   ConsoleHeaderActions,
@@ -34,9 +33,11 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { getMessagesFor } from "#lib/messages";
+
 import { getPlatformCurrentOperator } from "../lib/auth";
 import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "../lib/locale";
+import { getPlatformLocale } from "../lib/locale";
 import { logoutAction } from "../lib/logout-action";
 import {
   countUnreadNotifications,
@@ -78,12 +79,12 @@ export const PlatformUser = async () => {
   }
 
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <ConsoleHeaderUser>
       <ConsoleUserMenuTrigger
-        aria-label={getMessage(messages, "platform.shell.account_menu", {
+        aria-label={t("platform.shell.account_menu", {
           name: result.operator.name,
         })}
       >
@@ -96,16 +97,20 @@ export const PlatformUser = async () => {
             {result.operator.publicId}
           </ConsoleUserMenuPublicId>
           <ConsoleUserMenuRole>
-            {getOperatorRoleLabel(result.operator.role, messages)}
+            {await getOperatorRoleLabel(result.operator.role, locale)}
           </ConsoleUserMenuRole>
         </ConsoleUserMenuIdentity>
         <ConsoleUserMenuSeparator />
         <ConsoleUserMenuAccountLink href="/settings/account">
-          {getMessage(messages, "platform.shell.account_settings")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.shell.account_settings" />
+          </Suspense>
         </ConsoleUserMenuAccountLink>
         <ConsoleUserMenuLogout action={logoutAction}>
           <ConsoleUserMenuLogoutButton>
-            {getMessage(messages, "platform.shell.logout")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.shell.logout" />
+            </Suspense>
           </ConsoleUserMenuLogoutButton>
         </ConsoleUserMenuLogout>
       </ConsoleUserMenuContent>
@@ -115,18 +120,18 @@ export const PlatformUser = async () => {
 
 export const PlatformNotificationBell = async () => {
   const locale = await getPlatformLocale();
-  const [list, unread, messages] = await Promise.all([
+  const [list, unread, t] = await Promise.all([
     listNotifications(locale, { limit: notificationMenuLimit }),
     countUnreadNotifications(locale),
-    loadPlatformMessages(locale),
+    getMessagesFor(locale),
   ]);
   const count = Math.max(0, unread.unreadCount);
   const ariaLabel =
     count > 0
-      ? getMessage(messages, "platform.shell.notifications_unread", {
+      ? t("platform.shell.notifications_unread", {
           count,
         })
-      : getMessage(messages, "platform.shell.notifications_none");
+      : t("platform.shell.notifications_none");
   let notificationContent = (
     <NotificationBellError>
       <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
@@ -208,17 +213,17 @@ export const PlatformNotificationBell = async () => {
 
 const PlatformMobileNavigation = async () => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <>
       <ConsoleMobileNavigation>
         <ConsoleMobileNavigationCloseButton
-          aria-label={getMessage(messages, "platform.shell.navigation_close")}
+          aria-label={t("platform.shell.navigation_close")}
         />
       </ConsoleMobileNavigation>
       <ConsoleMobileNavigationOpenButton
-        aria-label={getMessage(messages, "platform.shell.navigation_open")}
+        aria-label={t("platform.shell.navigation_open")}
       />
     </>
   );
