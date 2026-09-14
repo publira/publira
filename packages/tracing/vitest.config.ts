@@ -1,8 +1,10 @@
-import { sharedTestOptions } from "@publira/vitest-config";
 import { defineConfig } from "vitest/config";
+
+const name = "@publira/tracing";
 
 export default defineConfig({
   test: {
-    ...sharedTestOptions,
+    name,
+    projects: [{ extends: "../../vitest.shared.ts", test: { name } }],
   },
 });

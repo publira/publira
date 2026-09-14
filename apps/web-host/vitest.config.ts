@@ -1,11 +1,20 @@
-import { sharedTestOptions } from "@publira/vitest-config";
 import { defineConfig } from "vitest/config";
+
+const name = "@publira/web-host";
 
 export default defineConfig({
   test: {
-    ...sharedTestOptions,
-    clearMocks: true,
-    environment: "node",
-    setupFiles: ["./vitest.setup.ts"],
+    name,
+    projects: [
+      {
+        extends: "../../vitest.shared.ts",
+        test: {
+          clearMocks: true,
+          environment: "node",
+          name,
+          setupFiles: ["./vitest.setup.ts"],
+        },
+      },
+    ],
   },
 });

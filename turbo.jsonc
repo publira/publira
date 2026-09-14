@@ -17,7 +17,9 @@
   // oldest entry first.
   "cacheMaxAge": "3d",
   "cacheMaxSize": "1GB",
-  "globalDependencies": ["**/.env.*local", "locales/**"],
+  // `vitest.shared.ts` sits outside every workspace, so only a global
+  // dependency puts it in the hash of the test tasks whose projects extend it.
+  "globalDependencies": ["**/.env.*local", "locales/**", "vitest.shared.ts"],
   "tasks": {
     "//#check": {},
     "//#fix": {
