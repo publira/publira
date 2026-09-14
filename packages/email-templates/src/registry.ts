@@ -67,18 +67,12 @@ import {
   readerSignupAttemptNoticePreview,
 } from "./templates/reader-signup-attempt-notice";
 import {
-  SampleEmail,
-  sampleEmailDataSchema,
-  sampleEmailPreview,
-} from "./templates/sample";
-import {
   TenantAdminInvitationEmail,
   tenantAdminInvitationDataSchema,
   tenantAdminInvitationPreview,
 } from "./templates/tenant-admin-invitation";
 
 export const TEMPLATE_IDS = [
-  "sample",
   "tenant_admin_invitation",
   "reader_email_verification",
   "reader_email_change_confirmation",
@@ -298,12 +292,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: readerSignupAttemptNoticePreview,
     schema: readerSignupAttemptNoticeDataSchema,
-  }),
-  sample: defineTemplate({
-    element: ({ data, locale, messages }) =>
-      createElement(SampleEmail, { data, locale, messages }),
-    preview: sampleEmailPreview,
-    schema: sampleEmailDataSchema,
   }),
   tenant_admin_invitation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

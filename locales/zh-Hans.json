@@ -143,9 +143,6 @@
       "preview": "有人使用您的邮箱地址注册。",
       "subject": "{$tenant_name} 账户注册尝试"
     },
-    "sample": {
-      "preview": "{$body}"
-    },
     "tenant_admin_invitation": {
       "action": "接受邀请",
       "body": "您被邀请成为 {$tenant_name} 的租户管理员。请打开下方按钮接受邀请。",

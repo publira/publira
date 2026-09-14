@@ -405,9 +405,6 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "tenant_name"},
 			{Text: " アカウント登録の試行"},
 		},
-		"email.sample.preview": {
-			{Variable: "body"},
-		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "招待を承諾する"},
 		},
@@ -836,9 +833,6 @@ var Messages = map[string]map[string][]Part{
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
 			{Text: " sign-up attempt"},
-		},
-		"email.sample.preview": {
-			{Variable: "body"},
 		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "Accept invitation"},
@@ -1270,9 +1264,6 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "tenant_name"},
 			{Text: " 회원가입 시도"},
 		},
-		"email.sample.preview": {
-			{Variable: "body"},
-		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "초대 수락하기"},
 		},
@@ -1701,9 +1692,6 @@ var Messages = map[string]map[string][]Part{
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
 			{Text: " 账户注册尝试"},
-		},
-		"email.sample.preview": {
-			{Variable: "body"},
 		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "接受邀请"},
@@ -2136,9 +2124,6 @@ var Messages = map[string]map[string][]Part{
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
 			{Text: " 帳戶註冊嘗試"},
-		},
-		"email.sample.preview": {
-			{Variable: "body"},
 		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "接受邀請"},

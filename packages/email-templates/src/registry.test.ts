@@ -5,17 +5,15 @@ import type { Messages } from "./messages";
 import { isTemplateId, resolveEmail, TEMPLATE_IDS } from "./registry";
 import { renderEmail } from "./render";
 
-const sampleData = {
-  action_label: "Open",
-  action_url: "https://example.com",
-  body: "Body text",
-  title: "Subject line",
+const passwordResetData = {
+  expires_at: "2030-01-15T12:00:00Z",
+  reset_url: "https://reader.example.test/confirm-password?token=reset",
+  tenant_name: "Aoto Press",
 };
 
 describe("TEMPLATE_IDS", () => {
-  it("holds the sample and the operational templates", () => {
+  it("holds every mail the worker sends", () => {
     expect(TEMPLATE_IDS).toEqual([
-      "sample",
       "tenant_admin_invitation",
       "reader_email_verification",
       "reader_email_change_confirmation",
@@ -77,10 +75,10 @@ describe("resolveEmail", () => {
 
   it("an invalid timeZone becomes invalid_data", () => {
     const result = resolveEmail({
-      data: sampleData,
+      data: passwordResetData,
       locale: "en",
       messages,
-      template: "sample",
+      template: "reader_password_reset",
       timeZone: "Local",
     });
 
@@ -93,10 +91,10 @@ describe("resolveEmail", () => {
 
   it("refuses a locale this build serves no catalog for", () => {
     const result = resolveEmail({
-      data: sampleData,
+      data: passwordResetData,
       locale: "fr",
       messages,
-      template: "sample",
+      template: "reader_password_reset",
       timeZone: "Asia/Tokyo",
     });
 

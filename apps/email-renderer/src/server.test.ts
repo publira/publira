@@ -38,18 +38,19 @@ describe("email renderer server", () => {
 
     const response = await client.renderEmail({
       data: {
-        action_label: "Open",
-        action_url: "https://example.com",
-        body: "Message body",
-        title: "Example subject",
+        expires_at: "2030-01-15T12:00:00Z",
+        reset_url: "https://reader.example.test/confirm-password?token=reset",
+        tenant_name: "Aoto Press",
       },
       locale: "en",
-      template: "sample",
+      template: "reader_password_reset",
       timeZone: "America/New_York",
     });
 
-    expect(response.html).toContain("Message body");
-    expect(response.html).toContain("Example subject");
+    expect(response.html).toContain("Reset your password");
+    expect(response.html).toContain(
+      "https://reader.example.test/confirm-password?token=reset"
+    );
   });
 
   it("invalid template input comes back as invalid_argument", async () => {

@@ -143,9 +143,6 @@
       "preview": "회원가입에 이 이메일 주소가 사용되었습니다.",
       "subject": "{$tenant_name} 회원가입 시도"
     },
-    "sample": {
-      "preview": "{$body}"
-    },
     "tenant_admin_invitation": {
       "action": "초대 수락하기",
       "body": "{$tenant_name}의 테넌트 관리자로 초대되었습니다. 아래 버튼을 열어 초대를 수락해 주세요.",

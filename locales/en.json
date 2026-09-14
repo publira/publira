@@ -143,9 +143,6 @@
       "preview": "A sign-up used your email address.",
       "subject": "{$tenant_name} sign-up attempt"
     },
-    "sample": {
-      "preview": "{$body}"
-    },
     "tenant_admin_invitation": {
       "action": "Accept invitation",
       "body": "You are invited as a tenant admin of {$tenant_name}. Open the button below to accept the invitation.",
