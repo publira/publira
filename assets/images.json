@@ -1,0 +1,66 @@
+[
+  {
+    "source": "comic-pages/page-01.svg",
+    "monochrome": true,
+    "outputs": ["e2e/fixtures/viewer-pages/page-01.jpg"]
+  },
+  {
+    "source": "comic-pages/page-02.svg",
+    "monochrome": true,
+    "outputs": ["e2e/fixtures/viewer-pages/page-02.jpg"]
+  },
+  {
+    "source": "comic-pages/page-03.svg",
+    "monochrome": true,
+    "outputs": ["e2e/fixtures/viewer-pages/page-03.jpg"]
+  },
+  {
+    "source": "comic-pages/page-04.svg",
+    "monochrome": true,
+    "outputs": ["e2e/fixtures/viewer-pages/page-04.jpg"]
+  },
+  {
+    "source": "comic-pages/page-05.svg",
+    "monochrome": true,
+    "outputs": ["e2e/fixtures/viewer-pages/page-05.jpg"]
+  },
+  {
+    "source": "comic-pages/page-06.svg",
+    "monochrome": true,
+    "outputs": ["e2e/fixtures/viewer-pages/page-06.jpg"]
+  },
+  {
+    "source": "comic-pages/page-07.svg",
+    "monochrome": true,
+    "outputs": ["e2e/fixtures/viewer-pages/page-07.jpg"]
+  },
+  {
+    "source": "comic-pages/page-08.svg",
+    "monochrome": true,
+    "outputs": ["e2e/fixtures/viewer-pages/page-08.jpg"]
+  },
+  {
+    "source": "eye-catch/landscape-1600x900.svg",
+    "outputs": ["e2e/fixtures/eye-catch/landscape-1600x900.jpg"]
+  },
+  {
+    "source": "eye-catch/og-1200x630.svg",
+    "outputs": ["e2e/fixtures/eye-catch/og-1200x630.jpg"]
+  },
+  {
+    "source": "eye-catch/portrait-1200x1600.svg",
+    "outputs": ["e2e/fixtures/eye-catch/portrait-1200x1600.jpg"]
+  },
+  {
+    "source": "eye-catch/portrait-600x800.svg",
+    "outputs": ["e2e/fixtures/eye-catch/portrait-600x800.jpg"]
+  },
+  {
+    "source": "eye-catch/source-2400x3200.svg",
+    "outputs": ["e2e/fixtures/eye-catch/source-2400x3200.jpg"]
+  },
+  {
+    "source": "eye-catch/square-1200x1200.svg",
+    "outputs": ["e2e/fixtures/eye-catch/square-1200x1200.jpg"]
+  }
+]

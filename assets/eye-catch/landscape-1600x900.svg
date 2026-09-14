@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Eye-catch source, landscape 16:9</title>
+
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b7f3a" />
+      <stop offset="1" stop-color="#d81b60" />
+    </linearGradient>
+    <pattern id="stripes" width="120" height="120" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+      <rect width="60" height="120" fill="#ffffff" opacity="0.22" />
+    </pattern>
+    <pattern id="weave" width="80" height="80" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#000000" opacity="0.12" />
+      <rect x="40" y="40" width="40" height="40" fill="#000000" opacity="0.12" />
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#field)" />
+  <rect width="1600" height="900" fill="url(#stripes)" />
+  <rect width="1600" height="900" fill="url(#weave)" />
+  <!-- registration marks, so a crop can be told from the whole -->
+  <g fill="none" stroke="#ffffff" stroke-width="7" opacity="0.85">
+    <path d="M 45 99 L 45 45 L 99 45" />
+    <path d="M 1555 99 L 1555 45 L 1501 45" />
+    <path d="M 45 801 L 45 855 L 99 855" />
+    <path d="M 1555 801 L 1555 855 L 1501 855" />
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="5" opacity="0.7">
+    <line x1="755" y1="450" x2="845" y2="450" />
+    <line x1="800" y1="405" x2="800" y2="495" />
+    <circle cx="800" cy="450" r="45" />
+  </g>
+</svg>

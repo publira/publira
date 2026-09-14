@@ -70,7 +70,7 @@ e2e/
 ├── routing/               # Edge routing check (separate lifecycle, no Playwright)
 ├── browser/               # The pinned browser image the screenshot projects render in
 ├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik + browser (project: publira-e2e)
-├── fixtures/              # binary test data (viewer page images, eye-catch sources)
+├── fixtures/              # test images, rendered from the vector sources in the repository's assets/
 ├── playwright.config.ts
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
 ├── src/                   # app login, API control, DB, scenario, session, and URL helpers
@@ -122,6 +122,12 @@ A spec that changes state the whole console reads gets an isolated project for t
 | Playwright | `Playwright tests failed`; inspect `test-results/`, `playwright-report/`, and `.run/logs/`. |
 
 `wait-ready` verifies RustFS on `:9003/health`, public/admin/platform API readiness on `:8100`–`:8102`, email-renderer on `:8300/readyz`, the outbox worker on `:8003/readyz`, image-server on `:8200/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
+
+## Fixture images
+
+`fixtures/eye-catch/*.jpg` are what `admin.eye-catch-upload.spec.ts` picks in the console's file field: one card per accepted aspect ratio, a 2400x3200 card large enough for all four at once, and a 600x800 card below the portrait minimum. `fixtures/viewer-pages/*.jpg` are the eight body pages `scripts/seed-viewer-pages.sh` uploads for `Seed Episode 001-02`.
+
+None of them is edited directly. Their vector originals are in the repository's [`assets/`](../assets/README.md), which maps each one to the paths it renders to, and `task images:gen` renders them.
 
 ## Screenshot baseline
 

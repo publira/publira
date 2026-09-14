@@ -27,6 +27,7 @@ This page answers three questions for a first-time contributor: what to install,
 ├── mobile/             # [Flutter] Mobile app (iOS/Android)
 ├── proto/              # Protocol Buffers schema definitions
 ├── locales/            # Shared UI messages (JSON, read by Go / Web / Flutter alike)
+├── assets/             # Vector sources for the JPEGs the repository commits, and where each renders to
 └── db/                 # PostgreSQL migrations and queries
 ```
 
