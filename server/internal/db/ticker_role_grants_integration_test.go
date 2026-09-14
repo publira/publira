@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/publira/publira/server/internal/dayroll"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -202,10 +204,21 @@ func TestTickerRoleCannotReachAnotherDomain(t *testing.T) {
 
 	ticker := pg.OpenTickerDB(t)
 	var count int
-	if err := ticker.QueryRowContext(ctx, "SELECT count(*) FROM audit_logs").Scan(&count); err == nil {
+	err := ticker.QueryRowContext(ctx, "SELECT count(*) FROM audit_logs").Scan(&count)
+	if err == nil {
 		t.Fatalf("reading audit_logs as the ticker role returned %d rows, want a permission denied error", count)
 	}
+	// The SQLSTATE rather than any error: a dropped connection or a table that
+	// went away would otherwise pass for a grant that is no longer there.
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
+		t.Fatalf("read audit_logs error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
+	}
 }
+
+// insufficientPrivilegeCode is the SQLSTATE PostgreSQL reports for a relation
+// the connected role holds no privilege on.
+const insufficientPrivilegeCode = "42501"
 
 func discardLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))

@@ -115,6 +115,30 @@ expect_profile_value "${charlie_path}" PUBLIRA_REDIS_URL "redis://127.0.0.1:6379
 expect_profile_value "${charlie_path}" PUBLIRA_S3_ENDPOINT "http://127.0.0.1:9000"
 pass "a profile created with the host loopback variables addresses the services on loopback"
 
+expect_profile_value "${charlie_path}" PUBLIRA_TICKER_DB_URL "postgres://publira_ticker:tickerpass@127.0.0.1:5432/publira_charlie?sslmode=disable"
+pass "a new profile points the ticker jobs at their own login"
+
+# A profile written before the ticker jobs had a login of their own carries no
+# PUBLIRA_TICKER_DB_URL. Loading it must still not put those jobs on the
+# superuser connection, which is the whole defect the dedicated role removes.
+(
+  export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
+  export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
+  export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:9000"
+  dev_env_write_profile "delta" 4
+)
+delta_path="$(dev_env_profile_path delta)"
+grep -v '^PUBLIRA_TICKER_DB_URL=' "${delta_path}" >"${delta_path}.without-ticker"
+mv "${delta_path}.without-ticker" "${delta_path}"
+delta_ticker_url="$(
+  dev_env_load_profile delta >/dev/null
+  printf '%s\n' "${PUBLIRA_TICKER_DB_URL}"
+)"
+[[ "${delta_ticker_url}" == "postgres://publira_ticker:tickerpass@127.0.0.1:5432/publira_delta?sslmode=disable" ]] ||
+  fail "a profile with no ticker URL resolved to ${delta_ticker_url}"
+rm -f "${delta_path}"
+pass "a profile written before the ticker role still loads that role's login, never the superuser connection"
+
 [[ "$(dev_env_url_authority "redis://127.0.0.1" 6379)" == "127.0.0.1:6379" ]] || fail "default port was not appended"
 [[ "$(dev_env_url_authority "postgres://u:p@db/publira?sslmode=disable" 5432)" == "db:5432" ]] || fail "userinfo or query was not stripped"
 for malformed in "postgres://" "postgres://:5432/publira" "postgres://127.0.0.1:/publira" \

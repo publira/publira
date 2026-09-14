@@ -363,12 +363,14 @@ dev_env_load_profile() {
   export PUBLIRA_CONTENT_STATS_DB_URL
 
   # Profiles written before the ticker jobs had a role of their own have no key
-  # here either. They fall back to the superuser connection, which is what those
-  # jobs ran on when the profile was written, so an old profile keeps working
-  # until it is recreated instead of failing to authenticate.
+  # here. Unlike the stats batches above they must not fall back to PUBLIRA_DB_URL:
+  # that is the superuser connection, and running the tickers on it is the whole
+  # defect the dedicated role removes. The login this profile would be given
+  # today is built instead, the way the worker URL is repaired above, so an old
+  # profile keeps working without being handed the superuser.
   local ticker_url
   if ! ticker_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_TICKER_DB_URL)"; then
-    PUBLIRA_TICKER_DB_URL="${PUBLIRA_DB_URL}"
+    PUBLIRA_TICKER_DB_URL="postgres://publira_ticker:tickerpass@${postgres}/${database}?sslmode=disable"
   elif [[ -z "${ticker_url}" ]]; then
     dev_env_die "profile has an empty PUBLIRA_TICKER_DB_URL: ${profile_path}"
   else
