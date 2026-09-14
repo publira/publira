@@ -271,6 +271,9 @@ importers:
       sharp:
         specifier: 0.35.4
         version: 0.35.4(@types/node@24.13.4)
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.4
       turbo:
         specifier: 2.10.12
         version: 2.10.12
@@ -6057,50 +6060,42 @@ snapshots:
   '@next/swc-darwin-arm64@16.3.4':
     optional: true
 
-  '@next/swc-darwin-arm64@16.3.5':
-    optional: true
+  '@next/swc-darwin-arm64@16.3.5': {}
 
   '@next/swc-darwin-x64@16.3.4':
     optional: true
 
-  '@next/swc-darwin-x64@16.3.5':
-    optional: true
+  '@next/swc-darwin-x64@16.3.5': {}
 
   '@next/swc-linux-arm64-gnu@16.3.4':
     optional: true
 
-  '@next/swc-linux-arm64-gnu@16.3.5':
-    optional: true
+  '@next/swc-linux-arm64-gnu@16.3.5': {}
 
   '@next/swc-linux-arm64-musl@16.3.4':
     optional: true
 
-  '@next/swc-linux-arm64-musl@16.3.5':
-    optional: true
+  '@next/swc-linux-arm64-musl@16.3.5': {}
 
   '@next/swc-linux-x64-gnu@16.3.4':
     optional: true
 
-  '@next/swc-linux-x64-gnu@16.3.5':
-    optional: true
+  '@next/swc-linux-x64-gnu@16.3.5': {}
 
   '@next/swc-linux-x64-musl@16.3.4':
     optional: true
 
-  '@next/swc-linux-x64-musl@16.3.5':
-    optional: true
+  '@next/swc-linux-x64-musl@16.3.5': {}
 
   '@next/swc-win32-arm64-msvc@16.3.4':
     optional: true
 
-  '@next/swc-win32-arm64-msvc@16.3.5':
-    optional: true
+  '@next/swc-win32-arm64-msvc@16.3.5': {}
 
   '@next/swc-win32-x64-msvc@16.3.4':
     optional: true
 
-  '@next/swc-win32-x64-msvc@16.3.5':
-    optional: true
+  '@next/swc-win32-x64-msvc@16.3.5': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:

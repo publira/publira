@@ -49,11 +49,10 @@ describe("AdminConsoleEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Aoto Press 管理画面メールアドレス変更完了");
     expect(result.html).toContain("管理画面メールアドレス変更の完了");
     expect(result.html).toContain(data.previous_email);
     expect(result.html).toContain(data.new_email);
-    expect(result.text).toContain("この変更に心当たりがない場合");
+    expect(result.html).toContain("この変更に心当たりがない場合");
     expect(result.html).toContain(data.tenant_name);
     expect(result.html).not.toContain("Publira");
   });
@@ -72,12 +71,9 @@ describe("AdminConsoleEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe(
-      "Aoto Press admin console email address changed"
-    );
     expect(result.html).toContain(
       "Your admin console email address was changed"
     );
-    expect(result.text).toContain("If you did not make this change");
+    expect(result.html).toContain("If you did not make this change");
   });
 });

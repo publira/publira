@@ -144,8 +144,7 @@
       "subject": "{$tenant_name} 账户注册尝试"
     },
     "sample": {
-      "preview": "{$body}",
-      "subject": "{$title}"
+      "preview": "{$body}"
     },
     "tenant_admin_invitation": {
       "action": "接受邀请",

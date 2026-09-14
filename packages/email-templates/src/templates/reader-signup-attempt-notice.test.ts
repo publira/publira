@@ -66,10 +66,9 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Aoto Press アカウント登録の試行");
     expect(result.html).toContain(data.email);
     expect(result.html).toContain(data.action_url);
-    expect(result.text).toContain("新しいアカウントは作成されず");
+    expect(result.html).toContain("新しいアカウントは作成されず");
     expect(result.html).toContain(data.tenant_name);
     expect(result.html).not.toContain("Publira");
   });
@@ -88,10 +87,9 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Aoto Press sign-up attempt");
     expect(result.html).toContain("A sign-up used your email address");
-    expect(result.text).toContain("no second account was created");
-    expect(result.text).toContain("Reset password");
+    expect(result.html).toContain("no second account was created");
+    expect(result.html).toContain("Reset password");
   });
 
   // A reset sets a password an unconfirmed account still cannot sign in with,
@@ -111,9 +109,9 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
     }
 
     expect(result.html).toContain(unconfirmedData.action_url);
-    expect(result.text).toContain("Send a new confirmation email");
-    expect(result.text).toContain("is not confirmed yet");
-    expect(result.text).not.toContain("Reset password");
+    expect(result.html).toContain("Send a new confirmation email");
+    expect(result.html).toContain("is not confirmed yet");
+    expect(result.html).not.toContain("Reset password");
   });
 
   // The mail reports an attempt on an account it must not act on, so the only
@@ -138,8 +136,12 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
         return;
       }
 
-      for (const [link] of result.text.matchAll(/https?:\/\/\S+/gu)) {
-        expect(new URL(link).searchParams.get("token")).toBeNull();
+      for (const { groups } of result.html.matchAll(
+        /href="(?<link>https?:\/\/[^"]+)"/gu
+      )) {
+        expect(
+          new URL(groups?.link ?? "").searchParams.get("token")
+        ).toBeNull();
       }
     }
   );

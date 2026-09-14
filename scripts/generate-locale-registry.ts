@@ -12,6 +12,8 @@ import path from "node:path";
 // lives in.
 import { simpleMessageSyntaxError } from "../packages/i18n/src/mf2.ts";
 import { renderDartMessages } from "./dart-messages.ts";
+import { renderGoDateTimeFormats } from "./go-datetime.ts";
+import { renderGoMessages } from "./go-messages.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const indexPath = path.resolve(root, "locales/index.json");
@@ -246,6 +248,11 @@ const files = new Map([
     "server/internal/locale/gen/locales.go",
     `${generatedHeader}${newline}${newline}package gen${newline}${newline}var Supported = []string{${goCodes}}${newline}`,
   ],
+  [
+    "server/internal/locale/gen/messages.go",
+    renderGoMessages(locales, catalogs),
+  ],
+  ["server/internal/locale/gen/datetime.go", renderGoDateTimeFormats(locales)],
   [
     "mobile/lib/l10n/gen/app_messages.dart",
     renderDartMessages(locales, catalogs),

@@ -1,6 +1,6 @@
 # email-templates
 
-The shared React Email layout and templates. `renderEmail` turns them into HTML and text; sending over SMTP is the Go side's job.
+The shared React Email layout and templates. `renderEmail` turns them into HTML; the subject line and the plain-text alternative of the same mail are composed from the same catalogs by the Go server, which is also what sends it over SMTP.
 
 `apps/email-renderer` passes the input of the `RenderEmail` RPC to this package.
 
@@ -31,7 +31,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 
 Template IDs and variable names are snake_case. The copy lives under `email.*` in the repo-root `locales/*.json`, and rendering takes the catalog, the locale, and the time zone as arguments — the package embeds no copy of its own and reads no environment. `timeZone` is an IANA name, and every `expires_at` (RFC3339) is displayed in that zone.
 
-`tenant_name` is who the mail is from. It opens the subject line, and `EmailLayout` shows it as the sender above the card and repeats it in the footer: a reader signed up on the tenant's site and never met the platform, so a mail a tenant owns is branded with the tenant throughout. The platform console's mails take no `tenant_name` because they belong to no tenant — those, and `sample`, are the only ones that say Publira.
+`tenant_name` is who the mail is from. `EmailLayout` shows it as the sender above the card and repeats it in the footer: a reader signed up on the tenant's site and never met the platform, so a mail a tenant owns is branded with the tenant throughout. The platform console's mails take no `tenant_name` because they belong to no tenant — those, and `sample`, are the only ones that say Publira.
 
 `recipient_kind` is `current_email` or `new_email` — both sides of an address change confirm, and the sender says which side it is addressing.
 
@@ -64,9 +64,7 @@ if (!result.ok) {
   throw new Error(result.message);
 }
 
-result.subject;
 result.html;
-result.text;
 ```
 
 ## Build

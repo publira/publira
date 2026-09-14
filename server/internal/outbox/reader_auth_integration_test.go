@@ -44,7 +44,7 @@ type recordingReaderRenderer struct{ requests []emailrenderer.Request }
 
 func (r *recordingReaderRenderer) Render(_ context.Context, request emailrenderer.Request) (emailrenderer.Email, error) {
 	r.requests = append(r.requests, request)
-	return emailrenderer.Email{Subject: "Reader", HTML: "<p>Reader</p>", Text: "Reader"}, nil
+	return emailrenderer.Email{HTML: "<p>Reader</p>"}, nil
 }
 
 // readerEmailEnv is a tenant with somewhere to send through, which is what every

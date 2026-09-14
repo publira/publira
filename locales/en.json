@@ -144,8 +144,7 @@
       "subject": "{$tenant_name} sign-up attempt"
     },
     "sample": {
-      "preview": "{$body}",
-      "subject": "{$title}"
+      "preview": "{$body}"
     },
     "tenant_admin_invitation": {
       "action": "Accept invitation",

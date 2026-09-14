@@ -91,11 +91,12 @@ func (x *RenderEmailRequest) GetTimeZone() string {
 	return ""
 }
 
+// The HTML part alone. The subject line and the plain-text alternative are
+// composed from `locales/*.json` by the process that sends the mail, so a
+// caller that has no renderer still has a mail it can send.
 type RenderEmailResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Subject       string                 `protobuf:"bytes,1,opt,name=subject,proto3" json:"subject,omitempty"`
 	Html          string                 `protobuf:"bytes,2,opt,name=html,proto3" json:"html,omitempty"`
-	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -130,23 +131,9 @@ func (*RenderEmailResponse) Descriptor() ([]byte, []int) {
 	return file_publira_email_v1_renderer_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RenderEmailResponse) GetSubject() string {
-	if x != nil {
-		return x.Subject
-	}
-	return ""
-}
-
 func (x *RenderEmailResponse) GetHtml() string {
 	if x != nil {
 		return x.Html
-	}
-	return ""
-}
-
-func (x *RenderEmailResponse) GetText() string {
-	if x != nil {
-		return x.Text
 	}
 	return ""
 }
@@ -160,11 +147,9 @@ const file_publira_email_v1_renderer_proto_rawDesc = "" +
 	"\btemplate\x18\x01 \x01(\tR\btemplate\x12\x16\n" +
 	"\x06locale\x18\x02 \x01(\tR\x06locale\x12+\n" +
 	"\x04data\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x04data\x12\x1b\n" +
-	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"W\n" +
-	"\x13RenderEmailResponse\x12\x18\n" +
-	"\asubject\x18\x01 \x01(\tR\asubject\x12\x12\n" +
-	"\x04html\x18\x02 \x01(\tR\x04html\x12\x12\n" +
-	"\x04text\x18\x03 \x01(\tR\x04text2t\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"D\n" +
+	"\x13RenderEmailResponse\x12\x12\n" +
+	"\x04html\x18\x02 \x01(\tR\x04htmlJ\x04\b\x01\x10\x02J\x04\b\x03\x10\x04R\asubjectR\x04text2t\n" +
 	"\x14EmailRendererService\x12\\\n" +
 	"\vRenderEmail\x12$.publira.email.v1.RenderEmailRequest\x1a%.publira.email.v1.RenderEmailResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/email/v1;publiraemailv1b\x06proto3"
 

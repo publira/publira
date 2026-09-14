@@ -38,6 +38,14 @@ The one empty answer is `CheckSetupStatus` on a platform whose settings row does
 
 No lint covers this. The read paths are in `api/*/`, `internal/outbox/`, and `internal/platformconfig/`; the frontend half of the same rule is the **UI locale** section of [`apps/AGENTS.md`](../apps/AGENTS.md).
 
+## A mail's own words are the catalogs', not the renderer's
+
+`emailrenderer` answers with the HTML part of a mail and nothing else. The subject line and the plain-text alternative are composed in `internal/outbox` out of `locales/*.json`, through `locale.Message` and `locale.FormatDateTime` over the tables `scripts/generate-locale-registry.ts` compiles into `internal/locale/gen/`. Putting a subject back into `RenderEmailResponse` would make a separate service the only source of one again, and a mail unsendable for as long as that service is down.
+
+A template is therefore two halves added together: the React component under `packages/email-templates`, and the entry in `emailTemplates` (`internal/outbox/email_copy.go`) naming, in order, the catalog keys its lines are read from. A mail whose template has no entry there fails permanently rather than going out with no subject.
+
+No lint covers this — nothing can compare a React component against a list of message keys. `TestEmailCopyCoversEveryTemplateInEveryLocale` is what fails when a catalog is missing one of them.
+
 ## A role variable resolves on its own, and no one else's
 
 Each connection is made with the dedicated PostgreSQL login named for the work it does, read from that role's own `PUBLIRA_*_DB_URL` and falling back to its development URL. `PUBLIRA_DB_URL` is not a link in that chain: it is the migration tooling's connection and the superuser locally, so a process that falls back to it runs with more privilege than the role it was given, in exactly the deployment where the variable was forgotten. Failing to authenticate on a development password is the better outcome, and it is what every server already does.

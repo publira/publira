@@ -47,12 +47,6 @@ export interface SampleEmailProps {
   messages: Messages;
 }
 
-export const sampleEmailSubject = (
-  data: SampleEmailData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.sample.subject", { title: data.title });
-
 export const sampleEmailPreview = (
   data: SampleEmailData,
   messages: Messages

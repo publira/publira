@@ -37,14 +37,6 @@ export interface ReaderSignupAttemptNoticeEmailProps {
   messages: Messages;
 }
 
-export const readerSignupAttemptNoticeSubject = (
-  data: ReaderSignupAttemptNoticeData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.reader_signup_attempt_notice.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const readerSignupAttemptNoticePreview = (
   _data: ReaderSignupAttemptNoticeData,
   messages: Messages

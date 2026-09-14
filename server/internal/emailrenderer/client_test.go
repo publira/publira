@@ -24,11 +24,7 @@ func (s *rendererServiceStub) RenderEmail(_ context.Context, req *connect.Reques
 	if s.err != nil {
 		return nil, s.err
 	}
-	return connect.NewResponse(&publiraemailv1.RenderEmailResponse{
-		Subject: "Invitation",
-		Html:    "<p>HTML</p>",
-		Text:    "Text",
-	}), nil
+	return connect.NewResponse(&publiraemailv1.RenderEmailResponse{Html: "<p>HTML</p>"}), nil
 }
 
 func newRendererTestServer(t *testing.T, service *rendererServiceStub) *httptest.Server {
@@ -58,7 +54,7 @@ func TestClientRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	if email != (Email{Subject: "Invitation", HTML: "<p>HTML</p>", Text: "Text"}) {
+	if email != (Email{HTML: "<p>HTML</p>"}) {
 		t.Fatalf("email = %+v", email)
 	}
 	if service.request.GetTemplate() != "tenant_admin_invitation" || service.request.GetLocale() != "ja" || service.request.GetTimeZone() != "Asia/Tokyo" {

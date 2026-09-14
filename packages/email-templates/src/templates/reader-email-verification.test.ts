@@ -60,13 +60,12 @@ describe("ReaderEmailVerificationEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Aoto Press メールアドレス確認");
     expect(result.html).toContain("メールアドレスの確認");
     expect(result.html).toContain(data.verify_url);
     expect(result.html).toContain(
       formatDateTime(data.expires_at, { locale: "ja", timeZone })
     );
-    expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain("心当たりがない場合");
     expect(result.html).toContain(data.tenant_name);
     expect(result.html).not.toContain("Publira");
   });
@@ -88,7 +87,6 @@ describe("ReaderEmailVerificationEmail", () => {
 
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
-    expect(result.subject).toBe("Aoto Press email address verification");
     expect(result.html).toContain("Verify your email address");
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(

@@ -144,8 +144,7 @@
       "subject": "{$tenant_name} 회원가입 시도"
     },
     "sample": {
-      "preview": "{$body}",
-      "subject": "{$title}"
+      "preview": "{$body}"
     },
     "tenant_admin_invitation": {
       "action": "초대 수락하기",

@@ -41,7 +41,7 @@ type recordingPlatformRenderer struct{ requests []emailrenderer.Request }
 
 func (r *recordingPlatformRenderer) Render(_ context.Context, request emailrenderer.Request) (emailrenderer.Email, error) {
 	r.requests = append(r.requests, request)
-	return emailrenderer.Email{Subject: "Platform Console", HTML: "<p>Platform Console</p>", Text: "Platform Console"}, nil
+	return emailrenderer.Email{HTML: "<p>Platform Console</p>"}, nil
 }
 
 func newPlatformEmailEnv(t *testing.T) (*testutil.PostgresEnv, emailsettings.SecretManager) {

@@ -30,14 +30,6 @@ export interface ReaderPasswordChangedNoticeEmailProps {
   messages: Messages;
 }
 
-export const readerPasswordChangedNoticeSubject = (
-  data: ReaderPasswordChangedNoticeData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.reader_password_changed_notice.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const readerPasswordChangedNoticePreview = (
   _data: ReaderPasswordChangedNoticeData,
   messages: Messages

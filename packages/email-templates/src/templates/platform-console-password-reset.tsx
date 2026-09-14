@@ -32,12 +32,6 @@ export interface PlatformConsolePasswordResetEmailProps {
   timeZone: string;
 }
 
-export const platformConsolePasswordResetSubject = (
-  _data: PlatformConsolePasswordResetData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.platform_console_password_reset.subject");
-
 export const platformConsolePasswordResetPreview = (
   _data: PlatformConsolePasswordResetData,
   messages: Messages

@@ -41,15 +41,6 @@ export interface PlatformConsoleEmailChangeConfirmationEmailProps {
   timeZone: string;
 }
 
-export const platformConsoleEmailChangeConfirmationSubject = (
-  _data: PlatformConsoleEmailChangeConfirmationData,
-  messages: Messages
-): string =>
-  emailMessage(
-    messages,
-    "email.platform_console_email_change_confirmation.subject"
-  );
-
 export const platformConsoleEmailChangeConfirmationPreview = (
   _data: PlatformConsoleEmailChangeConfirmationData,
   messages: Messages

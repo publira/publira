@@ -23,14 +23,6 @@ export interface ReaderEmailChangedNoticeEmailProps {
   messages: Messages;
 }
 
-export const readerEmailChangedNoticeSubject = (
-  data: ReaderEmailChangedNoticeData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.reader_email_changed_notice.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const readerEmailChangedNoticePreview = (
   _data: ReaderEmailChangedNoticeData,
   messages: Messages

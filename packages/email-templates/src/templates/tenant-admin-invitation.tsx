@@ -33,14 +33,6 @@ export interface TenantAdminInvitationEmailProps {
   timeZone: string;
 }
 
-export const tenantAdminInvitationSubject = (
-  data: TenantAdminInvitationData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.tenant_admin_invitation.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const tenantAdminInvitationPreview = (
   data: TenantAdminInvitationData,
   messages: Messages

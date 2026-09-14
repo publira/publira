@@ -25,7 +25,7 @@ import (
 type invitationRendererStub struct{}
 
 func (invitationRendererStub) Render(context.Context, emailrenderer.Request) (emailrenderer.Email, error) {
-	return emailrenderer.Email{Subject: "Invitation", HTML: "<p>Invitation</p>", Text: "Invitation"}, nil
+	return emailrenderer.Email{HTML: "<p>Invitation</p>"}, nil
 }
 
 type retryingInvitationMailer struct{ attempts atomic.Int32 }
@@ -149,7 +149,7 @@ type recordingInvitationRenderer struct{ requests []emailrenderer.Request }
 
 func (r *recordingInvitationRenderer) Render(_ context.Context, request emailrenderer.Request) (emailrenderer.Email, error) {
 	r.requests = append(r.requests, request)
-	return emailrenderer.Email{Subject: "Invitation", HTML: "<p>Invitation</p>", Text: "Invitation"}, nil
+	return emailrenderer.Email{HTML: "<p>Invitation</p>"}, nil
 }
 
 type recordingInvitationMailer struct{ sent int }

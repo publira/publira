@@ -36,7 +36,7 @@ describe("sampleEmailDataSchema", () => {
 });
 
 describe("SampleEmail", () => {
-  it("renders the subject, the body, and the button target", async () => {
+  it("renders the title, the body, and the button target", async () => {
     const result = await renderEmail({
       data: sampleData,
       locale: "en",
@@ -50,11 +50,10 @@ describe("SampleEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Sample email");
     expect(result.timeZone).toBe("America/Los_Angeles");
     expect(result.html).toContain("This is a sample body.");
     expect(result.html).toContain('href="https://example.com/action"');
-    expect(result.text).toContain("Open");
+    expect(result.html).toContain("Open");
     expect(result.html).toContain("This email was sent by Publira.");
   });
 });

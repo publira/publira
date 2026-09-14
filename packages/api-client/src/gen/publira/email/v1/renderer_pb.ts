@@ -11,7 +11,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file publira/email/v1/renderer.proto.
  */
 export const file_publira_email_v1_renderer: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL2VtYWlsL3YxL3JlbmRlcmVyLnByb3RvEhBwdWJsaXJhLmVtYWlsLnYxInAKElJlbmRlckVtYWlsUmVxdWVzdBIQCgh0ZW1wbGF0ZRgBIAEoCRIOCgZsb2NhbGUYAiABKAkSJQoEZGF0YRgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSEQoJdGltZV96b25lGAQgASgJIkIKE1JlbmRlckVtYWlsUmVzcG9uc2USDwoHc3ViamVjdBgBIAEoCRIMCgRodG1sGAIgASgJEgwKBHRleHQYAyABKAkydAoURW1haWxSZW5kZXJlclNlcnZpY2USXAoLUmVuZGVyRW1haWwSJC5wdWJsaXJhLmVtYWlsLnYxLlJlbmRlckVtYWlsUmVxdWVzdBolLnB1YmxpcmEuZW1haWwudjEuUmVuZGVyRW1haWxSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9lbWFpbC92MTtwdWJsaXJhZW1haWx2MWIGcHJvdG8z", [file_google_protobuf_struct]);
+  fileDesc("Ch9wdWJsaXJhL2VtYWlsL3YxL3JlbmRlcmVyLnByb3RvEhBwdWJsaXJhLmVtYWlsLnYxInAKElJlbmRlckVtYWlsUmVxdWVzdBIQCgh0ZW1wbGF0ZRgBIAEoCRIOCgZsb2NhbGUYAiABKAkSJQoEZGF0YRgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSEQoJdGltZV96b25lGAQgASgJIj4KE1JlbmRlckVtYWlsUmVzcG9uc2USDAoEaHRtbBgCIAEoCUoECAEQAkoECAMQBFIHc3ViamVjdFIEdGV4dDJ0ChRFbWFpbFJlbmRlcmVyU2VydmljZRJcCgtSZW5kZXJFbWFpbBIkLnB1YmxpcmEuZW1haWwudjEuUmVuZGVyRW1haWxSZXF1ZXN0GiUucHVibGlyYS5lbWFpbC52MS5SZW5kZXJFbWFpbFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2VtYWlsL3YxO3B1YmxpcmFlbWFpbHYxYgZwcm90bzM", [file_google_protobuf_struct]);
 
 /**
  * @generated from message publira.email.v1.RenderEmailRequest
@@ -48,23 +48,17 @@ export const RenderEmailRequestSchema: GenMessage<RenderEmailRequest> = /*@__PUR
   messageDesc(file_publira_email_v1_renderer, 0);
 
 /**
+ * The HTML part alone. The subject line and the plain-text alternative are
+ * composed from `locales/*.json` by the process that sends the mail, so a
+ * caller that has no renderer still has a mail it can send.
+ *
  * @generated from message publira.email.v1.RenderEmailResponse
  */
 export type RenderEmailResponse = Message<"publira.email.v1.RenderEmailResponse"> & {
   /**
-   * @generated from field: string subject = 1;
-   */
-  subject: string;
-
-  /**
    * @generated from field: string html = 2;
    */
   html: string;
-
-  /**
-   * @generated from field: string text = 3;
-   */
-  text: string;
 };
 
 /**

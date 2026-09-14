@@ -170,7 +170,7 @@ These are URLs reachable inside the private network, not the public ones meant f
 ## Email renderer
 
 - `PUBLIRA_EMAIL_RENDERER_URL`
-  - The URL of the ConnectRPC service that outbox-worker uses to render its emails into HTML and plain text
+  - The URL of the ConnectRPC service that outbox-worker uses to render the HTML part of its emails
   - Example: `http://email-renderer:8080` (container-to-container)
   - When unset, `http://localhost:8080` is used for local development
 

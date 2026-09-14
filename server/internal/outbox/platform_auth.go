@@ -104,7 +104,7 @@ func NewPlatformPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 			return fmt.Errorf("build platform password reset url: %w", err)
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, operator.Email, emailrenderer.Request{
 			Template: "platform_console_password_reset",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -113,13 +113,6 @@ func NewPlatformPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render platform password reset email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, operator.Email, rendered); err != nil {
-			return fmt.Errorf("send platform password reset email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -171,7 +164,7 @@ func NewPlatformEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Hand
 			return fmt.Errorf("build platform email change confirmation url: %w", err)
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, recipient, emailrenderer.Request{
 			Template: "platform_console_email_change_confirmation",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -183,13 +176,6 @@ func NewPlatformEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Hand
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render platform email change confirmation email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, recipient, rendered); err != nil {
-			return fmt.Errorf("send platform email change confirmation email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -225,7 +211,7 @@ func NewPlatformEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			return err
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, changeToken.CurrentEmail, emailrenderer.Request{
 			Template: "platform_console_email_changed_notice",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -234,13 +220,6 @@ func NewPlatformEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render platform email changed notice email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, changeToken.CurrentEmail, rendered); err != nil {
-			return fmt.Errorf("send platform email changed notice email: %w", err)
-		}
-		return nil
 	}
 }
 

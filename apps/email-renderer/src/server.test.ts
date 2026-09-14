@@ -29,7 +29,7 @@ afterEach(async () => {
 });
 
 describe("email renderer server", () => {
-  it("renders a template into a subject, HTML, and plain text", async () => {
+  it("renders a template into HTML", async () => {
     const { baseUrl } = await startServer();
     const client = createClient(
       EmailRendererService,
@@ -48,9 +48,8 @@ describe("email renderer server", () => {
       timeZone: "America/New_York",
     });
 
-    expect(response.subject).toBe("Example subject");
     expect(response.html).toContain("Message body");
-    expect(response.text).toContain("Message body");
+    expect(response.html).toContain("Example subject");
   });
 
   it("invalid template input comes back as invalid_argument", async () => {

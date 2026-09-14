@@ -144,8 +144,7 @@
       "subject": "{$tenant_name} アカウント登録の試行"
     },
     "sample": {
-      "preview": "{$body}",
-      "subject": "{$title}"
+      "preview": "{$body}"
     },
     "tenant_admin_invitation": {
       "action": "招待を承諾する",

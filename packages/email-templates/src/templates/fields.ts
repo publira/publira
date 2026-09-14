@@ -41,7 +41,7 @@ export const emailAddressField = (name: string) =>
       error: `${name} must not contain CR or LF`,
     });
 
-/** A display name that reaches the subject line, such as the tenant's. */
+/** A display name the mail is branded with, such as the tenant's. */
 export const displayNameField = (name: string) =>
   z
     .string()
