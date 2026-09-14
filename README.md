@@ -121,8 +121,8 @@ The values written in this repository are **for local development and testing on
 
 The Go API server (api-server) and the image server (image-server) issue an **HS256 JWT access token** at login and verify it on subsequent requests. `PUBLIRA_AUTH_JWT_SECRET` is that signing key.
 
-- It is **required**. There is no fallback in the code, and all three of them exit at startup when it is unset or shorter than 32 bytes (`auth.NewTokenManagerFromEnv()`)
-- Leaking the key allows forging a token with an arbitrary `sub` / `aud` and calling the public API, the admin API, the platform API, and the image servers. Issue one per environment (for example, `openssl rand -base64 32`)
+- It is **required**. There is no fallback in the code, and both of them exit at startup when it is unset or shorter than 32 bytes (`auth.NewTokenManagerFromEnv()`)
+- Leaking the key allows forging a token with an arbitrary `sub` / `aud` and calling the public API, the admin API, the platform API, and the image server. Issue one per environment (for example, `openssl rand -base64 32`)
 - It is a different key from the cookie-side `PUBLIRA_AUTH_SECRET`, which is the JWE key Next.js uses to seal the session cookie: different readers, different purpose
 - In the Dev Container, `.devcontainer/compose.yaml` passes a development-only value to the app container
 - For E2E, `e2e/scripts/lib.sh` exports it and each server's start script passes it through `env`. The bootstrap check exports it from `e2e/bootstrap/scripts/lib.sh`
