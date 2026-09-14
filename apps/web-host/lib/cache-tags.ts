@@ -26,8 +26,8 @@ export const tenantSiteTag = (tenantId: string) =>
  * on, and nothing else so far.
  *
  * Such an answer goes stale at the tenant's own midnight rather than on an
- * edit, so the `roll-tenant-day` batch drops this tag when that tenant's
- * calendar day turns (`server/cmd/batch/README.md`). It is a tag of its own
+ * edit, so the `ticker.roll_tenant_day` job drops this tag when that tenant's
+ * calendar day turns (`server/cmd/outbox-worker/README.md`). It is a tag of its own
  * for exactly that reason: a daily drop aimed at the catalog's tags would take
  * every series list and every series page with it, for a value that is one
  * number on one module.

@@ -273,7 +273,7 @@ export interface CatalogTopWeeklySchedule {
  * served. That is the whole point: resolving it per request would make the
  * home page dynamic, and the page is prerendered so that every module on it
  * arrives without a round trip. What keeps the number true is the tag — the
- * `roll-tenant-day` batch drops {@link tenantTodayTag} when the tenant's
+ * `ticker.roll_tenant_day` job drops {@link tenantTodayTag} when the tenant's
  * calendar day turns, which is the only moment this answer changes.
  *
  * `timeZone` is the tenant's, and it is an argument rather than a read so it

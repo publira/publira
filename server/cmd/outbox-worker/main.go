@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,9 +20,11 @@ import (
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/push"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
+	"github.com/publira/publira/server/internal/tickerjobs"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -30,13 +33,17 @@ const (
 
 	defaultWorkerAddr  = ":8003"
 	defaultWorkerDBURL = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
+	defaultTickerDBURL = "postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
 	logger := logging.New(os.Stdout, nil)
 	slog.SetDefault(logger)
 
-	shutdownTracing, err := tracing.Setup(context.Background(), serviceName)
+	// One service.name per periodic job alongside the process default, so a run
+	// of publish-episodes is still a publira-publish-episodes trace now that the
+	// three no longer have processes of their own.
+	shutdownTracing, err := tracing.Setup(context.Background(), append([]string{serviceName}, tickerjobs.ServiceNames()...)...)
 	if err != nil {
 		logger.Error("failed to initialize tracing", "error", err)
 	}
@@ -57,6 +64,33 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close() //nolint:errcheck
+
+	// The periodic jobs get a pool of their own rather than sharing the one
+	// above. publira_outbox owns River's schema and holds CREATE on the public
+	// schema so rivermigrate can alter it; the three jobs promote episodes and
+	// drop caches and create nothing, so they connect as the role that can do
+	// only that.
+	tickerDB, err := sqldb.Open(resolveTickerDBURL())
+	if err != nil {
+		logger.Error("failed to initialize the ticker jobs db", "error", err)
+		os.Exit(1)
+	}
+	defer tickerDB.Close() //nolint:errcheck
+
+	jobs, err := tickerjobs.New(tickerjobs.Config{
+		DB:                 tickerDB,
+		Revalidate:         newRevalidateClient(logger),
+		Logger:             logger,
+		PublishInterval:    envSeconds("PUBLIRA_PUBLISH_INTERVAL_SECONDS", 0),
+		PublishMaxRetries:  envInt("PUBLIRA_PUBLISH_MAX_RETRIES", tickerjobs.DefaultPublishMaxRetries),
+		FreeWindowInterval: envSeconds("PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS", 0),
+		TenantDayInterval:  envSeconds("PUBLIRA_TENANT_DAY_INTERVAL_SECONDS", 0),
+	})
+	if err != nil {
+		logger.Error("failed to initialize the ticker jobs", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("ticker jobs registered", jobs.Settings()...)
 
 	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
 	// assigned to an interface is not nil, and it would slip past the guard in
@@ -108,7 +142,7 @@ func main() {
 		logger.Info("web push is disabled", "reason", "no VAPID configuration is configured")
 	}
 
-	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, outbox.EmailHandlerConfig{
+	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, jobs, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
@@ -120,7 +154,13 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	health.Register(mux, health.WithDB(db), health.WithReady(worker.Ready))
+	// One check per pool: with two logins behind one process, a single "db"
+	// could not say which of them stopped answering.
+	health.Register(mux,
+		health.WithDBNamed("db.outbox", db),
+		health.WithDBNamed("db.ticker", tickerDB),
+		health.WithReady(worker.Ready),
+	)
 
 	addr := strings.TrimSpace(os.Getenv("PUBLIRA_WORKER_ADDR"))
 	if addr == "" {
@@ -136,7 +176,7 @@ func main() {
 	}, func(ctx context.Context) error {
 		return worker.Stop(ctx)
 	}, shutdownTracing, func(context.Context) error {
-		return db.Close()
+		return errors.Join(db.Close(), tickerDB.Close())
 	}); err != nil {
 		logger.Error("outbox worker failed", "error", err)
 		os.Exit(1)
@@ -157,8 +197,33 @@ func resolveWorkerDBURL() string {
 	return defaultWorkerDBURL
 }
 
+// resolveTickerDBURL returns the connection the periodic jobs run on.
+// PUBLIRA_DB_URL is no more a fallback here than it is for the worker's own
+// URL above, and for the same reason.
+func resolveTickerDBURL() string {
+	if url := strings.TrimSpace(os.Getenv("PUBLIRA_TICKER_DB_URL")); url != "" {
+		return url
+	}
+	return defaultTickerDBURL
+}
+
+// newRevalidateClient builds the client the periodic jobs drop Next.js cache
+// tags with. A deployment without a token gets a nil client, which makes every
+// drop a no-op while each job still records the boundary it passed.
+func newRevalidateClient(logger *slog.Logger) *revalidate.Client {
+	client, err := revalidate.NewClient(strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN")), logger)
+	switch {
+	case err != nil:
+		logger.Warn("next revalidate is disabled", "reason", err.Error())
+	case client == nil:
+		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
+	}
+	return client
+}
+
 func workerConfig(
 	logger *slog.Logger,
+	periodic outbox.PeriodicRegistrar,
 	emailHandlers outbox.EmailHandlerConfig,
 	pushHandlers outbox.PushHandlerConfig,
 	staffHandlers outbox.StaffNotificationHandlerConfig,
@@ -186,6 +251,7 @@ func workerConfig(
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,
+		Periodic:          periodic,
 		DrainInterval:     envDuration("PUBLIRA_OUTBOX_DRAIN_INTERVAL", 0),
 		ClaimLimit:        envInt32("PUBLIRA_OUTBOX_CLAIM_LIMIT", 0),
 		MaxAttempts:       envInt("PUBLIRA_OUTBOX_MAX_ATTEMPTS", 0),
@@ -232,6 +298,20 @@ func envInt(name string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+// envSeconds reads a whole number of seconds, which is the unit the three
+// interval variables have carried since they configured processes of their own.
+func envSeconds(name string, fallback time.Duration) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return fallback
+	}
+	return time.Duration(n) * time.Second
 }
 
 func envInt32(name string, fallback int32) int32 {

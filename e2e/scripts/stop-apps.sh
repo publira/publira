@@ -9,7 +9,6 @@ join_e2e_lease
 stop_pid_file "web-platform"
 stop_pid_file "web-admin"
 stop_pid_file "web-host"
-stop_pid_file "publish-episodes"
 stop_pid_file "outbox-worker"
 stop_pid_file "email-renderer"
 stop_pid_file "image-server"
