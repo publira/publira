@@ -79,7 +79,7 @@ Top-level keys are separated by reader. Copy appearing in only one app belongs u
 | --- | --- |
 | `errors` | Error copy shared by all three apps |
 | `locale` | Display-language switcher UI (shared by `web-platform` and `web-admin`) |
-| `email` | Emails rendered by the Go server and `@publira/email-templates` |
+| `email` | The mail the Go server words and sends, laid out as HTML by `@publira/email-templates` |
 | `platform` | Screen copy for `web-platform` (the platform console) |
 | `admin` | Screen copy for `web-admin` (the tenant administration console) |
 | `host` | Screen copy for `web-host` (the tenant-facing public site) |
@@ -100,14 +100,15 @@ Use import attributes (`with { type: "json" }`) for JSON imports in generated fi
 
 ### Go
 
-```go
-//go:embed ja.json en.json ko.json zh-Hans.json zh-Hant.json
-var files embed.FS
+The server reads no catalog file at runtime. `scripts/generate-locale-registry.ts` compiles the `email` namespace into `server/internal/locale/gen/messages.go`, with every message already parsed into its text and its `{$name}` references, so the server ships no message parser either. `locale.Message` renders one, and a variable with no value is an error rather than the placeholder MessageFormat would fall back to.
 
-raw, err := files.ReadFile(locale + ".json")
+```go
+subject, err := locale.Message(code, "email.reader_password_reset.subject", map[string]string{
+	"tenant_name": tenantName,
+})
 ```
 
-The embedded files originate in the repository-root `locales/` directory. The server makes this directory visible from its build context.
+The same generator writes `server/internal/locale/gen/datetime.go`, the pattern `Intl.DateTimeFormat` uses at `dateStyle: "medium"` and `timeStyle: "short"` in each locale — its separators, month names, and the hour and day period each hour of the day is written as. `locale.FormatDateTime` renders an instant with it, in the display time zone it is given, so the server words a moment the way the web apps do.
 
 ### Flutter
 
@@ -116,13 +117,13 @@ The app reads no catalog file at runtime. `scripts/generate-locale-registry.ts` 
 ## Adding a key
 
 1. Add the same key to every locale JSON file (do not use an empty string even when a translation is not ready)
-2. Run `pnpm locales:generate` when the key is under `mobile` or `errors`, which the Flutter catalog is compiled from
+2. Run `pnpm locales:generate` when the key is under `email`, `mobile` or `errors`, which the Go and Flutter catalogs are compiled from
 3. Confirm that `pnpm locales:check` passes (it checks that leaves are valid simple messages and that generated files are current)
 4. Confirm that `pnpm --filter @publira/i18n typecheck` passes (the `ExactCatalog` tests run from the `packages/i18n` tests)
 
 ## Adding a locale
 
-`index.json` is the only hand-maintained list. The TypeScript static import map, the Go allowlist, and the Flutter catalog are generated, so do not edit them individually.
+`index.json` is the only hand-maintained list. The TypeScript static import map, the Go allowlist, the Go catalog and date format, and the Flutter catalog are generated, so do not edit them individually.
 
 1. Add `<code>.json` to this directory with the same keys as every existing catalog
 2. Add `{ "code": "<code>", "label": "…", "intl": "…" }` to `locales` in `index.json`

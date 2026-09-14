@@ -60,16 +60,29 @@ func (cfg EmailHandlerConfig) logDroppedAuthEmail(
 	)
 }
 
-func sendRenderedEmail(
+// deliverEmail sends one mail. Its subject line and its plain-text alternative
+// are composed here from the shared catalogs, and only the HTML part comes from
+// the renderer — so a failure to word the mail is permanent, while a renderer
+// that is down is an attempt the worker can repeat.
+func deliverEmail(
 	ctx context.Context,
-	mailer internalsmtp.RenderedSender,
+	cfg EmailHandlerConfig,
 	settings emailsettings.SMTPSettings,
 	recipient string,
-	email emailrenderer.Email,
+	request emailrenderer.Request,
 ) error {
-	return mailer.SendRenderedEmail(ctx, settings, recipient, internalsmtp.RenderedEmail{
-		Subject: email.Subject,
-		HTML:    email.HTML,
-		Text:    email.Text,
-	})
+	email, err := emailCopy(request)
+	if err != nil {
+		return Permanent(err)
+	}
+	rendered, err := cfg.Renderer.Render(ctx, request)
+	if err != nil {
+		return fmt.Errorf("render %s email: %w", request.Template, err)
+	}
+	email.HTML = rendered.HTML
+
+	if err := cfg.Mailer.SendRenderedEmail(ctx, settings, recipient, email); err != nil {
+		return fmt.Errorf("send %s email: %w", request.Template, err)
+	}
+	return nil
 }

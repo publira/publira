@@ -14,10 +14,14 @@ message RenderEmailRequest {
   string time_zone = 4;
 }
 
+// The HTML part alone. The subject line and the plain-text alternative are
+// composed from `locales/*.json` by the process that sends the mail, so a
+// caller that has no renderer still has a mail it can send.
 message RenderEmailResponse {
-  string subject = 1;
+  reserved 1, 3;
+  reserved "subject", "text";
+
   string html = 2;
-  string text = 3;
 }
 
 service EmailRendererService {

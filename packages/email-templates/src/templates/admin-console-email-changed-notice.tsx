@@ -23,14 +23,6 @@ export interface AdminConsoleEmailChangedNoticeEmailProps {
   messages: Messages;
 }
 
-export const adminConsoleEmailChangedNoticeSubject = (
-  data: AdminConsoleEmailChangedNoticeData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.admin_console_email_changed_notice.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const adminConsoleEmailChangedNoticePreview = (
   _data: AdminConsoleEmailChangedNoticeData,
   messages: Messages

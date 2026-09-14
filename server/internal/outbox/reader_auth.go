@@ -144,7 +144,7 @@ func NewReaderEmailVerificationEmailHandler(cfg EmailHandlerConfig) Handler {
 			return Permanent(fmt.Errorf("build reader email verification url: %w", err))
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
 			Template: "reader_email_verification",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -154,13 +154,6 @@ func NewReaderEmailVerificationEmailHandler(cfg EmailHandlerConfig) Handler {
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render reader email verification email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, reader.Email, rendered); err != nil {
-			return fmt.Errorf("send reader email verification email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -222,7 +215,7 @@ func NewReaderEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handle
 			return Permanent(fmt.Errorf("build reader email change confirmation url: %w", err))
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, recipient, emailrenderer.Request{
 			Template: "reader_email_change_confirmation",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -235,13 +228,6 @@ func NewReaderEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handle
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render reader email change confirmation email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, recipient, rendered); err != nil {
-			return fmt.Errorf("send reader email change confirmation email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -284,7 +270,7 @@ func NewReaderEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			return err
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, changeToken.CurrentEmail, emailrenderer.Request{
 			Template: "reader_email_changed_notice",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -294,13 +280,6 @@ func NewReaderEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render reader email changed notice email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, changeToken.CurrentEmail, rendered); err != nil {
-			return fmt.Errorf("send reader email changed notice email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -365,7 +344,7 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 			return Permanent(fmt.Errorf("build reader password reset url: %w", err))
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
 			Template: "reader_password_reset",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -375,13 +354,6 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render reader password reset email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, reader.Email, rendered); err != nil {
-			return fmt.Errorf("send reader password reset email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -431,7 +403,7 @@ func NewReaderPasswordChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler 
 			return Permanent(fmt.Errorf("build reader password reset url: %w", err))
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
 			Template: "reader_password_changed_notice",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -441,13 +413,6 @@ func NewReaderPasswordChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler 
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render reader password changed notice email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, reader.Email, rendered); err != nil {
-			return fmt.Errorf("send reader password changed notice email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -506,7 +471,7 @@ func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			return Permanent(fmt.Errorf("build reader signup attempt notice url: %w", err))
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
 			Template: "reader_signup_attempt_notice",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -517,13 +482,6 @@ func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render reader signup attempt notice email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, reader.Email, rendered); err != nil {
-			return fmt.Errorf("send reader signup attempt notice email: %w", err)
-		}
-		return nil
 	}
 }
 

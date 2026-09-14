@@ -99,14 +99,11 @@ func NewTenantAdminInvitationHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return fmt.Errorf("resolve smtp settings: %w", err)
 		}
-		rendered, err := renderTenantAdminInvitation(ctx, queries, cfg.Renderer, tenant, invitation, payload.Token, tenantLocale)
+		request, err := tenantAdminInvitationRequest(ctx, queries, tenant, invitation, payload.Token, tenantLocale)
 		if err != nil {
-			return fmt.Errorf("render tenant admin invitation: %w", err)
+			return Permanent(fmt.Errorf("build tenant admin invitation email: %w", err))
 		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, settings, invitation.Email, rendered); err != nil {
-			return fmt.Errorf("send tenant admin invitation: %w", err)
-		}
-		return nil
+		return deliverEmail(ctx, cfg, settings, invitation.Email, request)
 	}
 }
 
@@ -194,25 +191,25 @@ func platformSMTPSettings(config dbmodels.PlatformSmtpConfig, password string) e
 	return settings
 }
 
-// renderTenantAdminInvitation takes the locale rather than resolving it, so the
-// caller can fail on an unusable one before anything retriable is attempted. It
-// is the tenant's saved language and no other: mailing the invitee in a
-// language their tenant never chose is not a fallback.
-func renderTenantAdminInvitation(ctx context.Context, queries *dbmodels.Queries, renderer emailrenderer.Renderer, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token, tenantLocale string) (emailrenderer.Email, error) {
+// tenantAdminInvitationRequest takes the locale rather than resolving it, so
+// the caller can fail on an unusable one before anything retriable is
+// attempted. It is the tenant's saved language and no other: mailing the
+// invitee in a language their tenant never chose is not a fallback.
+func tenantAdminInvitationRequest(ctx context.Context, queries *dbmodels.Queries, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token, tenantLocale string) (emailrenderer.Request, error) {
 	inviteURL, err := tenantAdminConsoleURL(tenant, "/accept-invite", token)
 	if err != nil {
-		return emailrenderer.Email{}, err
+		return emailrenderer.Request{}, err
 	}
 	tenantName := strings.TrimSpace(tenant.Name)
 	if tenantName == "" {
 		tenantName = "Publira"
 	}
-	return renderer.Render(ctx, emailrenderer.Request{
+	return emailrenderer.Request{
 		Template: "tenant_admin_invitation",
 		Locale:   tenantLocale,
 		Data:     map[string]any{"expires_at": invitation.ExpiresAt.UTC().Format(time.RFC3339Nano), "invite_url": inviteURL, "tenant_name": tenantName},
 		TimeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
-	})
+	}, nil
 }
 
 // tenantAdminConsoleURL builds a link into the tenant's admin console. The

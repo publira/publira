@@ -43,18 +43,6 @@ export interface AdminConsoleEmailChangeConfirmationEmailProps {
   timeZone: string;
 }
 
-export const adminConsoleEmailChangeConfirmationSubject = (
-  data: AdminConsoleEmailChangeConfirmationData,
-  messages: Messages
-): string =>
-  emailMessage(
-    messages,
-    "email.admin_console_email_change_confirmation.subject",
-    {
-      tenant_name: data.tenant_name,
-    }
-  );
-
 export const adminConsoleEmailChangeConfirmationPreview = (
   _data: AdminConsoleEmailChangeConfirmationData,
   messages: Messages

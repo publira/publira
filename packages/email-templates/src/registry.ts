@@ -10,89 +10,69 @@ import {
   AdminConsoleEmailChangeConfirmationEmail,
   adminConsoleEmailChangeConfirmationDataSchema,
   adminConsoleEmailChangeConfirmationPreview,
-  adminConsoleEmailChangeConfirmationSubject,
 } from "./templates/admin-console-email-change-confirmation";
 import {
   AdminConsoleEmailChangedNoticeEmail,
   adminConsoleEmailChangedNoticeDataSchema,
   adminConsoleEmailChangedNoticePreview,
-  adminConsoleEmailChangedNoticeSubject,
 } from "./templates/admin-console-email-changed-notice";
 import {
   AdminConsolePasswordResetEmail,
   adminConsolePasswordResetDataSchema,
   adminConsolePasswordResetPreview,
-  adminConsolePasswordResetSubject,
 } from "./templates/admin-console-password-reset";
 import {
   PlatformConsoleEmailChangeConfirmationEmail,
   platformConsoleEmailChangeConfirmationDataSchema,
   platformConsoleEmailChangeConfirmationPreview,
-  platformConsoleEmailChangeConfirmationSubject,
 } from "./templates/platform-console-email-change-confirmation";
 import {
   PlatformConsoleEmailChangedNoticeEmail,
   platformConsoleEmailChangedNoticeDataSchema,
   platformConsoleEmailChangedNoticePreview,
-  platformConsoleEmailChangedNoticeSubject,
 } from "./templates/platform-console-email-changed-notice";
 import {
   PlatformConsolePasswordResetEmail,
   platformConsolePasswordResetDataSchema,
   platformConsolePasswordResetPreview,
-  platformConsolePasswordResetSubject,
 } from "./templates/platform-console-password-reset";
 import {
   ReaderEmailChangeConfirmationEmail,
   readerEmailChangeConfirmationDataSchema,
   readerEmailChangeConfirmationPreview,
-  readerEmailChangeConfirmationSubject,
 } from "./templates/reader-email-change-confirmation";
 import {
   ReaderEmailChangedNoticeEmail,
   readerEmailChangedNoticeDataSchema,
   readerEmailChangedNoticePreview,
-  readerEmailChangedNoticeSubject,
 } from "./templates/reader-email-changed-notice";
 import {
   ReaderEmailVerificationEmail,
   readerEmailVerificationDataSchema,
   readerEmailVerificationPreview,
-  readerEmailVerificationSubject,
 } from "./templates/reader-email-verification";
 import {
   ReaderPasswordChangedNoticeEmail,
   readerPasswordChangedNoticeDataSchema,
   readerPasswordChangedNoticePreview,
-  readerPasswordChangedNoticeSubject,
 } from "./templates/reader-password-changed-notice";
 import {
   ReaderPasswordResetEmail,
   readerPasswordResetDataSchema,
   readerPasswordResetPreview,
-  readerPasswordResetSubject,
 } from "./templates/reader-password-reset";
 import {
   ReaderSignupAttemptNoticeEmail,
   readerSignupAttemptNoticeDataSchema,
   readerSignupAttemptNoticePreview,
-  readerSignupAttemptNoticeSubject,
 } from "./templates/reader-signup-attempt-notice";
-import {
-  SampleEmail,
-  sampleEmailDataSchema,
-  sampleEmailPreview,
-  sampleEmailSubject,
-} from "./templates/sample";
 import {
   TenantAdminInvitationEmail,
   tenantAdminInvitationDataSchema,
   tenantAdminInvitationPreview,
-  tenantAdminInvitationSubject,
 } from "./templates/tenant-admin-invitation";
 
 export const TEMPLATE_IDS = [
-  "sample",
   "tenant_admin_invitation",
   "reader_email_verification",
   "reader_email_change_confirmation",
@@ -134,7 +114,6 @@ export interface ResolveEmailSuccess {
   locale: Locale;
   ok: true;
   preview: string;
-  subject: string;
   template: TemplateId;
   timeZone: string;
 }
@@ -155,7 +134,6 @@ interface TemplateDefinition<TData> {
   element: (context: TemplateContext<TData>) => ReactElement;
   preview: (data: TData, messages: Messages) => string;
   schema: z.ZodType<TData>;
-  subject: (data: TData, messages: Messages) => string;
 }
 
 type TemplateResolver = (
@@ -165,10 +143,10 @@ type TemplateResolver = (
   | Omit<ResolveEmailSuccess, "locale" | "template" | "timeZone">;
 
 /**
- * Bind one template's schema to the three things a caller gets out of it. The
- * generic is what keeps a template's `data` type flowing into its own subject,
- * preview, and component, so the table below can hold templates whose `data`
- * shapes have nothing in common.
+ * Bind one template's schema to what a caller gets out of it. The generic is
+ * what keeps a template's `data` type flowing into its own preview and
+ * component, so the table below can hold templates whose `data` shapes have
+ * nothing in common.
  */
 const defineTemplate =
   <TData>(definition: TemplateDefinition<TData>): TemplateResolver =>
@@ -188,7 +166,6 @@ const defineTemplate =
       element: definition.element({ ...context, data }),
       ok: true,
       preview: definition.preview(data, context.messages),
-      subject: definition.subject(data, context.messages),
     };
   };
 
@@ -203,7 +180,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: adminConsoleEmailChangeConfirmationPreview,
     schema: adminConsoleEmailChangeConfirmationDataSchema,
-    subject: adminConsoleEmailChangeConfirmationSubject,
   }),
   admin_console_email_changed_notice: defineTemplate({
     element: ({ data, locale, messages }) =>
@@ -214,7 +190,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: adminConsoleEmailChangedNoticePreview,
     schema: adminConsoleEmailChangedNoticeDataSchema,
-    subject: adminConsoleEmailChangedNoticeSubject,
   }),
   admin_console_password_reset: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
@@ -226,7 +201,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: adminConsolePasswordResetPreview,
     schema: adminConsolePasswordResetDataSchema,
-    subject: adminConsolePasswordResetSubject,
   }),
   platform_console_email_change_confirmation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
@@ -238,7 +212,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: platformConsoleEmailChangeConfirmationPreview,
     schema: platformConsoleEmailChangeConfirmationDataSchema,
-    subject: platformConsoleEmailChangeConfirmationSubject,
   }),
   platform_console_email_changed_notice: defineTemplate({
     element: ({ data, locale, messages }) =>
@@ -249,7 +222,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: platformConsoleEmailChangedNoticePreview,
     schema: platformConsoleEmailChangedNoticeDataSchema,
-    subject: platformConsoleEmailChangedNoticeSubject,
   }),
   platform_console_password_reset: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
@@ -261,7 +233,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: platformConsolePasswordResetPreview,
     schema: platformConsolePasswordResetDataSchema,
-    subject: platformConsolePasswordResetSubject,
   }),
   reader_email_change_confirmation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
@@ -273,14 +244,12 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: readerEmailChangeConfirmationPreview,
     schema: readerEmailChangeConfirmationDataSchema,
-    subject: readerEmailChangeConfirmationSubject,
   }),
   reader_email_changed_notice: defineTemplate({
     element: ({ data, locale, messages }) =>
       createElement(ReaderEmailChangedNoticeEmail, { data, locale, messages }),
     preview: readerEmailChangedNoticePreview,
     schema: readerEmailChangedNoticeDataSchema,
-    subject: readerEmailChangedNoticeSubject,
   }),
   reader_email_verification: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
@@ -292,7 +261,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: readerEmailVerificationPreview,
     schema: readerEmailVerificationDataSchema,
-    subject: readerEmailVerificationSubject,
   }),
   reader_password_changed_notice: defineTemplate({
     element: ({ data, locale, messages }) =>
@@ -303,7 +271,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: readerPasswordChangedNoticePreview,
     schema: readerPasswordChangedNoticeDataSchema,
-    subject: readerPasswordChangedNoticeSubject,
   }),
   reader_password_reset: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
@@ -315,7 +282,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: readerPasswordResetPreview,
     schema: readerPasswordResetDataSchema,
-    subject: readerPasswordResetSubject,
   }),
   reader_signup_attempt_notice: defineTemplate({
     element: ({ data, locale, messages }) =>
@@ -326,14 +292,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: readerSignupAttemptNoticePreview,
     schema: readerSignupAttemptNoticeDataSchema,
-    subject: readerSignupAttemptNoticeSubject,
-  }),
-  sample: defineTemplate({
-    element: ({ data, locale, messages }) =>
-      createElement(SampleEmail, { data, locale, messages }),
-    preview: sampleEmailPreview,
-    schema: sampleEmailDataSchema,
-    subject: sampleEmailSubject,
   }),
   tenant_admin_invitation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
@@ -345,7 +303,6 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: tenantAdminInvitationPreview,
     schema: tenantAdminInvitationDataSchema,
-    subject: tenantAdminInvitationSubject,
   }),
 };
 
@@ -391,7 +348,6 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
     locale,
     ok: true,
     preview: resolved.preview,
-    subject: resolved.subject,
     template,
     timeZone,
   };

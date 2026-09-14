@@ -49,10 +49,9 @@ describe("ReaderPasswordChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Aoto Press パスワード変更完了");
     expect(result.html).toContain(data.email);
     expect(result.html).toContain(data.reset_url);
-    expect(result.text).toContain("アカウントのパスワードが変更されました");
+    expect(result.html).toContain("アカウントのパスワードが変更されました");
     expect(result.html).toContain(data.tenant_name);
     expect(result.html).not.toContain("Publira");
   });
@@ -71,9 +70,8 @@ describe("ReaderPasswordChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Aoto Press password changed");
     expect(result.html).toContain("Your password was changed");
-    expect(result.text).toContain("If you did not make this change");
+    expect(result.html).toContain("If you did not make this change");
   });
 
   // Whoever made the change already knows the new password. The only link the
@@ -93,8 +91,10 @@ describe("ReaderPasswordChangedNoticeEmail", () => {
       return;
     }
 
-    for (const [link] of result.text.matchAll(/https?:\/\/\S+/gu)) {
-      expect(new URL(link).searchParams.get("token")).toBeNull();
+    for (const { groups } of result.html.matchAll(
+      /href="(?<link>https?:\/\/[^"]+)"/gu
+    )) {
+      expect(new URL(groups?.link ?? "").searchParams.get("token")).toBeNull();
     }
   });
 });

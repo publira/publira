@@ -76,9 +76,6 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe(
-      "Publira Platform Console メールアドレス変更確認"
-    );
     expect(result.html).toContain("Platform Console メールアドレス変更の確認");
     expect(result.html).toContain(data.confirm_url);
     expect(result.html).toContain(
@@ -86,7 +83,7 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
     );
     expect(result.html).toContain(data.current_email);
     expect(result.html).toContain(data.new_email);
-    expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain("心当たりがない場合");
     expect(result.html).toContain("Publira");
   });
 
@@ -107,9 +104,6 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
 
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
-    expect(result.subject).toBe(
-      "Publira Platform Console email address change confirmation"
-    );
     expect(result.html).toContain(
       "Confirm your Platform Console email address change"
     );
@@ -142,9 +136,9 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
       return;
     }
 
-    expect(toCurrent.text).toContain(currentAddressBody);
-    expect(toCurrent.text).not.toContain(newAddressBody);
-    expect(toNew.text).toContain(newAddressBody);
-    expect(toNew.text).not.toContain(currentAddressBody);
+    expect(toCurrent.html).toContain(currentAddressBody);
+    expect(toCurrent.html).not.toContain(newAddressBody);
+    expect(toNew.html).toContain(newAddressBody);
+    expect(toNew.html).not.toContain(currentAddressBody);
   });
 });

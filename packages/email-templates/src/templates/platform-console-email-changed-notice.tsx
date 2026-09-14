@@ -22,12 +22,6 @@ export interface PlatformConsoleEmailChangedNoticeEmailProps {
   messages: Messages;
 }
 
-export const platformConsoleEmailChangedNoticeSubject = (
-  _data: PlatformConsoleEmailChangedNoticeData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.platform_console_email_changed_notice.subject");
-
 export const platformConsoleEmailChangedNoticePreview = (
   _data: PlatformConsoleEmailChangedNoticeData,
   messages: Messages

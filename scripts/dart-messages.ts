@@ -20,6 +20,7 @@
 
 import { simpleMessageParts } from "../packages/i18n/src/mf2.ts";
 import type { SimpleMessagePart } from "../packages/i18n/src/mf2.ts";
+import { namespaceLeaves } from "./catalog-leaves.ts";
 
 export interface DartLocale {
   readonly code: string;
@@ -337,75 +338,19 @@ interface Message {
   readonly literals: ReadonlyMap<string, string>;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const flatten = (
-  node: unknown,
-  prefix: string,
-  into: Map<string, string>
-): void => {
-  if (typeof node === "string") {
-    into.set(prefix, node);
-    return;
-  }
-  if (!isRecord(node)) {
-    throw new Error(`${prefix}: leaves must be strings`);
-  }
-  for (const [name, child] of Object.entries(node)) {
-    flatten(child, `${prefix}.${name}`, into);
-  }
-};
-
-/** The messages of {@link DART_NAMESPACES} in `catalog`, keyed by full path. */
-const compiledLeaves = (
-  catalog: unknown,
-  code: string
-): Map<string, string> => {
-  const leaves = new Map<string, string>();
-  if (!isRecord(catalog)) {
-    throw new Error(`locales/${code}.json is not an object`);
-  }
-  for (const namespace of DART_NAMESPACES) {
-    if (!(namespace in catalog)) {
-      throw new Error(`locales/${code}.json has no ${namespace} namespace`);
-    }
-    flatten(catalog[namespace], namespace, leaves);
-  }
-
-  return leaves;
-};
-
 const collectMessages = (
   locales: readonly DartLocale[],
   catalogs: ReadonlyMap<string, unknown>
 ): Message[] => {
-  const leavesByCode = new Map(
-    locales.map(({ code }) => [code, compiledLeaves(catalogs.get(code), code)])
+  const { keys, leavesByCode } = namespaceLeaves(
+    locales,
+    catalogs,
+    DART_NAMESPACES
   );
-  const [reference, ...others] = locales.map(({ code }) => code);
-  const referenceLeaves = leavesByCode.get(reference);
-  if (referenceLeaves === undefined) {
-    throw new Error("at least one locale is needed");
-  }
-  for (const code of others) {
-    const leaves = leavesByCode.get(code);
-    const missing = [...referenceLeaves.keys()].filter(
-      (key) => !leaves?.has(key)
-    );
-    const extra = [...(leaves?.keys() ?? [])].filter(
-      (key) => !referenceLeaves.has(key)
-    );
-    if (missing.length > 0 || extra.length > 0) {
-      throw new Error(
-        `locales/${code}.json does not match locales/${reference}.json: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`
-      );
-    }
-  }
 
   const identifiers = new Map<string, string>();
   const messages: Message[] = [];
-  for (const key of [...referenceLeaves.keys()].toSorted()) {
+  for (const key of keys) {
     const identifier = dartIdentifier(key);
     const taken = identifiers.get(identifier);
     if (taken !== undefined) {

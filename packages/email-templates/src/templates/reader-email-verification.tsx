@@ -33,14 +33,6 @@ export interface ReaderEmailVerificationEmailProps {
   timeZone: string;
 }
 
-export const readerEmailVerificationSubject = (
-  data: ReaderEmailVerificationData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.reader_email_verification.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const readerEmailVerificationPreview = (
   _data: ReaderEmailVerificationData,
   messages: Messages

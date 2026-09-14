@@ -60,13 +60,12 @@ describe("AdminConsolePasswordResetEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Aoto Press 管理画面パスワード再設定");
     expect(result.html).toContain("管理画面パスワードの再設定");
     expect(result.html).toContain(data.reset_url);
     expect(result.html).toContain(
       formatDateTime(data.expires_at, { locale: "ja", timeZone })
     );
-    expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain("心当たりがない場合");
     expect(result.html).toContain(data.tenant_name);
     expect(result.html).not.toContain("Publira");
   });
@@ -88,7 +87,6 @@ describe("AdminConsolePasswordResetEmail", () => {
 
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
-    expect(result.subject).toBe("Aoto Press admin console password reset");
     expect(result.html).toContain("Reset your admin console password");
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(

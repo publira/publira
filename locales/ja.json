@@ -143,10 +143,6 @@
       "preview": "登録済みのメールアドレスで登録が試みられました。",
       "subject": "{$tenant_name} アカウント登録の試行"
     },
-    "sample": {
-      "preview": "{$body}",
-      "subject": "{$title}"
-    },
     "tenant_admin_invitation": {
       "action": "招待を承諾する",
       "body": "{$tenant_name} のテナント管理者として招待されています。以下のボタンから招待を承諾してください。",

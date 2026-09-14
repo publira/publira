@@ -1,5 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import { render, toPlainText } from "react-email";
+import { render } from "react-email";
 
 import { resolveEmail } from "./registry";
 import type {
@@ -12,14 +12,17 @@ export interface RenderEmailSuccess {
   html: string;
   locale: Locale;
   ok: true;
-  subject: string;
   template: TemplateId;
-  text: string;
   timeZone: string;
 }
 
 export type RenderEmailResult = RenderEmailSuccess | ResolveEmailFailure;
 
+/**
+ * The HTML part of one mail. Its subject line and its plain-text alternative
+ * are composed from the same catalogs by the server that sends it, which is
+ * what keeps a mail sendable without this package.
+ */
 export const renderEmail = async (
   input: ResolveEmailInput
 ): Promise<RenderEmailResult> => {
@@ -28,15 +31,11 @@ export const renderEmail = async (
     return resolved;
   }
 
-  const html = await render(resolved.element);
-
   return {
-    html,
+    html: await render(resolved.element),
     locale: resolved.locale,
     ok: true,
-    subject: resolved.subject,
     template: resolved.template,
-    text: toPlainText(html),
     timeZone: resolved.timeZone,
   };
 };

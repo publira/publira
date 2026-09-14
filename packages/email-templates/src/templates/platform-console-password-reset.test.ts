@@ -50,13 +50,12 @@ describe("PlatformConsolePasswordResetEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Publira Platform Console パスワード再設定");
     expect(result.html).toContain("Platform Console パスワードの再設定");
     expect(result.html).toContain(data.reset_url);
     expect(result.html).toContain(
       formatDateTime(data.expires_at, { locale: "ja", timeZone })
     );
-    expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain("心当たりがない場合");
     expect(result.html).toContain("Publira");
   });
 
@@ -77,7 +76,6 @@ describe("PlatformConsolePasswordResetEmail", () => {
 
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
-    expect(result.subject).toBe("Publira Platform Console password reset");
     expect(result.html).toContain("Reset your Platform Console password");
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(

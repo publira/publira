@@ -33,14 +33,6 @@ export interface ReaderPasswordResetEmailProps {
   timeZone: string;
 }
 
-export const readerPasswordResetSubject = (
-  data: ReaderPasswordResetData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.reader_password_reset.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const readerPasswordResetPreview = (
   _data: ReaderPasswordResetData,
   messages: Messages

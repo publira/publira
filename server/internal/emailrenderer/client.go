@@ -17,7 +17,9 @@ import (
 
 const DefaultURL = "http://localhost:8080"
 
-// Renderer turns a template and its data into an SMTP-ready email body.
+// Renderer turns a template and its data into the HTML part of an email. The
+// subject line and the plain-text alternative are composed from the shared
+// catalogs by the process that sends the mail.
 type Renderer interface {
 	Render(context.Context, Request) (Email, error)
 }
@@ -30,9 +32,7 @@ type Request struct {
 }
 
 type Email struct {
-	Subject string
-	HTML    string
-	Text    string
+	HTML string
 }
 
 type Client struct {
@@ -73,9 +73,5 @@ func (c *Client) Render(ctx context.Context, input Request) (Email, error) {
 		return Email{}, err
 	}
 
-	return Email{
-		Subject: response.Msg.GetSubject(),
-		HTML:    response.Msg.GetHtml(),
-		Text:    response.Msg.GetText(),
-	}, nil
+	return Email{HTML: response.Msg.GetHtml()}, nil
 }

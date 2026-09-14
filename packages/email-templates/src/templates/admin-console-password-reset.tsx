@@ -33,14 +33,6 @@ export interface AdminConsolePasswordResetEmailProps {
   timeZone: string;
 }
 
-export const adminConsolePasswordResetSubject = (
-  data: AdminConsolePasswordResetData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.admin_console_password_reset.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const adminConsolePasswordResetPreview = (
   _data: AdminConsolePasswordResetData,
   messages: Messages

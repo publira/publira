@@ -3,10 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadEmailMessages } from "../messages";
 import { renderEmail } from "../render";
-import {
-  tenantAdminInvitationDataSchema,
-  tenantAdminInvitationSubject,
-} from "./tenant-admin-invitation";
+import { tenantAdminInvitationDataSchema } from "./tenant-admin-invitation";
 
 const invitationData = {
   expires_at: "2030-01-15T12:00:00Z",
@@ -50,7 +47,7 @@ describe("tenantAdminInvitationDataSchema", () => {
 });
 
 describe("TenantAdminInvitationEmail", () => {
-  it("the ja subject and body carry the tenant name and the invitation URL", async () => {
+  it("the ja mail carries the tenant name and the invitation URL", async () => {
     const timeZone = "Asia/Tokyo";
     const result = await renderEmail({
       data: invitationData,
@@ -70,14 +67,13 @@ describe("TenantAdminInvitationEmail", () => {
       timeZone,
     });
 
-    expect(result.subject).toBe("Aoto Press 管理者招待");
     expect(result.html).toContain("Aoto Press の管理画面へ招待されました。");
     expect(result.html).not.toContain("Publira");
     expect(result.html).not.toContain("招待を受け付けました");
     expect(result.html).toContain("招待を承諾する");
     expect(result.html).toContain(invitationData.invite_url);
     expect(result.html).toContain(expires);
-    expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain("心当たりがない場合");
   });
 
   it("expires_at is shown in the given timeZone", async () => {
@@ -106,13 +102,5 @@ describe("TenantAdminInvitationEmail", () => {
 
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(tokyo);
-  });
-
-  it("en produces an English subject", async () => {
-    const messages = await loadEmailMessages("en");
-
-    expect(tenantAdminInvitationSubject(invitationData, messages)).toBe(
-      "Aoto Press admin invitation"
-    );
   });
 });

@@ -1,6 +1,6 @@
 # email-renderer
 
-A Node.js ConnectRPC service that serves `EmailRendererService.RenderEmail` and turns the templates of `@publira/email-templates` into a subject, HTML, and plain text. It does not send anything over SMTP.
+A Node.js ConnectRPC service that serves `EmailRendererService.RenderEmail` and turns the templates of `@publira/email-templates` into HTML. The subject line and the plain-text alternative of the same mail are composed from `locales/*.json` by the server that sends it, and this service does not send anything over SMTP.
 
 ## Running it
 
@@ -12,7 +12,7 @@ It listens on `0.0.0.0:8080` by default. `PORT` changes the port and `HOST` the 
 
 ## RPC
 
-`publira.email.v1.EmailRendererService/RenderEmail` takes `template`, `locale`, `data`, and `time_zone`, and returns `subject`, `html`, and `text`.
+`publira.email.v1.EmailRendererService/RenderEmail` takes `template`, `locale`, `data`, and `time_zone`, and returns `html`.
 
 - `time_zone` is an IANA time zone name. Always pass the display time zone resolved for the tenant.
 - An unknown template ID or invalid data returns `invalid_argument`.

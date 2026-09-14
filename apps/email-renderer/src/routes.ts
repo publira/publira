@@ -30,11 +30,7 @@ export const emailRendererRoutes = (router: ConnectRouter): void => {
         throw new ConnectError(rendered.message, Code.InvalidArgument);
       }
 
-      return {
-        html: rendered.html,
-        subject: rendered.subject,
-        text: rendered.text,
-      };
+      return { html: rendered.html };
     },
   });
 };

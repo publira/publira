@@ -41,13 +41,10 @@ describe("PlatformConsoleEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe(
-      "Publira Platform Console メールアドレス変更完了"
-    );
     expect(result.html).toContain("Platform Console メールアドレス変更の完了");
     expect(result.html).toContain(data.previous_email);
     expect(result.html).toContain(data.new_email);
-    expect(result.text).toContain("この変更に心当たりがない場合");
+    expect(result.html).toContain("この変更に心当たりがない場合");
     expect(result.html).toContain("Publira");
   });
 
@@ -65,12 +62,9 @@ describe("PlatformConsoleEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe(
-      "Publira Platform Console email address changed"
-    );
     expect(result.html).toContain(
       "Your Platform Console email address was changed"
     );
-    expect(result.text).toContain("If you did not make this change");
+    expect(result.html).toContain("If you did not make this change");
   });
 });

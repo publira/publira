@@ -43,14 +43,6 @@ export interface ReaderEmailChangeConfirmationEmailProps {
   timeZone: string;
 }
 
-export const readerEmailChangeConfirmationSubject = (
-  data: ReaderEmailChangeConfirmationData,
-  messages: Messages
-): string =>
-  emailMessage(messages, "email.reader_email_change_confirmation.subject", {
-    tenant_name: data.tenant_name,
-  });
-
 export const readerEmailChangeConfirmationPreview = (
   _data: ReaderEmailChangeConfirmationData,
   messages: Messages

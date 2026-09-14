@@ -101,7 +101,7 @@ func NewAdminPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 			return Permanent(fmt.Errorf("build admin password reset url: %w", err))
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, admin.Email, emailrenderer.Request{
 			Template: "admin_console_password_reset",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -111,13 +111,6 @@ func NewAdminPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render admin password reset email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, admin.Email, rendered); err != nil {
-			return fmt.Errorf("send admin password reset email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -169,7 +162,7 @@ func NewAdminEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handler
 			return Permanent(fmt.Errorf("build admin email change confirmation url: %w", err))
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, recipient, emailrenderer.Request{
 			Template: "admin_console_email_change_confirmation",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -182,13 +175,6 @@ func NewAdminEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handler
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render admin email change confirmation email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, recipient, rendered); err != nil {
-			return fmt.Errorf("send admin email change confirmation email: %w", err)
-		}
-		return nil
 	}
 }
 
@@ -231,7 +217,7 @@ func NewAdminEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			return err
 		}
 
-		rendered, err := cfg.Renderer.Render(ctx, emailrenderer.Request{
+		return deliverEmail(ctx, cfg, delivery.settings, changeToken.CurrentEmail, emailrenderer.Request{
 			Template: "admin_console_email_changed_notice",
 			Locale:   delivery.locale,
 			Data: map[string]any{
@@ -241,12 +227,5 @@ func NewAdminEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			},
 			TimeZone: delivery.timeZone,
 		})
-		if err != nil {
-			return fmt.Errorf("render admin email changed notice email: %w", err)
-		}
-		if err := sendRenderedEmail(ctx, cfg.Mailer, delivery.settings, changeToken.CurrentEmail, rendered); err != nil {
-			return fmt.Errorf("send admin email changed notice email: %w", err)
-		}
-		return nil
 	}
 }

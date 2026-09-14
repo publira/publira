@@ -84,7 +84,6 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
       return;
     }
 
-    expect(result.subject).toBe("Aoto Press メールアドレス変更確認");
     expect(result.html).toContain("メールアドレス変更の確認");
     expect(result.html).toContain(data.confirm_url);
     expect(result.html).toContain(
@@ -92,7 +91,7 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
     );
     expect(result.html).toContain(data.current_email);
     expect(result.html).toContain(data.new_email);
-    expect(result.text).toContain("心当たりがない場合");
+    expect(result.html).toContain("心当たりがない場合");
     expect(result.html).toContain(data.tenant_name);
     expect(result.html).not.toContain("Publira");
   });
@@ -114,7 +113,6 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
 
     const expires = formatDateTime(data.expires_at, { locale: "en", timeZone });
 
-    expect(result.subject).toBe("Aoto Press email address change confirmation");
     expect(result.html).toContain("Confirm your email address change");
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(
@@ -145,9 +143,9 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
       return;
     }
 
-    expect(toCurrent.text).toContain(currentAddressBody);
-    expect(toCurrent.text).not.toContain(newAddressBody);
-    expect(toNew.text).toContain(newAddressBody);
-    expect(toNew.text).not.toContain(currentAddressBody);
+    expect(toCurrent.html).toContain(currentAddressBody);
+    expect(toCurrent.html).not.toContain(newAddressBody);
+    expect(toNew.html).toContain(newAddressBody);
+    expect(toNew.html).not.toContain(currentAddressBody);
   });
 });
