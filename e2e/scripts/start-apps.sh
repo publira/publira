@@ -79,8 +79,6 @@ start_web_app() {
 for port in \
   "${E2E_PUBLIC_API_PORT}" \
   "${E2E_PUBLIC_API_GRPC_PORT}" \
-  "${E2E_ADMIN_API_GRPC_PORT}" \
-  "${E2E_PLATFORM_API_GRPC_PORT}" \
   "${E2E_OUTBOX_WORKER_PORT}" \
   "${E2E_IMAGE_SERVER_PORT}" \
   "${E2E_EMAIL_RENDERER_PORT}" \
@@ -96,16 +94,12 @@ done
 # Shared with the outage scenario, which restarts api-server on its own and
 # appends to the same log; truncate here so a run starts from a clean file.
 : >"${LOG_DIR}/api-server.log"
-: >"${LOG_DIR}/admin-api-server.log"
-: >"${LOG_DIR}/platform-api-server.log"
 : >"${LOG_DIR}/publish-episodes.log"
 : >"${LOG_DIR}/email-renderer.log"
 : >"${LOG_DIR}/outbox-worker.log"
 : >"${LOG_DIR}/image-server.log"
 
 bash "${E2E_SCRIPTS_DIR}/api-server.sh" start
-bash "${E2E_SCRIPTS_DIR}/admin-api-server.sh" start
-bash "${E2E_SCRIPTS_DIR}/platform-api-server.sh" start
 bash "${E2E_SCRIPTS_DIR}/publish-episodes.sh" start
 bash "${E2E_SCRIPTS_DIR}/email-renderer.sh" start
 bash "${E2E_SCRIPTS_DIR}/outbox-worker.sh" start

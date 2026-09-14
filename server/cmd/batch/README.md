@@ -286,7 +286,7 @@ A withdrawal is the author's own deletion, and the row outlives it only so staff
 
 **A `hidden` comment is never deleted, whatever its age**: a removal by staff or by the report threshold is the record of a moderation decision, and nothing here takes it away.
 
-The admin console reads the same retention variable to show staff the `purge_due_at` of a withdrawn comment, so a value set for this batch has to be set for `admin-api-server` too, or the console counts down to a deadline this batch does not keep.
+The admin console reads the same retention variable to show staff the `purge_due_at` of a withdrawn comment, so a value set for this batch has to be set for `api-server` too, or the console counts down to a deadline this batch does not keep.
 
 One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero with every failure in its log.
 

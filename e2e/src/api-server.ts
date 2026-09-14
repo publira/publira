@@ -12,14 +12,18 @@ const runApiServerScript = (action: "start-wait" | "stop"): void => {
 };
 
 /**
- * Take the public API down so web-host has to render its backend-unavailable
- * path. Always pair with {@link startApiServer} in an `afterAll`.
+ * Take the API down so an app has to render its backend-unavailable path. One
+ * process serves all three Connect namespaces, so this stops the tenant site,
+ * the tenant console, and the platform console together — the specs that call
+ * it therefore run in a chain rather than beside each other (see
+ * `playwright.config.ts`). Always pair with {@link startApiServer} in an
+ * `afterAll`.
  */
 export const stopApiServer = (): void => {
   runApiServerScript("stop");
 };
 
-/** Restart the public API and block until `/readyz` reports ok again. */
+/** Restart the API and block until `/readyz` reports ok again. */
 export const startApiServer = (): void => {
   runApiServerScript("start-wait");
 };

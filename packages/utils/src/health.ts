@@ -175,7 +175,7 @@ export const createReadyzResponse = async (
 
 /**
  * Probe an upstream Go API `/readyz` (or another path) over HTTP.
- * `baseUrl` is the service origin (e.g. `http://admin-api:8101`).
+ * `baseUrl` is the service origin (e.g. `http://api:8100`).
  */
 export const checkUpstreamReadyz = async (
   baseUrl: string,

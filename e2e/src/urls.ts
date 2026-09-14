@@ -122,6 +122,23 @@ const withHostname = (baseUrl: string, hostname: string): string => {
   return url.toString().replace(/\/$/u, "");
 };
 
+/**
+ * The tenant console and the platform console, reached through the same edge.
+ *
+ * `/api` is host-agnostic there, so these are the other two Host headers the
+ * API server answers under — which is what `smoke.api-edge.spec.ts` needs to
+ * ask it from.
+ */
+export const WEB_ADMIN_EDGE_BASE_URL = withHostname(
+  WEB_HOST_EDGE_BASE_URL,
+  "admin.localhost"
+);
+
+export const WEB_PLATFORM_EDGE_BASE_URL = withHostname(
+  WEB_HOST_EDGE_BASE_URL,
+  "platform.localhost"
+);
+
 /** Second tenant from the scenario seed `db/seeds/scenarios/010_multi_tenant.sql`. */
 export const WEB_HOST_OTHER_TENANT_BASE_URL = envUrl(
   "E2E_WEB_HOST_OTHER_TENANT_BASE_URL",

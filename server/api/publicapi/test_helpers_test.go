@@ -87,11 +87,11 @@ func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 func mustPublicHandler(t *testing.T, db *sql.DB, queries Querier, encryptor emailsettings.SecretManager) http.Handler {
 	t.Helper()
 
-	handler, err := NewHandler(db, queries, &testStorageProvider{}, encryptor, testutil.TokenManager())
+	api, err := New(db, queries, &testStorageProvider{}, encryptor, testutil.TokenManager())
 	if err != nil {
-		t.Fatalf("NewHandler: %v", err)
+		t.Fatalf("New: %v", err)
 	}
-	return handler
+	return handlerFromServer(api.server)
 }
 
 type testStorageProvider struct{}

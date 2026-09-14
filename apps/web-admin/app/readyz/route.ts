@@ -6,7 +6,7 @@ import {
 import type { HealthCheck } from "@publira/utils/health";
 
 const adminApiBaseUrl =
-  process.env.PUBLIRA_ADMIN_GRPC_URL ?? "http://localhost:8101";
+  process.env.PUBLIRA_ADMIN_GRPC_URL ?? "http://localhost:8100";
 
 const checks: HealthCheck[] = [
   {

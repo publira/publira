@@ -18,11 +18,13 @@ package tracing
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
@@ -137,23 +139,87 @@ func SetEndUser(ctx context.Context, userPublicID string) {
 	trace.SpanFromContext(ctx).SetAttributes(EndUserIDKey.String(userPublicID))
 }
 
-// Setup installs the global TracerProvider and the W3C trace context
-// propagator, and returns a shutdown that flushes the pending span batch.
+// serviceProviders holds the provider Setup built for each service name, so
+// ConnectHandlerOption can send a namespace's spans to the one carrying its
+// service.name. It is written once at startup and read while the handlers are
+// built; a name Setup was never given falls back to the global provider.
+var serviceProviders atomic.Pointer[map[string]trace.TracerProvider]
+
+// Setup installs a TracerProvider for every service name given along with the
+// W3C trace context propagator, and returns a shutdown that flushes the
+// pending span batches.
 //
-// serviceName is the process-level default for service.name;
-// OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES override it. When
-// tracing is disabled Setup installs nothing and returns a no-op
+// The first name is the process default: its provider becomes the global one,
+// so the database instrumentation and the outbound HTTP clients report under
+// it. A process that serves several API namespaces passes one name per
+// namespace and reaches the rest through ConnectHandlerOption, which is what
+// keeps those namespaces apart in a trace UI now that they share a process.
+// OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES override every one of them.
+// When tracing is disabled Setup installs nothing and returns a no-op
 // shutdown and a nil error.
 //
 // The shutdown is shaped as an httpserver.Serve hook: the batch processor
 // holds up to a batch interval of spans, and the run's last spans are the
 // ones a deploy or a crash makes you want.
-func Setup(ctx context.Context, serviceName string) (func(context.Context) error, error) {
-	if !Enabled() {
+func Setup(ctx context.Context, serviceNames ...string) (func(context.Context) error, error) {
+	if !Enabled() || len(serviceNames) == 0 {
 		return noopShutdown, nil
 	}
 
-	res, err := resource.New(ctx,
+	exporter, err := autoexport.NewSpanExporter(ctx)
+	if err != nil {
+		return noopShutdown, err
+	}
+
+	sampler, sampled := defaultSampler()
+	providers := make(map[string]trace.TracerProvider, len(serviceNames))
+	shutdowns := make([]func(context.Context) error, 0, len(serviceNames))
+	for _, serviceName := range serviceNames {
+		res, resErr := newResource(ctx, serviceName)
+		if resErr != nil {
+			// Nothing is installed yet, so the exporter it was going to feed
+			// has no other way back.
+			return noopShutdown, errors.Join(resErr, exporter.Shutdown(ctx))
+		}
+		options := []sdktrace.TracerProviderOption{
+			// The exporter is shared, and only the shutdown below closes it:
+			// a provider that closed it on its way out would leave the others
+			// exporting into a stopped exporter.
+			sdktrace.WithBatcher(sharedExporter{exporter}),
+			sdktrace.WithResource(res),
+		}
+		if sampled {
+			options = append(options, sdktrace.WithSampler(sampler))
+		}
+		provider := sdktrace.NewTracerProvider(options...)
+		providers[serviceName] = provider
+		shutdowns = append(shutdowns, provider.Shutdown)
+	}
+
+	// The default error handler writes to the standard logger, which
+	// bypasses the structured logging the servers set up.
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		slog.Warn("opentelemetry error", "error", err)
+	}))
+	otel.SetTracerProvider(providers[serviceNames[0]])
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	serviceProviders.Store(&providers)
+
+	return func(ctx context.Context) error {
+		serviceProviders.Store(nil)
+		errs := make([]error, 0, len(shutdowns)+1)
+		for _, shutdown := range shutdowns {
+			errs = append(errs, shutdown(ctx))
+		}
+		return errors.Join(append(errs, exporter.Shutdown(ctx))...)
+	}, nil
+}
+
+func newResource(ctx context.Context, serviceName string) (*resource.Resource, error) {
+	return resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(buildinfo.Version()),
@@ -166,37 +232,16 @@ func Setup(ctx context.Context, serviceName string) (func(context.Context) error
 		// the per-binary defaults above.
 		resource.WithFromEnv(),
 	)
-	if err != nil {
-		return noopShutdown, err
-	}
-
-	exporter, err := autoexport.NewSpanExporter(ctx)
-	if err != nil {
-		return noopShutdown, err
-	}
-
-	options := []sdktrace.TracerProviderOption{
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(res),
-	}
-	if sampler, ok := defaultSampler(); ok {
-		options = append(options, sdktrace.WithSampler(sampler))
-	}
-	provider := sdktrace.NewTracerProvider(options...)
-
-	// The default error handler writes to the standard logger, which
-	// bypasses the structured logging the servers set up.
-	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		slog.Warn("opentelemetry error", "error", err)
-	}))
-	otel.SetTracerProvider(provider)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
-
-	return provider.Shutdown, nil
 }
+
+// sharedExporter is one exporter handed to several providers, with Shutdown
+// declined so each provider still flushes its own batch while the export
+// connection is closed once, after all of them have.
+type sharedExporter struct {
+	sdktrace.SpanExporter
+}
+
+func (sharedExporter) Shutdown(context.Context) error { return nil }
 
 // ConnectHandlerOption returns the handler option that starts a server
 // span for every inbound Connect / gRPC call and continues the caller's
@@ -217,11 +262,20 @@ func Setup(ctx context.Context, serviceName string) (func(context.Context) error
 //
 // Pass the option unconditionally: with tracing disabled the interceptors
 // record into the no-op TracerProvider.
-func ConnectHandlerOption() connect.HandlerOption {
-	interceptor, err := otelconnect.NewInterceptor(
+//
+// serviceName picks the provider Setup built for it, so the spans carry the
+// service.name of the API namespace rather than of the process it shares. A
+// name Setup was not given — every name while tracing is disabled — falls
+// back to the global provider.
+func ConnectHandlerOption(serviceName string) connect.HandlerOption {
+	options := []otelconnect.Option{
 		otelconnect.WithTrustRemote(),
 		otelconnect.WithoutMetrics(),
-	)
+	}
+	if provider, ok := serviceProvider(serviceName); ok {
+		options = append(options, otelconnect.WithTracerProvider(provider))
+	}
+	interceptor, err := otelconnect.NewInterceptor(options...)
 	if err != nil {
 		slog.Warn("connect rpc tracing is disabled", "error", err)
 		return connect.WithInterceptors()
@@ -229,6 +283,15 @@ func ConnectHandlerOption() connect.HandlerOption {
 	// The renaming interceptor has to run inside the otelconnect one so
 	// the span it renames already exists.
 	return connect.WithInterceptors(interceptor, rpcSpanNameInterceptor())
+}
+
+func serviceProvider(serviceName string) (trace.TracerProvider, bool) {
+	providers := serviceProviders.Load()
+	if providers == nil {
+		return nil, false
+	}
+	provider, ok := (*providers)[serviceName]
+	return provider, ok
 }
 
 // rpcSpanNameInterceptor shortens the span name otelconnect derives from

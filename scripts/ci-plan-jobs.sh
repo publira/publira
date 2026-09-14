@@ -37,8 +37,6 @@ full_web_host='{"role":"web","target":"web-host","port":"3000","task":"docker:bu
 full_web_admin='{"role":"web","target":"web-admin","port":"4000","task":"docker:build:web","arg":"APP_NAME=web-admin","extra":"PORT=4000"}'
 full_web_platform='{"role":"web","target":"web-platform","port":"4100","task":"docker:build:web","arg":"APP_NAME=web-platform","extra":"PORT=4100"}'
 full_api='{"role":"api","target":"api-server","port":"8000","task":"docker:build:api","arg":"CMD_NAME=api-server","extra":"PORT=8000"}'
-full_admin_api='{"role":"api","target":"admin-api-server","port":"8101","task":"docker:build:api","arg":"CMD_NAME=admin-api-server","extra":"PORT=8101"}'
-full_platform_api='{"role":"api","target":"platform-api-server","port":"8102","task":"docker:build:api","arg":"CMD_NAME=platform-api-server","extra":"PORT=8102"}'
 full_outbox_worker='{"role":"api","target":"outbox-worker","port":"8003","task":"docker:build:api","arg":"CMD_NAME=outbox-worker","extra":"PORT=8003"}'
 full_batch='{"role":"batch","target":"batch","port":"","task":"docker:build:batch","arg":"","extra":""}'
 full_image='{"role":"image","target":"image-server","port":"8200","task":"docker:build:image","arg":"CMD_NAME=image-server","extra":"PORT=8200"}'
@@ -86,8 +84,6 @@ case "${event}" in
       "${full_web_admin}"
       "${full_web_platform}"
       "${full_api}"
-      "${full_admin_api}"
-      "${full_platform_api}"
       "${full_outbox_worker}"
       "${full_batch}"
       "${full_image}"
@@ -115,8 +111,6 @@ case "${event}" in
         "${full_web_admin}"
         "${full_web_platform}"
         "${full_api}"
-        "${full_admin_api}"
-        "${full_platform_api}"
         "${full_outbox_worker}"
         "${full_batch}"
         "${full_image}"
@@ -147,8 +141,6 @@ case "${event}" in
         "${full_web_admin}"
         "${full_web_platform}"
         "${full_api}"
-        "${full_admin_api}"
-        "${full_platform_api}"
         "${full_outbox_worker}"
         "${full_batch}"
         "${full_image}"

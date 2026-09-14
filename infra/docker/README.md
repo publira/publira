@@ -109,14 +109,6 @@ docker build -f infra/docker/api/Dockerfile \
   -t publira/api-server:local .
 
 docker build -f infra/docker/api/Dockerfile \
-  --build-arg CMD_NAME=admin-api-server --build-arg PORT=8101 \
-  -t publira/admin-api-server:local .
-
-docker build -f infra/docker/api/Dockerfile \
-  --build-arg CMD_NAME=platform-api-server --build-arg PORT=8102 \
-  -t publira/platform-api-server:local .
-
-docker build -f infra/docker/api/Dockerfile \
   --build-arg CMD_NAME=outbox-worker --build-arg PORT=8003 \
   -t publira/outbox-worker:local .
 

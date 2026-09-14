@@ -1,25 +1,8 @@
-import { execFileSync } from "node:child_process";
-import path from "node:path";
-
 import { expect, test } from "@playwright/test";
 
+import { startApiServer, stopApiServer } from "../src/api-server";
 import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
-
-const platformApiServerScript = path.join(
-  import.meta.dirname,
-  "../scripts/platform-api-server.sh"
-);
-
-// Absolute path avoids PATH lookup (oxlint sonarjs/no-os-command-from-path).
-// `/bin/bash` rather than `/usr/bin/bash`: only the former exists on macOS.
-const bashBin = process.env.BASH_BIN?.trim() || "/bin/bash";
-
-const runPlatformApiServerScript = (action: "start-wait" | "stop"): void => {
-  execFileSync(bashBin, [platformApiServerScript, action], {
-    stdio: "inherit",
-  });
-};
 
 const dashboardHeading = "Cross-tenant operations hub";
 const rootErrorHeading = "Could not display Platform Console";
@@ -55,11 +38,12 @@ const setupApiUnavailableMessage =
 test.describe("web-platform console error boundary", () => {
   // Isolated project `platform-error-boundary` (see playwright.config.ts).
   // Filename `.error-boundary.` is what keeps this file off the parallel
-  // web-platform project; it stops platform-api-server, not the public API.
+  // web-platform project, and the project chain keeps it off the other specs
+  // that stop the API: one process serves all three namespaces.
   test.describe.configure({ mode: "serial" });
 
   test.afterAll(() => {
-    runPlatformApiServerScript("start-wait");
+    startApiServer();
   });
 
   test.use({ locale: "en-US" });
@@ -79,7 +63,7 @@ test.describe("web-platform console error boundary", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
     try {
-      runPlatformApiServerScript("stop");
+      stopApiServer();
 
       const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/`);
 
@@ -95,7 +79,7 @@ test.describe("web-platform console error boundary", () => {
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
       // suite does not inherit the outage.
-      runPlatformApiServerScript("start-wait");
+      startApiServer();
     }
 
     // "can retry" means the retry recovers, not that a button exists.
@@ -113,7 +97,7 @@ test.describe("web-platform console error boundary", () => {
     page,
   }) => {
     try {
-      runPlatformApiServerScript("stop");
+      stopApiServer();
 
       const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/login`);
 
@@ -122,7 +106,7 @@ test.describe("web-platform console error boundary", () => {
       expect(response?.status(), await page.content()).toBe(200);
       await expect(page.getByLabel(/Email address/u)).toBeVisible();
     } finally {
-      runPlatformApiServerScript("start-wait");
+      startApiServer();
     }
   });
 
@@ -130,7 +114,7 @@ test.describe("web-platform console error boundary", () => {
     page,
   }) => {
     try {
-      runPlatformApiServerScript("stop");
+      stopApiServer();
 
       const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/setup`);
 
@@ -140,7 +124,7 @@ test.describe("web-platform console error boundary", () => {
         page.getByRole("button", { name: "Create administrator" })
       ).toHaveCount(0);
     } finally {
-      runPlatformApiServerScript("start-wait");
+      startApiServer();
     }
   });
 });

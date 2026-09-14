@@ -45,13 +45,13 @@ func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminDashboardService/GetDashboard", false)
 }
 
-func TestNewHandlerRejectsInvalidWebPushVAPIDConfiguration(t *testing.T) {
+func TestNewRejectsInvalidWebPushVAPIDConfiguration(t *testing.T) {
 	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", "invalid")
 	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", "invalid")
 	t.Setenv("PUBLIRA_WEBPUSH_SUBJECT", "mailto:push@example.test")
 
-	if _, err := NewHandler(nil, nil, &testStorageProvider{}, nil, testutil.TokenManager()); err == nil {
-		t.Fatal("NewHandler error = nil, want invalid VAPID configuration rejection")
+	if _, err := New(nil, nil, &testStorageProvider{}, nil, testutil.TokenManager()); err == nil {
+		t.Fatal("New error = nil, want invalid VAPID configuration rejection")
 	}
 }
 

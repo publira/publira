@@ -132,15 +132,27 @@ func isSQLMockDB(db *sql.DB) bool {
 	return strings.Contains(strings.ToLower(fmt.Sprintf("%T", db.Driver())), "sqlmock")
 }
 
-// NewHandler returns the HTTP handler for the public API alone. It serves
-// CatalogService, AuthService, NotificationService, TenantService, and
-// DomainService, and none of the admin API.
+// ServiceName is the service.name this namespace's spans carry. The three
+// namespaces share a process and keep their own name, so a trace UI can still
+// tell the public API's work from the two consoles'.
+const ServiceName = "publira-api-server"
+
+// API is the public namespace — CatalogService, AuthService,
+// NotificationService, TenantService, DomainService and the rest of
+// publira.v1 — ready to be mounted by [API.Register].
+type API struct {
+	server *apiServer
+}
+
+// New builds the public API over db, which must be the pool connected as
+// publira_public: the row-level security every handler here relies on is that
+// role's.
 //
 // It fails rather than serves when either flood control is misconfigured — the
 // one the reader-writable RPCs depend on, and the one that bounds the mail a
 // form can cause — so a limit nobody can meet is caught at startup instead of
 // by the first reader who runs into it.
-func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (http.Handler, error) {
+func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (*API, error) {
 	if err := validateWebPushVAPIDFromEnv(); err != nil {
 		return nil, err
 	}
@@ -153,7 +165,14 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, e
 	if err != nil {
 		return nil, err
 	}
-	return handlerFromServer(newAPIServer(db, queries, storageProvider, encryptor, tokens, logger, guards, mail)), nil
+	return &API{server: newAPIServer(db, queries, storageProvider, encryptor, tokens, logger, guards, mail)}, nil
+}
+
+// Register mounts the publira.v1 services on mux. What a mux carries is what
+// its listener serves, so this is the whole of the public API and none of the
+// two console namespaces.
+func (a *API) Register(mux *http.ServeMux) {
+	registerPublicRoutes(mux, a.server)
 }
 
 func validateWebPushVAPIDFromEnv() error {
@@ -222,7 +241,7 @@ func handlerFromServer(server *apiServer) http.Handler {
 
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	tenantScoped := server.tenantScopedQuerierInterceptor()
-	traced := tracing.ConnectHandlerOption()
+	traced := tracing.ConnectHandlerOption(ServiceName)
 
 	path, handler := publirav1connect.NewCatalogServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(path, handler)

@@ -15,7 +15,7 @@ import {
 
 // gRPC transport is used for internal Next.js → Go API communication
 const grpcBaseUrl =
-  process.env.PUBLIRA_PLATFORM_GRPC_URL ?? "http://localhost:8102";
+  process.env.PUBLIRA_PLATFORM_GRPC_URL ?? "http://localhost:8100";
 
 export const apiClient = createPlatformApiClient({
   baseUrl: grpcBaseUrl,
