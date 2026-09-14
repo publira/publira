@@ -260,6 +260,7 @@ dev_env_write_profile() {
     printf 'PUBLIRA_PLATFORM_DB_URL=postgres://publira_platform:platformpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_WORKER_DB_URL=postgres://publira_outbox:outboxpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_CONTENT_STATS_DB_URL=postgres://publira_content_stats:contentstatspass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
+    printf 'PUBLIRA_TICKER_DB_URL=postgres://publira_ticker:tickerpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_IMAGE_DB_URL=postgres://publira_public:publicpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_ADMIN_IMAGE_DB_URL=postgres://publira_admin:adminpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_REDIS_URL=redis://%s/%s\n' "${redis}" "${slot}"
@@ -360,6 +361,20 @@ dev_env_load_profile() {
     PUBLIRA_CONTENT_STATS_DB_URL="${content_stats_url}"
   fi
   export PUBLIRA_CONTENT_STATS_DB_URL
+
+  # Profiles written before the ticker jobs had a role of their own have no key
+  # here either. They fall back to the superuser connection, which is what those
+  # jobs ran on when the profile was written, so an old profile keeps working
+  # until it is recreated instead of failing to authenticate.
+  local ticker_url
+  if ! ticker_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_TICKER_DB_URL)"; then
+    PUBLIRA_TICKER_DB_URL="${PUBLIRA_DB_URL}"
+  elif [[ -z "${ticker_url}" ]]; then
+    dev_env_die "profile has an empty PUBLIRA_TICKER_DB_URL: ${profile_path}"
+  else
+    PUBLIRA_TICKER_DB_URL="${ticker_url}"
+  fi
+  export PUBLIRA_TICKER_DB_URL
 }
 
 dev_env_selected_profile() {

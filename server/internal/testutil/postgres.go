@@ -48,6 +48,12 @@ const (
 	// its tenant predicate still cannot reach another tenant's rows.
 	publicDBUser     = "publira_public"
 	publicDBPassword = "publicpass"
+
+	// The ticker role spans every tenant like the platform role, but holds no
+	// blanket grant: the seed names the tables it may touch one by one, which is
+	// what the tests opening this connection are there to exercise.
+	tickerDBUser     = "publira_ticker"
+	tickerDBPassword = "tickerpass"
 )
 
 // SeededPassword is the plaintext behind the password hash of every user seeded
@@ -66,6 +72,8 @@ type PostgresEnv struct {
 	AdminURL string
 	// Application (public API) DSN using publira_public, which is subject to RLS.
 	PublicURL string
+	// Ticker job DSN using publira_ticker, the BYPASSRLS login with per-table grants.
+	TickerURL string
 
 	// Superuser pool used for setup and seeding.
 	DB *sql.DB
@@ -197,6 +205,12 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 		_ = testcontainers.TerminateContainer(container)
 		return nil, err
 	}
+	tickerURL, err := appConnectionString(connURL, tickerDBUser, tickerDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
 
 	return &PostgresEnv{
 		Container:   container,
@@ -204,6 +218,7 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 		PlatformURL: platformURL,
 		AdminURL:    adminURL,
 		PublicURL:   publicURL,
+		TickerURL:   tickerURL,
 		DB:          db,
 	}, nil
 }
@@ -264,6 +279,15 @@ func (e *PostgresEnv) OpenAdminDB(t *testing.T) *sql.DB {
 func (e *PostgresEnv) OpenPublicDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return e.openAppDB(t, e.PublicURL, publicDBUser)
+}
+
+// OpenTickerDB opens a connection as publira_ticker, the BYPASSRLS login the
+// three ticker jobs run as. Unlike the other app roles it holds no blanket
+// table grant, so a job reading a table the seed never named fails here rather
+// than in production. The connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenTickerDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.TickerURL, tickerDBUser)
 }
 
 func (e *PostgresEnv) openAppDB(t *testing.T, dsn, role string) *sql.DB {

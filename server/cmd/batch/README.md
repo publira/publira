@@ -43,7 +43,7 @@ go run ./server/cmd/batch publish-episodes
 
 Environment variables:
 
-- `PUBLIRA_DB_URL`: connection string. Defaults to the local development database. This subcommand has no dedicated role variable, so it runs as whatever that connection names; giving it a login of its own is [#1688](https://github.com/publira/publira/issues/1688).
+- `PUBLIRA_TICKER_DB_URL`: the `publira_ticker` connection the three ticker subcommands share. It has no fallback to `PUBLIRA_DB_URL`: that is the superuser connection locally and the migration tooling's in production, so an unset variable lands on this role's development password and fails to authenticate rather than running the job with the privilege to drop the schema.
 - `PUBLIRA_PUBLISH_INTERVAL_SECONDS`: seconds between passes. Defaults to `60`; a non-numeric or non-positive value falls back to the default.
 - `PUBLIRA_PUBLISH_MAX_RETRIES`: retries per episode. Defaults to `3`.
 
@@ -63,7 +63,7 @@ The window itself needs no batch to take effect: the API compares the stored per
 
 Environment variables:
 
-- `PUBLIRA_DB_URL`: connection string. Defaults to the local development database. The listing spans every tenant, so the role it names has to bypass RLS. Like `publish-episodes`, this subcommand has no dedicated role variable; giving it a login of its own is [#1688](https://github.com/publira/publira/issues/1688).
+- `PUBLIRA_TICKER_DB_URL`: the same `publira_ticker` connection as `publish-episodes`, resolved the same way. The listing spans every tenant, which is why that role bypasses RLS.
 - `PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS`: seconds between passes. Defaults to `60`; a non-numeric or non-positive value falls back to the default. It bounds how long the site can stay on the wrong side of a boundary.
 
 ### Next.js revalidation
@@ -88,7 +88,7 @@ Which day each tenant was last rolled on is remembered in the process rather tha
 
 Environment variables:
 
-- `PUBLIRA_DB_URL`: connection string. Defaults to the local development database. The listing spans every tenant, so the role it names has to bypass RLS. Like `publish-episodes`, this subcommand has no dedicated role variable; giving it a login of its own is [#1688](https://github.com/publira/publira/issues/1688).
+- `PUBLIRA_TICKER_DB_URL`: the same `publira_ticker` connection as `publish-episodes`, resolved the same way. The listing spans every tenant, which is why that role bypasses RLS.
 - `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS`: seconds between passes. Defaults to `60`; a non-numeric or non-positive value falls back to the default. It bounds how long after midnight the site can keep naming yesterday.
 
 ### Next.js revalidation

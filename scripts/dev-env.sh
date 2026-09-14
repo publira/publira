@@ -118,11 +118,8 @@ start_profile() {
     PUBLIRA_SECRET_ENCRYPTION_KEYS="${DEV_ENV_SECRET_ENCRYPTION_KEYS}" \
     PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}" \
     "${REPO_ROOT}/server/bin/outbox-worker"
-  # publish-episodes has no role variable of its own and reads PUBLIRA_DB_URL,
-  # so it stays on the profile's superuser connection. Passing the worker URL
-  # here would move it onto publira_outbox along with the worker.
   dev_env_start_background "${run_dir}" publish-episodes env \
-    PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
+    PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
@@ -198,6 +195,9 @@ print_env() {
   done
   if ! dev_env_profile_value "${profile_path}" PUBLIRA_CONTENT_STATS_DB_URL >/dev/null; then
     printf 'export PUBLIRA_CONTENT_STATS_DB_URL=%q\n' "${PUBLIRA_CONTENT_STATS_DB_URL}"
+  fi
+  if ! dev_env_profile_value "${profile_path}" PUBLIRA_TICKER_DB_URL >/dev/null; then
+    printf 'export PUBLIRA_TICKER_DB_URL=%q\n' "${PUBLIRA_TICKER_DB_URL}"
   fi
 }
 
