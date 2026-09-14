@@ -9,8 +9,11 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getTenantWebPushPublicKey } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { BrowserNotificationsCard } from "./_components/browser-notifications-card";
 import { updateNotificationSettingsAction } from "./_lib/actions";
 
 const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
@@ -82,6 +85,43 @@ const NotificationsSection = async () => {
   );
 };
 
+/**
+ * Browser pushes, offered only where they can actually be delivered: a
+ * deployment with no VAPID key publishes none, and `RegisterPushDevice` refuses
+ * a web registration without one, so the card is left out rather than shown as
+ * a switch every subscription would fail behind.
+ *
+ * Its copy is resolved here and passed down as strings. Which line the card
+ * shows is decided in the browser — after a permission prompt, after a push
+ * service answered — where a `<Message>` cannot reach.
+ */
+const BrowserNotificationsSection = async () => {
+  const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
+  const [t, vapidPublicKey] = await Promise.all([
+    getMessagesFor(locale),
+    getTenantWebPushPublicKey(tenantId),
+  ]);
+  if (!vapidPublicKey) {
+    return null;
+  }
+
+  return (
+    <BrowserNotificationsCard
+      copy={{
+        denied: t("host.settings.browser_notifications_denied"),
+        description: t("host.settings.browser_notifications_help"),
+        heading: t("host.settings.browser_notifications_heading"),
+        label: t("host.settings.browser_notifications_label"),
+        turnOffFailed: t("host.settings.browser_notifications_off_failed"),
+        turnOnFailed: t("host.settings.browser_notifications_failed"),
+      }}
+      locale={locale}
+      tenantId={tenantId}
+      vapidPublicKey={vapidPublicKey}
+    />
+  );
+};
+
 const NotificationsSectionFallback = () => (
   <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-40" />
@@ -93,6 +133,9 @@ const NotificationsSettingsPage = () => (
   <div className="space-y-6">
     <Suspense fallback={<NotificationsSectionFallback />}>
       <NotificationsSection />
+    </Suspense>
+    <Suspense fallback={<NotificationsSectionFallback />}>
+      <BrowserNotificationsSection />
     </Suspense>
   </div>
 );

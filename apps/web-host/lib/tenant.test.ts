@@ -6,6 +6,7 @@ import {
   getTenantDisplayTimeZone,
   getTenantSiteInfo,
   getTenantTheme,
+  getTenantWebPushPublicKey,
 } from "./tenant";
 
 const { mockCacheLife, mockCacheTag, mockGetTenant } = vi.hoisted(() => ({
@@ -96,6 +97,26 @@ describe("tenant", () => {
     const info = await getTenantSiteInfo("TENANT_001");
 
     expect(info?.acceptsPayments).toBe(false);
+  });
+
+  it("Carry the VAPID public key a browser subscribes to Web Push with", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      webPushVapidPublicKey: "BPublicKey",
+    });
+
+    await expect(getTenantWebPushPublicKey("TENANT_001")).resolves.toBe(
+      "BPublicKey"
+    );
+  });
+
+  it("Treat a deployment with no Web Push credentials as having no key", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      webPushVapidPublicKey: "",
+    });
+
+    await expect(getTenantWebPushPublicKey("TENANT_001")).resolves.toBeNull();
   });
 
   it("You can get the variant if the tenant icon is set.", async () => {

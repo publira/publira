@@ -100,6 +100,21 @@ image-server encrypts every body it serves, free and entitled alike. A page that
 
 `link rel="icon"` and `link rel="apple-touch-icon"` are resolved by `lib/tenant-icon.ts`, and the header's brand mark by `lib/tenant-logo.ts`. Both read the tenant's branding variants from `getTenantSiteInfo()`, and image-server delivers them (`/images/tenants/{media_id}/icon`, `/images/tenants/{media_id}/logo`).
 
+### Browser notifications (Web Push)
+
+A signed-in reader can be told in the browser when a new episode is published. The switch is on `/settings/notifications`, and it is rendered only when the public API answers `GetTenant` with a VAPID public key (`getTenantWebPushPublicKey()` in `lib/tenant.ts`); a deployment without [the server's Web Push credentials](../../server/README.md#web-push) publishes none, so the card is left out.
+
+| File | What it holds |
+| --- | --- |
+| `lib/service-worker.ts` | The worker's entry point, the file Next.js compiles into `_next/static/service-worker/` and answers with `Service-Worker-Allowed: /` |
+| `lib/service-worker-handlers.ts` | `push` and `notificationclick`: what is drawn, and where a tap lands |
+| `lib/browser-push.ts` | The registration, the permission prompt, the subscription, and the shape `RegisterPushDevice` is given |
+| `lib/push.ts` / `lib/push-actions.ts` | `RegisterPushDevice` / `UnregisterPushDevice`, and the Server Actions the switch and sign-out call |
+
+The worker is push-only and caches nothing. It carries no dependency of its own: it is compiled as a browser bundle, where a package reaching for `node:process` fails the build outright, which is why its payload check is written out by hand rather than declared with zod.
+
+The permission prompt is raised in exactly one place, when the reader turns the switch on. A refusal settles the switch back and points at the browser's own settings, and nothing asks again on its own. Signing out unregisters this browser before the session ends, so the next reader to sign in here is not told about the episodes the previous one followed.
+
 ### Episode purchase
 
 The checkout button on a paid episode leads to Stripe Checkout. After the reader comes back from Stripe, the purchase recorded by the `checkout.session.completed` webhook grants access to the body images. web-host itself holds no Stripe secret key. The return URL and the webhook are received on the tenant's public domain; for the procedure, see the [server README](../../server/README.md#stripe-checkout-episode-purchases).

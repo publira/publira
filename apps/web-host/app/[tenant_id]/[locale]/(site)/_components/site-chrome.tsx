@@ -37,7 +37,6 @@ import {
   SiteLayoutUserMenuAccount,
   SiteLayoutUserMenuAnnouncementsLink,
   SiteLayoutUserMenuContent,
-  SiteLayoutUserMenuLogout,
   SiteLayoutUserMenuLogoutButton,
   SiteLayoutUserMenuMyPageLink,
   SiteLayoutUserMenuSeparator,
@@ -94,6 +93,8 @@ import {
 } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { resolveTenantLogoVariant } from "#lib/tenant-logo";
+
+import { SignOutForm } from "./sign-out-form";
 
 const notificationMenuLimit = 5;
 
@@ -299,15 +300,17 @@ const HeaderActions = async () => {
               </Suspense>
             </SiteLayoutUserMenuAnnouncementsLink>
             <SiteLayoutUserMenuSeparator />
-            <SiteLayoutUserMenuLogout
-              action={logoutAction.bind(null, tenantId, locale)}
+            <SignOutForm
+              locale={locale}
+              signOut={logoutAction.bind(null, tenantId, locale)}
+              tenantId={tenantId}
             >
               <SiteLayoutUserMenuLogoutButton>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="host.nav.logout" />
                 </Suspense>
               </SiteLayoutUserMenuLogoutButton>
-            </SiteLayoutUserMenuLogout>
+            </SignOutForm>
           </SiteLayoutUserMenuContent>
         </SiteLayoutUserMenu>
       </SiteLayoutActions>
