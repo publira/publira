@@ -111,7 +111,8 @@ export const ClientMessage = ({
   message: PlatformMessageKey;
   values?: MessageValues;
 }) => {
-  const t = bindMessages(useClientMessages());
+  const messages = useClientMessages();
+  const t = bindMessages(messages);
 
   return t(message, values);
 };

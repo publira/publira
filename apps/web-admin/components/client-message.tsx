@@ -110,7 +110,8 @@ export const ClientMessage = ({
   message: AdminMessageKey;
   values?: MessageValues;
 }) => {
-  const t = bindMessages(use(adminCatalog(readClientLocale())));
+  const messages = use(adminCatalog(readClientLocale()));
+  const t = bindMessages(messages);
 
   return t(message, values);
 };
