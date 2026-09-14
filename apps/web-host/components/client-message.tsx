@@ -41,8 +41,12 @@ const hostCatalog = (locale: Locale): Promise<HostMessages> => {
  * needs it: an accessor handed across a component boundary makes the key an
  * implicit attribute of whatever the caller happened to bind.
  */
-export const useHostMessages = (): HostMessageAccessor =>
-  bindMessages(use(hostCatalog(useLocale())));
+export const useHostMessages = (): HostMessageAccessor => {
+  const locale = useLocale();
+  const messages = use(hostCatalog(locale));
+
+  return bindMessages(messages);
+};
 
 /**
  * One catalog string for a Client Component that cannot render `<Message>`.

@@ -53,7 +53,8 @@ export const LocaleSwitcher = () => {
   const currentLocale = useLocale();
   const defaultLocale = useTenantDefaultLocale();
   const t = useHostMessages();
-  const barePathname = toBarePathname(usePathname());
+  const pathname = usePathname();
+  const barePathname = toBarePathname(pathname);
 
   const label = t("host.nav.locale_switcher");
 
@@ -115,7 +116,8 @@ export const LocaleSwitcherLinksSkeleton = () => (
 export const LocaleSwitcherLinks = () => {
   const currentLocale = useLocale();
   const defaultLocale = useTenantDefaultLocale();
-  const barePathname = toBarePathname(usePathname());
+  const pathname = usePathname();
+  const barePathname = toBarePathname(pathname);
 
   return getLocales().map((locale) => (
     <SiteLayoutMobileNavigationLink

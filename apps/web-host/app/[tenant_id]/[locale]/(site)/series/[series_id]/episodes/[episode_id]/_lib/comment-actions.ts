@@ -1,5 +1,6 @@
 "use server";
 
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -25,7 +26,6 @@ import {
   requireFormLocale,
 } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import type { HostMessageAccessor } from "#lib/messages";
 
 /**
  * The body limit the API enforces, counted the same way it counts it: Unicode
@@ -38,11 +38,14 @@ const MAX_COMMENT_BODY_LENGTH = 1000;
 const publicIdFormSchema = z.string().trim().min(1).max(64);
 
 /**
- * The comment form's own rules. It is a function of the catalog rather than a
- * module constant: its wording follows the locale the form was submitted from.
+ * The comment form's own rules. It is a function of the locale rather than a
+ * module constant: its wording follows the locale the form was submitted from,
+ * and it resolves that copy itself.
  */
-const postCommentSchema = (t: HostMessageAccessor) =>
-  z.object({
+const postCommentSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     body: z
       .string()
       .trim()
@@ -59,6 +62,7 @@ const postCommentSchema = (t: HostMessageAccessor) =>
     returnTo: returnToFormSchema,
     tenantId: tenantIdSchema,
   });
+};
 
 /**
  * The note limit the API enforces, counted in Unicode code points as the body
@@ -75,8 +79,10 @@ const MAX_COMMENT_REPORT_NOTE_LENGTH = 1000;
  * that chooser, and the RPC would answer it with a generic rejection the reader
  * could do nothing with.
  */
-const reportCommentSchema = (t: HostMessageAccessor) =>
-  z.object({
+const reportCommentSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     commentPublicId: publicIdFormSchema,
     locale: localeFormSchema,
     note: z
@@ -93,6 +99,7 @@ const reportCommentSchema = (t: HostMessageAccessor) =>
     returnTo: returnToFormSchema,
     tenantId: tenantIdSchema,
   });
+};
 
 const withdrawCommentSchema = z.object({
   commentPublicId: publicIdFormSchema,
@@ -118,8 +125,11 @@ export const postEpisodeCommentAction = async (
   // so every answer below is worded in the reader's language, the rejections
   // included.
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = postCommentSchema(t).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    postCommentSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       body: "value",
       episodePublicId: "value",
@@ -220,8 +230,11 @@ export const reportEpisodeCommentAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = reportCommentSchema(t).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    reportCommentSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       commentPublicId: "value",
       locale: "value",

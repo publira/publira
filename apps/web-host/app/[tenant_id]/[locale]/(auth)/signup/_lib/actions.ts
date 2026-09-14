@@ -1,5 +1,6 @@
 "use server";
 
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -19,10 +20,15 @@ import {
 } from "#lib/email-flash-cookie";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
-const signupFormSchema = (t: HostMessageAccessor) => {
+const signupFormSchema = async (locale: Locale) => {
+  const [t, email, password, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    emailFormSchema(locale),
+    passwordFormSchema(locale),
+    tenantIdFormSchema(locale),
+  ]);
   const confirmRequired = t("host.auth.errors.password_confirm_required");
   const nameRequired = t("host.auth.errors.name_required");
 
@@ -32,15 +38,15 @@ const signupFormSchema = (t: HostMessageAccessor) => {
         .string({ error: confirmRequired })
         .min(1, confirmRequired)
         .max(1024, t("host.auth.errors.password_confirm_too_long")),
-      email: emailFormSchema(t),
+      email,
       locale: localeFormSchema,
       name: z
         .string({ error: nameRequired })
         .trim()
         .min(1, nameRequired)
         .max(100, t("host.auth.errors.name_too_long")),
-      password: passwordFormSchema(t),
-      tenantId: tenantIdFormSchema(t),
+      password,
+      tenantId,
     })
     .refine((value) => value.password === value.confirmPassword, {
       error: t("host.auth.errors.password_mismatch"),
@@ -56,8 +62,11 @@ export const signupAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = signupFormSchema(t).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    signupFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
       email: "value",

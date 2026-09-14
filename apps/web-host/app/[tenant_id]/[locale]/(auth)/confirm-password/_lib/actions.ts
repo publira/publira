@@ -15,30 +15,40 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
-const tokenOrEmpty = (
-  t: HostMessageAccessor,
+const tokenOrEmpty = async (
+  locale: Locale,
   value: string | undefined
-): string => {
-  const parsed = authTokenFormSchema(t).safeParse(value);
+): Promise<string> => {
+  const schema = await authTokenFormSchema(locale);
+  const parsed = schema.safeParse(value);
+
   return parsed.success ? parsed.data : "";
 };
 
-const confirmPasswordFormSchema = (t: HostMessageAccessor) =>
-  z
+const confirmPasswordFormSchema = async (locale: Locale) => {
+  const [t, confirmPassword, newPassword, tenantId, token] = await Promise.all([
+    getMessagesFor(locale),
+    passwordFormSchema(locale),
+    passwordFormSchema(locale),
+    tenantIdFormSchema(locale),
+    authTokenFormSchema(locale),
+  ]);
+
+  return z
     .object({
-      confirmPassword: passwordFormSchema(t),
+      confirmPassword,
       locale: localeFormSchema,
-      newPassword: passwordFormSchema(t),
-      tenantId: tenantIdFormSchema(t),
-      token: authTokenFormSchema(t),
+      newPassword,
+      tenantId,
+      token,
     })
     .refine((value) => value.newPassword === value.confirmPassword, {
       error: t("host.auth.errors.password_mismatch"),
       path: ["confirmPassword"],
     });
+};
 
 const buildConfirmPasswordErrorPath = async (
   locale: Locale,
@@ -77,10 +87,13 @@ export const confirmPasswordAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(input.locale);
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = confirmPasswordFormSchema(t).safeParse(input);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    confirmPasswordFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(input);
   if (!parsed.success) {
-    const token = tokenOrEmpty(t, input.token);
+    const token = await tokenOrEmpty(submittedLocale, input.token);
     const errorPath = await buildConfirmPasswordErrorPath(
       submittedLocale,
       String(input.tenantId ?? ""),

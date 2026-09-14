@@ -1,5 +1,6 @@
 "use server";
 
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -15,15 +16,16 @@ import {
 } from "#lib/email-flash-cookie";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
-const requestEmailVerificationFormSchema = (t: HostMessageAccessor) =>
-  z.object({
-    email: emailFormSchema(t),
-    locale: localeFormSchema,
-    tenantId: tenantIdFormSchema(t),
-  });
+const requestEmailVerificationFormSchema = async (locale: Locale) => {
+  const [email, tenantId] = await Promise.all([
+    emailFormSchema(locale),
+    tenantIdFormSchema(locale),
+  ]);
+
+  return z.object({ email, locale: localeFormSchema, tenantId });
+};
 
 export const requestEmailVerificationAction = async (
   _prevState: FormActionState,
@@ -33,8 +35,11 @@ export const requestEmailVerificationAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = requestEmailVerificationFormSchema(t).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    requestEmailVerificationFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
       locale: "value",

@@ -10,16 +10,19 @@
  * consumer — login query, login form, error-redirect builder — shares one
  * open-redirect rule.
  *
- * A schema whose rejection reaches the reader is a function of the catalog
+ * A schema whose rejection reaches the reader is a function of the **locale**
  * rather than a module constant: the wording depends on the request's locale,
- * which only a Server Action or a suspended section can resolve.
+ * which only a Server Action or a suspended section can resolve. Each such
+ * schema resolves its own copy from that locale rather than being handed an
+ * accessor, so a caller passes the value it already has and nothing else.
  */
 
+import type { Locale } from "@publira/i18n";
 import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./auth-shared";
-import type { HostMessageAccessor } from "./messages";
+import { getMessagesFor } from "./messages";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 /** Paths in `returnTo` can carry a query string; 255 would clip real ones. */
@@ -75,15 +78,19 @@ export const authTokenSearchParamSchema = searchParamString({
  */
 export const tenantIdSchema = z.string().trim().refine(isTenantIdFormat);
 
-export const authTokenFormSchema = (t: HostMessageAccessor) =>
-  z
+export const authTokenFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .string()
     .trim()
     .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
       error: t("host.auth.fields.invalid_token"),
     });
+};
 
-export const tenantIdFormSchema = (t: HostMessageAccessor) => {
+export const tenantIdFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
   const missing = t("host.auth.fields.tenant_missing");
 
   return z
@@ -92,7 +99,8 @@ export const tenantIdFormSchema = (t: HostMessageAccessor) => {
     .refine(isTenantIdFormat, { error: missing });
 };
 
-export const emailFormSchema = (t: HostMessageAccessor) => {
+export const emailFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
   const required = t("host.auth.fields.email_required");
 
   return z
@@ -102,7 +110,8 @@ export const emailFormSchema = (t: HostMessageAccessor) => {
     .pipe(z.email(t("host.auth.fields.email_invalid")));
 };
 
-export const passwordFormSchema = (t: HostMessageAccessor) => {
+export const passwordFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
   const required = t("host.auth.fields.password_required");
 
   return z.string({ error: required }).min(1, required).max(1024);

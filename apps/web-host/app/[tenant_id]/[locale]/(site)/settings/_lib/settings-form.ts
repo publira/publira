@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { passwordFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import { localeFormSchema } from "#lib/locale-form";
-import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 /**
@@ -24,21 +23,26 @@ export const buildSettingsPath = async (
   return `${path}?${params.toString()}`;
 };
 
-const deleteAccountFormSchema = (t: HostMessageAccessor) =>
-  z.object({
-    locale: localeFormSchema,
-    password: passwordFormSchema(t),
-    tenantId: tenantIdFormSchema(t),
-  });
+const deleteAccountFormSchema = async (locale: Locale) => {
+  const [password, tenantId] = await Promise.all([
+    passwordFormSchema(locale),
+    tenantIdFormSchema(locale),
+  ]);
 
-export const parseDeleteAccountForm = (
-  t: HostMessageAccessor,
+  return z.object({ locale: localeFormSchema, password, tenantId });
+};
+
+export const parseDeleteAccountForm = async (
+  locale: Locale,
   formData: FormData
-) =>
-  deleteAccountFormSchema(t).safeParse(
+) => {
+  const schema = await deleteAccountFormSchema(locale);
+
+  return schema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
       password: "value",
       tenantId: "value",
     })
   );
+};

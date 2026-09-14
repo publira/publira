@@ -1,5 +1,6 @@
 "use server";
 
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -14,13 +15,16 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import type { HostMessageAccessor } from "#lib/messages";
 
 import { buildSettingsPath } from "./settings-form";
 
 const SETTINGS_RETURN_TO = "/settings";
 
-const updateProfileFormSchema = (t: HostMessageAccessor) => {
+const updateProfileFormSchema = async (locale: Locale) => {
+  const [t, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
   const nameRequired = t("host.settings.name_required");
 
   return z.object({
@@ -30,7 +34,7 @@ const updateProfileFormSchema = (t: HostMessageAccessor) => {
       .trim()
       .min(1, nameRequired)
       .max(100, t("host.settings.name_too_long")),
-    tenantId: tenantIdFormSchema(t),
+    tenantId,
   });
 };
 
@@ -41,8 +45,11 @@ export const updateProfileAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = updateProfileFormSchema(t).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    updateProfileFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
       name: "value",

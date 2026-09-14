@@ -16,17 +16,23 @@ import { writePublicSessionCookie } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
-const loginFormSchema = (t: HostMessageAccessor) =>
-  z.object({
-    email: emailFormSchema(t),
+const loginFormSchema = async (locale: Locale) => {
+  const [email, password, tenantId] = await Promise.all([
+    emailFormSchema(locale),
+    passwordFormSchema(locale),
+    tenantIdFormSchema(locale),
+  ]);
+
+  return z.object({
+    email,
     locale: localeFormSchema,
-    password: passwordFormSchema(t),
+    password,
     returnTo: returnToFormSchema,
-    tenantId: tenantIdFormSchema(t),
+    tenantId,
   });
+};
 
 const buildLoginErrorPath = async (
   locale: Locale,
@@ -47,9 +53,12 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   // The locale field falls back rather than failing, so the rejection below can
   // be worded in the reader's language even when the rest of the form is not.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const t = await getMessagesFor(submittedLocale);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    loginFormSchema(submittedLocale),
+  ]);
   const loginFailed = t("host.auth.errors.login_failed");
-  const parsed = loginFormSchema(t).safeParse(
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
       locale: "value",

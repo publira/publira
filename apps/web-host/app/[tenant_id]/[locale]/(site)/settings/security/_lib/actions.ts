@@ -23,7 +23,6 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import type { HostMessageAccessor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const SECURITY_SETTINGS_RETURN_TO = "/settings/security";
@@ -43,14 +42,24 @@ const buildSettingsPath = async (
   return `${path}?${params.toString()}`;
 };
 
-const requestEmailChangeFormSchema = (t: HostMessageAccessor) =>
-  z.object({
-    currentEmail: emailFormSchema(t),
-    currentPassword: passwordFormSchema(t),
+const requestEmailChangeFormSchema = async (locale: Locale) => {
+  const [currentEmail, currentPassword, newEmail, tenantId] = await Promise.all(
+    [
+      emailFormSchema(locale),
+      passwordFormSchema(locale),
+      emailFormSchema(locale),
+      tenantIdFormSchema(locale),
+    ]
+  );
+
+  return z.object({
+    currentEmail,
+    currentPassword,
     locale: localeFormSchema,
-    newEmail: emailFormSchema(t),
-    tenantId: tenantIdFormSchema(t),
+    newEmail,
+    tenantId,
   });
+};
 
 export const requestEmailChangeAction = async (
   formData: FormData
@@ -59,8 +68,11 @@ export const requestEmailChangeAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = requestEmailChangeFormSchema(t).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    requestEmailChangeFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currentEmail: "value",
       currentPassword: "value",
@@ -123,26 +135,38 @@ export const requestEmailChangeAction = async (
   redirect(successPath);
 };
 
-const changePasswordFormSchema = (t: HostMessageAccessor) =>
-  z
-    .object({
-      confirmPassword: passwordFormSchema(t),
-      currentPassword: passwordFormSchema(t),
-      locale: localeFormSchema,
-      newPassword: passwordFormSchema(t),
-      tenantId: tenantIdFormSchema(t),
-    })
-    .refine((value) => value.newPassword === value.confirmPassword, {
-      error: t("host.auth.errors.password_mismatch"),
-      path: ["confirmPassword"],
-    })
-    // The API refuses this too, on the same grounds. Checking it here is what
-    // gives the reader the reason: whatever the RPC rejects comes back as the
-    // one message this form has for a refused submission.
-    .refine((value) => value.newPassword !== value.currentPassword, {
-      error: t("host.settings.password_unchanged"),
-      path: ["newPassword"],
-    });
+const changePasswordFormSchema = async (locale: Locale) => {
+  const [t, confirmPassword, currentPassword, newPassword, tenantId] =
+    await Promise.all([
+      getMessagesFor(locale),
+      passwordFormSchema(locale),
+      passwordFormSchema(locale),
+      passwordFormSchema(locale),
+      tenantIdFormSchema(locale),
+    ]);
+
+  return (
+    z
+      .object({
+        confirmPassword,
+        currentPassword,
+        locale: localeFormSchema,
+        newPassword,
+        tenantId,
+      })
+      .refine((value) => value.newPassword === value.confirmPassword, {
+        error: t("host.auth.errors.password_mismatch"),
+        path: ["confirmPassword"],
+      })
+      // The API refuses this too, on the same grounds. Checking it here is what
+      // gives the reader the reason: whatever the RPC rejects comes back as the
+      // one message this form has for a refused submission.
+      .refine((value) => value.newPassword !== value.currentPassword, {
+        error: t("host.settings.password_unchanged"),
+        path: ["newPassword"],
+      })
+  );
+};
 
 export const changePasswordAction = async (
   formData: FormData
@@ -151,8 +175,11 @@ export const changePasswordAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = changePasswordFormSchema(t).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    changePasswordFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
       currentPassword: "value",

@@ -35,8 +35,10 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
-  const t = await getMessagesFor(submittedLocale);
-  const parsed = parseDeleteAccountForm(t, formData);
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    parseDeleteAccountForm(submittedLocale, formData),
+  ]);
   if (!parsed.success) {
     const errorPath = await buildSettingsPath(
       submittedLocale,

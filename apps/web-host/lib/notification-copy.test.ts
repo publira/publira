@@ -1,16 +1,13 @@
-import { bindMessages } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { describe, expect, it } from "vitest";
 
-import type { HostMessageAccessor } from "./messages";
 import {
   notificationDisplay,
   notificationHref,
   parseNotificationPayload,
 } from "./notification-copy";
 
-const JA: HostMessageAccessor = bindMessages(sharedCatalog("ja"));
-const EN: HostMessageAccessor = bindMessages(sharedCatalog("en"));
+const JA = "ja" as const;
+const EN = "en" as const;
 
 describe("parseNotificationPayload", () => {
   it("Extract only known fields", () => {
@@ -59,8 +56,8 @@ describe("notificationHref", () => {
 });
 
 describe("notificationDisplay", () => {
-  it("Construct text for members in public notices", () => {
-    expect(
+  it("Construct text for members in public notices", async () => {
+    await expect(
       notificationDisplay(
         "episode_published",
         {
@@ -70,15 +67,15 @@ describe("notificationDisplay", () => {
         },
         EN
       )
-    ).toEqual({
+    ).resolves.toEqual({
       description: "“Episode 1” (Series A) is now available.",
       href: "/series/SR01",
       title: "A new episode has been published",
     });
   });
 
-  it("words the notification in the reader's locale, so the ja catalog is Japanese", () => {
-    expect(
+  it("words the notification in the reader's locale, so the ja catalog is Japanese", async () => {
+    await expect(
       notificationDisplay(
         "episode_published",
         {
@@ -88,17 +85,17 @@ describe("notificationDisplay", () => {
         },
         JA
       )
-    ).toEqual({
+    ).resolves.toEqual({
       description: "「Chapter 1」（Work A）が公開されました。",
       href: "/series/SR01",
       title: "新しいエピソードが公開されました",
     });
   });
 
-  it("Don't drop unknown types and make them generic", () => {
-    expect(
+  it("Don't drop unknown types and make them generic", async () => {
+    await expect(
       notificationDisplay("episode_publish_failed", { series_id: "SR01" }, EN)
-    ).toEqual({
+    ).resolves.toEqual({
       description: "No further details.",
       href: "/series/SR01",
       title: "Notification",

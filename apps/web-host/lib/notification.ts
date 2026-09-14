@@ -30,7 +30,6 @@ import {
 } from "./api-client";
 import { applyCacheTag, tenantNotificationsTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
-import type { HostMessageAccessor } from "./messages";
 import {
   notificationDisplay,
   parseNotificationPayload,
@@ -86,14 +85,14 @@ type RawNotification = Pick<
   "createdAt" | "id" | "isRead" | "notificationType" | "payload"
 >;
 
-const mapNotification = (
+const mapNotification = async (
   item: RawNotification,
-  t: HostMessageAccessor
-): NotificationItem => {
-  const display = notificationDisplay(
+  locale: Locale
+): Promise<NotificationItem> => {
+  const display = await notificationDisplay(
     item.notificationType,
     parseNotificationPayload(item.payload),
-    t
+    locale
   );
 
   return {
@@ -160,11 +159,15 @@ const readNotificationList = async (
       buildSessionHeaders(sessionId)
     );
 
+    const notifications = await Promise.all(
+      (response.notifications ?? []).map((item) =>
+        mapNotification(item, locale)
+      )
+    );
+
     return {
       nextToken: response.nextToken ?? "",
-      notifications: (response.notifications ?? []).map((item) =>
-        mapNotification(item, t)
-      ),
+      notifications,
       ok: true,
       previousToken: response.previousToken ?? "",
       unexpected: false,

@@ -1,6 +1,7 @@
+import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import type { HostMessageAccessor } from "./messages";
+import { getMessagesFor } from "./messages";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
 
@@ -53,10 +54,12 @@ export interface NotificationDisplay {
  * order of the two titles differ per language, so each shape is its own key
  * rather than a string this module assembles.
  */
-const episodeSubject = (
-  t: HostMessageAccessor,
+const episodeSubject = async (
+  locale: Locale,
   payload: NotificationPayload
-): string => {
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
   if (payload.episode_title && payload.series_title) {
     return t("host.notifications.episode_published_subject_with_series", {
       episode_title: payload.episode_title,
@@ -107,18 +110,21 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
  * Inbox copy is assembled here from `notification_type` + payload. The API
  * does not store title/body. Unknown types stay in the list as a generic row.
  */
-export const notificationDisplay = (
+export const notificationDisplay = async (
   notificationType: string,
   payload: NotificationPayload,
-  t: HostMessageAccessor
-): NotificationDisplay => {
+  locale: Locale
+): Promise<NotificationDisplay> => {
+  const t = await getMessagesFor(locale);
   const href = notificationHref(payload);
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISHED) {
+    const subject = await episodeSubject(locale, payload);
+
     return {
       description: t("host.notifications.episode_published_description", {
-        subject: episodeSubject(t, payload),
+        subject,
       }),
       href,
       title: t("host.notifications.episode_published_title"),
