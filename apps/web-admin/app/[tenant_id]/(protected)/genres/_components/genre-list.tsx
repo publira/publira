@@ -1,6 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
 import { ChevronDownIcon, ChevronUpIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -47,7 +46,7 @@ const withGenreMoved = (
  * screen, which is why this screen does not page.
  */
 export const GenreList = ({ genres }: GenreListProps) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [isPending, startTransition] = useTransition();
   const [optimisticGenres, setOptimisticGenres] = useOptimistic(
@@ -92,10 +91,7 @@ export const GenreList = ({ genres }: GenreListProps) => {
       {reorderErrorMessage ? (
         <FormMessage variant="destructive">{reorderErrorMessage}</FormMessage>
       ) : null}
-      <ul
-        aria-label={getMessage(messages, "admin.genres.list_title")}
-        className="grid gap-3"
-      >
+      <ul aria-label={t("admin.genres.list_title")} className="grid gap-3">
         {optimisticGenres.map((genre, index) => (
           <li
             className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
@@ -104,13 +100,9 @@ export const GenreList = ({ genres }: GenreListProps) => {
             <GenreRenameForm genre={genre} />
             <div className="flex items-start gap-2">
               <Button
-                aria-label={getMessage(
-                  messages,
-                  "admin.genres.move_up_action",
-                  {
-                    name: genre.name,
-                  }
-                )}
+                aria-label={t("admin.genres.move_up_action", {
+                  name: genre.name,
+                })}
                 disabled={isPending || index === 0}
                 onClick={() => moveGenre(index, -1)}
                 size="icon"
@@ -120,11 +112,9 @@ export const GenreList = ({ genres }: GenreListProps) => {
                 <ChevronUpIcon className="size-4" />
               </Button>
               <Button
-                aria-label={getMessage(
-                  messages,
-                  "admin.genres.move_down_action",
-                  { name: genre.name }
-                )}
+                aria-label={t("admin.genres.move_down_action", {
+                  name: genre.name,
+                })}
                 disabled={isPending || index === optimisticGenres.length - 1}
                 onClick={() => moveGenre(index, 1)}
                 size="icon"

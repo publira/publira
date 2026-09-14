@@ -11,14 +11,12 @@ import {
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { loadAdminMessages } from "./locale";
-import type { AdminMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 import type { MfaChallengeKindName } from "./mfa-challenge";
 import { getAccessToken } from "./session";
 
@@ -134,25 +132,29 @@ const toErrorMessage = async (
   error: unknown,
   locale: Locale
 ): Promise<string> => {
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return rpcErrorMessage(
     error,
-    getMessage(messages, "admin.auth.errors.login_processing_failed"),
+    t("admin.auth.errors.login_processing_failed"),
     {
       // The server answers a wrong email or password with `unauthenticated`;
       // never say which of the two was wrong.
       locale,
       overrides: {
-        unauthenticated: getMessage(messages, "admin.auth.errors.login_failed"),
+        unauthenticated: t("admin.auth.errors.login_failed"),
       },
     }
   );
 };
 
-const genericEmailChangeRequestErrorMessage = (
-  messages: AdminMessages
-): string => getMessage(messages, "admin.settings.email_change.failed");
+const genericEmailChangeRequestErrorMessage = async (
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return t("admin.settings.email_change.failed");
+};
 
 /**
  * The challenge kind as the console names it, or `null` for a kind this build
@@ -177,9 +179,9 @@ export const loginAdmin = async (
   tenantId: string,
   locale: Locale
 ): Promise<AdminLoginResult> => {
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
   const processingFailed = {
-    message: getMessage(messages, "admin.auth.errors.login_processing_failed"),
+    message: t("admin.auth.errors.login_processing_failed"),
     ok: false,
   } as const;
 
@@ -333,11 +335,11 @@ export const acceptTenantAdminInvitation = async (
   name?: string,
   password?: string
 ): Promise<AcceptTenantAdminInvitationResult> => {
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
   const normalizedToken = token.trim();
   if (!tenantId.trim() || !normalizedToken) {
     return {
-      message: getMessage(messages, "admin.auth.accept_invite.invalid_token"),
+      message: t("admin.auth.accept_invite.invalid_token"),
       ok: false,
     };
   }
@@ -360,20 +362,17 @@ export const acceptTenantAdminInvitation = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "admin.auth.errors.accept_invite_failed"),
+        t("admin.auth.errors.accept_invite_failed"),
         {
           locale,
           overrides: {
-            "not-found": getMessage(
-              messages,
-              "admin.auth.accept_invite.not_found"
-            ),
+            "not-found": t("admin.auth.accept_invite.not_found"),
             precondition: rpcErrorHasReason(
               error,
               RPC_ERROR_REASON.invitationCanceled
             )
-              ? getMessage(messages, "admin.auth.accept_invite.canceled")
-              : getMessage(messages, "admin.auth.accept_invite.expired_action"),
+              ? t("admin.auth.accept_invite.canceled")
+              : t("admin.auth.accept_invite.expired_action"),
           },
         }
       ),
@@ -387,11 +386,11 @@ export const requestAdminPasswordReset = async (
   email: string,
   locale: Locale
 ): Promise<AdminPasswordResetRequestResult> => {
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
   const normalizedEmail = email.trim();
   if (!tenantId.trim() || !normalizedEmail) {
     return {
-      message: getMessage(messages, "admin.auth.fields.email_required"),
+      message: t("admin.auth.fields.email_required"),
       ok: false,
     };
   }
@@ -411,13 +410,12 @@ export const requestAdminPasswordReset = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "admin.auth.errors.reset_request_failed"),
+        t("admin.auth.errors.reset_request_failed"),
         {
           locale,
           overrides: {
             // Email is the only field this call takes.
-            "invalid-argument": getMessage(
-              messages,
+            "invalid-argument": t(
               "admin.auth.errors.reset_request_invalid_email"
             ),
           },
@@ -436,11 +434,11 @@ export const confirmAdminPasswordReset = async (
 ): Promise<AdminPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
   const normalizedPassword = newPassword.trim();
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
   if (!tenantId.trim() || !normalizedToken) {
     return {
-      message: getMessage(messages, "admin.auth.errors.reset_link_invalid"),
+      message: t("admin.auth.errors.reset_link_invalid"),
       ok: false,
       reason: "invalid",
     };
@@ -448,7 +446,7 @@ export const confirmAdminPasswordReset = async (
 
   if (!normalizedPassword) {
     return {
-      message: getMessage(messages, "admin.auth.errors.new_password_required"),
+      message: t("admin.auth.errors.new_password_required"),
       ok: false,
       reason: "system",
     };
@@ -470,7 +468,7 @@ export const confirmAdminPasswordReset = async (
     const disposition = rpcErrorDisposition(error);
     if (disposition === "precondition") {
       return {
-        message: getMessage(messages, "admin.auth.errors.reset_link_expired"),
+        message: t("admin.auth.errors.reset_link_expired"),
         ok: false,
         reason: "expired",
       };
@@ -478,14 +476,14 @@ export const confirmAdminPasswordReset = async (
     // An unknown token and a malformed one both mean "start over".
     if (disposition === "not-found" || disposition === "invalid-argument") {
       return {
-        message: getMessage(messages, "admin.auth.errors.reset_link_invalid"),
+        message: t("admin.auth.errors.reset_link_invalid"),
         ok: false,
         reason: "invalid",
       };
     }
 
     return {
-      message: getMessage(messages, "admin.auth.errors.reset_confirm_failed"),
+      message: t("admin.auth.errors.reset_confirm_failed"),
       ok: false,
       reason: "system",
     };
@@ -499,7 +497,7 @@ export const requestAdminEmailChange = async (
   currentPassword: string,
   locale: Locale
 ): Promise<AdminEmailChangeRequestResult> => {
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
   const normalizedCurrentEmail = currentEmail.trim();
   const normalizedNewEmail = newEmail.trim();
 
@@ -512,10 +510,7 @@ export const requestAdminEmailChange = async (
     !currentPassword
   ) {
     return {
-      message: getMessage(
-        messages,
-        "admin.settings.email_change.all_fields_required"
-      ),
+      message: t("admin.settings.email_change.all_fields_required"),
       ok: false,
     };
   }
@@ -541,23 +536,17 @@ export const requestAdminEmailChange = async (
     return {
       message: rpcErrorMessage(
         error,
-        genericEmailChangeRequestErrorMessage(messages),
+        await genericEmailChangeRequestErrorMessage(locale),
         {
           locale,
           overrides: {
-            conflict: getMessage(
-              messages,
-              "admin.settings.email_change.email_taken"
-            ),
+            conflict: t("admin.settings.email_change.email_taken"),
             "invalid-argument": rpcErrorHasFieldViolation(
               error,
               "current_password"
             )
-              ? getMessage(
-                  messages,
-                  "admin.settings.email_change.password_incorrect"
-                )
-              : getMessage(messages, "errors.validation"),
+              ? t("admin.settings.email_change.password_incorrect")
+              : t("errors.validation"),
           },
         }
       ),

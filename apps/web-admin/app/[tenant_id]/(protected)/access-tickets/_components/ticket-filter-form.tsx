@@ -1,9 +1,12 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import { getMessagesFor } from "#lib/messages";
 
 import type { AccessTicketFilters } from "../_lib/search-params";
 import { TicketFilterActiveSelect } from "./ticket-filter-active-select";
@@ -13,30 +16,31 @@ interface TicketFilterFormProps {
   locale: Locale;
 }
 
-export const TicketFilterForm = ({
+export const TicketFilterForm = async ({
   filters,
   locale,
 }: TicketFilterFormProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <section className="grid gap-3">
       <p className="max-w-3xl text-sm text-muted-foreground">
-        {getMessage(messages, "admin.access_tickets.filter.description")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          <Message message="admin.access_tickets.filter.description" />
+        </Suspense>
       </p>
       <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.access_tickets.filter.user")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.filter.user" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               defaultValue={filters.user}
               name="user"
-              placeholder={getMessage(
-                messages,
-                "admin.access_tickets.filter.user_placeholder"
-              )}
+              placeholder={t("admin.access_tickets.filter.user_placeholder")}
               type="text"
             />
           </FieldContent>
@@ -44,16 +48,15 @@ export const TicketFilterForm = ({
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.access_tickets.filter.episode")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.filter.episode" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               defaultValue={filters.episode}
               name="episode"
-              placeholder={getMessage(
-                messages,
-                "admin.access_tickets.filter.episode_placeholder"
-              )}
+              placeholder={t("admin.access_tickets.filter.episode_placeholder")}
               type="text"
             />
           </FieldContent>
@@ -63,10 +66,14 @@ export const TicketFilterForm = ({
 
         <div className="flex items-end gap-2">
           <Button type="submit">
-            {getMessage(messages, "admin.access_tickets.filter.apply")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.filter.apply" />
+            </Suspense>
           </Button>
           <LinkButton href="/access-tickets" variant="outline">
-            {getMessage(messages, "admin.access_tickets.filter.reset")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.filter.reset" />
+            </Suspense>
           </LinkButton>
         </div>
       </form>

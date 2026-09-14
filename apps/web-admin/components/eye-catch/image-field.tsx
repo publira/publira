@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   Field,
   FieldContent,
@@ -9,11 +7,13 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { ChangeEventHandler, RefObject } from "react";
-import { useContext } from "react";
+import { Suspense } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 
 import type { EyeCatchVariantItem } from "./types";
 import { EyeCatchVariantSelector } from "./variant-selector";
@@ -45,30 +45,27 @@ export const EyeCatchImageField = ({
   selectedVariantType,
   variants,
 }: EyeCatchImageFieldProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
 
   return (
     <Field>
       <FieldLabel htmlFor={fileInputId}>
-        {getMessage(messages, "admin.eye_catch.label")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <ClientMessage message="admin.eye_catch.label" />
+        </Suspense>
       </FieldLabel>
       <FieldContent>
         <div className="grid gap-2">
           {!hasVariants || clearEyeCatchImage ? (
             <button
-              aria-label={getMessage(messages, "admin.eye_catch.select_aria")}
+              aria-label={t("admin.eye_catch.select_aria")}
               className="relative aspect-[3/4] overflow-hidden rounded-surface border-2 border-dashed border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary"
               onClick={onVariantImageClick}
               type="button"
             >
               <div className="flex h-full items-center justify-center">
                 <p className="text-sm text-muted-foreground">
-                  {getMessage(
-                    messages,
+                  {t(
                     clearEyeCatchImage
                       ? "admin.eye_catch.pending_delete"
                       : "admin.eye_catch.select_prompt"
@@ -98,8 +95,7 @@ export const EyeCatchImageField = ({
                 onClick={onDeleteToggle}
                 type="button"
               >
-                {getMessage(
-                  messages,
+                {t(
                   clearEyeCatchImage
                     ? "admin.eye_catch.undo_delete"
                     : "admin.eye_catch.delete_current"
@@ -124,7 +120,9 @@ export const EyeCatchImageField = ({
           value={clearEyeCatchImage ? "1" : "0"}
         />
         <FieldDescription>
-          {getMessage(messages, "admin.eye_catch.description")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.eye_catch.description" />
+          </Suspense>
         </FieldDescription>
       </FieldContent>
     </Field>

@@ -1,6 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
@@ -27,6 +25,7 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 import type {
   SeriesAgeRatingValue,
   SeriesStatusValue,
@@ -51,19 +50,19 @@ const SeriesFilterFieldSkeleton = () => (
   </div>
 );
 
-const SeriesStatusFilter = ({
+const SeriesStatusFilter = async ({
   filters,
   locale,
 }: {
   filters: SeriesFilters;
   locale: Locale;
 }) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <Field className="w-52">
       <FieldLabel htmlFor="series-status-filter">
-        {getMessage(messages, "admin.series.filter.status")}
+        {t("admin.series.filter.status")}
       </FieldLabel>
       <FieldContent>
         <select
@@ -72,37 +71,31 @@ const SeriesStatusFilter = ({
           id="series-status-filter"
           name="status"
         >
-          <option value="">
-            {getMessage(messages, "admin.series.filter.status_all")}
-          </option>
-          <option value="ongoing">
-            {getMessage(messages, "admin.series.status.ongoing")}
-          </option>
+          <option value="">{t("admin.series.filter.status_all")}</option>
+          <option value="ongoing">{t("admin.series.status.ongoing")}</option>
           <option value="completed">
-            {getMessage(messages, "admin.series.status.completed")}
+            {t("admin.series.status.completed")}
           </option>
-          <option value="hiatus">
-            {getMessage(messages, "admin.series.status.hiatus")}
-          </option>
+          <option value="hiatus">{t("admin.series.status.hiatus")}</option>
         </select>
       </FieldContent>
     </Field>
   );
 };
 
-const SeriesAgeRatingFilter = ({
+const SeriesAgeRatingFilter = async ({
   filters,
   locale,
 }: {
   filters: SeriesFilters;
   locale: Locale;
 }) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <Field className="w-52">
       <FieldLabel htmlFor="series-age-rating-filter">
-        {getMessage(messages, "admin.series.filter.age_rating")}
+        {t("admin.series.filter.age_rating")}
       </FieldLabel>
       <FieldContent>
         <select
@@ -111,18 +104,10 @@ const SeriesAgeRatingFilter = ({
           id="series-age-rating-filter"
           name="age_rating"
         >
-          <option value="">
-            {getMessage(messages, "admin.series.filter.age_rating_all")}
-          </option>
-          <option value="all">
-            {getMessage(messages, "admin.series.age_rating.all")}
-          </option>
-          <option value="r15">
-            {getMessage(messages, "admin.series.age_rating.r15")}
-          </option>
-          <option value="r18">
-            {getMessage(messages, "admin.series.age_rating.r18")}
-          </option>
+          <option value="">{t("admin.series.filter.age_rating_all")}</option>
+          <option value="all">{t("admin.series.age_rating.all")}</option>
+          <option value="r15">{t("admin.series.age_rating.r15")}</option>
+          <option value="r18">{t("admin.series.age_rating.r18")}</option>
         </select>
       </FieldContent>
     </Field>
@@ -161,13 +146,21 @@ const SeriesFiltersForm = ({
 const getStatusTone = (isPublished: boolean) =>
   isPublished ? ("info" as const) : ("muted" as const);
 
-const getStatusLabel = (
-  messages: ReturnType<typeof sharedCatalog>,
-  isPublished: boolean
-) =>
-  isPublished
-    ? getMessage(messages, "admin.series.published")
-    : getMessage(messages, "admin.series.draft");
+/**
+ * The published / draft badge, as its own async component: the label is a
+ * string the catalog resolves, and a row rendered inside `.map()` cannot await.
+ */
+const SeriesStatusLabel = async ({
+  isPublished,
+  locale,
+}: {
+  isPublished: boolean;
+  locale: Locale;
+}) => {
+  const t = await getMessagesFor(locale);
+
+  return isPublished ? t("admin.series.published") : t("admin.series.draft");
+};
 
 /**
  * The serialization state, worded one branch at a time. Each branch names its
@@ -213,18 +206,23 @@ const excerpt = (text: string, max = 56) => {
 
 const SeriesListBody = ({
   hasPageLinks,
+  itemLabel,
   listErrorMessage,
   locale,
   series,
   timeZone,
 }: {
   hasPageLinks: boolean;
+  /**
+   * What the list holds, for the empty state's sentence. The async parent
+   * resolves it so this body can stay synchronous.
+   */
+  itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
   series: SeriesListItem[];
   timeZone: string;
 }) => {
-  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `series` array; do not show the empty
   // list state alongside the error or operators will read it as "no series".
   if (listErrorMessage) {
@@ -245,10 +243,18 @@ const SeriesListBody = ({
   if (series.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(messages, "admin.series.empty_description")}
+        description={
+          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+            <Message message="admin.series.empty_description" />
+          </Suspense>
+        }
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.series.title")}
-        title={getMessage(messages, "admin.series.empty_title")}
+        itemLabel={itemLabel}
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+            <Message message="admin.series.empty_title" />
+          </Suspense>
+        }
       />
     );
   }
@@ -258,19 +264,29 @@ const SeriesListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead>
-            {getMessage(messages, "admin.series.columns.title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.columns.title" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.series.columns.label")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.columns.label" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-44">
-            {getMessage(messages, "admin.series.columns.published_at")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.columns.published_at" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-40">
-            {getMessage(messages, "admin.series.columns.reading_period")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.columns.reading_period" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.series.columns.synopsis")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.columns.synopsis" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-32">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
@@ -283,10 +299,14 @@ const SeriesListBody = ({
             </Suspense>
           </TableHead>
           <TableHead className="w-32">
-            {getMessage(messages, "admin.series.columns.status")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.columns.status" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-56">
-            {getMessage(messages, "admin.series.columns.actions")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.columns.actions" />
+            </Suspense>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -316,19 +336,26 @@ const SeriesListBody = ({
             </TableCell>
             <TableCell>
               <Badge tone={getStatusTone(item.isPublished)} variant="outline">
-                {getStatusLabel(messages, item.isPublished)}
+                <SeriesStatusLabel
+                  isPublished={item.isPublished}
+                  locale={locale}
+                />
               </Badge>
             </TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-2">
                 <LinkButton href={`/series/${item.publicId}`} variant="outline">
-                  {getMessage(messages, "admin.series.edit_action")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.series.edit_action" />
+                  </Suspense>
                 </LinkButton>
                 <LinkButton
                   href={`/series/${item.publicId}/episodes`}
                   variant="outline"
                 >
-                  {getMessage(messages, "admin.series.episodes_action")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.series.episodes_action" />
+                  </Suspense>
                 </LinkButton>
               </div>
             </TableCell>
@@ -339,7 +366,7 @@ const SeriesListBody = ({
   );
 };
 
-export const SeriesManager = ({
+export const SeriesManager = async ({
   filters,
   series,
   listErrorMessage,
@@ -349,7 +376,7 @@ export const SeriesManager = ({
   timeZone,
   locale,
 }: SeriesManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -361,6 +388,7 @@ export const SeriesManager = ({
       <SeriesFiltersForm filters={filters} locale={locale} />
       <SeriesListBody
         hasPageLinks={hasPageLinks}
+        itemLabel={t("admin.series.title")}
         listErrorMessage={listErrorMessage}
         locale={locale}
         series={series}
@@ -369,14 +397,10 @@ export const SeriesManager = ({
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(messages, "admin.series.pagination_aria")}
-          description={getMessage(
-            messages,
-            "admin.series.pagination_description",
-            {
-              count: pageSize,
-            }
-          )}
+          ariaLabel={t("admin.series.pagination_aria")}
+          description={t("admin.series.pagination_description", {
+            count: pageSize,
+          })}
           nextHref={nextHref}
           previousHref={previousHref}
         />

@@ -1,6 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -26,6 +24,7 @@ import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 import type { CreatorListItem } from "../creator-types";
 
@@ -45,7 +44,7 @@ const excerpt = (text: string, max = 56) => {
   return `${normalized.slice(0, max)}...`;
 };
 
-const CreatorListBody = ({
+const CreatorListBody = async ({
   creators,
   hasPageLinks,
   listErrorMessage,
@@ -56,7 +55,6 @@ const CreatorListBody = ({
   listErrorMessage?: string;
   locale: Locale;
 }) => {
-  const messages = sharedCatalog(locale);
   // A failed fetch still hands an empty `creators` array; do not show the empty
   // list state alongside the error or operators will read it as "no creators".
   if (listErrorMessage) {
@@ -74,13 +72,15 @@ const CreatorListBody = ({
     );
   }
 
+  const t = await getMessagesFor(locale);
+
   if (creators.length === 0) {
     return (
       <CursorPageEmptyState
-        description={getMessage(messages, "admin.creators.empty_description")}
+        description={t("admin.creators.empty_description")}
         hasPageLinks={hasPageLinks}
-        itemLabel={getMessage(messages, "admin.creators.title")}
-        title={getMessage(messages, "admin.creators.empty_title")}
+        itemLabel={t("admin.creators.title")}
+        title={t("admin.creators.empty_title")}
       />
     );
   }
@@ -90,16 +90,24 @@ const CreatorListBody = ({
       <TableHeader>
         <TableRow>
           <TableHead className="w-24">
-            {getMessage(messages, "admin.creators.columns.image")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.creators.columns.image" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.creators.columns.name")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.creators.columns.name" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "admin.creators.columns.profile")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.creators.columns.profile" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-56">
-            {getMessage(messages, "admin.creators.columns.actions")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.creators.columns.actions" />
+            </Suspense>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -109,7 +117,7 @@ const CreatorListBody = ({
             <TableCell>
               {creator.iconImageUrl ? (
                 <Image
-                  alt={getMessage(messages, "admin.creators.icon_alt", {
+                  alt={t("admin.creators.icon_alt", {
                     name: creator.name,
                   })}
                   className="size-10 rounded-full border object-cover"
@@ -119,7 +127,9 @@ const CreatorListBody = ({
                 />
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  {getMessage(messages, "admin.creators.unset")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                    <Message message="admin.creators.unset" />
+                  </Suspense>
                 </span>
               )}
             </TableCell>
@@ -131,7 +141,9 @@ const CreatorListBody = ({
                   render={<Link href={`/creators/${creator.publicId}`} />}
                   variant="outline"
                 >
-                  {getMessage(messages, "admin.creators.edit_action")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.creators.edit_action" />
+                  </Suspense>
                 </LinkButton>
               </div>
             </TableCell>
@@ -142,7 +154,7 @@ const CreatorListBody = ({
   );
 };
 
-export const CreatorManager = ({
+export const CreatorManager = async ({
   creators,
   listErrorMessage,
   nextHref,
@@ -150,7 +162,7 @@ export const CreatorManager = ({
   previousHref,
   locale,
 }: CreatorManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
@@ -168,14 +180,10 @@ export const CreatorManager = ({
 
       {showPagination ? (
         <PaginationFooter
-          ariaLabel={getMessage(messages, "admin.creators.pagination_aria")}
-          description={getMessage(
-            messages,
-            "admin.creators.pagination_description",
-            {
-              count: pageSize,
-            }
-          )}
+          ariaLabel={t("admin.creators.pagination_aria")}
+          description={t("admin.creators.pagination_description", {
+            count: pageSize,
+          })}
           nextHref={nextHref}
           previousHref={previousHref}
         />

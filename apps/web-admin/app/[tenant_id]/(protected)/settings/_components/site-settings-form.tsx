@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -11,10 +9,11 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useContext, useState } from "react";
+import { Suspense, useActionState, useCallback, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -22,6 +21,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { ClientMessage } from "#components/client-message";
 import type { TenantSiteSettings } from "#lib/site-settings";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -39,11 +39,7 @@ export const SiteSettingsForm = ({
   action,
   initialSettings,
 }: SiteSettingsFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [copyrightText, setCopyrightText] = useState(
@@ -80,10 +76,14 @@ export const SiteSettingsForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            {getMessage(messages, "admin.settings.site.title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.site.title" />
+            </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
-            {getMessage(messages, "admin.settings.site.description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.site.description" />
+            </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -92,69 +92,68 @@ export const SiteSettingsForm = ({
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.settings.site.copyright")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.site.copyright" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               name="copyright_text"
               onChange={handleCopyrightTextChange}
-              placeholder={getMessage(
-                messages,
-                "admin.settings.site.copyright_placeholder"
-              )}
+              placeholder={t("admin.settings.site.copyright_placeholder")}
               type="text"
               value={copyrightText}
             />
             <FieldDescription>
-              {getMessage(
-                messages,
-                "admin.settings.site.copyright_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.settings.site.copyright_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.settings.site.tagline")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.site.tagline" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               name="site_tagline"
               onChange={handleSiteTaglineChange}
-              placeholder={getMessage(
-                messages,
-                "admin.settings.site.tagline_placeholder"
-              )}
+              placeholder={t("admin.settings.site.tagline_placeholder")}
               type="text"
               value={siteTagline}
             />
             <FieldDescription>
-              {getMessage(messages, "admin.settings.site.tagline_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.settings.site.tagline_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.settings.site.site_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.site.site_description" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Textarea
               name="site_description"
               onChange={handleSiteDescriptionChange}
-              placeholder={getMessage(
-                messages,
+              placeholder={t(
                 "admin.settings.site.site_description_placeholder"
               )}
               rows={3}
               value={siteDescription}
             />
             <FieldDescription>
-              {getMessage(
-                messages,
-                "admin.settings.site.site_description_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.settings.site.site_description_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -168,8 +167,8 @@ export const SiteSettingsForm = ({
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={isPending} type="submit">
             {isPending
-              ? getMessage(messages, "admin.settings.saving")
-              : getMessage(messages, "admin.settings.site.submit")}
+              ? t("admin.settings.saving")
+              : t("admin.settings.site.submit")}
           </Button>
         </div>
       </form>

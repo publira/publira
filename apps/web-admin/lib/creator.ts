@@ -5,10 +5,8 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { getMessage, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -23,6 +21,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
@@ -75,13 +74,6 @@ export type GetCreatorResult =
       requiresSignIn?: boolean;
     };
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.creators.list_failed");
-const mutationErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.creators.save_failed");
-
 const mapErrorToMessage = (
   error: unknown,
   fallbackMessage: string,
@@ -116,13 +108,15 @@ export const listCreators = async (
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       creators: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -148,7 +142,11 @@ export const listCreators = async (
     return {
       ...emptyCursorPageTokens,
       creators: [],
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.creators.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -173,13 +171,15 @@ export const listAllCreators = async (
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       creators: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -215,7 +215,7 @@ export const listAllCreators = async (
       return {
         ...emptyCursorPageTokens,
         creators: [],
-        message: listErrorMessage(messages),
+        message: t("admin.creators.list_failed"),
         ok: false,
         requiresSignIn: false,
       };
@@ -233,7 +233,11 @@ export const listAllCreators = async (
     return {
       ...emptyCursorPageTokens,
       creators: [],
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.creators.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -252,11 +256,13 @@ export const createCreator = async (
   },
   locale: Locale
 ): Promise<CreateCreatorResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -276,7 +282,7 @@ export const createCreator = async (
 
     if (!response.creator?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.creators.save_failed"),
         ok: false,
       };
     }
@@ -289,7 +295,11 @@ export const createCreator = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.creators.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -309,11 +319,13 @@ export const updateCreator = async (
   },
   locale: Locale
 ): Promise<UpdateCreatorResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -335,7 +347,7 @@ export const updateCreator = async (
 
     if (!response.creator?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.creators.save_failed"),
         ok: false,
       };
     }
@@ -348,7 +360,11 @@ export const updateCreator = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.creators.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -365,11 +381,13 @@ export const getCreator = async (
   cacheTag(`creators-${input.tenantId}`);
   cacheTag(`creator-${input.tenantId}-${input.publicId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -386,7 +404,7 @@ export const getCreator = async (
 
     if (!response.creator?.publicId?.trim()) {
       return {
-        message: listErrorMessage(messages),
+        message: t("admin.creators.list_failed"),
         ok: false,
       };
     }
@@ -401,7 +419,11 @@ export const getCreator = async (
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.creators.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -22,7 +21,8 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminMfaStatus } from "#lib/admin-mfa";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 import { EmailChangeForm } from "../_components/email-change-form";
@@ -32,9 +32,9 @@ import { requestEmailChangeAction } from "../_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.settings.account_title") };
+  return { title: t("admin.settings.account_title") };
 };
 
 export const generateStaticParams = () =>

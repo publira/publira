@@ -1,18 +1,10 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  startTransition,
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useContext,
-} from "react";
+import { startTransition, useEffect, useEffectEvent, useRef } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import type { AdminMessageKey } from "#lib/locale";
 
 import { isFlashFlagSet } from "./flash-flag";
@@ -28,12 +20,8 @@ export const FlashToast = ({
   message,
   title,
 }: FlashToastProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
-  const resolvedTitle = title ?? (message ? getMessage(messages, message) : "");
+  const t = useAdminMessages();
+  const resolvedTitle = title ?? (message ? t(message) : "");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();

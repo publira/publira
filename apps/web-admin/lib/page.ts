@@ -7,10 +7,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -24,6 +21,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface PageItem {
@@ -115,30 +113,23 @@ export type RollbackPageVersionResult =
   | { ok: true; version: PageVersionItem }
   | { ok: false; message: string };
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.pages.list_failed");
-const mutationErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.pages.save_failed");
-
-const mapErrorToMessage = (
+const mapErrorToMessage = async (
   error: unknown,
   fallbackMessage: string,
   locale: Locale
-): string => {
-  const messages = sharedCatalog(locale);
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
   return rpcErrorMessage(error, fallbackMessage, {
     locale,
     overrides: {
-      conflict: getMessage(messages, "admin.pages.slug_conflict"),
+      conflict: t("admin.pages.slug_conflict"),
       // A page form is slug + title + body; only the slug has a format rule
       // worth spelling out, and the server identifies it in BadRequest details.
       "invalid-argument": rpcErrorHasFieldViolation(error, "slug")
-        ? getMessage(messages, "admin.pages.slug_invalid")
-        : getMessage(messages, "errors.validation"),
-      "not-found": getMessage(messages, "admin.pages.not_found"),
+        ? t("admin.pages.slug_invalid")
+        : t("errors.validation"),
+      "not-found": t("admin.pages.not_found"),
     },
   });
 };
@@ -206,12 +197,14 @@ export const listPages = async (
   "use cache: private";
   cacheTag(`pages-${tenantId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       pages: [],
       requiresSignIn: true,
@@ -236,7 +229,11 @@ export const listPages = async (
     rethrowUnclassifiedRpcError(error);
     return {
       ...emptyCursorPageTokens,
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
       ok: false,
       pages: [],
       requiresSignIn: isUnauthenticatedError(error),
@@ -255,11 +252,13 @@ export const getPage = async (
   cacheTag(`pages-${input.tenantId}`);
   cacheTag(`page-${input.tenantId}-${input.pageId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -297,7 +296,11 @@ export const getPage = async (
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -314,11 +317,13 @@ export const listPageVersions = async (
   "use cache: private";
   cacheTag(`page-${input.tenantId}-${input.pageId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       versions: [],
@@ -343,7 +348,11 @@ export const listPageVersions = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       versions: [],
@@ -360,11 +369,13 @@ export const createPage = async (
   },
   locale: Locale
 ): Promise<CreatePageResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -382,7 +393,7 @@ export const createPage = async (
 
     if (!response.page?.id?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.pages.save_failed"),
         ok: false,
       };
     }
@@ -395,7 +406,11 @@ export const createPage = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -410,11 +425,13 @@ export const updatePage = async (
   },
   locale: Locale
 ): Promise<UpdatePageResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -435,7 +452,7 @@ export const updatePage = async (
 
     if (!response.page?.id?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.pages.save_failed"),
         ok: false,
       };
     }
@@ -448,7 +465,11 @@ export const updatePage = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -462,11 +483,13 @@ export const createPageVersion = async (
   },
   locale: Locale
 ): Promise<CreatePageVersionResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -483,7 +506,7 @@ export const createPageVersion = async (
 
     if (!response.version?.id?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.pages.save_failed"),
         ok: false,
       };
     }
@@ -496,7 +519,11 @@ export const createPageVersion = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -510,11 +537,13 @@ export const publishPageVersion = async (
   },
   locale: Locale
 ): Promise<PublishPageVersionResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -531,7 +560,7 @@ export const publishPageVersion = async (
 
     if (!response.version?.id?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.pages.save_failed"),
         ok: false,
       };
     }
@@ -544,7 +573,11 @@ export const publishPageVersion = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -557,11 +590,13 @@ export const unpublishPage = async (
   },
   locale: Locale
 ): Promise<UnpublishPageResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -577,7 +612,7 @@ export const unpublishPage = async (
 
     if (!response.page?.id?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.pages.save_failed"),
         ok: false,
       };
     }
@@ -590,7 +625,11 @@ export const unpublishPage = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -604,11 +643,13 @@ export const rollbackPageVersion = async (
   },
   locale: Locale
 ): Promise<RollbackPageVersionResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -625,7 +666,7 @@ export const rollbackPageVersion = async (
 
     if (!response.version?.id?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.pages.save_failed"),
         ok: false,
       };
     }
@@ -638,7 +679,11 @@ export const rollbackPageVersion = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }

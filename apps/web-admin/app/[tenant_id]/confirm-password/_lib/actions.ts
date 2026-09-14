@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -14,41 +14,42 @@ import {
   tenantIdFormSchema,
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
-import { loadAdminMessages } from "#lib/locale";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
-const tokenOrEmpty = (
-  messages: AdminMessages,
+const tokenOrEmpty = async (
+  locale: Locale,
   value: string | undefined
-): string => {
-  const parsed = authTokenFormSchema(messages).safeParse(value);
+): Promise<string> => {
+  const schema = await authTokenFormSchema(locale);
+  const parsed = schema.safeParse(value);
   return parsed.success ? parsed.data : "";
 };
 
-const trimmedPasswordFormSchema = (messages: AdminMessages) =>
-  z
+const trimmedPasswordFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .string({
-      error: getMessage(messages, "admin.auth.fields.password_required"),
+      error: t("admin.auth.fields.password_required"),
     })
     .trim()
-    .pipe(passwordFormSchema(messages));
+    .pipe(await passwordFormSchema(locale));
+};
+const confirmPasswordFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const confirmPasswordFormSchema = (messages: AdminMessages) =>
-  z
+  return z
     .object({
-      confirmPassword: trimmedPasswordFormSchema(messages),
-      password: trimmedPasswordFormSchema(messages),
-      tenantId: tenantIdFormSchema(messages),
-      token: authTokenFormSchema(messages),
+      confirmPassword: await trimmedPasswordFormSchema(locale),
+      password: await trimmedPasswordFormSchema(locale),
+      tenantId: await tenantIdFormSchema(locale),
+      token: await authTokenFormSchema(locale),
     })
     .refine((value) => value.password === value.confirmPassword, {
-      error: getMessage(
-        messages,
-        "admin.auth.confirm_password.password_mismatch"
-      ),
+      error: t("admin.auth.confirm_password.password_mismatch"),
       path: ["confirmPassword"],
     });
-
+};
 const buildConfirmPasswordPath = ({
   error,
   status,
@@ -82,19 +83,19 @@ export const confirmPasswordAction = async (
 ): Promise<void> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
   const input = toFormDataInput(formData, {
     confirmPassword: { kind: "value", name: "confirm_password" },
     password: "value",
     tenantId: { kind: "value", name: "tenant_id" },
     token: "value",
   });
-  const parsed = confirmPasswordFormSchema(messages).safeParse(input);
+  const schema = await confirmPasswordFormSchema(locale);
+  const parsed = schema.safeParse(input);
   if (!parsed.success) {
-    const token = tokenOrEmpty(messages, input.token);
-    const tenantIdResult = tenantIdFormSchema(messages).safeParse(
-      input.tenantId
-    );
+    const token = await tokenOrEmpty(locale, input.token);
+    const tenantIdResultSchema = await tenantIdFormSchema(locale);
+    const tenantIdResult = tenantIdResultSchema.safeParse(input.tenantId);
     if (!token) {
       redirect(buildConfirmPasswordPath({ status: "invalid" }));
     }
@@ -102,7 +103,7 @@ export const confirmPasswordAction = async (
       buildConfirmPasswordPath({
         error: tenantIdResult.success
           ? toFormErrorMessage(parsed.error, { locale })
-          : getMessage(messages, "admin.auth.errors.tenant_missing"),
+          : t("admin.auth.errors.tenant_missing"),
         token,
       })
     );

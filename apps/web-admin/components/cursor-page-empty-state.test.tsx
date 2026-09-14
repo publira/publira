@@ -1,16 +1,22 @@
 // @vitest-environment jsdom
 
-import { getMessage } from "@publira/i18n";
-import type { MessageValues } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CursorPageEmptyState } from "./cursor-page-empty-state";
 
 vi.mock("#components/message", () => ({
-  Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("en"), message, values),
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 afterEach(() => {

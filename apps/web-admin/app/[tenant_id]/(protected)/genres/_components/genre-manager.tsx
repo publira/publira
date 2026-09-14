@@ -1,6 +1,4 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -15,6 +13,8 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import {
@@ -25,7 +25,9 @@ import {
   AdminSections,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { Message } from "#components/message";
 import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
+import { getMessagesFor } from "#lib/messages";
 
 import { createGenreAction } from "../_lib/actions";
 import type { GenreListItem } from "../genre-types";
@@ -38,7 +40,7 @@ interface GenreManagerProps {
   tenantId: string;
 }
 
-const GenreListBody = ({
+const GenreListBody = async ({
   genres,
   listErrorMessage,
   locale,
@@ -47,16 +49,14 @@ const GenreListBody = ({
   listErrorMessage?: string;
   locale: Locale;
 }) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   // A failed read still hands an empty array; the empty state next to the
   // error would read as "this tenant has no genres".
   if (listErrorMessage) {
     return (
       <SectionError>
         <SectionErrorHeading>
-          <SectionErrorTitle>
-            {getMessage(messages, "admin.genres.list_error")}
-          </SectionErrorTitle>
+          <SectionErrorTitle>{t("admin.genres.list_error")}</SectionErrorTitle>
           <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
         </SectionErrorHeading>
       </SectionError>
@@ -67,11 +67,9 @@ const GenreListBody = ({
     return (
       <EmptyState>
         <EmptyStateHeading>
-          <EmptyStateTitle>
-            {getMessage(messages, "admin.genres.empty_title")}
-          </EmptyStateTitle>
+          <EmptyStateTitle>{t("admin.genres.empty_title")}</EmptyStateTitle>
           <EmptyStateDescription>
-            {getMessage(messages, "admin.genres.empty_description")}
+            {t("admin.genres.empty_description")}
           </EmptyStateDescription>
         </EmptyStateHeading>
       </EmptyState>
@@ -81,13 +79,13 @@ const GenreListBody = ({
   return <GenreList genres={genres} />;
 };
 
-export const GenreManager = ({
+export const GenreManager = async ({
   genres,
   listErrorMessage,
   locale,
   tenantId,
 }: GenreManagerProps) => {
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <AdminSections>
@@ -95,10 +93,14 @@ export const GenreManager = ({
         <AdminSectionHeader>
           <AdminSectionHeading>
             <AdminSectionTitle>
-              {getMessage(messages, "admin.genres.create_card_title")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.genres.create_card_title" />
+              </Suspense>
             </AdminSectionTitle>
             <AdminSectionDescription>
-              {getMessage(messages, "admin.genres.create_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.genres.create_description" />
+              </Suspense>
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
@@ -106,17 +108,16 @@ export const GenreManager = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
           <Field>
             <FieldLabel required>
-              {getMessage(messages, "admin.genres.form.name")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.genres.form.name" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <Input
                 className="sm:max-w-sm"
                 maxLength={CATALOG_NAME_MAX_LENGTH}
                 name="name"
-                placeholder={getMessage(
-                  messages,
-                  "admin.genres.form.name_placeholder"
-                )}
+                placeholder={t("admin.genres.form.name_placeholder")}
                 required
                 type="text"
               />
@@ -124,7 +125,9 @@ export const GenreManager = ({
           </Field>
           <div className="flex justify-end">
             <ActionFormSubmit>
-              {getMessage(messages, "admin.genres.create_action")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.genres.create_action" />
+              </Suspense>
             </ActionFormSubmit>
           </div>
         </ActionForm>
@@ -134,10 +137,14 @@ export const GenreManager = ({
         <AdminSectionHeader>
           <AdminSectionHeading>
             <AdminSectionTitle>
-              {getMessage(messages, "admin.genres.list_title")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.genres.list_title" />
+              </Suspense>
             </AdminSectionTitle>
             <AdminSectionDescription>
-              {getMessage(messages, "admin.genres.list_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.genres.list_description" />
+              </Suspense>
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>

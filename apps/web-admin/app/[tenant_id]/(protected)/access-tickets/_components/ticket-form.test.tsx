@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
@@ -15,6 +19,17 @@ import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import { listEpisodeOptionsAction } from "../_lib/actions";
 import { TicketForm } from "./ticket-form";
+
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en")),
+}));
 
 vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "TENANT001",

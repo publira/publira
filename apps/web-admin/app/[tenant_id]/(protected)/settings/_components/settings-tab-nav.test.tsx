@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
-import { getMessage } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,8 +11,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SettingsTabNav } from "./settings-tab-nav";
 
 vi.mock("#components/message", () => ({
-  Message: ({ message }: { message: string }) =>
-    getMessage(sharedCatalog("en"), message),
+  Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
+    bindMessages(sharedCatalog("en"))(message),
 }));
 
 vi.mock("next/link", () => ({

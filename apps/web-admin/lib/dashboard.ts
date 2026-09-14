@@ -1,12 +1,11 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface DashboardStats {
@@ -43,12 +42,14 @@ export type GetDashboardResult =
 export const tenantDashboardCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:dashboard`;
 
-const mapErrorToMessage = (error: unknown, locale: Locale): string =>
-  rpcErrorMessage(
-    error,
-    getMessage(sharedCatalog(locale), "admin.dashboard.load_error"),
-    { locale }
-  );
+const mapErrorToMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, t("admin.dashboard.load_error"), { locale });
+};
 
 export const getDashboard = async (
   tenantId: string,
@@ -58,8 +59,9 @@ export const getDashboard = async (
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
+    const t = await getMessagesFor(locale);
     return {
-      message: getMessage(sharedCatalog(locale), "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -92,7 +94,7 @@ export const getDashboard = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, locale),
+      message: await mapErrorToMessage(error, locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };

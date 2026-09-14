@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Dialog,
@@ -16,9 +14,8 @@ import {
   DialogViewport,
 } from "@publira/ui-components/dialog";
 import type { ReactEventHandler, ReactNode } from "react";
-import { useContext } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import type { CropRect } from "#lib/crop-rect";
 
 import type { CropAspect, CropSource } from "./crop";
@@ -62,11 +59,7 @@ export const ImageCropDialog = ({
   source,
   title,
 }: ImageCropDialogProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -79,7 +72,7 @@ export const ImageCropDialog = ({
                 {title}
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
-                {getMessage(messages, "admin.image_crop.description")}
+                {t("admin.image_crop.description")}
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
@@ -95,9 +88,7 @@ export const ImageCropDialog = ({
             <DialogFooter>
               <DialogClose
                 render={
-                  <Button type="button">
-                    {getMessage(messages, "admin.image_crop.done")}
-                  </Button>
+                  <Button type="button">{t("admin.image_crop.done")}</Button>
                 }
               />
             </DialogFooter>

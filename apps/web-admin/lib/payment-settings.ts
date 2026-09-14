@@ -4,10 +4,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -15,6 +12,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { getMessagesFor } from "./messages";
 import { PAYMENT_PROVIDER_STRIPE } from "./payment-settings-shared";
 import type { TenantPaymentSettings } from "./payment-settings-shared";
 import { getAccessToken } from "./session";
@@ -50,13 +48,6 @@ export type TenantPaymentSettingsResult =
        */
       requiresSignIn?: boolean;
     };
-
-const genericLoadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.payment.load_failed");
-const genericUpdateErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.payment.save_failed");
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
 
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in the Server
@@ -121,12 +112,14 @@ export const getTenantPaymentSettings = async (
 ): Promise<TenantPaymentSettingsResult> => {
   "use cache: private";
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: !sessionId,
     };
@@ -151,7 +144,7 @@ export const getTenantPaymentSettings = async (
     return {
       message: parseErrorMessage(
         error,
-        genericLoadErrorMessage(messages),
+        t("admin.settings.payment.load_failed"),
         locale
       ),
       ok: false,
@@ -164,11 +157,13 @@ export const updateTenantPaymentSettings = async (
   input: UpdateTenantPaymentSettingsInput,
   locale: Locale
 ): Promise<TenantPaymentSettingsResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -196,7 +191,7 @@ export const updateTenantPaymentSettings = async (
     return {
       message: parseErrorMessage(
         error,
-        genericUpdateErrorMessage(messages),
+        t("admin.settings.payment.save_failed"),
         locale
       ),
       ok: false,

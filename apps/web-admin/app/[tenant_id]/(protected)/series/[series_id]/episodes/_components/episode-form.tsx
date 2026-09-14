@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -11,9 +9,11 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useContext } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense, useActionState, useCallback } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -34,11 +34,7 @@ export const EpisodeForm = ({
   action,
   timeZone,
 }: EpisodeFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -53,9 +49,9 @@ export const EpisodeForm = ({
     [timeZone]
   );
 
-  let submitLabel = getMessage(messages, "admin.series.episodes.form.create");
+  let submitLabel = t("admin.series.episodes.form.create");
   if (isPending) {
-    submitLabel = getMessage(messages, "admin.series.episodes.form.submitting");
+    submitLabel = t("admin.series.episodes.form.submitting");
   }
 
   return (
@@ -65,15 +61,14 @@ export const EpisodeForm = ({
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.series.episodes.form.title")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.series.episodes.form.title" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
             name="title"
-            placeholder={getMessage(
-              messages,
-              "admin.series.episodes.form.title_placeholder"
-            )}
+            placeholder={t("admin.series.episodes.form.title_placeholder")}
             required
             type="text"
           />
@@ -82,22 +77,25 @@ export const EpisodeForm = ({
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.series.episodes.form.price")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.series.episodes.form.price" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input defaultValue={0} min={0} name="price" required type="number" />
           <FieldDescription>
-            {getMessage(
-              messages,
-              "admin.series.episodes.form.price_description"
-            )}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.episodes.form.price_description" />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.series.episodes.form.reading_period")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.series.episodes.form.reading_period" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
@@ -108,10 +106,9 @@ export const EpisodeForm = ({
             type="number"
           />
           <FieldDescription>
-            {getMessage(
-              messages,
-              "admin.series.episodes.form.reading_period_description"
-            )}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.episodes.form.reading_period_description" />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>

@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { redirect } from "next/navigation";
 
 import { getActionLocale } from "#lib/action-messages";
@@ -14,8 +14,7 @@ import { writeAdminSessionCookie } from "#lib/admin-session-cookie";
 import type { AdminSession } from "#lib/admin-session-cookie";
 import { mfaCodeFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
-import { loadAdminMessages } from "#lib/locale";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import type {
   MfaEnrollmentConfirmState,
   MfaEnrollmentStartState,
@@ -55,13 +54,14 @@ const abandonChallenge = async (challenge: MfaChallenge): Promise<never> => {
   redirect(buildLoginPath(challenge.nextPath, { revoked: true }));
 };
 
-const parseCode = (
+const parseCode = async (
   formData: FormData,
-  messages: AdminMessages
-): { code: string } | { message: string } => {
+  locale: Locale
+): Promise<{ code: string } | { message: string }> => {
+  const t = await getMessagesFor(locale);
   const parsed = mfaCodeFormSchema.safeParse(formData.get("code"));
   if (!parsed.success) {
-    return { message: getMessage(messages, "admin.auth.mfa.code_required") };
+    return { message: t("admin.auth.mfa.code_required") };
   }
   return { code: parsed.data };
 };
@@ -91,9 +91,10 @@ export const verifyMfaAction = async (
   await assertSameOrigin();
   const challenge = await requireChallenge(formData, "verify");
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
-
-  const parsed = parseCode(formData, messages);
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(locale),
+    parseCode(formData, locale),
+  ]);
   if ("message" in parsed) {
     return { message: parsed.message, ok: false };
   }
@@ -114,10 +115,7 @@ export const verifyMfaAction = async (
   const stored = await storeSession(challenge.tenantId, result.session);
   if (!stored) {
     return {
-      message: getMessage(
-        messages,
-        "admin.auth.errors.login_processing_failed"
-      ),
+      message: t("admin.auth.errors.login_processing_failed"),
       ok: false,
     };
   }
@@ -166,9 +164,7 @@ export const confirmMfaEnrollmentAction = async (
   await assertSameOrigin();
   const challenge = await requireChallenge(formData, "enroll");
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
-
-  const parsed = parseCode(formData, messages);
+  const parsed = await parseCode(formData, locale);
   if ("message" in parsed) {
     return { message: parsed.message, ok: false };
   }

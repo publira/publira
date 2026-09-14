@@ -1,12 +1,12 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import Image from "next/image";
-import { useCallback, useContext } from "react";
+import { Suspense, useCallback } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 
 import { eyeCatchAspectClassName, eyeCatchAspectOrder } from "./aspects";
 import type { EyeCatchVariantItem } from "./types";
@@ -26,11 +26,7 @@ export const EyeCatchVariantSelector = ({
   selectedVariantType,
   variants,
 }: EyeCatchVariantSelectorProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
 
   const handleButtonClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -62,7 +58,9 @@ export const EyeCatchVariantSelector = ({
   if (variants.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        {getMessage(messages, "admin.eye_catch.variants_empty")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          <ClientMessage message="admin.eye_catch.variants_empty" />
+        </Suspense>
       </p>
     );
   }
@@ -71,7 +69,7 @@ export const EyeCatchVariantSelector = ({
     <div className="grid gap-3 sm:grid-cols-2">
       {displayGroups.map(([typeKey, typeVariants]) => {
         const isSelected = selectedVariantType === typeKey;
-        const variantAlt = getMessage(messages, "admin.eye_catch.variant_alt", {
+        const variantAlt = t("admin.eye_catch.variant_alt", {
           variant_type: typeKey,
         });
         const fallbackVariant = typeVariants.at(-1);

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { getMessage } from "@publira/i18n";
-import type { MessageValues } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -15,8 +16,13 @@ import type {
 import { CommentReportQueue } from "./comment-report-queue";
 
 vi.mock("#components/message", () => ({
-  Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("en"), message, values),
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 vi.mock("next/link", () => ({
@@ -103,17 +109,20 @@ const statusOptions = [
   { href: "?report_status=rejected", status: "rejected" },
 ] as const;
 
-const renderQueue = (reports: CommentReportItem[], listErrorMessage?: string) =>
+const renderQueue = async (
+  reports: CommentReportItem[],
+  listErrorMessage?: string
+) =>
   render(
-    <CommentReportQueue
-      listErrorMessage={listErrorMessage}
-      locale="en"
-      pageSize={20}
-      reports={reports}
-      status="open"
-      statusOptions={statusOptions}
-      timeZone="Asia/Tokyo"
-    />
+    await CommentReportQueue({
+      listErrorMessage,
+      locale: "en",
+      pageSize: 20,
+      reports,
+      status: "open",
+      statusOptions,
+      timeZone: "Asia/Tokyo",
+    })
   );
 
 afterEach(() => {
@@ -121,14 +130,14 @@ afterEach(() => {
 });
 
 describe("CommentReportQueue", () => {
-  it("says there is nothing to show when the queue is empty", () => {
-    renderQueue([]);
+  it("says there is nothing to show when the queue is empty", async () => {
+    await renderQueue([]);
 
     expect(screen.getByText("There are no reports to show.")).toBeTruthy();
   });
 
-  it("renders the failure instead of the queue when the read failed", () => {
-    renderQueue([], "The API is unavailable.");
+  it("renders the failure instead of the queue when the read failed", async () => {
+    await renderQueue([], "The API is unavailable.");
 
     expect(
       screen.getByText("Could not display the reported comments")
@@ -137,8 +146,8 @@ describe("CommentReportQueue", () => {
     expect(screen.queryByText("There are no reports to show.")).toBeNull();
   });
 
-  it("shows what the reader said and the comment they said it about", () => {
-    renderQueue([report("open")]);
+  it("shows what the reader said and the comment they said it about", async () => {
+    await renderQueue([report("open")]);
 
     expect(screen.getByText("Spam or advertising")).toBeTruthy();
     expect(screen.getByText("Nothing to do with the episode.")).toBeTruthy();
@@ -150,8 +159,8 @@ describe("CommentReportQueue", () => {
     ).toBe("/series/SERIES001/episodes/EPISODE001");
   });
 
-  it("offers both decisions and the removal controls on an open report", () => {
-    renderQueue([report("open")]);
+  it("offers both decisions and the removal controls on an open report", async () => {
+    await renderQueue([report("open")]);
 
     expect(screen.getByText("resolved REPORT0001")).toBeTruthy();
     expect(screen.getByText("rejected REPORT0001")).toBeTruthy();
@@ -162,8 +171,8 @@ describe("CommentReportQueue", () => {
     expect(screen.queryByText("restore COMMENT0001")).toBeNull();
   });
 
-  it("offers a restore, and says a decision will not undo the removal, once the threshold has hidden the comment", () => {
-    renderQueue([
+  it("offers a restore, and says a decision will not undo the removal, once the threshold has hidden the comment", async () => {
+    await renderQueue([
       report("open", {
         comment: reportedComment({
           hiddenAt: "2026-06-04T00:00:00Z",
@@ -189,8 +198,10 @@ describe("CommentReportQueue", () => {
     expect(screen.queryByText("hide COMMENT0001")).toBeNull();
   });
 
-  it("leaves a decided report with no decision to make", () => {
-    renderQueue([report("rejected", { resolvedAt: "2026-06-05T00:00:00Z" })]);
+  it("leaves a decided report with no decision to make", async () => {
+    await renderQueue([
+      report("rejected", { resolvedAt: "2026-06-05T00:00:00Z" }),
+    ]);
 
     expect(screen.getByText("Already decided.")).toBeTruthy();
     expect(screen.getByText(/Decided on/u)).toBeTruthy();

@@ -4,14 +4,12 @@ import type {
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 import { getTenantDisplayTimeZone } from "./tenant-timezone";
 
@@ -73,17 +71,17 @@ export type ListAuditLogsResult =
       requiresSignIn: boolean;
     };
 
-const genericListErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.audit.list_failed");
+const mapErrorToMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
-const mapErrorToMessage = (error: unknown, locale: Locale): string => {
-  const messages = sharedCatalog(locale);
-
-  return rpcErrorMessage(error, genericListErrorMessage(messages), {
+  return rpcErrorMessage(error, t("admin.audit.list_failed"), {
     locale,
     // Every argument this call takes is a filter, so bad input is a bad filter.
     overrides: {
-      "invalid-argument": getMessage(messages, "admin.audit.filter_invalid"),
+      "invalid-argument": t("admin.audit.filter_invalid"),
     },
   });
 };
@@ -160,9 +158,10 @@ export const listAuditActorCandidates = async (
 ): Promise<ListAuditActorCandidatesResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
+    const t = await getMessagesFor(locale);
     return {
       actors: [],
-      message: getMessage(sharedCatalog(locale), "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -188,7 +187,7 @@ export const listAuditActorCandidates = async (
     rethrowUnclassifiedRpcError(error);
     return {
       actors: [],
-      message: mapErrorToMessage(error, locale),
+      message: await mapErrorToMessage(error, locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -202,9 +201,10 @@ export const listAuditLogs = async (
 ): Promise<ListAuditLogsResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
+    const t = await getMessagesFor(locale);
     return {
       auditLogs: [],
-      message: getMessage(sharedCatalog(locale), "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -237,7 +237,7 @@ export const listAuditLogs = async (
     rethrowUnclassifiedRpcError(error);
     return {
       auditLogs: [],
-      message: mapErrorToMessage(error, locale),
+      message: await mapErrorToMessage(error, locale),
       nextToken: "",
       ok: false,
       previousToken: "",

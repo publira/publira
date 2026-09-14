@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { updateTag } from "next/cache";
 
@@ -15,8 +15,7 @@ import {
 import { mfaCodeFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { loadAdminMessages } from "#lib/locale";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import type {
   MfaEnrollmentConfirmState,
   MfaEnrollmentStartState,
@@ -39,20 +38,22 @@ interface MfaFormInput {
   tenantId: string;
 }
 
-const parseMfaForm = (
+const parseMfaForm = async (
   formData: FormData,
-  messages: AdminMessages
-): MfaFormInput | { message: string } => {
-  const tenantId = tenantIdFormSchema(messages).safeParse(
-    formData.get("tenant_id")
-  );
+  locale: Locale
+): Promise<MfaFormInput | { message: string }> => {
+  const [t, tenantIdSchema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
+  const tenantId = tenantIdSchema.safeParse(formData.get("tenant_id"));
   if (!tenantId.success) {
-    return { message: getMessage(messages, "admin.settings.tenant_missing") };
+    return { message: t("admin.settings.tenant_missing") };
   }
 
   const code = mfaCodeFormSchema.safeParse(formData.get("code"));
   if (!code.success) {
-    return { message: getMessage(messages, "admin.auth.mfa.code_required") };
+    return { message: t("admin.auth.mfa.code_required") };
   }
 
   return { code: code.data, tenantId: tenantId.data };
@@ -64,14 +65,14 @@ export const startAccountMfaEnrollmentAction = async (
 ): Promise<MfaEnrollmentStartState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
-
-  const tenantId = tenantIdFormSchema(messages).safeParse(
-    formData.get("tenant_id")
-  );
+  const [t, tenantIdSchema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
+  const tenantId = tenantIdSchema.safeParse(formData.get("tenant_id"));
   if (!tenantId.success) {
     return {
-      message: getMessage(messages, "admin.settings.tenant_missing"),
+      message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
@@ -96,9 +97,8 @@ export const confirmAccountMfaEnrollmentAction = async (
 ): Promise<MfaEnrollmentConfirmState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
 
-  const input = parseMfaForm(formData, messages);
+  const input = await parseMfaForm(formData, locale);
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -123,9 +123,10 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
 ): Promise<MfaRecoveryCodesState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
-
-  const input = parseMfaForm(formData, messages);
+  const [t, input] = await Promise.all([
+    getMessagesFor(locale),
+    parseMfaForm(formData, locale),
+  ]);
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -140,7 +141,7 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
   updateTag(adminMfaStatusCacheTag(input.tenantId));
 
   return {
-    message: getMessage(messages, "admin.settings.mfa.regenerate_done"),
+    message: t("admin.settings.mfa.regenerate_done"),
     ok: true,
     recoveryCodes: result.recoveryCodes,
   };
@@ -152,9 +153,10 @@ export const disableAccountMfaAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
-
-  const input = parseMfaForm(formData, messages);
+  const [t, input] = await Promise.all([
+    getMessagesFor(locale),
+    parseMfaForm(formData, locale),
+  ]);
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -169,7 +171,7 @@ export const disableAccountMfaAction = async (
   updateTag(adminMfaStatusCacheTag(input.tenantId));
 
   return {
-    message: getMessage(messages, "admin.settings.mfa.disable_done"),
+    message: t("admin.settings.mfa.disable_done"),
     ok: true,
   };
 };

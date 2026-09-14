@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -37,7 +36,8 @@ import {
   parseCursorSearchParams,
 } from "#lib/cursor-page";
 import { listEpisodes } from "#lib/episode";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -47,9 +47,9 @@ import { reorderEpisodesAction } from "./_lib/actions";
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.series.episodes.title") };
+  return { title: t("admin.series.episodes.title") };
 };
 
 export const generateStaticParams = () =>
@@ -100,7 +100,7 @@ const SeriesEpisodesPage = async ({
 
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [result, timeZone, messages] = await Promise.all([
+  const [result, timeZone, t] = await Promise.all([
     listEpisodes(
       {
         seriesPublicId: series_id,
@@ -110,7 +110,7 @@ const SeriesEpisodesPage = async ({
       locale
     ),
     getTenantDisplayTimeZone(tenantId),
-    loadAdminMessages(locale),
+    getMessagesFor(locale),
   ]);
   await redirectToLoginIfSessionRejected(result);
 
@@ -149,11 +149,11 @@ const SeriesEpisodesPage = async ({
         <AdminPageContent>
           <FlashToast
             keyName="reordered"
-            title={getMessage(messages, "admin.series.episodes.reordered")}
+            title={t("admin.series.episodes.reordered")}
           />
           <FlashToast
             keyName="reorder_error"
-            title={getMessage(messages, "admin.series.episodes.reorder_error")}
+            title={t("admin.series.episodes.reorder_error")}
           />
 
           {/*
@@ -179,14 +179,8 @@ const SeriesEpisodesPage = async ({
                     <Message message="admin.series.episodes.empty_description" />
                   }
                   hasPageLinks={hasPageLinks}
-                  itemLabel={getMessage(
-                    messages,
-                    "admin.series.episodes.title"
-                  )}
-                  title={getMessage(
-                    messages,
-                    "admin.series.episodes.empty_title"
-                  )}
+                  itemLabel={t("admin.series.episodes.title")}
+                  title={t("admin.series.episodes.empty_title")}
                 />
               ) : (
                 <div className="grid gap-3">
@@ -208,12 +202,8 @@ const SeriesEpisodesPage = async ({
               {result.episodes.length > 0 || hasPageLinks ? (
                 <PaginationFooter
                   {...pageHrefs}
-                  ariaLabel={getMessage(
-                    messages,
-                    "admin.series.episodes.pagination_aria"
-                  )}
-                  description={getMessage(
-                    messages,
+                  ariaLabel={t("admin.series.episodes.pagination_aria")}
+                  description={t(
                     "admin.series.episodes.pagination_description",
                     { count: DEFAULT_PAGE_SIZE }
                   )}

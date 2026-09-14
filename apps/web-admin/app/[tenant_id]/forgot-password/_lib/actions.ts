@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -10,15 +10,13 @@ import { getActionLocale } from "#lib/action-messages";
 import { requestAdminPasswordReset } from "#lib/admin-auth";
 import { emailFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
-import { loadAdminMessages } from "#lib/locale";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
-const forgotPasswordFormSchema = (messages: AdminMessages) =>
+const forgotPasswordFormSchema = async (locale: Locale) =>
   z.object({
-    email: emailFormSchema(messages),
-    tenantId: tenantIdFormSchema(messages),
+    email: await emailFormSchema(locale),
+    tenantId: await tenantIdFormSchema(locale),
   });
-
 const buildForgotPasswordPath = ({
   email,
   error,
@@ -49,23 +47,24 @@ export const requestPasswordResetAction = async (
 ): Promise<void> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
   const input = toFormDataInput(formData, {
     email: "value",
     tenantId: { kind: "value", name: "tenant_id" },
   });
-  const parsed = forgotPasswordFormSchema(messages).safeParse(input);
+  const schema = await forgotPasswordFormSchema(locale);
+  const parsed = schema.safeParse(input);
   if (!parsed.success) {
-    const tenantIdResult = tenantIdFormSchema(messages).safeParse(
-      input.tenantId
-    );
-    const emailResult = emailFormSchema(messages).safeParse(input.email);
+    const tenantIdResultSchema = await tenantIdFormSchema(locale);
+    const tenantIdResult = tenantIdResultSchema.safeParse(input.tenantId);
+    const emailResultSchema = await emailFormSchema(locale);
+    const emailResult = emailResultSchema.safeParse(input.email);
     redirect(
       buildForgotPasswordPath({
         email: emailResult.success ? emailResult.data : undefined,
         error: tenantIdResult.success
           ? toFormErrorMessage(parsed.error, { locale })
-          : getMessage(messages, "admin.auth.errors.tenant_missing"),
+          : t("admin.auth.errors.tenant_missing"),
       })
     );
   }

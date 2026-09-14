@@ -1,17 +1,39 @@
 // @vitest-environment jsdom
 
-import { getMessage } from "@publira/i18n";
-import type { MessageValues } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SeriesManager } from "./series-manager";
 
+vi.mock("#lib/messages", () => ({
+  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
+}));
+
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en")),
+}));
+
 vi.mock("#components/message", () => ({
-  Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("en"), message, values),
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 vi.mock("next/link", () => ({
@@ -25,15 +47,15 @@ afterEach(() => {
 });
 
 describe("SeriesManager", () => {
-  it("says nothing is registered yet when the first page is empty", () => {
+  it("says nothing is registered yet when the first page is empty", async () => {
     render(
-      <SeriesManager
-        filters={{ ageRating: "", status: "", token: "" }}
-        locale="en"
-        pageSize={20}
-        series={[]}
-        timeZone="Asia/Tokyo"
-      />
+      await SeriesManager({
+        filters: { ageRating: "", status: "", token: "" },
+        locale: "en",
+        pageSize: 20,
+        series: [],
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(
@@ -42,16 +64,16 @@ describe("SeriesManager", () => {
     expect(screen.queryByLabelText("Series list pagination")).toBeNull();
   });
 
-  it("does not say the whole list is empty when a later page is empty", () => {
+  it("does not say the whole list is empty when a later page is empty", async () => {
     render(
-      <SeriesManager
-        filters={{ ageRating: "", status: "", token: "" }}
-        locale="en"
-        pageSize={20}
-        previousHref="?token=previous"
-        series={[]}
-        timeZone="Asia/Tokyo"
-      />
+      await SeriesManager({
+        filters: { ageRating: "", status: "", token: "" },
+        locale: "en",
+        pageSize: 20,
+        previousHref: "?token=previous",
+        series: [],
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("No Series to show on this page.")).toBeDefined();
@@ -59,18 +81,18 @@ describe("SeriesManager", () => {
     expect(screen.getByLabelText("Series list pagination")).toBeDefined();
   });
 
-  it("shows only the error and does not call the list empty when the fetch fails", () => {
+  it("shows only the error and does not call the list empty when the fetch fails", async () => {
     render(
-      <SeriesManager
-        filters={{ ageRating: "", status: "", token: "" }}
-        listErrorMessage="Could not load the series."
-        locale="en"
-        nextHref="?token=next"
-        pageSize={20}
-        previousHref="?token=previous"
-        series={[]}
-        timeZone="Asia/Tokyo"
-      />
+      await SeriesManager({
+        filters: { ageRating: "", status: "", token: "" },
+        listErrorMessage: "Could not load the series.",
+        locale: "en",
+        nextHref: "?token=next",
+        pageSize: 20,
+        previousHref: "?token=previous",
+        series: [],
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     // A failed read is a failed section, so it is reported the way every other

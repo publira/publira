@@ -10,10 +10,8 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { getMessage, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -33,6 +31,7 @@ import {
   mentionsAspectImageRejection,
   mentionsImageRejection,
 } from "./image-rejection";
+import { getMessagesFor } from "./messages";
 import {
   DEFAULT_SERIES_AGE_RATING,
   DEFAULT_SERIES_STATUS,
@@ -159,33 +158,29 @@ export type GetSeriesResult =
       requiresSignIn?: boolean;
     };
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.list_failed");
-const mutationErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.series.save_failed");
-
-const invalidArgumentMessage = (
+const invalidArgumentMessage = async (
   error: unknown,
-  messages: SharedMessages
-): string =>
-  mentionsImageRejection(error)
-    ? getMessage(messages, "admin.series.image_invalid")
-    : getMessage(messages, "admin.series.input_invalid");
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
-const mapErrorToMessage = (
+  return mentionsImageRejection(error)
+    ? t("admin.series.image_invalid")
+    : t("admin.series.input_invalid");
+};
+
+const mapErrorToMessage = async (
   error: unknown,
   fallbackMessage: string,
   locale: Locale
-): string => {
-  const messages = sharedCatalog(locale);
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
   return rpcErrorMessage(error, fallbackMessage, {
     locale,
     overrides: {
-      "invalid-argument": invalidArgumentMessage(error, messages),
-      "not-found": getMessage(messages, "admin.series.not_found"),
+      "invalid-argument": await invalidArgumentMessage(error, locale),
+      "not-found": t("admin.series.not_found"),
     },
   });
 };
@@ -348,13 +343,15 @@ export const listSeries = async (
   "use cache: private";
   cacheTag(seriesListCacheTag(tenantId));
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       series: [],
@@ -387,7 +384,11 @@ export const listSeries = async (
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       series: [],
@@ -413,13 +414,15 @@ export const listAllSeries = async (
   "use cache: private";
   cacheTag(seriesListCacheTag(tenantId));
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       series: [],
@@ -458,7 +461,7 @@ export const listAllSeries = async (
       return {
         ...emptyCursorPageTokens,
         defaultReadingPeriodHours: 0,
-        message: listErrorMessage(messages),
+        message: t("admin.series.list_failed"),
         ok: false,
         requiresSignIn: false,
         series: [],
@@ -478,7 +481,11 @@ export const listAllSeries = async (
     return {
       ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       series: [],
@@ -496,11 +503,13 @@ export const getSeries = async (
   "use cache: private";
   cacheTag(seriesCacheTag(input.tenantId, input.publicId));
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -517,7 +526,7 @@ export const getSeries = async (
 
     if (!response.series?.publicId?.trim()) {
       return {
-        message: listErrorMessage(messages),
+        message: t("admin.series.list_failed"),
         ok: false,
       };
     }
@@ -525,7 +534,7 @@ export const getSeries = async (
     const commentMode = toSeriesCommentMode(response.commentMode);
     if (commentMode === undefined) {
       return {
-        message: listErrorMessage(messages),
+        message: t("admin.series.list_failed"),
         ok: false,
       };
     }
@@ -541,7 +550,11 @@ export const getSeries = async (
       return { notFound: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -676,11 +689,13 @@ export const createSeries = async (
     SeriesCommentModeInput,
   locale: Locale
 ): Promise<CreateSeriesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -715,7 +730,7 @@ export const createSeries = async (
 
     if (!response.series?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.series.save_failed"),
         ok: false,
       };
     }
@@ -731,7 +746,11 @@ export const createSeries = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -755,11 +774,13 @@ export const updateSeries = async (
     SeriesCommentModeInput,
   locale: Locale
 ): Promise<UpdateSeriesResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -797,7 +818,7 @@ export const updateSeries = async (
 
     if (!response.series?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.series.save_failed"),
         ok: false,
       };
     }
@@ -813,7 +834,11 @@ export const updateSeries = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -846,11 +871,13 @@ export const uploadSeriesEyeCatchAspectImage = async (
   },
   locale: Locale
 ): Promise<SeriesEyeCatchAspectResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -870,7 +897,7 @@ export const uploadSeriesEyeCatchAspectImage = async (
 
     if (!response.series?.publicId?.trim()) {
       return {
-        message: mutationErrorMessage(messages),
+        message: t("admin.series.save_failed"),
         ok: false,
       };
     }
@@ -883,7 +910,11 @@ export const uploadSeriesEyeCatchAspectImage = async (
       return { imageRejected: true, ok: false };
     }
     return {
-      message: mapErrorToMessage(error, mutationErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.save_failed"),
+        locale
+      ),
       ok: false,
     };
   }

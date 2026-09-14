@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -11,11 +9,13 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useState, useContext } from "react";
+import { Suspense, useActionState, useCallback, useState } from "react";
 import type { ChangeEvent } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { formatPagePath, normalizePageSlugInput } from "../page-types";
@@ -31,11 +31,7 @@ interface PageFormProps {
 }
 
 export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   // Initial values only; entity switch must remount the form via key on the parent.
@@ -75,11 +71,11 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
     []
   );
 
-  let submitLabel = getMessage(messages, "admin.pages.form.create");
+  let submitLabel = t("admin.pages.form.create");
   if (isPending) {
-    submitLabel = getMessage(messages, "admin.pages.form.submitting");
+    submitLabel = t("admin.pages.form.submitting");
   } else if (isUpdate) {
-    submitLabel = getMessage(messages, "admin.pages.form.update");
+    submitLabel = t("admin.pages.form.update");
   }
 
   return (
@@ -105,25 +101,29 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
             value={slug}
           />
           <FieldDescription>
-            {getMessage(messages, "admin.pages.form.slug_description", {
-              path: formatPagePath(slug),
-            })}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage
+                message="admin.pages.form.slug_description"
+                values={{
+                  path: formatPagePath(slug),
+                }}
+              />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.pages.form.title")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.pages.form.title" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
             name="title"
             onChange={handleTitleChange}
-            placeholder={getMessage(
-              messages,
-              "admin.pages.form.title_placeholder"
-            )}
+            placeholder={t("admin.pages.form.title_placeholder")}
             required
             type="text"
             value={title}
@@ -139,10 +139,14 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
               onChange={handleDisplayInFooterChange}
               type="checkbox"
             />
-            {getMessage(messages, "admin.pages.form.footer_visible")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.pages.form.footer_visible" />
+            </Suspense>
           </label>
           <FieldDescription>
-            {getMessage(messages, "admin.pages.form.footer_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.pages.form.footer_description" />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>
@@ -150,21 +154,22 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
       {isUpdate ? null : (
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.pages.form.body")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.pages.form.body" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Textarea
               name="content_markdown"
               onChange={handleContentMarkdownChange}
-              placeholder={getMessage(
-                messages,
-                "admin.pages.form.body_placeholder"
-              )}
+              placeholder={t("admin.pages.form.body_placeholder")}
               rows={16}
               value={contentMarkdown}
             />
             <FieldDescription>
-              {getMessage(messages, "admin.pages.form.body_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.form.body_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>

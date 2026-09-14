@@ -1,7 +1,7 @@
-import { getMessage } from "@publira/i18n";
-import type { SharedMessages } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
+import { getMessagesFor } from "./messages";
 import { buildQueryString } from "./query-string";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
@@ -65,34 +65,31 @@ export interface NotificationDisplay {
  * see — but it is the sentence the row falls back to, and naming the wrong
  * thing there is worse than naming nothing.
  */
-const episodeSubject = (
-  messages: SharedMessages,
+const episodeSubject = async (
+  locale: Locale,
   payload: NotificationPayload,
   unnamedKey:
     | "admin.notifications.events.subject_unknown"
     | "admin.notifications.events.subject_unnamed"
-): string => {
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
   if (payload.episode_title && payload.series_title) {
-    return getMessage(
-      messages,
-      "admin.notifications.events.subject_in_series",
-      {
-        episode: payload.episode_title,
-        series: payload.series_title,
-      }
-    );
+    return t("admin.notifications.events.subject_in_series", {
+      episode: payload.episode_title,
+      series: payload.series_title,
+    });
   }
   if (payload.episode_title) {
-    return getMessage(messages, "admin.notifications.events.subject_episode", {
+    return t("admin.notifications.events.subject_episode", {
       episode: payload.episode_title,
     });
   }
   if (payload.series_title) {
-    return getMessage(messages, "admin.notifications.events.subject_series", {
+    return t("admin.notifications.events.subject_series", {
       series: payload.series_title,
     });
   }
-  return getMessage(messages, unnamedKey);
+  return t(unnamedKey);
 };
 
 export const notificationHref = (
@@ -126,106 +123,89 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
  * Inbox copy is assembled here from `notification_type` + payload. The API
  * does not store title/body. Unknown types stay in the list as a generic row.
  */
-export const notificationDisplay = (
+export const notificationDisplay = async (
   notificationType: string,
   payload: NotificationPayload,
-  messages: SharedMessages
-): NotificationDisplay => {
+  locale: Locale
+): Promise<NotificationDisplay> => {
+  const t = await getMessagesFor(locale);
   const href = notificationHref(payload);
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISHED) {
+    const subject = await episodeSubject(
+      locale,
+      payload,
+      "admin.notifications.events.subject_unnamed"
+    );
+
     return {
-      description: getMessage(
-        messages,
-        "admin.notifications.events.published_description",
-        {
-          subject: episodeSubject(
-            messages,
-            payload,
-            "admin.notifications.events.subject_unnamed"
-          ),
-        }
-      ),
+      description: t("admin.notifications.events.published_description", {
+        subject,
+      }),
       href,
-      title: getMessage(messages, "admin.notifications.events.published_title"),
+      title: t("admin.notifications.events.published_title"),
     };
   }
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED) {
+    const subject = await episodeSubject(
+      locale,
+      payload,
+      "admin.notifications.events.subject_unnamed"
+    );
+
     return {
-      description: getMessage(
-        messages,
-        "admin.notifications.events.publish_failed_description",
-        {
-          subject: episodeSubject(
-            messages,
-            payload,
-            "admin.notifications.events.subject_unnamed"
-          ),
-        }
-      ),
+      description: t("admin.notifications.events.publish_failed_description", {
+        subject,
+      }),
       href,
-      title: getMessage(
-        messages,
-        "admin.notifications.events.publish_failed_title"
-      ),
+      title: t("admin.notifications.events.publish_failed_title"),
     };
   }
 
   if (type === NOTIFICATION_TYPE_COMMENT_AWAITING_APPROVAL) {
+    const subject = await episodeSubject(
+      locale,
+      payload,
+      "admin.notifications.events.subject_unknown"
+    );
+
     return {
-      description: getMessage(
-        messages,
+      description: t(
         "admin.notifications.events.comments_awaiting_approval_description",
-        {
-          subject: episodeSubject(
-            messages,
-            payload,
-            "admin.notifications.events.subject_unknown"
-          ),
-        }
+        { subject }
       ),
       href: `/comments${buildQueryString({
         episode: payload.episode_id,
         status: "pending",
       })}`,
-      title: getMessage(
-        messages,
-        "admin.notifications.events.comments_awaiting_approval_title"
-      ),
+      title: t("admin.notifications.events.comments_awaiting_approval_title"),
     };
   }
 
   if (type === NOTIFICATION_TYPE_COMMENT_REPORTED) {
+    const subject = await episodeSubject(
+      locale,
+      payload,
+      "admin.notifications.events.subject_unknown"
+    );
+
     return {
-      description: getMessage(
-        messages,
+      description: t(
         "admin.notifications.events.comments_reported_description",
-        {
-          subject: episodeSubject(
-            messages,
-            payload,
-            "admin.notifications.events.subject_unknown"
-          ),
-        }
+        { subject }
       ),
       // The report queue carries no episode filter of its own, so the link
       // opens the reports still waiting rather than the ones on this episode.
       href: `/comments${buildQueryString({ report_status: "open" })}`,
-      title: getMessage(
-        messages,
-        "admin.notifications.events.comments_reported_title"
-      ),
+      title: t("admin.notifications.events.comments_reported_title"),
     };
   }
 
   return {
-    description: getMessage(
-      messages,
-      "admin.notifications.events.unknown_description"
-    ),
+    description: t("admin.notifications.events.unknown_description"),
     href,
-    title: getMessage(messages, "admin.notifications.events.unknown_title"),
+    title: t("admin.notifications.events.unknown_title"),
   };
 };

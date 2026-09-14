@@ -1,8 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { refresh } from "next/cache";
@@ -22,6 +20,7 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
+import { getMessagesFor } from "#lib/messages";
 
 import { COMMENT_REPORT_RESOLUTIONS } from "../comment-types";
 import type {
@@ -35,17 +34,19 @@ import type {
  * reasons. It is optional here and required by {@link purgeCommentAction}: a
  * purged row leaves nothing behind but that entry.
  */
-const moderationSchema = (messages: SharedMessages) =>
-  z.object({
+const moderationSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     publicId: requiredTrimmedString(
-      getMessage(messages, "admin.comments.validation.target_missing")
+      t("admin.comments.validation.target_missing")
     ),
     reason: optionalTrimmedString(1000),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.comments.validation.tenant_missing")
+      t("admin.comments.validation.tenant_missing")
     ),
   });
-
+};
 const moderationFormFields = {
   publicId: { kind: "value", name: "public_id" },
   reason: "value",
@@ -68,11 +69,12 @@ const moderate = async (
 ): Promise<CommentActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
+  const t = await getMessagesFor(locale);
   const input = toFormDataInput(formData, moderationFormFields);
   const publicId =
     typeof input.publicId === "string" ? input.publicId.trim() : "";
-  const parsed = moderationSchema(messages).safeParse(input);
+  const schema = await moderationSchema(locale);
+  const parsed = schema.safeParse(input);
   if (!parsed.success) {
     return commentActionFailure(
       publicId,
@@ -82,7 +84,7 @@ const moderate = async (
   if (options.requireReason === true && parsed.data.reason === "") {
     return commentActionFailure(
       parsed.data.publicId,
-      getMessage(messages, "admin.comments.validation.reason_required")
+      t("admin.comments.validation.reason_required")
     );
   }
 
@@ -137,18 +139,20 @@ export const purgeCommentAction = async (
  * several readers reported is several rows in the queue, and each of them is
  * decided on its own.
  */
-const reportDecisionSchema = (messages: SharedMessages) =>
-  z.object({
+const reportDecisionSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     reason: optionalTrimmedString(1000),
     reportId: requiredTrimmedString(
-      getMessage(messages, "admin.comments.validation.target_missing")
+      t("admin.comments.validation.target_missing")
     ),
     resolution: z.enum(COMMENT_REPORT_RESOLUTIONS),
     tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.comments.validation.tenant_missing")
+      t("admin.comments.validation.tenant_missing")
     ),
   });
-
+};
 const reportDecisionFormFields = {
   reason: "value",
   reportId: { kind: "value", name: "report_id" },
@@ -162,11 +166,11 @@ export const resolveCommentReportAction = async (
 ): Promise<CommentReportActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
   const input = toFormDataInput(formData, reportDecisionFormFields);
   const reportId =
     typeof input.reportId === "string" ? input.reportId.trim() : "";
-  const parsed = reportDecisionSchema(messages).safeParse(input);
+  const schema = await reportDecisionSchema(locale);
+  const parsed = schema.safeParse(input);
   if (!parsed.success) {
     return commentReportActionFailure(
       reportId,

@@ -1,9 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -11,6 +8,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface TenantSiteSettings {
@@ -39,11 +37,6 @@ const defaultSettings: TenantSiteSettings = {
   siteTagline: "",
 };
 
-const genericLoadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.site.load_failed");
-const genericUpdateErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.site.save_failed");
-
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in the Server
  * Action makes the saved copy visible in the same session instead of leaving
@@ -66,12 +59,14 @@ export const getTenantSiteSettings = async (
 ): Promise<GetTenantSiteSettingsResult> => {
   "use cache: private";
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: !sessionId,
       settings: defaultSettings,
@@ -99,9 +94,9 @@ export const getTenantSiteSettings = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        genericLoadErrorMessage(messages),
+        t("admin.settings.site.load_failed"),
         locale
       ),
       ok: false,
@@ -120,12 +115,14 @@ export const updateTenantSiteSettings = async (
   },
   locale: Locale
 ): Promise<UpdateTenantSiteSettingsResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -153,9 +150,9 @@ export const updateTenantSiteSettings = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        genericUpdateErrorMessage(messages),
+        t("admin.settings.site.save_failed"),
         locale
       ),
       ok: false,

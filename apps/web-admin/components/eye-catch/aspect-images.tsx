@@ -1,15 +1,24 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { ChangeEventHandler, ReactEventHandler } from "react";
-import { useActionState, useContext, useEffect, useRef, useState } from "react";
+import {
+  Suspense,
+  useActionState,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -17,6 +26,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { ClientMessage } from "#components/client-message";
 import type { CropSource } from "#components/image-crop/crop";
 import {
   centreCropRect,
@@ -67,7 +77,7 @@ const EyeCatchAspectSlot = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const { minHeight, minWidth, variantType } = aspect;
 
@@ -161,7 +171,7 @@ const EyeCatchAspectSlot = ({
       </div>
 
       <button
-        aria-label={getMessage(messages, "admin.eye_catch.aspect.select_aria", {
+        aria-label={t("admin.eye_catch.aspect.select_aria", {
           variant_type: variantType,
         })}
         className={cn(
@@ -176,7 +186,7 @@ const EyeCatchAspectSlot = ({
           // cannot carry both behind one src.
           // oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element
           <img
-            alt={getMessage(messages, "admin.eye_catch.variant_alt", {
+            alt={t("admin.eye_catch.variant_alt", {
               variant_type: variantType,
             })}
             className={
@@ -187,16 +197,23 @@ const EyeCatchAspectSlot = ({
           />
         ) : (
           <span className="flex h-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
-            {getMessage(messages, "admin.eye_catch.aspect.empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <ClientMessage message="admin.eye_catch.aspect.empty" />
+            </Suspense>
           </span>
         )}
       </button>
 
       <p className="text-xs text-muted-foreground">
-        {getMessage(messages, "admin.eye_catch.aspect.minimum", {
-          height: String(minHeight),
-          width: String(minWidth),
-        })}
+        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          <ClientMessage
+            message="admin.eye_catch.aspect.minimum"
+            values={{
+              height: String(minHeight),
+              width: String(minWidth),
+            }}
+          />
+        </Suspense>
       </p>
 
       <form action={formAction} className="grid gap-2" onSubmit={handleSubmit}>
@@ -225,7 +242,9 @@ const EyeCatchAspectSlot = ({
             type="button"
             variant="outline"
           >
-            {getMessage(messages, "admin.image_crop.adjust")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.image_crop.adjust" />
+            </Suspense>
           </Button>
         ) : null}
         <Button
@@ -233,8 +252,7 @@ const EyeCatchAspectSlot = ({
           size="sm"
           type="submit"
         >
-          {getMessage(
-            messages,
+          {t(
             isUploading
               ? "admin.eye_catch.aspect.uploading"
               : "admin.eye_catch.aspect.upload"
@@ -245,7 +263,7 @@ const EyeCatchAspectSlot = ({
       {state && state.variantType === variantType ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>
           {"imageInvalid" in state
-            ? getMessage(messages, "admin.eye_catch.aspect.image_invalid", {
+            ? t("admin.eye_catch.aspect.image_invalid", {
                 height: String(minHeight),
                 width: String(minWidth),
               })
@@ -263,7 +281,7 @@ const EyeCatchAspectSlot = ({
           onOpenChange={setIsFraming}
           open={isFraming}
           source={source}
-          title={getMessage(messages, "admin.eye_catch.aspect.crop_title", {
+          title={t("admin.eye_catch.aspect.crop_title", {
             variant_type: variantType,
           })}
         />
@@ -288,23 +306,23 @@ export const EyeCatchAspectImages = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
 
   return (
     <AdminSection>
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            {getMessage(messages, "admin.eye_catch.aspect.title")}
+            {t("admin.eye_catch.aspect.title")}
           </AdminSectionTitle>
           <AdminSectionDescription>
-            {getMessage(messages, "admin.eye_catch.aspect.description")}
+            {t("admin.eye_catch.aspect.description")}
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
       {variants.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {getMessage(messages, "admin.eye_catch.aspect.eye_catch_required")}
+          {t("admin.eye_catch.aspect.eye_catch_required")}
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

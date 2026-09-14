@@ -1,6 +1,6 @@
 "use client";
 
-import { getMessage, toIntlLocale } from "@publira/i18n";
+import { toIntlLocale } from "@publira/i18n";
 import { CloseIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
@@ -310,15 +310,11 @@ export const SeriesScheduleField = ({
  * the copy is still loading.
  */
 const GenreComboboxInput = ({ hasSelection }: { hasSelection: boolean }) => {
-  const messages = useClientMessages();
+  const t = useClientMessages();
 
   return (
     <MultiComboboxInput
-      placeholder={
-        hasSelection
-          ? ""
-          : getMessage(messages, "admin.series.form.genres_search")
-      }
+      placeholder={hasSelection ? "" : t("admin.series.form.genres_search")}
     />
   );
 };
@@ -329,11 +325,11 @@ const GenreComboboxInput = ({ hasSelection }: { hasSelection: boolean }) => {
  * `aria-label`, which has to be a string.
  */
 const GenreChipRemove = () => {
-  const messages = useClientMessages();
+  const t = useClientMessages();
 
   return (
     <MultiComboboxChipRemove
-      aria-label={getMessage(messages, "admin.series.form.genres_remove")}
+      aria-label={t("admin.series.form.genres_remove")}
     />
   );
 };

@@ -1,11 +1,9 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { useContext, useId } from "react";
+import { useId } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 
 interface AuditActionOption {
   label: string;
@@ -21,17 +19,14 @@ export const AuditActionSelect = ({
   defaultValue,
   options,
 }: AuditActionSelectProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const t = useAdminMessages();
   // Native <select> is not a Field control, so the label needs an id to point at.
   const actionSelectId = useId();
 
   return (
     <Field>
       <FieldLabel htmlFor={actionSelectId}>
-        {getMessage(sharedCatalog(locale), "admin.audit.filter.action")}
+        {t("admin.audit.filter.action")}
       </FieldLabel>
       <FieldContent>
         <select

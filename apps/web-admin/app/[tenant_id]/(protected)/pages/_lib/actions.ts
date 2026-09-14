@@ -1,7 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -15,7 +14,7 @@ import {
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import {
   createPage,
   createPageVersion,
@@ -37,8 +36,10 @@ const displayInFooterSchema = z.preprocess((value) => {
   return raw === "1" || raw === "true" || raw === "on";
 }, z.boolean().optional());
 
-const pageCommonSchema = (messages: AdminMessages) =>
-  z.object({
+const pageCommonSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     contentMarkdown: z
       .string()
       .optional()
@@ -47,18 +48,16 @@ const pageCommonSchema = (messages: AdminMessages) =>
     pageId: optionalTrimmedString(),
     slug: optionalTrimmedString(
       255,
-      getMessage(messages, "admin.pages.validation.slug_too_long")
+      t("admin.pages.validation.slug_too_long")
     ).transform((value) => normalizePageSlugInput(value)),
-    tenantId: requiredTrimmedString(
-      getMessage(messages, "admin.pages.validation.tenant_missing")
-    ),
+    tenantId: requiredTrimmedString(t("admin.pages.validation.tenant_missing")),
     title: optionalTrimmedString(
       255,
-      getMessage(messages, "admin.pages.validation.title_too_long")
+      t("admin.pages.validation.title_too_long")
     ),
     versionId: optionalTrimmedString(),
   });
-
+};
 const pageFormFields = {
   contentMarkdown: { kind: "value", name: "content_markdown" },
   displayInFooter: { kind: "value", name: "display_in_footer" },
@@ -78,10 +77,11 @@ const toFailure = (
   ok: false,
 });
 
-const parsePageForm = (formData: FormData, messages: AdminMessages) =>
-  pageCommonSchema(messages).safeParse(
-    toFormDataInput(formData, pageFormFields)
-  );
+const parsePageForm = async (formData: FormData, locale: Locale) => {
+  const schema = await pageCommonSchema(locale);
+
+  return schema.safeParse(toFormDataInput(formData, pageFormFields));
+};
 
 export const createPageAction = async (
   _prevState: PageFormState,
@@ -89,16 +89,15 @@ export const createPageAction = async (
 ): Promise<PageFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = parsePageForm(formData, messages);
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(locale),
+    parsePageForm(formData, locale),
+  ]);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
   if (!parsed.data.title) {
-    return toFailure(
-      getMessage(messages, "admin.pages.validation.title_required"),
-      "create"
-    );
+    return toFailure(t("admin.pages.validation.title_required"), "create");
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -147,22 +146,18 @@ export const updatePageAction = async (
 ): Promise<PageFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = parsePageForm(formData, messages);
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(locale),
+    parsePageForm(formData, locale),
+  ]);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
   if (!parsed.data.pageId) {
-    return toFailure(
-      getMessage(messages, "admin.pages.validation.update_id_missing"),
-      "update"
-    );
+    return toFailure(t("admin.pages.validation.update_id_missing"), "update");
   }
   if (!parsed.data.title) {
-    return toFailure(
-      getMessage(messages, "admin.pages.validation.title_required"),
-      "update"
-    );
+    return toFailure(t("admin.pages.validation.title_required"), "update");
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -193,16 +188,15 @@ export const createDraftVersionAction = async (
 ): Promise<PageFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = parsePageForm(formData, messages);
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(locale),
+    parsePageForm(formData, locale),
+  ]);
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "draft");
   }
   if (!parsed.data.pageId) {
-    return toFailure(
-      getMessage(messages, "admin.pages.validation.id_missing"),
-      "draft"
-    );
+    return toFailure(t("admin.pages.validation.id_missing"), "draft");
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -228,8 +222,7 @@ export const createDraftVersionAction = async (
 export const publishVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = parsePageForm(formData, messages);
+  const parsed = await parsePageForm(formData, locale);
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }
@@ -258,8 +251,7 @@ export const publishVersionAction = async (formData: FormData) => {
 export const unpublishPageAction = async (formData: FormData) => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = parsePageForm(formData, messages);
+  const parsed = await parsePageForm(formData, locale);
   if (!parsed.success || !parsed.data.pageId) {
     return;
   }
@@ -287,8 +279,7 @@ export const unpublishPageAction = async (formData: FormData) => {
 export const rollbackVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = parsePageForm(formData, messages);
+  const parsed = await parsePageForm(formData, locale);
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }

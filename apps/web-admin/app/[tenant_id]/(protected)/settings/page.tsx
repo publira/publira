@@ -1,4 +1,4 @@
-import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { getLocaleLabel, getLocales } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -24,7 +24,8 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteSettings } from "#lib/site-settings";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
@@ -47,9 +48,9 @@ import {
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.settings.basic_title") };
+  return { title: t("admin.settings.basic_title") };
 };
 
 export const generateStaticParams = () =>

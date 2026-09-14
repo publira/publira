@@ -1,14 +1,13 @@
 import type { EpisodeReadThrough } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { cursorPageRequest } from "./cursor-page";
 import type { CursorPageOptions } from "./cursor-page";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface EpisodeReadThroughItem {
@@ -80,12 +79,14 @@ const mapEpisodeReadThrough = (
   seriesTitle: item.seriesTitle,
 });
 
-const mapErrorToMessage = (error: unknown, locale: Locale): string =>
-  rpcErrorMessage(
-    error,
-    getMessage(sharedCatalog(locale), "admin.engagement.list_failed"),
-    { locale }
-  );
+const mapErrorToMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, t("admin.engagement.list_failed"), { locale });
+};
 
 /**
  * The share of member views that ended in a completion, or `null` when nothing
@@ -105,9 +106,10 @@ export const listEpisodeReadThrough = async (
 ): Promise<ListEpisodeReadThroughResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
+    const t = await getMessagesFor(locale);
     return {
       episodes: [],
-      message: getMessage(sharedCatalog(locale), "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -143,7 +145,7 @@ export const listEpisodeReadThrough = async (
     rethrowUnclassifiedRpcError(error);
     return {
       episodes: [],
-      message: mapErrorToMessage(error, locale),
+      message: await mapErrorToMessage(error, locale),
       nextToken: "",
       ok: false,
       previousToken: "",

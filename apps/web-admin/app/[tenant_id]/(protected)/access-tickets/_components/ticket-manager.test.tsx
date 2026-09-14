@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { getMessage } from "@publira/i18n";
-import type { MessageValues } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,9 +11,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AccessTicketItem } from "../ticket-types";
 import { TicketManager } from "./ticket-manager";
 
+vi.mock("#lib/messages", () => ({
+  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
+}));
+
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en")),
+}));
+
 vi.mock("#components/message", () => ({
-  Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("en"), message, values),
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 vi.mock("next/link", () => ({
@@ -50,29 +72,29 @@ afterEach(() => {
 });
 
 describe("TicketManager", () => {
-  it("says nothing is registered yet when the first page is empty", () => {
+  it("says nothing is registered yet when the first page is empty", async () => {
     render(
-      <TicketManager
-        locale="en"
-        pageSize={20}
-        tickets={[]}
-        timeZone="Asia/Tokyo"
-      />
+      await TicketManager({
+        locale: "en",
+        pageSize: 20,
+        tickets: [],
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("There are no tickets yet.")).toBeDefined();
     expect(screen.queryByLabelText("Access tickets pagination")).toBeNull();
   });
 
-  it("does not say the whole list is empty when a later page is empty", () => {
+  it("does not say the whole list is empty when a later page is empty", async () => {
     render(
-      <TicketManager
-        locale="en"
-        pageSize={20}
-        previousHref="?token=previous"
-        tickets={[]}
-        timeZone="Asia/Tokyo"
-      />
+      await TicketManager({
+        locale: "en",
+        pageSize: 20,
+        previousHref: "?token=previous",
+        tickets: [],
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("No tickets to show on this page.")).toBeDefined();
@@ -82,20 +104,20 @@ describe("TicketManager", () => {
     expect(screen.queryByRole("link", { name: "Next" })).toBeNull();
   });
 
-  it("lists the status and the note of an active ticket", () => {
+  it("lists the status and the note of an active ticket", async () => {
     render(
-      <TicketManager
-        locale="en"
-        pageSize={20}
-        tickets={[
+      await TicketManager({
+        locale: "en",
+        pageSize: 20,
+        tickets: [
           {
             ...ticket("TICKET001"),
             note: "For review",
             status: "active",
           },
-        ]}
-        timeZone="Asia/Tokyo"
-      />
+        ],
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("Active")).toBeDefined();
@@ -103,16 +125,16 @@ describe("TicketManager", () => {
     expect(screen.getByText("Revoke TICKET001")).toBeDefined();
   });
 
-  it("renders the per-row actions and the pager on a later page", () => {
+  it("renders the per-row actions and the pager on a later page", async () => {
     render(
-      <TicketManager
-        locale="en"
-        nextHref="?token=next"
-        pageSize={20}
-        previousHref="?token=previous"
-        tickets={[ticket("TICKET001")]}
-        timeZone="Asia/Tokyo"
-      />
+      await TicketManager({
+        locale: "en",
+        nextHref: "?token=next",
+        pageSize: 20,
+        previousHref: "?token=previous",
+        tickets: [ticket("TICKET001")],
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("Revoke TICKET001")).toBeDefined();
@@ -124,17 +146,17 @@ describe("TicketManager", () => {
     ).toBe("?token=next");
   });
 
-  it("shows only the error and does not call the list empty when the fetch fails", () => {
+  it("shows only the error and does not call the list empty when the fetch fails", async () => {
     render(
-      <TicketManager
-        locale="en"
-        listErrorMessage="Could not load the tickets."
-        nextHref="?token=next"
-        pageSize={20}
-        previousHref="?token=previous"
-        tickets={[]}
-        timeZone="Asia/Tokyo"
-      />
+      await TicketManager({
+        listErrorMessage: "Could not load the tickets.",
+        locale: "en",
+        nextHref: "?token=next",
+        pageSize: 20,
+        previousHref: "?token=previous",
+        tickets: [],
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     // A failed read is a failed section, so it is reported the way every other

@@ -1,13 +1,13 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import type { SharedMessages } from "@publira/i18n/catalog";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { cn } from "@publira/utils";
 import type { KeyboardEvent, PointerEvent, ReactEventHandler } from "react";
 import { useContext, useRef } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
 import type { CropRect } from "#lib/crop-rect";
 
 import type { CropAspect, CropCorner, CropSource } from "./crop";
@@ -66,9 +66,6 @@ const arrowDirection = (key: string): { x: number; y: number } | undefined =>
 const percent = (value: number, total: number): string =>
   `${(value / total) * 100}%`;
 
-const cornerLabel = (messages: SharedMessages, corner: CropCorner): string =>
-  getMessage(messages, CORNER_LABEL_KEYS[corner]);
-
 /**
  * The picked file at full frame, with the rectangle that will be cut out of it
  * drawn on top. The frame is locked to the ratio, so an editor chooses where
@@ -90,7 +87,7 @@ export const ImageCropFrame = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const imageRef = useRef<HTMLImageElement>(null);
   /**
    * What the pointer is dragging, and where it grabbed the frame. It is read
@@ -214,7 +211,7 @@ export const ImageCropFrame = ({
           it, and this element's box is what the frame is measured against. */}
       {/* oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element */}
       <img
-        alt={getMessage(messages, "admin.image_crop.image_alt")}
+        alt={t("admin.image_crop.image_alt")}
         className="block max-h-[60vh] w-auto max-w-full touch-none select-none"
         draggable={false}
         onLoad={onImageLoad}
@@ -225,7 +222,7 @@ export const ImageCropFrame = ({
       {frame ? (
         <div className="pointer-events-none absolute inset-0">
           <button
-            aria-label={getMessage(messages, "admin.image_crop.move")}
+            aria-label={t("admin.image_crop.move")}
             className="pointer-events-auto absolute cursor-grab touch-none shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] outline-2 outline-white focus-visible:outline-4 focus-visible:outline-blue-400 active:cursor-grabbing"
             onKeyDown={handleFrameKeyDown}
             onLostPointerCapture={endDrag}
@@ -244,7 +241,7 @@ export const ImageCropFrame = ({
 
           {CROP_CORNERS.map((corner) => (
             <button
-              aria-label={cornerLabel(messages, corner)}
+              aria-label={t(CORNER_LABEL_KEYS[corner])}
               className={cn(
                 "pointer-events-auto absolute size-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-white bg-blue-500 focus-visible:outline-4 focus-visible:outline-blue-400",
                 corner === "ne" || corner === "sw"

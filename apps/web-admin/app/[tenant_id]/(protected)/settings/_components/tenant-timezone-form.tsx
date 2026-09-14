@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Combobox,
@@ -18,10 +16,11 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { listSupportedTimeZones } from "@publira/utils";
-import { useActionState, useContext, useMemo, useState } from "react";
+import { Suspense, useActionState, useMemo, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -29,6 +28,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { TenantTimezoneActionState } from "../settings-types";
@@ -49,11 +49,7 @@ export const TenantTimezoneForm = ({
   initialTimezone,
   loadErrorMessage,
 }: TenantTimezoneFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [timezone, setTimezone] = useState(initialTimezone);
@@ -75,10 +71,14 @@ export const TenantTimezoneForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            {getMessage(messages, "admin.settings.timezone.title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.timezone.title" />
+            </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
-            {getMessage(messages, "admin.settings.timezone.description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.timezone.description" />
+            </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -88,7 +88,9 @@ export const TenantTimezoneForm = ({
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.settings.timezone.label")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.timezone.label" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Combobox
@@ -98,30 +100,30 @@ export const TenantTimezoneForm = ({
               value={timezone}
             >
               <ComboboxInput
-                placeholder={getMessage(
-                  messages,
-                  "admin.settings.timezone.placeholder"
-                )}
+                placeholder={t("admin.settings.timezone.placeholder")}
               />
               <ComboboxPopup>
                 <ComboboxEmpty>
-                  {getMessage(messages, "admin.settings.timezone.empty")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.settings.timezone.empty" />
+                  </Suspense>
                 </ComboboxEmpty>
                 <ComboboxItems />
               </ComboboxPopup>
             </Combobox>
             <FieldDescription>
-              {getMessage(
-                messages,
-                "admin.settings.timezone.field_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.settings.timezone.field_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
-            {getMessage(messages, "admin.settings.admin_only")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.settings.admin_only" />
+            </Suspense>
           </FormMessage>
         )}
 
@@ -138,8 +140,8 @@ export const TenantTimezoneForm = ({
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={!canEdit || isPending} type="submit">
             {isPending
-              ? getMessage(messages, "admin.settings.saving")
-              : getMessage(messages, "admin.settings.timezone.submit")}
+              ? t("admin.settings.saving")
+              : t("admin.settings.timezone.submit")}
           </Button>
         </div>
       </form>

@@ -1,6 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
 import {
   Field,
   FieldContent,
@@ -8,6 +7,10 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+import { ClientMessage } from "#components/client-message";
 
 import { useAdminMessages } from "./admin-locale-context";
 
@@ -32,12 +35,14 @@ export const MfaCodeField = ({
   allowRecoveryCode,
   disabled,
 }: MfaCodeFieldProps) => {
-  const messages = useAdminMessages();
+  const t = useAdminMessages();
 
   return (
     <Field>
       <FieldLabel required>
-        {getMessage(messages, "admin.auth.mfa.code_label")}
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <ClientMessage message="admin.auth.mfa.code_label" />
+        </Suspense>
       </FieldLabel>
       <FieldContent>
         <Input
@@ -47,13 +52,12 @@ export const MfaCodeField = ({
           // keypad is only right where the authenticator is the only source.
           inputMode={allowRecoveryCode ? "text" : "numeric"}
           name="code"
-          placeholder={getMessage(messages, "admin.auth.mfa.code_placeholder")}
+          placeholder={t("admin.auth.mfa.code_placeholder")}
           required
           type="text"
         />
         <FieldDescription>
-          {getMessage(
-            messages,
+          {t(
             allowRecoveryCode
               ? "admin.auth.mfa.code_help"
               : "admin.auth.mfa.code_help_totp_only"

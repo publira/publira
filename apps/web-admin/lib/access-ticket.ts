@@ -4,10 +4,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -21,16 +18,8 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
-
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.access_tickets.list_failed");
-const issueErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.access_tickets.issue_failed");
-const revokeErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.access_tickets.revoke_failed");
 
 export type AccessTicketStatus = "active" | "expired" | "revoked" | string;
 
@@ -85,34 +74,32 @@ export type RevokeAccessTicketResult =
  * is not actionable. The code says only `not_found`, while the server
  * identifies the missing request field with `google.rpc.BadRequest` details.
  */
-const missingTargetMessage = (
+const missingTargetMessage = async (
   error: unknown,
-  messages: SharedMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
   if (rpcErrorHasFieldViolation(error, "user_public_id")) {
-    return getMessage(messages, "admin.access_tickets.user_not_found");
+    return t("admin.access_tickets.user_not_found");
   }
   if (rpcErrorHasFieldViolation(error, "episode_public_id")) {
-    return getMessage(messages, "admin.access_tickets.episode_not_found");
+    return t("admin.access_tickets.episode_not_found");
   }
-  return getMessage(messages, "errors.rpc.not-found");
+  return t("errors.rpc.not-found");
 };
 
-const mapErrorMessage = (
+const mapErrorMessage = async (
   error: unknown,
   fallback: string,
   locale: Locale
-): string => {
-  const messages = sharedCatalog(locale);
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
   return rpcErrorMessage(error, fallback, {
     locale,
     overrides: {
-      "not-found": missingTargetMessage(error, messages),
-      precondition: getMessage(
-        messages,
-        "admin.access_tickets.user_not_active"
-      ),
+      "not-found": await missingTargetMessage(error, locale),
+      precondition: t("admin.access_tickets.user_not_active"),
     },
   });
 };
@@ -166,12 +153,14 @@ export const listAccessTickets = async (
   "use cache: private";
   cacheTag(`access-tickets-${tenantId}`);
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       tickets: [],
@@ -199,7 +188,11 @@ export const listAccessTickets = async (
     rethrowUnclassifiedRpcError(error);
     return {
       ...emptyCursorPageTokens,
-      message: mapErrorMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorMessage(
+        error,
+        t("admin.access_tickets.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       tickets: [],
@@ -211,11 +204,13 @@ export const issueAccessTicket = async (
   input: IssueAccessTicketInput,
   locale: Locale
 ): Promise<IssueAccessTicketResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -234,7 +229,7 @@ export const issueAccessTicket = async (
 
     if (!response.ticket) {
       return {
-        message: issueErrorMessage(messages),
+        message: t("admin.access_tickets.issue_failed"),
         ok: false,
       };
     }
@@ -247,7 +242,11 @@ export const issueAccessTicket = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, issueErrorMessage(messages), locale),
+      message: await mapErrorMessage(
+        error,
+        t("admin.access_tickets.issue_failed"),
+        locale
+      ),
       ok: false,
     };
   }
@@ -258,11 +257,13 @@ export const revokeAccessTicket = async (
   publicId: string,
   locale: Locale
 ): Promise<RevokeAccessTicketResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -278,7 +279,7 @@ export const revokeAccessTicket = async (
 
     if (!response.ticket) {
       return {
-        message: revokeErrorMessage(messages),
+        message: t("admin.access_tickets.revoke_failed"),
         ok: false,
       };
     }
@@ -291,7 +292,11 @@ export const revokeAccessTicket = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorMessage(error, revokeErrorMessage(messages), locale),
+      message: await mapErrorMessage(
+        error,
+        t("admin.access_tickets.revoke_failed"),
+        locale
+      ),
       ok: false,
     };
   }

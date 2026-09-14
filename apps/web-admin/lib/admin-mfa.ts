@@ -15,15 +15,14 @@ import {
   RPC_ERROR_REASON,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 import { cacheTag } from "next/cache";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { loadAdminMessages } from "./locale";
-import type { AdminMessageKey, AdminMessages } from "./locale";
+import { getMessagesFor } from "./messages";
+import type { AdminMessageKey } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface AdminMfaSession {
@@ -91,15 +90,16 @@ const toMfaSession = (
  * Read before anything classifies the error by `Code` alone: the reason is the
  * only thing separating "that code is wrong" from "your session is gone".
  */
-const mfaCodeRejectionMessage = (
+const mfaCodeRejectionMessage = async (
   error: unknown,
-  messages: AdminMessages
-): string | null => {
+  locale: Locale
+): Promise<string | null> => {
+  const t = await getMessagesFor(locale);
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
-    return getMessage(messages, "admin.auth.mfa.errors.locked");
+    return t("admin.auth.mfa.errors.locked");
   }
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaInvalidCode)) {
-    return getMessage(messages, "admin.auth.mfa.errors.invalid_code");
+    return t("admin.auth.mfa.errors.invalid_code");
   }
   return null;
 };
@@ -131,23 +131,23 @@ const ENROLL_KEYS: MfaFailureKeys = {
  * unusable is rethrown, so `withAdminSessionReauth()` turns it into the login
  * redirect rather than a dead end next to the code field.
  */
-const sessionMfaFailureMessage = (
+const sessionMfaFailureMessage = async (
   error: unknown,
-  messages: AdminMessages,
   locale: Locale,
   keys: MfaFailureKeys
-): string => {
-  const rejected = mfaCodeRejectionMessage(error, messages);
+): Promise<string> => {
+  const rejected = await mfaCodeRejectionMessage(error, locale);
   if (rejected) {
     return rejected;
   }
 
+  const t = await getMessagesFor(locale);
   rethrowUnauthenticatedRpcError(error);
   rethrowUnclassifiedRpcError(error);
 
-  return rpcErrorMessage(error, getMessage(messages, keys.fallback), {
+  return rpcErrorMessage(error, t(keys.fallback), {
     locale,
-    overrides: { precondition: getMessage(messages, keys.precondition) },
+    overrides: { precondition: t(keys.precondition) },
   });
 };
 
@@ -158,21 +158,21 @@ const sessionMfaFailureMessage = (
  * not about the code means the half-finished login has run out; the screen
  * reports that and sends the operator back to `/login`.
  */
-const challengeMfaFailure = (
+const challengeMfaFailure = async (
   error: unknown,
-  messages: AdminMessages,
   locale: Locale,
   keys: MfaFailureKeys
-): { message: string; challengeExpired: boolean } => {
-  const rejected = mfaCodeRejectionMessage(error, messages);
+): Promise<{ message: string; challengeExpired: boolean }> => {
+  const rejected = await mfaCodeRejectionMessage(error, locale);
   if (rejected) {
     return { challengeExpired: false, message: rejected };
   }
 
+  const t = await getMessagesFor(locale);
   if (isUnauthenticatedRpcError(error)) {
     return {
       challengeExpired: true,
-      message: getMessage(messages, "admin.auth.mfa.expired"),
+      message: t("admin.auth.mfa.expired"),
     };
   }
 
@@ -180,9 +180,9 @@ const challengeMfaFailure = (
 
   return {
     challengeExpired: false,
-    message: rpcErrorMessage(error, getMessage(messages, keys.fallback), {
+    message: rpcErrorMessage(error, t(keys.fallback), {
       locale,
-      overrides: { precondition: getMessage(messages, keys.precondition) },
+      overrides: { precondition: t(keys.precondition) },
     }),
   };
 };
@@ -235,7 +235,7 @@ export const verifyAdminMfa = async (
   code: string,
   locale: Locale
 ): Promise<AdminMfaVerifyResult> => {
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
   try {
     const response = await apiClient.auth.verifyMfa({
@@ -251,7 +251,7 @@ export const verifyAdminMfa = async (
     if (!session) {
       return {
         challengeExpired: false,
-        message: getMessage(messages, "admin.auth.mfa.errors.verify_failed"),
+        message: t("admin.auth.mfa.errors.verify_failed"),
         ok: false,
       };
     }
@@ -264,7 +264,7 @@ export const verifyAdminMfa = async (
     };
   } catch (error) {
     return {
-      ...challengeMfaFailure(error, messages, locale, NOT_ENABLED_KEYS),
+      ...(await challengeMfaFailure(error, locale, NOT_ENABLED_KEYS)),
       ok: false,
     };
   }
@@ -282,7 +282,7 @@ export const startAdminMfaEnrollment = async (
   challengeToken: string,
   locale: Locale
 ): Promise<AdminMfaEnrollmentStartResult> => {
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
   const sessionToken = challengeToken ? "" : await getAccessToken();
 
   try {
@@ -301,7 +301,7 @@ export const startAdminMfaEnrollment = async (
     if (!(secret && otpauthUri)) {
       return {
         challengeExpired: false,
-        message: getMessage(messages, "admin.auth.mfa.errors.enroll_failed"),
+        message: t("admin.auth.mfa.errors.enroll_failed"),
         ok: false,
       };
     }
@@ -310,14 +310,14 @@ export const startAdminMfaEnrollment = async (
   } catch (error) {
     if (challengeToken) {
       return {
-        ...challengeMfaFailure(error, messages, locale, ENROLL_KEYS),
+        ...(await challengeMfaFailure(error, locale, ENROLL_KEYS)),
         ok: false,
       };
     }
 
     return {
       challengeExpired: false,
-      message: sessionMfaFailureMessage(error, messages, locale, ENROLL_KEYS),
+      message: await sessionMfaFailureMessage(error, locale, ENROLL_KEYS),
       ok: false,
     };
   }
@@ -329,7 +329,6 @@ export const confirmAdminMfaEnrollment = async (
   code: string,
   locale: Locale
 ): Promise<AdminMfaEnrollmentConfirmResult> => {
-  const messages = await loadAdminMessages(locale);
   const sessionToken = challengeToken ? "" : await getAccessToken();
 
   try {
@@ -355,14 +354,14 @@ export const confirmAdminMfaEnrollment = async (
   } catch (error) {
     if (challengeToken) {
       return {
-        ...challengeMfaFailure(error, messages, locale, ENROLL_KEYS),
+        ...(await challengeMfaFailure(error, locale, ENROLL_KEYS)),
         ok: false,
       };
     }
 
     return {
       challengeExpired: false,
-      message: sessionMfaFailureMessage(error, messages, locale, ENROLL_KEYS),
+      message: await sessionMfaFailureMessage(error, locale, ENROLL_KEYS),
       ok: false,
     };
   }
@@ -373,7 +372,6 @@ export const disableAdminMfa = async (
   code: string,
   locale: Locale
 ): Promise<AdminMfaDisableResult> => {
-  const messages = await loadAdminMessages(locale);
   const sessionToken = await getAccessToken();
 
   try {
@@ -384,12 +382,7 @@ export const disableAdminMfa = async (
     return { ok: true };
   } catch (error) {
     return {
-      message: sessionMfaFailureMessage(
-        error,
-        messages,
-        locale,
-        NOT_ENABLED_KEYS
-      ),
+      message: await sessionMfaFailureMessage(error, locale, NOT_ENABLED_KEYS),
       ok: false,
     };
   }
@@ -400,7 +393,6 @@ export const regenerateAdminMfaRecoveryCodes = async (
   code: string,
   locale: Locale
 ): Promise<AdminMfaRecoveryCodesResult> => {
-  const messages = await loadAdminMessages(locale);
   const sessionToken = await getAccessToken();
 
   try {
@@ -411,12 +403,7 @@ export const regenerateAdminMfaRecoveryCodes = async (
     return { ok: true, recoveryCodes: response.recoveryCodes };
   } catch (error) {
     return {
-      message: sessionMfaFailureMessage(
-        error,
-        messages,
-        locale,
-        NOT_ENABLED_KEYS
-      ),
+      message: await sessionMfaFailureMessage(error, locale, NOT_ENABLED_KEYS),
       ok: false,
     };
   }

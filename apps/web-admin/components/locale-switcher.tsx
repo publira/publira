@@ -1,8 +1,9 @@
-import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { getLocaleLabel, getLocales } from "@publira/i18n";
 
-import { getLocale, loadAdminMessages } from "../lib/locale";
+import { getLocale } from "../lib/locale";
 import { setAdminLocaleAction } from "../lib/locale-action";
 import { LOCALE_FIELD_NAME } from "../lib/locale-shared";
+import { getMessagesFor } from "../lib/messages";
 import {
   LocaleSwitcher,
   LocaleSwitcherContent,
@@ -19,8 +20,8 @@ export const AdminLocaleSwitcher = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
-  const label = getMessage(messages, "locale.label");
+  const t = await getMessagesFor(locale);
+  const label = t("locale.label");
 
   return (
     <LocaleSwitcher

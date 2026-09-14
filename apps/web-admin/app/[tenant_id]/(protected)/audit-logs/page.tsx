@@ -1,5 +1,3 @@
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -36,7 +34,8 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -62,9 +61,9 @@ type AuditLogsPageProps = PageProps<"/[tenant_id]/audit-logs">;
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "admin.audit.title") };
+  return { title: t("admin.audit.title") };
 };
 
 export const generateStaticParams = () =>
@@ -112,9 +111,9 @@ const AuditLogsContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseAuditLogFilters(sp, allowedActionValues);
   const locale = await getLocale(tenantId);
-  const messages = sharedCatalog(locale);
 
-  const [result, actorCandidatesResult, timeZone] = await Promise.all([
+  const [t, result, actorCandidatesResult, timeZone] = await Promise.all([
+    getMessagesFor(locale),
     listAuditLogs(tenantId, locale, {
       action: filters.action,
       actorUserPublicId: filters.actor,
@@ -154,7 +153,7 @@ const AuditLogsContent = async ({
   const actorItems = actorCandidatesResult.ok
     ? actorCandidatesResult.actors.map((actor) => ({
         label: actor.name
-          ? getMessage(messages, "admin.audit.actor_option", {
+          ? t("admin.audit.actor_option", {
               id: actor.publicId,
               name: actor.name,
             })
@@ -167,14 +166,21 @@ const AuditLogsContent = async ({
     <AdminSections>
       <section className="grid gap-3">
         <p className="max-w-3xl text-sm text-muted-foreground">
-          {getMessage(messages, "admin.audit.filter.description", {
-            time_zone: timeZone,
-          })}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <Message
+              message="admin.audit.filter.description"
+              values={{
+                time_zone: timeZone,
+              }}
+            />
+          </Suspense>
         </p>
         <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Field>
             <FieldLabel>
-              {getMessage(messages, "admin.audit.filter.from")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.audit.filter.from" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <Input defaultValue={filters.from} name="from" type="date" />
@@ -183,7 +189,9 @@ const AuditLogsContent = async ({
 
           <Field>
             <FieldLabel>
-              {getMessage(messages, "admin.audit.filter.to")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.audit.filter.to" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <Input defaultValue={filters.to} name="to" type="date" />
@@ -193,14 +201,16 @@ const AuditLogsContent = async ({
           <AuditActionSelect
             defaultValue={filters.action}
             options={auditActionOptions.map((option) => ({
-              label: getMessage(messages, option.messageKey),
+              label: t(option.messageKey),
               value: option.value,
             }))}
           />
 
           <Field>
             <FieldLabel>
-              {getMessage(messages, "admin.audit.filter.actor")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.audit.filter.actor" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <ActorFilterCombobox
@@ -212,10 +222,14 @@ const AuditLogsContent = async ({
 
           <div className="flex items-end gap-2">
             <Button type="submit">
-              {getMessage(messages, "admin.audit.filter.apply")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.audit.filter.apply" />
+              </Suspense>
             </Button>
             <LinkButton href="/audit-logs" variant="outline">
-              {getMessage(messages, "admin.audit.filter.reset")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.audit.filter.reset" />
+              </Suspense>
             </LinkButton>
           </div>
         </form>
@@ -228,23 +242,33 @@ const AuditLogsContent = async ({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-44">
-                    {getMessage(messages, "admin.audit.columns.created_at")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="admin.audit.columns.created_at" />
+                    </Suspense>
                   </TableHead>
                   <TableHead className="w-56">
-                    {getMessage(messages, "admin.audit.columns.actor")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="admin.audit.columns.actor" />
+                    </Suspense>
                   </TableHead>
                   <TableHead>
-                    {getMessage(messages, "admin.audit.columns.action")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="admin.audit.columns.action" />
+                    </Suspense>
                   </TableHead>
                   <TableHead className="w-32">
-                    {getMessage(messages, "admin.audit.columns.outcome")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="admin.audit.columns.outcome" />
+                    </Suspense>
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {result.auditLogs.length === 0 ? (
                   <TableEmptyRow colSpan={4}>
-                    {getMessage(messages, "admin.audit.empty")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="admin.audit.empty" />
+                    </Suspense>
                   </TableEmptyRow>
                 ) : (
                   result.auditLogs.map((item) => (
@@ -281,19 +305,28 @@ const AuditLogsContent = async ({
 
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
-                {getMessage(messages, "admin.audit.pagination_description", {
-                  count: pageSize,
-                })}
+                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                  <Message
+                    message="admin.audit.pagination_description"
+                    values={{
+                      count: pageSize,
+                    }}
+                  />
+                </Suspense>
               </p>
               <div className="flex gap-2">
                 {previousHref ? (
                   <LinkButton href={previousHref} variant="outline">
-                    {getMessage(messages, "admin.common.previous")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="admin.common.previous" />
+                    </Suspense>
                   </LinkButton>
                 ) : null}
                 {nextHref ? (
                   <LinkButton href={nextHref} variant="outline">
-                    {getMessage(messages, "admin.common.next")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="admin.common.next" />
+                    </Suspense>
                   </LinkButton>
                 ) : null}
               </div>

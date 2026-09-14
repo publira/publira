@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { getMessage } from "@publira/i18n";
-import type { MessageValues } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,9 +11,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CommentItem, CommentStatus } from "../comment-types";
 import { CommentManager } from "./comment-manager";
 
+vi.mock("#lib/messages", () => ({
+  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
+}));
+
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en")),
+}));
+
 vi.mock("#components/message", () => ({
-  Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("en"), message, values),
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 vi.mock("next/link", () => ({
@@ -71,28 +93,28 @@ afterEach(() => {
 });
 
 describe("CommentManager", () => {
-  it("says there is nothing to show when the first page is empty", () => {
+  it("says there is nothing to show when the first page is empty", async () => {
     render(
-      <CommentManager
-        comments={[]}
-        locale="en"
-        pageSize={20}
-        timeZone="Asia/Tokyo"
-      />
+      await CommentManager({
+        comments: [],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("There are no comments to show.")).toBeTruthy();
   });
 
-  it("renders the failure instead of the list when the read failed", () => {
+  it("renders the failure instead of the list when the read failed", async () => {
     render(
-      <CommentManager
-        comments={[]}
-        listErrorMessage="The API is unavailable."
-        locale="en"
-        pageSize={20}
-        timeZone="Asia/Tokyo"
-      />
+      await CommentManager({
+        comments: [],
+        listErrorMessage: "The API is unavailable.",
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("Could not display the comments")).toBeTruthy();
@@ -100,14 +122,14 @@ describe("CommentManager", () => {
     expect(screen.queryByText("There are no comments to show.")).toBeNull();
   });
 
-  it("offers approve, remove, and purge on a comment awaiting approval", () => {
+  it("offers approve, remove, and purge on a comment awaiting approval", async () => {
     render(
-      <CommentManager
-        comments={[comment("pending")]}
-        locale="en"
-        pageSize={20}
-        timeZone="Asia/Tokyo"
-      />
+      await CommentManager({
+        comments: [comment("pending")],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("approve COMMENT0001")).toBeTruthy();
@@ -116,19 +138,19 @@ describe("CommentManager", () => {
     expect(screen.queryByText("restore COMMENT0001")).toBeNull();
   });
 
-  it("offers only a purge on a comment its author deleted", () => {
+  it("offers only a purge on a comment its author deleted", async () => {
     render(
-      <CommentManager
-        comments={[
+      await CommentManager({
+        comments: [
           comment("withdrawn", {
             purgeDueAt: "2099-06-08T00:00:00Z",
             withdrawnAt: "2026-06-01T09:00:00Z",
           }),
-        ]}
-        locale="en"
-        pageSize={20}
-        timeZone="Asia/Tokyo"
-      />
+        ],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("purge COMMENT0001")).toBeTruthy();
@@ -137,19 +159,19 @@ describe("CommentManager", () => {
     expect(screen.queryByText("restore COMMENT0001")).toBeNull();
   });
 
-  it("names who removed a comment and warns that its author still reads it", () => {
+  it("names who removed a comment and warns that its author still reads it", async () => {
     render(
-      <CommentManager
-        comments={[
+      await CommentManager({
+        comments: [
           comment("hidden", {
             hiddenAt: "2026-06-02T00:00:00Z",
             hiddenReason: "auto_reports",
           }),
-        ]}
-        locale="en"
-        pageSize={20}
-        timeZone="Asia/Tokyo"
-      />
+        ],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(
@@ -165,26 +187,26 @@ describe("CommentManager", () => {
     expect(screen.getByText("restore COMMENT0001")).toBeTruthy();
   });
 
-  it("counts the days a withdrawn comment has left in the tenant time zone", () => {
+  it("counts the days a withdrawn comment has left in the tenant time zone", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(
       Temporal.Instant.from("2026-06-01T20:00:00Z").epochMilliseconds
     );
     try {
       render(
-        <CommentManager
-          comments={[
+        await CommentManager({
+          comments: [
             comment("withdrawn", {
               // 2026-06-08 in Asia/Tokyo, where 2026-06-01T20:00Z is already
               // the 2nd — six days, not seven.
               purgeDueAt: "2026-06-07T15:00:00Z",
               withdrawnAt: "2026-06-01T09:00:00Z",
             }),
-          ]}
-          locale="en"
-          pageSize={20}
-          timeZone="Asia/Tokyo"
-        />
+          ],
+          locale: "en",
+          pageSize: 20,
+          timeZone: "Asia/Tokyo",
+        })
       );
 
       expect(screen.getByText(/Purged for good in 6 days/u)).toBeTruthy();
@@ -193,14 +215,14 @@ describe("CommentManager", () => {
     }
   });
 
-  it("links the episode to its page in the console", () => {
+  it("links the episode to its page in the console", async () => {
     render(
-      <CommentManager
-        comments={[comment("published")]}
-        locale="en"
-        pageSize={20}
-        timeZone="Asia/Tokyo"
-      />
+      await CommentManager({
+        comments: [comment("published")],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(

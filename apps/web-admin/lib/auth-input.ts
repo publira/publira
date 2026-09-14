@@ -11,12 +11,12 @@
  * open-redirect rule.
  */
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./admin-auth-shared";
-import type { AdminMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 /** Paths in `next` can carry a query string; 255 would clip real ones. */
@@ -62,24 +62,28 @@ export const authTokenSearchParamSchema = searchParamString({
   maxLength: 64,
 }).transform((value) => (AUTH_TOKEN_PATTERN.test(value) ? value : ""));
 
-export const authTokenFormSchema = (messages: AdminMessages) =>
-  z
+export const authTokenFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .string()
     .trim()
     .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
-      error: getMessage(messages, "admin.auth.fields.invalid_token"),
+      error: t("admin.auth.fields.invalid_token"),
     });
+};
+export const inviteTokenFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-export const inviteTokenFormSchema = (messages: AdminMessages) =>
-  z
+  return z
     .string({
-      error: getMessage(messages, "admin.auth.accept_invite.invalid_token"),
+      error: t("admin.auth.accept_invite.invalid_token"),
     })
     .trim()
     .refine((value) => AUTH_TOKEN_PATTERN.test(value), {
-      error: getMessage(messages, "admin.auth.accept_invite.invalid_token"),
+      error: t("admin.auth.accept_invite.invalid_token"),
     });
-
+};
 /**
  * Email shown on a login / reset screen. Not an input we act on as a
  * destination, so a malformed value is dropped rather than 404ing the page.
@@ -89,8 +93,9 @@ export const emailSearchParamSchema = searchParamString({
   maxLength: 255,
 }).transform((value) => (z.email().safeParse(value).success ? value : ""));
 
-export const tenantIdFormSchema = (messages: AdminMessages) => {
-  const missing = getMessage(messages, "admin.auth.fields.tenant_missing");
+export const tenantIdFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const missing = t("admin.auth.fields.tenant_missing");
 
   return z
     .string({ error: missing })
@@ -99,14 +104,15 @@ export const tenantIdFormSchema = (messages: AdminMessages) => {
     .refine(isTenantIdFormat, { error: missing });
 };
 
-export const emailFormSchema = (messages: AdminMessages) => {
-  const required = getMessage(messages, "admin.auth.fields.email_required");
+export const emailFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const required = t("admin.auth.fields.email_required");
 
   return z
     .string({ error: required })
     .trim()
     .min(1, required)
-    .pipe(z.email(getMessage(messages, "admin.auth.fields.email_invalid")));
+    .pipe(z.email(t("admin.auth.fields.email_invalid")));
 };
 
 /**
@@ -119,8 +125,9 @@ export const emailFormSchema = (messages: AdminMessages) => {
  */
 export const mfaCodeFormSchema = z.string().trim().min(1).max(64);
 
-export const passwordFormSchema = (messages: AdminMessages) => {
-  const required = getMessage(messages, "admin.auth.fields.password_required");
+export const passwordFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const required = t("admin.auth.fields.password_required");
 
   return z.string({ error: required }).min(1, required).max(1024);
 };

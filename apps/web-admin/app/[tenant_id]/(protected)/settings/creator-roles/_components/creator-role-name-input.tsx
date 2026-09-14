@@ -1,8 +1,8 @@
-import { getMessage } from "@publira/i18n";
 import { Input } from "@publira/ui-components/input";
 
 import { CREATOR_ROLE_NAME_MAX_LENGTH } from "#lib/creator-roles-shared";
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
 /**
@@ -15,17 +15,14 @@ import { getTenantId } from "#lib/tenant-id";
 export const CreatorRoleNameInput = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return (
     <Input
       className="sm:max-w-sm"
       maxLength={CREATOR_ROLE_NAME_MAX_LENGTH}
       name="name"
-      placeholder={getMessage(
-        messages,
-        "admin.creator_roles.form.name_placeholder"
-      )}
+      placeholder={t("admin.creator_roles.form.name_placeholder")}
       required
       type="text"
     />

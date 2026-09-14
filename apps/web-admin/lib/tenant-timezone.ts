@@ -3,10 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { cacheTag } from "next/cache";
 
@@ -15,6 +12,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export type GetTenantTimezoneResult =
@@ -35,13 +33,6 @@ export type GetTenantTimezoneResult =
 export type UpdateTenantTimezoneResult =
   | { ok: true; timezone: string }
   | { ok: false; message: string };
-
-const genericLoadErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.timezone.load_failed");
-const genericUpdateErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.settings.timezone.save_failed");
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
 
 /**
  * Tag the settings screen's cached read carries, so `updateTag` in the Server
@@ -107,12 +98,14 @@ export const getTenantTimezone = async (
 ): Promise<GetTenantTimezoneResult> => {
   "use cache: private";
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: !sessionId,
       timezone: DEFAULT_TIME_ZONE,
@@ -140,7 +133,7 @@ export const getTenantTimezone = async (
     return {
       message: parseErrorMessage(
         error,
-        genericLoadErrorMessage(messages),
+        t("admin.settings.timezone.load_failed"),
         locale
       ),
       ok: false,
@@ -176,11 +169,13 @@ export const updateTenantTimezone = async (
   },
   locale: Locale
 ): Promise<UpdateTenantTimezoneResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   const normalizedTenantId = input.tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -202,7 +197,7 @@ export const updateTenantTimezone = async (
     return {
       message: parseErrorMessage(
         error,
-        genericUpdateErrorMessage(messages),
+        t("admin.settings.timezone.save_failed"),
         locale
       ),
       ok: false,

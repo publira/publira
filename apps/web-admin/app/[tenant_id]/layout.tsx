@@ -1,4 +1,4 @@
-import { getMessage, LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -7,7 +7,8 @@ import type { Metadata } from "next";
 import { tenant_id } from "next/root-params";
 import type { ReactNode } from "react";
 
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantName } from "#lib/public-api";
 import { isTenantIdFormat } from "#lib/tenant-id-format";
 
@@ -39,15 +40,16 @@ export const generateMetadata = async (): Promise<Metadata> => {
   // costs the shell nothing: metadata is resolved in its own pass and streamed
   // into the document, so this read stays out of the route's static shell.
   const locale = await getLocale(normalizedTenantId);
-  const messages = await loadAdminMessages(locale);
-
   // `getTenantName` degrades to `null` when the public API is unavailable, so
   // an outage leaves the console titled "Admin console" instead of failing
   // every route.
-  const tenantName = await getTenantName(normalizedTenantId);
+  const [t, tenantName] = await Promise.all([
+    getMessagesFor(locale),
+    getTenantName(normalizedTenantId),
+  ]);
   const base = tenantName
-    ? getMessage(messages, "admin.shell.tenant_title", { name: tenantName })
-    : getMessage(messages, "admin.shell.title");
+    ? t("admin.shell.tenant_title", { name: tenantName })
+    : t("admin.shell.title");
 
   return {
     title: {

@@ -1,7 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -23,55 +22,53 @@ import {
   reorderGenres,
   updateGenre,
 } from "#lib/genre";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import type { GenreReorderResult, GenreRowActionState } from "../genre-types";
 
-const nameSchema = (messages: AdminMessages) =>
-  requiredTrimmedString(
-    getMessage(messages, "admin.genres.validation.name_required"),
+const nameSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return requiredTrimmedString(
+    t("admin.genres.validation.name_required"),
     CATALOG_NAME_MAX_LENGTH,
-    getMessage(messages, "admin.genres.validation.name_too_long", {
+    t("admin.genres.validation.name_too_long", {
       count: String(CATALOG_NAME_MAX_LENGTH),
     })
   );
+};
+const tenantIdSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const tenantIdSchema = (messages: AdminMessages) =>
-  requiredTrimmedString(
-    getMessage(messages, "admin.genres.validation.tenant_missing")
-  );
+  return requiredTrimmedString(t("admin.genres.validation.tenant_missing"));
+};
+const publicIdSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
 
-const publicIdSchema = (messages: AdminMessages) =>
-  requiredTrimmedString(
-    getMessage(messages, "admin.genres.validation.id_missing")
-  );
-
-const createGenreSchema = (messages: AdminMessages) =>
+  return requiredTrimmedString(t("admin.genres.validation.id_missing"));
+};
+const createGenreSchema = async (locale: Locale) =>
   z.object({
-    name: nameSchema(messages),
-    tenantId: tenantIdSchema(messages),
+    name: await nameSchema(locale),
+    tenantId: await tenantIdSchema(locale),
   });
-
-const renameGenreSchema = (messages: AdminMessages) =>
+const renameGenreSchema = async (locale: Locale) =>
   z.object({
-    name: nameSchema(messages),
-    publicId: publicIdSchema(messages),
-    tenantId: tenantIdSchema(messages),
+    name: await nameSchema(locale),
+    publicId: await publicIdSchema(locale),
+    tenantId: await tenantIdSchema(locale),
   });
-
-const deleteGenreSchema = (messages: AdminMessages) =>
+const deleteGenreSchema = async (locale: Locale) =>
   z.object({
-    publicId: publicIdSchema(messages),
-    tenantId: tenantIdSchema(messages),
+    publicId: await publicIdSchema(locale),
+    tenantId: await tenantIdSchema(locale),
   });
-
-const reorderGenresSchema = (messages: AdminMessages) =>
+const reorderGenresSchema = async (locale: Locale) =>
   z.object({
     expectedPublicIds: jsonStringArrayFormSchema,
     publicIds: jsonStringArrayFormSchema,
-    tenantId: tenantIdSchema(messages),
+    tenantId: await tenantIdSchema(locale),
   });
-
 const rowFormFields = {
   publicId: { kind: "value", name: "public_id" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -83,8 +80,11 @@ export const createGenreAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = createGenreSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    createGenreSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       name: "value",
       tenantId: { kind: "value", name: "tenant_id" },
@@ -104,7 +104,7 @@ export const createGenreAction = async (
 
   updateTag(genresCacheTag(tenantId));
 
-  return { message: getMessage(messages, "admin.genres.created"), ok: true };
+  return { message: t("admin.genres.created"), ok: true };
 };
 
 export const renameGenreAction = async (
@@ -113,8 +113,11 @@ export const renameGenreAction = async (
 ): Promise<GenreRowActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = renameGenreSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    renameGenreSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, { ...rowFormFields, name: "value" })
   );
   if (!parsed.success) {
@@ -139,7 +142,7 @@ export const renameGenreAction = async (
   updateTag(genresCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.genres.updated"),
+    message: t("admin.genres.updated"),
     ok: true,
     publicId,
   };
@@ -151,10 +154,11 @@ export const deleteGenreAction = async (
 ): Promise<GenreRowActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = deleteGenreSchema(messages).safeParse(
-    toFormDataInput(formData, rowFormFields)
-  );
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    deleteGenreSchema(locale),
+  ]);
+  const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
   if (!parsed.success) {
     const publicId = formData.get("public_id");
     return {
@@ -175,7 +179,7 @@ export const deleteGenreAction = async (
   updateTag(genresCacheTag(tenantId));
 
   return {
-    message: getMessage(messages, "admin.genres.deleted"),
+    message: t("admin.genres.deleted"),
     ok: true,
     publicId,
   };
@@ -186,8 +190,11 @@ export const reorderGenresAction = async (
 ): Promise<GenreReorderResult> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = sharedCatalog(locale);
-  const parsed = reorderGenresSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    reorderGenresSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       expectedPublicIds: {
         kind: "value",
@@ -200,7 +207,7 @@ export const reorderGenresAction = async (
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
-        fallback: getMessage(messages, "admin.genres.reorder_failed"),
+        fallback: t("admin.genres.reorder_failed"),
         locale,
       }),
       ok: false,
@@ -210,7 +217,7 @@ export const reorderGenresAction = async (
   const { expectedPublicIds, publicIds, tenantId } = parsed.data;
   if (publicIds.length === 0 || publicIds.length !== expectedPublicIds.length) {
     return {
-      message: getMessage(messages, "admin.genres.reorder_failed"),
+      message: t("admin.genres.reorder_failed"),
       ok: false,
     };
   }

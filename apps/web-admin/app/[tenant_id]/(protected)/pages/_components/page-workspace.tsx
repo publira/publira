@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -13,6 +11,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -22,10 +21,19 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useState, useContext } from "react";
+import {
+  Suspense,
+  useActionState,
+  useCallback,
+  useContext,
+  useState,
+} from "react";
 import type { ChangeEvent, MouseEvent } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -34,6 +42,7 @@ import {
   AdminSections,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import {
@@ -65,27 +74,15 @@ interface PageWorkspaceProps {
   ) => Promise<PageFormState>;
 }
 
-const getVersionStatus = (
-  messages: ReturnType<typeof sharedCatalog>,
+const versionTone = (
   page: PageListItem,
   version: PageVersionListItem
-): { label: string; tone: "info" | "muted" | "warning" } => {
+): "info" | "muted" | "warning" => {
   if (page.publishedVersionId === version.id) {
-    return {
-      label: getMessage(messages, "admin.pages.workspace.published"),
-      tone: "info",
-    };
+    return "info";
   }
-  if (version.status === "published") {
-    return {
-      label: getMessage(messages, "admin.pages.workspace.past_published"),
-      tone: "warning",
-    };
-  }
-  return {
-    label: getMessage(messages, "admin.pages.workspace.draft"),
-    tone: "muted",
-  };
+
+  return version.status === "published" ? "warning" : "muted";
 };
 
 interface PublicationStatusProps {
@@ -108,7 +105,7 @@ const PublicationStatus = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const isPublished = Boolean(page.publishedVersionId);
 
@@ -117,27 +114,36 @@ const PublicationStatus = ({
       <div className="flex flex-wrap items-center gap-3">
         <Badge tone={isPublished ? "info" : "muted"}>
           {isPublished
-            ? getMessage(messages, "admin.pages.workspace.published")
-            : getMessage(messages, "admin.pages.workspace.draft")}
+            ? t("admin.pages.workspace.published")
+            : t("admin.pages.workspace.draft")}
         </Badge>
         <span className="text-sm text-muted-foreground">
-          {getMessage(messages, "admin.pages.workspace.updated_at", {
-            date: formatPageDateTime(page.updatedAt, locale, timeZone),
-          })}
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <ClientMessage
+              message="admin.pages.workspace.updated_at"
+              values={{
+                date: formatPageDateTime(page.updatedAt, locale, timeZone),
+              }}
+            />
+          </Suspense>
         </span>
         {isPublished ? (
           <form action={unpublishAction}>
             <input name="tenant_id" type="hidden" value={tenantId} />
             <input name="page_id" type="hidden" value={page.id} />
             <Button type="submit" variant="outline">
-              {getMessage(messages, "admin.pages.workspace.unpublish")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.workspace.unpublish" />
+              </Suspense>
             </Button>
           </form>
         ) : null}
       </div>
       {isPublished ? (
         <p className="text-sm text-muted-foreground">
-          {getMessage(messages, "admin.pages.workspace.unpublish_description")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <ClientMessage message="admin.pages.workspace.unpublish_description" />
+          </Suspense>
         </p>
       ) : null}
     </div>
@@ -181,7 +187,7 @@ export const PageWorkspace = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [titleState, titleFormAction, isTitlePending] = useActionState(
     updatePageAction,
@@ -233,16 +239,25 @@ export const PageWorkspace = ({
       })()
     : [];
 
-  const versionOptions = initialVersions.map((version) => {
-    const status = getVersionStatus(messages, initialPage, version);
-    return {
-      label: getMessage(messages, "admin.pages.workspace.version_option", {
-        status: status.label,
-        version: String(version.versionNumber),
-      }),
-      value: version.id,
-    };
-  });
+  // The label is interpolated into another message, so it has to be a string;
+  // the keys stay spelled out where the accessor that resolves them lives.
+  const versionStatusLabel = (version: PageVersionListItem): string => {
+    if (initialPage.publishedVersionId === version.id) {
+      return t("admin.pages.workspace.published");
+    }
+
+    return version.status === "published"
+      ? t("admin.pages.workspace.past_published")
+      : t("admin.pages.workspace.draft");
+  };
+
+  const versionOptions = initialVersions.map((version) => ({
+    label: t("admin.pages.workspace.version_option", {
+      status: versionStatusLabel(version),
+      version: String(version.versionNumber),
+    }),
+    value: version.id,
+  }));
   const availableCompareOptions = versionOptions.filter(
     (option) => option.value !== selectedVersionId
   );
@@ -299,10 +314,14 @@ export const PageWorkspace = ({
         <AdminSectionHeader>
           <AdminSectionHeading>
             <AdminSectionTitle>
-              {getMessage(messages, "admin.pages.workspace.basic_title")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.workspace.basic_title" />
+              </Suspense>
             </AdminSectionTitle>
             <AdminSectionDescription>
-              {getMessage(messages, "admin.pages.workspace.basic_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.workspace.basic_description" />
+              </Suspense>
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
@@ -331,7 +350,9 @@ export const PageWorkspace = ({
 
             <Field>
               <FieldLabel required>
-                {getMessage(messages, "admin.pages.workspace.title")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.pages.workspace.title" />
+                </Suspense>
               </FieldLabel>
               <FieldContent>
                 <Input
@@ -354,8 +375,8 @@ export const PageWorkspace = ({
           <div className="flex justify-end">
             <Button disabled={isTitlePending} type="submit">
               {isTitlePending
-                ? getMessage(messages, "admin.pages.workspace.updating")
-                : getMessage(messages, "admin.pages.workspace.update_title")}
+                ? t("admin.pages.workspace.updating")
+                : t("admin.pages.workspace.update_title")}
             </Button>
           </div>
         </form>
@@ -366,13 +387,14 @@ export const PageWorkspace = ({
           <AdminSectionHeader>
             <AdminSectionHeading>
               <AdminSectionTitle>
-                {getMessage(messages, "admin.pages.workspace.editor_title")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.pages.workspace.editor_title" />
+                </Suspense>
               </AdminSectionTitle>
               <AdminSectionDescription>
-                {getMessage(
-                  messages,
-                  "admin.pages.workspace.editor_description"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.pages.workspace.editor_description" />
+                </Suspense>
               </AdminSectionDescription>
             </AdminSectionHeading>
           </AdminSectionHeader>
@@ -383,7 +405,9 @@ export const PageWorkspace = ({
 
             <Field>
               <FieldLabel>
-                {getMessage(messages, "admin.pages.workspace.body")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.pages.workspace.body" />
+                </Suspense>
               </FieldLabel>
               <FieldContent>
                 <Textarea
@@ -393,10 +417,9 @@ export const PageWorkspace = ({
                   value={draftContent}
                 />
                 <FieldDescription>
-                  {getMessage(
-                    messages,
-                    "admin.pages.workspace.body_description"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.body_description" />
+                  </Suspense>
                 </FieldDescription>
               </FieldContent>
             </Field>
@@ -410,8 +433,8 @@ export const PageWorkspace = ({
             <div className="flex justify-end">
               <Button disabled={isDraftPending} type="submit">
                 {isDraftPending
-                  ? getMessage(messages, "admin.pages.workspace.saving")
-                  : getMessage(messages, "admin.pages.workspace.save_draft")}
+                  ? t("admin.pages.workspace.saving")
+                  : t("admin.pages.workspace.save_draft")}
               </Button>
             </div>
           </form>
@@ -421,13 +444,14 @@ export const PageWorkspace = ({
           <AdminSectionHeader>
             <AdminSectionHeading>
               <AdminSectionTitle>
-                {getMessage(messages, "admin.pages.workspace.preview_title")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.pages.workspace.preview_title" />
+                </Suspense>
               </AdminSectionTitle>
               <AdminSectionDescription>
-                {getMessage(
-                  messages,
-                  "admin.pages.workspace.preview_description"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.pages.workspace.preview_description" />
+                </Suspense>
               </AdminSectionDescription>
             </AdminSectionHeading>
           </AdminSectionHeader>
@@ -439,144 +463,145 @@ export const PageWorkspace = ({
         <AdminSectionHeader>
           <AdminSectionHeading>
             <AdminSectionTitle>
-              {getMessage(messages, "admin.pages.workspace.versions_title")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.workspace.versions_title" />
+              </Suspense>
             </AdminSectionTitle>
             <AdminSectionDescription>
-              {getMessage(
-                messages,
-                "admin.pages.workspace.versions_description"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.workspace.versions_description" />
+              </Suspense>
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
         {initialVersions.length === 0 ? (
           <FormMessage>
-            {getMessage(messages, "admin.pages.workspace.versions_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.pages.workspace.versions_empty" />
+            </Suspense>
           </FormMessage>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-24">
-                  {getMessage(
-                    messages,
-                    "admin.pages.workspace.columns.version"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.columns.version" />
+                  </Suspense>
                 </TableHead>
                 <TableHead className="w-24">
-                  {getMessage(messages, "admin.pages.workspace.columns.status")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.columns.status" />
+                  </Suspense>
                 </TableHead>
                 <TableHead>
-                  {getMessage(
-                    messages,
-                    "admin.pages.workspace.columns.created_at"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.columns.created_at" />
+                  </Suspense>
                 </TableHead>
                 <TableHead>
-                  {getMessage(
-                    messages,
-                    "admin.pages.workspace.columns.published_at"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.columns.published_at" />
+                  </Suspense>
                 </TableHead>
                 <TableHead className="w-[320px]">
-                  {getMessage(
-                    messages,
-                    "admin.pages.workspace.columns.actions"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.columns.actions" />
+                  </Suspense>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialVersions.map((version) => {
-                const status = getVersionStatus(messages, initialPage, version);
+              {initialVersions.map((version) => (
+                <TableRow key={version.id}>
+                  <TableCell className="font-medium">
+                    v{version.versionNumber}
+                  </TableCell>
+                  <TableCell>
+                    <Badge tone={versionTone(initialPage, version)}>
+                      {versionStatusLabel(version)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {formatPageDateTime(version.createdAt, locale, timeZone)}
+                  </TableCell>
+                  <TableCell>
+                    {formatPageDateTime(version.publishedAt, locale, timeZone)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        data-version-id={version.id}
+                        onClick={handleLoadVersionClick}
+                        type="button"
+                        variant="outline"
+                      >
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-32" />}
+                        >
+                          <ClientMessage message="admin.pages.workspace.load" />
+                        </Suspense>
+                      </Button>
 
-                return (
-                  <TableRow key={version.id}>
-                    <TableCell className="font-medium">
-                      v{version.versionNumber}
-                    </TableCell>
-                    <TableCell>
-                      <Badge tone={status.tone}>{status.label}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {formatPageDateTime(version.createdAt, locale, timeZone)}
-                    </TableCell>
-                    <TableCell>
-                      {formatPageDateTime(
-                        version.publishedAt,
-                        locale,
-                        timeZone
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
+                      <form action={publishAction}>
+                        <input
+                          name="tenant_id"
+                          type="hidden"
+                          value={tenantId}
+                        />
+                        <input
+                          name="page_id"
+                          type="hidden"
+                          value={initialPage.id}
+                        />
+                        <input
+                          name="version_id"
+                          type="hidden"
+                          value={version.id}
+                        />
                         <Button
-                          data-version-id={version.id}
-                          onClick={handleLoadVersionClick}
-                          type="button"
+                          disabled={
+                            initialPage.publishedVersionId === version.id
+                          }
+                          type="submit"
                           variant="outline"
                         >
-                          {getMessage(messages, "admin.pages.workspace.load")}
-                        </Button>
-
-                        <form action={publishAction}>
-                          <input
-                            name="tenant_id"
-                            type="hidden"
-                            value={tenantId}
-                          />
-                          <input
-                            name="page_id"
-                            type="hidden"
-                            value={initialPage.id}
-                          />
-                          <input
-                            name="version_id"
-                            type="hidden"
-                            value={version.id}
-                          />
-                          <Button
-                            disabled={
-                              initialPage.publishedVersionId === version.id
-                            }
-                            type="submit"
-                            variant="outline"
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-32" />}
                           >
-                            {getMessage(
-                              messages,
-                              "admin.pages.workspace.publish"
-                            )}
-                          </Button>
-                        </form>
+                            <ClientMessage message="admin.pages.workspace.publish" />
+                          </Suspense>
+                        </Button>
+                      </form>
 
-                        <form action={rollbackAction}>
-                          <input
-                            name="tenant_id"
-                            type="hidden"
-                            value={tenantId}
-                          />
-                          <input
-                            name="page_id"
-                            type="hidden"
-                            value={initialPage.id}
-                          />
-                          <input
-                            name="version_id"
-                            type="hidden"
-                            value={version.id}
-                          />
-                          <Button type="submit" variant="outline">
-                            {getMessage(
-                              messages,
-                              "admin.pages.workspace.rollback"
-                            )}
-                          </Button>
-                        </form>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                      <form action={rollbackAction}>
+                        <input
+                          name="tenant_id"
+                          type="hidden"
+                          value={tenantId}
+                        />
+                        <input
+                          name="page_id"
+                          type="hidden"
+                          value={initialPage.id}
+                        />
+                        <input
+                          name="version_id"
+                          type="hidden"
+                          value={version.id}
+                        />
+                        <Button type="submit" variant="outline">
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-32" />}
+                          >
+                            <ClientMessage message="admin.pages.workspace.rollback" />
+                          </Suspense>
+                        </Button>
+                      </form>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}
@@ -586,23 +611,31 @@ export const PageWorkspace = ({
         <AdminSectionHeader>
           <AdminSectionHeading>
             <AdminSectionTitle>
-              {getMessage(messages, "admin.pages.workspace.diff_title")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.workspace.diff_title" />
+              </Suspense>
             </AdminSectionTitle>
             <AdminSectionDescription>
-              {getMessage(messages, "admin.pages.workspace.diff_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.workspace.diff_description" />
+              </Suspense>
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
         {initialVersions.length <= 1 ? (
           <FormMessage>
-            {getMessage(messages, "admin.pages.workspace.diff_empty")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.pages.workspace.diff_empty" />
+            </Suspense>
           </FormMessage>
         ) : (
           <>
             <div className="grid gap-4 md:grid-cols-2">
               <Field>
                 <FieldLabel>
-                  {getMessage(messages, "admin.pages.workspace.compare_from")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.compare_from" />
+                  </Suspense>
                 </FieldLabel>
                 <FieldContent>
                   <Select
@@ -615,7 +648,9 @@ export const PageWorkspace = ({
 
               <Field>
                 <FieldLabel>
-                  {getMessage(messages, "admin.pages.workspace.compare_to")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.compare_to" />
+                  </Suspense>
                 </FieldLabel>
                 <FieldContent>
                   <Select
@@ -631,27 +666,34 @@ export const PageWorkspace = ({
               <>
                 <div className="flex flex-wrap gap-2">
                   <Badge tone="info">
-                    {getMessage(messages, "admin.pages.workspace.diff_added", {
-                      count: diffResult.summary.added,
-                    })}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage
+                        message="admin.pages.workspace.diff_added"
+                        values={{
+                          count: diffResult.summary.added,
+                        }}
+                      />
+                    </Suspense>
                   </Badge>
                   <Badge tone="warning">
-                    {getMessage(
-                      messages,
-                      "admin.pages.workspace.diff_removed",
-                      {
-                        count: diffResult.summary.removed,
-                      }
-                    )}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage
+                        message="admin.pages.workspace.diff_removed"
+                        values={{
+                          count: diffResult.summary.removed,
+                        }}
+                      />
+                    </Suspense>
                   </Badge>
                   <Badge tone="muted">
-                    {getMessage(
-                      messages,
-                      "admin.pages.workspace.diff_unchanged",
-                      {
-                        count: diffResult.summary.unchanged,
-                      }
-                    )}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage
+                        message="admin.pages.workspace.diff_unchanged"
+                        values={{
+                          count: diffResult.summary.unchanged,
+                        }}
+                      />
+                    </Suspense>
                   </Badge>
                 </div>
 

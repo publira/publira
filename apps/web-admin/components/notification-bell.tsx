@@ -1,6 +1,9 @@
-import { getMessage } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { getLocale, loadAdminMessages } from "#lib/locale";
+import { Message } from "#components/message";
+import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -36,19 +39,21 @@ export { NotificationBellSkeleton } from "./notification-bell-menu";
 export const NotificationBell = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const [list, unread, messages] = await Promise.all([
+  const [list, unread, t] = await Promise.all([
     listNotifications(tenantId, locale, { limit: notificationMenuLimit }),
     countUnreadNotifications(tenantId, locale),
-    loadAdminMessages(locale),
+    getMessagesFor(locale),
   ]);
   const count = Math.max(0, unread.unreadCount);
   const ariaLabel =
     count > 0
-      ? getMessage(messages, "admin.shell.notifications_unread", { count })
-      : getMessage(messages, "admin.shell.notifications_none");
+      ? t("admin.shell.notifications_unread", { count })
+      : t("admin.shell.notifications_none");
   let notificationContent = (
     <NotificationBellError>
-      {getMessage(messages, "admin.notifications.list_failed")}
+      <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+        <Message message="admin.notifications.list_failed" />
+      </Suspense>
     </NotificationBellError>
   );
 
@@ -56,10 +61,14 @@ export const NotificationBell = async () => {
     notificationContent = (
       <NotificationBellEmpty>
         <NotificationBellEmptyTitle>
-          {getMessage(messages, "admin.notifications.empty_title")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.notifications.empty_title" />
+          </Suspense>
         </NotificationBellEmptyTitle>
         <NotificationBellEmptyDescription>
-          {getMessage(messages, "admin.notifications.empty_description")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.notifications.empty_description" />
+          </Suspense>
         </NotificationBellEmptyDescription>
       </NotificationBellEmpty>
     );
@@ -76,8 +85,8 @@ export const NotificationBell = async () => {
           >
             <NotificationBellItemState>
               {notification.isRead
-                ? getMessage(messages, "admin.notifications.read")
-                : getMessage(messages, "admin.notifications.unread")}
+                ? t("admin.notifications.read")
+                : t("admin.notifications.unread")}
             </NotificationBellItemState>
             <NotificationBellItemTitle>
               {notification.title}
@@ -98,11 +107,15 @@ export const NotificationBell = async () => {
       </NotificationBellTrigger>
       <NotificationBellContent>
         <NotificationBellHeader unreadCount={count}>
-          {getMessage(messages, "admin.notifications.title")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.notifications.title" />
+          </Suspense>
         </NotificationBellHeader>
         {notificationContent}
         <NotificationBellMore href="/notifications">
-          {getMessage(messages, "admin.notifications.menu_more")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.notifications.menu_more" />
+          </Suspense>
         </NotificationBellMore>
       </NotificationBellContent>
     </NotificationBellMenu>

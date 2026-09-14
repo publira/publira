@@ -1,7 +1,6 @@
 "use client";
 
-import { getMessage, toIntlLocale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
+import { toIntlLocale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -11,8 +10,10 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import {
+  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -20,7 +21,11 @@ import {
   useState,
 } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type {
@@ -46,7 +51,7 @@ export const AnnouncementForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [audienceType, setAudienceType] = useState<"all" | "selected">("all");
@@ -90,16 +95,15 @@ export const AnnouncementForm = ({
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.announcements.form.title")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.announcements.form.title" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
             maxLength={120}
             name="title"
-            placeholder={getMessage(
-              messages,
-              "admin.announcements.form.title_placeholder"
-            )}
+            placeholder={t("admin.announcements.form.title_placeholder")}
             required
             type="text"
           />
@@ -108,16 +112,15 @@ export const AnnouncementForm = ({
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.announcements.form.body")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.announcements.form.body" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Textarea
             maxLength={2000}
             name="body"
-            placeholder={getMessage(
-              messages,
-              "admin.announcements.form.body_placeholder"
-            )}
+            placeholder={t("admin.announcements.form.body_placeholder")}
             required
             rows={5}
           />
@@ -126,26 +129,29 @@ export const AnnouncementForm = ({
 
       <Field>
         <FieldLabel>
-          {getMessage(messages, "admin.announcements.form.link")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.announcements.form.link" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
             name="link_url"
-            placeholder={getMessage(
-              messages,
-              "admin.announcements.form.link_placeholder"
-            )}
+            placeholder={t("admin.announcements.form.link_placeholder")}
             type="text"
           />
           <FieldDescription>
-            {getMessage(messages, "admin.announcements.form.link_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.announcements.form.link_description" />
+            </Suspense>
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.announcements.form.audience")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.announcements.form.audience" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <div className="grid gap-2">
@@ -157,7 +163,9 @@ export const AnnouncementForm = ({
                 type="radio"
                 value="all"
               />
-              {getMessage(messages, "admin.announcements.form.audience_all")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.announcements.form.audience_all" />
+              </Suspense>
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -167,10 +175,9 @@ export const AnnouncementForm = ({
                 type="radio"
                 value="selected"
               />
-              {getMessage(
-                messages,
-                "admin.announcements.form.audience_selected"
-              )}
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.announcements.form.audience_selected" />
+              </Suspense>
             </label>
           </div>
         </FieldContent>
@@ -179,7 +186,9 @@ export const AnnouncementForm = ({
       {audienceType === "selected" ? (
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.announcements.form.target_users")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.announcements.form.target_users" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             {usersErrorMessage ? (
@@ -190,10 +199,9 @@ export const AnnouncementForm = ({
 
             {sortedUsers.length === 0 ? (
               <FieldDescription>
-                {getMessage(
-                  messages,
-                  "admin.announcements.form.target_users_unavailable"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.announcements.form.target_users_unavailable" />
+                </Suspense>
               </FieldDescription>
             ) : (
               <div className="max-h-72 overflow-y-auto border border-border p-3">
@@ -209,11 +217,14 @@ export const AnnouncementForm = ({
                         type="checkbox"
                         value={user.publicId}
                       />
-                      {getMessage(
-                        messages,
-                        "admin.announcements.form.user_option",
-                        { id: user.publicId, name: user.name }
-                      )}
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <ClientMessage
+                          message="admin.announcements.form.user_option"
+                          values={{ id: user.publicId, name: user.name }}
+                        />
+                      </Suspense>
                     </label>
                   ))}
                 </div>
@@ -241,8 +252,8 @@ export const AnnouncementForm = ({
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit">
           {isPending
-            ? getMessage(messages, "admin.announcements.form.submitting")
-            : getMessage(messages, "admin.announcements.form.submit")}
+            ? t("admin.announcements.form.submitting")
+            : t("admin.announcements.form.submit")}
         </Button>
       </div>
     </form>

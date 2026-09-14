@@ -3,10 +3,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { RpcErrorMessageOverrides } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
 import { cacheTag } from "next/cache";
 
 import {
@@ -15,6 +12,7 @@ import {
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { CATALOG_NAME_MAX_LENGTH } from "./catalog-name";
+import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface GenreItem {
@@ -51,13 +49,6 @@ export type DeleteGenreResult = { ok: true } | { ok: false; message: string };
 export const genresCacheTag = (tenantId: string): string =>
   `genres-${tenantId}`;
 
-const sessionErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "errors.rpc.unauthenticated");
-const listErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.genres.list_failed");
-const saveErrorMessage = (messages: SharedMessages): string =>
-  getMessage(messages, "admin.genres.save_failed");
-
 /**
  * The name rules the API enforces, worded once for both writes that carry a
  * name. `invalid-argument` covers all three of them — empty, too long, and no
@@ -65,12 +56,18 @@ const saveErrorMessage = (messages: SharedMessages): string =>
  * slug this name would collide with, which the two names need not look alike
  * to do.
  */
-const nameOverrides = (messages: SharedMessages): RpcErrorMessageOverrides => ({
-  conflict: getMessage(messages, "admin.genres.name_taken"),
-  "invalid-argument": getMessage(messages, "admin.genres.name_invalid", {
-    count: String(CATALOG_NAME_MAX_LENGTH),
-  }),
-});
+const nameOverrides = async (
+  locale: Locale
+): Promise<RpcErrorMessageOverrides> => {
+  const t = await getMessagesFor(locale);
+
+  return {
+    conflict: t("admin.genres.name_taken"),
+    "invalid-argument": t("admin.genres.name_invalid", {
+      count: String(CATALOG_NAME_MAX_LENGTH),
+    }),
+  };
+};
 
 const mapErrorToMessage = (
   error: unknown,
@@ -107,12 +104,14 @@ export const listGenres = async (
   "use cache: private";
   cacheTag(genresCacheTag(tenantId));
 
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
     return {
       genres: [],
-      message: sessionErrorMessage(messages),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -145,7 +144,7 @@ export const listGenres = async (
     if (walkStop !== "completed") {
       return {
         genres: [],
-        message: listErrorMessage(messages),
+        message: t("admin.genres.list_failed"),
         ok: false,
         requiresSignIn: false,
       };
@@ -156,7 +155,11 @@ export const listGenres = async (
     rethrowUnclassifiedRpcError(error);
     return {
       genres: [],
-      message: mapErrorToMessage(error, listErrorMessage(messages), locale),
+      message: await mapErrorToMessage(
+        error,
+        t("admin.genres.list_failed"),
+        locale
+      ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -167,10 +170,12 @@ export const createGenre = async (
   input: { tenantId: string; name: string },
   locale: Locale
 ): Promise<CreateGenreResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -183,7 +188,7 @@ export const createGenre = async (
     );
 
     if (!response.genre?.publicId?.trim()) {
-      return { message: saveErrorMessage(messages), ok: false };
+      return { message: t("admin.genres.save_failed"), ok: false };
     }
 
     return { genre: mapGenre(response.genre), ok: true };
@@ -191,11 +196,11 @@ export const createGenre = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        saveErrorMessage(messages),
+        t("admin.genres.save_failed"),
         locale,
-        nameOverrides(messages)
+        await nameOverrides(locale)
       ),
       ok: false,
     };
@@ -206,10 +211,12 @@ export const updateGenre = async (
   input: { tenantId: string; publicId: string; name: string },
   locale: Locale
 ): Promise<UpdateGenreResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -223,7 +230,7 @@ export const updateGenre = async (
     );
 
     if (!response.genre?.publicId?.trim()) {
-      return { message: saveErrorMessage(messages), ok: false };
+      return { message: t("admin.genres.save_failed"), ok: false };
     }
 
     return { genre: mapGenre(response.genre), ok: true };
@@ -231,11 +238,11 @@ export const updateGenre = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        saveErrorMessage(messages),
+        t("admin.genres.save_failed"),
         locale,
-        nameOverrides(messages)
+        await nameOverrides(locale)
       ),
       ok: false,
     };
@@ -259,10 +266,12 @@ export const reorderGenres = async (
   },
   locale: Locale
 ): Promise<ReorderGenresResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -283,12 +292,12 @@ export const reorderGenres = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        getMessage(messages, "admin.genres.reorder_failed"),
+        t("admin.genres.reorder_failed"),
         locale,
         {
-          precondition: getMessage(messages, "admin.genres.reorder_conflict"),
+          precondition: t("admin.genres.reorder_conflict"),
         }
       ),
       ok: false,
@@ -307,10 +316,12 @@ export const deleteGenre = async (
   input: { tenantId: string; publicId: string },
   locale: Locale
 ): Promise<DeleteGenreResult> => {
-  const messages = sharedCatalog(locale);
-  const sessionId = await getAccessToken();
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
   if (!sessionId) {
-    return { message: sessionErrorMessage(messages), ok: false };
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -327,12 +338,12 @@ export const deleteGenre = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(
+      message: await mapErrorToMessage(
         error,
-        getMessage(messages, "admin.genres.delete_failed"),
+        t("admin.genres.delete_failed"),
         locale,
         {
-          precondition: getMessage(messages, "admin.genres.delete_in_use"),
+          precondition: t("admin.genres.delete_in_use"),
         }
       ),
       ok: false,

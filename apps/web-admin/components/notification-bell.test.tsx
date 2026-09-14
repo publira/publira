@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +12,32 @@ import { NotificationBell } from "./notification-bell";
 
 const countUnreadNotifications = vi.fn();
 const listNotifications = vi.fn();
+
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
+
+vi.mock("#lib/messages", () => ({
+  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
+}));
+
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en")),
+}));
 
 vi.mock("#lib/locale", () => ({
   getLocale: () => Promise.resolve("en"),

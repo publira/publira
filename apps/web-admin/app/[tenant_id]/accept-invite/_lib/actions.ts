@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -12,19 +12,20 @@ import { acceptTenantAdminInvitation } from "#lib/admin-auth";
 import { inviteTokenFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
 import { optionalTrimmedString } from "#lib/form-schemas";
-import { loadAdminMessages } from "#lib/locale";
-import type { AdminMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
-const acceptInviteFormSchema = (messages: AdminMessages) =>
-  z
+const acceptInviteFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .object({
       accountExists: z.preprocess((value) => value === "true", z.boolean()),
       confirmPassword: optionalTrimmedString(1024),
       email: optionalTrimmedString(),
       name: optionalTrimmedString(),
       password: optionalTrimmedString(1024),
-      tenantId: tenantIdFormSchema(messages),
-      token: inviteTokenFormSchema(messages),
+      tenantId: await tenantIdFormSchema(locale),
+      token: await inviteTokenFormSchema(locale),
     })
     .superRefine((value, ctx) => {
       if (value.accountExists) {
@@ -34,10 +35,7 @@ const acceptInviteFormSchema = (messages: AdminMessages) =>
       if (!(value.name && value.password)) {
         ctx.addIssue({
           code: "custom",
-          message: getMessage(
-            messages,
-            "admin.auth.errors.name_and_password_required"
-          ),
+          message: t("admin.auth.errors.name_and_password_required"),
         });
         return;
       }
@@ -45,14 +43,11 @@ const acceptInviteFormSchema = (messages: AdminMessages) =>
       if (value.password !== value.confirmPassword) {
         ctx.addIssue({
           code: "custom",
-          message: getMessage(
-            messages,
-            "admin.auth.accept_invite.password_mismatch"
-          ),
+          message: t("admin.auth.accept_invite.password_mismatch"),
         });
       }
     });
-
+};
 const buildLoginPath = (email: string): string => {
   const params = new URLSearchParams({
     invited: "done",
@@ -70,8 +65,8 @@ export const acceptInviteAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const messages = await loadAdminMessages(locale);
-  const parsed = acceptInviteFormSchema(messages).safeParse(
+  const schema = await acceptInviteFormSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       accountExists: { kind: "value", name: "account_exists" },
       confirmPassword: { kind: "value", name: "confirm_password" },

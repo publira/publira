@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { getMessage } from "@publira/i18n";
-import type { MessageValues } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,9 +11,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnnouncementItem } from "../announcement-types";
 import { AnnouncementManager } from "./announcement-manager";
 
+vi.mock("#lib/messages", () => ({
+  getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+  loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
+}));
+
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en")),
+}));
+
 vi.mock("#components/message", () => ({
-  Message: ({ message, values }: { message: string; values?: MessageValues }) =>
-    getMessage(sharedCatalog("en"), message, values),
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 vi.mock("next/link", () => ({
@@ -37,29 +59,29 @@ afterEach(() => {
 });
 
 describe("AnnouncementManager", () => {
-  it("says nothing is registered yet when the first page is empty", () => {
+  it("says nothing is registered yet when the first page is empty", async () => {
     render(
-      <AnnouncementManager
-        announcements={[]}
-        locale="en"
-        pageSize={20}
-        timeZone="Asia/Tokyo"
-      />
+      await AnnouncementManager({
+        announcements: [],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("There are no announcements yet.")).toBeDefined();
     expect(screen.queryByLabelText("Announcements pagination")).toBeNull();
   });
 
-  it("does not say the whole list is empty when a later page is empty", () => {
+  it("does not say the whole list is empty when a later page is empty", async () => {
     render(
-      <AnnouncementManager
-        announcements={[]}
-        locale="en"
-        pageSize={20}
-        previousHref="?token=previous"
-        timeZone="Asia/Tokyo"
-      />
+      await AnnouncementManager({
+        announcements: [],
+        locale: "en",
+        pageSize: 20,
+        previousHref: "?token=previous",
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(
@@ -71,16 +93,16 @@ describe("AnnouncementManager", () => {
     expect(screen.queryByRole("link", { name: "Next" })).toBeNull();
   });
 
-  it("renders the rows and the pager on a later page", () => {
+  it("renders the rows and the pager on a later page", async () => {
     render(
-      <AnnouncementManager
-        nextHref="?token=next"
-        announcements={[announcement("n1")]}
-        locale="en"
-        pageSize={20}
-        previousHref="?token=previous"
-        timeZone="Asia/Tokyo"
-      />
+      await AnnouncementManager({
+        announcements: [announcement("n1")],
+        locale: "en",
+        nextHref: "?token=next",
+        pageSize: 20,
+        previousHref: "?token=previous",
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     expect(screen.getByText("Scheduled maintenance")).toBeDefined();
@@ -94,17 +116,17 @@ describe("AnnouncementManager", () => {
     ).toBe("?token=next");
   });
 
-  it("shows only the error and does not call the list empty when the fetch fails", () => {
+  it("shows only the error and does not call the list empty when the fetch fails", async () => {
     render(
-      <AnnouncementManager
-        listErrorMessage="Could not load the announcements."
-        nextHref="?token=next"
-        announcements={[]}
-        locale="en"
-        pageSize={20}
-        previousHref="?token=previous"
-        timeZone="Asia/Tokyo"
-      />
+      await AnnouncementManager({
+        announcements: [],
+        listErrorMessage: "Could not load the announcements.",
+        locale: "en",
+        nextHref: "?token=next",
+        pageSize: 20,
+        previousHref: "?token=previous",
+        timeZone: "Asia/Tokyo",
+      })
     );
 
     // A failed read is a failed section, so it is reported the way every other
@@ -124,14 +146,14 @@ describe("AnnouncementManager", () => {
     expect(screen.queryByLabelText("Announcements pagination")).toBeNull();
   });
 
-  it("shows the creation time as a wall clock in the tenant time zone", () => {
+  it("shows the creation time as a wall clock in the tenant time zone", async () => {
     render(
-      <AnnouncementManager
-        announcements={[announcement("n1")]}
-        locale="en"
-        pageSize={20}
-        timeZone="America/Los_Angeles"
-      />
+      await AnnouncementManager({
+        announcements: [announcement("n1")],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "America/Los_Angeles",
+      })
     );
 
     // 2026-06-01T00:00:00Z is 17:00 the previous calendar day in PDT.

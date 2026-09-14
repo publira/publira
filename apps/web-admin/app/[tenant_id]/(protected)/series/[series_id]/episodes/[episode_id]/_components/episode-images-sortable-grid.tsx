@@ -1,19 +1,11 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { useToastManager } from "@publira/ui-components";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  useCallback,
-  useOptimistic,
-  useRef,
-  useTransition,
-  useContext,
-} from "react";
+import { useCallback, useOptimistic, useRef, useTransition } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import type { EpisodeImageItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -53,11 +45,7 @@ export const EpisodeImagesSortableGrid = ({
   images,
   reorderAction,
 }: EpisodeImagesSortableGridProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();
@@ -83,8 +71,7 @@ export const EpisodeImagesSortableGrid = ({
         if (!result.ok) {
           add({
             title:
-              result.message ??
-              getMessage(messages, "admin.series.episodes.image_reorder_error"),
+              result.message ?? t("admin.series.episodes.image_reorder_error"),
             type: "error",
           });
           router.refresh();
@@ -92,30 +79,19 @@ export const EpisodeImagesSortableGrid = ({
         }
 
         add({
-          title: getMessage(messages, "admin.series.episodes.image_reordered"),
+          title: t("admin.series.episodes.image_reordered"),
           type: "success",
         });
         router.refresh();
       } catch {
         add({
-          title: getMessage(
-            messages,
-            "admin.series.episodes.image_reorder_error"
-          ),
+          title: t("admin.series.episodes.image_reorder_error"),
           type: "error",
         });
         router.refresh();
       }
     },
-    [
-      add,
-      episodePublicId,
-      messages,
-      reorderAction,
-      router,
-      seriesPublicId,
-      tenantId,
-    ]
+    [add, episodePublicId, reorderAction, t, router, seriesPublicId, tenantId]
   );
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {
@@ -175,7 +151,7 @@ export const EpisodeImagesSortableGrid = ({
           onDrop={handleDrop}
         >
           <Image
-            alt={getMessage(messages, "admin.series.episodes.image_alt", {
+            alt={t("admin.series.episodes.image_alt", {
               index: index + 1,
             })}
             className="h-36 w-full rounded object-cover"

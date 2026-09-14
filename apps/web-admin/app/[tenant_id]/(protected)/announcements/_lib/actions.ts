@@ -1,8 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
-import type { SharedMessages } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -18,11 +16,14 @@ import {
   requiredTrimmedString,
   trimmedStringListFormSchema,
 } from "#lib/form-schemas";
+import { getMessagesFor } from "#lib/messages";
 
 import type { CreateAnnouncementActionState } from "../announcement-types";
 
-const announcementFormSchema = (messages: SharedMessages) =>
-  z
+const announcementFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
     .object({
       audienceType: z.preprocess(
         (value) => {
@@ -33,23 +34,20 @@ const announcementFormSchema = (messages: SharedMessages) =>
           return value.trim();
         },
         z.enum(["all", "selected"], {
-          error: getMessage(
-            messages,
-            "admin.announcements.validation.audience_invalid"
-          ),
+          error: t("admin.announcements.validation.audience_invalid"),
         })
       ),
       body: requiredTrimmedString(
-        getMessage(messages, "admin.announcements.validation.body_required"),
+        t("admin.announcements.validation.body_required"),
         2000
       ),
       linkUrl: optionalTrimmedString(2048),
       targetUserPublicIds: trimmedStringListFormSchema,
       tenantId: requiredTrimmedString(
-        getMessage(messages, "admin.announcements.validation.tenant_missing")
+        t("admin.announcements.validation.tenant_missing")
       ),
       title: requiredTrimmedString(
-        getMessage(messages, "admin.announcements.validation.title_required"),
+        t("admin.announcements.validation.title_required"),
         120
       ),
     })
@@ -60,10 +58,7 @@ const announcementFormSchema = (messages: SharedMessages) =>
       ) {
         ctx.addIssue({
           code: "custom",
-          message: getMessage(
-            messages,
-            "admin.announcements.validation.target_users_required"
-          ),
+          message: t("admin.announcements.validation.target_users_required"),
           path: ["targetUserPublicIds"],
         });
       }
@@ -78,22 +73,20 @@ const announcementFormSchema = (messages: SharedMessages) =>
       ) {
         ctx.addIssue({
           code: "custom",
-          message: getMessage(
-            messages,
-            "admin.announcements.validation.link_invalid"
-          ),
+          message: t("admin.announcements.validation.link_invalid"),
           path: ["linkUrl"],
         });
       }
     });
-
+};
 export const createAnnouncementAction = async (
   _prevState: CreateAnnouncementActionState,
   formData: FormData
 ): Promise<CreateAnnouncementActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const parsed = announcementFormSchema(sharedCatalog(locale)).safeParse(
+  const schema = await announcementFormSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       audienceType: { kind: "value", name: "audience_type" },
       body: "value",

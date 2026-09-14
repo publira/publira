@@ -1,7 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -11,16 +9,11 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  useActionState,
-  useCallback,
-  useRef,
-  useState,
-  useContext,
-} from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense, useActionState, useCallback, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -28,6 +21,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
@@ -46,11 +40,7 @@ export const EpisodePagesForm = ({
   episodePublicId,
   action,
 }: EpisodePagesFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [uploadMode, setUploadMode] = useState<"pages" | "zip" | "epub">(
@@ -132,35 +122,23 @@ export const EpisodePagesForm = ({
     }
   }, []);
 
-  let fileLabel = getMessage(messages, "admin.series.episodes.pages.image");
-  let dropMessage = getMessage(
-    messages,
-    "admin.series.episodes.pages.drop_image"
-  );
+  let fileLabel = t("admin.series.episodes.pages.image");
+  let dropMessage = t("admin.series.episodes.pages.drop_image");
   let acceptValue = "image/*";
-  let fieldDescription = getMessage(
-    messages,
-    "admin.series.episodes.pages.image_description"
-  );
+  let fieldDescription = t("admin.series.episodes.pages.image_description");
 
   if (uploadMode === "zip") {
-    fileLabel = getMessage(messages, "admin.series.episodes.pages.zip");
-    dropMessage = getMessage(messages, "admin.series.episodes.pages.drop_zip");
+    fileLabel = t("admin.series.episodes.pages.zip");
+    dropMessage = t("admin.series.episodes.pages.drop_zip");
     acceptValue = ".zip,application/zip";
-    fieldDescription = getMessage(
-      messages,
-      "admin.series.episodes.pages.zip_description"
-    );
+    fieldDescription = t("admin.series.episodes.pages.zip_description");
   }
 
   if (uploadMode === "epub") {
-    fileLabel = getMessage(messages, "admin.series.episodes.pages.epub");
-    dropMessage = getMessage(messages, "admin.series.episodes.pages.drop_epub");
+    fileLabel = t("admin.series.episodes.pages.epub");
+    dropMessage = t("admin.series.episodes.pages.drop_epub");
     acceptValue = ".epub,application/epub+zip";
-    fieldDescription = getMessage(
-      messages,
-      "admin.series.episodes.pages.epub_description"
-    );
+    fieldDescription = t("admin.series.episodes.pages.epub_description");
   }
 
   return (
@@ -168,10 +146,14 @@ export const EpisodePagesForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            {getMessage(messages, "admin.series.episodes.pages.title")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.episodes.pages.title" />
+            </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
-            {getMessage(messages, "admin.series.episodes.pages.description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.episodes.pages.description" />
+            </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -183,7 +165,9 @@ export const EpisodePagesForm = ({
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.series.episodes.pages.target")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.episodes.pages.target" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <p className="text-sm text-muted-foreground">
@@ -194,7 +178,9 @@ export const EpisodePagesForm = ({
 
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.series.episodes.pages.method")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.series.episodes.pages.method" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <div className="flex flex-wrap gap-2">
@@ -204,10 +190,9 @@ export const EpisodePagesForm = ({
                 type="button"
                 variant={uploadMode === "pages" ? "default" : "outline"}
               >
-                {getMessage(
-                  messages,
-                  "admin.series.episodes.pages.select_images"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.series.episodes.pages.select_images" />
+                </Suspense>
               </Button>
               <Button
                 disabled={isPending}
@@ -215,7 +200,9 @@ export const EpisodePagesForm = ({
                 type="button"
                 variant={uploadMode === "zip" ? "default" : "outline"}
               >
-                {getMessage(messages, "admin.series.episodes.pages.select_zip")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.series.episodes.pages.select_zip" />
+                </Suspense>
               </Button>
               <Button
                 disabled={isPending}
@@ -223,10 +210,9 @@ export const EpisodePagesForm = ({
                 type="button"
                 variant={uploadMode === "epub" ? "default" : "outline"}
               >
-                {getMessage(
-                  messages,
-                  "admin.series.episodes.pages.select_epub"
-                )}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.series.episodes.pages.select_epub" />
+                </Suspense>
               </Button>
             </div>
           </FieldContent>
@@ -270,17 +256,13 @@ export const EpisodePagesForm = ({
             {isPending ? (
               <div className="grid gap-2">
                 <progress
-                  aria-label={getMessage(
-                    messages,
-                    "admin.series.episodes.pages.upload_progress"
-                  )}
+                  aria-label={t("admin.series.episodes.pages.upload_progress")}
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {getMessage(
-                    messages,
-                    "admin.series.episodes.pages.processing"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                    <ClientMessage message="admin.series.episodes.pages.processing" />
+                  </Suspense>
                 </p>
               </div>
             ) : null}
@@ -297,27 +279,15 @@ export const EpisodePagesForm = ({
           <Button disabled={isPending} type="submit">
             {(() => {
               if (isPending) {
-                return getMessage(
-                  messages,
-                  "admin.series.episodes.pages.adding"
-                );
+                return t("admin.series.episodes.pages.adding");
               }
               if (uploadMode === "zip") {
-                return getMessage(
-                  messages,
-                  "admin.series.episodes.pages.submit_zip"
-                );
+                return t("admin.series.episodes.pages.submit_zip");
               }
               if (uploadMode === "epub") {
-                return getMessage(
-                  messages,
-                  "admin.series.episodes.pages.submit_epub"
-                );
+                return t("admin.series.episodes.pages.submit_epub");
               }
-              return getMessage(
-                messages,
-                "admin.series.episodes.pages.submit_image"
-              );
+              return t("admin.series.episodes.pages.submit_image");
             })()}
           </Button>
         </div>

@@ -1,15 +1,24 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useState, useContext } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import {
+  Suspense,
+  useActionState,
+  useCallback,
+  useContext,
+  useState,
+} from "react";
 import type { ChangeEvent } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import {
+  AdminLocaleContext,
+  useAdminMessages,
+} from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
@@ -23,18 +32,22 @@ interface LabelFormProps {
   initialLabel?: LabelListItem;
 }
 
-const getSubmitLabel = (
-  messages: ReturnType<typeof sharedCatalog>,
-  isUpdate: boolean,
-  isPending: boolean
-): string => {
+const LabelFormSubmitLabel = ({
+  isPending,
+  isUpdate,
+}: {
+  isPending: boolean;
+  isUpdate: boolean;
+}) => {
   if (isPending) {
-    return getMessage(messages, "admin.labels.form.submitting");
+    return <ClientMessage message="admin.labels.form.submitting" />;
   }
-  if (isUpdate) {
-    return getMessage(messages, "admin.labels.form.update");
-  }
-  return getMessage(messages, "admin.labels.form.create");
+
+  return isUpdate ? (
+    <ClientMessage message="admin.labels.form.update" />
+  ) : (
+    <ClientMessage message="admin.labels.form.create" />
+  );
 };
 
 export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
@@ -42,7 +55,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const messages = sharedCatalog(locale);
+  const t = useAdminMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   // Seeded once per mount: the edit route keys this form by the label's public
@@ -58,7 +71,6 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   );
 
   const isUpdate = mode === "update";
-  const submitLabel = getSubmitLabel(messages, isUpdate, isPending);
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -71,16 +83,15 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
 
       <Field>
         <FieldLabel required>
-          {getMessage(messages, "admin.labels.form.name")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ClientMessage message="admin.labels.form.name" />
+          </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
             name="name"
             onChange={handleNameChange}
-            placeholder={getMessage(
-              messages,
-              "admin.labels.form.name_placeholder"
-            )}
+            placeholder={t("admin.labels.form.name_placeholder")}
             required
             type="text"
             value={name}
@@ -91,7 +102,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
       {isUpdate ? null : (
         <Field>
           <FieldLabel>
-            {getMessage(messages, "admin.labels.form.eye_catch")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.labels.form.eye_catch" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -100,7 +113,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
               type="file"
             />
             <p className="text-sm text-muted-foreground">
-              {getMessage(messages, "admin.labels.form.eye_catch_description")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                <ClientMessage message="admin.labels.form.eye_catch_description" />
+              </Suspense>
             </p>
           </FieldContent>
         </Field>
@@ -114,7 +129,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
 
       <div className="mt-2 flex justify-end gap-2">
         <Button disabled={isPending} type="submit">
-          {submitLabel}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <LabelFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
+          </Suspense>
         </Button>
       </div>
     </form>
