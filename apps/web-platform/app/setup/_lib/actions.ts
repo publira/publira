@@ -1,6 +1,7 @@
 "use server";
 
-import { getLocales, getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
+import { getLocales } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -11,8 +12,7 @@ import { emailFormSchema, passwordFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
 import { requiredTrimmedString } from "#lib/form-schemas";
 import { getInitialLocaleCandidate } from "#lib/initial-locale";
-import { loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { createInitialUser } from "#lib/setup";
 
 /**
@@ -20,23 +20,29 @@ import { createInitialUser } from "#lib/setup";
  * the server: `Accept-Language` only seeded the selector, and a hand-built
  * request can name any code at all.
  */
-const setupFormSchema = (messages: PlatformMessages) =>
-  z
+const setupFormSchema = async (locale: Locale) => {
+  const [t, confirmPassword, email, password] = await Promise.all([
+    getMessagesFor(locale),
+    passwordFormSchema(locale),
+    emailFormSchema(locale),
+    passwordFormSchema(locale),
+  ]);
+
+  return z
     .object({
-      confirmPassword: passwordFormSchema(messages),
+      confirmPassword,
       defaultLocale: z.enum(getLocales(), {
-        error: getMessage(messages, "platform.auth.setup.locale_required"),
+        error: t("platform.auth.setup.locale_required"),
       }),
-      email: emailFormSchema(messages),
-      name: requiredTrimmedString(
-        getMessage(messages, "platform.auth.setup.name_required")
-      ),
-      password: passwordFormSchema(messages),
+      email,
+      name: requiredTrimmedString(t("platform.auth.setup.name_required")),
+      password,
     })
     .refine((value) => value.password === value.confirmPassword, {
-      error: getMessage(messages, "platform.auth.setup.password_mismatch"),
+      error: t("platform.auth.setup.password_mismatch"),
       path: ["confirmPassword"],
     });
+};
 
 export const setupAction = async (
   _prevState: FormActionState,
@@ -46,9 +52,9 @@ export const setupAction = async (
   // The screen this was submitted from renders in the negotiated locale, so
   // the failure copy has to come back in the same language.
   const locale = await getInitialLocaleCandidate();
-  const messages = await loadPlatformMessages(locale);
 
-  const parsed = setupFormSchema(messages).safeParse(
+  const schema = await setupFormSchema(locale);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
       defaultLocale: { kind: "value", name: "default_locale" },

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -15,7 +14,8 @@ import {
   PlatformSection,
 } from "#components/platform-page";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getPlatformSettings } from "#lib/platform-settings";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
@@ -25,9 +25,9 @@ import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.settings.general_title") };
+  return { title: t("platform.settings.general_title") };
 };
 
 const tabLabel = (

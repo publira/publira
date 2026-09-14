@@ -3,7 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
-import { getMessage, negotiateInitialLocale, parseLocale } from "@publira/i18n";
+import { negotiateInitialLocale, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -19,16 +19,8 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
+import { getMessagesFor } from "./messages";
 import { readSetupDefaultLocale } from "./setup-status";
-
-/**
- * Loaded lazily so this module can keep exporting
- * {@link getPlatformDisplayLocale} for `lib/locale.ts` without a cycle.
- */
-const loadPlatformMessages = async (locale: Locale) => {
-  const { loadPlatformMessages: load } = await import("./locale");
-  return load(locale);
-};
 
 export type GetPlatformSettingsResult =
   | { defaultLocale: Locale; defaultTimezone: string; ok: true }
@@ -107,10 +99,10 @@ export const getPlatformSettings = async (
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
     return {
       defaultTimezone: DEFAULT_TIME_ZONE,
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -130,10 +122,10 @@ export const getPlatformSettings = async (
       // against the platform default, so a code that fails to parse is one
       // this build has no catalog for.
       dropFailedCacheEntry();
-      const messages = await loadPlatformMessages(locale);
+      const t = await getMessagesFor(locale);
       return {
         defaultTimezone: DEFAULT_TIME_ZONE,
-        message: getMessage(messages, "platform.settings.load_failed"),
+        message: t("platform.settings.load_failed"),
         ok: false,
         requiresSignIn: false,
       };
@@ -151,12 +143,12 @@ export const getPlatformSettings = async (
     // cached: the console would keep formatting timestamps with the stand-in
     // after the API recovers.
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
     return {
       defaultTimezone: DEFAULT_TIME_ZONE,
       message: parseErrorMessage(
         error,
-        getMessage(messages, "platform.settings.load_failed"),
+        t("platform.settings.load_failed"),
         locale
       ),
       ok: false,
@@ -307,13 +299,13 @@ export const updatePlatformDefaultTimezone = async (
   defaultTimezone: string,
   locale: Locale
 ): Promise<UpdatePlatformDefaultTimezoneResult> => {
-  const [messages, sessionId] = await Promise.all([
-    loadPlatformMessages(locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -322,7 +314,7 @@ export const updatePlatformDefaultTimezone = async (
     const stored = await readStoredPlatformSettings(sessionId);
     if (!stored) {
       return {
-        message: getMessage(messages, "platform.settings.timezone_save_failed"),
+        message: t("platform.settings.timezone_save_failed"),
         ok: false,
       };
     }
@@ -347,9 +339,9 @@ export const updatePlatformDefaultTimezone = async (
     return {
       message: parseErrorMessage(
         error,
-        getMessage(messages, "platform.settings.timezone_save_failed"),
+        t("platform.settings.timezone_save_failed"),
         locale,
-        getMessage(messages, "platform.settings.save_conflict")
+        t("platform.settings.save_conflict")
       ),
       ok: false,
     };
@@ -367,13 +359,13 @@ export const updatePlatformDefaultLocale = async (
   defaultLocale: Locale,
   locale: Locale
 ): Promise<UpdatePlatformDefaultLocaleResult> => {
-  const [messages, sessionId] = await Promise.all([
-    loadPlatformMessages(locale),
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
     resolveAccessToken(),
   ]);
   if (!sessionId) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -382,7 +374,7 @@ export const updatePlatformDefaultLocale = async (
     const stored = await readStoredPlatformSettings(sessionId);
     if (!stored) {
       return {
-        message: getMessage(messages, "platform.settings.locale_save_failed"),
+        message: t("platform.settings.locale_save_failed"),
         ok: false,
       };
     }
@@ -399,7 +391,7 @@ export const updatePlatformDefaultLocale = async (
     const saved = parseLocale(response.settings?.defaultLocale.trim());
     if (saved === undefined) {
       return {
-        message: getMessage(messages, "platform.settings.locale_save_failed"),
+        message: t("platform.settings.locale_save_failed"),
         ok: false,
       };
     }
@@ -414,14 +406,11 @@ export const updatePlatformDefaultLocale = async (
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.settings.locale_save_failed"),
+        t("platform.settings.locale_save_failed"),
         {
           locale,
           overrides: {
-            precondition: getMessage(
-              messages,
-              "platform.settings.save_conflict"
-            ),
+            precondition: t("platform.settings.save_conflict"),
           },
         }
       ),

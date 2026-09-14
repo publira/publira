@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenBody,
@@ -14,7 +13,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { getInitialLocaleCandidate } from "#lib/initial-locale";
-import { loadPlatformMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { isSetupCompleted } from "#lib/setup";
 
 import { SetupForm } from "./_components/setup-form";
@@ -22,9 +21,9 @@ import { SetupMessage } from "./_components/setup-message";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getInitialLocaleCandidate();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.auth.setup.title") };
+  return { title: t("platform.auth.setup.title") };
 };
 
 /** The setup-status RPC decides between the form, a warning, and a redirect. */

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -6,7 +5,8 @@ import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { Message } from "#components/message";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getOperatorRoleSelectItems } from "#lib/operator-labels";
 
 import { updateOperatorRoleAction } from "../_lib/actions";
@@ -21,7 +21,10 @@ export const OperatorRoleForm = async ({
   operatorPublicId: string;
 }) => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const [t, roleItems] = await Promise.all([
+    getMessagesFor(locale),
+    getOperatorRoleSelectItems(locale),
+  ]);
 
   return (
     <ActionForm action={updateOperatorRoleAction}>
@@ -38,13 +41,10 @@ export const OperatorRoleForm = async ({
               <Select
                 defaultValue={currentRole}
                 disabled={disabled}
-                items={getOperatorRoleSelectItems(messages)}
+                items={roleItems}
                 key={currentRole}
                 name="operator_role"
-                placeholder={getMessage(
-                  messages,
-                  "platform.common.select_placeholder"
-                )}
+                placeholder={t("platform.common.select_placeholder")}
                 required={!disabled}
               />
             </Suspense>

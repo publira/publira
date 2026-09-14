@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import {
   AuthScreen,
   AuthScreenBody,
@@ -15,16 +14,17 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { parseResetPasswordRequestedSearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
   return {
-    title: getMessage(messages, "platform.auth.reset_password_requested.title"),
+    title: t("platform.auth.reset_password_requested.title"),
   };
 };
 

@@ -3,11 +3,10 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
 import { apiClient } from "./api-client";
-import { loadPlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 
 export type PlatformPasswordResetRequestResult =
   | {
@@ -36,9 +35,9 @@ export const requestPlatformPasswordReset = async (
 ): Promise<PlatformPasswordResetRequestResult> => {
   const normalizedEmail = email.trim();
   if (!normalizedEmail) {
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
     return {
-      message: getMessage(messages, "platform.auth.fields.email_required"),
+      message: t("platform.auth.fields.email_required"),
       ok: false,
     };
   }
@@ -54,18 +53,17 @@ export const requestPlatformPasswordReset = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
 
     return {
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.auth.errors.reset_request_failed"),
+        t("platform.auth.errors.reset_request_failed"),
         {
           locale,
           overrides: {
             // Email is the only field this call takes.
-            "invalid-argument": getMessage(
-              messages,
+            "invalid-argument": t(
               "platform.auth.errors.reset_request_invalid_email"
             ),
           },
@@ -102,11 +100,11 @@ export const confirmPlatformPasswordReset = async (
 ): Promise<PlatformPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
   const normalizedPassword = newPassword.trim();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
   if (!normalizedToken) {
     return {
-      message: getMessage(messages, "platform.auth.errors.reset_link_invalid"),
+      message: t("platform.auth.errors.reset_link_invalid"),
       ok: false,
       reason: "invalid",
     };
@@ -114,10 +112,7 @@ export const confirmPlatformPasswordReset = async (
 
   if (!normalizedPassword) {
     return {
-      message: getMessage(
-        messages,
-        "platform.auth.errors.new_password_required"
-      ),
+      message: t("platform.auth.errors.new_password_required"),
       ok: false,
       reason: "system",
     };
@@ -138,10 +133,7 @@ export const confirmPlatformPasswordReset = async (
     const disposition = rpcErrorDisposition(error);
     if (disposition === "precondition") {
       return {
-        message: getMessage(
-          messages,
-          "platform.auth.errors.reset_link_expired"
-        ),
+        message: t("platform.auth.errors.reset_link_expired"),
         ok: false,
         reason: "expired",
       };
@@ -149,20 +141,14 @@ export const confirmPlatformPasswordReset = async (
     // An unknown token and a malformed one both mean "start over".
     if (disposition === "not-found" || disposition === "invalid-argument") {
       return {
-        message: getMessage(
-          messages,
-          "platform.auth.errors.reset_link_invalid"
-        ),
+        message: t("platform.auth.errors.reset_link_invalid"),
         ok: false,
         reason: "invalid",
       };
     }
 
     return {
-      message: getMessage(
-        messages,
-        "platform.auth.errors.reset_confirm_failed"
-      ),
+      message: t("platform.auth.errors.reset_confirm_failed"),
       ok: false,
       reason: "system",
     };

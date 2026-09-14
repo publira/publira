@@ -1,8 +1,6 @@
-import { getMessage } from "@publira/i18n";
-
 import type { MessageProps } from "#components/message";
 import { getInitialLocaleCandidate } from "#lib/initial-locale";
-import { loadPlatformMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 /**
  * One catalog string on the initial setup screen.
@@ -18,7 +16,7 @@ import { loadPlatformMessages } from "#lib/locale";
  */
 export const SetupMessage = async ({ message, values }: MessageProps) => {
   const locale = await getInitialLocaleCandidate();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return getMessage(messages, message, values);
+  return t(message, values);
 };

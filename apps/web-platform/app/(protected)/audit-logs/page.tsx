@@ -1,5 +1,4 @@
 import { smtpTestFailureMessage } from "@publira/api-client/error-messages";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
@@ -49,8 +48,8 @@ import type {
 } from "#lib/audit-logs";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { DEFAULT_LIST_PAGE_SIZE } from "#lib/list-pagination";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
@@ -63,9 +62,9 @@ import {
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.audit.title") };
+  return { title: t("platform.audit.title") };
 };
 
 type AuditLogsPageProps = PageProps<"/audit-logs">;
@@ -129,35 +128,39 @@ const isUserTargetType = (targetType: string): boolean => targetType === "user";
 const isTenantTargetType = (targetType: string): boolean =>
   targetType === "tenant";
 
-const buildEmptyMessage = (
+const buildEmptyMessage = async (
   hasFilter: boolean,
-  messages: PlatformMessages
-): string =>
-  hasFilter
-    ? getMessage(messages, "platform.audit.empty_filtered")
-    : getMessage(messages, "platform.audit.empty");
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
 
-const getActorRoleLabel = (
+  return hasFilter
+    ? t("platform.audit.empty_filtered")
+    : t("platform.audit.empty");
+};
+
+const getActorRoleLabel = async (
   role: string,
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
   if (!role) {
-    return getMessage(messages, "platform.audit.unset");
+    return t("platform.audit.unset");
   }
 
-  const operatorLabel = getOperatorRoleLabel(role, messages);
+  const operatorLabel = await getOperatorRoleLabel(role, locale);
   if (operatorLabel !== role) {
     return operatorLabel;
   }
 
-  const tenantLabel = getTenantRoleLabel(role, messages);
+  const tenantLabel = await getTenantRoleLabel(role, locale);
   if (tenantLabel !== role) {
     return tenantLabel;
   }
 
   switch (role) {
     case "platform_owner": {
-      return getMessage(messages, "platform.audit.actor_platform");
+      return t("platform.audit.actor_platform");
     }
     default: {
       return role;
@@ -165,16 +168,17 @@ const getActorRoleLabel = (
   }
 };
 
-const getSummaryText = (
+const getSummaryText = async (
   result: ListPlatformAuditLogsResult,
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
   if (!result.ok) {
     return "-";
   }
-  return getMessage(messages, "platform.audit.showing", {
-    count: result.auditLogs.length,
-  });
+
+  const t = await getMessagesFor(locale);
+
+  return t("platform.audit.showing", { count: result.auditLogs.length });
 };
 
 const AuditLogsFilters = async ({
@@ -187,8 +191,10 @@ const AuditLogsFilters = async ({
   hasFilter: boolean;
 }) => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-  const actionItems = getAuditActionOptions(messages, locale);
+  const [t, actionItems] = await Promise.all([
+    getMessagesFor(locale),
+    getAuditActionOptions(locale),
+  ]);
 
   return (
     <Form
@@ -200,10 +206,7 @@ const AuditLogsFilters = async ({
         className="w-48"
         defaultValue={actorFilter}
         name="actor_user_public_id"
-        placeholder={getMessage(
-          messages,
-          "platform.audit.actor_filter_placeholder"
-        )}
+        placeholder={t("platform.audit.actor_filter_placeholder")}
         type="search"
       />
       <Select
@@ -211,7 +214,7 @@ const AuditLogsFilters = async ({
         defaultValue={actionFilter || undefined}
         items={actionItems}
         name="action"
-        placeholder={getMessage(messages, "platform.audit.all_events")}
+        placeholder={t("platform.audit.all_events")}
       />
       <Button type="submit">
         <Message message="platform.common.filter" />
@@ -237,15 +240,17 @@ const AuditLogsPagination = async ({
   previousHref?: string;
   result: ListPlatformAuditLogsResult;
 }) => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const locale = await getPlatformLocale();
+  const [t, summaryText] = await Promise.all([
+    getMessagesFor(locale),
+    getSummaryText(result, locale),
+  ]);
 
   return (
     <div className="flex items-center justify-between gap-3">
-      <p className="text-xs text-muted-foreground">
-        {getSummaryText(result, messages)}
-      </p>
+      <p className="text-xs text-muted-foreground">{summaryText}</p>
       <PaginationControls
-        ariaLabel={getMessage(messages, "platform.audit.pagination_aria")}
+        ariaLabel={t("platform.audit.pagination_aria")}
         nextHref={nextHref}
         nextLabel={<Message message="platform.common.next" />}
         previousHref={previousHref}
@@ -311,6 +316,27 @@ const auditLogReason = (
     ? (smtpTestFailureMessage(log.reason, locale) ?? log.reason)
     : log.reason;
 
+/**
+ * The actor's role and the action name, each as its own async component: both
+ * are strings the catalog resolves, and a row rendered inside `.map()` cannot
+ * await.
+ */
+const ActorRoleCell = async ({
+  locale,
+  role,
+}: {
+  locale: Locale;
+  role: string;
+}) => await getActorRoleLabel(role, locale);
+
+const AuditActionCell = async ({
+  action,
+  locale,
+}: {
+  action: string;
+  locale: Locale;
+}) => await getAuditActionLabel(action, locale);
+
 const AuditLogsTableBody = async ({
   hasFilter,
   locale,
@@ -326,14 +352,14 @@ const AuditLogsTableBody = async ({
     return <TableBody />;
   }
 
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const emptyMessage = await buildEmptyMessage(hasFilter, locale);
 
   if (result.auditLogs.length === 0) {
     return (
       <TableBody>
         <TableRow>
           <TableCell className="text-muted-foreground" colSpan={4}>
-            {buildEmptyMessage(hasFilter, messages)}
+            {emptyMessage}
           </TableCell>
         </TableRow>
       </TableBody>
@@ -367,7 +393,7 @@ const AuditLogsTableBody = async ({
               )}
               <p>
                 <Badge tone="info">
-                  {getActorRoleLabel(log.actorRole, messages)}
+                  <ActorRoleCell locale={locale} role={log.actorRole} />
                 </Badge>
               </p>
             </div>
@@ -375,7 +401,7 @@ const AuditLogsTableBody = async ({
           <TableCell>
             <div className="grid gap-1">
               <p className="font-medium">
-                {getAuditActionLabel(log.action, messages)}
+                <AuditActionCell action={log.action} locale={locale} />
               </p>
               <p>
                 <Badge tone={getOutcomeTone(log.outcome)}>
@@ -407,8 +433,7 @@ const AuditLogsContent = async ({
     searchParams,
     getPlatformLocale(),
   ]);
-  const messages = await loadPlatformMessages(locale);
-  const actionItems = getAuditActionOptions(messages, locale);
+  const actionItems = await getAuditActionOptions(locale);
   const {
     action: actionFilter,
     actorUserPublicId: actorFilter,
@@ -469,16 +494,24 @@ const AuditLogsContent = async ({
         <TableHeader>
           <TableRow>
             <TableHead>
-              {getMessage(messages, "platform.audit.columns.at")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="platform.audit.columns.at" />
+              </Suspense>
             </TableHead>
             <TableHead>
-              {getMessage(messages, "platform.audit.columns.actor")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="platform.audit.columns.actor" />
+              </Suspense>
             </TableHead>
             <TableHead>
-              {getMessage(messages, "platform.audit.columns.action")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="platform.audit.columns.action" />
+              </Suspense>
             </TableHead>
             <TableHead>
-              {getMessage(messages, "platform.audit.columns.target")}
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="platform.audit.columns.target" />
+              </Suspense>
             </TableHead>
           </TableRow>
         </TableHeader>

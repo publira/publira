@@ -12,7 +12,11 @@ import type { Locale, MessageValues } from "@publira/i18n";
 import { use } from "react";
 
 import { loadPlatformMessages } from "#lib/messages";
-import type { PlatformMessageKey, PlatformMessages } from "#lib/messages";
+import type {
+  PlatformMessageAccessor,
+  PlatformMessageKey,
+  PlatformMessages,
+} from "#lib/messages";
 
 const readCookie = (name: string): string => {
   if (typeof document === "undefined") {
@@ -81,11 +85,16 @@ const platformCatalog = (locale: Locale): Promise<PlatformMessages> => {
 };
 
 /**
- * Catalog for client-only controls whose DOM APIs require a string attribute.
- * The hook stays local to that control; no catalog object crosses a component
- * boundary.
+ * The accessor, for client-only controls whose DOM APIs require a string
+ * attribute. The hook stays local to that control; no accessor crosses a
+ * component boundary.
  */
-export const useClientMessages = () => use(platformCatalog(readClientLocale()));
+export const useClientMessages = (): PlatformMessageAccessor => {
+  const locale = readClientLocale();
+  const messages = use(platformCatalog(locale));
+
+  return bindMessages(messages);
+};
 
 /**
  * One catalog string for Client Components that cannot render `<Message>`.
@@ -111,8 +120,7 @@ export const ClientMessage = ({
   message: PlatformMessageKey;
   values?: MessageValues;
 }) => {
-  const messages = useClientMessages();
-  const t = bindMessages(messages);
+  const t = useClientMessages();
 
   return t(message, values);
 };

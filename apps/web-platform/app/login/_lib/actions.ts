@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -20,14 +20,14 @@ import {
   passwordFormSchema,
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
-const loginFormSchema = (messages: PlatformMessages) =>
+const loginFormSchema = async (locale: Locale) =>
   z.object({
-    email: emailFormSchema(messages),
+    email: await emailFormSchema(locale),
     next: nextPathFormSchema,
-    password: passwordFormSchema(messages),
+    password: await passwordFormSchema(locale),
   });
 
 export const loginAction = async (
@@ -36,9 +36,11 @@ export const loginAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-
-  const parsed = loginFormSchema(messages).safeParse(
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    loginFormSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
       next: "value",
@@ -57,7 +59,7 @@ export const loginAction = async (
   const result = await loginPlatform(email, password);
   if (!result) {
     return {
-      message: getMessage(messages, "platform.auth.login.failed"),
+      message: t("platform.auth.login.failed"),
       ok: false,
     };
   }

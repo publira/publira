@@ -1,4 +1,4 @@
-import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { getLocaleLabel, getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   Field,
@@ -20,7 +20,8 @@ import {
   PlatformSectionHeading,
   PlatformSectionTitle,
 } from "#components/platform-page";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { updatePlatformDefaultLocaleAction } from "../../_lib/actions";
 
@@ -33,7 +34,7 @@ export const PlatformDefaultLocaleForm = async ({
   loadErrorMessage?: string;
 }) => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
   const hasLoadError = Boolean(loadErrorMessage);
   const items = getLocales().map((value) => ({
     label: getLocaleLabel(value),
@@ -73,10 +74,7 @@ export const PlatformDefaultLocaleForm = async ({
                 disabled={hasLoadError}
                 items={items}
                 name="default_locale"
-                placeholder={getMessage(
-                  messages,
-                  "platform.settings.default_locale_placeholder"
-                )}
+                placeholder={t("platform.settings.default_locale_placeholder")}
               />
             </Suspense>
             <FieldDescription>

@@ -1,6 +1,5 @@
 "use client";
 
-import { getMessage } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import {
   Combobox,
@@ -17,10 +16,12 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { listSupportedTimeZones } from "@publira/utils";
-import { useActionState, useMemo, useState } from "react";
+import { Suspense, useActionState, useMemo, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import { Message } from "#components/message";
 import {
   PlatformSection,
   PlatformSectionDescription,
@@ -47,7 +48,6 @@ export const PlatformTimezoneForm = ({
 }: PlatformTimezoneFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
   const [timezone, setTimezone] = useState(initialTimezone);
-  const messages = useClientMessages();
 
   // A failed read hands the form `DEFAULT_TIME_ZONE` as a stand-in, not the
   // stored value, so saving from that state would overwrite the real default
@@ -65,6 +65,8 @@ export const PlatformTimezoneForm = ({
 
     return values.map((zone) => ({ label: zone, value: zone }));
   }, [initialTimezone]);
+
+  const t = useClientMessages();
 
   return (
     <PlatformSection>
@@ -93,17 +95,15 @@ export const PlatformTimezoneForm = ({
               value={timezone}
             >
               <ComboboxInput
-                placeholder={getMessage(
-                  messages,
+                placeholder={t(
                   "platform.settings.default_timezone_placeholder"
                 )}
               />
               <ComboboxPopup>
                 <ComboboxEmpty>
-                  {getMessage(
-                    messages,
-                    "platform.settings.default_timezone_empty"
-                  )}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.settings.default_timezone_empty" />
+                  </Suspense>
                 </ComboboxEmpty>
                 <ComboboxItems />
               </ComboboxPopup>

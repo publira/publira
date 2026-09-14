@@ -1,4 +1,4 @@
-import { getLocaleLabel, getLocales, getMessage } from "@publira/i18n";
+import { getLocaleLabel, getLocales } from "@publira/i18n";
 import {
   Field,
   FieldContent,
@@ -12,7 +12,7 @@ import { Suspense } from "react";
 
 import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { getInitialLocaleCandidate } from "#lib/initial-locale";
-import { loadPlatformMessages } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { setupAction } from "../_lib/actions";
 import { SetupMessage } from "./setup-message";
@@ -22,7 +22,7 @@ export const SetupForm = async () => {
   // renders in and which option opens selected. The saved value is whatever the
   // operator submits from this list.
   const initialDefaultLocale = await getInitialLocaleCandidate();
-  const messages = await loadPlatformMessages(initialDefaultLocale);
+  const t = await getMessagesFor(initialDefaultLocale);
   const localeItems = getLocales().map((value) => ({
     label: getLocaleLabel(value),
     value,
@@ -40,10 +40,7 @@ export const SetupForm = async () => {
           <Input
             autoComplete="name"
             name="name"
-            placeholder={getMessage(
-              messages,
-              "platform.auth.setup.name_placeholder"
-            )}
+            placeholder={t("platform.auth.setup.name_placeholder")}
             required
             type="text"
           />
@@ -112,10 +109,7 @@ export const SetupForm = async () => {
             defaultValue={initialDefaultLocale}
             items={localeItems}
             name="default_locale"
-            placeholder={getMessage(
-              messages,
-              "platform.auth.setup.default_locale_placeholder"
-            )}
+            placeholder={t("platform.auth.setup.default_locale_placeholder")}
           />
           <FieldDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>

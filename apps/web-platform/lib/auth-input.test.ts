@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import en from "../../../locales/en.json" with { type: "json" };
-import ja from "../../../locales/ja.json" with { type: "json" };
 import {
   authTokenFormSchema,
   authTokenSearchParamSchema,
@@ -12,12 +10,11 @@ import {
   nextPathSearchParamSchema,
   passwordFormSchema,
 } from "./auth-input";
-import type { PlatformMessages } from "./locale";
 
 const VALID_TOKEN = "a".repeat(64);
 
-const JA: PlatformMessages = ja;
-const EN: PlatformMessages = en;
+const JA = "ja" as const;
+const EN = "en" as const;
 
 const firstIssue = (result: { error?: { issues: { message: string }[] } }) =>
   result.error?.issues[0]?.message;
@@ -68,17 +65,22 @@ describe("authTokenSearchParamSchema", () => {
 });
 
 describe("authTokenFormSchema", () => {
-  it("rejects a missing or malformed token", () => {
-    expect(authTokenFormSchema(EN).safeParse(null).success).toBe(false);
-    expect(authTokenFormSchema(EN).safeParse("short").success).toBe(false);
-    expect(authTokenFormSchema(EN).parse(VALID_TOKEN)).toBe(VALID_TOKEN);
+  it("rejects a missing or malformed token", async () => {
+    const authTokenEN = await authTokenFormSchema(EN);
+
+    expect(authTokenEN.safeParse(null).success).toBe(false);
+    expect(authTokenEN.safeParse("short").success).toBe(false);
+    expect(authTokenEN.parse(VALID_TOKEN)).toBe(VALID_TOKEN);
   });
 
-  it("reports the rejection in the catalog's locale", () => {
-    expect(firstIssue(authTokenFormSchema(JA).safeParse("short"))).toBe(
+  it("reports the rejection in the catalog's locale", async () => {
+    const authTokenEN = await authTokenFormSchema(EN);
+    const authTokenJA = await authTokenFormSchema(JA);
+
+    expect(firstIssue(authTokenJA.safeParse("short"))).toBe(
       "確認リンクが無効です。新しい確認メールをリクエストしてください。"
     );
-    expect(firstIssue(authTokenFormSchema(EN).safeParse("short"))).toBe(
+    expect(firstIssue(authTokenEN.safeParse("short"))).toBe(
       "This confirmation link is invalid. Request a new confirmation email."
     );
   });
@@ -104,39 +106,45 @@ describe("errorSearchParamSchema", () => {
 });
 
 describe("emailFormSchema", () => {
-  it("trims and requires an email", () => {
-    expect(emailFormSchema(EN).parse("  operator@example.com  ")).toBe(
+  it("trims and requires an email", async () => {
+    const emailEN = await emailFormSchema(EN);
+
+    expect(emailEN.parse("  operator@example.com  ")).toBe(
       "operator@example.com"
     );
-    expect(emailFormSchema(EN).safeParse("").success).toBe(false);
-    expect(emailFormSchema(EN).safeParse("not-an-email").success).toBe(false);
+    expect(emailEN.safeParse("").success).toBe(false);
+    expect(emailEN.safeParse("not-an-email").success).toBe(false);
   });
 
-  it("reports the rejection in the catalog's locale", () => {
-    expect(firstIssue(emailFormSchema(JA).safeParse(""))).toBe(
+  it("reports the rejection in the catalog's locale", async () => {
+    const emailEN = await emailFormSchema(EN);
+    const emailJA = await emailFormSchema(JA);
+
+    expect(firstIssue(emailJA.safeParse(""))).toBe(
       "メールアドレスを入力してください。"
     );
-    expect(firstIssue(emailFormSchema(EN).safeParse(""))).toBe(
-      "Enter your email address."
-    );
-    expect(firstIssue(emailFormSchema(EN).safeParse("not-an-email"))).toBe(
+    expect(firstIssue(emailEN.safeParse(""))).toBe("Enter your email address.");
+    expect(firstIssue(emailEN.safeParse("not-an-email"))).toBe(
       "Enter a valid email address."
     );
   });
 });
 
 describe("passwordFormSchema", () => {
-  it("does not trim, and rejects an empty value", () => {
-    expect(passwordFormSchema(EN).parse(" secret ")).toBe(" secret ");
-    expect(passwordFormSchema(EN).safeParse("").success).toBe(false);
+  it("does not trim, and rejects an empty value", async () => {
+    const passwordEN = await passwordFormSchema(EN);
+
+    expect(passwordEN.parse(" secret ")).toBe(" secret ");
+    expect(passwordEN.safeParse("").success).toBe(false);
   });
 
-  it("reports the rejection in the catalog's locale", () => {
-    expect(firstIssue(passwordFormSchema(JA).safeParse(""))).toBe(
+  it("reports the rejection in the catalog's locale", async () => {
+    const passwordEN = await passwordFormSchema(EN);
+    const passwordJA = await passwordFormSchema(JA);
+
+    expect(firstIssue(passwordJA.safeParse(""))).toBe(
       "パスワードを入力してください。"
     );
-    expect(firstIssue(passwordFormSchema(EN).safeParse(""))).toBe(
-      "Enter your password."
-    );
+    expect(firstIssue(passwordEN.safeParse(""))).toBe("Enter your password.");
   });
 });

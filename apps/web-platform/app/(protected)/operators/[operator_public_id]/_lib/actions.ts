@@ -1,6 +1,6 @@
 "use server";
 
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -16,8 +16,8 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { requiredTrimmedString } from "#lib/form-schemas";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import {
   deactivatePlatformOperator,
   suspendPlatformOperator,
@@ -26,8 +26,11 @@ import {
 } from "#lib/operators";
 import { isPlatformSuperAdmin } from "#lib/roles";
 
-const operatorPublicIdSchema = (messages: PlatformMessages) =>
-  requiredTrimmedString(getMessage(messages, "platform.common.required"));
+const operatorPublicIdSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return requiredTrimmedString(t("platform.common.required"));
+};
 
 /**
  * The operator submitting this Action, once a rejected session has been sent to
@@ -46,11 +49,15 @@ const resolveCurrentOperator =
     return result.ok ? result.operator : null;
   };
 
-const updateOperatorRoleFormSchema = (messages: PlatformMessages) => {
-  const required = getMessage(messages, "platform.common.required");
+const updateOperatorRoleFormSchema = async (locale: Locale) => {
+  const [t, publicId] = await Promise.all([
+    getMessagesFor(locale),
+    operatorPublicIdSchema(locale),
+  ]);
+  const required = t("platform.common.required");
 
   return z.object({
-    publicId: operatorPublicIdSchema(messages),
+    publicId,
     role: z.enum(
       ["platform_auditor", "platform_operator", "platform_super_admin"],
       { error: required }
@@ -64,9 +71,12 @@ export const updateOperatorRoleAction = async (
 ): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    updateOperatorRoleFormSchema(locale),
+  ]);
 
-  const parsed = updateOperatorRoleFormSchema(messages).safeParse(
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       publicId: { kind: "value", name: "operator_public_id" },
       role: { kind: "value", name: "operator_role" },
@@ -84,16 +94,13 @@ export const updateOperatorRoleAction = async (
   const me = await resolveCurrentOperator();
   if (!(me && isPlatformSuperAdmin(me.role))) {
     return {
-      message: getMessage(messages, "errors.rpc.forbidden"),
+      message: t("errors.rpc.forbidden"),
       ok: false,
     };
   }
   if (me.publicId === publicId) {
     return {
-      message: getMessage(
-        messages,
-        "platform.operators.cannot_change_own_role"
-      ),
+      message: t("platform.operators.cannot_change_own_role"),
       ok: false,
     };
   }
@@ -112,7 +119,7 @@ export const updateOperatorRoleAction = async (
     return { message: result.message, ok: false };
   }
   return {
-    message: getMessage(messages, "platform.operators.role_updated"),
+    message: t("platform.operators.role_updated"),
     ok: true,
   };
 };
@@ -122,8 +129,8 @@ export const suspendOperatorAction = async (
 ): Promise<void> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-  const parsed = operatorPublicIdSchema(messages).safeParse(publicId);
+  const schema = await operatorPublicIdSchema(locale);
+  const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
     return;
   }
@@ -142,8 +149,8 @@ export const unsuspendOperatorAction = async (
 ): Promise<void> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-  const parsed = operatorPublicIdSchema(messages).safeParse(publicId);
+  const schema = await operatorPublicIdSchema(locale);
+  const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
     return;
   }
@@ -162,8 +169,8 @@ export const deactivateOperatorAction = async (
 ): Promise<void> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
-  const parsed = operatorPublicIdSchema(messages).safeParse(publicId);
+  const schema = await operatorPublicIdSchema(locale);
+  const parsed = schema.safeParse(publicId);
   if (!parsed.success) {
     return;
   }

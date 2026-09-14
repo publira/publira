@@ -1,6 +1,6 @@
 "use server";
 
-import { getLocales, getMessage } from "@publira/i18n";
+import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
@@ -24,8 +24,8 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
 import { intFormSchema, optionalTrimmedString } from "#lib/form-schemas";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import {
   platformSettingsCacheTag,
   updatePlatformDefaultLocale,
@@ -59,9 +59,9 @@ export type PlatformDefaultLocaleActionState =
 
 const loadActionCatalog = async () => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { locale, messages };
+  return { locale, t };
 };
 
 /**
@@ -69,8 +69,9 @@ const loadActionCatalog = async () => {
  * (`server/internal/tenanttz`) and stays the authority; this only gives the
  * operator immediate feedback instead of a round trip.
  */
-const platformDefaultTimezoneSchema = (messages: PlatformMessages) => {
-  const required = getMessage(messages, "platform.settings.timezone_required");
+const platformDefaultTimezoneSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const required = t("platform.settings.timezone_required");
 
   return z.object({
     defaultTimezone: z
@@ -78,7 +79,7 @@ const platformDefaultTimezoneSchema = (messages: PlatformMessages) => {
       .trim()
       .min(1, required)
       .refine(isValidTimeZone, {
-        error: getMessage(messages, "platform.settings.timezone_invalid"),
+        error: t("platform.settings.timezone_invalid"),
       }),
   });
 };
@@ -88,12 +89,15 @@ const platformDefaultTimezoneSchema = (messages: PlatformMessages) => {
  * (`server/internal/locale`) and stays the authority; this only gives the
  * operator immediate feedback instead of a round trip.
  */
-const platformDefaultLocaleSchema = (messages: PlatformMessages) =>
-  z.object({
+const platformDefaultLocaleSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     defaultLocale: z.enum(getLocales(), {
-      error: getMessage(messages, "platform.settings.locale_required"),
+      error: t("platform.settings.locale_required"),
     }),
   });
+};
 
 const secretUpdateModeFormSchema = z.preprocess((value) => {
   const raw = typeof value === "string" ? value.trim() : "";
@@ -109,13 +113,15 @@ const recipientTypeFormSchema = z.preprocess((value) => {
     : TEST_EMAIL_RECIPIENT_TYPE_SELF;
 }, z.number());
 
-const smtpFormSchema = (messages: PlatformMessages) =>
-  z.object({
+const smtpFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
     encryption: z.preprocess(
       (value) =>
         typeof value === "string" ? value.trim().toLowerCase() : value,
       z.enum(["none", "starttls", "tls"], {
-        error: getMessage(messages, "platform.settings.encryption_required"),
+        error: t("platform.settings.encryption_required"),
       })
     ),
     fromAddress: optionalTrimmedString(),
@@ -125,19 +131,17 @@ const smtpFormSchema = (messages: PlatformMessages) =>
       z.string()
     ),
     passwordUpdateMode: secretUpdateModeFormSchema,
-    port: intFormSchema(
-      getMessage(messages, "platform.settings.port_invalid"),
-      {
-        fallback: 587,
-        max: 65_535,
-        min: 1,
-      }
-    ),
+    port: intFormSchema(t("platform.settings.port_invalid"), {
+      fallback: 587,
+      max: 65_535,
+      min: 1,
+    }),
     recipientEmail: optionalTrimmedString(),
     recipientType: recipientTypeFormSchema,
     replyTo: optionalTrimmedString(),
     username: optionalTrimmedString(),
   });
+};
 
 const smtpFormFields = {
   encryption: "value",
@@ -152,23 +156,25 @@ const smtpFormFields = {
   username: "value",
 } as const;
 
-const emailChangeFormSchema = (messages: PlatformMessages) =>
-  z.object({
-    currentEmail: emailFormSchema(messages),
-    currentPassword: passwordFormSchema(messages),
-    newEmail: emailFormSchema(messages),
-  });
+const emailChangeFormSchema = async (locale: Locale) => {
+  const [currentEmail, currentPassword, newEmail] = await Promise.all([
+    emailFormSchema(locale),
+    passwordFormSchema(locale),
+    emailFormSchema(locale),
+  ]);
+
+  return z.object({ currentEmail, currentPassword, newEmail });
+};
 
 export const updatePlatformEmailSettingsAction = async (
   _prevState: PlatformEmailSettingsFormState,
   formData: FormData
 ): Promise<PlatformEmailSettingsFormState> => {
   await assertSameOrigin();
-  const { locale, messages } = await loadActionCatalog();
+  const { locale, t } = await loadActionCatalog();
+  const schema = await smtpFormSchema(locale);
 
-  const parsed = smtpFormSchema(messages).safeParse(
-    toFormDataInput(formData, smtpFormFields)
-  );
+  const parsed = schema.safeParse(toFormDataInput(formData, smtpFormFields));
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -193,7 +199,7 @@ export const updatePlatformEmailSettingsAction = async (
 
   revalidatePath("/settings/email");
   return {
-    message: getMessage(messages, "platform.settings.smtp_saved"),
+    message: t("platform.settings.smtp_saved"),
     ok: true,
     settings: result.settings,
   };
@@ -204,9 +210,10 @@ export const updatePlatformDefaultTimezoneAction = async (
   formData: FormData
 ): Promise<PlatformDefaultTimezoneActionState> => {
   await assertSameOrigin();
-  const { locale, messages } = await loadActionCatalog();
+  const { locale, t } = await loadActionCatalog();
+  const schema = await platformDefaultTimezoneSchema(locale);
 
-  const parsed = platformDefaultTimezoneSchema(messages).safeParse(
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       defaultTimezone: { kind: "value", name: "default_timezone" },
     })
@@ -230,7 +237,7 @@ export const updatePlatformDefaultTimezoneAction = async (
 
   return {
     defaultTimezone: result.defaultTimezone,
-    message: getMessage(messages, "platform.settings.default_timezone_saved"),
+    message: t("platform.settings.default_timezone_saved"),
     ok: true,
   };
 };
@@ -240,9 +247,10 @@ export const updatePlatformDefaultLocaleAction = async (
   formData: FormData
 ): Promise<PlatformDefaultLocaleActionState> => {
   await assertSameOrigin();
-  const { locale, messages } = await loadActionCatalog();
+  const { locale, t } = await loadActionCatalog();
+  const schema = await platformDefaultLocaleSchema(locale);
 
-  const parsed = platformDefaultLocaleSchema(messages).safeParse(
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       defaultLocale: { kind: "value", name: "default_locale" },
     })
@@ -266,7 +274,7 @@ export const updatePlatformDefaultLocaleAction = async (
 
   return {
     defaultLocale: result.defaultLocale,
-    message: getMessage(messages, "platform.settings.default_locale_saved"),
+    message: t("platform.settings.default_locale_saved"),
     ok: true,
   };
 };
@@ -276,11 +284,10 @@ export const sendPlatformSmtpTestEmailAction = async (
   formData: FormData
 ): Promise<PlatformSmtpTestFormState> => {
   await assertSameOrigin();
-  const { locale, messages } = await loadActionCatalog();
+  const { locale, t } = await loadActionCatalog();
+  const schema = await smtpFormSchema(locale);
 
-  const parsed = smtpFormSchema(messages).safeParse(
-    toFormDataInput(formData, smtpFormFields)
-  );
+  const parsed = schema.safeParse(toFormDataInput(formData, smtpFormFields));
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -306,7 +313,7 @@ export const sendPlatformSmtpTestEmailAction = async (
   }
 
   return {
-    message: getMessage(messages, "platform.settings.smtp_test_success", {
+    message: t("platform.settings.smtp_test_success", {
       email: result.recipientEmail,
     }),
     ok: true,
@@ -319,9 +326,10 @@ export const requestPlatformEmailChangeAction = async (
   formData: FormData
 ): Promise<PlatformEmailChangeActionState> => {
   await assertSameOrigin();
-  const { locale, messages } = await loadActionCatalog();
+  const { locale, t } = await loadActionCatalog();
+  const schema = await emailChangeFormSchema(locale);
 
-  const parsed = emailChangeFormSchema(messages).safeParse(
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currentEmail: { kind: "value", name: "current_email" },
       currentPassword: { kind: "value", name: "current_password" },
@@ -346,7 +354,7 @@ export const requestPlatformEmailChangeAction = async (
   }
 
   return {
-    message: getMessage(messages, "platform.settings.email_change_success"),
+    message: t("platform.settings.email_change_success"),
     ok: true,
   };
 };

@@ -4,7 +4,6 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import type { EndUser, Tenant } from "@publira/api-client/platform/types";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -17,7 +16,7 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
-import { loadPlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 
 export interface PlatformEndUserSummary {
   createdAt: string;
@@ -152,9 +151,9 @@ export const listPlatformEndUsers = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -189,13 +188,11 @@ export const listPlatformEndUsers = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.users.list_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("platform.users.list_failed"), {
+        locale: input.locale,
+      }),
       nextToken: "",
       ok: false,
       previousToken: "",
@@ -234,10 +231,10 @@ export const searchPlatformTenantFilterOptions = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
     return {
       hasMore: false,
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
       tenants: [],
@@ -293,12 +290,12 @@ export const searchPlatformTenantFilterOptions = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
     return {
       hasMore: false,
       message: rpcErrorMessage(
         error,
-        getMessage(messages, "platform.users.tenant_candidates_failed"),
+        t("platform.users.tenant_candidates_failed"),
         { locale }
       ),
       ok: false,
@@ -331,9 +328,9 @@ export const getPlatformEndUser = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -354,13 +351,11 @@ export const getPlatformEndUser = async (
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(locale);
+    const t = await getMessagesFor(locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.users.get_failed"),
-        { locale }
-      ),
+      message: rpcErrorMessage(error, t("platform.users.get_failed"), {
+        locale,
+      }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -423,11 +418,11 @@ export const deletePlatformEndUser = async (
   publicId: string,
   locale: Locale
 ): Promise<{ ok: true } | { ok: false; message: string }> => {
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
   const normalizedPublicId = normalizePublicId(publicId);
   if (!normalizedPublicId) {
     return {
-      message: getMessage(messages, "platform.users.invalid_id"),
+      message: t("platform.users.invalid_id"),
       ok: false,
     };
   }
@@ -435,7 +430,7 @@ export const deletePlatformEndUser = async (
   const sid = await resolveAccessToken();
   if (!sid) {
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
@@ -450,11 +445,9 @@ export const deletePlatformEndUser = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.common.generic_failed"),
-        { locale }
-      ),
+      message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
+        locale,
+      }),
       ok: false,
     };
   }

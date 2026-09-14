@@ -1,7 +1,7 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
-import type { PlatformMessageKey, PlatformMessages } from "./locale";
+import type { PlatformMessageKey } from "./locale";
+import { getMessagesFor } from "./messages";
 
 const auditActionKeys = {
   operator_created: "platform.audit.actions.operator_created",
@@ -23,26 +23,29 @@ const auditActionKeys = {
   user_suspended: "platform.audit.actions.user_suspended",
 } as const satisfies Record<string, PlatformMessageKey>;
 
-export const getAuditActionOptions = (
-  messages: PlatformMessages,
+export const getAuditActionOptions = async (
   locale: Locale
-): { label: string; value: string }[] =>
-  Object.entries(auditActionKeys)
+): Promise<{ label: string; value: string }[]> => {
+  const t = await getMessagesFor(locale);
+
+  return Object.entries(auditActionKeys)
     .map(([value, key]) => ({
-      label: getMessage(messages, key),
+      label: t(key),
       value,
     }))
     .toSorted((left, right) => left.label.localeCompare(right.label, locale));
+};
 
-export const getAuditActionLabel = (
+export const getAuditActionLabel = async (
   action: string,
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
   const normalized = action.trim();
   if (!normalized) {
-    return getMessage(messages, "platform.audit.unset");
+    return t("platform.audit.unset");
   }
 
   const key = auditActionKeys[normalized as keyof typeof auditActionKeys];
-  return key ? getMessage(messages, key) : normalized;
+  return key ? t(key) : normalized;
 };

@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
@@ -43,8 +42,8 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import type { GetPlatformTenantResult } from "#lib/tenants";
 import { getPlatformTenant } from "#lib/tenants";
@@ -67,9 +66,9 @@ import type { TenantFilterResolution } from "./_lib/tenant-filter";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.users.title") };
+  return { title: t("platform.users.title") };
 };
 
 const UsersTableSkeleton = () => (
@@ -143,27 +142,30 @@ const buildUsersPageHrefs = (
   };
 };
 
-const buildSummaryText = (
+const buildSummaryText = async (
   result: ListPlatformEndUsersResult,
   usersLength: number,
-  messages: PlatformMessages
-): string => {
-  if (result.ok) {
-    return getMessage(messages, "platform.users.showing", {
-      count: String(usersLength),
-    });
+  locale: Locale
+): Promise<string> => {
+  if (!result.ok) {
+    return "-";
   }
-  return "-";
+
+  const t = await getMessagesFor(locale);
+
+  return t("platform.users.showing", { count: String(usersLength) });
 };
 
-const buildEmptyMessage = (
+const buildEmptyMessage = async (
   hasFilter: boolean,
-  messages: PlatformMessages
-): string =>
-  getMessage(
-    messages,
-    hasFilter ? "platform.users.empty_filtered" : "platform.users.empty"
-  );
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return hasFilter
+    ? t("platform.users.empty_filtered")
+    : t("platform.users.empty");
+};
 
 const buildTenantFilterItems = ({
   selectedName,
@@ -190,17 +192,17 @@ const buildTenantFilterItems = ({
   return [];
 };
 
-const buildTenantFilterMessages = ({
-  messages,
+const buildTenantFilterMessages = async ({
+  locale,
   resolution,
   tenantQuery,
   tenantSearch,
 }: {
-  messages: PlatformMessages;
+  locale: Locale;
   resolution: TenantFilterResolution;
   tenantQuery: string;
   tenantSearch: SearchPlatformTenantFilterOptionsResult;
-}): TenantFilterMessage[] => {
+}): Promise<TenantFilterMessage[]> => {
   if (!tenantQuery) {
     return [];
   }
@@ -208,21 +210,22 @@ const buildTenantFilterMessages = ({
     return [{ text: tenantSearch.message, variant: "destructive" }];
   }
 
+  const t = await getMessagesFor(locale);
   const filterMessages: TenantFilterMessage[] = [];
   if (resolution.kind === "none") {
     filterMessages.push({
-      text: getMessage(messages, "platform.users.tenant_none"),
+      text: t("platform.users.tenant_none"),
       variant: "info",
     });
   } else if (resolution.kind === "ambiguous") {
     filterMessages.push({
-      text: getMessage(messages, "platform.users.tenant_ambiguous"),
+      text: t("platform.users.tenant_ambiguous"),
       variant: "info",
     });
   }
   if (tenantSearch.hasMore) {
     filterMessages.push({
-      text: getMessage(messages, "platform.users.tenant_more"),
+      text: t("platform.users.tenant_more"),
       variant: "info",
     });
   }
@@ -245,7 +248,7 @@ const UsersFilterForm = async ({
   tenantId: string;
   tenantMessages: TenantFilterMessage[];
 }) => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const t = await getMessagesFor(await getPlatformLocale());
 
   return (
     <div className="grid gap-3">
@@ -259,32 +262,23 @@ const UsersFilterForm = async ({
           defaultValue={filters.status || undefined}
           items={[
             {
-              label: getMessage(
-                messages,
-                "platform.common.account_status.active"
-              ),
+              label: t("platform.common.account_status.active"),
               value: "active",
             },
             {
-              label: getMessage(
-                messages,
-                "platform.common.account_status.suspended"
-              ),
+              label: t("platform.common.account_status.suspended"),
               value: "suspended",
             },
           ]}
           name="status"
-          placeholder={getMessage(messages, "platform.users.all_statuses")}
+          placeholder={t("platform.users.all_statuses")}
         />
         <Input
-          aria-label={getMessage(messages, "platform.users.search_tenant")}
+          aria-label={t("platform.users.search_tenant")}
           className="w-56"
           defaultValue={filters.tenantQuery}
           name="tenant_q"
-          placeholder={getMessage(
-            messages,
-            "platform.users.search_tenant_placeholder"
-          )}
+          placeholder={t("platform.users.search_tenant_placeholder")}
           type="search"
         />
         {tenantItems.length > 0 ? (
@@ -296,7 +290,7 @@ const UsersFilterForm = async ({
               value: tenant.publicId,
             }))}
             name="tenant_id"
-            placeholder={getMessage(messages, "platform.users.select_tenant")}
+            placeholder={t("platform.users.select_tenant")}
           />
         ) : null}
         <Input
@@ -316,30 +310,34 @@ const UsersFilterForm = async ({
           defaultValue={String(filters.limit)}
           items={[
             {
-              label: getMessage(messages, "platform.users.page_size_10"),
+              label: t("platform.users.page_size_10"),
               value: "10",
             },
             {
-              label: getMessage(messages, "platform.users.page_size_20"),
+              label: t("platform.users.page_size_20"),
               value: "20",
             },
             {
-              label: getMessage(messages, "platform.users.page_size_50"),
+              label: t("platform.users.page_size_50"),
               value: "50",
             },
           ]}
           name="limit"
-          placeholder={getMessage(messages, "platform.users.page_size_20")}
+          placeholder={t("platform.users.page_size_20")}
         />
         <Button type="submit">
-          {getMessage(messages, "platform.common.filter")}
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.common.filter" />
+          </Suspense>
         </Button>
         {hasFilter ? (
           <Link
             className="flex h-10 items-center rounded-control px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
             href="/users"
           >
-            {getMessage(messages, "platform.common.clear")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.common.clear" />
+            </Suspense>
           </Link>
         ) : null}
       </Form>
@@ -351,6 +349,18 @@ const UsersFilterForm = async ({
     </div>
   );
 };
+
+/**
+ * One user's status, as its own async component: the label is a string the
+ * catalog resolves, and a row rendered inside `.map()` cannot await.
+ */
+const EndUserStatusCell = async ({
+  locale,
+  status,
+}: {
+  locale: Locale;
+  status: string;
+}) => await getEndUserStatusLabel(status, locale);
 
 const UsersTableSection = async ({
   hasFilter,
@@ -367,23 +377,31 @@ const UsersTableSection = async ({
   timeZone: string;
   users: PlatformEndUserSummary[];
 }) => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const t = await getMessagesFor(locale);
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>
-            {getMessage(messages, "platform.users.columns_name")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.columns_name" />
+            </Suspense>
           </TableHead>
           <TableHead>
-            {getMessage(messages, "platform.users.columns_tenant")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.columns_tenant" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-44">
-            {getMessage(messages, "platform.users.columns_created")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.columns_created" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-32">
-            {getMessage(messages, "platform.users.columns_status")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.users.columns_status" />
+            </Suspense>
           </TableHead>
           <TableHead className="w-28" />
         </TableRow>
@@ -392,7 +410,7 @@ const UsersTableSection = async ({
         {result.ok && users.length === 0 && !hideEmptyMessage ? (
           <TableRow>
             <TableCell className="text-muted-foreground" colSpan={5}>
-              {buildEmptyMessage(hasFilter, messages)}
+              {await buildEmptyMessage(hasFilter, locale)}
             </TableCell>
           </TableRow>
         ) : null}
@@ -400,7 +418,7 @@ const UsersTableSection = async ({
           ? users.map((user) => (
               <TableRow key={user.publicId}>
                 <TableCell className="font-medium">
-                  {user.name || getMessage(messages, "platform.common.unset")}
+                  {user.name || t("platform.common.unset")}
                 </TableCell>
                 <TableCell>
                   {user.primaryTenantPublicId ? (
@@ -411,12 +429,12 @@ const UsersTableSection = async ({
                       {user.primaryTenantName || user.primaryTenantPublicId}
                     </Link>
                   ) : (
-                    getMessage(messages, "platform.users.no_tenant")
+                    t("platform.users.no_tenant")
                   )}
                 </TableCell>
                 <TableCell>
                   {formatDate(user.createdAt, {
-                    fallback: getMessage(messages, "platform.common.unset"),
+                    fallback: t("platform.common.unset"),
                     locale,
                     timeZone,
                   })}
@@ -426,7 +444,7 @@ const UsersTableSection = async ({
                     tone={getEndUserStatusTone(user.status)}
                     variant="outline"
                   >
-                    {getEndUserStatusLabel(user.status, messages)}
+                    <EndUserStatusCell locale={locale} status={user.status} />
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -435,7 +453,9 @@ const UsersTableSection = async ({
                     size="sm"
                     variant="outline"
                   >
-                    {getMessage(messages, "platform.common.detail")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.common.detail" />
+                    </Suspense>
                   </LinkButton>
                 </TableCell>
               </TableRow>
@@ -454,17 +474,16 @@ const UsersContent = async ({
     getPlatformLocale(),
   ]);
   const filters = parseUsersFilters(rawSearchParams);
-  const [messages, tenantSearch, selectedTenantResult, timeZone] =
-    await Promise.all([
-      loadPlatformMessages(locale),
-      filters.tenantQuery
-        ? searchPlatformTenantFilterOptions(filters.tenantQuery, locale)
-        : Promise.resolve(emptyTenantSearch),
-      filters.tenantId
-        ? getPlatformTenant(filters.tenantId, locale)
-        : Promise.resolve(emptySelectedTenant),
-      getPlatformDisplayTimeZone(),
-    ]);
+  const [t, tenantSearch, selectedTenantResult, timeZone] = await Promise.all([
+    getMessagesFor(locale),
+    filters.tenantQuery
+      ? searchPlatformTenantFilterOptions(filters.tenantQuery, locale)
+      : Promise.resolve(emptyTenantSearch),
+    filters.tenantId
+      ? getPlatformTenant(filters.tenantId, locale)
+      : Promise.resolve(emptySelectedTenant),
+    getPlatformDisplayTimeZone(),
+  ]);
 
   const selectedTenant = selectedTenantResult.ok
     ? selectedTenantResult.tenant
@@ -487,8 +506,8 @@ const UsersContent = async ({
     ...filters,
     tenantId,
   };
-  const tenantMessages = buildTenantFilterMessages({
-    messages,
+  const tenantMessages = await buildTenantFilterMessages({
+    locale,
     resolution,
     tenantQuery: filters.tenantQuery,
     tenantSearch,
@@ -562,14 +581,14 @@ const UsersContent = async ({
         <p className="text-xs text-muted-foreground">
           {pendingTenantPick
             ? "-"
-            : buildSummaryText(result, users.length, messages)}
+            : await buildSummaryText(result, users.length, locale)}
         </p>
         <PaginationControls
-          ariaLabel={getMessage(messages, "platform.users.pagination_aria")}
+          ariaLabel={t("platform.users.pagination_aria")}
           nextHref={nextHref}
-          nextLabel={getMessage(messages, "platform.common.next")}
+          nextLabel={t("platform.common.next")}
           previousHref={previousHref}
-          previousLabel={getMessage(messages, "platform.common.previous")}
+          previousLabel={t("platform.common.previous")}
         />
       </div>
     </div>

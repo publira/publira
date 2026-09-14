@@ -1,6 +1,5 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { getMessage } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -10,7 +9,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { isUnauthenticatedError } from "./auth-shared";
-import { loadPlatformMessages } from "./locale";
+import { getMessagesFor } from "./messages";
 
 export interface PlatformDashboardRecentEvent {
   action: string;
@@ -54,9 +53,9 @@ export const getPlatformDashboardSummary = async (input: {
   const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: getMessage(messages, "errors.rpc.unauthenticated"),
+      message: t("errors.rpc.unauthenticated"),
       ok: false,
       requiresSignIn: true,
     };
@@ -92,13 +91,11 @@ export const getPlatformDashboardSummary = async (input: {
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
-    const messages = await loadPlatformMessages(input.locale);
+    const t = await getMessagesFor(input.locale);
     return {
-      message: rpcErrorMessage(
-        error,
-        getMessage(messages, "platform.dashboard.list_failed"),
-        { locale: input.locale }
-      ),
+      message: rpcErrorMessage(error, t("platform.dashboard.list_failed"), {
+        locale: input.locale,
+      }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };

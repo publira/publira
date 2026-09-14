@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import { Field, FieldLabel } from "@publira/ui-components/field";
@@ -14,6 +13,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { Message } from "#components/message";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -30,7 +30,8 @@ import {
 } from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import {
   getOperatorRoleCardDescription,
   getOperatorRoleLabel,
@@ -50,9 +51,9 @@ import {
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.operators.detail_metadata") };
+  return { title: t("platform.operators.detail_metadata") };
 };
 
 interface OperatorDetailPageProps {
@@ -95,13 +96,12 @@ const OperatorDetailContent = async ({
   const { operator_public_id: operatorPublicId } = parsedParams;
 
   const locale = await getPlatformLocale();
-  const [messages, operator, currentOperatorResult, timeZone] =
-    await Promise.all([
-      loadPlatformMessages(locale),
-      getPlatformOperator(operatorPublicId, locale),
-      getPlatformCurrentOperator(),
-      getPlatformDisplayTimeZone(),
-    ]);
+  const [t, operator, currentOperatorResult, timeZone] = await Promise.all([
+    getMessagesFor(locale),
+    getPlatformOperator(operatorPublicId, locale),
+    getPlatformCurrentOperator(),
+    getPlatformDisplayTimeZone(),
+  ]);
 
   // Before `notFound()`: a rejected session reads every record as missing, and
   // a 404 would hide that the operator only needs to sign in again.
@@ -121,41 +121,44 @@ const OperatorDetailContent = async ({
   const canSuspend = isSuperAdmin && !isSelf && operator.status === "active";
   const canUnsuspend =
     isSuperAdmin && !isSelf && operator.status === "suspended";
-  const cancelText = getMessage(messages, "platform.common.cancel");
+  const cancelText = t("platform.common.cancel");
 
   return (
     <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageTitle>
-            {getMessage(messages, "platform.operators.detail_title", {
-              name: operator.name,
-            })}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message
+                message="platform.operators.detail_title"
+                values={{
+                  name: operator.name,
+                }}
+              />
+            </Suspense>
           </PlatformPageTitle>
           <PlatformPageDescription>
-            {getMessage(messages, "platform.operators.detail_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.operators.detail_description" />
+            </Suspense>
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
           <LinkButton render={<Link href="/operators" />} variant="outline">
-            {getMessage(messages, "platform.common.back_to_list")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.common.back_to_list" />
+            </Suspense>
           </LinkButton>
           {canUnsuspend ? (
             <DangerConfirmButton
               actionArg={operator.publicId}
               actionCreator={unsuspendOperatorAction}
-              actionText={getMessage(
-                messages,
-                "platform.operators.resume_action"
-              )}
+              actionText={t("platform.operators.resume_action")}
               actionVariant="default"
               cancelText={cancelText}
-              description={getMessage(
-                messages,
-                "platform.operators.resume_description"
-              )}
-              title={getMessage(messages, "platform.operators.resume_title")}
-              triggerLabel={getMessage(messages, "platform.operators.resume")}
+              description={t("platform.operators.resume_description")}
+              title={t("platform.operators.resume_title")}
+              triggerLabel={t("platform.operators.resume")}
               triggerVariant="outline"
             />
           ) : null}
@@ -163,17 +166,11 @@ const OperatorDetailContent = async ({
             <DangerConfirmButton
               actionArg={operator.publicId}
               actionCreator={suspendOperatorAction}
-              actionText={getMessage(
-                messages,
-                "platform.operators.suspend_action"
-              )}
+              actionText={t("platform.operators.suspend_action")}
               cancelText={cancelText}
-              description={getMessage(
-                messages,
-                "platform.operators.suspend_description"
-              )}
-              title={getMessage(messages, "platform.operators.suspend_title")}
-              triggerLabel={getMessage(messages, "platform.operators.suspend")}
+              description={t("platform.operators.suspend_description")}
+              title={t("platform.operators.suspend_title")}
+              triggerLabel={t("platform.operators.suspend")}
               triggerVariant="outline"
             />
           ) : null}
@@ -181,23 +178,11 @@ const OperatorDetailContent = async ({
             <DangerConfirmButton
               actionArg={operator.publicId}
               actionCreator={deactivateOperatorAction}
-              actionText={getMessage(
-                messages,
-                "platform.operators.deactivate_action"
-              )}
+              actionText={t("platform.operators.deactivate_action")}
               cancelText={cancelText}
-              description={getMessage(
-                messages,
-                "platform.operators.deactivate_description"
-              )}
-              title={getMessage(
-                messages,
-                "platform.operators.deactivate_title"
-              )}
-              triggerLabel={getMessage(
-                messages,
-                "platform.operators.deactivate"
-              )}
+              description={t("platform.operators.deactivate_description")}
+              title={t("platform.operators.deactivate_title")}
+              triggerLabel={t("platform.operators.deactivate")}
             />
           ) : null}
         </PlatformPageActions>
@@ -208,39 +193,51 @@ const OperatorDetailContent = async ({
             <PlatformSectionHeader>
               <PlatformSectionHeading>
                 <PlatformSectionTitle>
-                  {getMessage(messages, "platform.operators.info_title")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.operators.info_title" />
+                  </Suspense>
                 </PlatformSectionTitle>
                 <PlatformSectionDescription>
-                  {getMessage(messages, "platform.operators.info_description")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.operators.info_description" />
+                  </Suspense>
                 </PlatformSectionDescription>
               </PlatformSectionHeading>
             </PlatformSectionHeader>
             <div className="grid gap-4">
               <Field>
                 <FieldLabel>
-                  {getMessage(messages, "platform.common.name")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.common.name" />
+                  </Suspense>
                 </FieldLabel>
                 <p className="text-sm">{operator.name}</p>
               </Field>
               <Field>
                 <FieldLabel>
-                  {getMessage(messages, "platform.common.email")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.common.email" />
+                  </Suspense>
                 </FieldLabel>
                 <p className="text-sm">{operator.email}</p>
               </Field>
               <Field>
                 <FieldLabel>
-                  {getMessage(messages, "platform.operators.current_role")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.operators.current_role" />
+                  </Suspense>
                 </FieldLabel>
                 <p>
                   <Badge tone="info">
-                    {getOperatorRoleLabel(operator.role, messages)}
+                    {await getOperatorRoleLabel(operator.role, locale)}
                   </Badge>
                 </p>
               </Field>
               <Field>
                 <FieldLabel>
-                  {getMessage(messages, "platform.common.status")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.common.status" />
+                  </Suspense>
                 </FieldLabel>
                 <p>
                   <StatusChip
@@ -248,17 +245,19 @@ const OperatorDetailContent = async ({
                       operator.status === "active" ? "success" : "warning"
                     }
                   >
-                    {getOperatorStatusLabel(operator.status, messages)}
+                    {await getOperatorStatusLabel(operator.status, locale)}
                   </StatusChip>
                 </p>
               </Field>
               <Field>
                 <FieldLabel>
-                  {getMessage(messages, "platform.common.created_at")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.common.created_at" />
+                  </Suspense>
                 </FieldLabel>
                 <p className="text-sm">
                   {formatDateTime(operator.createdAt, {
-                    fallback: getMessage(messages, "platform.common.unset"),
+                    fallback: t("platform.common.unset"),
                     locale,
                     timeZone,
                   })}
@@ -266,10 +265,14 @@ const OperatorDetailContent = async ({
               </Field>
               <Field>
                 <FieldLabel>
-                  {getMessage(messages, "platform.operators.last_login")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="platform.operators.last_login" />
+                  </Suspense>
                 </FieldLabel>
                 <p className="text-sm text-muted-foreground">
-                  {getMessage(messages, "platform.operators.not_fetched")}
+                  <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                    <Message message="platform.operators.not_fetched" />
+                  </Suspense>
                 </p>
               </Field>
             </div>
@@ -280,12 +283,14 @@ const OperatorDetailContent = async ({
               <PlatformSectionHeader>
                 <PlatformSectionHeading>
                   <PlatformSectionTitle>
-                    {getMessage(messages, "platform.operators.change_role")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.operators.change_role" />
+                    </Suspense>
                   </PlatformSectionTitle>
                   <PlatformSectionDescription>
-                    {getOperatorRoleCardDescription(
+                    {await getOperatorRoleCardDescription(
                       { isSelf, isSuperAdmin },
-                      messages
+                      locale
                     )}
                   </PlatformSectionDescription>
                 </PlatformSectionHeading>

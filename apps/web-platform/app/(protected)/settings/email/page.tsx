@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -16,7 +15,8 @@ import {
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformEmailSettings } from "#lib/email-settings";
 import type { PlatformSmtpSettings } from "#lib/email-settings";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import {
@@ -27,9 +27,9 @@ import { EmailSettingsForm } from "./_components/email-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
 
-  return { title: getMessage(messages, "platform.settings.email_title") };
+  return { title: t("platform.settings.email_title") };
 };
 
 const emptySettings: PlatformSmtpSettings = {

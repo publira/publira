@@ -1,6 +1,7 @@
-import { getMessage } from "@publira/i18n";
-import type { SharedMessages } from "@publira/i18n/catalog";
+import type { Locale } from "@publira/i18n";
 import { z } from "zod";
+
+import { getMessagesFor } from "./messages";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED =
   "episode_publish_failed";
@@ -59,35 +60,29 @@ export interface NotificationDisplay {
  * differ by language, so a sentence assembled from pieces here would only read
  * correctly in the language the pieces were written for.
  */
-const episodeSubject = (
-  messages: SharedMessages,
+const episodeSubject = async (
+  locale: Locale,
   payload: NotificationPayload
-): string => {
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
   if (payload.episode_title && payload.series_title) {
-    return getMessage(
-      messages,
-      "platform.notifications.events.subject_in_series",
-      {
-        episode: payload.episode_title,
-        series: payload.series_title,
-      }
-    );
+    return t("platform.notifications.events.subject_in_series", {
+      episode: payload.episode_title,
+      series: payload.series_title,
+    });
   }
   if (payload.episode_title) {
-    return getMessage(
-      messages,
-      "platform.notifications.events.subject_episode",
-      { episode: payload.episode_title }
-    );
+    return t("platform.notifications.events.subject_episode", {
+      episode: payload.episode_title,
+    });
   }
   if (payload.series_title) {
-    return getMessage(
-      messages,
-      "platform.notifications.events.subject_series",
-      { series: payload.series_title }
-    );
+    return t("platform.notifications.events.subject_series", {
+      series: payload.series_title,
+    });
   }
-  return getMessage(messages, "platform.notifications.events.subject_unnamed");
+  return t("platform.notifications.events.subject_unnamed");
 };
 
 /**
@@ -123,55 +118,52 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
  * names the tenant gets its own message rather than a prefix pasted onto the
  * other one, for the reason {@link episodeSubject} gives.
  */
-const publishFailedDescription = (
-  messages: SharedMessages,
+const publishFailedDescription = async (
+  locale: Locale,
   payload: NotificationPayload
-): string => {
-  const subject = episodeSubject(messages, payload);
+): Promise<string> => {
+  const [t, subject] = await Promise.all([
+    getMessagesFor(locale),
+    episodeSubject(locale, payload),
+  ]);
   if (payload.tenant_name) {
-    return getMessage(
-      messages,
+    return t(
       "platform.notifications.events.publish_failed_description_tenant",
       { subject, tenant: payload.tenant_name }
     );
   }
 
-  return getMessage(
-    messages,
-    "platform.notifications.events.publish_failed_description",
-    { subject }
-  );
+  return t("platform.notifications.events.publish_failed_description", {
+    subject,
+  });
 };
 
 /**
  * Inbox copy is assembled here from `notification_type` + payload. The API
  * does not store title/body. Unknown types stay in the list as a generic row.
  */
-export const notificationDisplay = (
+export const notificationDisplay = async (
   notificationType: string,
   payload: NotificationPayload,
-  messages: SharedMessages
-): NotificationDisplay => {
+  locale: Locale
+): Promise<NotificationDisplay> => {
+  const t = await getMessagesFor(locale);
   const href = notificationHref(payload);
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED) {
+    const description = await publishFailedDescription(locale, payload);
+
     return {
-      description: publishFailedDescription(messages, payload),
+      description,
       href,
-      title: getMessage(
-        messages,
-        "platform.notifications.events.publish_failed_title"
-      ),
+      title: t("platform.notifications.events.publish_failed_title"),
     };
   }
 
   return {
-    description: getMessage(
-      messages,
-      "platform.notifications.events.unknown_description"
-    ),
+    description: t("platform.notifications.events.unknown_description"),
     href,
-    title: getMessage(messages, "platform.notifications.events.unknown_title"),
+    title: t("platform.notifications.events.unknown_title"),
   };
 };

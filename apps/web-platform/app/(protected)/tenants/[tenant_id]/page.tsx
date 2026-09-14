@@ -1,4 +1,3 @@
-import { getMessage } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldLabel } from "@publira/ui-components/field";
@@ -47,7 +46,8 @@ import {
 } from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { getPlatformTenant } from "#lib/tenants";
@@ -74,10 +74,10 @@ export const generateMetadata = async ({
   params,
 }: TenantDetailPageProps): Promise<Metadata> => {
   const locale = await getPlatformLocale();
-  const messages = await loadPlatformMessages(locale);
+  const t = await getMessagesFor(locale);
   const parsedParams = parseRouteParams(tenantDetailParamsSchema, await params);
   if (!parsedParams) {
-    return { title: getMessage(messages, "platform.tenants.heading") };
+    return { title: t("platform.tenants.heading") };
   }
 
   const tenantResult = await getPlatformTenant(parsedParams.tenant_id, locale);
@@ -86,8 +86,8 @@ export const generateMetadata = async ({
 
   return {
     title: name
-      ? getMessage(messages, "platform.tenants.detail_title", { name })
-      : getMessage(messages, "platform.tenants.heading"),
+      ? t("platform.tenants.detail_title", { name })
+      : t("platform.tenants.heading"),
   };
 };
 
@@ -146,8 +146,8 @@ const TenantDetailContent = async ({
   const { tenant_id: tenantId } = parsedParams;
   const locale = await getPlatformLocale();
 
-  const [messages, tenantResult, timeZone] = await Promise.all([
-    loadPlatformMessages(locale),
+  const [t, tenantResult, timeZone] = await Promise.all([
+    getMessagesFor(locale),
     getPlatformTenant(tenantId, locale),
     getPlatformDisplayTimeZone(),
   ]);
@@ -164,27 +164,36 @@ const TenantDetailContent = async ({
   if (!tenant) {
     notFound();
   }
-  const tenantStatusLabel = getTenantStatusLabel(tenant.status, messages);
+  const tenantStatusLabel = await getTenantStatusLabel(tenant.status, locale);
   const tenantStatusTone = getTenantStatusTone(tenant.status);
-  const saveLabel = getMessage(messages, "platform.common.save");
-  const savingLabel = getMessage(messages, "platform.common.saving");
+  const saveLabel = t("platform.common.save");
+  const savingLabel = t("platform.common.saving");
 
   return (
     <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageTitle>
-            {getMessage(messages, "platform.tenants.detail_title", {
-              name: tenant.name,
-            })}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message
+                message="platform.tenants.detail_title"
+                values={{
+                  name: tenant.name,
+                }}
+              />
+            </Suspense>
           </PlatformPageTitle>
           <PlatformPageDescription>
-            {getMessage(messages, "platform.tenants.detail_description")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.tenants.detail_description" />
+            </Suspense>
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
           <LinkButton render={<Link href="/tenants" />} variant="outline">
-            {getMessage(messages, "platform.common.back_to_list")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.common.back_to_list" />
+            </Suspense>
           </LinkButton>
           <LinkButton
             render={
@@ -194,20 +203,26 @@ const TenantDetailContent = async ({
             }
             variant="outline"
           >
-            {getMessage(messages, "platform.tenants.update_audit")}
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.tenants.update_audit" />
+            </Suspense>
           </LinkButton>
           {tenant.status === "suspended" ? (
             <form action={resumeTenantAction}>
               <input name="tenant_id" type="hidden" value={tenant.publicId} />
               <Button type="submit">
-                {getMessage(messages, "platform.tenants.resume")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.tenants.resume" />
+                </Suspense>
               </Button>
             </form>
           ) : (
             <form action={suspendTenantAction}>
               <input name="tenant_id" type="hidden" value={tenant.publicId} />
               <Button type="submit" variant="destructive">
-                {getMessage(messages, "platform.tenants.suspend")}
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="platform.tenants.suspend" />
+                </Suspense>
               </Button>
             </form>
           )}
@@ -222,10 +237,14 @@ const TenantDetailContent = async ({
               <PlatformSectionHeader>
                 <PlatformSectionHeading>
                   <PlatformSectionTitle>
-                    {getMessage(messages, "platform.tenants.basic_title")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.tenants.basic_title" />
+                    </Suspense>
                   </PlatformSectionTitle>
                   <PlatformSectionDescription>
-                    {getMessage(messages, "platform.tenants.basic_description")}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.tenants.basic_description" />
+                    </Suspense>
                   </PlatformSectionDescription>
                 </PlatformSectionHeading>
               </PlatformSectionHeader>
@@ -239,7 +258,11 @@ const TenantDetailContent = async ({
                 <div className="grid gap-4">
                   <Field>
                     <FieldLabel required>
-                      {getMessage(messages, "platform.tenants.name")}
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.tenants.name" />
+                      </Suspense>
                     </FieldLabel>
                     <Input
                       key={tenant.name}
@@ -251,11 +274,15 @@ const TenantDetailContent = async ({
                   </Field>
                   <Field>
                     <FieldLabel>
-                      {getMessage(messages, "platform.common.created_at")}
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.common.created_at" />
+                      </Suspense>
                     </FieldLabel>
                     <p className="text-sm">
                       {formatDateTime(tenant.createdAt, {
-                        fallback: getMessage(messages, "platform.common.unset"),
+                        fallback: t("platform.common.unset"),
                         locale,
                         timeZone,
                       })}
@@ -263,7 +290,11 @@ const TenantDetailContent = async ({
                   </Field>
                   <Field>
                     <FieldLabel>
-                      {getMessage(messages, "platform.common.status")}
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.common.status" />
+                      </Suspense>
                     </FieldLabel>
                     <p>
                       <Badge tone={tenantStatusTone}>{tenantStatusLabel}</Badge>
@@ -284,16 +315,14 @@ const TenantDetailContent = async ({
               <PlatformSectionHeader>
                 <PlatformSectionHeading>
                   <PlatformSectionTitle>
-                    {getMessage(
-                      messages,
-                      "platform.tenants.domain_settings_title"
-                    )}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.tenants.domain_settings_title" />
+                    </Suspense>
                   </PlatformSectionTitle>
                   <PlatformSectionDescription>
-                    {getMessage(
-                      messages,
-                      "platform.tenants.domain_settings_description"
-                    )}
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="platform.tenants.domain_settings_description" />
+                    </Suspense>
                   </PlatformSectionDescription>
                 </PlatformSectionHeading>
               </PlatformSectionHeader>
@@ -308,7 +337,11 @@ const TenantDetailContent = async ({
                 <div className="grid gap-4">
                   <Field>
                     <FieldLabel required>
-                      {getMessage(messages, "platform.tenants.domain")}
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.tenants.domain" />
+                      </Suspense>
                     </FieldLabel>
                     <Input
                       key={tenant.domain}
@@ -321,7 +354,11 @@ const TenantDetailContent = async ({
                   </Field>
                   <Field>
                     <FieldLabel>
-                      {getMessage(messages, "platform.tenants.admin_domain")}
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="platform.tenants.admin_domain" />
+                      </Suspense>
                     </FieldLabel>
                     <Input
                       key={tenant.adminDomain}

@@ -1,6 +1,7 @@
-import { getMessage } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 
-import type { PlatformMessageKey, PlatformMessages } from "./locale";
+import type { PlatformMessageKey } from "./locale";
+import { getMessagesFor } from "./messages";
 import { normalizePlatformRole } from "./roles";
 
 export type OperatorRoleTone = "info";
@@ -17,39 +18,60 @@ const accountStatusKeys = {
   suspended: "platform.common.account_status.suspended",
 } as const satisfies Record<string, PlatformMessageKey>;
 
-export const getOperatorRoleLabel = (
+/**
+ * Each label takes the `locale` and reads the catalog itself. The value has to
+ * be a string — the same label fills a `<select>` item and a table cell — so it
+ * cannot be a `<Message>`, and an accessor passed in as an argument would make
+ * the key an attribute of whatever the caller happened to bind.
+ */
+export const getOperatorRoleLabel = async (
   role: string,
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
   const key = operatorRoleKeys[normalizePlatformRole(role)];
-  return key ? getMessage(messages, key) : role;
+  if (!key) {
+    return role;
+  }
+
+  const t = await getMessagesFor(locale);
+
+  return t(key);
 };
 
-export const getOperatorStatusLabel = (
+export const getOperatorStatusLabel = async (
   status: string,
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
   const key = accountStatusKeys[status];
-  return key ? getMessage(messages, key) : status;
+  if (!key) {
+    return status;
+  }
+
+  const t = await getMessagesFor(locale);
+
+  return t(key);
 };
 
-export const getOperatorRoleSelectItems = (messages: PlatformMessages) =>
-  [
+export const getOperatorRoleSelectItems = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return [
     {
-      label: getMessage(messages, "platform.common.roles.platform_super_admin"),
+      label: t("platform.common.roles.platform_super_admin"),
       value: "platform_super_admin",
     },
     {
-      label: getMessage(messages, "platform.common.roles.platform_operator"),
+      label: t("platform.common.roles.platform_operator"),
       value: "platform_operator",
     },
     {
-      label: getMessage(messages, "platform.common.roles.platform_auditor"),
+      label: t("platform.common.roles.platform_auditor"),
       value: "platform_auditor",
     },
   ] as const;
+};
 
-export const getOperatorRoleCardDescription = (
+export const getOperatorRoleCardDescription = async (
   {
     isSelf,
     isSuperAdmin,
@@ -57,13 +79,15 @@ export const getOperatorRoleCardDescription = (
     isSelf: boolean;
     isSuperAdmin: boolean;
   },
-  messages: PlatformMessages
-): string => {
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
   if (isSelf) {
-    return getMessage(messages, "platform.operators.cannot_change_own_role");
+    return t("platform.operators.cannot_change_own_role");
   }
   if (!isSuperAdmin) {
-    return getMessage(messages, "platform.operators.cannot_change_role");
+    return t("platform.operators.cannot_change_role");
   }
-  return getMessage(messages, "platform.operators.change_role_description");
+  return t("platform.operators.change_role_description");
 };
