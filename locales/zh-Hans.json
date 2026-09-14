@@ -1416,10 +1416,10 @@
       },
       "default_locale": {
         "title": "默认语言",
-        "description": "尚未选择显示语言的管理员在此控制台看到的语言。它不会改变已经选定的语言。",
+        "description": "尚未选择显示语言的管理员和读者在此控制台与公开站点看到的语言。它不会改变已经选定的语言。",
         "label": "默认语言",
         "placeholder": "请选择语言",
-        "field_description": "尚未选择语言的管理员的起始语言；它不会改变 Cookie 中已保存的语言。",
+        "field_description": "尚未选择语言的用户的起始语言；它不会改变 Cookie 中已保存的语言。",
         "load_error_hint": "此时保存会覆盖已保存的设置，请先重新加载页面，然后再修改。",
         "submit": "保存默认语言",
         "saved": "默认语言已保存。",
