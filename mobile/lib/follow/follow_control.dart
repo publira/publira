@@ -69,6 +69,22 @@ class _FollowControlState extends State<FollowControl> {
     }
   }
 
+  /// The row this control sits in may be recycled onto another target when a
+  /// list is re-read, which is a different follow and not this one's state.
+  @override
+  void didUpdateWidget(covariant FollowControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.targetId == widget.targetId &&
+        oldWidget.kind == widget.kind) {
+      return;
+    }
+    _requests++;
+    _following = _accessToken.isEmpty ? null : widget.following;
+    if (_accessToken.isNotEmpty && _following == null) {
+      _load();
+    }
+  }
+
   Future<void> _load() async {
     final repository = FollowScope.maybeOf(context);
     if (repository == null) {

@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/follow/follow_control.dart';
 import 'package:publira/follow/follow_failure.dart';
+import 'package:publira/follow/follow_repository.dart';
+import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/l10n/localizations.dart';
 import 'package:publira/models/follow.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
@@ -188,6 +194,51 @@ void main() {
 
       expect(follows.followed, ['creator:${creator.id}']);
       semantics.dispose();
+    });
+
+    testWidgets('reads again when its row is recycled onto another target', (
+      tester,
+    ) async {
+      final auth = fakeAuthController(session: fakeSession);
+      follows.following.add(
+        FakeFollowRepository.targetKey(
+          FollowTargetKind.creator,
+          fixtureCreators.first.id,
+        ),
+      );
+
+      Future<void> pumpControl(SeriesCreator target) async {
+        await tester.pumpWidget(
+          AuthScope(
+            controller: auth,
+            child: FollowScope(
+              repository: follows,
+              child: MaterialApp(
+                localizationsDelegates: appLocalizationsDelegates,
+                supportedLocales: AppMessages.supportedLocales,
+                home: Scaffold(
+                  body: FollowControl(
+                    kind: FollowTargetKind.creator,
+                    targetId: target.id,
+                    targetName: target.name,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+      }
+
+      await pumpControl(fixtureCreators.first);
+      await pumpUntilFound(tester, find.text('Unfollow'));
+
+      // The same control, rebuilt against an author nothing follows: keeping
+      // the state of the one before it would offer to unfollow a stranger.
+      await pumpControl(fixtureCreators.last);
+      await pumpUntilFound(tester, find.text('Follow'));
+
+      expect(follows.statusReads, 2);
     });
 
     testWidgets('is left out of a build that follows nothing', (tester) async {
