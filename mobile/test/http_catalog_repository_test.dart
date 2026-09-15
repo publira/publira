@@ -147,7 +147,9 @@ void main() {
 
     final first = await catalog.searchSeries(query: 'Kitchen');
 
-    expect(first.series.single.id, 'series-kitchen');
+    // The results are in title order, so `Kitchen Nights` stands above
+    // `The Little Kitchen` however the tenant published them.
+    expect(first.series.single.id, 'series-second-kitchen');
     expect(first.nextToken, isNotEmpty);
 
     final second = await catalog.searchSeries(
@@ -155,7 +157,7 @@ void main() {
       token: first.nextToken,
     );
 
-    expect(second.series.single.id, 'series-second-kitchen');
+    expect(second.series.single.id, 'series-kitchen');
     expect(second.nextToken, isEmpty);
     final request = server.requestsTo('SearchPublishedSeries').last;
     expect(request.body['token'], first.nextToken);

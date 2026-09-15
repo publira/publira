@@ -670,14 +670,19 @@ class ConnectFixtureServer {
   }
 
   /// One page of the series whose title or synopsis contains [query], the
-  /// case-insensitive substring match `SearchPublishedSeries` performs.
+  /// case-insensitive substring match `SearchPublishedSeries` performs, in the
+  /// title order it answers them in.
   Map<String, Object?> _searchPage(Object? query, Object? token) {
     final keyword = query is String ? query.trim().toLowerCase() : '';
-    final matches = series.where((item) {
-      final title = '${item['title'] ?? ''}'.toLowerCase();
-      final synopsis = '${item['synopsis'] ?? ''}'.toLowerCase();
-      return title.contains(keyword) || synopsis.contains(keyword);
-    }).toList();
+    final matches =
+        series.where((item) {
+          final title = '${item['title'] ?? ''}'.toLowerCase();
+          final synopsis = '${item['synopsis'] ?? ''}'.toLowerCase();
+          return title.contains(keyword) || synopsis.contains(keyword);
+        }).toList()..sort(
+          (left, right) =>
+              '${left['title'] ?? ''}'.compareTo('${right['title'] ?? ''}'),
+        );
     if (seriesPageSize <= 0) {
       return {'series': matches};
     }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
@@ -67,10 +68,22 @@ class _SearchScreenState extends State<SearchScreen> {
   /// reader has typed past cannot land on the screen under the current one.
   var _reads = 0;
 
+  /// Asks the keyword again whenever the repository changes, the way the
+  /// catalog list does: the rows on screen and the token under them were
+  /// answered by the repository that has just been replaced, so keeping them
+  /// would show one catalog's results and then page them out of another.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _catalog = CatalogScope.of(context);
+    final catalog = CatalogScope.of(context);
+    if (identical(catalog, _catalog)) {
+      return;
+    }
+    final swapped = _catalog != null;
+    _catalog = catalog;
+    if (swapped && _query.isNotEmpty) {
+      _readFirstPage(_query);
+    }
   }
 
   @override
@@ -179,14 +192,9 @@ class _SearchScreenState extends State<SearchScreen> {
           autofocus: true,
           controller: _field,
           textInputAction: TextInputAction.search,
-          // The API measures the keyword in Unicode code points, and so does
-          // the field the site offers for the same search.
-          maxLength: searchQueryMaxRunes,
+          inputFormatters: const [_RuneLimitingFormatter(searchQueryMaxRunes)],
           decoration: InputDecoration(
             border: InputBorder.none,
-            // The field is the title of the app bar, which has no room under
-            // it for the count of a limit a reader will not reach.
-            counterText: '',
             hintText: messages.searchLabel,
           ),
           onChanged: _onChanged,
@@ -312,6 +320,35 @@ class _SearchPageFooter extends StatelessWidget {
         message: message,
         onRetry: onRetry,
       ),
+    );
+  }
+}
+
+/// Keeps the field inside the code-point limit the API measures a keyword by.
+///
+/// [TextField.maxLength] counts grapheme clusters, of which one can be several
+/// code points — 👍🏽 is one character and two — so a field limited by it still
+/// holds keywords `SearchPublishedSeries` refuses. Text over the limit is cut
+/// rather than refused, so pasting a long line leaves the reader with the part
+/// that fits instead of with nothing.
+class _RuneLimitingFormatter extends TextInputFormatter {
+  const _RuneLimitingFormatter(this.maxRunes);
+
+  final int maxRunes;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final runes = newValue.text.runes.toList();
+    if (runes.length <= maxRunes) {
+      return newValue;
+    }
+    final text = String.fromCharCodes(runes.take(maxRunes));
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

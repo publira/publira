@@ -264,13 +264,58 @@ void main() {
     expect(catalog.searchRequests.last.query, 'Seed');
   });
 
-  testWidgets('the field is limited to what the API accepts', (tester) async {
+  testWidgets('the field is limited to the code points the API counts', (
+    tester,
+  ) async {
     await pumpApp(tester);
+
+    // One grapheme cluster of two code points, which is what tells a limit
+    // measured in clusters apart from the one the API measures in.
+    const thumbsUp = '\u{1F44D}\u{1F3FD}';
+    await tester.enterText(
+      find.byKey(const ValueKey('search-field')),
+      thumbsUp * (searchQueryMaxRunes ~/ 2 + 1),
+    );
+    await tester.pump();
 
     final field = tester.widget<TextField>(
       find.byKey(const ValueKey('search-field')),
     );
 
-    expect(field.maxLength, searchQueryMaxRunes);
+    expect(field.controller!.text.runes.length, searchQueryMaxRunes);
+  });
+
+  testWidgets('a repository swapped under the screen answers again', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    router = createAppRouter(initialLocation: AppRoutes.search);
+    final auth = fakeAuthController();
+
+    Future<void> pumpWith(FakeCatalogRepository repository) =>
+        tester.pumpWidget(
+          PubliraApp(
+            router: router,
+            catalog: repository,
+            auth: auth,
+            offline: offline,
+          ),
+        );
+
+    await pumpWith(catalog);
+    await type(tester, 'Kitchen');
+    await pumpUntilFound(tester, tileOf('series-kitchen'));
+
+    final replacement = FakeCatalogRepository(searchResults: fixtureCatalog(1));
+    await pumpWith(replacement);
+    await pumpUntilFound(tester, tileOf('catalog-series-1'));
+
+    // The rows on screen and the token under them belonged to the repository
+    // that was replaced, so neither is carried over.
+    expect(tileOf('series-kitchen'), findsNothing);
+    expect(replacement.searchRequests.single.query, 'Kitchen');
+    expect(replacement.searchRequests.single.token, isEmpty);
   });
 }
