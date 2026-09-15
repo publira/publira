@@ -19,6 +19,7 @@ export {
   formatWeekdayName,
   fromDateTimeLocalValue,
   parseInstant,
+  plainDateOrNull,
   startOfDayIsoString,
   toDateTimeLocalValue,
   toInstantIsoString,

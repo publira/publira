@@ -23,6 +23,7 @@ import {
 } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getReaderProvenAgeRating } from "#lib/reader-age";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -125,6 +126,11 @@ const EpisodeContent = async (
 
   const { access, episode, images, nextEpisode, previousEpisode, series } =
     result.value;
+  // Read only for a series that carries a rating: an unrated page has nothing
+  // to ask the reader, so it never touches the session cookie.
+  const provenAgeRating = series.ageRating
+    ? await getReaderProvenAgeRating(tenantId)
+    : undefined;
   // GetSeriesDetail resolves a series override against the tenant default.
   // If that read failed, do not offer a form whose submission might be
   // rejected; the next request retries the uncached failure value.
@@ -152,6 +158,7 @@ const EpisodeContent = async (
     <AgeRatingGate
       backHref={`/series/${series.publicId}`}
       backMessage="host.episode.to_series_detail"
+      provenAgeRating={provenAgeRating}
       rating={series.ageRating}
       seriesTitle={series.title}
     >

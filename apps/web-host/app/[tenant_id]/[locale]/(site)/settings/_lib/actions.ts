@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { updateMe } from "#lib/auth";
-import { tenantIdFormSchema } from "#lib/auth-input";
+import { birthDateFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import {
   requirePublicSession,
   withPublicSessionReauth,
@@ -21,13 +21,15 @@ import { buildSettingsPath } from "./settings-form";
 const SETTINGS_RETURN_TO = "/settings";
 
 const updateProfileFormSchema = async (locale: Locale) => {
-  const [t, tenantId] = await Promise.all([
+  const [t, birthDate, tenantId] = await Promise.all([
     getMessagesFor(locale),
+    birthDateFormSchema(locale),
     tenantIdFormSchema(locale),
   ]);
   const nameRequired = t("host.settings.name_required");
 
   return z.object({
+    birthDate,
     locale: localeFormSchema,
     name: z
       .string({ error: nameRequired })
@@ -51,6 +53,7 @@ export const updateProfileAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      birthDate: "value",
       locale: "value",
       name: "value",
       tenantId: "value",
@@ -66,7 +69,7 @@ export const updateProfileAction = async (
     redirect(errorPath);
   }
 
-  const { locale, name, tenantId } = parsed.data;
+  const { birthDate, locale, name, tenantId } = parsed.data;
   const accessToken = await requirePublicSession(
     locale,
     SETTINGS_RETURN_TO,
@@ -75,7 +78,7 @@ export const updateProfileAction = async (
   const updated = await withPublicSessionReauth(
     locale,
     SETTINGS_RETURN_TO,
-    () => updateMe(tenantId, name, accessToken),
+    () => updateMe(tenantId, { birthDate, name }, accessToken),
     tenantId
   );
   if (!updated) {

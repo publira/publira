@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { signupPublic } from "#lib/auth";
 import {
+  birthDateFormSchema,
   emailFormSchema,
   passwordFormSchema,
   tenantIdFormSchema,
@@ -23,8 +24,9 @@ import { getMessagesFor } from "#lib/messages";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const signupFormSchema = async (locale: Locale) => {
-  const [t, email, password, tenantId] = await Promise.all([
+  const [t, birthDate, email, password, tenantId] = await Promise.all([
     getMessagesFor(locale),
+    birthDateFormSchema(locale),
     emailFormSchema(locale),
     passwordFormSchema(locale),
     tenantIdFormSchema(locale),
@@ -34,6 +36,7 @@ const signupFormSchema = async (locale: Locale) => {
 
   return z
     .object({
+      birthDate,
       confirmPassword: z
         .string({ error: confirmRequired })
         .min(1, confirmRequired)
@@ -68,6 +71,7 @@ export const signupAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      birthDate: "value",
       confirmPassword: "value",
       email: "value",
       locale: "value",
@@ -83,8 +87,14 @@ export const signupAction = async (
     };
   }
 
-  const { email, locale, name, password, tenantId } = parsed.data;
-  const accepted = await signupPublic(name, email, password, tenantId);
+  const { birthDate, email, locale, name, password, tenantId } = parsed.data;
+  const accepted = await signupPublic({
+    birthDate,
+    email,
+    name,
+    password,
+    tenantId,
+  });
   if (!accepted) {
     return {
       message: t("host.auth.errors.signup_failed"),

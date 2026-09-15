@@ -18,6 +18,7 @@
  */
 
 import type { Locale } from "@publira/i18n";
+import { plainDateOrNull } from "@publira/utils";
 import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
@@ -108,6 +109,37 @@ export const emailFormSchema = async (locale: Locale) => {
     .trim()
     .min(1, required)
     .pipe(z.email(t("host.auth.fields.email_invalid")));
+};
+
+/** Matches `oldestPlausibleAge` in `server/internal/ageverification`. */
+const OLDEST_PLAUSIBLE_AGE = 130;
+
+/**
+ * `<input type="date">` value, and `""` from a form the tenant's rule did not
+ * make ask. The bound is one day ahead of UTC because the server counts the
+ * date against the tenant's own calendar day, which can already be tomorrow.
+ */
+export const birthDateFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const invalid = t("host.auth.fields.birth_date_invalid");
+  const latestToday = Temporal.Now.plainDateISO("UTC").add({ days: 1 });
+
+  return z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() : ""),
+    z.string().refine((value) => {
+      if (value === "") {
+        return true;
+      }
+      const born = plainDateOrNull(value);
+      if (!born || Temporal.PlainDate.compare(born, latestToday) > 0) {
+        return false;
+      }
+      return (
+        latestToday.since(born, { largestUnit: "year" }).years <=
+        OLDEST_PLAUSIBLE_AGE
+      );
+    }, invalid)
+  );
 };
 
 export const passwordFormSchema = async (locale: Locale) => {

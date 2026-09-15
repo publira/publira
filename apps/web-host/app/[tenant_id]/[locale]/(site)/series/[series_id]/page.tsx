@@ -36,6 +36,7 @@ import { SeriesRating, MySeriesRating } from "#components/series-rating";
 import { getSeriesDetail } from "#lib/catalog";
 import type { SeriesSerializationStatus } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
+import { getReaderProvenAgeRating } from "#lib/reader-age";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -162,11 +163,17 @@ const SeriesDetailContent = async (
 
   const { episodes, series } = result.value;
   const [firstEpisode] = episodes;
+  // Read only for a series that carries a rating: an unrated page has nothing
+  // to ask the reader, so it never touches the session cookie.
+  const provenAgeRating = series.ageRating
+    ? await getReaderProvenAgeRating(tenantId)
+    : undefined;
 
   return (
     <AgeRatingGate
       backHref="/"
       backMessage="host.common.back_to_top"
+      provenAgeRating={provenAgeRating}
       rating={series.ageRating}
       seriesTitle={series.title}
     >

@@ -1819,6 +1819,7 @@
         "signup_failed": "Could not create your account. Please check what you entered."
       },
       "fields": {
+        "birth_date_invalid": "Enter your date of birth as a past calendar date.",
         "check_spam": "If the email does not arrive, check your spam folder.",
         "email_invalid": "Enter a valid email address.",
         "email_label": "Email address",
@@ -1859,6 +1860,8 @@
         "title": "Reset email sent"
       },
       "signup": {
+        "birth_date_help": "This site checks your age before opening age-rated works. You can add it later, but it cannot be changed once given.",
+        "birth_date_label": "Date of birth",
         "have_account": "Already have an account?",
         "login": "Sign in",
         "name_label": "Name",
@@ -1928,6 +1931,13 @@
       "series_pagination_aria": "Related series pagination"
     },
     "episode": {
+      "age_gate": {
+        "add_birth_date": "Add your date of birth",
+        "guest_description": "This site checks your age before opening this work. Sign in with an account that has your date of birth.",
+        "no_birth_date_description": "This site checks your age before opening this work. Add your date of birth in your settings.",
+        "title": "This episode is age-restricted",
+        "too_young_description": "This work is not available for your age."
+      },
       "body_error": "Could not show the episode",
       "body_label": "Episode body",
       "checkout_cancelled": "The purchase was cancelled. You have not been charged.",
@@ -2306,6 +2316,9 @@
       }
     },
     "settings": {
+      "birth_date_help": "This site checks your age before opening age-rated works. It cannot be changed once given.",
+      "birth_date_label": "Date of birth",
+      "birth_date_set_help": "Your date of birth cannot be changed. Contact this site if it is wrong.",
       "browser_notifications_denied": "Notifications are turned off for this site. Turn them on in your browser settings.",
       "browser_notifications_failed": "Could not turn notifications on. Try again.",
       "browser_notifications_heading": "Browser notifications",

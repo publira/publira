@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { ClientMessage } from "#components/client-message";
-import { ageRatingMeetsConfirmation } from "#lib/age-rating";
+import { ageRatingSatisfiedBy } from "#lib/age-rating";
 import type { RestrictedAgeRating } from "#lib/age-rating";
 import { useConfirmedAgeRating } from "#lib/age-rating-confirmation";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -28,7 +28,7 @@ export const AgeRatedVisibility = ({
   const tenantId = useTenantId();
   const confirmed = useConfirmedAgeRating(tenantId);
 
-  if (!ageRatingMeetsConfirmation(rating, confirmed)) {
+  if (!ageRatingSatisfiedBy(rating, confirmed)) {
     return null;
   }
 
@@ -48,7 +48,7 @@ export const AgeRatedHiddenNotice = ({
   const tenantId = useTenantId();
   const confirmed = useConfirmedAgeRating(tenantId);
   const hidden = ratings.some(
-    (rating) => !ageRatingMeetsConfirmation(rating, confirmed)
+    (rating) => !ageRatingSatisfiedBy(rating, confirmed)
   );
 
   if (!hidden) {

@@ -1,8 +1,10 @@
+import { toFormDataInput } from "@publira/utils/form-data";
 import { describe, expect, it } from "vitest";
 
 import {
   authTokenFormSchema,
   authTokenSearchParamSchema,
+  birthDateFormSchema,
   emailFormSchema,
   errorSearchParamSchema,
   passwordFormSchema,
@@ -127,6 +129,43 @@ describe("emailFormSchema", () => {
 
     expect(en.safeParse("").error?.issues[0]?.message).toBe(
       "Enter your email address."
+    );
+  });
+});
+
+describe("birthDateFormSchema", () => {
+  it("accepts a calendar date and reads a form that did not ask as empty", async () => {
+    const schema = await birthDateFormSchema(EN);
+
+    // A form the tenant's rule did not make ask submits no field at all, which
+    // reaches the schema as the `undefined` `toFormDataInput` answers with.
+    const absent = toFormDataInput(new FormData(), { birthDate: "value" });
+
+    expect(schema.parse(" 1990-04-02 ")).toBe("1990-04-02");
+    expect(schema.parse("")).toBe("");
+    expect(schema.parse(absent.birthDate)).toBe("");
+  });
+
+  it("rejects anything that is not a plausible past calendar day", async () => {
+    const schema = await birthDateFormSchema(EN);
+    const tomorrow = Temporal.Now.plainDateISO("UTC").add({ days: 2 });
+
+    expect(schema.safeParse("1990-4-2").success).toBe(false);
+    expect(schema.safeParse("1990-02-30").success).toBe(false);
+    expect(schema.safeParse(tomorrow.toString()).success).toBe(false);
+    expect(schema.safeParse("1800-01-01").success).toBe(false);
+    expect(schema.safeParse("1990-04-02T00:00:00Z").success).toBe(false);
+  });
+
+  it("words the rejection in the reader's language", async () => {
+    const en = await birthDateFormSchema(EN);
+    const ja = await birthDateFormSchema(JA);
+
+    expect(en.safeParse("nope").error?.issues[0]?.message).toBe(
+      "Enter your date of birth as a past calendar date."
+    );
+    expect(ja.safeParse("nope").error?.issues[0]?.message).toBe(
+      "生年月日を過去の日付で入力してください。"
     );
   });
 });

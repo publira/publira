@@ -153,10 +153,16 @@ describe("web-host auth", () => {
     mockGetMe
       .mockRejectedValueOnce(new ConnectError("not found", Code.NotFound))
       .mockResolvedValueOnce({
-        user: { name: "Alice", publicId: "U001", role: "reader" },
+        user: {
+          birthDate: "1990-04-02",
+          name: "Alice",
+          publicId: "U001",
+          role: "reader",
+        },
       });
 
     await expect(getMe("TENANT001")).resolves.toEqual({
+      birthDate: "1990-04-02",
       name: "Alice",
       publicId: "U001",
       role: "reader",
@@ -179,7 +185,9 @@ describe("web-host auth", () => {
       new ConnectError("name too long", Code.InvalidArgument)
     );
 
-    await expect(updateMe("TENANT001", "NewName")).resolves.toBeNull();
+    await expect(
+      updateMe("TENANT001", { birthDate: "", name: "NewName" })
+    ).resolves.toBeNull();
   });
 
   it("deleteMe: Propagate unauthenticated users to prompt them to log in again", async () => {

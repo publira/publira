@@ -1819,6 +1819,7 @@
         "signup_failed": "无法创建您的账户。请检查您输入的内容。"
       },
       "fields": {
+        "birth_date_invalid": "请以过去的日期填写出生日期。",
         "check_spam": "如果没有收到邮件，请查看垃圾邮件文件夹。",
         "email_invalid": "请输入有效的邮箱地址。",
         "email_label": "邮箱地址",
@@ -1859,6 +1860,8 @@
         "title": "重设邮件已发送"
       },
       "signup": {
+        "birth_date_help": "本站点在打开有年龄限制的作品前会核对年龄。您也可以稍后登记，但登记后无法更改。",
+        "birth_date_label": "出生日期",
         "have_account": "已经有账户了？",
         "login": "登录",
         "name_label": "昵称",
@@ -1928,6 +1931,13 @@
       "series_pagination_aria": "相关系列分页"
     },
     "episode": {
+      "age_gate": {
+        "add_birth_date": "登记出生日期",
+        "guest_description": "打开本作品前需要核对年龄。请使用已登记出生日期的账户登录。",
+        "no_birth_date_description": "打开本作品前需要核对年龄。请在设置中登记您的出生日期。",
+        "title": "本章设有年龄限制",
+        "too_young_description": "本作品不适用于您的年龄。"
+      },
       "body_error": "无法显示该章节",
       "body_label": "章节正文",
       "checkout_cancelled": "购买已取消，未产生任何扣款。",
@@ -2306,6 +2316,9 @@
       }
     },
     "settings": {
+      "birth_date_help": "本站点在打开有年龄限制的作品前会核对年龄。登记后无法更改。",
+      "birth_date_label": "出生日期",
+      "birth_date_set_help": "出生日期无法更改。如有错误，请联系本站点。",
       "browser_notifications_denied": "本站的通知已关闭。请在浏览器设置中开启。",
       "browser_notifications_failed": "无法开启通知。请重试。",
       "browser_notifications_heading": "浏览器通知",

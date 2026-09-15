@@ -66,6 +66,15 @@ describe("toEpisodeAccessState", () => {
     expect(toEpisodeAccessState(EpisodeAccess.ENTITLED, 500)).toBe("entitled");
   });
 
+  it("Reads the age rule's refusal whatever the episode costs", () => {
+    expect(toEpisodeAccessState(EpisodeAccess.AGE_RESTRICTED, 0)).toBe(
+      "age_restricted"
+    );
+    expect(toEpisodeAccessState(EpisodeAccess.AGE_RESTRICTED, 500)).toBe(
+      "age_restricted"
+    );
+  });
+
   it("If not specified, fall back to price", () => {
     expect(toEpisodeAccessState(EpisodeAccess.UNSPECIFIED, 0)).toBe("free");
     expect(toEpisodeAccessState(undefined, 500)).toBe("locked");

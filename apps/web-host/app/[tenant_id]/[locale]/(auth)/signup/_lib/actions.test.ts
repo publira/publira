@@ -64,12 +64,13 @@ describe("signupAction", () => {
     const { signupAction } = await import("./actions");
     await signupAction({ message: "", ok: false }, formData(validSignupFields));
 
-    expect(mockSignupPublic).toHaveBeenCalledWith(
-      "Example User",
+    expect(mockSignupPublic).toHaveBeenCalledWith({
+      birthDate: "",
       email,
+      name: "Example User",
       password,
-      tenantId
-    );
+      tenantId,
+    });
     expect(mockSetEmailFlashCookie).toHaveBeenCalledWith(
       "publira_web_host_signup_pending_email",
       email

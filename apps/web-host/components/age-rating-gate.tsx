@@ -14,7 +14,7 @@ import { Suspense } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { LocaleLink } from "#components/locale-link";
-import { ageRatingMeetsConfirmation } from "#lib/age-rating";
+import { ageRatingSatisfiedBy } from "#lib/age-rating";
 import type { RestrictedAgeRating } from "#lib/age-rating";
 import {
   useConfirmedAgeRating,
@@ -23,31 +23,19 @@ import {
 import type { HostMessageKey } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
-/**
- * What stands where a rated series or episode body would be, until this
- * browser confirms the rating. The cached page stays shared: everyone is
- * served the interstitial, and confirmation is read from `localStorage` after
- * mount, so a first-time visitor never sees the body in the HTML.
- */
-export const AgeRatingGate = ({
+/** The interstitial itself: why the page is closed, and the two ways out. */
+const AgeRatingConfirmation = ({
   backHref,
   backMessage,
-  children,
   rating,
   seriesTitle,
 }: {
   backHref: string;
   backMessage: HostMessageKey;
-  children: ReactNode;
   rating?: RestrictedAgeRating;
   seriesTitle: string;
 }) => {
   const tenantId = useTenantId();
-  const confirmed = useConfirmedAgeRating(tenantId);
-
-  if (ageRatingMeetsConfirmation(rating, confirmed)) {
-    return children;
-  }
 
   const titleMessage: HostMessageKey =
     rating === "r18"
@@ -112,5 +100,49 @@ export const AgeRatingGate = ({
         </EmptyStateActions>
       </EmptyState>
     </main>
+  );
+};
+
+/**
+ * What stands where a rated series or episode body would be, until this
+ * browser confirms the rating. The cached page stays shared: everyone is
+ * served the interstitial, and confirmation is read from `localStorage` after
+ * mount, so a first-time visitor never sees the body in the HTML.
+ *
+ * `provenAgeRating` is what the reader's own birth date already carries, so a
+ * reader the tenant has verified is never asked to say it again.
+ */
+export const AgeRatingGate = ({
+  backHref,
+  backMessage,
+  children,
+  provenAgeRating,
+  rating,
+  seriesTitle,
+}: {
+  backHref: string;
+  backMessage: HostMessageKey;
+  children: ReactNode;
+  provenAgeRating?: RestrictedAgeRating;
+  rating?: RestrictedAgeRating;
+  seriesTitle: string;
+}) => {
+  const tenantId = useTenantId();
+  const confirmed = useConfirmedAgeRating(tenantId);
+
+  if (
+    ageRatingSatisfiedBy(rating, provenAgeRating) ||
+    ageRatingSatisfiedBy(rating, confirmed)
+  ) {
+    return children;
+  }
+
+  return (
+    <AgeRatingConfirmation
+      backHref={backHref}
+      backMessage={backMessage}
+      rating={rating}
+      seriesTitle={seriesTitle}
+    />
   );
 };

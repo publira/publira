@@ -1,5 +1,5 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
-import { CommentMode } from "@publira/api-client/public/types";
+import { AgeVerification, CommentMode } from "@publira/api-client/public/types";
 import type { TenantImageVariant as TenantImageVariantMessage } from "@publira/api-client/public/types";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -59,6 +59,34 @@ const toTenantCommentMode = (
 };
 
 /**
+ * Which of this tenant's ratings a reader has to prove an age for. `none` is
+ * what a tenant that has chosen nothing gets, and it leaves every rated series
+ * to the browser's own confirmation.
+ */
+export type TenantAgeVerification = "none" | "r15_and_r18" | "r18";
+
+/**
+ * The generated enum, mapped onto the three rules the site branches on.
+ * Unspecified reads as `none`, which decides only whether a form **asks** for
+ * a birth date — the server reads the stored rule when it hands over a body.
+ */
+const toTenantAgeVerification = (
+  ageVerification: AgeVerification | undefined
+): TenantAgeVerification => {
+  switch (ageVerification) {
+    case AgeVerification.R18: {
+      return "r18";
+    }
+    case AgeVerification.R15_AND_R18: {
+      return "r15_and_r18";
+    }
+    default: {
+      return "none";
+    }
+  }
+};
+
+/**
  * A stored tenant branding image, carried the way the eye-catch variants are
  * (`catalog.ts`). Absent while the tenant has not uploaded one.
  */
@@ -75,6 +103,8 @@ export interface TenantImageVariant {
 export interface TenantSiteInfo {
   /** Whether the public API verified that Checkout can be offered safely. */
   acceptsPayments: boolean;
+  /** Which ratings this tenant makes a reader prove an age for. */
+  ageVerification: TenantAgeVerification;
   /** Whether episode pages offer a comment section, and how a post reaches it. */
   commentMode: TenantCommentMode;
   copyrightText?: string;
@@ -193,6 +223,7 @@ export const getTenantSiteInfo = async (
 
     return {
       acceptsPayments: response.acceptsPayments === true,
+      ageVerification: toTenantAgeVerification(response.ageVerification),
       commentMode: toTenantCommentMode(response.commentMode),
       copyrightText: trimmed(response.copyrightText),
       // The server resolves the tenant value against the platform default
@@ -353,6 +384,19 @@ export const getTenantCommentMode = async (
 ): Promise<TenantCommentMode> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.commentMode ?? "disabled";
+};
+
+/**
+ * Which ratings the tenant makes a reader prove an age for. One entry point,
+ * the way {@link getTenantDisplayTimeZone} is, so no screen decides on its own
+ * whether to ask for a birth date. An unavailable read degrades to `none`,
+ * which only stops a form asking — the server still withholds every body.
+ */
+export const getTenantAgeVerification = async (
+  tenantId: string
+): Promise<TenantAgeVerification> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant?.ageVerification ?? "none";
 };
 
 /**

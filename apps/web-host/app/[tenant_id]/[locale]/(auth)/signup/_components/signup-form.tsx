@@ -1,5 +1,10 @@
 import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -15,6 +20,8 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { TenantIdField } from "#components/tenant-id-field";
 import { getMessages } from "#lib/get-messages";
+import { getTenantAgeVerification } from "#lib/tenant";
+import { getTenantId } from "#lib/tenant-id";
 
 import { signupAction } from "../_lib/actions";
 
@@ -33,6 +40,46 @@ const NameInput = async () => {
       placeholder={t("host.auth.signup.name_placeholder")}
       type="text"
     />
+  );
+};
+
+/**
+ * Offered only where the tenant checks ages, and optional there: a reader who
+ * leaves it empty still gets an account, and can give the date later on the
+ * settings screen.
+ *
+ * The control carries no `max`. Capping it at today would read the clock while
+ * this route prerenders, which Cache Components refuses
+ * (`blocking-prerender-current-time`); a date in the future is refused by the
+ * form instead.
+ */
+const BirthDateField = async () => {
+  const tenantId = await getTenantId();
+  const [ageVerification, t] = await Promise.all([
+    getTenantAgeVerification(tenantId),
+    getMessages(),
+  ]);
+  if (ageVerification === "none") {
+    return null;
+  }
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="birthDate">
+        {t("host.auth.signup.birth_date_label")}
+      </FieldLabel>
+      <FieldContent>
+        <Input
+          autoComplete="bday"
+          id="birthDate"
+          name="birthDate"
+          type="date"
+        />
+        <FieldDescription>
+          {t("host.auth.signup.birth_date_help")}
+        </FieldDescription>
+      </FieldContent>
+    </Field>
   );
 };
 
@@ -55,6 +102,10 @@ export const SignupForm = () => (
             </Suspense>
           </FieldContent>
         </Field>
+
+        <Suspense fallback={null}>
+          <BirthDateField />
+        </Suspense>
 
         <Field>
           <FieldLabel htmlFor="email">

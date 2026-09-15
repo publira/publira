@@ -2,7 +2,8 @@ import { SeriesAgeRating } from "@publira/api-client/public/types";
 import { describe, expect, it } from "vitest";
 
 import {
-  ageRatingMeetsConfirmation,
+  ageRatingSatisfiedBy,
+  provenAgeRating,
   toRestrictedAgeRating,
   withRestrictedAgeRating,
 } from "./age-rating";
@@ -20,22 +21,42 @@ describe("toRestrictedAgeRating", () => {
   });
 });
 
-describe("ageRatingMeetsConfirmation", () => {
+describe("ageRatingSatisfiedBy", () => {
   it("Lets an unrestricted series through without a confirmation", () => {
-    expect(ageRatingMeetsConfirmation()).toBe(true);
-    expect(ageRatingMeetsConfirmation(undefined, "r15")).toBe(true);
+    expect(ageRatingSatisfiedBy()).toBe(true);
+    expect(ageRatingSatisfiedBy(undefined, "r15")).toBe(true);
   });
 
   it("Holds a rated series until this browser has confirmed that rating", () => {
-    expect(ageRatingMeetsConfirmation("r15")).toBe(false);
-    expect(ageRatingMeetsConfirmation("r18")).toBe(false);
-    expect(ageRatingMeetsConfirmation("r15", "r15")).toBe(true);
-    expect(ageRatingMeetsConfirmation("r18", "r15")).toBe(false);
+    expect(ageRatingSatisfiedBy("r15")).toBe(false);
+    expect(ageRatingSatisfiedBy("r18")).toBe(false);
+    expect(ageRatingSatisfiedBy("r15", "r15")).toBe(true);
+    expect(ageRatingSatisfiedBy("r18", "r15")).toBe(false);
   });
 
   it("Lets an r18 confirmation cover r15 as well", () => {
-    expect(ageRatingMeetsConfirmation("r15", "r18")).toBe(true);
-    expect(ageRatingMeetsConfirmation("r18", "r18")).toBe(true);
+    expect(ageRatingSatisfiedBy("r15", "r18")).toBe(true);
+    expect(ageRatingSatisfiedBy("r18", "r18")).toBe(true);
+  });
+});
+
+describe("provenAgeRating", () => {
+  const today = Temporal.PlainDate.from("2026-09-15");
+
+  it("Reads the highest rating the reader is old enough for", () => {
+    expect(provenAgeRating("2008-09-15", today)).toBe("r18");
+    expect(provenAgeRating("2011-09-15", today)).toBe("r15");
+    expect(provenAgeRating("2011-09-16", today)).toBeUndefined();
+  });
+
+  it("Counts a birthday as reached only on the day itself", () => {
+    expect(provenAgeRating("2008-09-16", today)).toBe("r15");
+  });
+
+  it("Proves nothing for a date this build will not read", () => {
+    expect(provenAgeRating("", today)).toBeUndefined();
+    expect(provenAgeRating("2008-9-15", today)).toBeUndefined();
+    expect(provenAgeRating("not a date", today)).toBeUndefined();
   });
 });
 
