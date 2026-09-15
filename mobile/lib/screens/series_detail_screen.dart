@@ -8,8 +8,11 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/series_cover.dart';
+import 'package:publira/follow/follow_control.dart';
+import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
@@ -192,6 +195,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final theme = Theme.of(context);
     final messages = AppMessages.of(context);
     final series = widget.detail.series;
+    // A build with no follow repository offers none of this, so neither the
+    // control nor the author rows it would sit in are put on the screen.
+    final follows = FollowScope.maybeOf(context) != null;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -307,9 +313,38 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             ],
           ),
         ],
+        if (follows) ...[
+          const SizedBox(height: 16),
+          FollowControl(
+            kind: FollowTargetKind.series,
+            targetId: series.id,
+            targetName: series.title,
+          ),
+        ],
         if (series.description.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(series.description, style: theme.textTheme.bodyLarge),
+        ],
+        // Each author is followed on their own. The row leads nowhere: the app
+        // has no author screen, and the name is the whole of what it says.
+        if (follows && series.creators.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text(
+            messages.seriesCreatorsHeading,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          for (final creator in series.creators)
+            ListTile(
+              key: ValueKey('series-creator-${creator.id}'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(creator.name),
+              trailing: FollowControl(
+                kind: FollowTargetKind.creator,
+                targetId: creator.id,
+                targetName: creator.name,
+              ),
+            ),
         ],
         const SizedBox(height: 24),
         Text(

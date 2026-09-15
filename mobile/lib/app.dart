@@ -14,6 +14,8 @@ import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/comments/http_comment_repository.dart';
 import 'package:publira/config.dart';
+import 'package:publira/follow/follow_repository.dart';
+import 'package:publira/follow/http_follow_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/l10n/localizations.dart';
@@ -39,6 +41,7 @@ class PubliraApp extends StatefulWidget {
     required this.catalog,
     required this.auth,
     this.comments,
+    this.follows,
     this.offline,
     this.push,
     this.ageRatingConfirmation,
@@ -105,6 +108,7 @@ class PubliraApp extends StatefulWidget {
       ),
       auth: auth,
       comments: HttpCommentRepository(client: client, tenants: tenants),
+      follows: HttpFollowRepository(client: client, tenants: tenants),
       offline: library,
       push: PushController(
         messaging: messaging,
@@ -128,6 +132,13 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// comments at all, and the end of an episode then offers none.
   final CommentRepository? comments;
+
+  /// The series and authors the reader follows.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// follows at all, and no screen then offers to follow anything.
+  final FollowRepository? follows;
 
   /// What the device holds for reading without a network.
   ///
@@ -336,19 +347,24 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
             repository: widget.catalog,
             child: CommentScope(
               repository: widget.comments,
-              child: AgeRatingConfirmationScope(
-                controller: _ageRating,
-                child: MaterialApp.router(
-                  title: 'Publira',
-                  scaffoldMessengerKey: _messengerKey,
-                  locale: _locale,
-                  supportedLocales: AppMessages.supportedLocales,
-                  localizationsDelegates: appLocalizationsDelegates,
-                  theme: ThemeData(
-                    colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-                    useMaterial3: true,
+              child: FollowScope(
+                repository: widget.follows,
+                child: AgeRatingConfirmationScope(
+                  controller: _ageRating,
+                  child: MaterialApp.router(
+                    title: 'Publira',
+                    scaffoldMessengerKey: _messengerKey,
+                    locale: _locale,
+                    supportedLocales: AppMessages.supportedLocales,
+                    localizationsDelegates: appLocalizationsDelegates,
+                    theme: ThemeData(
+                      colorScheme: ColorScheme.fromSeed(
+                        seedColor: Colors.indigo,
+                      ),
+                      useMaterial3: true,
+                    ),
+                    routerConfig: widget.router,
                   ),
-                  routerConfig: widget.router,
                 ),
               ),
             ),

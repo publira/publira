@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
@@ -50,6 +51,7 @@ class AccountScreen extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1),
+                  const _FollowsEntry(),
                   const _NotificationSwitch(),
                   Padding(
                     padding: const EdgeInsets.all(24),
@@ -75,6 +77,35 @@ Future<void> _signOut(BuildContext context) async {
     await push.handleSignOut();
   }
   await auth.signOut();
+}
+
+/// The way to the series and authors the reader follows.
+///
+/// A build carrying no [FollowScope] follows nothing anywhere, so the row is
+/// left out rather than opening a screen with nothing to read.
+class _FollowsEntry extends StatelessWidget {
+  const _FollowsEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    if (FollowScope.maybeOf(context) == null) {
+      return const SizedBox.shrink();
+    }
+    final messages = AppMessages.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: const ValueKey('account-follows'),
+          title: Text(messages.accountFollows),
+          subtitle: Text(messages.accountFollowsDescription),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push(AppRoutes.accountFollows),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
 }
 
 /// New-episode notifications, and the only place the OS is ever asked for

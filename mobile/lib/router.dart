@@ -3,6 +3,7 @@ import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
 import 'package:publira/screens/episode_comments_screen.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
+import 'package:publira/screens/follows_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/search_screen.dart';
 import 'package:publira/screens/series_detail_screen.dart';
@@ -14,6 +15,8 @@ abstract final class AppRoutes {
   static const search = '/search';
   static const signIn = '/sign-in';
   static const account = '/account';
+  static const follows = 'follows';
+  static const accountFollows = '$account/$follows';
   static const seriesDetail = '/series/:seriesId';
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
@@ -52,6 +55,15 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.catalog}) {
         path: AppRoutes.account,
         name: 'account',
         builder: (context, state) => const AccountScreen(),
+        // Nested so going back from the list lands on the account screen it
+        // was opened from rather than out of the app.
+        routes: [
+          GoRoute(
+            path: AppRoutes.follows,
+            name: 'follows',
+            builder: (context, state) => const FollowsScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.seriesDetail,

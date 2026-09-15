@@ -2442,6 +2442,8 @@
   },
   "mobile": {
     "account": {
+      "follows": "팔로우 중",
+      "follows_description": "팔로우 중인 시리즈와 작가",
       "name": "이름",
       "name_unset": "미설정",
       "notifications": "새 에피소드 알림",
@@ -2518,6 +2520,25 @@
       "submit": "댓글 등록",
       "title": "댓글"
     },
+    "follow": {
+      "failed": "팔로우 상태를 변경하지 못했습니다. 다시 시도해 주세요.",
+      "follow": "팔로우",
+      "follow_aria": "{$name} 팔로우하기",
+      "sign_in": "로그인하고 팔로우",
+      "sign_in_aria": "로그인하고 {$name} 팔로우하기",
+      "unfollow": "팔로우 해제",
+      "unfollow_aria": "{$name} 팔로우 해제하기",
+      "updating": "업데이트 중…"
+    },
+    "follows": {
+      "empty": "아직 팔로우한 대상이 없습니다. 시리즈나 작가 페이지에서 팔로우하면 여기에 표시됩니다.",
+      "failed": "팔로우 목록을 표시할 수 없습니다. 다시 시도해 주세요.",
+      "followed_at": "{$date}에 팔로우",
+      "kind_creator": "작가",
+      "kind_series": "시리즈",
+      "sign_in_prompt": "로그인하면 팔로우 중인 시리즈와 작가를 볼 수 있습니다.",
+      "title": "팔로우 중"
+    },
     "not_found": {
       "message": "“{$uri}”은(는) 존재하지 않습니다.",
       "title": "페이지를 찾을 수 없습니다"
@@ -2546,6 +2567,7 @@
       },
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",
+      "creators_heading": "작가",
       "episode_count": "{$count}화",
       "rating": "평점: {$average} · {$count}명",
       "rating_single": "평점: {$average} · {$count}명",

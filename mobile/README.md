@@ -126,11 +126,12 @@ mobile/
 │   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
 │   ├── comments/                 # CommentRepository, tenant comment mode, own-comment merge
 │   ├── crypto/                   # HMAC-SHA256 keystream shared by delivery and storage
+│   ├── follow/                   # FollowRepository and the control a series or an author is followed with
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
-│   ├── models/                   # Series / episode body / episode comment
+│   ├── models/                   # Series / episode body / episode comment / follow
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / series detail / viewer / comments / sign-in / account
+│   ├── screens/                  # Catalog / series detail / viewer / comments / sign-in / account / follows
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -153,6 +154,7 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/search` | Search results |
 | `/sign-in` | Sign-in form |
 | `/account` | Signed-in reader and sign-out |
+| `/account/follows` | The series and authors the reader follows |
 | `/series/:seriesId` | Series details |
 | `/series/:seriesId/episodes/:episodeId` | Episode viewer |
 | `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
@@ -227,6 +229,16 @@ The comments on an episode are offered at the end of it and nowhere else: what a
 - A reader takes their own comment down, and reports somebody else's. Reporting asks for one of four reasons and an optional sentence in a dialog, and a repeat report is answered exactly as a first one is
 - Comments are online only, and are no part of what the device keeps for reading without a network. A list that cannot reach the API says so and offers a retry, and a comment written without a connection fails with the same wording rather than being queued; what the reader wrote stays in the box for them to send again
 - A comment's time is rendered in the zone the device is set to, where the site renders it in the tenant's: every other time on a phone reads in the zone its holder chose
+
+## Follows
+
+A reader follows a series, and each author credited on it, from the series screen, and reads back what they follow from the account screen. A follow is what a new-episode notification is delivered by, and it is the same list the site writes: `FollowService` holds it, and no part of it is kept on the device.
+
+- The series screen carries one control for the series and one for each author credited on it. An author row leads nowhere — the app has no author screen — and is there to name the author and to be followed
+- What a reader follows is theirs, and the API answers a request without a session `unauthenticated`, so a guest is offered the way to sign in rather than a control that cannot act
+- A state the API could not answer leaves the control offering to follow, which is the request the API takes the same way whether or not the follow is already there. A follow the reader asked for that did not happen says why
+- `/account/follows` lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own, and a row whose name could not be read is named by its public id. A series row opens its series; every row unfollows without asking the API what it already knows
+- The API lists only targets that are still public, so a series taken down leaves the list rather than standing in it as a row nothing names
 
 ## Offline reading
 

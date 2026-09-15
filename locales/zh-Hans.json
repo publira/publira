@@ -2442,6 +2442,8 @@
   },
   "mobile": {
     "account": {
+      "follows": "我的关注",
+      "follows_description": "您关注的系列和作者",
       "name": "昵称",
       "name_unset": "未设置",
       "notifications": "新章节通知",
@@ -2518,6 +2520,25 @@
       "submit": "发表评论",
       "title": "评论"
     },
+    "follow": {
+      "failed": "无法更改关注状态。请重试。",
+      "follow": "关注",
+      "follow_aria": "关注 {$name}",
+      "sign_in": "登录后关注",
+      "sign_in_aria": "登录后关注 {$name}",
+      "unfollow": "取消关注",
+      "unfollow_aria": "取消关注 {$name}",
+      "updating": "正在更新…"
+    },
+    "follows": {
+      "empty": "您还没有关注任何内容。在系列或作者页面关注后，会显示在这里。",
+      "failed": "无法显示您的关注。请重试。",
+      "followed_at": "{$date} 关注",
+      "kind_creator": "作者",
+      "kind_series": "系列",
+      "sign_in_prompt": "登录后即可查看您关注的系列和作者。",
+      "title": "我的关注"
+    },
     "not_found": {
       "message": "“{$uri}”不存在。",
       "title": "找不到页面"
@@ -2546,6 +2567,7 @@
       },
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",
+      "creators_heading": "作者",
       "episode_count": "{$count} 章",
       "rating": "评分：{$average} · {$count} 位读者",
       "rating_single": "评分：{$average} · {$count} 位读者",

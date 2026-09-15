@@ -136,6 +136,12 @@ abstract class AppMessages {
   /// `errors.validation`
   String get errorsValidation;
 
+  /// `mobile.account.follows`
+  String get accountFollows;
+
+  /// `mobile.account.follows_description`
+  String get accountFollowsDescription;
+
   /// `mobile.account.name`
   String get accountName;
 
@@ -343,6 +349,51 @@ abstract class AppMessages {
   /// `mobile.common.sign_in`
   String get commonSignIn;
 
+  /// `mobile.follow.failed`
+  String get followFailed;
+
+  /// `mobile.follow.follow`
+  String get followFollow;
+
+  /// `mobile.follow.follow_aria`
+  String followFollowAria({required String name});
+
+  /// `mobile.follow.sign_in`
+  String get followSignIn;
+
+  /// `mobile.follow.sign_in_aria`
+  String followSignInAria({required String name});
+
+  /// `mobile.follow.unfollow`
+  String get followUnfollow;
+
+  /// `mobile.follow.unfollow_aria`
+  String followUnfollowAria({required String name});
+
+  /// `mobile.follow.updating`
+  String get followUpdating;
+
+  /// `mobile.follows.empty`
+  String get followsEmpty;
+
+  /// `mobile.follows.failed`
+  String get followsFailed;
+
+  /// `mobile.follows.followed_at`
+  String followsFollowedAt({required String date});
+
+  /// `mobile.follows.kind_creator`
+  String get followsKindCreator;
+
+  /// `mobile.follows.kind_series`
+  String get followsKindSeries;
+
+  /// `mobile.follows.sign_in_prompt`
+  String get followsSignInPrompt;
+
+  /// `mobile.follows.title`
+  String get followsTitle;
+
   /// `mobile.not_found.message`
   String notFoundMessage({required String uri});
 
@@ -399,6 +450,9 @@ abstract class AppMessages {
 
   /// `mobile.series.age_rating_r18`
   String get seriesAgeRatingR18;
+
+  /// `mobile.series.creators_heading`
+  String get seriesCreatorsHeading;
 
   /// `mobile.series.episode_count`
   String seriesEpisodeCount({required String count});
@@ -638,6 +692,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get errorsValidation {
     return '入力内容を確認してください。';
+  }
+
+  @override
+  String get accountFollows {
+    return 'フォロー中';
+  }
+
+  @override
+  String get accountFollowsDescription {
+    return 'フォローしているシリーズと著者';
   }
 
   @override
@@ -986,6 +1050,81 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get followFailed {
+    return 'フォローの状態を変更できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get followFollow {
+    return 'フォローする';
+  }
+
+  @override
+  String followFollowAria({required String name}) {
+    return '「$name」をフォローする';
+  }
+
+  @override
+  String get followSignIn {
+    return 'サインインしてフォロー';
+  }
+
+  @override
+  String followSignInAria({required String name}) {
+    return 'サインインして「$name」をフォローする';
+  }
+
+  @override
+  String get followUnfollow {
+    return 'フォローを解除';
+  }
+
+  @override
+  String followUnfollowAria({required String name}) {
+    return '「$name」のフォローを解除する';
+  }
+
+  @override
+  String get followUpdating {
+    return '更新中…';
+  }
+
+  @override
+  String get followsEmpty {
+    return 'まだ何もフォローしていません。シリーズや著者のページからフォローすると、ここに表示されます。';
+  }
+
+  @override
+  String get followsFailed {
+    return 'フォロー中の一覧を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String followsFollowedAt({required String date}) {
+    return '$date にフォロー';
+  }
+
+  @override
+  String get followsKindCreator {
+    return '著者';
+  }
+
+  @override
+  String get followsKindSeries {
+    return 'シリーズ';
+  }
+
+  @override
+  String get followsSignInPrompt {
+    return 'サインインすると、フォロー中のシリーズと著者を確認できます。';
+  }
+
+  @override
+  String get followsTitle {
+    return 'フォロー中';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '「$uri」は存在しません。';
   }
@@ -1078,6 +1217,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get seriesAgeRatingR18 {
     return 'R18';
+  }
+
+  @override
+  String get seriesCreatorsHeading {
+    return '著者';
   }
 
   @override
@@ -1416,6 +1560,16 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get errorsValidation {
     return 'Please check the information you entered.';
+  }
+
+  @override
+  String get accountFollows {
+    return 'Follows';
+  }
+
+  @override
+  String get accountFollowsDescription {
+    return 'The series and authors you follow.';
   }
 
   @override
@@ -1764,6 +1918,81 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get followFailed {
+    return 'Could not change what you follow. Try again.';
+  }
+
+  @override
+  String get followFollow {
+    return 'Follow';
+  }
+
+  @override
+  String followFollowAria({required String name}) {
+    return 'Follow $name';
+  }
+
+  @override
+  String get followSignIn {
+    return 'Sign in to follow';
+  }
+
+  @override
+  String followSignInAria({required String name}) {
+    return 'Sign in to follow $name';
+  }
+
+  @override
+  String get followUnfollow {
+    return 'Unfollow';
+  }
+
+  @override
+  String followUnfollowAria({required String name}) {
+    return 'Unfollow $name';
+  }
+
+  @override
+  String get followUpdating {
+    return 'Updating…';
+  }
+
+  @override
+  String get followsEmpty {
+    return 'You are not following anything yet. Follow a series or an author from its page, and it appears here.';
+  }
+
+  @override
+  String get followsFailed {
+    return 'Could not show what you follow. Try again.';
+  }
+
+  @override
+  String followsFollowedAt({required String date}) {
+    return 'Followed $date';
+  }
+
+  @override
+  String get followsKindCreator {
+    return 'Author';
+  }
+
+  @override
+  String get followsKindSeries {
+    return 'Series';
+  }
+
+  @override
+  String get followsSignInPrompt {
+    return 'Sign in to see the series and authors you follow.';
+  }
+
+  @override
+  String get followsTitle {
+    return 'Follows';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri” does not exist.';
   }
@@ -1856,6 +2085,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get seriesAgeRatingR18 {
     return 'R18';
+  }
+
+  @override
+  String get seriesCreatorsHeading {
+    return 'Authors';
   }
 
   @override
@@ -2194,6 +2428,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get errorsValidation {
     return '입력한 내용을 확인해 주세요.';
+  }
+
+  @override
+  String get accountFollows {
+    return '팔로우 중';
+  }
+
+  @override
+  String get accountFollowsDescription {
+    return '팔로우 중인 시리즈와 작가';
   }
 
   @override
@@ -2542,6 +2786,81 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get followFailed {
+    return '팔로우 상태를 변경하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get followFollow {
+    return '팔로우';
+  }
+
+  @override
+  String followFollowAria({required String name}) {
+    return '$name 팔로우하기';
+  }
+
+  @override
+  String get followSignIn {
+    return '로그인하고 팔로우';
+  }
+
+  @override
+  String followSignInAria({required String name}) {
+    return '로그인하고 $name 팔로우하기';
+  }
+
+  @override
+  String get followUnfollow {
+    return '팔로우 해제';
+  }
+
+  @override
+  String followUnfollowAria({required String name}) {
+    return '$name 팔로우 해제하기';
+  }
+
+  @override
+  String get followUpdating {
+    return '업데이트 중…';
+  }
+
+  @override
+  String get followsEmpty {
+    return '아직 팔로우한 대상이 없습니다. 시리즈나 작가 페이지에서 팔로우하면 여기에 표시됩니다.';
+  }
+
+  @override
+  String get followsFailed {
+    return '팔로우 목록을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String followsFollowedAt({required String date}) {
+    return '$date에 팔로우';
+  }
+
+  @override
+  String get followsKindCreator {
+    return '작가';
+  }
+
+  @override
+  String get followsKindSeries {
+    return '시리즈';
+  }
+
+  @override
+  String get followsSignInPrompt {
+    return '로그인하면 팔로우 중인 시리즈와 작가를 볼 수 있습니다.';
+  }
+
+  @override
+  String get followsTitle {
+    return '팔로우 중';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri”은(는) 존재하지 않습니다.';
   }
@@ -2634,6 +2953,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get seriesAgeRatingR18 {
     return 'R18';
+  }
+
+  @override
+  String get seriesCreatorsHeading {
+    return '작가';
   }
 
   @override
@@ -2972,6 +3296,16 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get errorsValidation {
     return '请检查您输入的内容。';
+  }
+
+  @override
+  String get accountFollows {
+    return '我的关注';
+  }
+
+  @override
+  String get accountFollowsDescription {
+    return '您关注的系列和作者';
   }
 
   @override
@@ -3320,6 +3654,81 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get followFailed {
+    return '无法更改关注状态。请重试。';
+  }
+
+  @override
+  String get followFollow {
+    return '关注';
+  }
+
+  @override
+  String followFollowAria({required String name}) {
+    return '关注 $name';
+  }
+
+  @override
+  String get followSignIn {
+    return '登录后关注';
+  }
+
+  @override
+  String followSignInAria({required String name}) {
+    return '登录后关注 $name';
+  }
+
+  @override
+  String get followUnfollow {
+    return '取消关注';
+  }
+
+  @override
+  String followUnfollowAria({required String name}) {
+    return '取消关注 $name';
+  }
+
+  @override
+  String get followUpdating {
+    return '正在更新…';
+  }
+
+  @override
+  String get followsEmpty {
+    return '您还没有关注任何内容。在系列或作者页面关注后，会显示在这里。';
+  }
+
+  @override
+  String get followsFailed {
+    return '无法显示您的关注。请重试。';
+  }
+
+  @override
+  String followsFollowedAt({required String date}) {
+    return '$date 关注';
+  }
+
+  @override
+  String get followsKindCreator {
+    return '作者';
+  }
+
+  @override
+  String get followsKindSeries {
+    return '系列';
+  }
+
+  @override
+  String get followsSignInPrompt {
+    return '登录后即可查看您关注的系列和作者。';
+  }
+
+  @override
+  String get followsTitle {
+    return '我的关注';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri”不存在。';
   }
@@ -3412,6 +3821,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get seriesAgeRatingR18 {
     return 'R18';
+  }
+
+  @override
+  String get seriesCreatorsHeading {
+    return '作者';
   }
 
   @override
@@ -3750,6 +4164,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get errorsValidation {
     return '請檢查您輸入的內容。';
+  }
+
+  @override
+  String get accountFollows {
+    return '我的追蹤';
+  }
+
+  @override
+  String get accountFollowsDescription {
+    return '您追蹤的系列與作者';
   }
 
   @override
@@ -4098,6 +4522,81 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get followFailed {
+    return '無法變更追蹤狀態。請重試。';
+  }
+
+  @override
+  String get followFollow {
+    return '追蹤';
+  }
+
+  @override
+  String followFollowAria({required String name}) {
+    return '追蹤 $name';
+  }
+
+  @override
+  String get followSignIn {
+    return '登入後追蹤';
+  }
+
+  @override
+  String followSignInAria({required String name}) {
+    return '登入後追蹤 $name';
+  }
+
+  @override
+  String get followUnfollow {
+    return '取消追蹤';
+  }
+
+  @override
+  String followUnfollowAria({required String name}) {
+    return '取消追蹤 $name';
+  }
+
+  @override
+  String get followUpdating {
+    return '正在更新…';
+  }
+
+  @override
+  String get followsEmpty {
+    return '您還沒有追蹤任何內容。在系列或作者頁面追蹤後，就會顯示在這裡。';
+  }
+
+  @override
+  String get followsFailed {
+    return '無法顯示您的追蹤。請重試。';
+  }
+
+  @override
+  String followsFollowedAt({required String date}) {
+    return '$date 追蹤';
+  }
+
+  @override
+  String get followsKindCreator {
+    return '作者';
+  }
+
+  @override
+  String get followsKindSeries {
+    return '系列';
+  }
+
+  @override
+  String get followsSignInPrompt {
+    return '登入後即可查看您追蹤的系列與作者。';
+  }
+
+  @override
+  String get followsTitle {
+    return '我的追蹤';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '「$uri」不存在。';
   }
@@ -4190,6 +4689,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get seriesAgeRatingR18 {
     return 'R18';
+  }
+
+  @override
+  String get seriesCreatorsHeading {
+    return '作者';
   }
 
   @override
