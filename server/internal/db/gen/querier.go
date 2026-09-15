@@ -66,6 +66,9 @@ type Querier interface {
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
 	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
+	// The ticker job's write. It is what makes a boundary stop being due, so a run
+	// that was down over one still catches up instead of collecting it.
+	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
 	// For the tenant dashboard.
@@ -372,6 +375,10 @@ type Querier interface {
 	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error)
 	GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error)
+	// What the site shows as a banner: the newest tenant-wide announcement still
+	// inside its pinned window. It names no user, so a visitor with no session gets
+	// the same answer as a signed-in reader and the site caches it once per tenant.
+	GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error)
 	GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
@@ -991,6 +998,9 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]Page, error)
 	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]Page, error)
+	// Every announcement whose pinned window has passed, across all tenants, for
+	// the ticker job that clears the flag and drops what the sites cached.
+	ListPinnedAnnouncementsDue(ctx context.Context) ([]ListPinnedAnnouncementsDueRow, error)
 	ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatformAuditLogsAscParams) ([]ListPlatformAuditLogsAscRow, error)
 	// Platform ListAuditLogs is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so the index can be scanned in reverse. The handler
@@ -1678,6 +1688,10 @@ type Querier interface {
 	// Release a claim when River already has an in-flight process job for
 	// this event (unique skip). attempts and available_at stay as they were.
 	UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
+	// Takes the banner down and leaves the row where it is, so the announcement is
+	// still in the list it was posted to. pinned_until keeps whatever it held, as
+	// the instant the operator had planned to stop at.
+	UnpinAnnouncement(ctx context.Context, arg UnpinAnnouncementParams) (uuid.UUID, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
 	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error

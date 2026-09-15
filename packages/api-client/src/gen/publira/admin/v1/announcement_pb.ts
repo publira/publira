@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/announcement.proto.
  */
 export const file_publira_admin_v1_announcement: GenFile = /*@__PURE__*/
-  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSLeAQoRQWRtaW5Bbm5vdW5jZW1lbnQSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRJBCg1hdWRpZW5jZV90eXBlGAUgASgOMioucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZVR5cGUSHQoVdGFyZ2V0X3VzZXJfcHVibGljX2lkGAYgASgJEhgKEHRhcmdldF91c2VyX25hbWUYByABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCSJ3ChhMaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJSgQIAxAEUgZvZmZzZXQigwEKGUxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2USOgoNYW5ub3VuY2VtZW50cxgBIAMoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSLeAQoZQ3JlYXRlQW5ub3VuY2VtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRJBCg1hdWRpZW5jZV90eXBlGAUgASgOMioucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZVR5cGUSHgoWdGFyZ2V0X3VzZXJfcHVibGljX2lkcxgGIAMoCSJYChpDcmVhdGVBbm5vdW5jZW1lbnRSZXNwb25zZRI6Cg1hbm5vdW5jZW1lbnRzGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudCqfAQoYQW5ub3VuY2VtZW50QXVkaWVuY2VUeXBlEioKJkFOTk9VTkNFTUVOVF9BVURJRU5DRV9UWVBFX1VOU1BFQ0lGSUVEEAASKAokQU5OT1VOQ0VNRU5UX0FVRElFTkNFX1RZUEVfQUxMX1VTRVJTEAESLQopQU5OT1VOQ0VNRU5UX0FVRElFTkNFX1RZUEVfU0VMRUNURURfVVNFUlMQAjL9AQoYQWRtaW5Bbm5vdW5jZW1lbnRTZXJ2aWNlEm4KEUxpc3RBbm5vdW5jZW1lbnRzEioucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2UiABJxChJDcmVhdGVBbm5vdW5jZW1lbnQSKy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSKEAgoRQWRtaW5Bbm5vdW5jZW1lbnQSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRJBCg1hdWRpZW5jZV90eXBlGAUgASgOMioucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZVR5cGUSHQoVdGFyZ2V0X3VzZXJfcHVibGljX2lkGAYgASgJEhgKEHRhcmdldF91c2VyX25hbWUYByABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCRIOCgZwaW5uZWQYCSABKAgSFAoMcGlubmVkX3VudGlsGAogASgJIncKGExpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCKDAQoZTGlzdEFubm91bmNlbWVudHNSZXNwb25zZRI6Cg1hbm5vdW5jZW1lbnRzGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIoQCChlDcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0aXRsZRgCIAEoCRIMCgRib2R5GAMgASgJEhAKCGxpbmtfdXJsGAQgASgJEkEKDWF1ZGllbmNlX3R5cGUYBSABKA4yKi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlVHlwZRIeChZ0YXJnZXRfdXNlcl9wdWJsaWNfaWRzGAYgAygJEg4KBnBpbm5lZBgHIAEoCBIUCgxwaW5uZWRfdW50aWwYCCABKAkiWAoaQ3JlYXRlQW5ub3VuY2VtZW50UmVzcG9uc2USOgoNYW5ub3VuY2VtZW50cxgBIAMoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnQiZAoYVW5waW5Bbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9hbm5vdW5jZW1lbnRfaWQYAiABKAkiGwoZVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZSqfAQoYQW5ub3VuY2VtZW50QXVkaWVuY2VUeXBlEioKJkFOTk9VTkNFTUVOVF9BVURJRU5DRV9UWVBFX1VOU1BFQ0lGSUVEEAASKAokQU5OT1VOQ0VNRU5UX0FVRElFTkNFX1RZUEVfQUxMX1VTRVJTEAESLQopQU5OT1VOQ0VNRU5UX0FVRElFTkNFX1RZUEVfU0VMRUNURURfVVNFUlMQAjLtAgoYQWRtaW5Bbm5vdW5jZW1lbnRTZXJ2aWNlEm4KEUxpc3RBbm5vdW5jZW1lbnRzEioucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2UiABJxChJDcmVhdGVBbm5vdW5jZW1lbnQSKy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlIgASbgoRVW5waW5Bbm5vdW5jZW1lbnQSKi5wdWJsaXJhLmFkbWluLnYxLlVucGluQW5ub3VuY2VtZW50UmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminAnnouncement
@@ -57,6 +57,21 @@ export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & 
    * @generated from field: string created_at = 8;
    */
   createdAt: string;
+
+  /**
+   * Whether the site shows this announcement as a banner above every page.
+   *
+   * @generated from field: bool pinned = 9;
+   */
+  pinned: boolean;
+
+  /**
+   * RFC 3339 instant the banner stops at. Empty leaves it up until the console
+   * takes it down.
+   *
+   * @generated from field: string pinned_until = 10;
+   */
+  pinnedUntil: string;
 };
 
 /**
@@ -163,6 +178,19 @@ export type CreateAnnouncementRequest = Message<"publira.admin.v1.CreateAnnounce
    * @generated from field: repeated string target_user_public_ids = 6;
    */
   targetUserPublicIds: string[];
+
+  /**
+   * @generated from field: bool pinned = 7;
+   */
+  pinned: boolean;
+
+  /**
+   * RFC 3339 instant the banner stops at. Empty pins it until the console takes
+   * it down, and it is ignored when pinned is false.
+   *
+   * @generated from field: string pinned_until = 8;
+   */
+  pinnedUntil: string;
 };
 
 /**
@@ -188,6 +216,44 @@ export type CreateAnnouncementResponse = Message<"publira.admin.v1.CreateAnnounc
  */
 export const CreateAnnouncementResponseSchema: GenMessage<CreateAnnouncementResponse> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_announcement, 4);
+
+/**
+ * Takes the banner down without deleting the announcement, which stays in the
+ * list it was posted to.
+ *
+ * @generated from message publira.admin.v1.UnpinAnnouncementRequest
+ */
+export type UnpinAnnouncementRequest = Message<"publira.admin.v1.UnpinAnnouncementRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string announcement_id = 2;
+   */
+  announcementId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UnpinAnnouncementRequest.
+ * Use `create(UnpinAnnouncementRequestSchema)` to create a new message.
+ */
+export const UnpinAnnouncementRequestSchema: GenMessage<UnpinAnnouncementRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 5);
+
+/**
+ * @generated from message publira.admin.v1.UnpinAnnouncementResponse
+ */
+export type UnpinAnnouncementResponse = Message<"publira.admin.v1.UnpinAnnouncementResponse"> & {
+};
+
+/**
+ * Describes the message publira.admin.v1.UnpinAnnouncementResponse.
+ * Use `create(UnpinAnnouncementResponseSchema)` to create a new message.
+ */
+export const UnpinAnnouncementResponseSchema: GenMessage<UnpinAnnouncementResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 6);
 
 /**
  * @generated from enum publira.admin.v1.AnnouncementAudienceType
@@ -234,6 +300,14 @@ export const AdminAnnouncementService: GenService<{
     methodKind: "unary";
     input: typeof CreateAnnouncementRequestSchema;
     output: typeof CreateAnnouncementResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement
+   */
+  unpinAnnouncement: {
+    methodKind: "unary";
+    input: typeof UnpinAnnouncementRequestSchema;
+    output: typeof UnpinAnnouncementResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_announcement, 0);

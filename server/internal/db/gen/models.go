@@ -35,6 +35,8 @@ type Announcement struct {
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
+	Pinned           bool            `json:"pinned"`
+	PinnedUntil      sql.NullTime    `json:"pinned_until"`
 }
 
 type AnnouncementRead struct {

@@ -14,6 +14,19 @@ import (
 	"github.com/google/uuid"
 )
 
+const clearAnnouncementPin = `-- name: ClearAnnouncementPin :exec
+UPDATE announcements
+SET pinned = false
+WHERE id = $1
+`
+
+// The ticker job's write. It is what makes a boundary stop being due, so a run
+// that was down over one still catches up instead of collecting it.
+func (q *Queries) ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, clearAnnouncementPin, id)
+	return err
+}
+
 const createAnnouncement = `-- name: CreateAnnouncement :one
 INSERT INTO announcements (
     id,
@@ -23,10 +36,12 @@ INSERT INTO announcements (
     title,
     body,
     link_url,
-    metadata
+    metadata,
+    pinned,
+    pinned_until
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, tenant_id, target_user_id, announcement_type, title, body, link_url, metadata, created_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, tenant_id, target_user_id, announcement_type, title, body, link_url, metadata, created_at, pinned, pinned_until
 `
 
 type CreateAnnouncementParams struct {
@@ -38,6 +53,8 @@ type CreateAnnouncementParams struct {
 	Body             string          `json:"body"`
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
+	Pinned           bool            `json:"pinned"`
+	PinnedUntil      sql.NullTime    `json:"pinned_until"`
 }
 
 func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error) {
@@ -50,6 +67,8 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		arg.Body,
 		arg.LinkUrl,
 		arg.Metadata,
+		arg.Pinned,
+		arg.PinnedUntil,
 	)
 	var i Announcement
 	err := row.Scan(
@@ -62,13 +81,15 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		&i.LinkUrl,
 		&i.Metadata,
 		&i.CreatedAt,
+		&i.Pinned,
+		&i.PinnedUntil,
 	)
 	return i, err
 }
 
 const getAnnouncementForUser = `-- name: GetAnnouncementForUser :one
 SELECT
-    n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at,
+    n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
     (nr.announcement_id IS NOT NULL) AS is_read,
     nr.read_at
 FROM announcements n
@@ -80,9 +101,9 @@ WHERE n.id = $2
 `
 
 type GetAnnouncementForUserParams struct {
-	UserID   uuid.UUID `json:"user_id"`
-	ID       uuid.UUID `json:"id"`
-	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.NullUUID `json:"user_id"`
+	ID       uuid.UUID     `json:"id"`
+	TenantID uuid.UUID     `json:"tenant_id"`
 }
 
 type GetAnnouncementForUserRow struct {
@@ -95,6 +116,8 @@ type GetAnnouncementForUserRow struct {
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
+	Pinned           bool            `json:"pinned"`
+	PinnedUntil      sql.NullTime    `json:"pinned_until"`
 	IsRead           interface{}     `json:"is_read"`
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
@@ -115,8 +138,43 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 		&i.LinkUrl,
 		&i.Metadata,
 		&i.CreatedAt,
+		&i.Pinned,
+		&i.PinnedUntil,
 		&i.IsRead,
 		&i.ReadAt,
+	)
+	return i, err
+}
+
+const getPinnedAnnouncementForTenant = `-- name: GetPinnedAnnouncementForTenant :one
+SELECT id, tenant_id, target_user_id, announcement_type, title, body, link_url, metadata, created_at, pinned, pinned_until
+FROM announcements
+WHERE tenant_id = $1
+    AND target_user_id IS NULL
+    AND pinned
+    AND (pinned_until IS NULL OR pinned_until > NOW())
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+// What the site shows as a banner: the newest tenant-wide announcement still
+// inside its pinned window. It names no user, so a visitor with no session gets
+// the same answer as a signed-in reader and the site caches it once per tenant.
+func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error) {
+	row := q.db.QueryRowContext(ctx, getPinnedAnnouncementForTenant, tenantID)
+	var i Announcement
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.TargetUserID,
+		&i.AnnouncementType,
+		&i.Title,
+		&i.Body,
+		&i.LinkUrl,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.Pinned,
+		&i.PinnedUntil,
 	)
 	return i, err
 }
@@ -132,6 +190,8 @@ SELECT
     n.link_url,
     n.metadata,
     n.created_at,
+    n.pinned,
+    n.pinned_until,
     u.public_id AS target_user_public_id,
     u.name AS target_user_name
 FROM announcements n
@@ -170,6 +230,8 @@ type ListAnnouncementsForTenantAscRow struct {
 	LinkUrl            sql.NullString  `json:"link_url"`
 	Metadata           json.RawMessage `json:"metadata"`
 	CreatedAt          time.Time       `json:"created_at"`
+	Pinned             bool            `json:"pinned"`
+	PinnedUntil        sql.NullTime    `json:"pinned_until"`
 	TargetUserPublicID sql.NullString  `json:"target_user_public_id"`
 	TargetUserName     sql.NullString  `json:"target_user_name"`
 }
@@ -199,6 +261,8 @@ func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnn
 			&i.LinkUrl,
 			&i.Metadata,
 			&i.CreatedAt,
+			&i.Pinned,
+			&i.PinnedUntil,
 			&i.TargetUserPublicID,
 			&i.TargetUserName,
 		); err != nil {
@@ -226,6 +290,8 @@ SELECT
     n.link_url,
     n.metadata,
     n.created_at,
+    n.pinned,
+    n.pinned_until,
     u.public_id AS target_user_public_id,
     u.name AS target_user_name
 FROM announcements n
@@ -264,6 +330,8 @@ type ListAnnouncementsForTenantDescRow struct {
 	LinkUrl            sql.NullString  `json:"link_url"`
 	Metadata           json.RawMessage `json:"metadata"`
 	CreatedAt          time.Time       `json:"created_at"`
+	Pinned             bool            `json:"pinned"`
+	PinnedUntil        sql.NullTime    `json:"pinned_until"`
 	TargetUserPublicID sql.NullString  `json:"target_user_public_id"`
 	TargetUserName     sql.NullString  `json:"target_user_name"`
 }
@@ -299,6 +367,8 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 			&i.LinkUrl,
 			&i.Metadata,
 			&i.CreatedAt,
+			&i.Pinned,
+			&i.PinnedUntil,
 			&i.TargetUserPublicID,
 			&i.TargetUserName,
 		); err != nil {
@@ -317,7 +387,7 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 
 const listAnnouncementsForUserAsc = `-- name: ListAnnouncementsForUserAsc :many
 SELECT
-    n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at,
+    n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
     (nr.announcement_id IS NOT NULL) AS is_read,
     nr.read_at
 FROM announcements n
@@ -341,7 +411,7 @@ LIMIT $6
 `
 
 type ListAnnouncementsForUserAscParams struct {
-	UserID          uuid.UUID     `json:"user_id"`
+	UserID          uuid.NullUUID `json:"user_id"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive bool          `json:"cursor_inclusive"`
@@ -359,6 +429,8 @@ type ListAnnouncementsForUserAscRow struct {
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
+	Pinned           bool            `json:"pinned"`
+	PinnedUntil      sql.NullTime    `json:"pinned_until"`
 	IsRead           interface{}     `json:"is_read"`
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
@@ -389,6 +461,8 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 			&i.LinkUrl,
 			&i.Metadata,
 			&i.CreatedAt,
+			&i.Pinned,
+			&i.PinnedUntil,
 			&i.IsRead,
 			&i.ReadAt,
 		); err != nil {
@@ -407,7 +481,7 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 
 const listAnnouncementsForUserDesc = `-- name: ListAnnouncementsForUserDesc :many
 SELECT
-    n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at,
+    n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
     (nr.announcement_id IS NOT NULL) AS is_read,
     nr.read_at
 FROM announcements n
@@ -431,7 +505,7 @@ LIMIT $6
 `
 
 type ListAnnouncementsForUserDescParams struct {
-	UserID          uuid.UUID     `json:"user_id"`
+	UserID          uuid.NullUUID `json:"user_id"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive bool          `json:"cursor_inclusive"`
@@ -449,6 +523,8 @@ type ListAnnouncementsForUserDescRow struct {
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
+	Pinned           bool            `json:"pinned"`
+	PinnedUntil      sql.NullTime    `json:"pinned_until"`
 	IsRead           interface{}     `json:"is_read"`
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
@@ -485,9 +561,50 @@ func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnno
 			&i.LinkUrl,
 			&i.Metadata,
 			&i.CreatedAt,
+			&i.Pinned,
+			&i.PinnedUntil,
 			&i.IsRead,
 			&i.ReadAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPinnedAnnouncementsDue = `-- name: ListPinnedAnnouncementsDue :many
+SELECT id, tenant_id
+FROM announcements
+WHERE pinned
+    AND pinned_until IS NOT NULL
+    AND pinned_until <= NOW()
+ORDER BY tenant_id, id
+`
+
+type ListPinnedAnnouncementsDueRow struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// Every announcement whose pinned window has passed, across all tenants, for
+// the ticker job that clears the flag and drops what the sites cached.
+func (q *Queries) ListPinnedAnnouncementsDue(ctx context.Context) ([]ListPinnedAnnouncementsDueRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPinnedAnnouncementsDue)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPinnedAnnouncementsDueRow
+	for rows.Next() {
+		var i ListPinnedAnnouncementsDueRow
+		if err := rows.Scan(&i.ID, &i.TenantID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -556,4 +673,27 @@ func (q *Queries) MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnounceme
 	var i AnnouncementRead
 	err := row.Scan(&i.AnnouncementID, &i.UserID, &i.ReadAt)
 	return i, err
+}
+
+const unpinAnnouncement = `-- name: UnpinAnnouncement :one
+UPDATE announcements
+SET pinned = false
+WHERE id = $1
+    AND tenant_id = $2
+RETURNING id
+`
+
+type UnpinAnnouncementParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// Takes the banner down and leaves the row where it is, so the announcement is
+// still in the list it was posted to. pinned_until keeps whatever it held, as
+// the instant the operator had planned to stop at.
+func (q *Queries) UnpinAnnouncement(ctx context.Context, arg UnpinAnnouncementParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, unpinAnnouncement, arg.ID, arg.TenantID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }

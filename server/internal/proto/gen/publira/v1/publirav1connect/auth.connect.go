@@ -75,6 +75,9 @@ const (
 	// AuthServiceGetAnnouncementProcedure is the fully-qualified name of the AuthService's
 	// GetAnnouncement RPC.
 	AuthServiceGetAnnouncementProcedure = "/publira.v1.AuthService/GetAnnouncement"
+	// AuthServiceGetPinnedAnnouncementProcedure is the fully-qualified name of the AuthService's
+	// GetPinnedAnnouncement RPC.
+	AuthServiceGetPinnedAnnouncementProcedure = "/publira.v1.AuthService/GetPinnedAnnouncement"
 	// AuthServiceListAnnouncementsProcedure is the fully-qualified name of the AuthService's
 	// ListAnnouncements RPC.
 	AuthServiceListAnnouncementsProcedure = "/publira.v1.AuthService/ListAnnouncements"
@@ -104,6 +107,7 @@ type AuthServiceClient interface {
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
 	GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error)
+	GetPinnedAnnouncement(context.Context, *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error)
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
 	MarkAnnouncementAsRead(context.Context, *connect.Request[v1.MarkAnnouncementAsReadRequest]) (*connect.Response[v1.MarkAnnouncementAsReadResponse], error)
 	MarkAllAnnouncementsAsRead(context.Context, *connect.Request[v1.MarkAllAnnouncementsAsReadRequest]) (*connect.Response[v1.MarkAllAnnouncementsAsReadResponse], error)
@@ -216,6 +220,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("GetAnnouncement")),
 			connect.WithClientOptions(opts...),
 		),
+		getPinnedAnnouncement: connect.NewClient[v1.GetPinnedAnnouncementRequest, v1.GetPinnedAnnouncementResponse](
+			httpClient,
+			baseURL+AuthServiceGetPinnedAnnouncementProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetPinnedAnnouncement")),
+			connect.WithClientOptions(opts...),
+		),
 		listAnnouncements: connect.NewClient[v1.ListAnnouncementsRequest, v1.ListAnnouncementsResponse](
 			httpClient,
 			baseURL+AuthServiceListAnnouncementsProcedure,
@@ -255,6 +265,7 @@ type authServiceClient struct {
 	getNotificationSettings    *connect.Client[v1.GetNotificationSettingsRequest, v1.GetNotificationSettingsResponse]
 	updateNotificationSettings *connect.Client[v1.UpdateNotificationSettingsRequest, v1.UpdateNotificationSettingsResponse]
 	getAnnouncement            *connect.Client[v1.GetAnnouncementRequest, v1.GetAnnouncementResponse]
+	getPinnedAnnouncement      *connect.Client[v1.GetPinnedAnnouncementRequest, v1.GetPinnedAnnouncementResponse]
 	listAnnouncements          *connect.Client[v1.ListAnnouncementsRequest, v1.ListAnnouncementsResponse]
 	markAnnouncementAsRead     *connect.Client[v1.MarkAnnouncementAsReadRequest, v1.MarkAnnouncementAsReadResponse]
 	markAllAnnouncementsAsRead *connect.Client[v1.MarkAllAnnouncementsAsReadRequest, v1.MarkAllAnnouncementsAsReadResponse]
@@ -340,6 +351,11 @@ func (c *authServiceClient) GetAnnouncement(ctx context.Context, req *connect.Re
 	return c.getAnnouncement.CallUnary(ctx, req)
 }
 
+// GetPinnedAnnouncement calls publira.v1.AuthService.GetPinnedAnnouncement.
+func (c *authServiceClient) GetPinnedAnnouncement(ctx context.Context, req *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error) {
+	return c.getPinnedAnnouncement.CallUnary(ctx, req)
+}
+
 // ListAnnouncements calls publira.v1.AuthService.ListAnnouncements.
 func (c *authServiceClient) ListAnnouncements(ctx context.Context, req *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error) {
 	return c.listAnnouncements.CallUnary(ctx, req)
@@ -373,6 +389,7 @@ type AuthServiceHandler interface {
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
 	GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error)
+	GetPinnedAnnouncement(context.Context, *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error)
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
 	MarkAnnouncementAsRead(context.Context, *connect.Request[v1.MarkAnnouncementAsReadRequest]) (*connect.Response[v1.MarkAnnouncementAsReadResponse], error)
 	MarkAllAnnouncementsAsRead(context.Context, *connect.Request[v1.MarkAllAnnouncementsAsReadRequest]) (*connect.Response[v1.MarkAllAnnouncementsAsReadResponse], error)
@@ -481,6 +498,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("GetAnnouncement")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceGetPinnedAnnouncementHandler := connect.NewUnaryHandler(
+		AuthServiceGetPinnedAnnouncementProcedure,
+		svc.GetPinnedAnnouncement,
+		connect.WithSchema(authServiceMethods.ByName("GetPinnedAnnouncement")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceListAnnouncementsHandler := connect.NewUnaryHandler(
 		AuthServiceListAnnouncementsProcedure,
 		svc.ListAnnouncements,
@@ -533,6 +556,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceUpdateNotificationSettingsHandler.ServeHTTP(w, r)
 		case AuthServiceGetAnnouncementProcedure:
 			authServiceGetAnnouncementHandler.ServeHTTP(w, r)
+		case AuthServiceGetPinnedAnnouncementProcedure:
+			authServiceGetPinnedAnnouncementHandler.ServeHTTP(w, r)
 		case AuthServiceListAnnouncementsProcedure:
 			authServiceListAnnouncementsHandler.ServeHTTP(w, r)
 		case AuthServiceMarkAnnouncementAsReadProcedure:
@@ -610,6 +635,10 @@ func (UnimplementedAuthServiceHandler) UpdateNotificationSettings(context.Contex
 
 func (UnimplementedAuthServiceHandler) GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetAnnouncement is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetPinnedAnnouncement(context.Context, *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetPinnedAnnouncement is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error) {

@@ -37,6 +37,8 @@ func announcementColumns() *sqlmock.Rows {
 		"link_url",
 		"metadata",
 		"created_at",
+		"pinned",
+		"pinned_until",
 		"target_user_public_id",
 		"target_user_name",
 	})
@@ -58,6 +60,8 @@ func addAnnouncementRow(
 		sql.NullString{String: linkURL, Valid: linkURL != ""},
 		json.RawMessage("{}"),
 		createdAt,
+		false,
+		sql.NullTime{},
 		nil,
 		nil,
 	)
@@ -138,15 +142,15 @@ func TestCreateAnnouncementForSelectedUsers(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}")).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
-			AddRow(announcement1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now))
+		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
+			AddRow(announcement1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now, false, sql.NullTime{}))
 	expectAnnouncementNotificationEvent(mock, tenantID, announcement1ID)
 
 	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}")).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
-			AddRow(announcement2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now))
+		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
+			AddRow(announcement2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now, false, sql.NullTime{}))
 	expectAnnouncementNotificationEvent(mock, tenantID, announcement2ID)
 	mock.ExpectCommit()
 
@@ -191,9 +195,9 @@ func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}")).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
-			AddRow(announcementID, tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", nil, json.RawMessage("{}"), now))
+		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
+			AddRow(announcementID, tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", nil, json.RawMessage("{}"), now, false, sql.NullTime{}))
 	expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
 	mock.ExpectCommit()
 

@@ -19,19 +19,21 @@ func TestNewRejectsAMissingPool(t *testing.T) {
 
 func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 	jobs, err := New(Config{
-		DB:                 &sql.DB{},
-		PublishInterval:    5 * time.Second,
-		FreeWindowInterval: 7 * time.Second,
-		TenantDayInterval:  11 * time.Second,
+		DB:                         &sql.DB{},
+		PublishInterval:            5 * time.Second,
+		FreeWindowInterval:         7 * time.Second,
+		TenantDayInterval:          11 * time.Second,
+		PinnedAnnouncementInterval: 13 * time.Second,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 
 	assertIntervals(t, jobs, map[string]time.Duration{
-		kindPublishEpisodes:  5 * time.Second,
-		kindApplyFreeWindows: 7 * time.Second,
-		kindRollTenantDay:    11 * time.Second,
+		kindPublishEpisodes:           5 * time.Second,
+		kindApplyFreeWindows:          7 * time.Second,
+		kindRollTenantDay:             11 * time.Second,
+		kindExpirePinnedAnnouncements: 13 * time.Second,
 	})
 }
 
@@ -42,9 +44,10 @@ func TestPeriodicJobsFallBackToTheDefaultIntervals(t *testing.T) {
 	}
 
 	assertIntervals(t, jobs, map[string]time.Duration{
-		kindPublishEpisodes:  DefaultPublishInterval,
-		kindApplyFreeWindows: DefaultFreeWindowInterval,
-		kindRollTenantDay:    DefaultTenantDayInterval,
+		kindPublishEpisodes:           DefaultPublishInterval,
+		kindApplyFreeWindows:          DefaultFreeWindowInterval,
+		kindRollTenantDay:             DefaultTenantDayInterval,
+		kindExpirePinnedAnnouncements: DefaultPinnedAnnouncementInterval,
 	})
 }
 
@@ -79,8 +82,8 @@ func assertIntervals(t *testing.T, jobs *Jobs, want map[string]time.Duration) {
 	}
 }
 
-// Every one of the three spans every tenant, so two runs of the same job at
-// once would write the same rows twice. The unique states are what stop a
+// Every one of them spans every tenant, so two runs of the same job at once
+// would write the same rows twice. The unique states are what stop a
 // second worker's copy and a pass that outlasts its own interval alike.
 func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 	inFlight := []rivertype.JobState{
@@ -91,7 +94,12 @@ func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 		rivertype.JobStateScheduled,
 	}
 
-	for _, args := range []river.JobArgs{PublishEpisodesArgs{}, ApplyFreeWindowsArgs{}, RollTenantDayArgs{}} {
+	for _, args := range []river.JobArgs{
+		PublishEpisodesArgs{},
+		ApplyFreeWindowsArgs{},
+		RollTenantDayArgs{},
+		ExpirePinnedAnnouncementsArgs{},
+	} {
 		withOpts, ok := args.(river.JobArgsWithInsertOpts)
 		if !ok {
 			t.Fatalf("%s does not declare insert options", args.Kind())
@@ -109,8 +117,8 @@ func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 	}
 }
 
-// The three are long and rare next to an outbox job, so they run on a queue of
-// their own rather than holding workers the drain is sized for.
+// They are long and rare next to an outbox job, so they run on a queue of their
+// own rather than holding workers the drain is sized for.
 func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	jobs, err := New(Config{DB: &sql.DB{}})
 	if err != nil {
@@ -125,8 +133,8 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	if !ok {
 		t.Fatalf("queues = %v, want one named %q", queues, QueueName)
 	}
-	if queue.MaxWorkers != 3 {
-		t.Fatalf("%s max workers = %d, want 3", QueueName, queue.MaxWorkers)
+	if queue.MaxWorkers != 4 {
+		t.Fatalf("%s max workers = %d, want 4", QueueName, queue.MaxWorkers)
 	}
 	if _, ok := queues[river.QueueDefault]; ok {
 		t.Fatalf("queues = %v, want the default queue left to the outbox drain", queues)
@@ -134,7 +142,12 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 }
 
 func TestServiceNamesCoverEveryJob(t *testing.T) {
-	want := []string{"publira-publish-episodes", "publira-apply-free-windows", "publira-roll-tenant-day"}
+	want := []string{
+		"publira-publish-episodes",
+		"publira-apply-free-windows",
+		"publira-roll-tenant-day",
+		"publira-expire-pinned-announcements",
+	}
 	if got := ServiceNames(); !slices.Equal(got, want) {
 		t.Fatalf("ServiceNames() = %v, want %v", got, want)
 	}

@@ -78,13 +78,14 @@ func main() {
 	defer tickerDB.Close() //nolint:errcheck
 
 	jobs, err := tickerjobs.New(tickerjobs.Config{
-		DB:                 tickerDB,
-		Revalidate:         newRevalidateClient(logger),
-		Logger:             logger,
-		PublishInterval:    envSeconds("PUBLIRA_PUBLISH_INTERVAL_SECONDS", 0),
-		PublishMaxRetries:  envInt("PUBLIRA_PUBLISH_MAX_RETRIES", tickerjobs.DefaultPublishMaxRetries),
-		FreeWindowInterval: envSeconds("PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS", 0),
-		TenantDayInterval:  envSeconds("PUBLIRA_TENANT_DAY_INTERVAL_SECONDS", 0),
+		DB:                         tickerDB,
+		Revalidate:                 newRevalidateClient(logger),
+		Logger:                     logger,
+		PublishInterval:            envSeconds("PUBLIRA_PUBLISH_INTERVAL_SECONDS", 0),
+		PublishMaxRetries:          envInt("PUBLIRA_PUBLISH_MAX_RETRIES", tickerjobs.DefaultPublishMaxRetries),
+		FreeWindowInterval:         envSeconds("PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS", 0),
+		TenantDayInterval:          envSeconds("PUBLIRA_TENANT_DAY_INTERVAL_SECONDS", 0),
+		PinnedAnnouncementInterval: envSeconds("PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS", 0),
 	})
 	if err != nil {
 		logger.Error("failed to initialize the ticker jobs", "error", err)

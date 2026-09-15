@@ -141,10 +141,11 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 -- when someone puts it in this list, and a job that starts reading a table it
 -- was never granted fails in its integration test rather than in production.
 --
--- Reads: the due listings and windows, the catalog rows the log lines name, and
--- the recipients each notification fans out to.
+-- Reads: the due listings, windows and pinned banners, the catalog rows the log
+-- lines name, and the recipients each notification fans out to.
 GRANT SELECT ON
     episode_listings,
+    announcements,
     episodes,
     series,
     tenants,
@@ -163,5 +164,10 @@ TO publira_ticker;
 -- for, and the rows the fan-out files. SELECT rides along on the last three
 -- because each insert is an ON CONFLICT DO NOTHING with a RETURNING clause.
 GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
+-- The pinned flag is the one column expire-pinned-announcements writes, and an
+-- announcement carries the tenant's own words, so the grant names the column
+-- rather than the table. This role bypasses RLS, so a table-wide UPDATE here
+-- would let a ticker job rewrite any announcement of any tenant.
+GRANT UPDATE (pinned) ON announcements TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;
 
