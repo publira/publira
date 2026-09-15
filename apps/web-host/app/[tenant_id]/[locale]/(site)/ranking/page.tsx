@@ -11,12 +11,13 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { cn, formatDateTime, formatList } from "@publira/utils";
+import { cn, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AgeRatingBadge } from "#components/age-rating-badge";
+import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import type { EyeCatchVariant } from "#components/eye-catch-picture";
 import { LocaleLink } from "#components/locale-link";
@@ -373,9 +374,9 @@ const RankingList = async ({
                 <span className="block truncate font-serif underline-offset-4 group-hover:underline">
                   {series.title}
                 </span>
-                {series.creatorNames.length > 0 && (
-                  <span className="block truncate text-sm text-muted-foreground">
-                    {formatList(series.creatorNames, { locale })}
+                {series.credits.length > 0 && (
+                  <span className="line-clamp-2 block text-sm">
+                    <CreatorCredits credits={series.credits} locale={locale} />
                   </span>
                 )}
                 {series.ageRating ? (

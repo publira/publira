@@ -11,7 +11,7 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDate, formatList, formatWeekdayName } from "@publira/utils";
+import { formatDate, formatWeekdayName } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -19,6 +19,7 @@ import { Suspense } from "react";
 
 import { AgeRatedVisibility } from "#components/age-rated-visibility";
 import { AgeRatingBadge } from "#components/age-rating-badge";
+import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { GenreChips } from "#components/genre-chips";
 import { LocaleLink } from "#components/locale-link";
@@ -527,9 +528,9 @@ const FeaturedWorkSection = async () => {
             <AgeRatingBadge rating={featured.ageRating} />
           </div>
         ) : null}
-        {featured.creatorNames.length > 0 && (
-          <p className="mt-2 text-muted-foreground">
-            {formatList(featured.creatorNames, { locale })}
+        {featured.credits.length > 0 && (
+          <p className="mt-2">
+            <CreatorCredits credits={featured.credits} locale={locale} />
           </p>
         )}
         {latestEpisode && (
@@ -616,9 +617,9 @@ const PopularSeriesCard = async ({
       <span className="mt-2 block font-serif text-sm leading-tight underline-offset-4 group-hover:underline">
         {series.title}
       </span>
-      {series.creatorNames.length > 0 && (
-        <span className="mt-1 block truncate text-xs text-muted-foreground">
-          {formatList(series.creatorNames, { locale })}
+      {series.credits.length > 0 && (
+        <span className="mt-1 line-clamp-2 block text-xs">
+          <CreatorCredits credits={series.credits} locale={locale} />
         </span>
       )}
       {(series.ageRating || series.freeEpisodeCount > 0) && (

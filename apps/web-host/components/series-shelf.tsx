@@ -1,11 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatList } from "@publira/utils";
 import { Suspense } from "react";
 
 import { AgeRatedVisibility } from "#components/age-rated-visibility";
 import { AgeRatingBadge } from "#components/age-rating-badge";
+import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -60,9 +60,9 @@ export const SeriesShelf = ({
             <span className="mt-2 block font-serif text-sm leading-tight underline-offset-4 group-hover:underline">
               {item.title}
             </span>
-            {item.creatorNames.length > 0 && (
-              <span className="mt-1 block truncate text-xs text-muted-foreground">
-                {formatList(item.creatorNames, { locale })}
+            {item.credits.length > 0 && (
+              <span className="mt-1 line-clamp-2 block text-xs">
+                <CreatorCredits credits={item.credits} locale={locale} />
               </span>
             )}
             {(item.ageRating || item.freeEpisodeCount > 0) && (

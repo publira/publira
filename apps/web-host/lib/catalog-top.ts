@@ -13,6 +13,7 @@ import {
   listRecommendedSeries,
 } from "./catalog";
 import type {
+  CreatorCredit,
   EyeCatchImageVariant,
   LabelListItem,
   RankedSeriesItem,
@@ -38,7 +39,7 @@ export interface CatalogTopEpisodeItem {
 
 export interface CatalogTopUpdatedSeriesItem {
   ageRating?: RestrictedAgeRating;
-  creatorNames: string[];
+  credits: CreatorCredit[];
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   latestEpisodeId: string;
   latestEpisodeOrderIndex: number;
@@ -51,7 +52,7 @@ export interface CatalogTopUpdatedSeriesItem {
 /** The work the top page opens with, and the episode its one button offers. */
 export interface CatalogTopFeaturedWork {
   ageRating?: RestrictedAgeRating;
-  creatorNames: string[];
+  credits: CreatorCredit[];
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   /** Absent while the series has no published episode: then there is nothing to read yet. */
   latestEpisode?: {
@@ -127,7 +128,7 @@ const byNewestDateDesc = (
 
 interface SeriesDetailRow {
   ageRating?: RestrictedAgeRating;
-  creatorNames: string[];
+  credits: CreatorCredit[];
   episodes: {
     orderIndex: number;
     publicId: string;
@@ -180,7 +181,7 @@ const loadSeriesDetailRows = async (
 
     rows.push({
       ...(seriesItem.ageRating ? { ageRating: seriesItem.ageRating } : {}),
-      creatorNames: seriesItem.creatorNames,
+      credits: seriesItem.credits,
       episodes: detail.value.episodes,
       eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
       publicId: seriesItem.publicId,
@@ -405,7 +406,7 @@ export const getCatalogTopFeaturedWork = async (
     ok: true,
     value: {
       ...(series.ageRating ? { ageRating: series.ageRating } : {}),
-      creatorNames: series.creatorNames,
+      credits: series.credits,
       eyeCatchImageVariants: series.eyeCatchImageVariants,
       latestEpisode: latestEpisode
         ? {
@@ -501,7 +502,7 @@ export const getCatalogTopUpdatedSeries = async (
       return [
         {
           ...(row.ageRating ? { ageRating: row.ageRating } : {}),
-          creatorNames: row.creatorNames,
+          credits: row.credits,
           eyeCatchImageVariants: row.eyeCatchImageVariants,
           latestEpisodeId: latestEpisode.publicId,
           latestEpisodeOrderIndex: latestEpisode.orderIndex,

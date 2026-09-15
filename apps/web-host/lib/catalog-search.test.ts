@@ -26,7 +26,13 @@ describe("searchPublishedSeries", () => {
       previousToken: "PREV",
       series: [
         {
-          creators: [{ name: "Creator A", publicId: "AUTH_A" }],
+          creators: [
+            {
+              name: "Creator A",
+              publicId: "AUTH_A",
+              role: { name: "Story", publicId: "ROLE_A" },
+            },
+          ],
           label: { name: "Label A", publicId: "LABEL_A" },
           publicId: "SERIES_1",
           synopsis: "Synopsis",
@@ -55,14 +61,8 @@ describe("searchPublishedSeries", () => {
         previousToken: "PREV",
         series: [
           {
-            creatorNames: ["Creator A"],
-            creators: [
-              {
-                iconImageUrl: "",
-                name: "Creator A",
-                profileText: "",
-                publicId: "AUTH_A",
-              },
+            credits: [
+              { name: "Creator A", publicId: "AUTH_A", roleName: "Story" },
             ],
             eyeCatchImageUpdatedAt: undefined,
             eyeCatchImageVariants: undefined,

@@ -73,14 +73,8 @@ describe("getPublishedLabelDetail", () => {
         // hands back the whole series item rather than a name and an id.
         series: [
           {
-            creatorNames: ["Creator A"],
-            creators: [
-              {
-                iconImageUrl: "",
-                name: "Creator A",
-                profileText: "",
-                publicId: "CREATOR_A",
-              },
+            credits: [
+              { name: "Creator A", publicId: "CREATOR_A", roleName: "" },
             ],
             eyeCatchImageVariants: [
               {
@@ -100,8 +94,7 @@ describe("getPublishedLabelDetail", () => {
             title: "Series 1",
           },
           {
-            creatorNames: [],
-            creators: [],
+            credits: [],
             freeEpisodeCount: 0,
             labelName: "",
             labelPublicId: "",
