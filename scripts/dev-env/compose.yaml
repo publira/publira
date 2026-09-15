@@ -1,0 +1,31 @@
+# The edge in front of one isolated local development profile.
+#
+# `scripts/dev-env.sh` runs this file once per profile, with
+# COMPOSE_PROJECT_NAME naming the profile, so profiles started side by side get
+# an edge each. The routing is the repository's own: the committed
+# infra/proxy/traefik/dynamic is mounted as it stands and only its
+# services.yaml is replaced by one naming this profile's ports, the same
+# arrangement the E2E stack uses.
+#
+# Relative paths resolve against the directory of this file.
+
+services:
+  edge:
+    image: traefik:v3.7.13@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
+    # Every backend of a profile is a process on loopback, which a bridged
+    # container has no route to.
+    network_mode: host
+    command:
+      - "--entrypoints.web.address=:${PUBLIRA_EDGE_PORT:?}"
+      # Every request that reaches this entrypoint comes from outside, so it
+      # loses its W3C Trace Context here, the way the Dev Container and the
+      # E2E edge do it.
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+    volumes:
+      # The order matters: a file mount can only land on a path that already
+      # exists inside a read-only directory mount, and services.yaml is
+      # committed, so it does.
+      - ../../infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
+      - ${PUBLIRA_DEV_ENV_EDGE_SERVICES_FILE:?}:/etc/traefik/dynamic/services.yaml:ro

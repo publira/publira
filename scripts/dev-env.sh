@@ -76,11 +76,16 @@ start_profile() {
     "${PUBLIRA_WEB_HOST_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_WEB_PLATFORM_PORT}" \
     "${PUBLIRA_PUBLIC_API_PORT}" "${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
     "${PUBLIRA_IMAGE_SERVER_PORT}" \
-    "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_OUTBOX_WORKER_PORT}"; do
+    "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_OUTBOX_WORKER_PORT}" \
+    "${PUBLIRA_EDGE_PORT}"; do
     if ss -ltn 2>/dev/null | grep -qE ":${port}\\b" || netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"; then
       dev_env_die "port ${port} is already in use; select a different profile"
     fi
   done
+  # The edge comes first, ahead of the migrations and the build: it is the one
+  # part of a profile Docker has to be there for, and a start that fails here
+  # has nothing running yet to shut down by hand.
+  dev_env_start_edge "${name}"
   init_profile "${name}"
   task -d "${REPO_ROOT}" server:build
 
@@ -144,7 +149,7 @@ start_profile() {
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     pnpm --dir "${REPO_ROOT}/apps/web-platform" dev
   printf 'started profile %q\n  host:     http://localhost:%s\n  admin:    http://admin.localhost:%s\n  platform: %s\n  logs:     %s\n' \
-    "${name}" "${PUBLIRA_WEB_HOST_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_PLATFORM_APP_URL}" "${run_dir}"
+    "${name}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}" "${run_dir}"
 }
 
 destroy_profile() {
@@ -184,7 +189,7 @@ show_profile() {
   db_name="${db_path%%\?*}"
   printf 'name: %s\nworktree: %s\nslot: %s\ndatabase: %s\nredis: %s\nbucket: %s\nweb-host: http://localhost:%s\nweb-admin: http://admin.localhost:%s\nweb-platform: %s\n' \
     "${DEV_ENV_NAME}" "${DEV_ENV_OWNER_WORKTREE}" "${DEV_ENV_SLOT}" "${db_name}" "${PUBLIRA_REDIS_URL}" \
-    "${PUBLIRA_S3_BUCKET}" "${PUBLIRA_WEB_HOST_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_PLATFORM_APP_URL}"
+    "${PUBLIRA_S3_BUCKET}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}"
 }
 
 print_env() {
@@ -199,6 +204,9 @@ print_env() {
   fi
   if ! dev_env_profile_value "${profile_path}" PUBLIRA_TICKER_DB_URL >/dev/null; then
     printf 'export PUBLIRA_TICKER_DB_URL=%q\n' "${PUBLIRA_TICKER_DB_URL}"
+  fi
+  if ! dev_env_profile_value "${profile_path}" PUBLIRA_EDGE_PORT >/dev/null; then
+    printf 'export PUBLIRA_EDGE_PORT=%q\n' "${PUBLIRA_EDGE_PORT}"
   fi
 }
 
