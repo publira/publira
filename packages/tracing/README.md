@@ -55,7 +55,7 @@ By default Next.js emits only the spans on its own allowlist (`NextVanillaSpanAl
 `NEXT_OTEL_VERBOSE=1` adds the internal spans outside that allowlist (`BaseServer.renderToResponse`, `Router.executeRoute`, `AppRender.renderToReadableStream`, and so on). It multiplies the spans per request with stages application code cannot move, so set it only to follow Next.js's own internals.
 
 ```bash
-NEXT_OTEL_VERBOSE=1 pnpm --dir apps/web-host dev
+NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-host
 ```
 
 ## How a trace is joined up

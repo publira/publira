@@ -131,23 +131,36 @@ start_profile() {
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
     "${REPO_ROOT}/server/bin/outbox-worker"
+  # The Node.js services run through the repository root's own scripts, which
+  # are `turbo run`: the task graph is the only thing that builds the `dist/` of
+  # the workspace packages they import, and a worktree that has never built them
+  # has none. The shared dependencies are built once here and each service is
+  # then started with `--only`, because four `dev` runs left to resolve the same
+  # `^build` themselves would each `rm -rf dist && tsdown` the same directories
+  # at the same time.
+  cd "${REPO_ROOT}"
+  pnpm build \
+    --filter "@publira/email-renderer^..." \
+    --filter "@publira/web-host^..." \
+    --filter "@publira/web-admin^..." \
+    --filter "@publira/web-platform^..."
   dev_env_start_background "${run_dir}" email-renderer env PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
-    pnpm --dir "${REPO_ROOT}/apps/email-renderer" dev
+    pnpm dev --only --filter @publira/email-renderer
   dev_env_start_background "${run_dir}" web-host env PORT="${PUBLIRA_WEB_HOST_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
-    pnpm --dir "${REPO_ROOT}/apps/web-host" dev
+    pnpm dev --only --filter @publira/web-host
   dev_env_start_background "${run_dir}" web-admin env PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
-    pnpm --dir "${REPO_ROOT}/apps/web-admin" dev
+    pnpm dev --only --filter @publira/web-admin
   dev_env_start_background "${run_dir}" web-platform env PORT="${PUBLIRA_WEB_PLATFORM_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
-    pnpm --dir "${REPO_ROOT}/apps/web-platform" dev
+    pnpm dev --only --filter @publira/web-platform
   printf 'started profile %q\n  host:     http://localhost:%s\n  admin:    http://admin.localhost:%s\n  platform: %s\n  logs:     %s\n' \
     "${name}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}" "${run_dir}"
 }

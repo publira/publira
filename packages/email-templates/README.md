@@ -69,7 +69,7 @@ result.html;
 ## Build
 
 ```bash
-pnpm --filter @publira/email-templates build
+pnpm build --filter @publira/email-templates
 ```
 
 `react` and `react-dom` are `dependencies`, not `peerDependencies`: the built `dist/` leaves `react/jsx-runtime` and `react-email` as external imports, and they have to resolve in a production tree assembled with `pnpm install --prod` alone (`infra/docker/node/Dockerfile`).

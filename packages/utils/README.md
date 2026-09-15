@@ -240,5 +240,5 @@ An `<Image>` that does not go through the image-server, such as a temporary `blo
 ## Build
 
 ```bash
-pnpm --filter @publira/utils build
+pnpm build --filter @publira/utils
 ```

@@ -45,5 +45,5 @@ export default function Page() {
 ## Build
 
 ```bash
-pnpm --filter @publira/layouts build
+pnpm build --filter @publira/layouts
 ```

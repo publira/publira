@@ -5,10 +5,10 @@ A Node.js ConnectRPC service that serves `EmailRendererService.RenderEmail` and 
 ## Running it
 
 ```bash
-pnpm --filter @publira/email-renderer dev
+pnpm dev --filter @publira/email-renderer
 ```
 
-It listens on `0.0.0.0:8080` by default. `PORT` changes the port and `HOST` the bind address. In production, run `pnpm --filter @publira/email-renderer build` first and then `pnpm --filter @publira/email-renderer start`.
+It listens on `0.0.0.0:8080` by default. `PORT` changes the port and `HOST` the bind address. In production, run `pnpm build --filter @publira/email-renderer` first and then `pnpm --filter @publira/email-renderer start`; `start` is not a turbo task, so it is the one script here invoked on the package directly.
 
 ## RPC
 

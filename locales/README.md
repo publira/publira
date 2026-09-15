@@ -119,7 +119,7 @@ The app reads no catalog file at runtime. `scripts/generate-locale-registry.ts` 
 1. Add the same key to every locale JSON file (do not use an empty string even when a translation is not ready)
 2. Run `pnpm locales:generate` when the key is under `email`, `mobile` or `errors`, which the Go and Flutter catalogs are compiled from
 3. Confirm that `pnpm locales:check` passes (it checks that leaves are valid simple messages and that generated files are current)
-4. Confirm that `pnpm --filter @publira/i18n typecheck` passes (the `ExactCatalog` tests run from the `packages/i18n` tests)
+4. Confirm that `pnpm typecheck --filter @publira/i18n` passes (the `ExactCatalog` tests run from the `packages/i18n` tests)
 
 ## Adding a locale
 

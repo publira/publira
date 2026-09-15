@@ -116,7 +116,7 @@ Every cookie the apps set goes through this, not only the session one.
 ## Commands
 
 ```bash
-pnpm --filter @publira/web-session test
-pnpm --filter @publira/web-session typecheck
-pnpm --filter @publira/web-session build
+pnpm test --filter @publira/web-session
+pnpm typecheck --filter @publira/web-session
+pnpm build --filter @publira/web-session
 ```
