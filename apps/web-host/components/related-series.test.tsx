@@ -62,8 +62,7 @@ beforeEach(() => {
 });
 
 const series = (overrides: Partial<SeriesListItem> = {}): SeriesListItem => ({
-  creatorNames: ["Jane Doe"],
-  creators: [],
+  credits: [{ name: "Jane Doe", publicId: "CREATOR01", roleName: "Story" }],
   freeEpisodeCount: 0,
   labelName: "",
   publicId: "SERIES02",

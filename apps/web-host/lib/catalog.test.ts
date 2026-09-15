@@ -217,6 +217,85 @@ describe("catalog.getEpisodeDetail", () => {
     expect(result.ok && result.value?.series.ageRating).toBe("r15");
   });
 
+  it("Carries the episode's own credits in the order the API sent them", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        creators: [
+          {
+            name: "Jane Doe",
+            publicId: "CREATOR_1",
+            role: { name: "Story", publicId: "ROLE_1" },
+          },
+          {
+            name: "John Roe",
+            publicId: "CREATOR_2",
+            role: { name: "Art", publicId: "ROLE_2" },
+          },
+          { name: "Mary Poe", publicId: "CREATOR_3" },
+        ],
+        orderIndex: 12,
+        price: 0,
+        publicId: "EP_012",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 12",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_012",
+      "en"
+    );
+
+    expect(result.ok && result.value?.episode.credits).toEqual([
+      { name: "Jane Doe", publicId: "CREATOR_1", roleName: "Story" },
+      { name: "John Roe", publicId: "CREATOR_2", roleName: "Art" },
+      // A credit written before the tenant curated roles states none, and it
+      // is still a credit.
+      { name: "Mary Poe", publicId: "CREATOR_3", roleName: "" },
+    ]);
+  });
+
+  it("Leaves an episode nobody is credited on with no credits", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(result.ok && result.value?.episode.credits).toEqual([]);
+  });
+
   it("Carry the episodes either side of this one", async () => {
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.FREE,
@@ -865,6 +944,36 @@ describe("catalog.getSeriesDetail", () => {
     });
   });
 
+  it("Carries the series credits with the role each is held in", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: {
+        creators: [
+          {
+            name: "Jane Doe",
+            publicId: "CREATOR_1",
+            role: { name: "Story", publicId: "ROLE_1" },
+          },
+          {
+            name: "John Roe",
+            publicId: "CREATOR_2",
+            role: { name: "Art", publicId: "ROLE_2" },
+          },
+        ],
+        publicId: "SERIES_1",
+        synopsis: "S1",
+        title: "Series 1",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_1", "en");
+
+    expect(result.ok && result.value?.series.credits).toEqual([
+      { name: "Jane Doe", publicId: "CREATOR_1", roleName: "Story" },
+      { name: "John Roe", publicId: "CREATOR_2", roleName: "Art" },
+    ]);
+  });
+
   it("Carries an r18 rating so the page can interpose a confirmation", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       episodes: [],
@@ -1163,14 +1272,8 @@ describe("catalog.listRankedSeries", () => {
             previousRank: 4,
             rank: 1,
             series: {
-              creatorNames: ["Creator A"],
-              creators: [
-                {
-                  iconImageUrl: "",
-                  name: "Creator A",
-                  profileText: "",
-                  publicId: "CREATOR_1",
-                },
+              credits: [
+                { name: "Creator A", publicId: "CREATOR_1", roleName: "" },
               ],
               eyeCatchImageUpdatedAt: undefined,
               eyeCatchImageVariants: undefined,
@@ -1186,8 +1289,7 @@ describe("catalog.listRankedSeries", () => {
             previousRank: undefined,
             rank: 3,
             series: {
-              creatorNames: [],
-              creators: [],
+              credits: [],
               eyeCatchImageUpdatedAt: undefined,
               eyeCatchImageVariants: undefined,
               freeEpisodeCount: 0,

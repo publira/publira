@@ -49,8 +49,7 @@ vi.mock("./catalog", async (importOriginal) => {
 
 const seriesFixture = [
   {
-    creatorNames: ["Creator A"],
-    creators: [],
+    credits: [{ name: "Creator A", publicId: "CREATOR_A", roleName: "Story" }],
     freeEpisodeCount: 2,
     labelName: "",
     publicId: "SERIES_1",
@@ -58,8 +57,7 @@ const seriesFixture = [
     title: "Series 1",
   },
   {
-    creatorNames: ["Creator B"],
-    creators: [],
+    credits: [{ name: "Creator B", publicId: "CREATOR_B", roleName: "Story" }],
     freeEpisodeCount: 0,
     labelName: "",
     publicId: "SERIES_2",
@@ -88,7 +86,7 @@ const detailSeries1 = {
     },
   ],
   series: {
-    creatorNames: ["Creator A"],
+    credits: [{ name: "Creator A", publicId: "CREATOR_A", roleName: "Story" }],
     labelName: "",
     publicId: "SERIES_1",
     readingPeriodHours: 0,
@@ -109,7 +107,7 @@ const detailSeries2 = {
     },
   ],
   series: {
-    creatorNames: ["Creator B"],
+    credits: [{ name: "Creator B", publicId: "CREATOR_B", roleName: "Story" }],
     labelName: "",
     publicId: "SERIES_2",
     readingPeriodHours: 0,
@@ -327,7 +325,9 @@ describe("catalog-top section loaders", () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        creatorNames: ["Creator A"],
+        credits: [
+          { name: "Creator A", publicId: "CREATOR_A", roleName: "Story" },
+        ],
         eyeCatchImageVariants: undefined,
         // The newest published episode, not the last one the detail listed.
         latestEpisode: {
@@ -565,16 +565,14 @@ describe("catalog-top section loaders", () => {
         previousToken: "",
         series: [
           {
-            creatorNames: [],
-            creators: [],
+            credits: [],
             labelName: "",
             publicId: "SERIES_1",
             synopsis: "",
             title: "Series 1",
           },
           {
-            creatorNames: [],
-            creators: [],
+            credits: [],
             labelName: "",
             publicId: "SERIES_2",
             synopsis: "",
@@ -602,7 +600,7 @@ describe("catalog-top section loaders", () => {
               },
             ],
             series: {
-              creatorNames: [],
+              credits: [],
               labelName: "",
               publicId: "SERIES_2",
               readingPeriodHours: 0,

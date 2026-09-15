@@ -19,6 +19,7 @@ import type {
 } from "@publira/api-client/public/catalog";
 import { CommentMode, SeriesStatus } from "@publira/api-client/public/types";
 import type {
+  Creator,
   Episode,
   EpisodeImage,
   EpisodeNeighbor,
@@ -95,6 +96,45 @@ export const toEyeCatchImageVariants = (
   return mapped.length > 0 ? mapped : undefined;
 };
 
+/**
+ * One credit on a work: who, and the role they hold on it. `roleName` is empty
+ * on a credit written before the tenant curated any role — the person is still
+ * credited, and such a line is the name on its own.
+ */
+export interface CreatorCredit {
+  name: string;
+  publicId: string;
+  roleName: string;
+}
+
+/** The generated `Creator` fields {@link toCreatorCredits} reads. */
+type RawCreatorCredit = Pick<Creator, "name" | "publicId" | "role">;
+
+/**
+ * The credits of one work, in the order the API sent them: the tenant's role
+ * priority first, then the position an editor gave inside a role. Nothing here
+ * reorders them — a site that sorted by name would put the artist above the
+ * original author on every work in the catalogue.
+ *
+ * A credit with no name is dropped: the name is the whole of what a credit
+ * line shows, and a role standing on its own names nobody.
+ */
+const toCreatorCredits = (
+  creators: RawCreatorCredit[] | undefined
+): CreatorCredit[] =>
+  (creators ?? []).flatMap((creator) => {
+    const name = (creator.name ?? "").trim();
+    return name.length > 0
+      ? [
+          {
+            name,
+            publicId: creator.publicId ?? "",
+            roleName: creator.role?.name?.trim() ?? "",
+          },
+        ]
+      : [];
+  });
+
 export interface SeriesListItem {
   publicId: string;
   title: string;
@@ -103,13 +143,8 @@ export interface SeriesListItem {
   labelPublicId?: string;
   eyeCatchImageUpdatedAt?: string;
   eyeCatchImageVariants?: EyeCatchImageVariant[];
-  creators: {
-    publicId: string;
-    name: string;
-    profileText: string;
-    iconImageUrl: string;
-  }[];
-  creatorNames: string[];
+  /** Who the work is credited to, in role priority order. */
+  credits: CreatorCredit[];
   /**
    * How many published episodes of this series a reader can open without
    * paying, counted by the server at the moment of the read: the ones priced
@@ -146,23 +181,7 @@ type RawSeriesListItem = Pick<
 export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem =>
   withRestrictedAgeRating(
     {
-      creatorNames: (s.creators ?? []).flatMap((c) => {
-        const name = (c.name ?? "").trim();
-        return name.length > 0 ? [name] : [];
-      }),
-      creators: (s.creators ?? []).flatMap((c) => {
-        const name = (c.name ?? "").trim();
-        return name.length > 0
-          ? [
-              {
-                iconImageUrl: c.iconImageUrl?.trim() ?? "",
-                name,
-                profileText: (c.profileText ?? "").trim(),
-                publicId: c.publicId ?? "",
-              },
-            ]
-          : [];
-      }),
+      credits: toCreatorCredits(s.creators),
       eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
       eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
       freeEpisodeCount: s.freeEpisodeCount ?? 0,
@@ -195,6 +214,13 @@ export interface EpisodeImageItem {
 }
 
 export interface EpisodeDetail {
+  /**
+   * Who this episode is credited to, in role priority order. Every episode
+   * carries its own credits, so a series whose artist changed part way through
+   * credits this episode with the team that made it rather than with the one
+   * the series lists today.
+   */
+  credits: CreatorCredit[];
   orderIndex: number;
   price: number;
   publicId: string;
@@ -216,6 +242,7 @@ export interface EpisodeDetail {
  */
 type RawEpisode = Pick<
   Episode,
+  | "creators"
   | "orderIndex"
   | "price"
   | "publicId"
@@ -228,6 +255,7 @@ type RawEpisode = Pick<
 >;
 
 const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
+  credits: toCreatorCredits(episode.creators),
   orderIndex: episode.orderIndex ?? 0,
   price: episode.price ?? 0,
   publicId: episode.publicId ?? "",
@@ -445,7 +473,8 @@ export interface SeriesDetail {
   synopsis: string;
   labelName: string;
   labelPublicId: string;
-  creatorNames: string[];
+  /** Who the series is credited to, in role priority order. */
+  credits: CreatorCredit[];
   /**
    * Present only when the series is `r15` or `r18`. The page shows a badge
    * and an interstitial; all-ages series omit both.
@@ -1237,10 +1266,7 @@ export const getSeriesDetail = async (
       ? withRestrictedAgeRating(
           {
             commentMode: toSeriesCommentMode(response.commentMode),
-            creatorNames: (response.series.creators ?? []).flatMap((c) => {
-              const name = (c.name ?? "").trim();
-              return name.length > 0 ? [name] : [];
-            }),
+            credits: toCreatorCredits(response.series.creators),
             eyeCatchImageUpdatedAt:
               response.series.eyeCatchImageUpdatedAt || undefined,
             eyeCatchImageVariants: toEyeCatchImageVariants(

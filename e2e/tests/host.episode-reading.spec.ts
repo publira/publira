@@ -630,6 +630,19 @@ test.describe("web-host episode reading", () => {
     await expect(page.getByText(`${VIEWER_PAGE_COUNT} pages`)).toBeVisible();
   });
 
+  test("the running head names who the episode is credited to, in what role", async ({
+    page,
+  }) => {
+    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+
+    // An episode carries its own credits, baked from the series when it was
+    // created, so the role is one of the tenant's own vocabulary and the page
+    // shows it without reordering anything.
+    await expect(
+      page.getByText(`Original Author ${SEED_TENANT.creatorName}`).first()
+    ).toBeVisible();
+  });
+
   test("a reader reacts to an episode, and the reaction survives a reload", async ({
     page,
   }) => {

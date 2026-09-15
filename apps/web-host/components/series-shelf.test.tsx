@@ -47,8 +47,7 @@ afterEach(() => {
 });
 
 const series = (overrides: Partial<SeriesListItem> = {}): SeriesListItem => ({
-  creatorNames: ["Jane Doe"],
-  creators: [],
+  credits: [{ name: "Jane Doe", publicId: "CREATOR01", roleName: "Story" }],
   freeEpisodeCount: 0,
   labelName: "",
   publicId: "SERIES01",
@@ -88,6 +87,27 @@ describe("SeriesShelf", () => {
         .getByRole("link", { name: /2 free episodes/u })
         .getAttribute("href")
     ).toBe("/series/SERIES02");
+  });
+
+  it("Names each credit with the role it is held in", () => {
+    render(
+      <SeriesShelf
+        locale="en"
+        series={[
+          series({
+            credits: [
+              { name: "Jane Doe", publicId: "CREATOR01", roleName: "Story" },
+              { name: "John Roe", publicId: "CREATOR02", roleName: "Art" },
+            ],
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Story")).not.toBeNull();
+    expect(screen.getByText("Jane Doe")).not.toBeNull();
+    expect(screen.getByText("Art")).not.toBeNull();
+    expect(screen.getByText("John Roe")).not.toBeNull();
   });
 
   it("Marks a rated series with its age rating inside the link", () => {

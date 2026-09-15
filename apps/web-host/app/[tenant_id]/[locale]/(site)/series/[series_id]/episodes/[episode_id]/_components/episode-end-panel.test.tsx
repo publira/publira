@@ -70,6 +70,7 @@ vi.mock("#components/follow-control", () => ({
 afterEach(cleanup);
 
 const episode: EpisodeDetail = {
+  credits: [],
   orderIndex: 2,
   price: 0,
   publicId: "EPISODE_002",

@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { AgeRatingGate } from "#components/age-rating-gate";
 import { ContentViewTracker } from "#components/content-view-tracker";
+import { CreatorCredits } from "#components/creator-credits";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -27,6 +28,7 @@ import { getReaderProvenAgeRating } from "#lib/reader-age";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { CheckoutNotice } from "./_components/checkout-notice";
 import { EpisodeBody } from "./_components/episode-body";
 import { EpisodeEndPanel } from "./_components/episode-end-panel";
 import {
@@ -201,30 +203,7 @@ const EpisodeContent = async (
         </section>
 
         <EpisodeColumn>
-          {purchaseSearchParams.checkout === "success" ? (
-            <output className="block rounded-control border border-success px-4 py-3 text-sm text-success">
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <Message message="host.episode.checkout_success" />
-              </Suspense>
-            </output>
-          ) : null}
-          {purchaseSearchParams.checkout === "cancelled" ? (
-            <output className="block rounded-control border border-warning px-4 py-3 text-sm text-warning">
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <Message message="host.episode.checkout_cancelled" />
-              </Suspense>
-            </output>
-          ) : null}
-          {purchaseSearchParams.checkout === "error" ? (
-            <p
-              className="block rounded-control border border-destructive px-4 py-3 text-sm text-destructive"
-              role="alert"
-            >
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <Message message="host.episode.checkout_error" />
-              </Suspense>
-            </p>
-          ) : null}
+          <CheckoutNotice checkout={purchaseSearchParams.checkout} />
 
           {/* A running head: which instalment this is. The number is part of
             the title line rather than a chip beside it, because a serial
@@ -243,6 +222,14 @@ const EpisodeContent = async (
               </span>{" "}
               {episode.title}
             </h1>
+            {/* Who made this instalment. The episode's own credits, not the
+              series' — an artist who took over part way through is on the
+              episodes they drew and on none of the ones before them. */}
+            {episode.credits.length > 0 && (
+              <p className="text-sm">
+                <CreatorCredits credits={episode.credits} locale={locale} />
+              </p>
+            )}
             {/* The colophon: what the episode costs, when it appeared, how much
               of it there is, and how long it stays open. */}
             <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">

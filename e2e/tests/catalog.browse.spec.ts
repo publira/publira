@@ -108,8 +108,12 @@ test.describe("web-host catalog browsing", () => {
       page.getByRole("heading", { level: 1, name: SEED_TENANT.series.title })
     ).toBeVisible();
     // `.first()`: the previous route can still be mounted while the client-side
-    // navigation streams in, so the name may match more than one node.
-    await expect(page.getByText(SEED_TENANT.creatorName).first()).toBeVisible();
+    // navigation streams in, so the name may match more than one node. The
+    // credit is named with the role it is held in, from the tenant's own
+    // vocabulary.
+    await expect(
+      page.getByText(`Original Author ${SEED_TENANT.creatorName}`).first()
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 2, name: "Episodes" })
     ).toBeVisible();

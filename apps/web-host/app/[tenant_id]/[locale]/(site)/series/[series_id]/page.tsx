@@ -20,6 +20,7 @@ import { AgeRatingBadge } from "#components/age-rating-badge";
 import { AgeRatingGate } from "#components/age-rating-gate";
 import { CHIP, TAG_CHIP } from "#components/chip";
 import { ContentViewTracker } from "#components/content-view-tracker";
+import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
@@ -223,9 +224,9 @@ const SeriesDetailContent = async (
                   </Suspense>
                 </SectionErrorBoundary>
               </SeriesRating>
-              {series.creatorNames.length > 0 && (
-                <p className="text-muted-foreground">
-                  {formatList(series.creatorNames, { locale })}
+              {series.credits.length > 0 && (
+                <p>
+                  <CreatorCredits credits={series.credits} locale={locale} />
                 </p>
               )}
               <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">

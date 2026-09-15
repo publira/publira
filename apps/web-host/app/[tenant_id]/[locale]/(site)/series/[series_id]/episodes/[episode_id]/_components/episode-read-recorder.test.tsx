@@ -21,6 +21,7 @@ const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>();
 const SPREAD_START_INDEX = 1;
 
 const episode: EpisodeDetail = {
+  credits: [],
   orderIndex: 1,
   price: 0,
   publicId: "EPISODE_001",

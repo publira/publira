@@ -9,7 +9,6 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatList } from "@publira/utils";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -18,6 +17,7 @@ import {
   AgeRatedVisibility,
 } from "#components/age-rated-visibility";
 import { AgeRatingBadge } from "#components/age-rating-badge";
+import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import {
   ListPagination,
@@ -221,9 +221,9 @@ export const SeriesResults = async ({
                   <span className="block truncate font-serif leading-tight underline-offset-4 group-hover:underline">
                     {item.title}
                   </span>
-                  {item.creatorNames.length > 0 && (
-                    <span className="mt-1 block truncate text-sm text-muted-foreground">
-                      {formatList(item.creatorNames, { locale })}
+                  {item.credits.length > 0 && (
+                    <span className="mt-1 line-clamp-2 block text-sm">
+                      <CreatorCredits credits={item.credits} locale={locale} />
                     </span>
                   )}
                   {item.ageRating ? (
