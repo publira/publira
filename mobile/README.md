@@ -340,9 +340,13 @@ task mobile:screenshot
 task mobile:screenshot -- /series/SeedSERSAAA1 /series/SeedSERSAAA1/episodes/SeedEPSDAAA1
 ```
 
-Every route named on the command line becomes one PNG under `.run/screenshots/`, taken at the viewport and pixel ratio of a Pixel 7; with no route named, the catalog the app opens on. `MOBILE_SCREENSHOT_DEVICE` names any other of Playwright's devices, and `MOBILE_SCREENSHOT_WAIT_MS` how long a screen is given to finish arriving before the shutter.
+Every route named on the command line becomes one PNG under `.run/screenshots/`; with no route named, the catalog the app opens on.
 
-The Dev Container has no Android emulator ([#2148](https://github.com/publira/publira/issues/2148)), so the screens are photographed from a web build of the same app. `scripts/screenshot.sh` builds it, serves it through `scripts/web_app_server.dart` on one origin with the profile's `api-server` and `image-server` behind it, and drives the browser `e2e/` already depends on.
+An attached device or emulator is what the screens are taken on, because that is the picture a reader would see. The app is built and installed once, and each route is then opened as a launch of its own — `route` is the initial route Flutter's Android embedding reads off the intent, and a resumed app would photograph the screen it was left on.
+
+With no device attached, the same app is built for the web instead, served through `scripts/web_app_server.dart` on one origin with the profile's `api-server` and `image-server` behind it, and photographed at the viewport and pixel ratio of a Pixel 7 by the browser `e2e/` already depends on. The widgets and the data are the same; the platform around them is not, so a picture taken this way carries no status bar and no system navigation. This is what the Dev Container takes, because its image ships no Android SDK ([#2148](https://github.com/publira/publira/issues/2148)).
+
+`MOBILE_SCREENSHOT_WAIT_MS` is how long a screen is given to finish arriving before the shutter, on either; `MOBILE_SCREENSHOT_DEVICE` names another of Playwright's devices for the browser one.
 
 ## Integration tests
 

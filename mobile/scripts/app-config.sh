@@ -57,3 +57,11 @@ mobile_host_address() {
     printf '127.0.0.1\n'
   fi
 }
+
+# The serial of the first attached device or emulator, and nothing at all when
+# none is attached or `adb` is not installed -- which is the Dev Container,
+# whose image ships no Android SDK.
+mobile_attached_device() {
+  command -v adb >/dev/null 2>&1 || return 0
+  adb devices 2>/dev/null | awk '$2 == "device" { print $1; exit }' || true
+}
