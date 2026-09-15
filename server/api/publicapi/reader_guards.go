@@ -50,6 +50,10 @@ const (
 	// come back later instead of repeating "your password is wrong" at someone
 	// who typed it correctly.
 	actionVerifyPassword readerAction = "password.verify"
+	// How the reader wants the viewer laid out. The control that writes it sits
+	// in the viewer rather than on a settings screen, so a press is as cheap as
+	// a rating's and the budget is the same size.
+	actionUpdateViewerPreferences readerAction = "viewer.preferences.update"
 )
 
 // The deployment settings, and the defaults a deployment that sets none of them
@@ -57,15 +61,17 @@ const (
 // a script cannot live within: nobody composes ten comments in a minute, and a
 // reader who has posted a hundred in a day is no longer reading.
 const (
-	postCommentPerMinuteEnv    = "PUBLIRA_COMMENT_POST_LIMIT_PER_MINUTE"
-	postCommentPerDayEnv       = "PUBLIRA_COMMENT_POST_LIMIT_PER_DAY"
-	reportCommentPerMinuteEnv  = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_MINUTE"
-	reportCommentPerDayEnv     = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_DAY"
-	duplicateCommentWindowEnv  = "PUBLIRA_COMMENT_DUPLICATE_WINDOW_MINUTES"
-	rateEpisodePerMinuteEnv    = "PUBLIRA_EPISODE_RATING_LIMIT_PER_MINUTE"
-	rateEpisodePerDayEnv       = "PUBLIRA_EPISODE_RATING_LIMIT_PER_DAY"
-	verifyPasswordPerMinuteEnv = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_MINUTE"
-	verifyPasswordPerDayEnv    = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_DAY"
+	postCommentPerMinuteEnv             = "PUBLIRA_COMMENT_POST_LIMIT_PER_MINUTE"
+	postCommentPerDayEnv                = "PUBLIRA_COMMENT_POST_LIMIT_PER_DAY"
+	reportCommentPerMinuteEnv           = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_MINUTE"
+	reportCommentPerDayEnv              = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_DAY"
+	duplicateCommentWindowEnv           = "PUBLIRA_COMMENT_DUPLICATE_WINDOW_MINUTES"
+	rateEpisodePerMinuteEnv             = "PUBLIRA_EPISODE_RATING_LIMIT_PER_MINUTE"
+	rateEpisodePerDayEnv                = "PUBLIRA_EPISODE_RATING_LIMIT_PER_DAY"
+	verifyPasswordPerMinuteEnv          = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_MINUTE"
+	verifyPasswordPerDayEnv             = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_DAY"
+	updateViewerPreferencesPerMinuteEnv = "PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_MINUTE"
+	updateViewerPreferencesPerDayEnv    = "PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_DAY"
 
 	defaultPostCommentPerMinute   = 10
 	defaultPostCommentPerDay      = 100
@@ -89,6 +95,11 @@ const (
 	defaultVerifyPasswordPerMinute = 5
 	defaultVerifyPasswordPerDay    = 50
 
+	// A reader settling on a layout presses the control a handful of times and
+	// then reads; nobody who is reading spends a day's worth of these.
+	defaultUpdateViewerPreferencesPerMinute = 30
+	defaultUpdateViewerPreferencesPerDay    = 300
+
 	// defaultDuplicateCommentWindow is long enough to cover a reader hammering
 	// the button and short enough that coming back to an episode hours later
 	// with the same short reaction is not refused.
@@ -111,28 +122,32 @@ type readerGuards struct {
 // struct rather than a widening list of ints so that adding an action cannot
 // silently swap two of them at a call site.
 type readerLimits struct {
-	postCommentPerMinute    int
-	postCommentPerDay       int
-	reportCommentPerMinute  int
-	reportCommentPerDay     int
-	rateEpisodePerMinute    int
-	rateEpisodePerDay       int
-	verifyPasswordPerMinute int
-	verifyPasswordPerDay    int
+	postCommentPerMinute             int
+	postCommentPerDay                int
+	reportCommentPerMinute           int
+	reportCommentPerDay              int
+	rateEpisodePerMinute             int
+	rateEpisodePerDay                int
+	verifyPasswordPerMinute          int
+	verifyPasswordPerDay             int
+	updateViewerPreferencesPerMinute int
+	updateViewerPreferencesPerDay    int
 }
 
 // defaultReaderLimits is the policy a deployment that sets none of the settings
 // gets.
 func defaultReaderLimits() readerLimits {
 	return readerLimits{
-		postCommentPerMinute:    defaultPostCommentPerMinute,
-		postCommentPerDay:       defaultPostCommentPerDay,
-		reportCommentPerMinute:  defaultReportCommentPerMinute,
-		reportCommentPerDay:     defaultReportCommentPerDay,
-		rateEpisodePerMinute:    defaultRateEpisodePerMinute,
-		rateEpisodePerDay:       defaultRateEpisodePerDay,
-		verifyPasswordPerMinute: defaultVerifyPasswordPerMinute,
-		verifyPasswordPerDay:    defaultVerifyPasswordPerDay,
+		postCommentPerMinute:             defaultPostCommentPerMinute,
+		postCommentPerDay:                defaultPostCommentPerDay,
+		reportCommentPerMinute:           defaultReportCommentPerMinute,
+		reportCommentPerDay:              defaultReportCommentPerDay,
+		rateEpisodePerMinute:             defaultRateEpisodePerMinute,
+		rateEpisodePerDay:                defaultRateEpisodePerDay,
+		verifyPasswordPerMinute:          defaultVerifyPasswordPerMinute,
+		verifyPasswordPerDay:             defaultVerifyPasswordPerDay,
+		updateViewerPreferencesPerMinute: defaultUpdateViewerPreferencesPerMinute,
+		updateViewerPreferencesPerDay:    defaultUpdateViewerPreferencesPerDay,
 	}
 }
 
@@ -155,6 +170,8 @@ func newReaderGuardsFromEnv(logger *slog.Logger) (readerGuards, error) {
 		{rateEpisodePerDayEnv, defaultRateEpisodePerDay, &limits.rateEpisodePerDay},
 		{verifyPasswordPerMinuteEnv, defaultVerifyPasswordPerMinute, &limits.verifyPasswordPerMinute},
 		{verifyPasswordPerDayEnv, defaultVerifyPasswordPerDay, &limits.verifyPasswordPerDay},
+		{updateViewerPreferencesPerMinuteEnv, defaultUpdateViewerPreferencesPerMinute, &limits.updateViewerPreferencesPerMinute},
+		{updateViewerPreferencesPerDayEnv, defaultUpdateViewerPreferencesPerDay, &limits.updateViewerPreferencesPerDay},
 	} {
 		value, err := envLimit(setting.name, setting.fallback)
 		if err != nil {
@@ -193,6 +210,10 @@ func readerRules(limits readerLimits) map[readerAction][]ratelimit.Rule {
 		actionVerifyPassword: {
 			{Limit: limits.verifyPasswordPerMinute, Window: time.Minute},
 			{Limit: limits.verifyPasswordPerDay, Window: 24 * time.Hour},
+		},
+		actionUpdateViewerPreferences: {
+			{Limit: limits.updateViewerPreferencesPerMinute, Window: time.Minute},
+			{Limit: limits.updateViewerPreferencesPerDay, Window: 24 * time.Hour},
 		},
 	}
 }

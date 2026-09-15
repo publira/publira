@@ -527,6 +527,7 @@ type Querier interface {
 	GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error)
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
+	GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error)
 	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 	// has no staff actor to name.
 	HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg HideEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
@@ -1794,6 +1795,16 @@ type Querier interface {
 	// alternative would be one tenant's caller taking a device away from another.
 	UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDeviceParams) (UserPushDevice, error)
 	UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error)
+	// An omitted (NULL) preference keeps the value the row holds, so a viewer that
+	// writes the one control the reader just pressed cannot reset the settings it
+	// knows nothing about.
+	//
+	// On the insert branch there is no value to keep, and an omitted preference
+	// takes the same default GetUserViewerPreferences answers for a reader with no
+	// row. The literal repeats the column default because a VALUES list has no way
+	// to ask for it conditionally; TestDBViewerPreferenceDefaultsAgreeAcrossPaths
+	// is what fails when the two drift apart.
+	UpsertUserViewerPreferences(ctx context.Context, arg UpsertUserViewerPreferencesParams) (UserViewerPreference, error)
 	// Creators are public when they have at least one active series, matching
 	// GetPublishedCreatorByPublicID.
 	UserFollowsPublishedCreator(ctx context.Context, arg UserFollowsPublishedCreatorParams) (bool, error)

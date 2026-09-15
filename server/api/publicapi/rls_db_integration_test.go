@@ -77,6 +77,9 @@ var publicDataTables = []struct {
 	{name: "series_tags", count: "SELECT count(*) FROM series_tags"},
 	{name: "episode_reads", count: "SELECT count(*) FROM episode_reads"},
 	{name: "episode_reading_positions", count: "SELECT count(*) FROM episode_reading_positions"},
+	// How the reader wants the viewer laid out, which the viewer reads on the
+	// same connection as the position it opens at.
+	{name: "user_viewer_preferences", count: "SELECT count(*) FROM user_viewer_preferences"},
 	{name: "episode_ratings", count: "SELECT count(*) FROM episode_ratings"},
 	// The public tally beside the reader's own ratings. It is the one of the
 	// pair a storefront shows to everybody, so a missing policy here would hand
@@ -139,6 +142,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)", first.ID, member.ID, episode.ID); err != nil {
 		t.Fatalf("seed reading position: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO user_viewer_preferences (tenant_id, user_id, wide_viewer_enabled) VALUES ($1, $2, true)", first.ID, member.ID); err != nil {
+		t.Fatalf("seed viewer preferences: %v", err)
 	}
 	// The rating carries its own count rows: the triggers on episode_ratings
 	// write the episode's tally and the series' one, so three tables are seeded

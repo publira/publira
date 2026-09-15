@@ -169,6 +169,38 @@ message UpdateNotificationSettingsResponse {
   bool email_notifications_enabled = 1;
 }
 
+// A reader's own choices about how the viewer is laid out, stored against the
+// account so the choice follows them to the next device. Every field carries a
+// value: a reader who has saved nothing reads the defaults rather than an
+// absent message, so a client never has to tell "unset" from "off".
+//
+// The next viewer setting is a field here and a column behind it, not a second
+// pair of RPCs.
+message ViewerPreferences {
+  // The viewer takes the full window width.
+  bool wide_viewer_enabled = 1;
+}
+
+message GetViewerPreferencesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetViewerPreferencesResponse {
+  ViewerPreferences preferences = 1;
+}
+
+message UpdateViewerPreferencesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Omitted preferences keep the stored value, so a viewer writing the one
+  // control the reader pressed does not reset the ones it knows nothing about
+  // (proto3 non-optional bool maps an omitted field to false).
+  optional bool wide_viewer_enabled = 2;
+}
+
+message UpdateViewerPreferencesResponse {
+  ViewerPreferences preferences = 1;
+}
+
 message AnnouncementItem {
   string id = 1;
   string announcement_type = 2;
@@ -263,6 +295,8 @@ service AuthService {
   rpc DeleteMe(DeleteMeRequest) returns (DeleteMeResponse) {}
   rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse) {}
   rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse) {}
+  rpc GetViewerPreferences(GetViewerPreferencesRequest) returns (GetViewerPreferencesResponse) {}
+  rpc UpdateViewerPreferences(UpdateViewerPreferencesRequest) returns (UpdateViewerPreferencesResponse) {}
   rpc GetAnnouncement(GetAnnouncementRequest) returns (GetAnnouncementResponse) {}
   rpc GetPinnedAnnouncement(GetPinnedAnnouncementRequest) returns (GetPinnedAnnouncementResponse) {}
   rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
