@@ -63,5 +63,5 @@ import { Card } from "@publira/ui-components/card";
 ## Development
 
 ```bash
-pnpm --filter @publira/ui-components build
+pnpm build --filter @publira/ui-components
 ```

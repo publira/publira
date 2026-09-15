@@ -111,7 +111,15 @@ No lint covers this. `git grep` cannot tell which of the two senses an `author` 
 
 Every environment variable that **only this repository's own code reads** is named `PUBLIRA_*`. A variable keeps its outside name only when the software that consumes the value looks that name up itself — the AWS SDK, `NODE_ENV`, `PORT`. That test, who performs the lookup, is the whole rule: `S3_*`, `AUTH_SECRET`, `REDIS_URL`, and the cache-related `NEXT_*` names are all ours, so all of them carry the prefix.
 
-Nothing fails on a wrong name. `turbo.jsonc` passes `PUBLIRA_*` through and turbo runs in strict env mode, so a non-conforming variable silently does nothing while every service still starts. Do not add a `passThroughEnv` exception — rename the variable.
+Nothing fails on a wrong name. `turbo.jsonc` passes `PUBLIRA_*` through and turbo runs in strict env mode, so a non-conforming variable silently does nothing while every service still starts. Do not add a `passThroughEnv` exception to keep such a name — rename the variable. An entry there is for a name that is genuinely someone else's, which is why `PORT` has one.
+
+## Package scripts: always through Turborepo
+
+A package script `turbo.jsonc` defines a task for — `build`, `dev`, `lint`, `test`, `typecheck`, `typegen` — is run through the repository root's script of the same name, as `pnpm <script> --filter <package>`. `pnpm --dir <path> <script>` and `pnpm --filter <package> <script>` start that package's script directly, with the task graph switched off, so nothing the task depends on runs first. `build` and `dev` both declare `dependsOn: ["^build"]`, and that dependency is the only thing that builds the `dist/` of the workspace packages an app imports: `pnpm install` does not, and `dist/` is gitignored. Bypassing turbo in a worktree that has never built them therefore starts an app that exits on `Cannot find module '@publira/…/dist/…'`.
+
+Bypassing turbo is for the case where turbo itself is the problem, a local cache that has gone inconsistent, and even then `--force` or discarding `.turbo/cache` comes first and the direct invocation is the last resort. A script turbo defines no task for is outside the rule altogether: `@publira/email-renderer`'s `start`, and `pnpm --dir e2e exec …`, which runs a binary rather than a package script.
+
+Nothing rejects the bypassing spelling. The failure it causes is not a failure of the command that used it either — the package script runs, and only the process it started reports the missing `dist/`, in a log someone has to go and read.
 
 ## TypeScript executed directly by Node.js
 

@@ -199,7 +199,7 @@ Under the root span of `GET /[tenant_id]/[locale]` you find the client spans SSR
 Start with `NEXT_OTEL_VERBOSE=1` only when you want to see the internal spans of Next.js itself (`BaseServer.renderToResponse`, `Router.executeRoute`, and so on). It is off by default because the number of spans per request grows a lot and the trace fills up at a stage the application code cannot influence.
 
 ```bash
-NEXT_OTEL_VERBOSE=1 pnpm --dir apps/web-host dev
+NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-host
 ```
 
 Attributes, span naming, and the sampling policy follow the design agreed in [#502](https://github.com/publira/publira/issues/502). For the details of the configuration and instrumentation, see [server/README.md](server/README.md#distributed-tracing-opentelemetry) for the Go side and [packages/tracing/README.md](packages/tracing/README.md) for the Next.js side.

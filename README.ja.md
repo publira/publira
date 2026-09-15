@@ -199,7 +199,7 @@ Traefik は `web` エントリポイント（`localhost:3080`）に届いたリ�
 Next.js 自体の内部 span（`BaseServer.renderToResponse` / `Router.executeRoute` など）まで見たいときだけ `NEXT_OTEL_VERBOSE=1` を付けて起動してください。既定で出さないのは、1 リクエストあたりの span 数が大きく増え、アプリのコードでは動かしようのない段階でトレースが埋まるためです。
 
 ```bash
-NEXT_OTEL_VERBOSE=1 pnpm --dir apps/web-host dev
+NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-host
 ```
 
 属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は Go 側が [server/README.md](server/README.md#distributed-tracing-opentelemetry)、Next.js 側が [packages/tracing/README.md](packages/tracing/README.md) です。

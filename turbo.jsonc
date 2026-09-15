@@ -48,7 +48,10 @@
       // SDK reads OTEL_* itself and Next.js reads NEXT_OTEL_*, so those two
       // patterns are listed as well; without them the dev servers export
       // spans nowhere while the Dev Container thinks it configured Jaeger.
-      "passThroughEnv": ["NEXT_OTEL_*", "OTEL_*", "PUBLIRA_*"],
+      // PORT is the one name outside those patterns: Next.js and the
+      // email-renderer read it themselves, and it is how a development profile
+      // gives each of its apps a port of its own.
+      "passThroughEnv": ["NEXT_OTEL_*", "OTEL_*", "PORT", "PUBLIRA_*"],
       "persistent": true,
     },
     "generate:api": {

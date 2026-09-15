@@ -101,11 +101,11 @@ task dev-env:stop
 
 All three apps of a profile answer on one address, the port the profile's own edge listens on: it is the tenant site, `admin.localhost` on the same port is the tenant console, and `platform.localhost` the platform console, the way `localhost:3080` works in the Dev Container. That edge is a Traefik container running the routing every environment runs ([`infra/proxy/README.md`](infra/proxy/README.md)) against the profile's ports, so `task dev-env:start` needs Docker and `task dev-env:stop` takes the container down with the processes. Reaching an app on the port it listens on itself skips the edge, and `/images…` belongs to the image server rather than to any app, so a page opened that way shows every eye-catch, logo, and episode page as a broken image.
 
-Load the same environment variables first when starting a single app as well. `pnpm dev` in each Next.js app honors `PORT`, so you do not have to resolve default port collisions by hand.
+Load the same environment variables first when starting a single app as well. Each app's `dev` honors `PORT`, so you do not have to resolve default port collisions by hand.
 
 ```bash
 eval "$(task --silent dev-env:env)"
-pnpm --dir apps/web-host dev
+pnpm dev --filter @publira/web-host
 ```
 
 `task dev-env:list` shows every profile and the worktree that selected it. To discard one, run `task dev-env:destroy NAME=<name>`. It checks that no worktree has the target selected and that it is stopped, then deletes only that profile's database, Redis DB, and bucket after you retype the name. It does not touch the shared development environment, E2E, or other profiles.
