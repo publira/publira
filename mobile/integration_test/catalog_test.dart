@@ -63,6 +63,24 @@ Future<void> pumpUntilPagesDrawn(
   );
 }
 
+/// Scrolls the series screen until [finder] is on it.
+///
+/// The screen carries the follow controls and a row per author above its
+/// episodes, so an episode sits below the fold on a phone, and a lazy list
+/// neither builds nor hit-tests what no viewport has reached. Reaching a row
+/// therefore includes scrolling to it; one already on screen stays where it
+/// is. The list is named so the drag cannot land on the catalog behind it.
+Future<void> scrollSeriesTo(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    200,
+    scrollable: find.descendant(
+      of: find.byKey(const ValueKey('series-detail-body')),
+      matching: find.byType(Scrollable),
+    ),
+  );
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -194,7 +212,8 @@ void main() {
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
         );
-        await pumpUntilFound(
+        await pumpUntilRouteSettled(tester, find.text('2 episodes'));
+        await scrollSeriesTo(
           tester,
           find.text(ConnectFixtureServer.seedEpisodeTitle),
         );
@@ -225,7 +244,9 @@ void main() {
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
         );
-        await pumpUntilRouteSettled(tester, find.text('Episodes'));
+        // The episode count, rather than the heading over the episodes, which
+        // the follow controls and the authors above it push off a phone.
+        await pumpUntilRouteSettled(tester, find.text('2 episodes'));
         await tester.pageBack();
         // The catalog names the series on its new-arrivals shelf as well as in
         // its list, so the screen that has to be gone is the detail one.
@@ -264,7 +285,8 @@ void main() {
         );
         await pumpUntilRouteSettled(tester, tile);
         await tester.tap(tile);
-        await pumpUntilRouteSettled(
+        await pumpUntilRouteSettled(tester, find.text('2 episodes'));
+        await scrollSeriesTo(
           tester,
           find.text(ConnectFixtureServer.seedEpisodeTitle),
         );
@@ -498,13 +520,20 @@ void main() {
           await pumpUntilNoPendingFrameCallbacks(tester);
         }
 
+        /// The series screen, scrolled down to the paid episode it opens.
+        Future<void> settleOnPaidEpisode() async {
+          await settleOn(find.text('2 episodes'));
+          await scrollSeriesTo(tester, paidEpisode);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        }
+
         await pumpApp(tester, initialLocation: AppRoutes.signIn);
         await settleOn(find.byKey(const ValueKey('sign-in-submit')));
         await signIn(tester);
         await settleOn(seriesTile);
 
         await tester.tap(seriesTile);
-        await settleOn(paidEpisode);
+        await settleOnPaidEpisode();
         await tester.tap(paidEpisode);
         await settleOn(find.byKey(const ValueKey('episode-page-view')));
 
@@ -521,7 +550,7 @@ void main() {
         await settleOn(seriesTile);
 
         await tester.tap(seriesTile);
-        await settleOn(paidEpisode);
+        await settleOnPaidEpisode();
         await tester.tap(paidEpisode);
         await pumpUntilFound(
           tester,
@@ -791,6 +820,11 @@ void main() {
           find.text(ConnectFixtureServer.seedSeriesTitle),
           timeout: const Duration(seconds: 20),
         );
+        await scrollSeriesTo(
+          tester,
+          find.text(ConnectFixtureServer.seedEpisodeTitle),
+        );
+
         expect(find.text('Episodes'), findsOneWidget);
         expect(
           find.text(ConnectFixtureServer.seedEpisodeTitle),

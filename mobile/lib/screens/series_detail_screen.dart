@@ -200,6 +200,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final follows = FollowScope.maybeOf(context) != null;
 
     return ListView(
+      key: const ValueKey('series-detail-body'),
       padding: const EdgeInsets.all(16),
       children: [
         // 16:9 is the shape of the rendition, and on a phone it is what the
