@@ -459,3 +459,15 @@ WHERE u.tenant_id = sqlc.arg('tenant_id')
     AND u.id > sqlc.arg('after_user_id')
 ORDER BY u.id
 LIMIT sqlc.arg('limit');
+
+-- name: GetTenantUserID :one
+-- Worker check: the recipient a notification names is a user of the tenant the
+-- notification belongs to. `notifications` carries `tenant_id` and `user_id` as
+-- two separate foreign keys and its RLS policy reads only the tenant, so a pair
+-- from two different tenants is stored rather than rejected; a producer that
+-- takes the recipient from a payload asks here before it inserts. No rows means
+-- the user is not this tenant's.
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.id = sqlc.arg('user_id');

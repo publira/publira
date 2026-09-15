@@ -91,7 +91,10 @@ func TestAnnouncementNotificationWalksEveryRecipientPage(t *testing.T) {
 func TestAnnouncementNotificationAddressesOnlyTheNamedRecipient(t *testing.T) {
 	tenantID := uuid.New()
 	target := uuid.New()
-	queries := &stubAnnouncementQuerier{users: []uuid.UUID{uuid.New(), uuid.New()}}
+	queries := &stubAnnouncementQuerier{
+		users:       []uuid.UUID{uuid.New(), uuid.New()},
+		tenantUsers: map[uuid.UUID]struct{}{target: {}},
+	}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
 	event := announcementEvent(t, tenantID, uuid.New(), target.String())
@@ -107,6 +110,40 @@ func TestAnnouncementNotificationAddressesOnlyTheNamedRecipient(t *testing.T) {
 	}
 	if queries.listCalls != 0 {
 		t.Fatalf("recipient queries = %d, want 0 for a targeted announcement", queries.listCalls)
+	}
+	if queries.resolvedTenant.UUID != tenantID || !queries.resolvedTenant.Valid {
+		t.Fatalf("target resolved inside %v, want tenant %s", queries.resolvedTenant, tenantID)
+	}
+}
+
+// `notifications` keeps the tenant and the user as two separate foreign keys,
+// so a recipient from another tenant is a row the database would accept. The
+// event names a recipient the handler did not resolve itself, so it is refused
+// here rather than retried: no redelivery moves that user into this tenant.
+func TestAnnouncementNotificationRejectsATargetOfAnotherTenant(t *testing.T) {
+	queries := &stubAnnouncementQuerier{tenantUsers: map[uuid.UUID]struct{}{}}
+
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	event := announcementEvent(t, uuid.New(), uuid.New(), uuid.New().String())
+
+	if err := handler(context.Background(), event); !IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent error", err)
+	}
+	if len(queries.created) != 0 {
+		t.Fatalf("notifications written = %d, want 0", len(queries.created))
+	}
+}
+
+func TestAnnouncementNotificationRetriesAFailedTargetLookup(t *testing.T) {
+	queries := &stubAnnouncementQuerier{resolveErr: errors.New("connection refused")}
+
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New(), uuid.New().String()))
+	if err == nil {
+		t.Fatal("handler error = nil, want a retriable error")
+	}
+	if IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a retriable error", err)
 	}
 }
 
@@ -209,12 +246,31 @@ func announcementEvent(
 }
 
 type stubAnnouncementQuerier struct {
-	users        []uuid.UUID
-	listedTenant uuid.NullUUID
-	listCalls    int
-	listErr      error
-	created      []dbmodels.CreateNotificationParams
-	createErr    error
+	users          []uuid.UUID
+	listedTenant   uuid.NullUUID
+	listCalls      int
+	listErr        error
+	tenantUsers    map[uuid.UUID]struct{}
+	resolvedTenant uuid.NullUUID
+	resolveErr     error
+	created        []dbmodels.CreateNotificationParams
+	createErr      error
+}
+
+// GetTenantUserID answers only for the users the stub was given, so a target
+// outside them reads the way the database reports one of another tenant.
+func (s *stubAnnouncementQuerier) GetTenantUserID(
+	_ context.Context,
+	arg dbmodels.GetTenantUserIDParams,
+) (uuid.UUID, error) {
+	if s.resolveErr != nil {
+		return uuid.Nil, s.resolveErr
+	}
+	s.resolvedTenant = arg.TenantID
+	if _, ok := s.tenantUsers[arg.UserID]; !ok {
+		return uuid.Nil, sql.ErrNoRows
+	}
+	return arg.UserID, nil
 }
 
 // ListTenantUserIDs answers the keyset the handler pages with, so a stub

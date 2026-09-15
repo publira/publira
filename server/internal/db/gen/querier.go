@@ -498,6 +498,13 @@ type Querier interface {
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
+	// Worker check: the recipient a notification names is a user of the tenant the
+	// notification belongs to. `notifications` carries `tenant_id` and `user_id` as
+	// two separate foreign keys and its RLS policy reads only the tenant, so a pair
+	// from two different tenants is stored rather than rejected; a producer that
+	// takes the recipient from a payload asks here before it inserts. No rows means
+	// the user is not this tenant's.
+	GetTenantUserID(ctx context.Context, arg GetTenantUserIDParams) (uuid.UUID, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)

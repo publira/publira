@@ -83,6 +83,7 @@ type AnnouncementNotificationHandlerConfig struct {
 // announcementNotificationQuerier is the statement pair the handler runs, named
 // so a test can drive the fan-out without a database behind it.
 type announcementNotificationQuerier interface {
+	GetTenantUserID(ctx context.Context, arg dbmodels.GetTenantUserIDParams) (uuid.UUID, error)
 	ListTenantUserIDs(ctx context.Context, arg dbmodels.ListTenantUserIDsParams) ([]uuid.UUID, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) (dbmodels.Notification, error)
 }
@@ -150,6 +151,23 @@ func announcementNotificationHandler(
 			targetID, parseErr := uuid.Parse(target)
 			if parseErr != nil {
 				return Permanent(fmt.Errorf("announcement notification payload target_user_id is invalid: %w", parseErr))
+			}
+			// The recipient is resolved inside the event's own tenant before
+			// the row is written. `notifications` holds the tenant and the user
+			// as two separate foreign keys, so a pair naming two tenants is
+			// stored rather than rejected, and it would then sit in a reader's
+			// inbox on a site their account does not belong to. The broadcast
+			// below needs no such check: its recipients are the tenant's own
+			// listing.
+			if _, lookupErr := queries.GetTenantUserID(ctx, dbmodels.GetTenantUserIDParams{
+				TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+				UserID:   targetID,
+			}); lookupErr != nil {
+				if errors.Is(lookupErr, sql.ErrNoRows) {
+					return Permanent(fmt.Errorf(
+						"announcement notification target %s is not a user of tenant %s", targetID, tenantID))
+				}
+				return fmt.Errorf("resolve announcement notification target: %w", lookupErr)
 			}
 			return insert(targetID)
 		}

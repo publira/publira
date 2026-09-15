@@ -153,6 +153,31 @@ func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getTenantUserID = `-- name: GetTenantUserID :one
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.id = $2
+`
+
+type GetTenantUserIDParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	UserID   uuid.UUID     `json:"user_id"`
+}
+
+// Worker check: the recipient a notification names is a user of the tenant the
+// notification belongs to. `notifications` carries `tenant_id` and `user_id` as
+// two separate foreign keys and its RLS policy reads only the tenant, so a pair
+// from two different tenants is stored rather than rejected; a producer that
+// takes the recipient from a payload asks here before it inserts. No rows means
+// the user is not this tenant's.
+func (q *Queries) GetTenantUserID(ctx context.Context, arg GetTenantUserIDParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getTenantUserID, arg.TenantID, arg.UserID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
 SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users

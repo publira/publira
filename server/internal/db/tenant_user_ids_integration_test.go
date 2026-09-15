@@ -3,6 +3,8 @@ package dbtest
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
@@ -64,5 +66,40 @@ func TestListTenantUserIDsWalksEveryUserOnce(t *testing.T) {
 
 	if !slices.Equal(got, want) {
 		t.Fatalf("recipients = %v, want every user of the tenant in id order %v", got, want)
+	}
+}
+
+// A targeted notification takes its recipient from an event payload, and
+// `notifications` holds the tenant and the user as two separate foreign keys —
+// so this lookup is what keeps a pair naming two tenants from being written.
+func TestGetTenantUserIDAnswersOnlyForThatTenant(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "TARGETTNT001", "target.example.com", "admin-target.example.com", "Target Tenant")
+	otherTenantID := mustInsertTenant(t, ctx, pg.DB, "TARGETTNT002", "other-target.example.com", "admin-other-target.example.com", "Other Target Tenant")
+	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "TARGETUSR001", "target-user@example.com", "Target Reader")
+
+	queries := dbmodels.New(pg.DB)
+	found, err := queries.GetTenantUserID(ctx, dbmodels.GetTenantUserIDParams{
+		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+		UserID:   userID,
+	})
+	if err != nil {
+		t.Fatalf("GetTenantUserID for the owning tenant: %v", err)
+	}
+	if found != userID {
+		t.Fatalf("resolved user = %s, want %s", found, userID)
+	}
+
+	_, err = queries.GetTenantUserID(ctx, dbmodels.GetTenantUserIDParams{
+		TenantID: uuid.NullUUID{UUID: otherTenantID, Valid: true},
+		UserID:   userID,
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("GetTenantUserID for another tenant = %v, want sql.ErrNoRows", err)
 	}
 }

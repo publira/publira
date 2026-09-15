@@ -7,7 +7,7 @@ import {
   signInAsAnnouncementDeliveryAdmin,
   signInAsAnnouncementDeliveryTarget,
 } from "../src/admin";
-import { applyScenarioSql, querySql, runSql } from "../src/db";
+import { applyScenarioSql, querySql, quoteSqlLiteral, runSql } from "../src/db";
 import {
   openHostUserMenu,
   signInAsAnnouncementDeliveryMember,
@@ -15,6 +15,8 @@ import {
 } from "../src/host";
 import { uniqueSuffix } from "../src/scenarios/admin-publish";
 import {
+  ANNOUNCEMENT_DELIVERY_ADMIN,
+  ANNOUNCEMENT_DELIVERY_MEMBER,
   ANNOUNCEMENT_DELIVERY_SCENARIO,
   ANNOUNCEMENT_DELIVERY_TARGET,
   ANNOUNCEMENT_DELIVERY_TENANT,
@@ -43,6 +45,26 @@ const queuedAnnouncementEvents = (): number =>
         AND e.status IN ('pending', 'processing');
     `)
   );
+
+/**
+ * Who the announcement titled `title` actually notified, by public id.
+ *
+ * The recipient set is what "and nobody else" means, and a screen can only
+ * report the one account it is signed in as — so the whole set is read here,
+ * where no cached page stands between the assertion and the rows.
+ */
+const notifiedUserPublicIds = (title: string): string[] => {
+  const rows = querySql(`
+    SELECT u.public_id
+    FROM notifications n
+    JOIN users u ON u.id = n.user_id
+    JOIN announcements a ON a.tenant_id = n.tenant_id
+      AND n.subject_key = 'announcement:' || a.id::text
+    WHERE a.title = ${quoteSqlLiteral(title)}
+    ORDER BY u.public_id;
+  `);
+  return rows === "" ? [] : rows.split("\n");
+};
 
 const announcementFormFields = (page: Page) => ({
   body: page.getByRole("textbox", { name: /Body/u }),
@@ -147,7 +169,13 @@ const expectUnreadNotification = async (
  * it again, so a long-lived stack does not accumulate what the runs delivered.
  */
 test.describe("admin announcement delivery", () => {
-  test.beforeAll(() => {
+  test.beforeAll(async () => {
+    // The handler does not read the announcement row, so an event a previous
+    // run left queued still delivers — and it would deliver after the scenario
+    // file has emptied this tenant, into the bell the first test expects to be
+    // its own. The file is idempotent DML and cannot wait, so the drain is
+    // waited out here, before it is applied.
+    await expect.poll(queuedAnnouncementEvents, { timeout: 30_000 }).toBe(0);
     applyScenarioSql(ANNOUNCEMENT_DELIVERY_SCENARIO);
   });
 
@@ -250,6 +278,14 @@ test.describe("admin announcement delivery", () => {
     await menu.getByRole("link", { name: /A new announcement/u }).click();
     await expect(page).toHaveURL(/\/announcements\/?$/u);
 
+    // A broadcast addresses every user of its own tenant and stops there, which
+    // is the whole recipient set rather than the one account a screen can show.
+    expect(notifiedUserPublicIds(title)).toEqual([
+      ANNOUNCEMENT_DELIVERY_ADMIN.publicId,
+      ANNOUNCEMENT_DELIVERY_MEMBER.publicId,
+      ANNOUNCEMENT_DELIVERY_TARGET.publicId,
+    ]);
+
     // The tenant boundary: another tenant's reader is addressed by none of it.
     await signInAsSeedMember(page, "/notifications");
     await expect(
@@ -282,12 +318,25 @@ test.describe("admin announcement delivery", () => {
       1
     );
 
+    // Every row this announcement wrote, read straight from the database: the
+    // screens below can each speak for one account, and "nobody else" is a
+    // statement about all of them.
+    expect(notifiedUserPublicIds(title)).toEqual([
+      ANNOUNCEMENT_DELIVERY_TARGET.publicId,
+    ]);
+
     // The reader of the same tenant was not addressed, so the announcement
-    // reaches neither their inbox nor their bell.
+    // reaches neither their inbox nor their bell. The navigation is retried
+    // because the count is a cached private read: an entry filled while the
+    // previous test's broadcast was still live is waited out rather than read
+    // as this announcement having reached them.
     await signInAsAnnouncementDeliveryMember(page, "/notifications");
-    await expect(
-      page.getByRole("button", { name: "Notifications, none unread" })
-    ).toBeVisible();
+    await expect(async () => {
+      await page.goto(deliveryHostUrl("/notifications"));
+      await expect(
+        page.getByRole("button", { name: "Notifications, none unread" })
+      ).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30_000 });
     await expect(notificationMention(page, title)).toHaveCount(0);
   });
 
