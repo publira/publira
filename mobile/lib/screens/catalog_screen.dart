@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/series_cover.dart';
+import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
@@ -73,6 +75,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 context.push(signedIn ? AppRoutes.account : AppRoutes.signIn),
           ),
         ],
+        bottom: const _CatalogSearchField(),
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -88,6 +91,65 @@ class _CatalogScreenState extends State<CatalogScreen> {
             SliverToBoxAdapter(child: _NewArrivalsShelf(refreshes: _refreshes)),
             _AllSeriesSection(refreshes: _refreshes, onLoaded: _refreshed),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The way into the search screen, under the catalog's title.
+///
+/// It is a field the reader cannot type into: tapping it opens the search
+/// screen, where the keyword is read and the results are listed. Two fields
+/// over one keyword — one here and one there — would be two places to clear
+/// it, and the catalog underneath would have to answer for a keyword it never
+/// asked about.
+class _CatalogSearchField extends StatelessWidget
+    implements PreferredSizeWidget {
+  const _CatalogSearchField();
+
+  /// The field plus the space under it, which is what the app bar reserves
+  /// beneath its title.
+  static const _height = 56.0;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(_height);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = AppMessages.of(context).searchLabel;
+    return SizedBox(
+      height: _height,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Material(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(22),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            key: const ValueKey('catalog-search'),
+            onTap: () => context.push(AppRoutes.search),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -177,7 +239,7 @@ class _RankingShelf extends StatelessWidget {
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('catalog-ranking-${item.series.id}'),
         series: item.series,
-        subtitle: _creditLine(messages, item.series),
+        subtitle: creditLine(messages, item.series),
         rank: item.rank,
         onTap: () => context.push(AppRoutes.seriesDetailPath(item.series.id)),
       ),
@@ -203,22 +265,11 @@ class _NewArrivalsShelf extends StatelessWidget {
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('catalog-new-arrivals-${item.id}'),
         series: item,
-        subtitle: _creditLine(messages, item),
+        subtitle: creditLine(messages, item),
         onTap: () => context.push(AppRoutes.seriesDetailPath(item.id)),
       ),
     );
   }
-}
-
-/// Who a series is credited to, as one line, and empty for a series credited
-/// to nobody — which is what leaves the line off a card.
-String _creditLine(AppMessages messages, SeriesItem series) {
-  if (series.creators.isEmpty) {
-    return '';
-  }
-  return messages.formatList([
-    for (final creator in series.creators) creator.name,
-  ]);
 }
 
 /// One horizontal shelf: a heading, and a row of cards under it.
@@ -318,9 +369,9 @@ class _CatalogShelfState<T> extends State<_CatalogShelf<T>> {
     if (failure != null) {
       return _ShelfFrame(
         heading: widget.heading,
-        child: _RetryRow(
+        child: RetryRow(
           sectionKey: widget.sectionKey,
-          message: _failureCopy(messages, failure, widget.failureMessage),
+          message: catalogFailureCopy(messages, failure, widget.failureMessage),
           onRetry: () => setState(_load),
         ),
       );
@@ -450,41 +501,6 @@ class _SkeletonLine extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(4),
-      ),
-    );
-  }
-}
-
-/// What a section shows in place of its contents when the API could not
-/// answer it: what went wrong, and the offer to ask again.
-class _RetryRow extends StatelessWidget {
-  const _RetryRow({
-    required this.sectionKey,
-    required this.message,
-    required this.onRetry,
-  });
-
-  final String sectionKey;
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      key: ValueKey('$sectionKey-error'),
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message),
-          const SizedBox(height: 8),
-          TextButton(
-            key: ValueKey('$sectionKey-retry'),
-            onPressed: onRetry,
-            child: Text(AppMessages.of(context).commonRetry),
-          ),
-        ],
       ),
     );
   }
@@ -735,9 +751,14 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
     final failure = _failure;
     if (failure != null) {
       return SliverToBoxAdapter(
-        child: _CatalogMessage(
+        child: CatalogMessage(
           key: const ValueKey('catalog-error'),
-          message: _failureCopy(messages, failure, messages.catalogLoadFailed),
+          message: catalogFailureCopy(
+            messages,
+            failure,
+            messages.catalogLoadFailed,
+          ),
+          actionKey: const ValueKey('catalog-retry'),
           actionLabel: messages.commonRetry,
           onAction: () => setState(_loadFirstPage),
         ),
@@ -758,7 +779,7 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
     final hasFooter = _nextToken.isNotEmpty || _moreFailure != null;
     if (series.isEmpty && !hasFooter) {
       return SliverToBoxAdapter(
-        child: _CatalogMessage(
+        child: CatalogMessage(
           key: const ValueKey('catalog-empty'),
           message: messages.catalogEmpty,
         ),
@@ -777,7 +798,7 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
             return _CatalogPageFooter(
               message: _moreFailure == null
                   ? null
-                  : _failureCopy(
+                  : catalogFailureCopy(
                       messages,
                       _moreFailure,
                       messages.catalogLoadFailed,
@@ -790,7 +811,7 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
               },
             );
           }
-          return _SeriesTile(series: series[index]);
+          return SeriesTile(series: series[index]);
         },
       ),
     );
@@ -820,130 +841,10 @@ class _CatalogPageFooter extends StatelessWidget {
     }
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: _RetryRow(
+      child: RetryRow(
         sectionKey: 'catalog-more',
         message: message,
         onRetry: onRetry,
-      ),
-    );
-  }
-}
-
-/// One row of the whole-catalog list.
-class _SeriesTile extends StatelessWidget {
-  const _SeriesTile({required this.series});
-
-  final SeriesItem series;
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = AppMessages.of(context);
-    final credits = _creditLine(messages, series);
-    final classification = _tileClassification(messages, series);
-    return ListTile(
-      key: ValueKey('series-tile-${series.id}'),
-      // 42 is the widest a 3:4 box can be and still stand inside the 56 pixels
-      // ListTile allows its leading widget; a taller one is squeezed back to
-      // this width anyway.
-      leading: SizedBox(
-        width: 42,
-        child: SeriesCover(
-          series: series,
-          preferredTypes: const [eyeCatchPortrait],
-          aspectRatio: 3 / 4,
-        ),
-      ),
-      title: Text(series.title),
-      subtitle:
-          credits.isEmpty &&
-              classification.isEmpty &&
-              series.description.isEmpty
-          ? null
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (credits.isNotEmpty)
-                  Text(credits, maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (classification.isNotEmpty)
-                  Text(
-                    key: ValueKey('series-tile-classification-${series.id}'),
-                    classification,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                if (series.description.isNotEmpty)
-                  Text(
-                    series.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-      trailing: series.labelName.isEmpty ? null : Text(series.labelName),
-      onTap: () => context.push(AppRoutes.seriesDetailPath(series.id)),
-    );
-  }
-}
-
-/// Status and the first genre, which is what a catalog tile has room for.
-/// Empty when the series carries neither, which leaves the line off.
-String _tileClassification(AppMessages messages, SeriesItem series) {
-  final parts = <String>[
-    if (series.status != null) messages.seriesStatusLabel(series.status!),
-    if (series.genres.isNotEmpty) series.genres.first.name,
-  ];
-  return parts.join(' · ');
-}
-
-/// What a section says about a failure, in the words closest to it.
-///
-/// A request that could not reach the API and a device holding nothing saved
-/// are the same two answers wherever they happen, so only the rest is left to
-/// the section: [fallback] is what it calls a failure of its own.
-String _failureCopy(AppMessages messages, Object? error, String fallback) {
-  if (error is! CatalogFailure) {
-    return fallback;
-  }
-  return switch (error.kind) {
-    CatalogFailureKind.network => messages.errorsRpcUnavailable,
-    CatalogFailureKind.notSaved ||
-    CatalogFailureKind.saveExpired => messages.catalogOfflineNotSaved,
-    CatalogFailureKind.unexpected => fallback,
-  };
-}
-
-class _CatalogMessage extends StatelessWidget {
-  const _CatalogMessage({
-    super.key,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
-              FilledButton(
-                key: const ValueKey('catalog-retry'),
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }

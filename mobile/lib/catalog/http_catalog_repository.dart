@@ -33,6 +33,8 @@ class HttpCatalogRepository implements CatalogRepository {
 
   static const _listProcedure =
       '/publira.v1.CatalogService/ListPublishedSeries';
+  static const _searchProcedure =
+      '/publira.v1.CatalogService/SearchPublishedSeries';
   static const _rankedProcedure = '/publira.v1.CatalogService/ListRankedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
   static const _episodeProcedure =
@@ -61,6 +63,32 @@ class HttpCatalogRepository implements CatalogRepository {
     'SERIES_ORDER_TITLE_ASC',
     token: token,
   );
+
+  /// How many results one page of [searchSeries] holds, which is also the
+  /// API's own fallback for a request naming no limit.
+  static const searchPageLimit = 20;
+
+  @override
+  Future<SeriesPage> searchSeries({
+    required String query,
+    String token = '',
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_searchProcedure, {
+        'limit': searchPageLimit,
+        'query': query,
+        if (token.isNotEmpty) 'token': token,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      return SeriesPage(
+        series: _parseSeriesList(body['series']),
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
 
   @override
   Future<List<SeriesItem>> listNewestSeries({required int limit}) async {

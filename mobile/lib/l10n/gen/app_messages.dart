@@ -352,6 +352,21 @@ abstract class AppMessages {
   /// `mobile.push.open`
   String get pushOpen;
 
+  /// `mobile.search.clear`
+  String get searchClear;
+
+  /// `mobile.search.failed`
+  String get searchFailed;
+
+  /// `mobile.search.label`
+  String get searchLabel;
+
+  /// `mobile.search.no_results`
+  String searchNoResults({required String query});
+
+  /// `mobile.search.prompt`
+  String get searchPrompt;
+
   /// `mobile.series.age_gate.confirm_r15`
   String get seriesAgeGateConfirmR15;
 
@@ -983,6 +998,31 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get pushOpen {
     return '開く';
+  }
+
+  @override
+  String get searchClear {
+    return 'キーワードを消去';
+  }
+
+  @override
+  String get searchFailed {
+    return '検索結果を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get searchLabel {
+    return '作品を検索';
+  }
+
+  @override
+  String searchNoResults({required String query}) {
+    return '「$query」に一致するシリーズはありません。';
+  }
+
+  @override
+  String get searchPrompt {
+    return 'キーワードを入力して公開中のシリーズを検索できます。';
   }
 
   @override
@@ -1739,6 +1779,31 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get searchClear {
+    return 'Clear the keyword';
+  }
+
+  @override
+  String get searchFailed {
+    return 'Could not show the search results. Try again.';
+  }
+
+  @override
+  String get searchLabel {
+    return 'Search works';
+  }
+
+  @override
+  String searchNoResults({required String query}) {
+    return 'No series match “$query”.';
+  }
+
+  @override
+  String get searchPrompt {
+    return 'Enter a keyword to search the published series.';
+  }
+
+  @override
   String get seriesAgeGateConfirmR15 {
     return 'I am 15 or older';
   }
@@ -2489,6 +2554,31 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get pushOpen {
     return '열기';
+  }
+
+  @override
+  String get searchClear {
+    return '키워드 지우기';
+  }
+
+  @override
+  String get searchFailed {
+    return '검색 결과를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get searchLabel {
+    return '작품 검색';
+  }
+
+  @override
+  String searchNoResults({required String query}) {
+    return '“$query”과(와) 일치하는 시리즈가 없습니다.';
+  }
+
+  @override
+  String get searchPrompt {
+    return '키워드를 입력해 공개 중인 시리즈를 검색해 보세요.';
   }
 
   @override
@@ -3245,6 +3335,31 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get searchClear {
+    return '清除关键词';
+  }
+
+  @override
+  String get searchFailed {
+    return '无法显示搜索结果。请重试。';
+  }
+
+  @override
+  String get searchLabel {
+    return '搜索作品';
+  }
+
+  @override
+  String searchNoResults({required String query}) {
+    return '没有与“$query”匹配的系列。';
+  }
+
+  @override
+  String get searchPrompt {
+    return '请输入关键词搜索已发布的系列。';
+  }
+
+  @override
   String get seriesAgeGateConfirmR15 {
     return '我已满 15 岁';
   }
@@ -3995,6 +4110,31 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get pushOpen {
     return '開啟';
+  }
+
+  @override
+  String get searchClear {
+    return '清除關鍵字';
+  }
+
+  @override
+  String get searchFailed {
+    return '無法顯示搜尋結果。請重試。';
+  }
+
+  @override
+  String get searchLabel {
+    return '搜尋作品';
+  }
+
+  @override
+  String searchNoResults({required String query}) {
+    return '沒有與「$query」相符的系列。';
+  }
+
+  @override
+  String get searchPrompt {
+    return '請輸入關鍵字搜尋已發布的系列。';
   }
 
   @override
