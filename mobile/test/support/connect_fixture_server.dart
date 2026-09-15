@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:publira/api/image_cipher.dart';
 
@@ -14,6 +15,7 @@ class ConnectFixtureServer {
     this.tenantHost = 'localhost',
     this.defaultLocale = defaultTenantLocale,
     this.series = const [],
+    this.seriesPageSize = 0,
     this.rankedSeries = const [],
     this.details = const {},
     this.episodes = const {},
@@ -327,6 +329,14 @@ class ConnectFixtureServer {
   final String defaultLocale;
   List<Map<String, Object?>> series;
 
+  /// How many of [series] one `ListPublishedSeries` page holds. `0` answers
+  /// the whole of it at once, which is what every read that is not about
+  /// paging expects.
+  ///
+  /// The token stands in for the server's opaque cursor and is the index of
+  /// the page's first row, written out.
+  int seriesPageSize;
+
   /// `RankedSeries` entries `ListRankedSeries` answers with, whichever period
   /// is asked for. Empty acts out a tenant the ranking batch has not run for.
   List<Map<String, Object?>> rankedSeries;
@@ -470,7 +480,7 @@ class ConnectFixtureServer {
         listStatus,
         listResponse ??
             {
-              if (listStatus == HttpStatus.ok) 'series': series,
+              if (listStatus == HttpStatus.ok) ..._seriesPage(body['token']),
               if (listStatus != HttpStatus.ok) 'code': 'unavailable',
               if (listStatus != HttpStatus.ok) 'message': 'unavailable',
             },
@@ -629,6 +639,22 @@ class ConnectFixtureServer {
 
     request.response.statusCode = HttpStatus.notFound;
     await request.response.close();
+  }
+
+  /// The page of [series] the request's token asks for, with the token of the
+  /// page under it when there is one.
+  ///
+  /// protojson omits an empty string, so the last page carries no `nextToken`.
+  Map<String, Object?> _seriesPage(Object? token) {
+    if (seriesPageSize <= 0) {
+      return {'series': series};
+    }
+    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
+    final end = min(start + seriesPageSize, series.length);
+    return {
+      'series': series.sublist(min(start, series.length), end),
+      if (end < series.length) 'nextToken': '$end',
+    };
   }
 
   /// Answers the reader-facing comment RPCs of one episode.

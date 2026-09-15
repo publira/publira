@@ -47,14 +47,23 @@ class OfflineCatalogRepository implements CatalogRepository {
   final ReaderIdReader _readerId;
   final DateTime Function() _clock;
 
+  /// The catalog list, of which the device keeps the first page.
+  ///
+  /// A page under it is the API's to answer: the reader asks for one by
+  /// scrolling, which they can only do having reached the end of what is on
+  /// screen, so the failure lands under rows they are already reading rather
+  /// than on an empty screen. Keeping more would also mean keeping a snapshot
+  /// of the whole catalog, which is not what a device without a network needs.
   @override
-  Future<List<SeriesItem>> listSeries() async {
+  Future<SeriesPage> listSeries({String token = ''}) async {
     try {
-      final series = await _origin.listSeries();
-      await library.writeSeriesList(series);
-      return series;
+      final page = await _origin.listSeries(token: token);
+      if (token.isEmpty) {
+        await library.writeSeriesList(page);
+      }
+      return page;
     } on CatalogFailure catch (failure) {
-      if (failure.kind != CatalogFailureKind.network) {
+      if (failure.kind != CatalogFailureKind.network || token.isNotEmpty) {
         rethrow;
       }
       final saved = await library.readSeriesList();
@@ -64,7 +73,10 @@ class OfflineCatalogRepository implements CatalogRepository {
           message: 'the device holds no catalog',
         );
       }
-      return [for (final series in saved) _addressable(series)];
+      return SeriesPage(
+        series: [for (final series in saved.series) _addressable(series)],
+        nextToken: saved.nextToken,
+      );
     }
   }
 

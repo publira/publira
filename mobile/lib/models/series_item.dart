@@ -300,3 +300,21 @@ class RankedSeriesItem {
 
   final SeriesItem series;
 }
+
+/// One page of the catalog list, as `ListPublishedSeriesResponse` answers it.
+///
+/// [nextToken] is opaque: the list hands it back unchanged to ask for the page
+/// under this one, and an empty one is the end of the catalog. The response's
+/// `previous_token` is left behind, because the list only ever walks forward —
+/// what it read stays on screen above what it reads next.
+class SeriesPage {
+  const SeriesPage({required this.series, this.nextToken = ''});
+
+  /// A catalog with nothing published in it.
+  static const empty = SeriesPage(series: []);
+
+  final List<SeriesItem> series;
+
+  /// What the API calls the page after this one. Empty at the end of it.
+  final String nextToken;
+}

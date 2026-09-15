@@ -42,7 +42,7 @@ void main() {
   });
 
   test('listSeries maps public API series onto SeriesItem', () async {
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
     expect(items, isNotEmpty);
     expect(items.first.id, ConnectFixtureServer.seedSeriesId);
     expect(items.first.title, ConnectFixtureServer.seedSeriesTitle);
@@ -76,6 +76,49 @@ void main() {
     final request = server.requestsTo('ListPublishedSeries').single;
     expect(request.body['order'], 'SERIES_ORDER_TITLE_ASC');
     expect(request.body['limit'], 20);
+    // protojson omits a default, and an omitted token is the first page.
+    expect(request.body.containsKey('token'), isFalse);
+  });
+
+  test('listSeries carries the token of the page under the first', () async {
+    server.seriesPageSize = 1;
+
+    final first = await catalog.listSeries();
+
+    expect(first.series.single.id, ConnectFixtureServer.seedSeriesId);
+    expect(first.nextToken, isNotEmpty);
+  });
+
+  test('listSeries asks for the page its token names', () async {
+    server.seriesPageSize = 1;
+    final first = await catalog.listSeries();
+
+    final second = await catalog.listSeries(token: first.nextToken);
+
+    expect(second.series.single.id, 'series-kitchen');
+    expect(
+      server.requestsTo('ListPublishedSeries').last.body['token'],
+      first.nextToken,
+    );
+    // The order travels with every page: a token is only good for the list it
+    // was cut from.
+    expect(
+      server.requestsTo('ListPublishedSeries').last.body['order'],
+      'SERIES_ORDER_TITLE_ASC',
+    );
+  });
+
+  test('listSeries reads the last page as the end of the catalog', () async {
+    server.seriesPageSize = 1;
+    final first = await catalog.listSeries();
+
+    final last = await catalog.listSeries(token: first.nextToken);
+
+    expect(last.nextToken, isEmpty);
+  });
+
+  test('listSeries reads a catalog of one page as ending there', () async {
+    expect((await catalog.listSeries()).nextToken, isEmpty);
   });
 
   test('listNewestSeries asks for one short page of the newest', () async {
@@ -140,7 +183,7 @@ void main() {
   });
 
   test('listSeries resolves cover renditions against the image base', () async {
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
 
     final covers = items.first.eyeCatchVariants;
     expect(covers, hasLength(5));
@@ -155,7 +198,7 @@ void main() {
   });
 
   test('a cover is requested with the tenant and no reader token', () async {
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
 
     // An eye-catch is the same image for every reader, so the request that
     // fetches it names only the tenant.
@@ -163,7 +206,7 @@ void main() {
   });
 
   test('listSeries reads a series without a cover as carrying none', () async {
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
 
     expect(items.last.eyeCatchVariants, isEmpty);
   });
@@ -171,7 +214,7 @@ void main() {
   test(
     'listSeries carries the credits in the order the API sent them',
     () async {
-      final items = await catalog.listSeries();
+      final items = (await catalog.listSeries()).series;
 
       final creators = items.first.creators;
       expect(creators.map((creator) => creator.name), [
@@ -186,7 +229,7 @@ void main() {
   test(
     'listSeries reads a series credited to nobody as carrying none',
     () async {
-      final items = await catalog.listSeries();
+      final items = (await catalog.listSeries()).series;
 
       expect(items.last.creators, isEmpty);
     },
@@ -204,7 +247,7 @@ void main() {
       },
     ];
 
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
 
     expect(items.first.creators.map((creator) => creator.name), [
       'Seed Author 002',
@@ -243,7 +286,7 @@ void main() {
   });
 
   test('listSeries carries status, schedule, and genres', () async {
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
 
     expect(items.first.status, SeriesStatus.ongoing);
     expect(items.first.scheduleWeekdays, [1, 4]);
@@ -271,7 +314,7 @@ void main() {
       },
     ];
 
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
 
     expect(items.single.ageRating, SeriesAgeRating.r15);
   });
@@ -285,7 +328,7 @@ void main() {
       },
     ];
 
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
 
     expect(items.single.ageRating, SeriesAgeRating.unknown);
   });
@@ -303,7 +346,7 @@ void main() {
       },
     ];
 
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
 
     expect(items.single.genres.single.name, 'Fantasy');
     expect(items.single.genres.single.id, 'SeedGENRAAA1');
@@ -320,7 +363,7 @@ void main() {
         },
       ];
 
-      final items = await catalog.listSeries();
+      final items = (await catalog.listSeries()).series;
 
       expect(items.single.scheduleWeekdays, [1, 4]);
     },
@@ -387,12 +430,12 @@ void main() {
 
   test('listSeries returns an empty list when the API has no series', () async {
     server.series = const [];
-    expect(await catalog.listSeries(), isEmpty);
+    expect((await catalog.listSeries()).series, isEmpty);
   });
 
   test('listSeries accepts an omitted empty repeated field', () async {
     server.listResponse = const <String, Object?>{};
-    expect(await catalog.listSeries(), isEmpty);
+    expect((await catalog.listSeries()).series, isEmpty);
   });
 
   test('getSeries returns detail and episode count', () async {
@@ -751,7 +794,7 @@ void main() {
     server.tenantStatus = HttpStatus.ok;
     server.tenantResponse = null;
 
-    expect(await catalog.listSeries(), isNotEmpty);
+    expect((await catalog.listSeries()).series, isNotEmpty);
     expect(server.requestsTo('GetTenantByDomain'), hasLength(2));
   });
 
@@ -838,7 +881,7 @@ void main() {
   });
 
   test('listSeries reads a series without a label as unlabelled', () async {
-    final items = await catalog.listSeries();
+    final items = (await catalog.listSeries()).series;
     expect(items.last.labelName, isEmpty);
   });
 

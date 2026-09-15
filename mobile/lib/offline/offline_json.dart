@@ -17,6 +17,7 @@ const offlineIndexVersion = 3;
 class OfflineIndex {
   OfflineIndex({
     this.series,
+    this.seriesNextToken = '',
     Map<String, SeriesDetail>? details,
     Map<String, SavedEpisode>? episodes,
     Map<String, SavedReadingPosition>? positions,
@@ -26,6 +27,11 @@ class OfflineIndex {
 
   /// Catalog list as it last loaded, or `null` when it never has.
   List<SeriesItem>? series;
+
+  /// What the API called the page under [series] when it answered it. Empty
+  /// when the catalog ended there, and on an index written before the list
+  /// paged at all.
+  String seriesNextToken;
 
   /// Series screens, keyed by public id.
   final Map<String, SeriesDetail> details;
@@ -41,6 +47,7 @@ class OfflineIndex {
     'version': offlineIndexVersion,
     if (series != null)
       'series': [for (final item in series!) _seriesToJson(item)],
+    if (seriesNextToken.isNotEmpty) 'seriesNextToken': seriesNextToken,
     'details': {
       for (final entry in details.entries)
         entry.key: _seriesDetailToJson(entry.value),
@@ -75,6 +82,7 @@ class OfflineIndex {
       series: rawSeries is List
           ? [for (final item in rawSeries) ?_seriesFromJson(item)]
           : null,
+      seriesNextToken: _string(decoded['seriesNextToken']),
       details: rawDetails is! Map
           ? null
           : {

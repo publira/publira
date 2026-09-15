@@ -18,9 +18,44 @@ import 'package:publira/router.dart';
 /// Every section reads its own page of [CatalogRepository] and owns what it
 /// shows while that read is in flight and when it fails, so a section the API
 /// could not answer offers its retry where it stands rather than taking the
-/// screen down with it.
-class CatalogScreen extends StatelessWidget {
+/// screen down with it. A pull to refresh is the one gesture over all of them:
+/// it reads every section again from the top, the catalog list included, which
+/// drops the pages the reader had scrolled into.
+class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
+
+  @override
+  State<CatalogScreen> createState() => _CatalogScreenState();
+}
+
+class _CatalogScreenState extends State<CatalogScreen> {
+  /// Pulls to refresh so far. Every section reads again whenever it changes.
+  var _refreshes = 0;
+
+  /// Completed once the catalog list has read its first page again, which is
+  /// what takes the pull-to-refresh spinner away. The shelves above it are not
+  /// waited for: each one puts its own skeleton up and arrives when it does.
+  Completer<void>? _refreshing;
+
+  @override
+  void dispose() {
+    _refreshing?.complete();
+    super.dispose();
+  }
+
+  Future<void> _refresh() {
+    final pending = Completer<void>();
+    setState(() {
+      _refreshes++;
+      _refreshing = pending;
+    });
+    return pending.future;
+  }
+
+  void _refreshed() {
+    _refreshing?.complete();
+    _refreshing = null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +74,21 @@ class CatalogScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: const CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _ContinueReadingShelf()),
-          SliverToBoxAdapter(child: _RankingShelf()),
-          SliverToBoxAdapter(child: _NewArrivalsShelf()),
-          _AllSeriesSection(),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: CustomScrollView(
+          // A catalog short enough to fit the screen still has to be draggable,
+          // or the one gesture that reloads it would not start.
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _ContinueReadingShelf(refreshes: _refreshes),
+            ),
+            SliverToBoxAdapter(child: _RankingShelf(refreshes: _refreshes)),
+            SliverToBoxAdapter(child: _NewArrivalsShelf(refreshes: _refreshes)),
+            _AllSeriesSection(refreshes: _refreshes, onLoaded: _refreshed),
+          ],
+        ),
       ),
     );
   }
@@ -77,7 +120,9 @@ const _shelfHeight = _shelfCardWidth / _shelfCardAspectRatio + 80;
 /// A reader who is signed out has nothing here to ask for, and one in the
 /// middle of nothing is shown no row: it is an offer rather than a report.
 class _ContinueReadingShelf extends StatelessWidget {
-  const _ContinueReadingShelf();
+  const _ContinueReadingShelf({required this.refreshes});
+
+  final int refreshes;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +134,7 @@ class _ContinueReadingShelf extends StatelessWidget {
       sectionKey: 'continue-reading',
       heading: messages.catalogContinueHeading,
       failureMessage: messages.catalogContinueFailed,
-      reloadToken: readerId,
+      reloadToken: '$readerId#$refreshes',
       load: (catalog) async {
         if (readerId.isEmpty) {
           return const [];
@@ -113,7 +158,9 @@ class _ContinueReadingShelf extends StatelessWidget {
 /// A tenant the ranking batch has not run for yet has no chart, and is shown
 /// no row rather than an empty one.
 class _RankingShelf extends StatelessWidget {
-  const _RankingShelf();
+  const _RankingShelf({required this.refreshes});
+
+  final int refreshes;
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +169,7 @@ class _RankingShelf extends StatelessWidget {
       sectionKey: 'catalog-ranking',
       heading: messages.catalogRankingHeading,
       failureMessage: messages.catalogRankingFailed,
+      reloadToken: '$refreshes',
       load: (catalog) => catalog.listRankedSeries(
         limit: _rankingLimit,
         period: RankingPeriod.weekly,
@@ -139,7 +187,9 @@ class _RankingShelf extends StatelessWidget {
 
 /// The series the tenant published most recently.
 class _NewArrivalsShelf extends StatelessWidget {
-  const _NewArrivalsShelf();
+  const _NewArrivalsShelf({required this.refreshes});
+
+  final int refreshes;
 
   @override
   Widget build(BuildContext context) {
@@ -148,6 +198,7 @@ class _NewArrivalsShelf extends StatelessWidget {
       sectionKey: 'catalog-new-arrivals',
       heading: messages.catalogNewArrivalsHeading,
       failureMessage: messages.catalogNewArrivalsFailed,
+      reloadToken: '$refreshes',
       load: (catalog) => catalog.listNewestSeries(limit: _newArrivalsLimit),
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('catalog-new-arrivals-${item.id}'),
@@ -182,7 +233,7 @@ class _CatalogShelf<T> extends StatefulWidget {
     required this.failureMessage,
     required this.load,
     required this.cardBuilder,
-    this.reloadToken = '',
+    required this.reloadToken,
   });
 
   /// Names this section on screen, and its loading, failure, and retry states.
@@ -198,8 +249,8 @@ class _CatalogShelf<T> extends StatefulWidget {
 
   final Widget Function(BuildContext context, T item) cardBuilder;
 
-  /// Reloads the shelf whenever it changes. Empty for a shelf that answers
-  /// everybody the same.
+  /// Reloads the shelf whenever it changes: it names the reader the row is
+  /// answered for and the pulls to refresh behind it.
   final String reloadToken;
 
   @override
@@ -267,7 +318,7 @@ class _CatalogShelfState<T> extends State<_CatalogShelf<T>> {
     if (failure != null) {
       return _ShelfFrame(
         heading: widget.heading,
-        child: _ShelfFailure(
+        child: _RetryRow(
           sectionKey: widget.sectionKey,
           message: _failureCopy(messages, failure, widget.failureMessage),
           onRetry: () => setState(_load),
@@ -404,9 +455,10 @@ class _SkeletonLine extends StatelessWidget {
   }
 }
 
-/// What a shelf shows instead of its cards when the API could not answer it.
-class _ShelfFailure extends StatelessWidget {
-  const _ShelfFailure({
+/// What a section shows in place of its contents when the API could not
+/// answer it: what went wrong, and the offer to ask again.
+class _RetryRow extends StatelessWidget {
+  const _RetryRow({
     required this.sectionKey,
     required this.message,
     required this.onRetry,
@@ -541,17 +593,57 @@ class _RankBadge extends StatelessWidget {
   }
 }
 
+/// How many rows before the end of the list the page under it is asked for.
+/// A phone shows about eight tiles at once, so a page started five rows early
+/// is usually on screen before the reader reaches the row that asked for it.
+const _readAheadRows = 5;
+
 /// The whole catalog, by title, under the shelves that are ways into it.
+///
+/// It is read one page at a time: the first arrives with the screen, and every
+/// page under it is asked for as the reader nears the end of what is already
+/// there. A page that fails is reported in the footer under the rows that did
+/// arrive, because those rows are what the reader is in the middle of.
 class _AllSeriesSection extends StatefulWidget {
-  const _AllSeriesSection();
+  const _AllSeriesSection({required this.refreshes, required this.onLoaded});
+
+  /// Pulls to refresh so far. A change reads the catalog from its first page
+  /// again, dropping the pages the reader had scrolled into.
+  final int refreshes;
+
+  /// Called whenever a first-page read finishes, whether it arrived or failed,
+  /// which is what lets the pull to refresh put its spinner away.
+  final VoidCallback onLoaded;
 
   @override
   State<_AllSeriesSection> createState() => _AllSeriesSectionState();
 }
 
 class _AllSeriesSectionState extends State<_AllSeriesSection> {
-  late Future<List<SeriesItem>> _future;
+  /// Every page read so far as one list, and `null` while the first is still
+  /// in flight.
+  List<SeriesItem>? _series;
+
+  /// What the API calls the page under [_series]. Empty at the end of the
+  /// catalog, which is what takes the footer away.
+  var _nextToken = '';
+
+  /// The first page's failure, which is the whole section, and a later page's,
+  /// which is the footer under the rows already on screen.
+  CatalogFailure? _failure;
+  CatalogFailure? _moreFailure;
+
+  /// Whether a page is in flight. The screen is not built from it — the footer
+  /// stands for as long as there is a page left to read — so it is set without
+  /// [setState], which is what lets the list ask for a page while it builds.
+  var _reading = false;
+
   CatalogRepository? _catalog;
+
+  /// Counts the reads this section has started, so an answer to one it has
+  /// stopped waiting for — a refresh, or a repository swapped under it —
+  /// cannot land on the screen.
+  var _reads = 0;
 
   /// Reads again when the repository changes, the way every shelf above does:
   /// a screen keeping the previous one's list under the shelves of the new one
@@ -564,13 +656,66 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
       return;
     }
     _catalog = catalog;
-    _future = catalog.listSeries();
+    _loadFirstPage();
   }
 
-  void _reload() {
+  @override
+  void didUpdateWidget(covariant _AllSeriesSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refreshes != oldWidget.refreshes) {
+      _loadFirstPage();
+    }
+  }
+
+  void _loadFirstPage() {
+    _series = null;
+    _nextToken = '';
+    _failure = null;
+    _moreFailure = null;
+    _reading = true;
+    unawaited(_read(++_reads, _catalog!, ''));
+  }
+
+  /// Asks for the page under the last one, unless it is already on its way,
+  /// the catalog ended, or the last attempt at it failed and is waiting on the
+  /// footer's retry.
+  void _readMore() {
+    if (_reading || _nextToken.isEmpty || _moreFailure != null) {
+      return;
+    }
+    _reading = true;
+    unawaited(_read(++_reads, _catalog!, _nextToken));
+  }
+
+  /// Reads the page [token] names and puts it under what is already there.
+  Future<void> _read(int read, CatalogRepository catalog, String token) async {
+    final isFirstPage = token.isEmpty;
+    SeriesPage? page;
+    CatalogFailure? failure;
+    try {
+      page = await catalog.listSeries(token: token);
+    } on CatalogFailure catch (error) {
+      failure = error;
+    }
+    if (!mounted || read != _reads) {
+      return;
+    }
     setState(() {
-      _future = _catalog!.listSeries();
+      _reading = false;
+      if (page == null) {
+        if (isFirstPage) {
+          _failure = failure;
+        } else {
+          _moreFailure = failure;
+        }
+        return;
+      }
+      _series = [if (!isFirstPage) ...?_series, ...page.series];
+      _nextToken = page.nextToken;
     });
+    if (isFirstPage) {
+      widget.onLoaded();
+    }
   }
 
   @override
@@ -581,53 +726,105 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
         SliverToBoxAdapter(
           child: _SectionHeading(messages.catalogAllSeriesHeading),
         ),
-        FutureBuilder<List<SeriesItem>>(
-          future: _future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const SliverToBoxAdapter(
-                child: Padding(
-                  key: ValueKey('catalog-loading'),
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              );
-            }
-            if (snapshot.hasError) {
-              return SliverToBoxAdapter(
-                child: _CatalogMessage(
-                  key: const ValueKey('catalog-error'),
-                  message: _failureCopy(
-                    messages,
-                    snapshot.error,
-                    messages.catalogLoadFailed,
-                  ),
-                  actionLabel: messages.commonRetry,
-                  onAction: _reload,
-                ),
-              );
-            }
-            final series = snapshot.data ?? const <SeriesItem>[];
-            if (series.isEmpty) {
-              return SliverToBoxAdapter(
-                child: _CatalogMessage(
-                  key: const ValueKey('catalog-empty'),
-                  message: messages.catalogEmpty,
-                ),
-              );
-            }
-            return SliverPadding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              sliver: SliverList.separated(
-                itemCount: series.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) =>
-                    _SeriesTile(series: series[index]),
-              ),
-            );
-          },
-        ),
+        _list(messages),
       ],
+    );
+  }
+
+  Widget _list(AppMessages messages) {
+    final failure = _failure;
+    if (failure != null) {
+      return SliverToBoxAdapter(
+        child: _CatalogMessage(
+          key: const ValueKey('catalog-error'),
+          message: _failureCopy(messages, failure, messages.catalogLoadFailed),
+          actionLabel: messages.commonRetry,
+          onAction: () => setState(_loadFirstPage),
+        ),
+      );
+    }
+    final series = _series;
+    if (series == null) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          key: ValueKey('catalog-loading'),
+          padding: EdgeInsets.all(24),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    // The footer is the page under the list: a spinner while there is one left
+    // to read, and what went wrong when the last attempt at it failed.
+    final hasFooter = _nextToken.isNotEmpty || _moreFailure != null;
+    if (series.isEmpty && !hasFooter) {
+      return SliverToBoxAdapter(
+        child: _CatalogMessage(
+          key: const ValueKey('catalog-empty'),
+          message: messages.catalogEmpty,
+        ),
+      );
+    }
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      sliver: SliverList.separated(
+        itemCount: series.length + (hasFooter ? 1 : 0),
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          if (index >= series.length - _readAheadRows) {
+            _readMore();
+          }
+          if (index == series.length) {
+            return _CatalogPageFooter(
+              message: _moreFailure == null
+                  ? null
+                  : _failureCopy(
+                      messages,
+                      _moreFailure,
+                      messages.catalogLoadFailed,
+                    ),
+              onRetry: () {
+                setState(() {
+                  _moreFailure = null;
+                });
+                _readMore();
+              },
+            );
+          }
+          return _SeriesTile(series: series[index]);
+        },
+      ),
+    );
+  }
+}
+
+/// The page under the catalog list, at the bottom of it: a spinner while that
+/// page is being read, and what went wrong when it could not be.
+class _CatalogPageFooter extends StatelessWidget {
+  const _CatalogPageFooter({required this.message, required this.onRetry});
+
+  /// What went wrong reading the page, and `null` while it is still on its
+  /// way.
+  final String? message;
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final message = this.message;
+    if (message == null) {
+      return const Padding(
+        key: ValueKey('catalog-more-loading'),
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: _RetryRow(
+        sectionKey: 'catalog-more',
+        message: message,
+        onRetry: onRetry,
+      ),
     );
   }
 }

@@ -56,17 +56,23 @@ class FileOfflineLibrary implements OfflineLibrary {
   Future<void> _queue = Future<void>.value();
 
   @override
-  Future<List<SeriesItem>?> readSeriesList() {
-    return _read<List<SeriesItem>>((home, index) {
+  Future<SeriesPage?> readSeriesList() {
+    return _read<SeriesPage>((home, index) {
       final series = index.series;
-      return series == null ? null : List<SeriesItem>.unmodifiable(series);
+      return series == null
+          ? null
+          : SeriesPage(
+              series: List<SeriesItem>.unmodifiable(series),
+              nextToken: index.seriesNextToken,
+            );
     });
   }
 
   @override
-  Future<void> writeSeriesList(List<SeriesItem> series) {
+  Future<void> writeSeriesList(SeriesPage page) {
     return _write((home, index) {
-      index.series = List<SeriesItem>.unmodifiable(series);
+      index.series = List<SeriesItem>.unmodifiable(page.series);
+      index.seriesNextToken = page.nextToken;
     });
   }
 
