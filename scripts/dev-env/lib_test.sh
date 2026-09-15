@@ -61,6 +61,77 @@ pass "two profiles derive isolated database, Redis, bucket, Cookie, and port val
 [[ "$(dev_env_next_slot)" == "4" ]] || fail "next available slot is not 4"
 pass "slot allocation avoids active profile slots"
 
+# Stand-ins for the commands the script hands a profile's resources to. The aws
+# one answers the way it does for a bucket that was never created, which is the
+# state a profile is in when it was created but never initialized.
+write_stub() {
+  local path="$1" body="$2"
+  mkdir -p "$(dirname "${path}")"
+  printf '#!/bin/sh\n%s\n' "${body}" >"${path}"
+  chmod +x "${path}"
+}
+no_such_bucket='echo "fatal error: An error occurred (NoSuchBucket) when calling the ListObjectsV2 operation: The specified bucket does not exist" >&2; exit 255'
+write_stub "${test_dir}/aws-gone/aws" "${no_such_bucket}"
+write_stub "${test_dir}/aws-ok/aws" 'exit 0'
+write_stub "${test_dir}/aws-unreachable/aws" 'echo "Could not connect to the endpoint URL" >&2; exit 255'
+cli_bin_dir="${test_dir}/cli-bin"
+write_stub "${cli_bin_dir}/aws" "${no_such_bucket}"
+write_stub "${cli_bin_dir}/psql" 'exit 0'
+write_stub "${cli_bin_dir}/valkey-cli" 'exit 0'
+
+(PATH="${test_dir}/aws-ok:${PATH}" dev_env_remove_bucket publira-present http://127.0.0.1:9000) ||
+  fail "removing a bucket that is there was reported as a failure"
+(PATH="${test_dir}/aws-gone:${PATH}" dev_env_remove_bucket publira-gone http://127.0.0.1:9000) ||
+  fail "removing a bucket that is already gone was reported as a failure"
+if unreachable_message="$( (PATH="${test_dir}/aws-unreachable:${PATH}" dev_env_remove_bucket publira-present http://127.0.0.1:9000) 2>&1 )"; then
+  fail "removing a bucket succeeded where the endpoint could not be reached"
+fi
+[[ "${unreachable_message}" == *"Could not connect"* ]] ||
+  fail "the reason a bucket could not be removed was not passed on: ${unreachable_message}"
+pass "removing a bucket treats one that is already gone as done and passes any other failure on"
+
+# A slot table with every slot held, kept in a home of its own so that the
+# profiles above go on standing for a table with slots to spare.
+full_home="${test_dir}/full-home"
+(
+  DEV_ENV_PROFILES_DIR="${full_home}/profiles"
+  mkdir -p "${DEV_ENV_PROFILES_DIR}"
+  for slot in $(seq "${DEV_ENV_SLOT_MIN}" "${DEV_ENV_SLOT_MAX}"); do
+    dev_env_write_profile "held-${slot}" "${slot}"
+  done
+)
+if full_slot="$( DEV_ENV_PROFILES_DIR="${full_home}/profiles"; dev_env_next_slot )"; then
+  fail "a slot was allocated from a table in which every one is held: ${full_slot}"
+fi
+held_profiles="$( DEV_ENV_PROFILES_DIR="${full_home}/profiles"; dev_env_slot_holders )"
+[[ "$(printf '%s\n' "${held_profiles}" | wc -l)" == "${DEV_ENV_SLOT_MAX}" ]] ||
+  fail "the profiles holding the slots were not all named"
+[[ "$(printf '%s\n' "${held_profiles}" | head -1)" == "held-1 (slot 1)" ]] ||
+  fail "the slot holders are not listed in slot order"
+[[ "$(printf '%s\n' "${held_profiles}" | tail -1)" == "held-${DEV_ENV_SLOT_MAX} (slot ${DEV_ENV_SLOT_MAX})" ]] ||
+  fail "the slot holders are not listed in slot order"
+pass "a full slot table yields no slot and names every profile holding one"
+
+for refused_slot in "" 0 "$((DEV_ENV_SLOT_MAX + 1))"; do
+  if (dev_env_write_profile "slotless" "${refused_slot}") >/dev/null 2>&1; then
+    fail "a profile was written with slot '${refused_slot}'"
+  fi
+  [[ ! -e "$(dev_env_profile_path slotless)" ]] ||
+    fail "a profile file was left behind for slot '${refused_slot}'"
+done
+pass "a profile is never written without a Valkey logical database of its own"
+
+if create_output="$(
+  PUBLIRA_DEV_ENV_HOME="${full_home}" PATH="${cli_bin_dir}:${PATH}" \
+    bash "${REPO_ROOT}/scripts/dev-env.sh" create sixteenth 2>&1
+)"; then
+  fail "creating a profile succeeded with every Valkey slot held"
+fi
+[[ ! -e "${full_home}/profiles/sixteenth.env" ]] || fail "a profile file was written with no slot to give it"
+[[ "${create_output}" == *"held-1 (slot 1)"* ]] ||
+  fail "the profiles to destroy were not named: ${create_output}"
+pass "creating a profile with every slot held fails, writes nothing, and says what holds them"
+
 if dev_env_identifier_is_valid "UPPER"; then
   fail "invalid identifier was accepted"
 fi
@@ -317,3 +388,28 @@ if dev_env_profile_has_running_processes edged; then
   fail "a profile whose edge is down was reported as running"
 fi
 pass "a profile is running while its edge is, not only while one of its processes is"
+
+# The destroy the CLI runs, against a profile whose bucket was never created:
+# the state every profile that was created but never initialized is in.
+(
+  unset PUBLIRA_DB_URL PUBLIRA_REDIS_URL PUBLIRA_S3_ENDPOINT
+  dev_env_write_profile "golf" 4
+)
+golf_path="$(dev_env_profile_path golf)"
+[[ "$(dev_env_next_slot)" == "5" ]] || fail "the profile under destroy does not hold slot 4"
+run_destroy() {
+  printf '%s\n' "$1" | PUBLIRA_DEV_ENV_HOME="${DEV_ENV_HOME}" PATH="${cli_bin_dir}:${PATH}" \
+    bash "${REPO_ROOT}/scripts/dev-env.sh" destroy "$1" 2>&1
+}
+
+destroy_output="$(run_destroy golf)" ||
+  fail "destroying a profile whose bucket is already gone failed: ${destroy_output}"
+[[ ! -e "${golf_path}" ]] || fail "the profile file of a destroyed profile was kept"
+[[ "$(dev_env_next_slot)" == "4" ]] || fail "the slot of a destroyed profile was not freed"
+pass "destroying a profile whose bucket is already gone completes, removes the profile, and frees its slot"
+
+repeated_output="$(run_destroy golf)" ||
+  fail "destroying a profile that is already gone failed: ${repeated_output}"
+[[ "${repeated_output}" == *"nothing to destroy"* ]] ||
+  fail "a repeated destroy did not report that there is nothing to destroy: ${repeated_output}"
+pass "a repeated destroy reports that there is nothing to destroy"

@@ -36,11 +36,17 @@ profile_name_or_selected() {
 }
 
 create_profile() {
-  local name="$1"
+  local name="$1" slot
   dev_env_validate_name "${name}"
   dev_env_ensure_home
   [[ ! -f "$(dev_env_profile_path "${name}")" ]] || dev_env_die "profile already exists: ${name}"
-  dev_env_write_profile "${name}" "$(dev_env_next_slot)"
+  if ! slot="$(dev_env_next_slot)"; then
+    dev_env_error "no Valkey logical database is available (slots ${DEV_ENV_SLOT_MIN}-${DEV_ENV_SLOT_MAX})"
+    dev_env_error "destroy one of the profiles holding them and create this one again:"
+    dev_env_slot_holders | sed 's/^/  /' >&2
+    exit 1
+  fi
+  dev_env_write_profile "${name}" "${slot}"
   dev_env_select "${name}"
   printf 'created and selected profile %q (run task dev-env:init)\n' "${name}"
 }
@@ -167,31 +173,43 @@ start_profile() {
 
 destroy_profile() {
   local name="$1" profile_path db_name in_use redis_cli
-  local s3_endpoint_args=()
+  local leftovers=()
+  dev_env_validate_name "${name}"
+  profile_path="$(dev_env_profile_path "${name}")"
+  if [[ ! -f "${profile_path}" ]]; then
+    printf 'nothing to destroy: profile %q does not exist\n' "${name}"
+    return 0
+  fi
   dev_env_load_profile "${name}"
   in_use="$(dev_env_profile_in_use "${name}")"
   [[ -z "${in_use}" ]] || dev_env_die "profile ${name} is still selected by: ${in_use}"
   ! dev_env_profile_has_running_processes "${name}" || dev_env_die "stop profile ${name} before destroying it"
   # Every client this needs is resolved before the first step that removes
-  # something. None of the steps can be undone and each one is a precondition
-  # of nothing that follows, so a run that stopped partway would leave a
-  # profile that is listed and holds a Valkey slot but has no database, and a
-  # repeated destroy would fail at the same missing client.
+  # something, so a missing one stops the run while there is still nothing to
+  # finish by hand.
   dev_env_require_commands psql aws
   redis_cli="$(dev_env_redis_cli)" ||
     dev_env_die "required command not found: valkey-cli or redis-cli, to flush the profile's Valkey database"
   read -r -p "Type ${name} to destroy its database, Valkey DB, and bucket: " confirmation
   [[ "${confirmation}" == "${name}" ]] || dev_env_die "confirmation did not match; nothing was destroyed"
   db_name="publira_${DEV_ENV_NAME//-/_}"
+  # Each step is judged by what it leaves behind rather than by its exit status,
+  # because what is already gone is the outcome this command wanted. The profile
+  # file goes either way: keeping it for a step that could not run is what holds
+  # a Valkey slot nothing uses, so whatever is left is named instead.
   psql "$(dev_env_postgres_admin_url)" \
-    -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db_name}\" WITH (FORCE)"
-  "${redis_cli}" -u "${PUBLIRA_REDIS_URL}" FLUSHDB
-  if [[ -n "${PUBLIRA_S3_ENDPOINT}" ]]; then
-    s3_endpoint_args=(--endpoint-url "${PUBLIRA_S3_ENDPOINT}")
-  fi
-  aws "${s3_endpoint_args[@]}" s3 rb "s3://${PUBLIRA_S3_BUCKET}" --force
-  profile_path="$(dev_env_profile_path "${name}")"
+    -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db_name}\" WITH (FORCE)" ||
+    leftovers+=("the database ${db_name}")
+  "${redis_cli}" -u "${PUBLIRA_REDIS_URL}" FLUSHDB ||
+    leftovers+=("the contents of Valkey database ${DEV_ENV_SLOT}")
+  dev_env_remove_bucket "${PUBLIRA_S3_BUCKET}" "${PUBLIRA_S3_ENDPOINT}" ||
+    leftovers+=("the bucket ${PUBLIRA_S3_BUCKET}")
   rm -f "${profile_path}"
+  if ((${#leftovers[@]} > 0)); then
+    dev_env_error "removed profile ${name}, but these are still there:"
+    printf '  %s\n' "${leftovers[@]}" >&2
+    exit 1
+  fi
   printf 'destroyed profile %q\n' "${name}"
 }
 
