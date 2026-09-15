@@ -141,6 +141,13 @@ export type {
   TableLoadingRowProps,
   TableSkeletonProps,
 } from "./table";
+export { Tabs, TabsList, TabsPanel, TabsTab } from "./tabs";
+export type {
+  TabsListProps,
+  TabsPanelProps,
+  TabsProps,
+  TabsTabProps,
+} from "./tabs";
 export { Textarea } from "./textarea";
 export type { TextareaProps } from "./textarea";
 export {

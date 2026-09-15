@@ -40,11 +40,10 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { PageWorkspace } from "../_components/page-workspace";
 import {
-  createDraftVersionAction,
   publishVersionAction,
   rollbackVersionAction,
+  savePageAction,
   unpublishPageAction,
-  updatePageAction,
 } from "../_lib/actions";
 
 interface EditPagePageProps {
@@ -71,11 +70,7 @@ export const generateStaticParams = () =>
 
 const PageWorkspaceSkeleton = () => (
   <AdminSections>
-    <Skeleton className="h-44" />
-    <div className="grid gap-6 xl:grid-cols-2">
-      <Skeleton className="h-[420px]" />
-      <Skeleton className="h-[420px]" />
-    </div>
+    <Skeleton className="h-[520px]" />
     <Skeleton className="h-72" />
   </AdminSections>
 );
@@ -134,14 +129,13 @@ const PageWorkspaceData = async ({
 
   return (
     <PageWorkspace
-      createDraftAction={createDraftVersionAction}
       initialPage={pageResult.page}
       initialVersions={versionsResult.versions}
       publishAction={publishVersionAction}
       rollbackAction={rollbackVersionAction}
+      saveAction={savePageAction}
       timeZone={timeZone}
       unpublishAction={unpublishPageAction}
-      updatePageAction={updatePageAction}
     />
   );
 };
@@ -167,8 +161,7 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
     </AdminPageHeader>
     <AdminPageContent>
       <FlashToast message="admin.pages.created" />
-      <FlashToast keyName="updated" message="admin.pages.updated" />
-      <FlashToast keyName="draft_saved" message="admin.pages.draft_saved" />
+      <FlashToast keyName="saved" message="admin.pages.saved" />
       <FlashToast keyName="published" message="admin.pages.published_success" />
       <FlashToast keyName="unpublished" message="admin.pages.unpublished" />
       <FlashToast keyName="rolled_back" message="admin.pages.rolled_back" />

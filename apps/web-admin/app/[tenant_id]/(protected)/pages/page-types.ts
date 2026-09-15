@@ -3,8 +3,6 @@ import { formatDateTime } from "@publira/utils";
 
 import type { PageItem, PageVersionItem } from "#lib/page";
 
-export type PageMutationMode = "create" | "update" | "draft";
-
 /**
  * Page timestamps used to be formatted in UTC while every other admin screen
  * used the display zone; they now go through the shared {@link formatDateTime}
@@ -48,7 +46,6 @@ export const formatPagePath = (slug: string): string => {
 export type PageFormState = {
   ok: false;
   message: string;
-  mode: PageMutationMode;
 } | null;
 
 export type PageListItem = PageItem;

@@ -20,6 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import {
+  Tabs,
+  TabsList,
+  TabsPanel,
+  TabsTab,
+} from "@publira/ui-components/tabs";
 import { Textarea } from "@publira/ui-components/textarea";
 import {
   Suspense,
@@ -58,20 +64,16 @@ import type {
 import { MarkdownPreview } from "./markdown-preview";
 
 interface PageWorkspaceProps {
-  createDraftAction: (
-    prevState: PageFormState,
-    formData: FormData
-  ) => Promise<PageFormState>;
   initialPage: PageListItem;
   initialVersions: PageVersionListItem[];
   publishAction: (formData: FormData) => Promise<void>;
   rollbackAction: (formData: FormData) => Promise<void>;
-  timeZone: string;
-  unpublishAction: (formData: FormData) => Promise<void>;
-  updatePageAction: (
+  saveAction: (
     prevState: PageFormState,
     formData: FormData
   ) => Promise<PageFormState>;
+  timeZone: string;
+  unpublishAction: (formData: FormData) => Promise<void>;
 }
 
 const versionTone = (
@@ -174,14 +176,13 @@ const getDiffLineDisplay = (line: {
 };
 
 export const PageWorkspace = ({
-  createDraftAction,
   initialPage,
   initialVersions,
   publishAction,
   rollbackAction,
+  saveAction,
   timeZone,
   unpublishAction,
-  updatePageAction,
 }: PageWorkspaceProps) => {
   const locale = useContext(AdminLocaleContext);
   if (locale === null) {
@@ -189,18 +190,13 @@ export const PageWorkspace = ({
   }
   const t = useAdminMessages();
   const tenantId = useTenantId();
-  const [titleState, titleFormAction, isTitlePending] = useActionState(
-    updatePageAction,
-    null
-  );
-  const [draftState, draftFormAction, isDraftPending] = useActionState(
-    createDraftAction,
+  const [saveState, saveFormAction, isSavePending] = useActionState(
+    saveAction,
     null
   );
   const [title, setTitle] = useState(initialPage.title);
-  const [draftContent, setDraftContent] = useState(
-    initialVersions[0]?.contentMarkdown ?? ""
-  );
+  const initialContent = initialVersions[0]?.contentMarkdown ?? "";
+  const [draftContent, setDraftContent] = useState(initialContent);
   const [selectedVersionId, setSelectedVersionId] = useState(
     initialVersions[0]?.id ?? ""
   );
@@ -310,31 +306,24 @@ export const PageWorkspace = ({
 
   return (
     <AdminSections>
+      {/* No section heading: the page heading already names this form. */}
       <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.pages.workspace.basic_title" />
-              </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.pages.workspace.basic_description" />
-              </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
         <PublicationStatus
           page={initialPage}
           timeZone={timeZone}
           unpublishAction={unpublishAction}
         />
 
-        <form action={titleFormAction} className="grid gap-4">
+        <form action={saveFormAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input name="page_id" type="hidden" value={initialPage.id} />
-          <input name="slug" type="hidden" value={initialPage.slug} />
+          {/* What this screen loaded, so the save writes each half only where it changed. */}
+          <input name="initial_title" type="hidden" value={initialPage.title} />
+          <input
+            name="initial_content_markdown"
+            type="hidden"
+            value={initialContent}
+          />
 
           <div className="grid gap-4 md:grid-cols-2">
             <Field>
@@ -345,6 +334,11 @@ export const PageWorkspace = ({
                   disabled
                   value={formatPagePath(initialPage.slug)}
                 />
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <ClientMessage message="admin.pages.workspace.slug_description" />
+                  </Suspense>
+                </FieldDescription>
               </FieldContent>
             </Field>
 
@@ -366,98 +360,60 @@ export const PageWorkspace = ({
             </Field>
           </div>
 
-          {titleState ? (
-            <FormMessage variant="destructive">
-              {titleState.message}
-            </FormMessage>
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <ClientMessage message="admin.pages.workspace.body" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Tabs defaultValue="write">
+                <TabsList>
+                  <TabsTab value="write">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <ClientMessage message="admin.pages.workspace.tab_write" />
+                    </Suspense>
+                  </TabsTab>
+                  <TabsTab value="preview">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <ClientMessage message="admin.pages.workspace.tab_preview" />
+                    </Suspense>
+                  </TabsTab>
+                </TabsList>
+                {/* The textarea is the form control, so it stays mounted behind the preview tab: an unmounted one submits nothing and loses the caret. */}
+                <TabsPanel keepMounted value="write">
+                  <Textarea
+                    name="content_markdown"
+                    onChange={handleDraftContentChange}
+                    rows={14}
+                    value={draftContent}
+                  />
+                </TabsPanel>
+                <TabsPanel className="min-h-72" value="preview">
+                  <MarkdownPreview content={draftContent} />
+                </TabsPanel>
+              </Tabs>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.pages.workspace.body_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+
+          {saveState ? (
+            <FormMessage variant="destructive">{saveState.message}</FormMessage>
           ) : null}
 
           <div className="flex justify-end">
-            <Button disabled={isTitlePending} type="submit">
-              {isTitlePending
-                ? t("admin.pages.workspace.updating")
-                : t("admin.pages.workspace.update_title")}
+            <Button disabled={isSavePending} type="submit">
+              {isSavePending
+                ? t("admin.pages.workspace.saving")
+                : t("admin.pages.workspace.save")}
             </Button>
           </div>
         </form>
       </AdminSection>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <AdminSection>
-          <AdminSectionHeader>
-            <AdminSectionHeading>
-              <AdminSectionTitle>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.pages.workspace.editor_title" />
-                </Suspense>
-              </AdminSectionTitle>
-              <AdminSectionDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.pages.workspace.editor_description" />
-                </Suspense>
-              </AdminSectionDescription>
-            </AdminSectionHeading>
-          </AdminSectionHeader>
-          <form action={draftFormAction} className="grid gap-4">
-            <input name="tenant_id" type="hidden" value={tenantId} />
-            <input name="page_id" type="hidden" value={initialPage.id} />
-            <input name="title" type="hidden" value={initialPage.title} />
-
-            <Field>
-              <FieldLabel>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.pages.workspace.body" />
-                </Suspense>
-              </FieldLabel>
-              <FieldContent>
-                <Textarea
-                  name="content_markdown"
-                  onChange={handleDraftContentChange}
-                  rows={24}
-                  value={draftContent}
-                />
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <ClientMessage message="admin.pages.workspace.body_description" />
-                  </Suspense>
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-
-            {draftState ? (
-              <FormMessage variant="destructive">
-                {draftState.message}
-              </FormMessage>
-            ) : null}
-
-            <div className="flex justify-end">
-              <Button disabled={isDraftPending} type="submit">
-                {isDraftPending
-                  ? t("admin.pages.workspace.saving")
-                  : t("admin.pages.workspace.save_draft")}
-              </Button>
-            </div>
-          </form>
-        </AdminSection>
-
-        <AdminSection>
-          <AdminSectionHeader>
-            <AdminSectionHeading>
-              <AdminSectionTitle>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.pages.workspace.preview_title" />
-                </Suspense>
-              </AdminSectionTitle>
-              <AdminSectionDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.pages.workspace.preview_description" />
-                </Suspense>
-              </AdminSectionDescription>
-            </AdminSectionHeading>
-          </AdminSectionHeader>
-          <MarkdownPreview content={draftContent} />
-        </AdminSection>
-      </div>
 
       <AdminSection>
         <AdminSectionHeader>
