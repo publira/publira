@@ -253,6 +253,7 @@
         "title": "標題",
         "body": "正文",
         "audience": "發送對象",
+        "banner": "橫幅",
         "link": "連結"
       },
       "form": {
@@ -270,7 +271,11 @@
         "target_users_unavailable": "使用者列表載入失敗，因此無法發送給指定使用者。",
         "user_option": "{$name}（{$id}）",
         "submitting": "正在發送…",
-        "submit": "發送公告"
+        "submit": "發送公告",
+        "pinned": "作為網站橫幅展示",
+        "pinned_description": "把該公告展示在網站每個頁面的頂部。",
+        "pinned_until": "停止展示的時間",
+        "pinned_until_description": "時間以 {$time_zone} 為準。留空則會一直展示，直到你撤下為止。"
       },
       "validation": {
         "audience_invalid": "發送對象無效。",
@@ -278,8 +283,15 @@
         "tenant_missing": "缺少租戶 ID。",
         "title_required": "標題為必填。",
         "target_users_required": "發送給指定使用者時，請至少選擇一位使用者。",
-        "link_invalid": "連結必須以 / 或 http(s):// 開頭。"
-      }
+        "link_invalid": "連結必須以 / 或 http(s):// 開頭。",
+        "pinned_audience": "只有發送給全體的公告才能作為橫幅展示。",
+        "pinned_until_invalid": "請正確填寫停止展示的時間。",
+        "pinned_until_future": "停止展示的時間需要晚於目前時間。"
+      },
+      "banner_showing": "展示中",
+      "banner_showing_until": "展示至 {$until}",
+      "unpin_action": "停止展示",
+      "unpin_failed": "無法撤下橫幅。請稍後再試。"
     },
     "comments": {
       "title": "留言",
@@ -1772,6 +1784,8 @@
   },
   "host": {
     "announcements": {
+      "banner_dismiss": "關閉該公告",
+      "banner_link": "閱讀公告",
       "description": "網站營運方發布的公告。",
       "first_page": "前往第一頁",
       "list_empty": "目前沒有可顯示的公告。",

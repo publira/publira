@@ -6,6 +6,7 @@ import {
   SEED_CATALOG,
   toTokyoDateTimeLocal,
 } from "./scenarios/admin-publish";
+import { ANNOUNCEMENT_BANNER_ADMIN } from "./scenarios/announcement-banner";
 import {
   ANNOUNCEMENT_DELIVERY_ADMIN,
   ANNOUNCEMENT_DELIVERY_TARGET,
@@ -13,6 +14,7 @@ import {
 import { NOTIFICATION_INBOX_ADMIN } from "./scenarios/notification-inbox";
 import { fillLoginForm } from "./session";
 import {
+  WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL,
   WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL,
@@ -51,6 +53,19 @@ export const signInAsNotificationInboxAdmin = async (
     NOTIFICATION_INBOX_ADMIN,
     nextPath,
     WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL
+  );
+};
+
+/** Sign in as the banner tenant's admin, the one that pins announcements. */
+export const signInAsAnnouncementBannerAdmin = async (
+  page: Page,
+  nextPath = "/announcements"
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    ANNOUNCEMENT_BANNER_ADMIN,
+    nextPath,
+    WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL
   );
 };
 

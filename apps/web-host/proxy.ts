@@ -25,12 +25,12 @@ const resolveTenantByDomain = createTenantResolver(apiClient);
 
 // `/notifications` is the personal inbox. `/settings/notifications` is the
 // email-preference screen and stays under `/settings`.
-const MEMBER_PATH_PREFIXES = [
-  "/my",
-  "/announcements",
-  "/notifications",
-  "/settings",
-] as const;
+//
+// `/announcements` is deliberately absent: an announcement is the tenant's word
+// to everyone who opens the site, and the banner above every page links there,
+// so a visitor with no session reads it. What a session adds on that page is
+// read state, which the page itself asks for.
+const MEMBER_PATH_PREFIXES = ["/my", "/notifications", "/settings"] as const;
 const GUEST_ONLY_PATHS = new Set(["/login", "/signup"]);
 
 const isMemberPath = (pathname: string): boolean =>

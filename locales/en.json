@@ -253,6 +253,7 @@
         "title": "Title",
         "body": "Body",
         "audience": "Audience",
+        "banner": "Banner",
         "link": "Link"
       },
       "form": {
@@ -270,7 +271,11 @@
         "target_users_unavailable": "The user list could not be loaded, so delivering to selected users is unavailable. Choose everyone, or try again later.",
         "user_option": "{$name} ({$id})",
         "submitting": "Sending…",
-        "submit": "Deliver the announcement"
+        "submit": "Deliver the announcement",
+        "pinned": "Show as a site banner",
+        "pinned_description": "Shows this announcement above every page of the site.",
+        "pinned_until": "Stop showing at",
+        "pinned_until_description": "Times are in {$time_zone}. Leave it empty to keep the banner up until you take it down."
       },
       "validation": {
         "audience_invalid": "The audience is not valid.",
@@ -278,8 +283,15 @@
         "tenant_missing": "The tenant ID is missing.",
         "title_required": "The title is required.",
         "target_users_required": "Select at least one user when delivering to selected users.",
-        "link_invalid": "The link must start with / or http(s)://."
-      }
+        "link_invalid": "The link must start with / or http(s)://.",
+        "pinned_audience": "A banner is only available for an announcement delivered to everyone.",
+        "pinned_until_invalid": "Enter a valid date and time for when the banner stops.",
+        "pinned_until_future": "The banner has to stop at a time in the future."
+      },
+      "banner_showing": "Showing",
+      "banner_showing_until": "Showing until {$until}",
+      "unpin_action": "Stop showing",
+      "unpin_failed": "Could not take the banner down. Please try again later."
     },
     "comments": {
       "title": "Comments",
@@ -1772,6 +1784,8 @@
   },
   "host": {
     "announcements": {
+      "banner_dismiss": "Close this announcement",
+      "banner_link": "Read the announcement",
       "description": "Announcements published by the site operator.",
       "first_page": "Show the first page",
       "list_empty": "There are no announcements to show.",

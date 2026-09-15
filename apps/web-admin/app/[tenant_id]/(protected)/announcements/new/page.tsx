@@ -20,6 +20,7 @@ import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { AnnouncementForm } from "../_components/announcement-form";
 import { createAnnouncementAction } from "../_lib/actions";
@@ -47,13 +48,17 @@ const AnnouncementFormSkeleton = () => (
 const AnnouncementFormData = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const usersResult = await listAllAnnouncementTargetUsers(tenantId, locale);
+  const [usersResult, timeZone] = await Promise.all([
+    listAllAnnouncementTargetUsers(tenantId, locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   await redirectToLoginIfSessionRejected(usersResult);
 
   return (
     <AnnouncementForm
       action={createAnnouncementAction}
+      timeZone={timeZone}
       users={usersResult.users}
       usersErrorMessage={usersResult.ok ? undefined : usersResult.message}
     />

@@ -1,11 +1,13 @@
 import type { Page } from "@playwright/test";
 
+import { ANNOUNCEMENT_BANNER_MEMBER } from "./scenarios/announcement-banner";
 import { ANNOUNCEMENT_DELIVERY_MEMBER } from "./scenarios/announcement-delivery";
 import { SEED_MEMBER } from "./scenarios/member-announcements";
 import { NOTIFICATION_INBOX_MEMBER } from "./scenarios/notification-inbox";
 import { fillLoginForm } from "./session";
 import {
   hostPath,
+  WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL,
   WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL,
   WEB_HOST_BASE_URL,
   WEB_HOST_NOTIFICATION_INBOX_BASE_URL,
@@ -43,6 +45,19 @@ export const signInAsNotificationInboxMember = async (
     NOTIFICATION_INBOX_MEMBER,
     returnTo,
     WEB_HOST_NOTIFICATION_INBOX_BASE_URL
+  );
+};
+
+/** Sign in as the banner tenant's reader, on that tenant's own public site. */
+export const signInAsAnnouncementBannerMember = async (
+  page: Page,
+  returnTo = "/my"
+): Promise<void> => {
+  await signInAsMember(
+    page,
+    ANNOUNCEMENT_BANNER_MEMBER,
+    returnTo,
+    WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL
   );
 };
 

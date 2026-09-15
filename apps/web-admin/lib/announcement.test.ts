@@ -312,6 +312,8 @@ describe("announcement lib", () => {
         audienceType: "all",
         body: "Announcement body",
         linkUrl: "",
+        pinned: false,
+        pinnedUntil: "",
         targetUserPublicIds: [],
         tenantId: "TENANT001",
         title: "Announcement title",

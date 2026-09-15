@@ -9,6 +9,10 @@ export interface AnnouncementItem {
   targetUserPublicId: string;
   targetUserName: string;
   createdAt: string;
+  /** Whether the site is showing this announcement as a banner right now. */
+  pinned: boolean;
+  /** The instant the banner stops at. Empty when it has no end. */
+  pinnedUntil: string;
 }
 
 export interface AnnouncementTargetUser {

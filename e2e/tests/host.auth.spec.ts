@@ -34,7 +34,8 @@ const currentSession = async (
 /**
  * Login / logout / member-guard / session rejection for web-host.
  *
- * Catalog stays public. `/my`, `/announcements`, `/notifications`, and
+ * Catalog stays public, and so is `/announcements` — an announcement is the
+ * tenant's word to everyone who opens the site. `/my`, `/notifications`, and
  * `/settings` are the member gate. GET /logout is a published-page slug, not a
  * logout, so it must leave the session alone. credentials_version bumps use a
  * dedicated member so they cannot invalidate `announcements.pagination` /
@@ -70,18 +71,18 @@ test.describe("web-host auth", () => {
   test("an unauthenticated member page redirects to login with returnTo and comes back after signing in", async ({
     page,
   }) => {
-    await page.goto(hostUrl("/announcements"));
+    await page.goto(hostUrl("/notifications"));
 
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
-    await expect(page).toHaveURL(/returnTo=%2Fannouncements/u);
+    await expect(page).toHaveURL(/returnTo=%2Fnotifications/u);
     await fillLoginForm(page, SEED_MEMBER);
 
-    await expect(page).toHaveURL(/\/announcements\/?$/u);
+    await expect(page).toHaveURL(/\/notifications\/?$/u);
     await expect(
       page.getByRole("heading", {
         exact: true,
         level: 1,
-        name: "Announcements",
+        name: "Notifications",
       })
     ).toBeVisible();
   });
@@ -109,7 +110,7 @@ test.describe("web-host auth", () => {
     page,
   }) => {
     await signInAsSeedMember(page, "/my");
-    await page.goto(hostUrl("/login?returnTo=%2Fannouncements"));
+    await page.goto(hostUrl("/login?returnTo=%2Fnotifications"));
 
     await expect(page).toHaveURL(/\/my\/?$/u);
   });
@@ -125,7 +126,7 @@ test.describe("web-host auth", () => {
     await expectLoginPage(page);
     expect(await currentSession(page)).toBeUndefined();
 
-    await page.goto(hostUrl("/announcements"));
+    await page.goto(hostUrl("/notifications"));
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
   });
 
@@ -170,7 +171,7 @@ test.describe("web-host auth", () => {
       }
     );
 
-    // `/settings` calls GetMe through `withPublicSessionReauth`. `/announcements`
+    // `/settings` calls GetMe through `withPublicSessionReauth`. `/notifications`
     // caches the RPC error inside `"use cache: private"` and rethrows it as an
     // unclassified digest in the standalone server, so it never reaches login.
     await page.goto(hostUrl("/settings"));

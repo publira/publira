@@ -67,6 +67,20 @@ export const tenantAnnouncementsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements`;
 
 /**
+ * The banner above every page, which is the same announcement for every reader
+ * and is therefore cached once per tenant rather than per session.
+ *
+ * It is a tag of its own because it goes stale on its own schedule: the console
+ * drops it when an operator pins or unpins one, and the
+ * `ticker.expire_pinned_announcements` job drops it when a pinned window closes
+ * (`server/cmd/outbox-worker/README.md`). Aiming either of those at the
+ * announcements tag would rebuild every reader's inbox for a band that has
+ * nothing to do with it.
+ */
+export const tenantPinnedAnnouncementTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:announcements:pinned`;
+
+/**
  * The cached public comment list of one episode. Posting and withdrawing both
  * change what it answers, so the Actions behind those controls drop it.
  *

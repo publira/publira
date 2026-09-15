@@ -2,6 +2,7 @@
 
 import { toIntlLocale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import {
   Field,
   FieldContent,
@@ -26,6 +27,7 @@ import {
   useAdminMessages,
 } from "#components/admin-locale-context";
 import { ClientMessage } from "#components/client-message";
+import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type {
@@ -36,6 +38,8 @@ import type {
 interface AnnouncementFormProps {
   users: AnnouncementTargetUser[];
   usersErrorMessage?: string;
+  /** The tenant's display zone, which the banner's stop time is written in. */
+  timeZone: string;
   action: (
     prevState: CreateAnnouncementActionState,
     formData: FormData
@@ -45,6 +49,7 @@ interface AnnouncementFormProps {
 export const AnnouncementForm = ({
   users,
   usersErrorMessage,
+  timeZone,
   action,
 }: AnnouncementFormProps) => {
   const locale = useContext(AdminLocaleContext);
@@ -56,6 +61,7 @@ export const AnnouncementForm = ({
   const [state, formAction, isPending] = useActionState(action, null);
   const [audienceType, setAudienceType] = useState<"all" | "selected">("all");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [pinned, setPinned] = useState(false);
 
   const intlLocale = toIntlLocale(locale);
   const sortedUsers = useMemo(
@@ -75,6 +81,24 @@ export const AnnouncementForm = ({
     []
   );
 
+  const handlePinnedChange = useCallback((checked: boolean) => {
+    setPinned(checked);
+  }, []);
+
+  // The stop time is typed as a wall clock and stored as an instant. The
+  // conversion happens against the zone the field was rendered in, so a browser
+  // somewhere else does not shift the hour the operator wrote.
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      fillInstantFromDateTimeLocal(event.currentTarget, {
+        isoName: "pinned_until",
+        localName: "pinned_until_local",
+        timeZone,
+      });
+    },
+    [timeZone]
+  );
+
   const handleUserToggle = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const publicId = event.currentTarget.value;
@@ -90,7 +114,7 @@ export const AnnouncementForm = ({
   );
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form action={formAction} className="grid gap-5" onSubmit={handleSubmit}>
       <input name="tenant_id" type="hidden" value={tenantId} />
 
       <Field>
@@ -182,6 +206,51 @@ export const AnnouncementForm = ({
           </div>
         </FieldContent>
       </Field>
+
+      {audienceType === "all" ? (
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <ClientMessage message="admin.announcements.form.pinned" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Checkbox
+              checked={pinned}
+              name="pinned"
+              onCheckedChange={handlePinnedChange}
+              value="on"
+            />
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <ClientMessage message="admin.announcements.form.pinned_description" />
+              </Suspense>
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+      ) : null}
+
+      {audienceType === "all" && pinned ? (
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <ClientMessage message="admin.announcements.form.pinned_until" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <input defaultValue="" name="pinned_until" type="hidden" />
+            <Input name="pinned_until_local" step={60} type="datetime-local" />
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <ClientMessage
+                  message="admin.announcements.form.pinned_until_description"
+                  values={{ time_zone: timeZone }}
+                />
+              </Suspense>
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+      ) : null}
 
       {audienceType === "selected" ? (
         <Field>

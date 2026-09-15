@@ -9,6 +9,66 @@ export const SiteLayout = ({ children }: { children: ReactNode }) => (
 );
 
 /**
+ * The band above the header, carrying the one announcement a reader has to see
+ * before anything else. It sits above the brand rather than inside the page so
+ * that it is the first thing on every screen, and it is the only part of the
+ * chrome with a fill of its own, because it is there to interrupt.
+ */
+export const SiteLayoutBanner = ({ children }: { children: ReactNode }) => (
+  <aside className="border-b border-border bg-info text-info-foreground">
+    <div className="mx-auto flex w-full max-w-6xl flex-wrap items-start justify-between gap-x-4 gap-y-2 px-6 py-3">
+      {children}
+    </div>
+  </aside>
+);
+
+/** The words of the banner: a title, and the sentence under it. */
+export const SiteLayoutBannerContent = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <div className="min-w-0 flex-1 text-sm">{children}</div>;
+
+export const SiteLayoutBannerTitle = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <p className="font-medium">{children}</p>;
+
+export const SiteLayoutBannerDescription = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <p className="mt-0.5 line-clamp-2">{children}</p>;
+
+/**
+ * Where the banner sends a reader — the announcement itself, or whatever the
+ * operator pointed it at. Underlined from the start: the band already has a
+ * fill of its own, so an anchor that only underlines on hover reads as text.
+ */
+export const SiteLayoutBannerLink = ({
+  children,
+  href,
+}: {
+  children: ReactNode;
+  href: string;
+}) => (
+  <Link
+    className="mt-1 inline-flex text-sm font-medium underline underline-offset-4"
+    href={href}
+  >
+    {children}
+  </Link>
+);
+
+/** What closes the band, kept at its trailing edge. */
+export const SiteLayoutBannerActions = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <div className="flex shrink-0 items-center gap-2">{children}</div>;
+
+/**
  * A 56px band a half step above the page, closed by one hairline. The band is
  * what separates the header from the paper; nothing is layered over the content
  * scrolling beneath it, so it needs neither a translucent fill nor a blur.

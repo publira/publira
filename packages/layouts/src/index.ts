@@ -1,5 +1,11 @@
 export {
   SiteLayout,
+  SiteLayoutBanner,
+  SiteLayoutBannerActions,
+  SiteLayoutBannerContent,
+  SiteLayoutBannerDescription,
+  SiteLayoutBannerLink,
+  SiteLayoutBannerTitle,
   SiteLayoutBrand,
   SiteLayoutBrandSkeleton,
   SiteLayoutFooter,

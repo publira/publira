@@ -7,6 +7,7 @@ import {
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
@@ -14,7 +15,7 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listMyAnnouncements } from "#lib/announcements";
-import { redirectToLogin } from "#lib/auth-session";
+import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
@@ -43,6 +44,8 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * The `publira_web_host_auth` cookie holds an *encrypted* session payload, not
  * a bearer token, so reading it here and passing the raw value on made every
  * call fail `unauthenticated`; only the library's own cookie path decrypts it.
+ * Its presence is still read here, for a different question: read state is the
+ * one part of this page a visitor with no session has none of.
  */
 
 /**
@@ -146,12 +149,15 @@ const AnnouncementsSection = async ({
 }: {
   searchParams: PageProps<"/[tenant_id]/[locale]/announcements">["searchParams"];
 }) => {
-  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
-    searchParams,
-    getTenantId(),
-    getLocale(),
-  ]);
+  const [resolvedSearchParams, tenantId, locale, cookieStore] =
+    await Promise.all([searchParams, getTenantId(), getLocale(), cookies()]);
   const { token } = parseAnnouncementsListSearchParams(resolvedSearchParams);
+  // An announcement is the tenant's word to everyone who opens the site, so
+  // this page is read without signing in. What a session adds is read state:
+  // the unread marks and the controls that set them.
+  const hasSession = Boolean(
+    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
+  );
 
   const [result, timeZone] = await Promise.all([
     listMyAnnouncements(tenantId, undefined, {
@@ -161,10 +167,6 @@ const AnnouncementsSection = async ({
     }),
     getTenantDisplayTimeZone(tenantId),
   ]);
-  if (!result.ok && result.requiresSignIn) {
-    // Come back to the page the reader was actually on, not just the first one.
-    await redirectToLogin(locale, announcementsListHref(token), tenantId);
-  }
 
   const { nextToken, previousToken } = result;
   // Only this page's rows are loaded, so this is a per-page count. A total
@@ -183,21 +185,23 @@ const AnnouncementsSection = async ({
           </Suspense>
         </h2>
         <div className="flex items-center gap-2">
-          <span
-            className={
-              unreadCount > 0
-                ? "rounded-full bg-info px-3 py-1 text-xs font-medium text-info-foreground"
-                : "rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
-            }
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <Message
-                message="host.announcements.unread_on_page"
-                values={{ count: String(unreadCount) }}
-              />
-            </Suspense>
-          </span>
-          {result.announcements.length > 0 ? (
+          {hasSession ? (
+            <span
+              className={
+                unreadCount > 0
+                  ? "rounded-full bg-info px-3 py-1 text-xs font-medium text-info-foreground"
+                  : "rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+              }
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message
+                  message="host.announcements.unread_on_page"
+                  values={{ count: String(unreadCount) }}
+                />
+              </Suspense>
+            </span>
+          ) : null}
+          {hasSession && result.announcements.length > 0 ? (
             // Offered on every non-empty page: the unread count above covers
             // this page only, so a page with nothing unread can still sit in
             // front of unread announcements further down the list.
@@ -251,7 +255,7 @@ const AnnouncementsSection = async ({
                 return null;
               }
 
-              if (announcement.isRead) {
+              if (!hasSession || announcement.isRead) {
                 return (
                   <LocaleLink
                     className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
@@ -293,21 +297,25 @@ const AnnouncementsSection = async ({
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <h3 className="font-medium">{announcement.title}</h3>
                   <div className="flex items-center gap-2">
-                    <span
-                      className={
-                        announcement.isRead
-                          ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                          : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
-                      }
-                    >
-                      <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
-                        {announcement.isRead ? (
-                          <Message message="host.common.read" />
-                        ) : (
-                          <Message message="host.common.unread" />
-                        )}
-                      </Suspense>
-                    </span>
+                    {hasSession ? (
+                      <span
+                        className={
+                          announcement.isRead
+                            ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
+                            : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
+                        }
+                      >
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-8" />}
+                        >
+                          {announcement.isRead ? (
+                            <Message message="host.common.read" />
+                          ) : (
+                            <Message message="host.common.unread" />
+                          )}
+                        </Suspense>
+                      </span>
+                    ) : null}
                     <span className="text-xs text-muted-foreground">
                       {formatDateTime(announcement.createdAt, {
                         fallback: "-",
@@ -321,7 +329,7 @@ const AnnouncementsSection = async ({
                   {announcement.body}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {announcement.isRead ? null : (
+                  {hasSession && !announcement.isRead ? (
                     <form action={markAnnouncementAsReadAction}>
                       <LocaleField />
                       <input name="tenantId" type="hidden" value={tenantId} />
@@ -341,7 +349,7 @@ const AnnouncementsSection = async ({
                         </Suspense>
                       </button>
                     </form>
-                  )}
+                  ) : null}
                   {linkAction}
                 </div>
               </article>

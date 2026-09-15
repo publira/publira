@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetAnnouncement,
+  mockGetPinnedAnnouncement,
   mockListAnnouncements,
   mockMarkAllAnnouncementsAsRead,
   mockMarkAnnouncementAsRead,
   mockResolveAccessToken,
 } = vi.hoisted(() => ({
   mockGetAnnouncement: vi.fn(),
+  mockGetPinnedAnnouncement: vi.fn(),
   mockListAnnouncements: vi.fn(),
   mockMarkAllAnnouncementsAsRead: vi.fn(),
   mockMarkAnnouncementAsRead: vi.fn(),
@@ -19,6 +21,7 @@ vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
       getAnnouncement: mockGetAnnouncement,
+      getPinnedAnnouncement: mockGetPinnedAnnouncement,
       listAnnouncements: mockListAnnouncements,
       markAllAnnouncementsAsRead: mockMarkAllAnnouncementsAsRead,
       markAnnouncementAsRead: mockMarkAnnouncementAsRead,
@@ -248,5 +251,61 @@ describe("web-host announcements", () => {
     mockMarkAllAnnouncementsAsRead.mockResolvedValueOnce({ markedCount: 3 });
 
     await expect(markAllAnnouncementsAsRead("TENANT001")).resolves.toBe(3);
+  });
+});
+
+describe("web-host pinned announcement", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("carries no session, so one entry answers every visitor of a tenant", async () => {
+    const { getPinnedAnnouncement } = await importAnnouncements();
+    mockGetPinnedAnnouncement.mockResolvedValueOnce({
+      announcement: {
+        body: "We will be down for an hour",
+        createdAt: "2026-04-05T10:00:00Z",
+        id: announcementId,
+        isRead: false,
+        linkUrl: "/pages/maintenance",
+        pinned: true,
+        pinnedUntil: "2026-04-06T10:00:00Z",
+        title: "Maintenance tonight",
+      },
+    });
+
+    await expect(getPinnedAnnouncement(tenantId)).resolves.toEqual({
+      body: "We will be down for an hour",
+      id: announcementId,
+      linkUrl: "/pages/maintenance",
+      title: "Maintenance tonight",
+    });
+    expect(mockGetPinnedAnnouncement).toHaveBeenCalledWith({
+      tenant: { tenantId },
+    });
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("answers nothing when the tenant has nothing pinned", async () => {
+    const { getPinnedAnnouncement } = await importAnnouncements();
+    mockGetPinnedAnnouncement.mockResolvedValueOnce({});
+
+    await expect(getPinnedAnnouncement(tenantId)).resolves.toBeNull();
+  });
+
+  it("answers nothing when the read fails, so the band is simply not drawn", async () => {
+    const { getPinnedAnnouncement } = await importAnnouncements();
+    mockGetPinnedAnnouncement.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(getPinnedAnnouncement(tenantId)).resolves.toBeNull();
+  });
+
+  it("asks for nothing when there is no tenant to ask about", async () => {
+    const { getPinnedAnnouncement } = await importAnnouncements();
+
+    await expect(getPinnedAnnouncement("  ")).resolves.toBeNull();
+    expect(mockGetPinnedAnnouncement).not.toHaveBeenCalled();
   });
 });
