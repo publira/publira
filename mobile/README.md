@@ -328,7 +328,7 @@ flutter run -d android \
 task mobile:run -- -d android
 ```
 
-`task mobile:run` addresses that profile's `api-server` and `image-server` themselves, and not the profile's edge, which is the address a browser reading the tenant site has to use. The edge rewrites `X-Forwarded-Host` to the host name it was reached on, and that header is the app's only way of naming the tenant, because what the app reaches is an address rather than a tenant's domain — so an app pointed at the edge is answered 404 for every image. A value already exported is left as it is, which is how a stack of another kind is named without editing anything.
+It addresses that profile's `api-server` and `image-server` themselves rather than its edge, and reaches them at `10.0.2.2` from an Android emulator and through `adb reverse` from a device on a cable. A value already exported is left as it is, which is how a stack of another kind is named without editing anything. `MOBILE_DEVICE` names the device the addresses are resolved for when several are attached.
 
 ## Screenshots
 
@@ -342,11 +342,13 @@ task mobile:screenshot -- /series/SeedSERSAAA1 /series/SeedSERSAAA1/episodes/See
 
 Every route named on the command line becomes one PNG under `.run/screenshots/`; with no route named, the catalog the app opens on.
 
-An attached device or emulator is what the screens are taken on, because that is the picture a reader would see. The app is built and installed once, and each route is then opened as a launch of its own — `route` is the initial route Flutter's Android embedding reads off the intent, and a resumed app would photograph the screen it was left on.
+The screens are taken on an attached device or emulator, which the app is built and installed on. With none attached — the Dev Container image ships no Android SDK ([#2148](https://github.com/publira/publira/issues/2148)) — the same app is built for the web instead, served by `scripts/web_app_server.dart`, and photographed at the viewport and pixel ratio of a Pixel 7 by the browser `e2e/` already depends on; such a picture carries no status bar and no system navigation.
 
-With no device attached, the same app is built for the web instead, served through `scripts/web_app_server.dart` on one origin with the profile's `api-server` and `image-server` behind it, and photographed at the viewport and pixel ratio of a Pixel 7 by the browser `e2e/` already depends on. The widgets and the data are the same; the platform around them is not, so a picture taken this way carries no status bar and no system navigation. This is what the Dev Container takes, because its image ships no Android SDK ([#2148](https://github.com/publira/publira/issues/2148)).
-
-`MOBILE_SCREENSHOT_WAIT_MS` is how long a screen is given to finish arriving before the shutter, on either; `MOBILE_SCREENSHOT_DEVICE` names another of Playwright's devices for the browser one.
+| Variable | Meaning |
+| --- | --- |
+| `MOBILE_DEVICE` | The device to build, install, and photograph on. The first attached one when unset |
+| `MOBILE_SCREENSHOT_WAIT_MS` | How long a screen is given to finish arriving before the shutter. `8000` when unset |
+| `MOBILE_SCREENSHOT_DEVICE` | The Playwright device the browser fallback emulates. `Pixel 7` when unset |
 
 ## Integration tests
 

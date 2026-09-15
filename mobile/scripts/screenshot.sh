@@ -46,8 +46,9 @@ require_profile_stack() {
 }
 
 screenshot_on_device() {
-  local device="$1" activity route name
-  mobile_load_app_config "$(mobile_host_address)"
+  local device="$1" activity route name attempt
+  mobile_load_app_config "$(mobile_device_address "${device}")"
+  mobile_bind_device_ports "${device}"
   printf 'profile %s on %s: api %s, images %s, tenant %s\n' \
     "${MOBILE_PROFILE_NAME}" "${device}" "${PUBLIRA_API_BASE_URL}" \
     "${PUBLIRA_IMAGE_BASE_URL}" "${PUBLIRA_TENANT_HOST}"
@@ -68,17 +69,33 @@ screenshot_on_device() {
     # keep the screen it was left on instead.
     adb -s "${device}" shell am force-stop "${APP_ID}"
     adb -s "${device}" shell am start -n "${activity}" --es route "${route}" >/dev/null
-    until adb -s "${device}" shell dumpsys window | grep -q "mCurrentFocus.*${APP_ID}"; do
+    for attempt in $(seq 60); do
+      if adb -s "${device}" shell dumpsys window | grep -q "mCurrentFocus.*${APP_ID}"; then
+        break
+      fi
+      # An app that crashes on launch never takes focus, and waiting for it
+      # forever is a run with no picture and no message either.
+      [[ "${attempt}" -lt 60 ]] ||
+        dev_env_die "${APP_ID} never took focus on ${device} for route ${route}"
       sleep 1
     done
-    sleep "$((wait_ms / 1000))"
+    sleep "$(awk -v milliseconds="${wait_ms}" 'BEGIN { print milliseconds / 1000 }')"
     adb -s "${device}" exec-out screencap -p >"${out_dir}/${name}.png"
     printf 'captured %s\n' "${out_dir}/${name}.png"
   done
 }
 
+# The one-origin server, while it is running. Not local to the function that
+# starts it: the trap that stops it runs as the script exits, where a local of
+# a function that has already returned is an unset variable.
+server_pid=''
+
+stop_web_app_server() {
+  [[ -z "${server_pid}" ]] || kill "${server_pid}" 2>/dev/null || true
+}
+
 screenshot_in_browser() {
-  local api_base_url image_base_url port origin route name server_pid
+  local api_base_url image_base_url port origin route name
   mobile_load_app_config 127.0.0.1
   api_base_url="${PUBLIRA_API_BASE_URL}"
   image_base_url="${PUBLIRA_IMAGE_BASE_URL}"
@@ -100,7 +117,7 @@ screenshot_in_browser() {
     --port "${port}" --api "${api_base_url}" --images "${image_base_url}" \
     --root build/web &
   server_pid=$!
-  trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
+  trap stop_web_app_server EXIT
   wait4x http "${origin}/index.html" --timeout 30s
 
   for route in "${routes[@]}"; do

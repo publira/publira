@@ -48,20 +48,42 @@ mobile_dart_defines() {
     "--dart-define=PUBLIRA_TENANT_HOST=${PUBLIRA_TENANT_HOST}"
 }
 
-# The address a device sees this machine at. Loopback inside an emulator is the
-# emulator, so a stack running here is reached at 10.0.2.2 from one.
-mobile_host_address() {
-  if adb devices 2>/dev/null | grep -q 'emulator'; then
-    printf '10.0.2.2\n'
-  else
-    printf '127.0.0.1\n'
-  fi
+# The address this machine answers on as seen from $1, the device the build
+# will run on. Loopback inside an emulator is the emulator itself, which is
+# what 10.0.2.2 exists for. A device on a cable has no route here at all, so it
+# is given its own loopback and mobile_bind_device_ports puts this machine's
+# ports behind it. An empty serial is a build that runs here (`-d chrome`,
+# `-d linux`), where loopback is already this machine.
+mobile_device_address() {
+  case "$1" in
+    emulator-*) printf '10.0.2.2\n' ;;
+    *) printf '127.0.0.1\n' ;;
+  esac
 }
 
-# The serial of the first attached device or emulator, and nothing at all when
-# none is attached or `adb` is not installed -- which is the Dev Container,
-# whose image ships no Android SDK.
+# Binds the profile's two ports onto $1's own loopback, which is the address
+# mobile_device_address answers with for anything but an emulator. Call it
+# after mobile_load_app_config, which is what resolves the ports.
+mobile_bind_device_ports() {
+  local device="$1"
+  case "${device}" in
+    '' | emulator-*) return 0 ;;
+  esac
+  # A name adb does not answer for is a target of another kind -- `chrome`,
+  # `linux`, an iOS simulator -- and each of those already runs here.
+  adb -s "${device}" get-state >/dev/null 2>&1 || return 0
+  adb -s "${device}" reverse "tcp:${PUBLIRA_PUBLIC_API_PORT}" "tcp:${PUBLIRA_PUBLIC_API_PORT}" >/dev/null
+  adb -s "${device}" reverse "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" >/dev/null
+}
+
+# The serial of the device to use: the one MOBILE_DEVICE names, else the first
+# attached. Nothing at all when none is attached or `adb` is not installed --
+# which is the Dev Container, whose image ships no Android SDK.
 mobile_attached_device() {
+  if [[ -n "${MOBILE_DEVICE:-}" ]]; then
+    printf '%s\n' "${MOBILE_DEVICE}"
+    return 0
+  fi
   command -v adb >/dev/null 2>&1 || return 0
   adb devices 2>/dev/null | awk '$2 == "device" { print $1; exit }' || true
 }
