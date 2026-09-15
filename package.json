@@ -23,7 +23,7 @@
     "eslint-plugin-sonarjs": "4.2.0",
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
-    "oxlint-plugin-react-doctor": "0.9.13",
+    "oxlint-plugin-react-doctor": "0.9.14",
     "sharp": "0.35.4",
     "temporal-polyfill": "catalog:",
     "turbo": "2.10.12",
