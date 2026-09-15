@@ -28,6 +28,7 @@ import (
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantconn"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -1524,15 +1525,36 @@ func (s *apiServer) DeleteMe(
 	return connect.NewResponse(&publirav1.DeleteMeResponse{}), nil
 }
 
+// scopeReaderStateUser applies the member half of the policies that guard what
+// a reader keeps for themselves — announcement_reads and
+// user_notification_settings — to the request connection. Direct handler tests
+// use sqlmock and therefore borrow no request connection.
+func (s *apiServer) scopeReaderStateUser(ctx context.Context, userID uuid.UUID) error {
+	conn, ok := rpcmiddleware.TenantConnFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if err := tenantconn.SetUser(ctx, conn, userID); err != nil {
+		return s.internalDBError(ctx, "failed to set reader state member context", err, "user_id", userID.String())
+	}
+	return nil
+}
+
 func (s *apiServer) GetNotificationSettings(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetNotificationSettingsRequest],
 ) (*connect.Response[publirav1.GetNotificationSettingsResponse], error) {
-	_, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	settings, err := s.queriesFor(ctx).GetUserNotificationSettings(ctx, user.ID)
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+	settings, err := s.queriesFor(ctx).GetUserNotificationSettings(ctx, dbmodels.GetUserNotificationSettingsParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: true}), nil
@@ -1546,11 +1568,15 @@ func (s *apiServer) UpdateNotificationSettings(
 	ctx context.Context,
 	req *connect.Request[publirav1.UpdateNotificationSettingsRequest],
 ) (*connect.Response[publirav1.UpdateNotificationSettingsResponse], error) {
-	_, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
 	updated, err := s.queriesFor(ctx).UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
+		TenantID:                  tenant.ID,
 		UserID:                    user.ID,
 		EmailNotificationsEnabled: req.Msg.EmailNotificationsEnabled,
 	})
@@ -1701,6 +1727,12 @@ func (s *apiServer) ListAnnouncements(
 		}
 	}
 
+	if reader.Valid {
+		if err := s.scopeReaderStateUser(ctx, reader.UUID); err != nil {
+			return nil, err
+		}
+	}
+
 	rows, err := s.announcementPage(ctx, tenant.ID, reader, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list announcements", err, "tenant_id", tenant.ID.String())
@@ -1749,6 +1781,12 @@ func (s *apiServer) GetAnnouncement(
 	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
 	if parseErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
+	}
+
+	if reader.Valid {
+		if err := s.scopeReaderStateUser(ctx, reader.UUID); err != nil {
+			return nil, err
+		}
 	}
 
 	row, err := s.queriesFor(ctx).GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
@@ -1833,6 +1871,10 @@ func (s *apiServer) MarkAnnouncementAsRead(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
 	}
 
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+
 	_, err = s.queriesFor(ctx).MarkAnnouncementAsRead(ctx, dbmodels.MarkAnnouncementAsReadParams{
 		ID:       announcementID,
 		TenantID: tenant.ID,
@@ -1854,6 +1896,10 @@ func (s *apiServer) MarkAllAnnouncementsAsRead(
 ) (*connect.Response[publirav1.MarkAllAnnouncementsAsReadResponse], error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
 

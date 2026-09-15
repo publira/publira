@@ -156,8 +156,8 @@ WHERE n.id = sqlc.arg('id')
 -- name: MarkAnnouncementAsRead :one
 -- Upserts, so marking an already-read announcement refreshes read_at instead
 -- of failing. The SELECT confines the insert to the caller's own inbox.
-INSERT INTO announcement_reads (announcement_id, user_id, read_at)
-SELECT n.id, $3, NOW()
+INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
+SELECT n.id, n.tenant_id, $3, NOW()
 FROM announcements n
 WHERE n.id = $1
     AND n.tenant_id = $2
@@ -169,8 +169,8 @@ RETURNING *;
 -- name: MarkAllAnnouncementsAsRead :execrows
 -- Inserts a read row for every announcement in the caller's inbox that lacks
 -- one: the tenant-wide announcements plus the ones addressed to that user.
-INSERT INTO announcement_reads (announcement_id, user_id, read_at)
-SELECT n.id, $2, NOW()
+INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
+SELECT n.id, n.tenant_id, $2, NOW()
 FROM announcements n
 WHERE n.tenant_id = $1
     AND (n.target_user_id IS NULL OR n.target_user_id = $2)

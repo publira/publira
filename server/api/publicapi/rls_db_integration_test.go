@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -117,6 +118,18 @@ var publicDataTables = []struct {
 	{name: "unapplied_stripe_refunds", count: "SELECT count(*) FROM unapplied_stripe_refunds"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
 	{name: "page_versions", count: "SELECT count(*) FROM page_versions"},
+	// The tenant's own notices and one reader's state over them. The inbox is
+	// answered on the storefront's connection, so a missing policy here would
+	// put one tenant's notices — and one reader's read state — in another's.
+	{name: "announcements", count: "SELECT count(*) FROM announcements"},
+	{name: "announcement_reads", count: "SELECT count(*) FROM announcement_reads"},
+	// Whether one reader takes mail. Nobody but that reader may read it, and
+	// the settings screen writes it on this connection.
+	{name: "user_notification_settings", count: "SELECT count(*) FROM user_notification_settings"},
+	// The stored object keys of a tenant's episode pages. The viewer resolves a
+	// page through these rows, so they are as much the tenant's as the episode
+	// they decorate.
+	{name: "episode_image_variants", count: "SELECT count(*) FROM episode_image_variants"},
 }
 
 // The fail-closed direction: a connection that never set app.current_tenant_id
@@ -176,6 +189,14 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		t.Fatalf("seed tenant rating totals: %v", err)
 	}
 	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
+	env.PG.SeedEpisodeImage(t, first.ID, episode.ID, 1)
+	announcementID := insertAnnouncement(t, env, first.ID, uuid.NullUUID{}, "/series/SERIESA00001", "Tenant A Announcement")
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)", announcementID, first.ID, member.ID); err != nil {
+		t.Fatalf("seed announcement read: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled) VALUES ($1, $2, false)", first.ID, member.ID); err != nil {
+		t.Fatalf("seed notification settings: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -195,4 +216,162 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 			t.Fatalf("%s rows visible without a tenant setting = %d, want 0", table.name, visible)
 		}
 	}
+}
+
+// The reader-owned pair — a read state over an announcement, and whether the
+// reader takes mail — carries member isolation rather than tenant isolation, so
+// one member of a tenant cannot read or rewrite another's. These two cases are
+// the reading position pair's, over the tables this inbox writes.
+func TestDBReaderStateIsMemberScopedByRLS(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	owner := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "owner@tenant-a.example.com", "Owner")
+	other := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0002", "other@tenant-a.example.com", "Other")
+	// The inserts below are aimed at a reader who has saved nothing, so neither
+	// row collides with a primary key: a policy that stopped refusing the write
+	// would be the only thing left that could refuse it.
+	unsaved := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0003", "unsaved@tenant-a.example.com", "Unsaved")
+	announcementID := insertAnnouncement(t, env, tenant.ID, uuid.NullUUID{}, "/series/SERIESA00001", "Tenant A Announcement")
+
+	client := env.authClient()
+	ownerToken := tokenFor(t, tenant, owner)
+	if _, err := client.MarkAnnouncementAsRead(context.Background(), newBearerRequest(&publirav1.MarkAnnouncementAsReadRequest{
+		Tenant:         tenantContext(tenant),
+		AnnouncementId: announcementID.String(),
+	}, ownerToken)); err != nil {
+		t.Fatalf("MarkAnnouncementAsRead as the owner: %v", err)
+	}
+	if _, err := client.UpdateNotificationSettings(context.Background(), newBearerRequest(&publirav1.UpdateNotificationSettingsRequest{
+		Tenant:                    tenantContext(tenant),
+		EmailNotificationsEnabled: false,
+	}, ownerToken)); err != nil {
+		t.Fatalf("UpdateNotificationSettings as the owner: %v", err)
+	}
+
+	otherToken := tokenFor(t, tenant, other)
+	listed, err := client.ListAnnouncements(context.Background(), newBearerRequest(&publirav1.ListAnnouncementsRequest{
+		Tenant: tenantContext(tenant),
+	}, otherToken))
+	if err != nil {
+		t.Fatalf("ListAnnouncements as the other member: %v", err)
+	}
+	if len(listed.Msg.Announcements) != 1 {
+		t.Fatalf("announcements for the other member = %d, want 1", len(listed.Msg.Announcements))
+	}
+	if listed.Msg.Announcements[0].IsRead {
+		t.Fatalf("announcement reads as read for the other member, want the owner's read state hidden")
+	}
+	settings, err := client.GetNotificationSettings(context.Background(), newBearerRequest(&publirav1.GetNotificationSettingsRequest{
+		Tenant: tenantContext(tenant),
+	}, otherToken))
+	if err != nil {
+		t.Fatalf("GetNotificationSettings as the other member: %v", err)
+	}
+	if !settings.Msg.EmailNotificationsEnabled {
+		t.Fatalf("other member email_notifications_enabled = false, want the owner's setting hidden")
+	}
+
+	env.withTenantConn(t, tenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_user_id', $1, false)", other.ID.String()); err != nil {
+			t.Fatalf("set app.current_user_id: %v", err)
+		}
+		var visibleReads int
+		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM announcement_reads").Scan(&visibleReads); err != nil {
+			t.Fatalf("count announcement_reads: %v", err)
+		}
+		if visibleReads != 0 {
+			t.Fatalf("announcement_reads visible to the other member = %d, want 0", visibleReads)
+		}
+		var visibleSettings int
+		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM user_notification_settings").Scan(&visibleSettings); err != nil {
+			t.Fatalf("count user_notification_settings: %v", err)
+		}
+		if visibleSettings != 0 {
+			t.Fatalf("user_notification_settings visible to the other member = %d, want 0", visibleSettings)
+		}
+
+		createdSettings, err := conn.ExecContext(ctx,
+			"INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled) VALUES ($1, $2, true)",
+			tenant.ID, unsaved.ID,
+		)
+		if err == nil {
+			t.Fatalf("write another member's notification settings succeeded: %#v", createdSettings)
+		}
+		// The SQLSTATE rather than any error, so a constraint the row happened to
+		// break cannot stand in for the policy that has to refuse it.
+		assertInsufficientPrivilege(t, err, "write another member's notification settings")
+		createdRead, err := conn.ExecContext(ctx,
+			"INSERT INTO announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)",
+			announcementID, tenant.ID, unsaved.ID,
+		)
+		if err == nil {
+			t.Fatalf("write another member's read state succeeded: %#v", createdRead)
+		}
+		assertInsufficientPrivilege(t, err, "write another member's read state")
+		updated, err := conn.ExecContext(ctx,
+			"UPDATE announcement_reads SET read_at = NOW() WHERE tenant_id = $1 AND user_id = $2",
+			tenant.ID, owner.ID,
+		)
+		if err != nil {
+			t.Fatalf("attempt to update another member's read state: %v", err)
+		}
+		if changed, err := updated.RowsAffected(); err != nil {
+			t.Fatalf("other member update rows affected: %v", err)
+		} else if changed != 0 {
+			t.Fatalf("other member updated %d announcement reads, want 0", changed)
+		}
+	})
+}
+
+// The tenant half of the same policies, and the tenant isolation announcements
+// itself gained. The other tenant's connection carries the same member id,
+// which is the only thing member isolation would match on, so the tenant half
+// is what has to hide every one of these rows.
+func TestDBReaderStateIsTenantScopedByRLS(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant, otherTenant := env.seedTwoTenants(t)
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	announcementID := insertAnnouncement(t, env, tenant.ID, uuid.NullUUID{}, "/series/SERIESA00001", "Tenant A Announcement")
+
+	client := env.authClient()
+	token := tokenFor(t, tenant, member)
+	if _, err := client.MarkAnnouncementAsRead(context.Background(), newBearerRequest(&publirav1.MarkAnnouncementAsReadRequest{
+		Tenant:         tenantContext(tenant),
+		AnnouncementId: announcementID.String(),
+	}, token)); err != nil {
+		t.Fatalf("MarkAnnouncementAsRead: %v", err)
+	}
+	if _, err := client.UpdateNotificationSettings(context.Background(), newBearerRequest(&publirav1.UpdateNotificationSettingsRequest{
+		Tenant:                    tenantContext(tenant),
+		EmailNotificationsEnabled: false,
+	}, token)); err != nil {
+		t.Fatalf("UpdateNotificationSettings: %v", err)
+	}
+
+	env.withTenantConn(t, otherTenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_user_id', $1, false)", member.ID.String()); err != nil {
+			t.Fatalf("set app.current_user_id: %v", err)
+		}
+		var visibleAnnouncements int
+		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM announcements").Scan(&visibleAnnouncements); err != nil {
+			t.Fatalf("count announcements: %v", err)
+		}
+		if visibleAnnouncements != 0 {
+			t.Fatalf("announcements visible to the other tenant = %d, want 0", visibleAnnouncements)
+		}
+		var visibleReads int
+		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM announcement_reads").Scan(&visibleReads); err != nil {
+			t.Fatalf("count announcement_reads: %v", err)
+		}
+		if visibleReads != 0 {
+			t.Fatalf("announcement_reads visible to the other tenant = %d, want 0", visibleReads)
+		}
+		var visibleSettings int
+		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM user_notification_settings").Scan(&visibleSettings); err != nil {
+			t.Fatalf("count user_notification_settings: %v", err)
+		}
+		if visibleSettings != 0 {
+			t.Fatalf("user_notification_settings visible to the other tenant = %d, want 0", visibleSettings)
+		}
+	})
 }

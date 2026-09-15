@@ -524,7 +524,7 @@ type Querier interface {
 	// security policies on both tables already confine them to the tenant the
 	// connection is scoped to.
 	GetUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
-	GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error)
+	GetUserNotificationSettings(ctx context.Context, arg GetUserNotificationSettingsParams) (UserNotificationSetting, error)
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error)

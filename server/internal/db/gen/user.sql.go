@@ -344,16 +344,27 @@ func (q *Queries) GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByP
 }
 
 const getUserNotificationSettings = `-- name: GetUserNotificationSettings :one
-SELECT user_id, email_notifications_enabled, updated_at
+SELECT user_id, email_notifications_enabled, updated_at, tenant_id
 FROM user_notification_settings
-WHERE user_id = $1
+WHERE tenant_id = $1
+    AND user_id = $2
 LIMIT 1
 `
 
-func (q *Queries) GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error) {
-	row := q.db.QueryRowContext(ctx, getUserNotificationSettings, userID)
+type GetUserNotificationSettingsParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetUserNotificationSettings(ctx context.Context, arg GetUserNotificationSettingsParams) (UserNotificationSetting, error) {
+	row := q.db.QueryRowContext(ctx, getUserNotificationSettings, arg.TenantID, arg.UserID)
 	var i UserNotificationSetting
-	err := row.Scan(&i.UserID, &i.EmailNotificationsEnabled, &i.UpdatedAt)
+	err := row.Scan(
+		&i.UserID,
+		&i.EmailNotificationsEnabled,
+		&i.UpdatedAt,
+		&i.TenantID,
+	)
 	return i, err
 }
 
@@ -1333,22 +1344,28 @@ func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatus
 }
 
 const upsertUserNotificationSettings = `-- name: UpsertUserNotificationSettings :one
-INSERT INTO user_notification_settings (user_id, email_notifications_enabled, updated_at)
-VALUES ($1, $2, NOW())
+INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled, updated_at)
+VALUES ($1, $2, $3, NOW())
 ON CONFLICT (user_id) DO UPDATE
 SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
     updated_at = NOW()
-RETURNING user_id, email_notifications_enabled, updated_at
+RETURNING user_id, email_notifications_enabled, updated_at, tenant_id
 `
 
 type UpsertUserNotificationSettingsParams struct {
+	TenantID                  uuid.UUID `json:"tenant_id"`
 	UserID                    uuid.UUID `json:"user_id"`
 	EmailNotificationsEnabled bool      `json:"email_notifications_enabled"`
 }
 
 func (q *Queries) UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error) {
-	row := q.db.QueryRowContext(ctx, upsertUserNotificationSettings, arg.UserID, arg.EmailNotificationsEnabled)
+	row := q.db.QueryRowContext(ctx, upsertUserNotificationSettings, arg.TenantID, arg.UserID, arg.EmailNotificationsEnabled)
 	var i UserNotificationSetting
-	err := row.Scan(&i.UserID, &i.EmailNotificationsEnabled, &i.UpdatedAt)
+	err := row.Scan(
+		&i.UserID,
+		&i.EmailNotificationsEnabled,
+		&i.UpdatedAt,
+		&i.TenantID,
+	)
 	return i, err
 }

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY idx_episode_image_variants_tenant_id;

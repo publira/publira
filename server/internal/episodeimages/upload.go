@@ -248,6 +248,7 @@ func (s Service) storeImages(
 					}
 					return s.Queries.CreateEpisodeImageVariant(variantCtx, dbmodels.CreateEpisodeImageVariantParams{
 						ID:              variantID,
+						TenantID:        tenant.ID,
 						EpisodeImageID:  createdImage.ID,
 						Label:           variant.Label,
 						StorageProvider: uploaded.Provider,
