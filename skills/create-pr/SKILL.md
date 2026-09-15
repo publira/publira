@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, runs the verification commands that match the changed area, rebases onto origin/main before every push and before requesting review, and fills in the repository pull request template under an English Conventional Commits title.
+description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, attaches a screenshot of every screen a UI change touches, runs the verification commands that match the changed area, rebases onto origin/main before every push and before requesting review, and fills in the repository pull request template under an English Conventional Commits title.
 ---
 
 # Create a Pull Request
@@ -159,6 +159,30 @@ Link issues by their real relationship:
 - `Fixes #123` only when merging this PR genuinely resolves that issue and it should close.
 - `Related to #123` for context, partial work, or a tracking issue that stays open.
 
+## Attach a screenshot of every UI change
+
+A pull request that changes what a screen looks like or how it is operated carries a picture of each screen it changes. Prose saying that a pair of buttons became a drag handle leaves the reviewer to check the branch out and bring an environment up to see the result; the picture in the body ends that round trip.
+
+The test is the screen, not the directory. A component restructured so that the rendered result moves, changes shape, or is operated differently is a UI change even when the diff reads as internal. An internal refactor, a test, a workflow, and anything else no screen reflects need no picture.
+
+Reference each image from the body file where it belongs — under **Summary** when one picture carries the whole change, under **Changes** beside the bullet it illustrates — and never below the `Assisted-by:` trailer, which stays the last line. A file the body does not reference is appended to the end of the body instead, which would put it under the trailer. Write the alt text as a sentence describing what the picture shows: the body becomes the merge commit message, where the image is gone and the alt text is all that is left.
+
+`gh` uploads the files and rewrites the references. Write `![alt](./file.png)` into the body file, spelled the same way as the path you pass, and pass each file with `--attach`, both on the command that opens a pull request:
+
+```bash
+gh pr create --title "type(scope): succinct description" --body-file <path> \
+  --attach './episode-list.png#The episode list, each row carrying a drag handle'
+```
+
+and on the one that edits an open one, when a screen changes again under review:
+
+```bash
+gh pr edit <number> --body-file <path> \
+  --attach './episode-list.png#The episode list, each row carrying a drag handle'
+```
+
+Up to 50 files per command. The alt text after `#` is a fallback used when the body does not already reference the file; a reference written into the body keeps the alt text written there, so that is the copy that stands. `gh pr edit` given no body flag keeps the body the pull request already has and appends the attachment to it — so pass `--body-file` whenever the new image needs a reference of its own, and re-attach every image that body references, because the file holds the relative paths again while the uploaded URLs live only in the body being replaced.
+
 ## Score the review size
 
 Every pull request carries one `size/*` label saying how much review it is expected to take. Compute it from the diff you are about to open:
@@ -181,7 +205,7 @@ Write the body to a file first so multi-line Markdown survives shell quoting:
 gh pr create --title "type(scope): succinct description" --body-file <path> --label size/m
 ```
 
-Use the session scratchpad for that file and delete it afterwards. Add `--draft` when the work is not ready for review. `--label` carries the review-size bucket and nothing else — `ai-assisted` is applied by the `Review` workflow from the commit trailers, and any other label, or a milestone, only when the user asked for it.
+Pass `--attach` for every screenshot the body references. Use the session scratchpad for that file and delete it afterwards. Add `--draft` when the work is not ready for review. `--label` carries the review-size bucket and nothing else — `ai-assisted` is applied by the `Review` workflow from the commit trailers, and any other label, or a milestone, only when the user asked for it.
 
 ## Add commits to an open PR
 
@@ -192,7 +216,7 @@ Review feedback and later fixes follow the same rules as the first commit:
 3. Run the verification commands for the area you changed.
 4. `git fetch origin main` and `git rebase origin/main` before pushing, then re-run verification if the rebase moved anything.
 5. Push with `--force-with-lease`, since the rebase rewrote already-pushed commits.
-6. Update the PR body when the change alters what the PR does or how to test it, keeping the `Assisted-by:` trailer as its last line.
+6. Update the PR body when the change alters what the PR does or how to test it, keeping the `Assisted-by:` trailer as its last line. Replace a screenshot a screen has outgrown with `gh pr edit --attach`, and re-attach the images the replacement body still references.
 
 Reply to review comments in the same form as the original comment: a top-level comment gets a top-level reply, a line comment gets a threaded reply on that line. Never delete a posted comment, especially one that already has replies.
 
@@ -206,6 +230,7 @@ Confirm all of the following, and report anything you could not satisfy:
 - the verification commands for the changed area ran and passed
 - the pushed branch is rebased on the current `origin/main` — and if you took the throwaway-checkout route, report that as the remote branch carrying the rebased commits with the local branch ref still awaiting reconciliation, never as a rebased local branch
 - no throwaway worktree is left behind (`git worktree list`)
+- a pull request that changes a screen shows a screenshot of it in the body, above the `Assisted-by:` trailer
 - `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, exactly one `size/*` label and no hand-set `ai-assisted`, and the `Assisted-by:` trailer as the last line of the body
 - no temporary body file is left behind
 
