@@ -3,6 +3,7 @@ import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenNote,
   AuthScreenTagline,
   AuthScreenText,
@@ -71,50 +72,56 @@ const SignupPendingRecipient = async () => {
 
 const SignupPendingPage = () => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
-        <SignupPendingHeader />
-      </Suspense>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+          <SignupPendingHeader />
+        </Suspense>
+      </AuthScreenHeader>
 
-    <AuthScreenBody>
-      <AuthScreenText>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="host.auth.signup_pending.sent" />
+      <AuthScreenBody>
+        <AuthScreenText>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="host.auth.signup_pending.sent" />
+          </Suspense>
+        </AuthScreenText>
+        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          <SignupPendingRecipient />
         </Suspense>
-      </AuthScreenText>
-      <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-        <SignupPendingRecipient />
-      </Suspense>
-      <AuthScreenNote>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="host.auth.fields.check_spam" />
-        </Suspense>
-      </AuthScreenNote>
-    </AuthScreenBody>
+        <AuthScreenNote>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="host.auth.fields.check_spam" />
+          </Suspense>
+        </AuthScreenNote>
+      </AuthScreenBody>
 
-    <AuthScreenFooter>
-      <p>
-        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-40" />}>
-          <LocaleLink
-            href="/resend-verification"
-            className="text-primary underline underline-offset-4"
+      <AuthScreenFooter>
+        <p>
+          <Suspense
+            fallback={<SkeletonLine className="inline-block h-4 w-40" />}
           >
-            <Message message="host.auth.signup_pending.to_resend_verification" />
-          </LocaleLink>
-        </Suspense>
-      </p>
-      <p>
-        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
-          <LocaleLink
-            href="/login"
-            className="text-primary underline underline-offset-4"
+            <LocaleLink
+              href="/resend-verification"
+              className="text-primary underline underline-offset-4"
+            >
+              <Message message="host.auth.signup_pending.to_resend_verification" />
+            </LocaleLink>
+          </Suspense>
+        </p>
+        <p>
+          <Suspense
+            fallback={<SkeletonLine className="inline-block h-4 w-32" />}
           >
-            <Message message="host.auth.fields.to_login" />
-          </LocaleLink>
-        </Suspense>
-      </p>
-    </AuthScreenFooter>
+            <LocaleLink
+              href="/login"
+              className="text-primary underline underline-offset-4"
+            >
+              <Message message="host.auth.fields.to_login" />
+            </LocaleLink>
+          </Suspense>
+        </p>
+      </AuthScreenFooter>
+    </AuthScreenMain>
   </AuthScreen>
 );
 

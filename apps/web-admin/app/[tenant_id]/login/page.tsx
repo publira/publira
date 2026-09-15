@@ -3,6 +3,9 @@ import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenHeader,
+  AuthScreenMain,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -171,18 +174,24 @@ const LoginPageContent = async ({
 
 const LoginPage = (props: LoginPageProps) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>Publira</AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <Message message="admin.auth.login.eyebrow" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>Publira</AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.auth.login.eyebrow" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<LoginPageFallback />}>
-      <LoginPageContent {...props} />
-    </Suspense>
+      <Suspense fallback={<LoginPageFallback />}>
+        <LoginPageContent {...props} />
+      </Suspense>
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

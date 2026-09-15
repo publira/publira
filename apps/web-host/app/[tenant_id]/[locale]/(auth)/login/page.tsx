@@ -3,6 +3,7 @@ import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -220,15 +221,17 @@ const LoginPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/login">) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
-        <LoginHeader />
-      </Suspense>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+          <LoginHeader />
+        </Suspense>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<LoginFormSkeleton />}>
-      <LoginFormContent searchParams={searchParams} />
-    </Suspense>
+      <Suspense fallback={<LoginFormSkeleton />}>
+        <LoginFormContent searchParams={searchParams} />
+      </Suspense>
+    </AuthScreenMain>
   </AuthScreen>
 );
 

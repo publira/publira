@@ -2,7 +2,10 @@ import {
   AuthScreen,
   AuthScreenBody,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenNote,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -162,22 +165,28 @@ const ConfirmEmailPageContent = async ({
 
 const ConfirmEmailPage = ({ params, searchParams }: ConfirmEmailPageProps) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>
-        <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-          <Message message="admin.auth.confirm_email.title" />
-        </Suspense>
-      </AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-          <Message message="admin.auth.confirm_email.processing" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.auth.confirm_email.title" />
+          </Suspense>
+        </AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="admin.auth.confirm_email.processing" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<ConfirmEmailFallback />}>
-      <ConfirmEmailPageContent params={params} searchParams={searchParams} />
-    </Suspense>
+      <Suspense fallback={<ConfirmEmailFallback />}>
+        <ConfirmEmailPageContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

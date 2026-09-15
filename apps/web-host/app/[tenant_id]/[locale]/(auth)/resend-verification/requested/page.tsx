@@ -3,6 +3,7 @@ import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenNote,
   AuthScreenTagline,
   AuthScreenText,
@@ -75,40 +76,44 @@ const ResendVerificationRequestedRecipient = async () => {
 
 const ResendVerificationRequestedPage = () => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
-        <ResendVerificationRequestedHeader />
-      </Suspense>
-    </AuthScreenHeader>
-
-    <AuthScreenBody>
-      <AuthScreenText>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="host.auth.resend_verification_requested.sent" />
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+          <ResendVerificationRequestedHeader />
         </Suspense>
-      </AuthScreenText>
-      <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-        <ResendVerificationRequestedRecipient />
-      </Suspense>
-      <AuthScreenNote>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="host.auth.fields.check_spam" />
-        </Suspense>
-      </AuthScreenNote>
-    </AuthScreenBody>
+      </AuthScreenHeader>
 
-    <AuthScreenFooter>
-      <p>
-        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
-          <LocaleLink
-            href="/login"
-            className="text-primary underline underline-offset-4"
+      <AuthScreenBody>
+        <AuthScreenText>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="host.auth.resend_verification_requested.sent" />
+          </Suspense>
+        </AuthScreenText>
+        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          <ResendVerificationRequestedRecipient />
+        </Suspense>
+        <AuthScreenNote>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="host.auth.fields.check_spam" />
+          </Suspense>
+        </AuthScreenNote>
+      </AuthScreenBody>
+
+      <AuthScreenFooter>
+        <p>
+          <Suspense
+            fallback={<SkeletonLine className="inline-block h-4 w-32" />}
           >
-            <Message message="host.auth.fields.to_login" />
-          </LocaleLink>
-        </Suspense>
-      </p>
-    </AuthScreenFooter>
+            <LocaleLink
+              href="/login"
+              className="text-primary underline underline-offset-4"
+            >
+              <Message message="host.auth.fields.to_login" />
+            </LocaleLink>
+          </Suspense>
+        </p>
+      </AuthScreenFooter>
+    </AuthScreenMain>
   </AuthScreen>
 );
 

@@ -2,7 +2,10 @@ import {
   AuthScreen,
   AuthScreenBody,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenNote,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -171,22 +174,31 @@ const ConfirmPasswordPage = ({
   searchParams,
 }: ConfirmPasswordPageProps) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>
-        <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-          <Message message="admin.auth.confirm_password.title" />
-        </Suspense>
-      </AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="admin.auth.confirm_password.eyebrow" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.auth.confirm_password.title" />
+          </Suspense>
+        </AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="admin.auth.confirm_password.eyebrow" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<ConfirmPasswordFallback />}>
-      <ConfirmPasswordPageContent params={params} searchParams={searchParams} />
-    </Suspense>
+      <Suspense fallback={<ConfirmPasswordFallback />}>
+        <ConfirmPasswordPageContent
+          params={params}
+          searchParams={searchParams}
+        />
+      </Suspense>
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

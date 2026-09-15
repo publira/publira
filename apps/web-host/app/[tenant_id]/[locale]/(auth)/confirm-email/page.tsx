@@ -3,6 +3,7 @@ import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenTagline,
   AuthScreenText,
   AuthScreenTitle,
@@ -192,15 +193,17 @@ const ConfirmEmailPage = ({
   searchParams: Promise<{ token?: string | string[] }>;
 }) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
-        <ConfirmEmailHeader />
-      </Suspense>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+          <ConfirmEmailHeader />
+        </Suspense>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<ConfirmationFallback />}>
-      <ConfirmationContent searchParams={searchParams} />
-    </Suspense>
+      <Suspense fallback={<ConfirmationFallback />}>
+        <ConfirmationContent searchParams={searchParams} />
+      </Suspense>
+    </AuthScreenMain>
   </AuthScreen>
 );
 
