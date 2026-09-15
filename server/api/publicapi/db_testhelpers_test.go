@@ -88,6 +88,9 @@ func openReaderGuards() readerGuards {
 			// Wide enough that the cases driving the account RPCs with a wrong
 			// password on purpose never reach the step-up limit.
 			actionVerifyPassword: {{Limit: 1000, Window: time.Minute}},
+			// The cases that drive the viewer settings assert what was stored,
+			// not how often it may be stored.
+			actionUpdateViewerPreferences: {{Limit: 1000, Window: time.Minute}},
 		},
 		duplicateCommentWindow: defaultDuplicateCommentWindow,
 	}

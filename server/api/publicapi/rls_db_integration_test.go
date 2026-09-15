@@ -8,9 +8,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/publira/publira/server/internal/testutil"
 )
+
+// insufficientPrivilege is the SQLSTATE PostgreSQL raises when a row would break
+// a row-level security policy.
+const insufficientPrivilege = "42501"
+
+// assertInsufficientPrivilege fails unless err is that refusal. A bare "some
+// error came back" would be satisfied by a unique constraint the planted row
+// happened to break, which says nothing about the policy under test.
+func assertInsufficientPrivilege(t *testing.T, err error, what string) {
+	t.Helper()
+
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilege {
+		t.Fatalf("%s error = %v, want SQLSTATE %s", what, err, insufficientPrivilege)
+	}
+}
 
 // These tests bypass the handlers and talk to PostgreSQL as publira_public
 // directly. The RPC-level cases prove the handlers filter by tenant; these prove
@@ -77,6 +94,9 @@ var publicDataTables = []struct {
 	{name: "series_tags", count: "SELECT count(*) FROM series_tags"},
 	{name: "episode_reads", count: "SELECT count(*) FROM episode_reads"},
 	{name: "episode_reading_positions", count: "SELECT count(*) FROM episode_reading_positions"},
+	// How the reader wants the viewer laid out, which the viewer reads on the
+	// same connection as the position it opens at.
+	{name: "user_viewer_preferences", count: "SELECT count(*) FROM user_viewer_preferences"},
 	{name: "episode_ratings", count: "SELECT count(*) FROM episode_ratings"},
 	// The public tally beside the reader's own ratings. It is the one of the
 	// pair a storefront shows to everybody, so a missing policy here would hand
@@ -139,6 +159,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)", first.ID, member.ID, episode.ID); err != nil {
 		t.Fatalf("seed reading position: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO user_viewer_preferences (tenant_id, user_id, wide_viewer_enabled) VALUES ($1, $2, true)", first.ID, member.ID); err != nil {
+		t.Fatalf("seed viewer preferences: %v", err)
 	}
 	// The rating carries its own count rows: the triggers on episode_ratings
 	// write the episode's tally and the series' one, so three tables are seeded

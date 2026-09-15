@@ -59,6 +59,8 @@ task server:build
 - `PUBLIRA_EPISODE_RATING_LIMIT_PER_DAY` (optional, `300` when unset. The same allowance over a day)
 - `PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_MINUTE` (optional, `5` when unset. How many times one account's password may be verified in a minute by the RPCs that ask for it on top of the session — `ChangePassword`, `DeleteMe`, `RequestEmailChange` — counted across all three and cleared by a verification that succeeds)
 - `PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_DAY` (optional, `50` when unset. The same allowance over a day)
+- `PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_MINUTE` (optional, `30` when unset. How many times one reader may store how they want the viewer laid out in a minute)
+- `PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_DAY` (optional, `300` when unset. The same allowance over a day)
 - `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (all required when `PUBLIRA_REVALIDATE_TOKEN` is set. The private network URL of each Next.js app)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)

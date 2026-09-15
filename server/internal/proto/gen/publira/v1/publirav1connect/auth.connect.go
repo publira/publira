@@ -72,6 +72,12 @@ const (
 	// AuthServiceUpdateNotificationSettingsProcedure is the fully-qualified name of the AuthService's
 	// UpdateNotificationSettings RPC.
 	AuthServiceUpdateNotificationSettingsProcedure = "/publira.v1.AuthService/UpdateNotificationSettings"
+	// AuthServiceGetViewerPreferencesProcedure is the fully-qualified name of the AuthService's
+	// GetViewerPreferences RPC.
+	AuthServiceGetViewerPreferencesProcedure = "/publira.v1.AuthService/GetViewerPreferences"
+	// AuthServiceUpdateViewerPreferencesProcedure is the fully-qualified name of the AuthService's
+	// UpdateViewerPreferences RPC.
+	AuthServiceUpdateViewerPreferencesProcedure = "/publira.v1.AuthService/UpdateViewerPreferences"
 	// AuthServiceGetAnnouncementProcedure is the fully-qualified name of the AuthService's
 	// GetAnnouncement RPC.
 	AuthServiceGetAnnouncementProcedure = "/publira.v1.AuthService/GetAnnouncement"
@@ -106,6 +112,8 @@ type AuthServiceClient interface {
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
+	GetViewerPreferences(context.Context, *connect.Request[v1.GetViewerPreferencesRequest]) (*connect.Response[v1.GetViewerPreferencesResponse], error)
+	UpdateViewerPreferences(context.Context, *connect.Request[v1.UpdateViewerPreferencesRequest]) (*connect.Response[v1.UpdateViewerPreferencesResponse], error)
 	GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error)
 	GetPinnedAnnouncement(context.Context, *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error)
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
@@ -214,6 +222,18 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getViewerPreferences: connect.NewClient[v1.GetViewerPreferencesRequest, v1.GetViewerPreferencesResponse](
+			httpClient,
+			baseURL+AuthServiceGetViewerPreferencesProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetViewerPreferences")),
+			connect.WithClientOptions(opts...),
+		),
+		updateViewerPreferences: connect.NewClient[v1.UpdateViewerPreferencesRequest, v1.UpdateViewerPreferencesResponse](
+			httpClient,
+			baseURL+AuthServiceUpdateViewerPreferencesProcedure,
+			connect.WithSchema(authServiceMethods.ByName("UpdateViewerPreferences")),
+			connect.WithClientOptions(opts...),
+		),
 		getAnnouncement: connect.NewClient[v1.GetAnnouncementRequest, v1.GetAnnouncementResponse](
 			httpClient,
 			baseURL+AuthServiceGetAnnouncementProcedure,
@@ -264,6 +284,8 @@ type authServiceClient struct {
 	deleteMe                   *connect.Client[v1.DeleteMeRequest, v1.DeleteMeResponse]
 	getNotificationSettings    *connect.Client[v1.GetNotificationSettingsRequest, v1.GetNotificationSettingsResponse]
 	updateNotificationSettings *connect.Client[v1.UpdateNotificationSettingsRequest, v1.UpdateNotificationSettingsResponse]
+	getViewerPreferences       *connect.Client[v1.GetViewerPreferencesRequest, v1.GetViewerPreferencesResponse]
+	updateViewerPreferences    *connect.Client[v1.UpdateViewerPreferencesRequest, v1.UpdateViewerPreferencesResponse]
 	getAnnouncement            *connect.Client[v1.GetAnnouncementRequest, v1.GetAnnouncementResponse]
 	getPinnedAnnouncement      *connect.Client[v1.GetPinnedAnnouncementRequest, v1.GetPinnedAnnouncementResponse]
 	listAnnouncements          *connect.Client[v1.ListAnnouncementsRequest, v1.ListAnnouncementsResponse]
@@ -346,6 +368,16 @@ func (c *authServiceClient) UpdateNotificationSettings(ctx context.Context, req 
 	return c.updateNotificationSettings.CallUnary(ctx, req)
 }
 
+// GetViewerPreferences calls publira.v1.AuthService.GetViewerPreferences.
+func (c *authServiceClient) GetViewerPreferences(ctx context.Context, req *connect.Request[v1.GetViewerPreferencesRequest]) (*connect.Response[v1.GetViewerPreferencesResponse], error) {
+	return c.getViewerPreferences.CallUnary(ctx, req)
+}
+
+// UpdateViewerPreferences calls publira.v1.AuthService.UpdateViewerPreferences.
+func (c *authServiceClient) UpdateViewerPreferences(ctx context.Context, req *connect.Request[v1.UpdateViewerPreferencesRequest]) (*connect.Response[v1.UpdateViewerPreferencesResponse], error) {
+	return c.updateViewerPreferences.CallUnary(ctx, req)
+}
+
 // GetAnnouncement calls publira.v1.AuthService.GetAnnouncement.
 func (c *authServiceClient) GetAnnouncement(ctx context.Context, req *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error) {
 	return c.getAnnouncement.CallUnary(ctx, req)
@@ -388,6 +420,8 @@ type AuthServiceHandler interface {
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
+	GetViewerPreferences(context.Context, *connect.Request[v1.GetViewerPreferencesRequest]) (*connect.Response[v1.GetViewerPreferencesResponse], error)
+	UpdateViewerPreferences(context.Context, *connect.Request[v1.UpdateViewerPreferencesRequest]) (*connect.Response[v1.UpdateViewerPreferencesResponse], error)
 	GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error)
 	GetPinnedAnnouncement(context.Context, *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error)
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
@@ -492,6 +526,18 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceGetViewerPreferencesHandler := connect.NewUnaryHandler(
+		AuthServiceGetViewerPreferencesProcedure,
+		svc.GetViewerPreferences,
+		connect.WithSchema(authServiceMethods.ByName("GetViewerPreferences")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceUpdateViewerPreferencesHandler := connect.NewUnaryHandler(
+		AuthServiceUpdateViewerPreferencesProcedure,
+		svc.UpdateViewerPreferences,
+		connect.WithSchema(authServiceMethods.ByName("UpdateViewerPreferences")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceGetAnnouncementHandler := connect.NewUnaryHandler(
 		AuthServiceGetAnnouncementProcedure,
 		svc.GetAnnouncement,
@@ -554,6 +600,10 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceGetNotificationSettingsHandler.ServeHTTP(w, r)
 		case AuthServiceUpdateNotificationSettingsProcedure:
 			authServiceUpdateNotificationSettingsHandler.ServeHTTP(w, r)
+		case AuthServiceGetViewerPreferencesProcedure:
+			authServiceGetViewerPreferencesHandler.ServeHTTP(w, r)
+		case AuthServiceUpdateViewerPreferencesProcedure:
+			authServiceUpdateViewerPreferencesHandler.ServeHTTP(w, r)
 		case AuthServiceGetAnnouncementProcedure:
 			authServiceGetAnnouncementHandler.ServeHTTP(w, r)
 		case AuthServiceGetPinnedAnnouncementProcedure:
@@ -631,6 +681,14 @@ func (UnimplementedAuthServiceHandler) GetNotificationSettings(context.Context, 
 
 func (UnimplementedAuthServiceHandler) UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateNotificationSettings is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetViewerPreferences(context.Context, *connect.Request[v1.GetViewerPreferencesRequest]) (*connect.Response[v1.GetViewerPreferencesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetViewerPreferences is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) UpdateViewerPreferences(context.Context, *connect.Request[v1.UpdateViewerPreferencesRequest]) (*connect.Response[v1.UpdateViewerPreferencesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateViewerPreferences is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error) {

@@ -847,3 +847,10 @@ type UserRecommendFeature struct {
 	FeatureVersion int32           `json:"feature_version"`
 	ComputedAt     time.Time       `json:"computed_at"`
 }
+
+type UserViewerPreference struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	UserID            uuid.UUID `json:"user_id"`
+	WideViewerEnabled bool      `json:"wide_viewer_enabled"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
