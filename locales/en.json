@@ -1192,6 +1192,10 @@
       "theme_error": "Could not display the theme",
       "theme": {
         "color_picker": "Color picker",
+        "tabs": {
+          "edit": "Edit",
+          "preview": "Preview"
+        },
         "typefaces": {
           "title": "Typefaces",
           "description": "Choose the installed faces readers see first. Leave a field empty to use the default stack.",

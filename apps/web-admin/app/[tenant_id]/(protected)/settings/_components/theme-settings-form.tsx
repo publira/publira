@@ -11,6 +11,12 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
+  Tabs,
+  TabsList,
+  TabsPanel,
+  TabsTab,
+} from "@publira/ui-components/tabs";
+import {
   DEFAULT_TENANT_THEME_FONT_FAMILIES,
   toPubliraThemeCssVariables,
 } from "@publira/utils/theme-css-variables";
@@ -380,129 +386,179 @@ export const ThemeSettingsForm = ({
   const fieldErrors = state && !state.ok ? state.fieldErrors : undefined;
 
   return (
-    <AdminSections>
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.theme.preview.title" />
-              </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.theme.preview.description" />
-              </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
-        <ThemePreview theme={theme} />
-      </AdminSection>
+    <Tabs defaultValue="edit">
+      <TabsList>
+        <TabsTab value="edit">
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <ClientMessage message="admin.settings.theme.tabs.edit" />
+          </Suspense>
+        </TabsTab>
+        <TabsTab value="preview">
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <ClientMessage message="admin.settings.theme.tabs.preview" />
+          </Suspense>
+        </TabsTab>
+      </TabsList>
 
-      <form action={formAction} className="contents">
-        <input name="tenant_id" type="hidden" value={tenantId} />
+      <TabsPanel value="edit">
+        <AdminSections>
+          <form action={formAction} className="contents">
+            <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <AdminSection>
-          <AdminSectionHeader>
-            <AdminSectionHeading>
-              <AdminSectionTitle>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.theme.typefaces.title" />
-                </Suspense>
-              </AdminSectionTitle>
-              <AdminSectionDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.theme.typefaces.description" />
-                </Suspense>
-              </AdminSectionDescription>
-            </AdminSectionHeading>
-          </AdminSectionHeader>
-          <div className="grid gap-5 sm:max-w-3xl">
-            <Field>
-              <FieldLabel>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.theme.typefaces.serif.label" />
-                </Suspense>
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  maxLength={512}
-                  name="serif_font_family"
-                  onChange={createFontFamilyHandler("serifFontFamily")}
-                  placeholder={
-                    DEFAULT_TENANT_THEME_FONT_FAMILIES.serifFontFamily
-                  }
-                  type="text"
-                  value={theme.serifFontFamily}
-                />
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <ClientMessage message="admin.settings.theme.typefaces.serif.description" />
-                  </Suspense>
-                </FieldDescription>
-                {fieldErrors?.serifFontFamily ? (
-                  <FormMessage variant="destructive">
-                    {fieldErrors.serifFontFamily}
-                  </FormMessage>
-                ) : null}
-              </FieldContent>
-            </Field>
-            <Field>
-              <FieldLabel>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.theme.typefaces.sans.label" />
-                </Suspense>
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  maxLength={512}
-                  name="sans_font_family"
-                  onChange={createFontFamilyHandler("sansFontFamily")}
-                  placeholder={
-                    DEFAULT_TENANT_THEME_FONT_FAMILIES.sansFontFamily
-                  }
-                  type="text"
-                  value={theme.sansFontFamily}
-                />
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <ClientMessage message="admin.settings.theme.typefaces.sans.description" />
-                  </Suspense>
-                </FieldDescription>
-                {fieldErrors?.sansFontFamily ? (
-                  <FormMessage variant="destructive">
-                    {fieldErrors.sansFontFamily}
-                  </FormMessage>
-                ) : null}
-              </FieldContent>
-            </Field>
-          </div>
-        </AdminSection>
+            <AdminSection>
+              <AdminSectionHeader>
+                <AdminSectionHeading>
+                  <AdminSectionTitle>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage message="admin.settings.theme.typefaces.title" />
+                    </Suspense>
+                  </AdminSectionTitle>
+                  <AdminSectionDescription>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage message="admin.settings.theme.typefaces.description" />
+                    </Suspense>
+                  </AdminSectionDescription>
+                </AdminSectionHeading>
+              </AdminSectionHeader>
+              <div className="grid gap-5 sm:max-w-3xl">
+                <Field>
+                  <FieldLabel>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage message="admin.settings.theme.typefaces.serif.label" />
+                    </Suspense>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      maxLength={512}
+                      name="serif_font_family"
+                      onChange={createFontFamilyHandler("serifFontFamily")}
+                      placeholder={
+                        DEFAULT_TENANT_THEME_FONT_FAMILIES.serifFontFamily
+                      }
+                      type="text"
+                      value={theme.serifFontFamily}
+                    />
+                    <FieldDescription>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <ClientMessage message="admin.settings.theme.typefaces.serif.description" />
+                      </Suspense>
+                    </FieldDescription>
+                    {fieldErrors?.serifFontFamily ? (
+                      <FormMessage variant="destructive">
+                        {fieldErrors.serifFontFamily}
+                      </FormMessage>
+                    ) : null}
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <ClientMessage message="admin.settings.theme.typefaces.sans.label" />
+                    </Suspense>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      maxLength={512}
+                      name="sans_font_family"
+                      onChange={createFontFamilyHandler("sansFontFamily")}
+                      placeholder={
+                        DEFAULT_TENANT_THEME_FONT_FAMILIES.sansFontFamily
+                      }
+                      type="text"
+                      value={theme.sansFontFamily}
+                    />
+                    <FieldDescription>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <ClientMessage message="admin.settings.theme.typefaces.sans.description" />
+                      </Suspense>
+                    </FieldDescription>
+                    {fieldErrors?.sansFontFamily ? (
+                      <FormMessage variant="destructive">
+                        {fieldErrors.sansFontFamily}
+                      </FormMessage>
+                    ) : null}
+                  </FieldContent>
+                </Field>
+              </div>
+            </AdminSection>
 
-        {colorGroups.map((group) => (
-          <AdminSection key={group.titleKey}>
-            <AdminSectionHeader>
-              <AdminSectionHeading>
-                <AdminSectionTitle>{t(group.titleKey)}</AdminSectionTitle>
-                <AdminSectionDescription>
-                  {t(group.descriptionKey)}
-                </AdminSectionDescription>
-              </AdminSectionHeading>
-            </AdminSectionHeader>
-            <div className="grid gap-5 sm:max-w-3xl">
-              {group.fields.map((field, index) => {
-                if (index > 0 && group.fields[index - 1]?.inlineWithNext) {
-                  return null;
-                }
+            {colorGroups.map((group) => (
+              <AdminSection key={group.titleKey}>
+                <AdminSectionHeader>
+                  <AdminSectionHeading>
+                    <AdminSectionTitle>{t(group.titleKey)}</AdminSectionTitle>
+                    <AdminSectionDescription>
+                      {t(group.descriptionKey)}
+                    </AdminSectionDescription>
+                  </AdminSectionHeading>
+                </AdminSectionHeader>
+                <div className="grid gap-5 sm:max-w-3xl">
+                  {group.fields.map((field, index) => {
+                    if (index > 0 && group.fields[index - 1]?.inlineWithNext) {
+                      return null;
+                    }
 
-                if (field.inlineWithNext && group.fields[index + 1]) {
-                  const pair = group.fields[index + 1];
-                  return (
-                    <div
-                      className="grid gap-5 md:grid-cols-2"
-                      key={`${field.key}-${pair.key}`}
-                    >
-                      <Field>
+                    if (field.inlineWithNext && group.fields[index + 1]) {
+                      const pair = group.fields[index + 1];
+                      return (
+                        <div
+                          className="grid gap-5 md:grid-cols-2"
+                          key={`${field.key}-${pair.key}`}
+                        >
+                          <Field>
+                            <FieldLabel required>
+                              {t(field.labelKey)}
+                            </FieldLabel>
+                            <FieldContent>
+                              <ColorSwatchInput
+                                name={field.formName}
+                                onChange={createHandler(field.key)}
+                                pickerLabel={pickerLabel}
+                                value={theme[field.key]}
+                              />
+                              {field.descriptionKey ? (
+                                <FieldDescription>
+                                  {t(field.descriptionKey)}
+                                </FieldDescription>
+                              ) : null}
+                              {fieldErrors?.[field.key] ? (
+                                <FormMessage variant="destructive">
+                                  {fieldErrors[field.key]}
+                                </FormMessage>
+                              ) : null}
+                            </FieldContent>
+                          </Field>
+                          <Field>
+                            <FieldLabel required>{t(pair.labelKey)}</FieldLabel>
+                            <FieldContent>
+                              <ColorSwatchInput
+                                name={pair.formName}
+                                onChange={createHandler(pair.key)}
+                                pickerLabel={pickerLabel}
+                                value={theme[pair.key]}
+                              />
+                              {pair.descriptionKey ? (
+                                <FieldDescription>
+                                  {t(pair.descriptionKey)}
+                                </FieldDescription>
+                              ) : null}
+                              {fieldErrors?.[pair.key] ? (
+                                <FormMessage variant="destructive">
+                                  {fieldErrors[pair.key]}
+                                </FormMessage>
+                              ) : null}
+                            </FieldContent>
+                          </Field>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <Field key={field.key}>
                         <FieldLabel required>{t(field.labelKey)}</FieldLabel>
                         <FieldContent>
                           <ColorSwatchInput
@@ -523,73 +579,48 @@ export const ThemeSettingsForm = ({
                           ) : null}
                         </FieldContent>
                       </Field>
-                      <Field>
-                        <FieldLabel required>{t(pair.labelKey)}</FieldLabel>
-                        <FieldContent>
-                          <ColorSwatchInput
-                            name={pair.formName}
-                            onChange={createHandler(pair.key)}
-                            pickerLabel={pickerLabel}
-                            value={theme[pair.key]}
-                          />
-                          {pair.descriptionKey ? (
-                            <FieldDescription>
-                              {t(pair.descriptionKey)}
-                            </FieldDescription>
-                          ) : null}
-                          {fieldErrors?.[pair.key] ? (
-                            <FormMessage variant="destructive">
-                              {fieldErrors[pair.key]}
-                            </FormMessage>
-                          ) : null}
-                        </FieldContent>
-                      </Field>
-                    </div>
-                  );
-                }
+                    );
+                  })}
+                </div>
+              </AdminSection>
+            ))}
 
-                return (
-                  <Field key={field.key}>
-                    <FieldLabel required>{t(field.labelKey)}</FieldLabel>
-                    <FieldContent>
-                      <ColorSwatchInput
-                        name={field.formName}
-                        onChange={createHandler(field.key)}
-                        pickerLabel={pickerLabel}
-                        value={theme[field.key]}
-                      />
-                      {field.descriptionKey ? (
-                        <FieldDescription>
-                          {t(field.descriptionKey)}
-                        </FieldDescription>
-                      ) : null}
-                      {fieldErrors?.[field.key] ? (
-                        <FormMessage variant="destructive">
-                          {fieldErrors[field.key]}
-                        </FormMessage>
-                      ) : null}
-                    </FieldContent>
-                  </Field>
-                );
-              })}
+            {state ? (
+              <FormMessage variant={state.ok ? "success" : "destructive"}>
+                {state.message}
+              </FormMessage>
+            ) : null}
+
+            <div className="flex justify-end">
+              <Button disabled={isPending} type="submit">
+                {isPending
+                  ? t("admin.settings.saving")
+                  : t("admin.settings.theme.submit")}
+              </Button>
             </div>
-          </AdminSection>
-        ))}
+          </form>
+        </AdminSections>
+      </TabsPanel>
 
-        {state ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
-          </FormMessage>
-        ) : null}
-
-        <div className="flex justify-end">
-          <Button disabled={isPending} type="submit">
-            {isPending
-              ? t("admin.settings.saving")
-              : t("admin.settings.theme.submit")}
-          </Button>
-        </div>
-      </form>
-    </AdminSections>
+      <TabsPanel value="preview">
+        <AdminSection>
+          <AdminSectionHeader>
+            <AdminSectionHeading>
+              <AdminSectionTitle>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.settings.theme.preview.title" />
+                </Suspense>
+              </AdminSectionTitle>
+              <AdminSectionDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.settings.theme.preview.description" />
+                </Suspense>
+              </AdminSectionDescription>
+            </AdminSectionHeading>
+          </AdminSectionHeader>
+          <ThemePreview theme={theme} />
+        </AdminSection>
+      </TabsPanel>
+    </Tabs>
   );
 };

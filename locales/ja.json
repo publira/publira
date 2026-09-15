@@ -1192,6 +1192,10 @@
       "theme_error": "テーマを表示できませんでした",
       "theme": {
         "color_picker": "カラーピッカー",
+        "tabs": {
+          "edit": "編集",
+          "preview": "プレビュー"
+        },
         "typefaces": {
           "title": "書体",
           "description": "読者の端末にインストールされている書体を優先順に指定します。空欄では既定のスタックを使います。",

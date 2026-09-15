@@ -1,0 +1,132 @@
+// @vitest-environment jsdom
+
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
+import { DEFAULT_TENANT_THEME } from "@publira/utils/theme-css-variables";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as renderBase,
+  screen,
+} from "@testing-library/react";
+import type { ReactNode } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
+
+import { ThemeSettingsForm } from "./theme-settings-form";
+
+vi.mock("#components/client-message", () => ({
+  ClientMessage: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+  useClientMessages: () => bindMessages(sharedCatalog("en")),
+}));
+
+vi.mock("next/navigation", () => ({
+  useParams: () => ({ tenant_id: "TENANT001" }),
+}));
+
+const render = (ui: ReactNode) =>
+  renderBase(ui, {
+    wrapper: ({ children }) => (
+      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+    ),
+  });
+
+/**
+ * Every string under the tabs suspends on the catalog, so the render and each
+ * tab switch are awaited: `act` lets React flush the commit that follows the
+ * `import()` instead of leaving the panel on its skeletons.
+ */
+const renderForm = async (
+  action = vi.fn().mockResolvedValue(null)
+): Promise<HTMLElement> => {
+  let container: HTMLElement | undefined;
+
+  await act(() => {
+    ({ container } = render(
+      <ThemeSettingsForm action={action} initialTheme={DEFAULT_TENANT_THEME} />
+    ));
+  });
+
+  if (!container) {
+    throw new Error("the form did not render");
+  }
+
+  return container;
+};
+
+const openTab = async (name: string): Promise<void> => {
+  await act(() => {
+    fireEvent.click(screen.getByRole("tab", { name }));
+  });
+};
+
+const previewFrame = (container: HTMLElement): HTMLElement => {
+  const frame = container.querySelector<HTMLElement>(".publira-theme-scope");
+  if (!frame) {
+    throw new Error("the preview frame is missing");
+  }
+
+  return frame;
+};
+
+afterEach(() => {
+  cleanup();
+});
+
+describe("ThemeSettingsForm", () => {
+  it("opens on the fields, with the preview behind its own tab", async () => {
+    const container = await renderForm();
+
+    expect(
+      screen.getByRole("tab", { name: "Edit", selected: true })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("textbox", { name: /Primary color/u })
+    ).toBeTruthy();
+    expect(container.querySelector(".publira-theme-scope")).toBeNull();
+  });
+
+  it("shows the edited colors on the preview tab before they are saved", async () => {
+    const container = await renderForm();
+
+    await act(() => {
+      fireEvent.change(
+        screen.getByRole("textbox", { name: /Primary color/u }),
+        {
+          target: { value: "#ff0000" },
+        }
+      );
+    });
+    await openTab("Preview");
+
+    expect(
+      previewFrame(container).style.getPropertyValue("--publira-color-primary")
+    ).toBe("#ff0000");
+  });
+
+  it("keeps the selected tab when the save fails", async () => {
+    const action = vi.fn().mockResolvedValue({
+      fieldErrors: { primaryColor: "Enter a color as #RRGGBB." },
+      message: "Could not save the theme. Please try again later.",
+      ok: false,
+    });
+    await renderForm(action);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save the theme" }));
+
+    expect(await screen.findByText("Enter a color as #RRGGBB.")).toBeTruthy();
+    expect(
+      screen.getByRole("tab", { name: "Edit", selected: true })
+    ).toBeTruthy();
+  });
+});

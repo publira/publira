@@ -1192,6 +1192,10 @@
       "theme_error": "無法顯示主題",
       "theme": {
         "color_picker": "色彩選擇器",
+        "tabs": {
+          "edit": "編輯",
+          "preview": "預覽"
+        },
         "typefaces": {
           "title": "字體",
           "description": "依優先順序指定讀者裝置中已安裝的字體。留空則使用預設字體堆疊。",
