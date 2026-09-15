@@ -1,7 +1,6 @@
 "use client";
 
-import { ChevronDownIcon, ChevronUpIcon } from "@publira/icons";
-import { Button } from "@publira/ui-components/button";
+import type { DragEndEvent } from "@dnd-kit/react";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
@@ -13,6 +12,12 @@ import {
 } from "react";
 
 import { ClientMessage } from "#components/client-message";
+import {
+  SortableItem,
+  SortableItemHandle,
+  SortableList,
+  withItemMoved,
+} from "#components/sortable-list";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { reorderCreatorRolesAction } from "../_lib/actions";
@@ -25,24 +30,8 @@ interface CreatorRoleListProps {
   creatorRoles: CreatorRoleListItem[];
 }
 
-/** Where a move button sends the role it sits on. */
-type MoveDirection = -1 | 1;
-
-const withCreatorRoleMoved = (
-  creatorRoles: CreatorRoleListItem[],
-  index: number,
-  direction: MoveDirection
-): CreatorRoleListItem[] | null => {
-  const target = index + direction;
-  if (target < 0 || target >= creatorRoles.length) {
-    return null;
-  }
-
-  const moved = [...creatorRoles];
-  const [creatorRole] = moved.splice(index, 1);
-  moved.splice(target, 0, creatorRole);
-  return moved;
-};
+const creatorRoleId = (creatorRole: CreatorRoleListItem): string =>
+  creatorRole.publicId;
 
 /**
  * The tenant's creator roles in priority order, with the controls that write
@@ -57,10 +46,6 @@ const withCreatorRoleMoved = (
  * goes up beside the order it wants, and a list someone else has changed in
  * the meantime is refused instead of merged. The whole list therefore has to
  * be on screen, which is why this screen does not page.
- *
- * Each move button is named by the text inside it rather than by an
- * `aria-label`, so the copy is a node with a boundary of its own and the
- * control is on screen and usable before the catalog arrives.
  */
 export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
   const tenantId = useTenantId();
@@ -72,15 +57,15 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
   );
   const [reorderErrorMessage, setReorderErrorMessage] = useState("");
 
-  const moveCreatorRole = useCallback(
-    (index: number, direction: MoveDirection) => {
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
       const currentCreatorRoles = optimisticCreatorRoles;
-      const nextCreatorRoles = withCreatorRoleMoved(
+      const nextCreatorRoles = withItemMoved(
         currentCreatorRoles,
-        index,
-        direction
+        creatorRoleId,
+        event
       );
-      if (!nextCreatorRoles) {
+      if (nextCreatorRoles === currentCreatorRoles) {
         return;
       }
 
@@ -91,17 +76,13 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
         formData.set("tenant_id", tenantId);
         formData.set(
           "creator_role_public_ids",
-          JSON.stringify(
-            nextCreatorRoles.map((creatorRole) => creatorRole.publicId)
-          )
+          JSON.stringify(nextCreatorRoles.map(creatorRoleId))
         );
-        // The order the buttons were rendered from, so a console left open
-        // while someone else moved a role is refused rather than merged.
+        // The order the list was rendered from, so a console left open while
+        // someone else moved a role is refused rather than merged.
         formData.set(
           "expected_creator_role_public_ids",
-          JSON.stringify(
-            currentCreatorRoles.map((creatorRole) => creatorRole.publicId)
-          )
+          JSON.stringify(currentCreatorRoles.map(creatorRoleId))
         );
 
         const result = await reorderCreatorRolesAction(formData);
@@ -116,63 +97,44 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
       {reorderErrorMessage ? (
         <FormMessage variant="destructive">{reorderErrorMessage}</FormMessage>
       ) : null}
-      <ul aria-labelledby={CREATOR_ROLE_LIST_TITLE_ID} className="grid gap-3">
+      <SortableList
+        aria-labelledby={CREATOR_ROLE_LIST_TITLE_ID}
+        className="grid gap-3"
+        onDragEnd={handleDragEnd}
+      >
         {optimisticCreatorRoles.map((creatorRole, index) => (
-          <li
+          <SortableItem
             className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
+            disabled={isPending}
+            id={creatorRole.publicId}
+            index={index}
             key={creatorRole.publicId}
           >
-            <p className="pt-2 text-xs text-muted-foreground sm:w-20">
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <ClientMessage
-                  message="admin.creator_roles.priority_hint"
-                  values={{ position: String(index + 1) }}
-                />
-              </Suspense>
-            </p>
-            <CreatorRoleRenameForm creatorRole={creatorRole} />
-            <div className="flex items-start gap-2">
-              <Button
-                disabled={isPending || index === 0}
-                onClick={() => moveCreatorRole(index, -1)}
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                <ChevronUpIcon aria-hidden="true" className="size-4" />
-                <span className="sr-only">
-                  <Suspense fallback={null}>
-                    <ClientMessage
-                      message="admin.creator_roles.move_up_action"
-                      values={{ name: creatorRole.name }}
-                    />
-                  </Suspense>
-                </span>
-              </Button>
-              <Button
-                disabled={
-                  isPending || index === optimisticCreatorRoles.length - 1
-                }
-                onClick={() => moveCreatorRole(index, 1)}
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                <ChevronDownIcon aria-hidden="true" className="size-4" />
-                <span className="sr-only">
-                  <Suspense fallback={null}>
-                    <ClientMessage
-                      message="admin.creator_roles.move_down_action"
-                      values={{ name: creatorRole.name }}
-                    />
-                  </Suspense>
-                </span>
-              </Button>
-              <CreatorRoleDeleteButton creatorRole={creatorRole} />
+            {/* The height of the name field beside it, so the grip and the
+                position are level with the row's first line. */}
+            <div className="flex h-10 items-center gap-2 sm:w-28">
+              <SortableItemHandle className="h-full">
+                <Suspense fallback={null}>
+                  <ClientMessage
+                    message="admin.creator_roles.reorder_action"
+                    values={{ name: creatorRole.name }}
+                  />
+                </Suspense>
+              </SortableItemHandle>
+              <p className="text-xs text-muted-foreground">
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <ClientMessage
+                    message="admin.creator_roles.priority_hint"
+                    values={{ position: String(index + 1) }}
+                  />
+                </Suspense>
+              </p>
             </div>
-          </li>
+            <CreatorRoleRenameForm creatorRole={creatorRole} />
+            <CreatorRoleDeleteButton creatorRole={creatorRole} />
+          </SortableItem>
         ))}
-      </ul>
+      </SortableList>
     </div>
   );
 };

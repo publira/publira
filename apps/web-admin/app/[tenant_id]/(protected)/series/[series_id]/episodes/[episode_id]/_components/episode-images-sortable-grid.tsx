@@ -1,11 +1,19 @@
 "use client";
 
+import type { DragEndEvent } from "@dnd-kit/react";
 import { useToastManager } from "@publira/ui-components";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useOptimistic, useRef, useTransition } from "react";
+import { Suspense, useCallback, useOptimistic, useTransition } from "react";
 
 import { useAdminMessages } from "#components/admin-locale-context";
+import { ClientMessage } from "#components/client-message";
+import {
+  SortableItem,
+  SortableItemHandle,
+  SortableList,
+  withItemMoved,
+} from "#components/sortable-list";
 import type { EpisodeImageItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -18,26 +26,7 @@ interface EpisodeImagesSortableGridProps {
   ) => Promise<{ ok: boolean; message?: string }>;
 }
 
-const reorderItems = <T extends { id: string }>(
-  items: T[],
-  activeId: string,
-  targetId: string
-): T[] => {
-  if (activeId === targetId) {
-    return items;
-  }
-
-  const nextItems = [...items];
-  const fromIndex = nextItems.findIndex((item) => item.id === activeId);
-  const toIndex = nextItems.findIndex((item) => item.id === targetId);
-  if (fromIndex === -1 || toIndex === -1) {
-    return items;
-  }
-
-  const [moved] = nextItems.splice(fromIndex, 1);
-  nextItems.splice(toIndex, 0, moved);
-  return nextItems;
-};
+const imageId = (image: EpisodeImageItem): string => image.id;
 
 export const EpisodeImagesSortableGrid = ({
   seriesPublicId,
@@ -54,7 +43,6 @@ export const EpisodeImagesSortableGrid = ({
     images,
     (_currentItems, nextItems: EpisodeImageItem[]) => nextItems
   );
-  const draggingImageIdRef = useRef<string | null>(null);
 
   const submitReorder = useCallback(
     async (nextItems: EpisodeImageItem[]) => {
@@ -62,10 +50,7 @@ export const EpisodeImagesSortableGrid = ({
       formData.set("tenant_id", tenantId);
       formData.set("series_public_id", seriesPublicId);
       formData.set("episode_public_id", episodePublicId);
-      formData.set(
-        "ordered_image_ids",
-        JSON.stringify(nextItems.map((image) => image.id))
-      );
+      formData.set("ordered_image_ids", JSON.stringify(nextItems.map(imageId)));
       try {
         const result = await reorderAction(formData);
         if (!result.ok) {
@@ -94,79 +79,70 @@ export const EpisodeImagesSortableGrid = ({
     [add, episodePublicId, reorderAction, t, router, seriesPublicId, tenantId]
   );
 
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {
-    event.preventDefault();
-  }, []);
-
-  const handleDragStart = useCallback((event: React.DragEvent<HTMLElement>) => {
-    draggingImageIdRef.current = event.currentTarget.dataset.imageId ?? null;
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLElement>) => {
-      event.preventDefault();
-      const activeId = draggingImageIdRef.current;
-      const targetId = event.currentTarget.dataset.imageId;
-      if (!activeId || !targetId) {
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const currentItems = optimisticItems;
+      const movedItems = withItemMoved(currentItems, imageId, event);
+      if (movedItems === currentItems) {
         return;
       }
 
-      const nextItems = reorderItems(optimisticItems, activeId, targetId).map(
-        (item, nextIndex) => ({
-          ...item,
-          displayOrder: nextIndex + 1,
-        })
-      );
+      const nextItems = movedItems.map((item, index) => ({
+        ...item,
+        displayOrder: index + 1,
+      }));
 
-      startTransition(() => {
+      startTransition(async () => {
         setOptimisticItems(nextItems);
-      });
-      const executeReorder = async () => {
         await submitReorder(nextItems);
-      };
-      executeReorder();
-      draggingImageIdRef.current = null;
+      });
     },
     [optimisticItems, setOptimisticItems, startTransition, submitReorder]
   );
 
-  const handleDragEnd = useCallback(() => {
-    draggingImageIdRef.current = null;
-  }, []);
-
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+    <SortableList
+      aria-label={t("admin.series.episodes.image_list_title")}
+      className="grid grid-cols-2 gap-3 md:grid-cols-3"
+      onDragEnd={handleDragEnd}
+    >
       {optimisticItems.map((image, index) => (
-        // Drag-and-drop reordering is intentionally on the figure container.
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
-        <figure
-          className="grid cursor-move gap-2 border border-border bg-background p-2"
-          data-image-id={image.id}
-          data-pending={isPending ? "true" : undefined}
-          draggable={!isPending}
+        <SortableItem
+          className="grid gap-2 border border-border bg-background p-2"
+          disabled={isPending}
+          id={image.id}
+          index={index}
           key={image.id}
-          onDragEnd={handleDragEnd}
-          onDragOver={handleDragOver}
-          onDragStart={handleDragStart}
-          onDrop={handleDrop}
         >
-          <Image
-            alt={t("admin.series.episodes.image_alt", {
-              index: index + 1,
-            })}
-            className="h-36 w-full rounded object-cover"
-            height={Math.max(image.height, 144)}
-            // The cell is one grid column wide, not the manuscript page's own
-            // width, so the loader is asked for the column instead of the original.
-            sizes="(max-width: 768px) 50vw, 33vw"
-            src={image.imageUrl}
-            width={Math.max(image.width, 240)}
-          />
-          <figcaption className="text-xs text-muted-foreground">
-            {image.displayOrder} / {image.width}x{image.height}
-          </figcaption>
-        </figure>
+          <figure className="grid gap-2">
+            <Image
+              alt={t("admin.series.episodes.image_alt", {
+                index: index + 1,
+              })}
+              className="h-36 w-full rounded object-cover"
+              height={Math.max(image.height, 144)}
+              // The cell is one grid column wide, not the manuscript page's own
+              // width, so the loader is asked for the column instead of the original.
+              sizes="(max-width: 768px) 50vw, 33vw"
+              src={image.imageUrl}
+              width={Math.max(image.width, 240)}
+            />
+            <figcaption className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>
+                {image.displayOrder} / {image.width}x{image.height}
+              </span>
+              <SortableItemHandle>
+                <Suspense fallback={null}>
+                  <ClientMessage
+                    message="admin.series.episodes.image_reorder_action"
+                    values={{ position: String(index + 1) }}
+                  />
+                </Suspense>
+              </SortableItemHandle>
+            </figcaption>
+          </figure>
+        </SortableItem>
       ))}
-    </div>
+    </SortableList>
   );
 };

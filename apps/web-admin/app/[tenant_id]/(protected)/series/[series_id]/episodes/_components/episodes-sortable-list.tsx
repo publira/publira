@@ -1,5 +1,6 @@
 "use client";
 
+import type { DragEndEvent } from "@dnd-kit/react";
 import { useToastManager } from "@publira/ui-components";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -11,7 +12,6 @@ import {
   useCallback,
   useContext,
   useOptimistic,
-  useRef,
   useTransition,
 } from "react";
 
@@ -20,6 +20,12 @@ import {
   useAdminMessages,
 } from "#components/admin-locale-context";
 import { ClientMessage } from "#components/client-message";
+import {
+  SortableItem,
+  SortableItemHandle,
+  SortableList,
+  withItemMoved,
+} from "#components/sortable-list";
 import type { EpisodeItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -32,26 +38,7 @@ interface EpisodesSortableListProps {
   timeZone: string;
 }
 
-const reorderItems = <T extends { publicId: string }>(
-  items: T[],
-  activeId: string,
-  targetId: string
-): T[] => {
-  if (activeId === targetId) {
-    return items;
-  }
-
-  const nextItems = [...items];
-  const fromIndex = nextItems.findIndex((item) => item.publicId === activeId);
-  const toIndex = nextItems.findIndex((item) => item.publicId === targetId);
-  if (fromIndex === -1 || toIndex === -1) {
-    return items;
-  }
-
-  const [moved] = nextItems.splice(fromIndex, 1);
-  nextItems.splice(toIndex, 0, moved);
-  return nextItems;
-};
+const episodeId = (episode: EpisodeItem): string => episode.publicId;
 
 export const EpisodesSortableList = ({
   seriesPublicId,
@@ -72,7 +59,6 @@ export const EpisodesSortableList = ({
     episodes,
     (_currentItems, nextItems: EpisodeItem[]) => nextItems
   );
-  const draggingEpisodeIdRef = useRef<string | null>(null);
 
   const submitReorder = useCallback(
     async (currentItems: EpisodeItem[], nextItems: EpisodeItem[]) => {
@@ -83,11 +69,11 @@ export const EpisodesSortableList = ({
       // refuses when the series no longer matches the old one.
       formData.set(
         "current_episode_public_ids",
-        JSON.stringify(currentItems.map((episode) => episode.publicId))
+        JSON.stringify(currentItems.map(episodeId))
       );
       formData.set(
         "ordered_episode_public_ids",
-        JSON.stringify(nextItems.map((episode) => episode.publicId))
+        JSON.stringify(nextItems.map(episodeId))
       );
       try {
         const result = await reorderAction(formData);
@@ -116,76 +102,59 @@ export const EpisodesSortableList = ({
     [add, t, reorderAction, router, seriesPublicId, tenantId]
   );
 
-  const handleDragOver = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-    },
-    []
-  );
-
-  const handleDragStart = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      draggingEpisodeIdRef.current =
-        event.currentTarget.dataset.episodeId ?? null;
-    },
-    []
-  );
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      const activeId = draggingEpisodeIdRef.current;
-      const targetId = event.currentTarget.dataset.episodeId;
-      if (!activeId || !targetId) {
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const currentItems = optimisticItems;
+      const movedItems = withItemMoved(currentItems, episodeId, event);
+      if (movedItems === currentItems) {
         return;
       }
 
       // A drag permutes the rows of this page only, so the page's own order
       // indexes are handed back out in ascending slot order. Numbering from 1
       // would be wrong on every page but the first.
-      const pageOrderIndexes = optimisticItems
+      const pageOrderIndexes = currentItems
         .map((item) => item.orderIndex)
-        .toSorted((a, b) => a - b);
-      const nextItems = reorderItems(optimisticItems, activeId, targetId).map(
-        (item, index) => ({
-          ...item,
-          orderIndex: pageOrderIndexes[index] ?? item.orderIndex,
-        })
-      );
+        .toSorted((left, right) => left - right);
+      const nextItems = movedItems.map((item, index) => ({
+        ...item,
+        orderIndex: pageOrderIndexes[index] ?? item.orderIndex,
+      }));
 
-      startTransition(() => {
+      startTransition(async () => {
         setOptimisticItems(nextItems);
-      });
-      const executeReorder = async () => {
         // The pre-drag order goes up as well, so a stale page is refused
         // instead of merged.
-        await submitReorder(optimisticItems, nextItems);
-      };
-      executeReorder();
-      draggingEpisodeIdRef.current = null;
+        await submitReorder(currentItems, nextItems);
+      });
     },
     [optimisticItems, setOptimisticItems, startTransition, submitReorder]
   );
 
-  const handleDragEnd = useCallback(() => {
-    draggingEpisodeIdRef.current = null;
-  }, []);
-
   return (
-    <div className="grid gap-3">
-      {optimisticItems.map((episode) => (
-        <div
-          className="flex cursor-move items-center justify-between border border-border bg-background px-4 py-3"
-          data-episode-id={episode.publicId}
-          data-pending={isPending ? "true" : undefined}
-          draggable={!isPending}
+    <SortableList
+      aria-label={t("admin.series.episodes.list_title")}
+      className="grid gap-3"
+      onDragEnd={handleDragEnd}
+    >
+      {optimisticItems.map((episode, index) => (
+        <SortableItem
+          className="flex items-center justify-between gap-3 border border-border bg-background px-4 py-3"
+          disabled={isPending}
+          id={episode.publicId}
+          index={index}
           key={episode.publicId}
-          onDragEnd={handleDragEnd}
-          onDragOver={handleDragOver}
-          onDragStart={handleDragStart}
-          onDrop={handleDrop}
         >
-          <div className="grid gap-1">
+          <SortableItemHandle>
+            <Suspense fallback={null}>
+              <ClientMessage
+                message="admin.series.episodes.reorder_action"
+                values={{ title: episode.title }}
+              />
+            </Suspense>
+          </SortableItemHandle>
+
+          <div className="grid flex-1 gap-1">
             <p className="text-sm font-medium">
               {episode.orderIndex}. {episode.title}
             </p>
@@ -231,8 +200,8 @@ export const EpisodesSortableList = ({
               </Suspense>
             </LinkButton>
           </div>
-        </div>
+        </SortableItem>
       ))}
-    </div>
+    </SortableList>
   );
 };

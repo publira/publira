@@ -18,6 +18,7 @@ import {
   labelFormFields,
   creditAuthorViaUi,
   creditRowFields,
+  reorderWithKeyboard,
   signInAsSeedAdmin,
 } from "../src/admin";
 import {
@@ -288,14 +289,8 @@ test.describe("admin catalog masters", () => {
       roleName: "Artist",
     });
 
-    // Ordering inside a role, driven from the keyboard: the handle picks the
-    // row up, an arrow moves it, and the second press drops it. Asserted this
-    // way rather than with a pointer drag because it is the path a list of
-    // drag handles is most likely to lose.
-    await page.getByRole("button", { name: "Reorder author 3" }).focus();
-    await page.keyboard.press("Space");
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("Space");
+    // Ordering inside a role, driven from the keyboard.
+    await reorderWithKeyboard(page, "Reorder author 3", "ArrowUp");
     await expect(creditRowFields(page, 2).creatorCombobox).toHaveValue(
       artistTwo
     );
@@ -467,14 +462,12 @@ test.describe("admin catalog masters", () => {
     const created = await genreNamesInOrder(page);
     expect(created.indexOf(first)).toBeLessThan(created.indexOf(second));
 
-    // The list rearranges itself the moment the button is pressed, and a
-    // reorder puts nothing else on screen, so the flip below says nothing about
-    // whether the Action behind it has even been sent. Waiting for its answer
-    // is what keeps the reload from cancelling the write it is about to read.
+    // The list rearranges itself the moment the row is dropped, and a reorder
+    // puts nothing else on screen, so the flip below says nothing about whether
+    // the Action behind it has even been sent. Waiting for its answer is what
+    // keeps the reload from cancelling the write it is about to read.
     const reordered = serverActionAnswered(page);
-    await page
-      .getByRole("button", { exact: true, name: `Move ${second} up` })
-      .click();
+    await reorderWithKeyboard(page, `Reorder ${second}`, "ArrowUp");
     await reordered;
 
     await expect

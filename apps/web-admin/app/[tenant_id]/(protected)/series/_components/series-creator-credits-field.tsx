@@ -1,11 +1,8 @@
 "use client";
 
-import { move } from "@dnd-kit/helpers";
-import { DragDropProvider } from "@dnd-kit/react";
 import type { DragEndEvent } from "@dnd-kit/react";
-import { useSortable } from "@dnd-kit/react/sortable";
 import { toIntlLocale } from "@publira/i18n";
-import { CloseIcon, GripVerticalIcon, PlusIcon } from "@publira/icons";
+import { CloseIcon, PlusIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
 import {
   Combobox,
@@ -18,7 +15,6 @@ import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { cn } from "@publira/utils";
 import {
   Suspense,
   useCallback,
@@ -31,6 +27,12 @@ import {
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import {
+  SortableItem,
+  SortableItemHandle,
+  SortableList,
+  withItemMoved,
+} from "#components/sortable-list";
 
 import type { SeriesCreatorCredit } from "../series-types";
 
@@ -57,6 +59,8 @@ interface CreditRow {
   creatorPublicId: string;
   rolePublicId: string;
 }
+
+const rowKey = (row: CreditRow): string => row.key;
 
 /** A row says something only once it names both halves of a credit. */
 const isComplete = (row: CreditRow): boolean =>
@@ -167,11 +171,9 @@ interface CreatorCreditRowProps {
  * placeholder says what is being asked — so the accessible name comes from a
  * visually hidden one naming the row's position.
  *
- * The row is dragged by its handle alone, so the pickers inside it still take
- * a pointer, and the handle is focusable so the keyboard sensor can move the
- * row without a pointer at all. `type` and `accept` are the role, which is
- * what keeps a drag inside one role: the editor orders the artists among
- * themselves, and the roles themselves are ordered on the author roles page.
+ * `type` and `accept` are the role, which is what keeps a drag inside one
+ * role: the editor orders the artists among themselves, and the roles
+ * themselves are ordered on the author roles page.
  */
 const CreatorCreditRow = ({
   creatorItems,
@@ -187,38 +189,23 @@ const CreatorCreditRow = ({
 }: CreatorCreditRowProps) => {
   const creatorComboboxId = useId();
   const roleComboboxId = useId();
-  const { handleRef, isDragging, ref } = useSortable({
-    accept: rolePublicId,
-    id,
-    index,
-    type: rolePublicId,
-  });
 
   return (
-    <li
-      className={cn(
-        "flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3",
-        isDragging && "opacity-60"
-      )}
-      ref={ref}
+    <SortableItem
+      accept={rolePublicId}
+      className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3"
+      id={id}
+      index={index}
+      type={rolePublicId}
     >
-      <button
-        className="shrink-0 cursor-grab touch-none rounded-control p-1 text-muted-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        ref={handleRef}
-        type="button"
-      >
-        <GripVerticalIcon aria-hidden="true" className="size-4" />
-        {/* The handle's own name, as a node rather than an `aria-label`, so the
-            copy keeps a boundary of its own. */}
-        <span className="sr-only">
-          <Suspense fallback={null}>
-            <ClientMessage
-              message="admin.series.form.creators_reorder"
-              values={{ position: String(position) }}
-            />
-          </Suspense>
-        </span>
-      </button>
+      <SortableItemHandle>
+        <Suspense fallback={null}>
+          <ClientMessage
+            message="admin.series.form.creators_reorder"
+            values={{ position: String(position) }}
+          />
+        </Suspense>
+      </SortableItemHandle>
       <Field className="min-w-40 flex-1">
         <FieldLabel className="sr-only" htmlFor={creatorComboboxId}>
           <Suspense fallback={null}>
@@ -296,7 +283,7 @@ const CreatorCreditRow = ({
           </Suspense>
         </span>
       </Button>
-    </li>
+    </SortableItem>
   );
 };
 
@@ -396,18 +383,7 @@ export const SeriesCreatorCreditsField = ({
    * editor just dragged into place.
    */
   const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setRows((currentRows) => {
-      const currentKeys = currentRows.map((row) => row.key);
-      const nextKeys = move(currentKeys, event);
-      if (nextKeys === currentKeys) {
-        return currentRows;
-      }
-      const byKey = new Map(currentRows.map((row) => [row.key, row]));
-      return nextKeys.flatMap((key) => {
-        const row = byKey.get(key);
-        return row ? [row] : [];
-      });
-    });
+    setRows((currentRows) => withItemMoved(currentRows, rowKey, event));
   }, []);
 
   const handleRemove = useCallback((key: string) => {
@@ -477,29 +453,27 @@ export const SeriesCreatorCreditsField = ({
           </Suspense>
         </p>
       ) : (
-        <DragDropProvider onDragEnd={handleDragEnd}>
-          <ul className="grid gap-2">
-            {resolvedRows.map((row, index) => (
-              <CreatorCreditRow
-                creatorItems={creatorItems}
-                creatorPublicId={row.creatorPublicId}
-                id={row.key}
-                index={index}
-                key={row.key}
-                onCreatorChange={(nextCreatorPublicId) =>
-                  handleCreatorChange(row.key, nextCreatorPublicId)
-                }
-                onRemove={() => handleRemove(row.key)}
-                onRoleChange={(nextRolePublicId) =>
-                  handleRoleChange(row.key, nextRolePublicId)
-                }
-                position={index + 1}
-                roleItems={row.roleItems}
-                rolePublicId={row.rolePublicId}
-              />
-            ))}
-          </ul>
-        </DragDropProvider>
+        <SortableList className="grid gap-2" onDragEnd={handleDragEnd}>
+          {resolvedRows.map((row, index) => (
+            <CreatorCreditRow
+              creatorItems={creatorItems}
+              creatorPublicId={row.creatorPublicId}
+              id={row.key}
+              index={index}
+              key={row.key}
+              onCreatorChange={(nextCreatorPublicId) =>
+                handleCreatorChange(row.key, nextCreatorPublicId)
+              }
+              onRemove={() => handleRemove(row.key)}
+              onRoleChange={(nextRolePublicId) =>
+                handleRoleChange(row.key, nextRolePublicId)
+              }
+              position={index + 1}
+              roleItems={row.roleItems}
+              rolePublicId={row.rolePublicId}
+            />
+          ))}
+        </SortableList>
       )}
 
       {creatorItems.length === 0 ? (

@@ -1,13 +1,6 @@
 // @vitest-environment jsdom
 
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,6 +12,48 @@ import { CreatorRoleList } from "./creator-role-list";
 
 const reorder =
   vi.fn<(formData: FormData) => Promise<CreatorRoleReorderResult>>();
+
+/**
+ * The shape of a drop, as much of it as `move` reads: which row was picked up
+ * and which one it was let go over.
+ */
+interface DropEvent {
+  operation: {
+    canceled: boolean;
+    source: { id: string };
+    target: { id: string };
+  };
+}
+
+/**
+ * dnd-kit measures the rows it sorts, which jsdom cannot do, so the provider
+ * stands in and hands the drop back to the test instead. Dragging itself is an
+ * e2e concern; what belongs here is what the list does with a drop.
+ */
+const dnd = vi.hoisted(() => ({
+  drop: null as ((event: DropEvent) => void) | null,
+}));
+
+vi.mock("@dnd-kit/react", () => ({
+  DragDropProvider: ({
+    children,
+    onDragEnd,
+  }: {
+    children: ReactNode;
+    onDragEnd: (event: DropEvent) => void;
+  }) => {
+    dnd.drop = onDragEnd;
+    return children;
+  },
+}));
+
+vi.mock("@dnd-kit/react/sortable", () => ({
+  useSortable: () => ({
+    handleRef: vi.fn(),
+    isDragging: false,
+    ref: vi.fn(),
+  }),
+}));
 
 // The Actions are `"use server"`, so the module they live in cannot be
 // evaluated here at all. What the list is responsible for is the payload it
@@ -48,7 +83,25 @@ const renderList = async (ui: ReactNode) => {
   await act(() => {
     render(ui);
   });
-  await screen.findByRole("button", { name: "Move Artist up" });
+  await screen.findByRole("button", { name: "Reorder Artist" });
+};
+
+/** Drop the row `sourceId` names over the row `targetId` names. */
+const dropOver = async (sourceId: string, targetId: string) => {
+  const { drop } = dnd;
+  if (!drop) {
+    throw new Error("the list was never rendered");
+  }
+
+  await act(() => {
+    drop({
+      operation: {
+        canceled: false,
+        source: { id: sourceId },
+        target: { id: targetId },
+      },
+    });
+  });
 };
 
 /** The role names in the order the rows are on screen. */
@@ -67,6 +120,7 @@ beforeEach(() => {
   // The language the console served this document in, which is what
   // `<ClientMessage>` falls back to when no locale cookie names one.
   document.documentElement.lang = "en";
+  dnd.drop = null;
   reorder.mockResolvedValue({ ok: true });
 });
 
@@ -98,32 +152,22 @@ describe("CreatorRoleList", () => {
     ).toBe("Artist");
   });
 
-  // Nothing sits above the leading role or below the last one, so the two
-  // moves that have nowhere to go are closed rather than left to be refused.
-  it("closes the moves that would leave the order", async () => {
+  // The handle is what the pointer, the touch screen and the keyboard sensor
+  // all pick a row up by, so every row has to offer one.
+  it("gives every row a drag handle named after the role it moves", async () => {
     await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
 
     expect(
-      screen.getByRole<HTMLButtonElement>("button", {
-        name: "Move Original Author up",
-      }).disabled
-    ).toBe(true);
-    expect(
-      screen.getByRole<HTMLButtonElement>("button", {
-        name: "Move Writer down",
-      }).disabled
-    ).toBe(true);
-    expect(
-      screen.getByRole<HTMLButtonElement>("button", {
-        name: "Move Original Author down",
-      }).disabled
-    ).toBe(false);
+      screen
+        .getAllByRole("button", { name: /^Reorder /u })
+        .map((handle) => handle.textContent)
+    ).toEqual(["Reorder Original Author", "Reorder Artist", "Reorder Writer"]);
   });
 
   it("posts the whole order it wants beside the one it was showing", async () => {
     await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Move Artist up" }));
+    await dropOver("ROLE002", "ROLE001");
 
     await waitFor(() => {
       expect(reorder).toHaveBeenCalledTimes(1);
@@ -133,7 +177,7 @@ describe("CreatorRoleList", () => {
       "ROLE001",
       "ROLE003",
     ]);
-    // The order the buttons were rendered from. The API refuses the write when
+    // The order the rows were rendered from. The API refuses the write when
     // this no longer matches what the tenant's roles are in.
     expect(submittedOrder("expected_creator_role_public_ids")).toEqual([
       "ROLE001",
@@ -142,14 +186,24 @@ describe("CreatorRoleList", () => {
     ]);
   });
 
-  it("moves the row as soon as the button is pressed", async () => {
+  // A drop that put the row back where it came from changes nothing, so there
+  // is no order to post and no conflict to risk.
+  it("writes nothing when the row is dropped where it started", async () => {
+    await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
+
+    await dropOver("ROLE002", "ROLE002");
+
+    expect(reorder).not.toHaveBeenCalled();
+  });
+
+  it("moves the row as soon as the drop lands", async () => {
     // Never resolved: the assertion is about the window the write is open in.
     const pending = Promise.withResolvers<CreatorRoleReorderResult>();
     reorder.mockReturnValue(pending.promise);
 
     await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Move Artist up" }));
+    await dropOver("ROLE002", "ROLE001");
 
     await waitFor(() => {
       expect(namesOnScreen()).toEqual(["Artist", "Original Author", "Writer"]);
@@ -167,7 +221,7 @@ describe("CreatorRoleList", () => {
 
     await renderList(<CreatorRoleList creatorRoles={creatorRoles} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Move Artist up" }));
+    await dropOver("ROLE002", "ROLE001");
 
     expect(
       await screen.findByText("The role priority changed somewhere else.")

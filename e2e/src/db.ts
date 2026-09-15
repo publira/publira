@@ -213,6 +213,27 @@ export const deleteGenresByNames = (names: readonly string[]): void => {
 };
 
 /**
+ * Remove creator roles created by the list-reordering suite, matched by name.
+ *
+ * The names carry a per-run suffix, so the match is that run's alone. Nothing
+ * is credited in a role this suite makes, so the roles go on their own — a
+ * credit would hold one down the way `series_genres` holds a genre.
+ */
+export const deleteCreatorRolesByNames = (names: readonly string[]): void => {
+  const quoted: string[] = [];
+  for (const name of names) {
+    const trimmed = name.trim();
+    if (trimmed.length > 0) {
+      quoted.push(quoteSqlLiteral(trimmed));
+    }
+  }
+  if (quoted.length === 0) {
+    return;
+  }
+  runSql(`DELETE FROM creator_roles WHERE name IN (${quoted.join(", ")});`);
+};
+
+/**
  * Remove pages created by admin published-page tests.
  *
  * `page_versions` cascade from the page, and `pages.published_version_id`
