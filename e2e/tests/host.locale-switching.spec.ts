@@ -137,7 +137,7 @@ test.describe("web-host locale in the URL", () => {
       page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { exact: true, name: "シリーズ" })
+      page.getByRole("link", { exact: true, name: "レーベル" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
   });
@@ -233,12 +233,12 @@ test.describe("web-host locale in the URL", () => {
       page.getByRole("heading", { level: 1, name: "Privacy policy" })
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { exact: true, name: "Series" })
+      page.getByRole("link", { exact: true, name: "Labels" })
     ).toBeVisible();
 
     await page.goto(localeHostPath("ja", "/privacy"));
     await expect(
-      page.getByRole("link", { exact: true, name: "シリーズ" })
+      page.getByRole("link", { exact: true, name: "レーベル" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
     // The site chrome is Japanese; what the tenant wrote is not translated, and

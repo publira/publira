@@ -2157,7 +2157,6 @@
     "nav": {
       "account_menu": "账户菜单",
       "announcements": "公告",
-      "creators": "作者",
       "footer_links": "页脚链接",
       "genres": "类型",
       "labels": "品牌",
@@ -2174,7 +2173,6 @@
       "search": "搜索",
       "search_label": "搜索作品",
       "search_submit": "搜索",
-      "series": "系列",
       "signup": "立即开始"
     },
     "notifications": {
