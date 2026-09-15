@@ -132,11 +132,13 @@ const expectLeadingAnnouncement = async (
  * Read a notification inbox until the announcement's row is on it and the
  * header bell counts it.
  *
- * Two delays are waited out at once: the Outbox worker writes the notification
- * rows after the console request has returned, and both the list and the count
- * are cached private reads. Retrying the navigation covers both, and the count
- * is asserted inside the retry because it is an entry of its own — a bell read
- * before the worker wrote stays at zero until that entry is replaced.
+ * What is waited out is the Outbox worker: it writes the notification rows
+ * after the console request has already returned. Nothing has to be waited out
+ * on the reading side — an inbox read is `"use cache: private"`, which Next.js
+ * keeps in no server cache at all and in a client cache that a reload drops, so
+ * every `page.goto` here asks the database again. The count is asserted inside
+ * the retry because it is a read of its own, and the two land in the same
+ * navigation rather than in a fixed order.
  */
 const expectUnreadNotification = async (
   page: Page,
@@ -326,17 +328,15 @@ test.describe("admin announcement delivery", () => {
     ]);
 
     // The reader of the same tenant was not addressed, so the announcement
-    // reaches neither their inbox nor their bell. The navigation is retried
-    // because the count is a cached private read: an entry filled while the
-    // previous test's broadcast was still live is waited out rather than read
-    // as this announcement having reached them.
+    // reaches neither their inbox nor their bell. This is read once rather than
+    // retried: the recipient set above was taken after the event had been
+    // drained, so a row for this reader would already exist, and the inbox
+    // carries nothing from the preceding test — its reads are
+    // `"use cache: private"`, which is never stored across requests.
     await signInAsAnnouncementDeliveryMember(page, "/notifications");
-    await expect(async () => {
-      await page.goto(deliveryHostUrl("/notifications"));
-      await expect(
-        page.getByRole("button", { name: "Notifications, none unread" })
-      ).toBeVisible({ timeout: 5000 });
-    }).toPass({ timeout: 30_000 });
+    await expect(
+      page.getByRole("button", { name: "Notifications, none unread" })
+    ).toBeVisible();
     await expect(notificationMention(page, title)).toHaveCount(0);
   });
 
