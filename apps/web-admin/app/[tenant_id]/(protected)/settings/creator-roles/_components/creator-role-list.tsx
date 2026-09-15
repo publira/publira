@@ -110,8 +110,10 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
             index={index}
             key={creatorRole.publicId}
           >
-            <div className="flex items-start gap-2 sm:w-28">
-              <SortableItemHandle>
+            {/* The height of the name field beside it, so the grip and the
+                position are level with the row's first line. */}
+            <div className="flex h-10 items-center gap-2 sm:w-28">
+              <SortableItemHandle className="h-full">
                 <Suspense fallback={null}>
                   <ClientMessage
                     message="admin.creator_roles.reorder_action"
@@ -119,7 +121,7 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
                   />
                 </Suspense>
               </SortableItemHandle>
-              <p className="pt-2 text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <ClientMessage
                     message="admin.creator_roles.priority_hint"

@@ -99,7 +99,9 @@ export const GenreList = ({ genres }: GenreListProps) => {
             index={index}
             key={genre.publicId}
           >
-            <SortableItemHandle>
+            {/* The height of the name field beside it, so the grip is level
+                with the row's first line rather than above it. */}
+            <SortableItemHandle className="h-10">
               <Suspense fallback={null}>
                 <ClientMessage
                   message="admin.genres.reorder_action"

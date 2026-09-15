@@ -126,8 +126,19 @@ export const SortableItem = ({
  *
  * Its children are its accessible name, rendered visually hidden beside the
  * icon, so the copy stays a node with a boundary of its own.
+ *
+ * The grip is the height of its own icon, which leaves it above the middle of
+ * a row built around a taller control. Such a row gives it that control's
+ * height through `className`, so the grip lines up with the field beside it
+ * and stays put when a message grows the row underneath.
  */
-export const SortableItemHandle = ({ children }: { children: ReactNode }) => {
+export const SortableItemHandle = ({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) => {
   const handle = useContext(SortableItemContext);
   if (handle === null) {
     throw new Error("SortableItem is required.");
@@ -136,7 +147,10 @@ export const SortableItemHandle = ({ children }: { children: ReactNode }) => {
 
   return (
     <button
-      className="shrink-0 cursor-grab touch-none rounded-control p-1 text-muted-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      className={cn(
+        "flex shrink-0 cursor-grab touch-none items-center justify-center rounded-control p-1 text-muted-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
       disabled={disabled}
       ref={handleRef}
       type="button"
