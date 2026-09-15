@@ -160,9 +160,14 @@ GRANT SELECT ON
     platform_user_roles
 TO publira_ticker;
 
--- Writes: the listing a publish promotes, the window boundary and the pinned
--- flag a drop answers for, and the rows the fan-out files. SELECT rides along on the last three
+-- Writes: the listing a publish promotes, the window boundary a drop answers
+-- for, and the rows the fan-out files. SELECT rides along on the last three
 -- because each insert is an ON CONFLICT DO NOTHING with a RETURNING clause.
-GRANT UPDATE ON episode_listings, episode_free_windows, announcements TO publira_ticker;
+GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
+-- The pinned flag is the one column expire-pinned-announcements writes, and an
+-- announcement carries the tenant's own words, so the grant names the column
+-- rather than the table. This role bypasses RLS, so a table-wide UPDATE here
+-- would let a ticker job rewrite any announcement of any tenant.
+GRANT UPDATE (pinned) ON announcements TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;
 

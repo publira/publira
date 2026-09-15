@@ -219,6 +219,31 @@ func TestTickerRoleRunsExpirePinnedAnnouncements(t *testing.T) {
 	}
 }
 
+// An announcement carries the tenant's own words, and this role bypasses RLS,
+// so the grant names the one column the job writes rather than the table.
+func TestTickerRoleCannotRewriteAnAnnouncement(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT05", "words.example.com", "Words Tenant")
+	announcementID := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenant.ID, uuid.NullUUID{},
+		time.Now().UTC(), sql.NullTime{})
+
+	ticker := pg.OpenTickerDB(t)
+	_, err := ticker.ExecContext(ctx,
+		"UPDATE announcements SET title = 'rewritten' WHERE id = $1", announcementID)
+	if err == nil {
+		t.Fatal("rewriting an announcement's title as the ticker role succeeded, want a permission denied error")
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
+		t.Fatalf("update announcements title error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
+	}
+}
+
 // TestTickerRoleCannotReachAnotherDomain is the other half of the per-table
 // grants: a table none of the jobs touches stays out of reach, so the list in
 // the seed is a boundary rather than a formality.

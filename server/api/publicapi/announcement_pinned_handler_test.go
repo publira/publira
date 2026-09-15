@@ -101,6 +101,24 @@ func TestAuthGetPinnedAnnouncementIsEmptyWhenNothingIsPinned(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// guestAnnouncementRow is what the query answers a caller it was given no user
+// for: the `announcement_reads` join matches nothing, so the read state comes
+// back as the SQL expression's own false rather than as NULL.
+func guestAnnouncementRow(
+	id, tenantID uuid.UUID,
+	title string,
+	createdAt time.Time,
+) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id", "tenant_id", "target_user_id", "announcement_type", "title", "body",
+		"link_url", "metadata", "created_at", "pinned", "pinned_until", "is_read", "read_at",
+	}).AddRow(
+		id, tenantID, uuid.NullUUID{}, "announcement", title, "The latest episode is out",
+		"/series/S001", json.RawMessage("{}"), createdAt, false, sql.NullTime{},
+		false, sql.NullTime{},
+	)
+}
+
 // A visitor who never signed in reads the tenant-wide rows, and the query is
 // told there is no reader to attach read state to.
 func TestAuthListAnnouncementsAnswersAVisitorWithNoSession(t *testing.T) {
@@ -112,7 +130,7 @@ func TestAuthListAnnouncementsAnswersAVisitorWithNoSession(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
 		WithArgs(uuid.NullUUID{}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
-		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "New Episode", now))
+		WillReturnRows(guestAnnouncementRow(announcementID, tenantID, "New Episode", now))
 
 	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListAnnouncements(context.Background(), connect.NewRequest(&publirav1.ListAnnouncementsRequest{
@@ -123,6 +141,14 @@ func TestAuthListAnnouncementsAnswersAVisitorWithNoSession(t *testing.T) {
 	}
 	if len(resp.Msg.Announcements) != 1 {
 		t.Fatalf("announcements = %d, want 1", len(resp.Msg.Announcements))
+	}
+
+	item := resp.Msg.Announcements[0]
+	if item.IsRead {
+		t.Fatal("is_read = true, want false: a visitor with no session has no read state")
+	}
+	if item.ReadAt != "" {
+		t.Fatalf("read_at = %q, want empty", item.ReadAt)
 	}
 
 	assertPublicExpectations(t, mock)
