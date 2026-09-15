@@ -63,15 +63,34 @@ test.describe("web-admin screenshots", () => {
         await expectScreenshot(page, viewport, "series-edit");
       });
 
-      test("the theme settings with the public site preview", async ({
+      test("the theme settings", async ({ page }) => {
+        await page.goto("/settings/theme");
+
+        await expect(
+          page.getByRole("tab", { name: "Edit", selected: true })
+        ).toBeVisible();
+        await expect(page.getByLabel(/Primary color/u).first()).toBeVisible();
+
+        await expectScreenshot(page, viewport, "settings-theme");
+      });
+
+      test("the public site preview behind the theme settings tab", async ({
         page,
       }) => {
         await page.goto("/settings/theme");
 
-        await expect(page.getByText("Public site preview")).toBeVisible();
-        await expect(page.getByLabel(/Primary color/u).first()).toBeVisible();
+        await page.getByRole("tab", { name: "Preview" }).click();
 
-        await expectScreenshot(page, viewport, "settings-theme");
+        await expect(page.getByText("Public site preview")).toBeVisible();
+
+        // Clicking scrolls the tab into view, and the console's sticky header
+        // photographs wherever the page was left, so the shot is taken from the
+        // top the other screens are recorded at.
+        await page.evaluate(() => {
+          window.scrollTo(0, 0);
+        });
+
+        await expectScreenshot(page, viewport, "settings-theme-preview");
       });
     });
   }

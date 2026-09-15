@@ -1192,6 +1192,10 @@
       "theme_error": "无法显示主题",
       "theme": {
         "color_picker": "取色器",
+        "tabs": {
+          "edit": "编辑",
+          "preview": "预览"
+        },
         "typefaces": {
           "title": "字体",
           "description": "按优先顺序指定读者设备中已安装的字体。留空则使用默认字体栈。",
