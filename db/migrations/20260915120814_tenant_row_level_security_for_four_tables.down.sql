@@ -2,8 +2,6 @@ DROP POLICY episode_image_variants_tenant_isolation ON episode_image_variants;
 
 ALTER TABLE episode_image_variants DISABLE ROW LEVEL SECURITY;
 
-DROP INDEX idx_episode_image_variants_tenant_id;
-
 ALTER TABLE ONLY episode_image_variants
     DROP CONSTRAINT episode_image_variants_tenant_id_fkey;
 

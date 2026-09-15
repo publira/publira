@@ -104,9 +104,6 @@ ALTER TABLE episode_image_variants
 ALTER TABLE ONLY episode_image_variants
     ADD CONSTRAINT episode_image_variants_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
--- INDEX: idx_episode_image_variants_tenant_id
-CREATE INDEX idx_episode_image_variants_tenant_id ON episode_image_variants USING btree (tenant_id);
-
 -- ROW SECURITY: episode_image_variants
 ALTER TABLE episode_image_variants ENABLE ROW LEVEL SECURITY;
 
