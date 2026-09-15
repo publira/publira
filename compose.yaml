@@ -35,7 +35,7 @@ services:
   # spans are a debugging aid for the current session, not a record worth
   # surviving a restart.
   jaeger:
-    image: jaegertracing/jaeger:2.20.0@sha256:46a886260e04002d8f45e213fc39063fa11a50446048fdaa64786fc0840cb9f8
+    image: jaegertracing/jaeger:2.21.0@sha256:3d0ac795ff98aa04d1be04311d2dac6c25b4bfc8322dc02e53bc5b170c5018c3
     restart: unless-stopped
     ports:
       # OTLP intake (http/protobuf, the protocol the SDKs are configured for)
