@@ -107,6 +107,10 @@
       "types": "./dist/table/index.d.mts",
       "default": "./dist/table/index.mjs"
     },
+    "./tabs": {
+      "types": "./dist/tabs/index.d.mts",
+      "default": "./dist/tabs/index.mjs"
+    },
     "./textarea": {
       "types": "./dist/textarea/index.d.mts",
       "default": "./dist/textarea/index.mjs"

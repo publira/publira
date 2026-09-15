@@ -27,6 +27,7 @@ export default defineConfig({
     "src/skeleton/index.ts",
     "src/switch/index.ts",
     "src/table/index.ts",
+    "src/tabs/index.ts",
     "src/textarea/index.ts",
   ],
   format: "esm",

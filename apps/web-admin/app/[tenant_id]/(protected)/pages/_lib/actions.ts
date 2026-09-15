@@ -25,7 +25,7 @@ import {
 } from "#lib/page";
 
 import { normalizePageSlugInput } from "../page-types";
-import type { PageFormState, PageMutationMode } from "../page-types";
+import type { PageFormState } from "../page-types";
 
 const displayInFooterSchema = z.preprocess((value) => {
   if (typeof value !== "string") {
@@ -45,6 +45,12 @@ const pageCommonSchema = async (locale: Locale) => {
       .optional()
       .transform((value) => value ?? ""),
     displayInFooter: displayInFooterSchema,
+    // What the edit screen loaded, so the save can tell which half changed.
+    initialContentMarkdown: z
+      .string()
+      .optional()
+      .transform((value) => value ?? ""),
+    initialTitle: optionalTrimmedString(),
     pageId: optionalTrimmedString(),
     slug: optionalTrimmedString(
       255,
@@ -61,6 +67,8 @@ const pageCommonSchema = async (locale: Locale) => {
 const pageFormFields = {
   contentMarkdown: { kind: "value", name: "content_markdown" },
   displayInFooter: { kind: "value", name: "display_in_footer" },
+  initialContentMarkdown: { kind: "value", name: "initial_content_markdown" },
+  initialTitle: { kind: "value", name: "initial_title" },
   pageId: { kind: "value", name: "page_id" },
   slug: "value",
   tenantId: { kind: "value", name: "tenant_id" },
@@ -68,12 +76,8 @@ const pageFormFields = {
   versionId: { kind: "value", name: "version_id" },
 } as const;
 
-const toFailure = (
-  message: string,
-  mode: PageMutationMode
-): NonNullable<PageFormState> => ({
+const toFailure = (message: string): NonNullable<PageFormState> => ({
   message,
-  mode,
   ok: false,
 });
 
@@ -94,10 +98,10 @@ export const createPageAction = async (
     parsePageForm(formData, locale),
   ]);
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
   if (!parsed.data.title) {
-    return toFailure(t("admin.pages.validation.title_required"), "create");
+    return toFailure(t("admin.pages.validation.title_required"));
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -113,7 +117,7 @@ export const createPageAction = async (
   );
 
   if (!result.ok) {
-    return toFailure(result.message, "create");
+    return toFailure(result.message);
   }
 
   updateTag(`pages-${parsed.data.tenantId}`);
@@ -131,7 +135,7 @@ export const createPageAction = async (
     );
 
     if (!versionResult.ok) {
-      return toFailure(versionResult.message, "create");
+      return toFailure(versionResult.message);
     }
 
     updateTag(`page-${parsed.data.tenantId}-${result.page.id}`);
@@ -140,7 +144,13 @@ export const createPageAction = async (
   redirect(`/pages/${result.page.id}?created=1`);
 };
 
-export const updatePageAction = async (
+/**
+ * The edit screen's one save. The title lives on the page and the body lives on
+ * a version, so each half is written only where the editor changed it and a
+ * failure names the half it belongs to — the two are separate RPCs, and the
+ * first can be written before the second fails.
+ */
+export const savePageAction = async (
   _prevState: PageFormState,
   formData: FormData
 ): Promise<PageFormState> => {
@@ -151,72 +161,72 @@ export const updatePageAction = async (
     parsePageForm(formData, locale),
   ]);
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
   if (!parsed.data.pageId) {
-    return toFailure(t("admin.pages.validation.update_id_missing"), "update");
+    return toFailure(t("admin.pages.validation.update_id_missing"));
   }
   if (!parsed.data.title) {
-    return toFailure(t("admin.pages.validation.title_required"), "update");
+    return toFailure(t("admin.pages.validation.title_required"));
   }
 
-  const result = await withAdminSessionReauth(() =>
-    updatePage(
-      {
-        displayInFooter: parsed.data.displayInFooter,
-        pageId: parsed.data.pageId,
-        tenantId: parsed.data.tenantId,
-        title: parsed.data.title,
-      },
-      locale
-    )
-  );
+  const detailsChanged = parsed.data.title !== parsed.data.initialTitle;
+  const contentChanged =
+    parsed.data.contentMarkdown !== parsed.data.initialContentMarkdown;
 
-  if (!result.ok) {
-    return toFailure(result.message, "update");
+  if (detailsChanged) {
+    const result = await withAdminSessionReauth(() =>
+      updatePage(
+        {
+          displayInFooter: parsed.data.displayInFooter,
+          pageId: parsed.data.pageId,
+          tenantId: parsed.data.tenantId,
+          title: parsed.data.title,
+        },
+        locale
+      )
+    );
+
+    if (!result.ok) {
+      return toFailure(
+        t("admin.pages.workspace.save_failed_details", {
+          message: result.message,
+        })
+      );
+    }
+
+    updateTag(`pages-${parsed.data.tenantId}`);
+    updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
   }
 
-  updateTag(`pages-${parsed.data.tenantId}`);
-  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+  if (contentChanged) {
+    const result = await withAdminSessionReauth(() =>
+      createPageVersion(
+        {
+          contentMarkdown: parsed.data.contentMarkdown,
+          pageId: parsed.data.pageId,
+          tenantId: parsed.data.tenantId,
+        },
+        locale
+      )
+    );
 
-  redirect(`/pages/${parsed.data.pageId}?updated=1`);
-};
+    if (!result.ok) {
+      return toFailure(
+        detailsChanged
+          ? t("admin.pages.workspace.save_failed_content_after_details", {
+              message: result.message,
+            })
+          : t("admin.pages.workspace.save_failed_content", {
+              message: result.message,
+            })
+      );
+    }
 
-export const createDraftVersionAction = async (
-  _prevState: PageFormState,
-  formData: FormData
-): Promise<PageFormState> => {
-  await assertSameOrigin();
-  const locale = await getActionLocale(formData);
-  const [t, parsed] = await Promise.all([
-    getMessagesFor(locale),
-    parsePageForm(formData, locale),
-  ]);
-  if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error, { locale }), "draft");
-  }
-  if (!parsed.data.pageId) {
-    return toFailure(t("admin.pages.validation.id_missing"), "draft");
-  }
-
-  const result = await withAdminSessionReauth(() =>
-    createPageVersion(
-      {
-        contentMarkdown: parsed.data.contentMarkdown,
-        pageId: parsed.data.pageId,
-        tenantId: parsed.data.tenantId,
-      },
-      locale
-    )
-  );
-
-  if (!result.ok) {
-    return toFailure(result.message, "draft");
+    updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
   }
 
-  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
-
-  redirect(`/pages/${parsed.data.pageId}?draft_saved=1`);
+  redirect(`/pages/${parsed.data.pageId}?saved=1`);
 };
 
 export const publishVersionAction = async (formData: FormData) => {

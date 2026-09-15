@@ -244,36 +244,44 @@ test.describe("admin published pages", () => {
     await expectPublicPageHeading(page, slug, title);
 
     // The title lives on the page rather than on a version, so renaming it
-    // changes the public page without publishing anything.
+    // changes the public page without publishing anything — and the one save
+    // control writes it without adding a version that repeats the same body.
     const editedTitle = `${title} (edited)`;
     await page.goto(adminUrl(`/pages/${pageId}`));
     const titleField = page.getByRole("textbox", { name: "Title" });
     await fillField(titleField, editedTitle);
-    await page.getByRole("button", { name: "Update title" }).click();
+    await page.getByRole("button", { name: "Save page" }).click();
     // The toast is what says the Action finished. The field cannot say it —
     // `fillField` already put the text there, so asserting on it passes while
     // the request is still in flight, and the navigation below would then
     // cancel the very save it is meant to read back on the public page.
-    // FlashToast strips `?updated=1` via a client replace, so the URL cannot
-    // say it either.
-    await expect(page.getByText("Page details updated.")).toBeVisible({
+    // FlashToast strips `?saved=1` via a client replace, so the URL cannot say
+    // it either.
+    await expect(page.getByText("Page saved.")).toBeVisible({
       timeout: 30_000,
     });
     await expect(titleField).toHaveValue(editedTitle);
+    await expect(versionRow(page, 2)).toHaveCount(0);
 
     await expectPublicPageHeading(page, slug, editedTitle);
 
-    // The body does live on a version: saving makes a draft, and only
-    // publishing that draft moves the public page.
+    // The body does live on a version: the same control saves it as a draft,
+    // and only publishing that draft moves the public page.
     const editedBody = `Revised body ${suffix}`;
     await page.goto(adminUrl(`/pages/${pageId}`));
     await fillField(
       page.getByRole("textbox", { name: "Content" }),
       `## Revision\n\n${editedBody}`
     );
-    await page
-      .getByRole("button", { name: "Save this content as a draft" })
-      .click();
+    // The preview tab renders what is in the editor, before any of it is
+    // saved. It is asserted through the rendered heading: the body text is
+    // also the editor's own value, which `getByText` would match as well.
+    await page.getByRole("tab", { name: "Preview" }).click();
+    await expect(
+      page.getByRole("heading", { exact: true, name: "Revision" })
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Save page" }).click();
     await expect(versionStatus(page, 2, "Draft")).toBeVisible({
       timeout: 30_000,
     });

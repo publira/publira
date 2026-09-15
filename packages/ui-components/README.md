@@ -40,6 +40,7 @@ Add it as a workspace dependency and load the styles from the global CSS.
 - [Dialog / ConfirmDialog](./src/dialog) - the dialogs used to confirm an action
 - [Table / TableHeader / TableBody / TableRow / TableHead / TableCell / TableEmptyRow / TableLoadingRow](./src/table) - the table primitives
 - [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - cards
+- [Tabs / TabsList / TabsTab / TabsPanel](./src/tabs) - one panel at a time, with the row of tabs that switches them
 - [Popover](./src/popover) - the floating surfaces placed in a header and similar places
 - [EmptyState](./src/empty-state) - the empty state
 - [SectionError](./src/section-error) - one section of a page that failed to load
