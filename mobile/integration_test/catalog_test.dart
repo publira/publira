@@ -14,6 +14,7 @@ import 'package:publira/router.dart';
 import '../test/support/connect_fixture_server.dart';
 import '../test/support/fake_auth.dart';
 import '../test/support/pump_until.dart';
+import '../test/support/tap.dart';
 import 'support/artifacts.dart';
 
 /// Live public API, used when CI / `task mobile:e2e` starts api-server.
@@ -83,6 +84,11 @@ Future<void> scrollSeriesTo(WidgetTester tester, Finder finder) async {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // A tap whose offset does not land on the widget it was given is delivered
+  // to whatever is drawn there, and every wait after it then times out on a
+  // finder that has nothing to do with the miss. Failing at the tap is what
+  // names the row that was not on screen.
+  WidgetController.hitTestWarningShouldBeFatal = true;
 
   group('fixture public API', () {
     late ConnectFixtureServer server;
@@ -207,7 +213,8 @@ void main() {
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
         );
-        await tester.tap(
+        await tapVisible(
+          tester,
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
@@ -239,7 +246,8 @@ void main() {
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
         );
-        await tester.tap(
+        await tapVisible(
+          tester,
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
@@ -284,7 +292,7 @@ void main() {
           const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
         );
         await pumpUntilRouteSettled(tester, tile);
-        await tester.tap(tile);
+        await tapVisible(tester, tile);
         await pumpUntilRouteSettled(tester, find.text('2 episodes'));
         await scrollSeriesTo(
           tester,
@@ -532,9 +540,9 @@ void main() {
         await signIn(tester);
         await settleOn(seriesTile);
 
-        await tester.tap(seriesTile);
+        await tapVisible(tester, seriesTile);
         await settleOnPaidEpisode();
-        await tester.tap(paidEpisode);
+        await tapVisible(tester, paidEpisode);
         await settleOn(find.byKey(const ValueKey('episode-page-view')));
 
         await tester.pageBack();
@@ -549,9 +557,9 @@ void main() {
         await tester.pageBack();
         await settleOn(seriesTile);
 
-        await tester.tap(seriesTile);
+        await tapVisible(tester, seriesTile);
         await settleOnPaidEpisode();
-        await tester.tap(paidEpisode);
+        await tapVisible(tester, paidEpisode);
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('episode-locked')),
