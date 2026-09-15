@@ -56,6 +56,8 @@ flutter run -d android
 flutter run -d chrome
 ```
 
+`task mobile:run -- <flutter run arguments>` runs the same thing against the worktree's own stack, with the connection settings of [Connecting to the public API](#connecting-to-the-public-api) taken from the selected development profile.
+
 ## Build flavors
 
 The app builds in two flavors, so a development build and a production build can sit on one device at the same time.
@@ -136,7 +138,7 @@ mobile/
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation
-├── scripts/                      # Mobile E2E lifecycle
+├── scripts/                      # Mobile E2E lifecycle, and running or photographing the app
 ├── android/                      # Android-specific files
 ├── ios/                          # iOS-specific files
 ├── web/                          # Web-specific files
@@ -308,6 +310,8 @@ Use `--dart-define` to switch the test API and tenant host.
 | `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent to image-server as `X-Forwarded-Host` |
 | `PUBLIRA_LIVE_API` | Unset | Whether integration tests run their live group against the actual API |
 
+The defaults are the shared default stack's ports. A worktree that has selected a development profile (`task dev-env:start`) does not listen on them: that profile holds a port block of its own, and `task mobile:run` reads the three values out of it.
+
 ```bash
 # Local api-server (task dev / E2E stack)
 flutter run --dart-define=PUBLIRA_API_BASE_URL=http://127.0.0.1:8000 \
@@ -319,7 +323,32 @@ flutter run -d android \
   --dart-define=PUBLIRA_API_BASE_URL=http://10.0.2.2:8000 \
   --dart-define=PUBLIRA_IMAGE_BASE_URL=http://10.0.2.2:8200 \
   --dart-define=PUBLIRA_TENANT_HOST=localhost
+
+# The worktree's selected development profile, on its own ports
+task mobile:run -- -d android
 ```
+
+It addresses that profile's `api-server` and `image-server` themselves rather than its edge, and reaches them at `10.0.2.2` from an Android emulator and through `adb reverse` from a device on a cable. A value already exported is left as it is, which is how a stack of another kind is named without editing anything. `MOBILE_DEVICE` names the device the addresses are resolved for when several are attached.
+
+## Screenshots
+
+A pull request that changes a screen carries a picture of it, and the picture is taken against the worktree's selected development profile so that the eye-catches on it are the seeded covers. The widget-test fixtures address `http://images.test/…`, a name reserved to resolve nowhere, so anything that renders those for a person draws `SeriesCover`'s placeholder in every row instead.
+
+```bash
+task dev-env:start
+task mobile:screenshot
+task mobile:screenshot -- /series/SeedSERSAAA1 /series/SeedSERSAAA1/episodes/SeedEPSDAAA1
+```
+
+Every route named on the command line becomes one PNG under `.run/screenshots/`; with no route named, the catalog the app opens on.
+
+The screens are taken on an attached device or emulator, which the app is built and installed on. With none attached — the Dev Container image ships no Android SDK ([#2148](https://github.com/publira/publira/issues/2148)) — the same app is built for the web instead, served by `scripts/web_app_server.dart`, and photographed at the viewport and pixel ratio of a Pixel 7 by the browser `e2e/` already depends on; such a picture carries no status bar and no system navigation.
+
+| Variable | Meaning |
+| --- | --- |
+| `MOBILE_DEVICE` | The device to build, install, and photograph on. The first attached one when unset |
+| `MOBILE_SCREENSHOT_WAIT_MS` | How long a screen is given to finish arriving before the shutter. `8000` when unset |
+| `MOBILE_SCREENSHOT_DEVICE` | The Playwright device the browser fallback emulates. `Pixel 7` when unset |
 
 ## Integration tests
 

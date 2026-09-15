@@ -165,6 +165,8 @@ A pull request that changes what a screen looks like or how it is operated carri
 
 The test is the screen, not the directory. A component restructured so that the rendered result moves, changes shape, or is operated differently is a UI change even when the diff reads as internal. An internal refactor, a test, a workflow, and anything else no screen reflects need no picture.
 
+A screen of `mobile/` is photographed with `task mobile:screenshot -- <route>`, against the worktree's selected development profile, so that the covers on it are the seeded ones rather than the placeholder its test fixtures draw.
+
 Reference each image from the body file where it belongs — under **Summary** when one picture carries the whole change, under **Changes** beside the bullet it illustrates — and never below the `Assisted-by:` trailer, which stays the last line. A file the body does not reference is appended to the end of the body instead, which would put it under the trailer. Write the alt text as a sentence describing what the picture shows: the body becomes the merge commit message, where the image is gone and the alt text is all that is left.
 
 `gh` uploads the files and rewrites the references. Write `![alt](./file.png)` into the body file, spelled the same way as the path you pass, and pass each file with `--attach`, both on the command that opens a pull request:

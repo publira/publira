@@ -24,6 +24,16 @@ tasks:
     cmds:
       - dart format --output=none --set-exit-if-changed .
 
+  run:
+    desc: Run the app on a device against the selected development profile
+    cmds:
+      - bash scripts/run.sh {{.CLI_ARGS}}
+
+  screenshot:
+    desc: Photograph screens against the selected development profile (routes as arguments)
+    cmds:
+      - bash scripts/screenshot.sh {{.CLI_ARGS}}
+
   test:
     desc: Run Flutter unit and widget tests
     cmds:
