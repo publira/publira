@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/dayroll"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/freewindows"
+	"github.com/publira/publira/server/internal/pinnedannouncements"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/testutil"
@@ -192,9 +193,35 @@ func TestTickerRoleWritesPublishFailureNotifications(t *testing.T) {
 	}
 }
 
+func TestTickerRoleRunsExpirePinnedAnnouncements(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT04", "pinned.example.com", "Pinned Tenant")
+	now := time.Now().UTC()
+	announcementID := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenant.ID, uuid.NullUUID{}, now,
+		sql.NullTime{Time: now.Add(-time.Minute), Valid: true})
+
+	ticker := pg.OpenTickerDB(t)
+	pinnedannouncements.New(dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
+
+	var pinned bool
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT pinned FROM announcements WHERE id = $1", announcementID,
+	).Scan(&pinned); err != nil {
+		t.Fatalf("read announcement: %v", err)
+	}
+	if pinned {
+		t.Fatal("pinned is still true, want the closed window taken down")
+	}
+}
+
 // TestTickerRoleCannotReachAnotherDomain is the other half of the per-table
-// grants: a table none of the three jobs touches stays out of reach, so the
-// list in the seed is a boundary rather than a formality.
+// grants: a table none of the jobs touches stays out of reach, so the list in
+// the seed is a boundary rather than a formality.
 func TestTickerRoleCannotReachAnotherDomain(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

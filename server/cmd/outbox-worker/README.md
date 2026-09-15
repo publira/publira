@@ -46,15 +46,16 @@ There is no default URL. A deployment that does not run the renderer sends reada
 
 ## Periodic jobs
 
-Three jobs have to act the moment a stored instant passes rather than on a schedule someone invokes, so River enqueues them on an interval and this process runs them:
+Some jobs have to act the moment a stored instant passes rather than on a schedule someone invokes, so River enqueues them on an interval and this process runs them:
 
 | Kind | Interval variable | What it does |
 | --- | --- | --- |
 | `ticker.publish_episodes` | `PUBLIRA_PUBLISH_INTERVAL_SECONDS` | Promotes every episode whose scheduled time has passed |
 | `ticker.apply_free_windows` | `PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS` | Drops the public site caches at both ends of every scheduled episode free window |
 | `ticker.roll_tenant_day` | `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS` | Drops the cache entries whose answer is a tenant's own calendar day, at that tenant's midnight |
+| `ticker.expire_pinned_announcements` | `PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS` | Clears `announcements.pinned` once `pinned_until` has passed, and drops the tag the site holds its banner under |
 
-They run on a River queue of their own (`ticker`, three workers) rather than the default one the Outbox drain is sized for: one pass is long and rare where an outbox job is short and constant, so a publish walking every tenant with retries must not hold a worker the drain is counting on.
+They run on a River queue of their own (`ticker`, one worker each) rather than the default one the Outbox drain is sized for: one pass is long and rare where an outbox job is short and constant, so a publish walking every tenant with retries must not hold a worker the drain is counting on.
 
 Each runs once when the client starts and then once per interval, so a deployment that was down over a scheduled time, a window boundary, or a midnight catches up as soon as it comes back. Each is unique over River's in-flight states, so a second instance of this worker enqueues no second copy and a pass that outlasts its own interval is not started again underneath itself. A due run is a `river_job` row, which is where to look for one rather than in a process's log.
 
@@ -62,7 +63,9 @@ A window needs no job to take effect in the API: the access predicates compare t
 
 Which midnight `ticker.roll_tenant_day` answers to is the tenant's, resolved from `tenants.timezone` (falling back to `platform_config.default_timezone`), so one pass turns over a tenant in Tokyo hours before one in Los Angeles. The tag is `tenant:<id>:today`, and only the storefront's weekly schedule carries it. Which day each tenant was last rolled on is remembered in the process rather than in a column: a drop is idempotent, so a restart costs one extra drop of one narrow tag per tenant, which is why the first pass after startup turns every tenant over.
 
-The three connect as `publira_ticker` rather than on the pool above. The worker's own login owns River's schema and therefore holds `CREATE` on the `public` schema, which is the one privilege these jobs must not have.
+A pinned announcement needs no job to stop being answered either: the banner read compares `pinned_until` against the current instant. What the job fixes is the band a site cached, and clearing the flag is what records the boundary as applied, so a window that closed while this process was down is taken down on the next pass. The tag is `tenant:<id>:announcements:pinned`, which only the banner carries; the console drops the same tag when an operator pins or unpins one.
+
+They connect as `publira_ticker` rather than on the pool above. The worker's own login owns River's schema and therefore holds `CREATE` on the `public` schema, which is the one privilege these jobs must not have.
 
 ## Running
 
@@ -103,7 +106,7 @@ The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed crea
 - `PUBLIRA_OUTBOX_MAX_ATTEMPTS` (optional, default `10`. The failure count at which an entry becomes `dead`)
 - `PUBLIRA_OUTBOX_STALE_PROCESSING` (optional, a Go duration. Default `15m`. A `processing` row older than this is returned to `pending`. For the auth mail above the reclaim also counts as a failed attempt, so this duration times `PUBLIRA_OUTBOX_MAX_ATTEMPTS` bounds how long a crash loop can keep the row's raw token)
 - `PUBLIRA_OUTBOX_MAX_WORKERS` (optional, the concurrency of River's default queue, which the Outbox drain has to itself. Default `8`)
-- `PUBLIRA_PUBLISH_INTERVAL_SECONDS` / `PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS` / `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS` (optional, seconds between the passes of each periodic job. Default `60`; a non-numeric or non-positive value falls back to it. Each one bounds how long the site can stay on the wrong side of the instant its job answers to)
+- `PUBLIRA_PUBLISH_INTERVAL_SECONDS` / `PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS` / `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS` / `PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS` (optional, seconds between the passes of each periodic job. Default `60`; a non-numeric or non-positive value falls back to it. Each one bounds how long the site can stay on the wrong side of the instant its job answers to)
 - `PUBLIRA_PUBLISH_MAX_RETRIES` (optional, retries per episode within one `ticker.publish_episodes` pass. Default `3`)
 - `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders the HTML part of the emails above. Unset, the mail goes out as text alone; see [What a mail is made of](#what-a-mail-is-made-of))
 - `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, where the periodic jobs send the cache tags they drop: `POST /api/v1/revalidate` on each `web-*` app. Without the token there is nothing to drop, and each pass records what it passed rather than collecting it)
@@ -120,7 +123,7 @@ River's schema (`river_job` and the rest) is applied with `rivermigrate` at star
 
 ## Logs and metrics
 
-OpenTelemetry reports `service.name` as `publira-outbox-worker` for the drain, and as `publira-publish-episodes`, `publira-apply-free-windows`, or `publira-roll-tenant-day` for the span each periodic run hangs off — the names those jobs reported when each had a process of its own.
+OpenTelemetry reports `service.name` as `publira-outbox-worker` for the drain, and as `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for the span each periodic run hangs off — the names those jobs reported when each had a process of its own.
 
 The structured logs (slog) carry `event_id` / `event_type` / `idempotency_key` / `attempts`. The OpenTelemetry counters are:
 

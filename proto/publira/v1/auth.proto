@@ -178,10 +178,28 @@ message AnnouncementItem {
   bool is_read = 6;
   string read_at = 7;
   string created_at = 8;
+  // Whether the site shows this announcement as a banner above every page.
+  bool pinned = 9;
+  // RFC 3339 instant the banner stops at. Empty leaves it up until the console
+  // takes it down.
+  string pinned_until = 10;
 }
 
-// Session-authorized get-by-id. Only a row in the caller's inbox is returned.
-// Missing, other-user, and other-tenant rows are the same not_found.
+// What the site shows as a banner above every page: the newest tenant-wide
+// announcement still inside its pinned window. It carries no session, because
+// an announcement is the tenant's word to everyone who opens the site.
+message GetPinnedAnnouncementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetPinnedAnnouncementResponse {
+  // Unset when the tenant has nothing pinned right now.
+  AnnouncementItem announcement = 1;
+}
+
+// Get-by-id. A signed-in reader gets their own row with its read state; a
+// caller with no session gets the tenant-wide row with none. Missing,
+// other-user, and other-tenant rows are the same not_found.
 message GetAnnouncementRequest {
   publira.types.v1.TenantContext tenant = 1;
   string announcement_id = 2;
@@ -246,6 +264,7 @@ service AuthService {
   rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse) {}
   rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse) {}
   rpc GetAnnouncement(GetAnnouncementRequest) returns (GetAnnouncementResponse) {}
+  rpc GetPinnedAnnouncement(GetPinnedAnnouncementRequest) returns (GetPinnedAnnouncementResponse) {}
   rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
   rpc MarkAnnouncementAsRead(MarkAnnouncementAsReadRequest) returns (MarkAnnouncementAsReadResponse) {}
   rpc MarkAllAnnouncementsAsRead(MarkAllAnnouncementsAsReadRequest) returns (MarkAllAnnouncementsAsReadResponse) {}

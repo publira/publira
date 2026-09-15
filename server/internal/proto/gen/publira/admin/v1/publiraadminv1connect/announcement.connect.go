@@ -39,6 +39,9 @@ const (
 	// AdminAnnouncementServiceCreateAnnouncementProcedure is the fully-qualified name of the
 	// AdminAnnouncementService's CreateAnnouncement RPC.
 	AdminAnnouncementServiceCreateAnnouncementProcedure = "/publira.admin.v1.AdminAnnouncementService/CreateAnnouncement"
+	// AdminAnnouncementServiceUnpinAnnouncementProcedure is the fully-qualified name of the
+	// AdminAnnouncementService's UnpinAnnouncement RPC.
+	AdminAnnouncementServiceUnpinAnnouncementProcedure = "/publira.admin.v1.AdminAnnouncementService/UnpinAnnouncement"
 )
 
 // AdminAnnouncementServiceClient is a client for the publira.admin.v1.AdminAnnouncementService
@@ -46,6 +49,7 @@ const (
 type AdminAnnouncementServiceClient interface {
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
 	CreateAnnouncement(context.Context, *connect.Request[v1.CreateAnnouncementRequest]) (*connect.Response[v1.CreateAnnouncementResponse], error)
+	UnpinAnnouncement(context.Context, *connect.Request[v1.UnpinAnnouncementRequest]) (*connect.Response[v1.UnpinAnnouncementResponse], error)
 }
 
 // NewAdminAnnouncementServiceClient constructs a client for the
@@ -71,6 +75,12 @@ func NewAdminAnnouncementServiceClient(httpClient connect.HTTPClient, baseURL st
 			connect.WithSchema(adminAnnouncementServiceMethods.ByName("CreateAnnouncement")),
 			connect.WithClientOptions(opts...),
 		),
+		unpinAnnouncement: connect.NewClient[v1.UnpinAnnouncementRequest, v1.UnpinAnnouncementResponse](
+			httpClient,
+			baseURL+AdminAnnouncementServiceUnpinAnnouncementProcedure,
+			connect.WithSchema(adminAnnouncementServiceMethods.ByName("UnpinAnnouncement")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -78,6 +88,7 @@ func NewAdminAnnouncementServiceClient(httpClient connect.HTTPClient, baseURL st
 type adminAnnouncementServiceClient struct {
 	listAnnouncements  *connect.Client[v1.ListAnnouncementsRequest, v1.ListAnnouncementsResponse]
 	createAnnouncement *connect.Client[v1.CreateAnnouncementRequest, v1.CreateAnnouncementResponse]
+	unpinAnnouncement  *connect.Client[v1.UnpinAnnouncementRequest, v1.UnpinAnnouncementResponse]
 }
 
 // ListAnnouncements calls publira.admin.v1.AdminAnnouncementService.ListAnnouncements.
@@ -90,11 +101,17 @@ func (c *adminAnnouncementServiceClient) CreateAnnouncement(ctx context.Context,
 	return c.createAnnouncement.CallUnary(ctx, req)
 }
 
+// UnpinAnnouncement calls publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement.
+func (c *adminAnnouncementServiceClient) UnpinAnnouncement(ctx context.Context, req *connect.Request[v1.UnpinAnnouncementRequest]) (*connect.Response[v1.UnpinAnnouncementResponse], error) {
+	return c.unpinAnnouncement.CallUnary(ctx, req)
+}
+
 // AdminAnnouncementServiceHandler is an implementation of the
 // publira.admin.v1.AdminAnnouncementService service.
 type AdminAnnouncementServiceHandler interface {
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
 	CreateAnnouncement(context.Context, *connect.Request[v1.CreateAnnouncementRequest]) (*connect.Response[v1.CreateAnnouncementResponse], error)
+	UnpinAnnouncement(context.Context, *connect.Request[v1.UnpinAnnouncementRequest]) (*connect.Response[v1.UnpinAnnouncementResponse], error)
 }
 
 // NewAdminAnnouncementServiceHandler builds an HTTP handler from the service implementation. It
@@ -116,12 +133,20 @@ func NewAdminAnnouncementServiceHandler(svc AdminAnnouncementServiceHandler, opt
 		connect.WithSchema(adminAnnouncementServiceMethods.ByName("CreateAnnouncement")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminAnnouncementServiceUnpinAnnouncementHandler := connect.NewUnaryHandler(
+		AdminAnnouncementServiceUnpinAnnouncementProcedure,
+		svc.UnpinAnnouncement,
+		connect.WithSchema(adminAnnouncementServiceMethods.ByName("UnpinAnnouncement")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminAnnouncementService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminAnnouncementServiceListAnnouncementsProcedure:
 			adminAnnouncementServiceListAnnouncementsHandler.ServeHTTP(w, r)
 		case AdminAnnouncementServiceCreateAnnouncementProcedure:
 			adminAnnouncementServiceCreateAnnouncementHandler.ServeHTTP(w, r)
+		case AdminAnnouncementServiceUnpinAnnouncementProcedure:
+			adminAnnouncementServiceUnpinAnnouncementHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -137,4 +162,8 @@ func (UnimplementedAdminAnnouncementServiceHandler) ListAnnouncements(context.Co
 
 func (UnimplementedAdminAnnouncementServiceHandler) CreateAnnouncement(context.Context, *connect.Request[v1.CreateAnnouncementRequest]) (*connect.Response[v1.CreateAnnouncementResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAnnouncementService.CreateAnnouncement is not implemented"))
+}
+
+func (UnimplementedAdminAnnouncementServiceHandler) UnpinAnnouncement(context.Context, *connect.Request[v1.UnpinAnnouncementRequest]) (*connect.Response[v1.UnpinAnnouncementResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement is not implemented"))
 }

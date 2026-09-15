@@ -21,6 +21,11 @@ message AdminAnnouncement {
   string target_user_public_id = 6;
   string target_user_name = 7;
   string created_at = 8;
+  // Whether the site shows this announcement as a banner above every page.
+  bool pinned = 9;
+  // RFC 3339 instant the banner stops at. Empty leaves it up until the console
+  // takes it down.
+  string pinned_until = 10;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -51,13 +56,27 @@ message CreateAnnouncementRequest {
   string link_url = 4;
   AnnouncementAudienceType audience_type = 5;
   repeated string target_user_public_ids = 6;
+  bool pinned = 7;
+  // RFC 3339 instant the banner stops at. Empty pins it until the console takes
+  // it down, and it is ignored when pinned is false.
+  string pinned_until = 8;
 }
 
 message CreateAnnouncementResponse {
   repeated AdminAnnouncement announcements = 1;
 }
 
+// Takes the banner down without deleting the announcement, which stays in the
+// list it was posted to.
+message UnpinAnnouncementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string announcement_id = 2;
+}
+
+message UnpinAnnouncementResponse {}
+
 service AdminAnnouncementService {
   rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
   rpc CreateAnnouncement(CreateAnnouncementRequest) returns (CreateAnnouncementResponse) {}
+  rpc UnpinAnnouncement(UnpinAnnouncementRequest) returns (UnpinAnnouncementResponse) {}
 }

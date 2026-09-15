@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -151,6 +152,46 @@ func (s *apiServer) currentUserFromSession(
 		return dbmodels.Tenant{}, dbmodels.User{}, "", err
 	}
 	return authCtx.Tenant, authCtx.User, authCtx.Role, nil
+}
+
+// optionalReaderFromSession names the caller when the request carries a bearer
+// token and answers a guest when it does not.
+//
+// An announcement is the tenant's word to everyone who opens the site, so the
+// rows themselves do not depend on knowing who is asking — only the read state
+// on them does. A session that is rejected therefore reads as a guest too,
+// rather than closing a page that is open to a first-time visitor; an Internal
+// failure is still one, because that is a fault rather than an answer.
+func (s *apiServer) optionalReaderFromSession(
+	ctx context.Context,
+	tenantCtx *publirattypesv1.TenantContext,
+	headers http.Header,
+) (dbmodels.Tenant, uuid.NullUUID, error) {
+	if _, hasBearer := auth.BearerTokenFromHeader(headers); !hasBearer {
+		tenant, err := s.tenantByContext(ctx, tenantCtx)
+		if err != nil {
+			return dbmodels.Tenant{}, uuid.NullUUID{}, err
+		}
+		return tenant, uuid.NullUUID{}, nil
+	}
+
+	session, authErr := s.authenticateAccessToken(ctx, tenantCtx, headers)
+	if authErr == nil {
+		return session.Tenant, uuid.NullUUID{UUID: session.User.ID, Valid: true}, nil
+	}
+	if connect.CodeOf(authErr) == connect.CodeInternal {
+		return dbmodels.Tenant{}, uuid.NullUUID{}, authErr
+	}
+
+	tenant, err := s.tenantByContext(ctx, tenantCtx)
+	if err != nil {
+		return dbmodels.Tenant{}, uuid.NullUUID{}, err
+	}
+	slog.InfoContext(ctx, "announcements: bearer session rejected, continuing without it",
+		"tenant_id", tenant.ID.String(),
+		"code", connect.CodeOf(authErr).String(),
+	)
+	return tenant, uuid.NullUUID{}, nil
 }
 
 func (s *apiServer) Login(
@@ -1528,6 +1569,8 @@ type announcementPageRow struct {
 	isRead           bool
 	readAt           sql.NullTime
 	createdAt        time.Time
+	pinned           bool
+	pinnedUntil      sql.NullTime
 }
 
 // is_read comes back as an untyped SQL boolean expression, so it lands in an
@@ -1549,6 +1592,8 @@ func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForUserDescRow) []
 			isRead:           announcementIsRead(row.IsRead),
 			readAt:           row.ReadAt,
 			createdAt:        row.CreatedAt,
+			pinned:           row.Pinned,
+			pinnedUntil:      row.PinnedUntil,
 		})
 	}
 	return mapped
@@ -1566,6 +1611,8 @@ func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForUserAscRow) []an
 			isRead:           announcementIsRead(row.IsRead),
 			readAt:           row.ReadAt,
 			createdAt:        row.CreatedAt,
+			pinned:           row.Pinned,
+			pinnedUntil:      row.PinnedUntil,
 		})
 	}
 	return mapped
@@ -1576,6 +1623,10 @@ func toAnnouncementItem(row announcementPageRow) *publirav1.AnnouncementItem {
 	if row.readAt.Valid {
 		readAt = row.readAt.Time.UTC().Format(time.RFC3339)
 	}
+	pinnedUntil := ""
+	if row.pinnedUntil.Valid {
+		pinnedUntil = row.pinnedUntil.Time.UTC().Format(time.RFC3339)
+	}
 	return &publirav1.AnnouncementItem{
 		Id:               row.id.String(),
 		AnnouncementType: row.announcementType,
@@ -1585,12 +1636,15 @@ func toAnnouncementItem(row announcementPageRow) *publirav1.AnnouncementItem {
 		IsRead:           row.isRead,
 		ReadAt:           readAt,
 		CreatedAt:        row.createdAt.UTC().Format(time.RFC3339),
+		Pinned:           row.pinned,
+		PinnedUntil:      pinnedUntil,
 	}
 }
 
 func (s *apiServer) announcementPage(
 	ctx context.Context,
-	tenantID, userID uuid.UUID,
+	tenantID uuid.UUID,
+	userID uuid.NullUUID,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -1629,7 +1683,7 @@ func (s *apiServer) ListAnnouncements(
 	ctx context.Context,
 	req *connect.Request[publirav1.ListAnnouncementsRequest],
 ) (*connect.Response[publirav1.ListAnnouncementsResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -1647,9 +1701,9 @@ func (s *apiServer) ListAnnouncements(
 		}
 	}
 
-	rows, err := s.announcementPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.announcementPage(ctx, tenant.ID, reader, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list announcements", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list announcements", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -1687,7 +1741,7 @@ func (s *apiServer) GetAnnouncement(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetAnnouncementRequest],
 ) (*connect.Response[publirav1.GetAnnouncementResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -1700,7 +1754,7 @@ func (s *apiServer) GetAnnouncement(
 	row, err := s.queriesFor(ctx).GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
 		ID:       announcementID,
 		TenantID: tenant.ID,
-		UserID:   user.ID,
+		UserID:   reader,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1710,7 +1764,6 @@ func (s *apiServer) GetAnnouncement(
 			"failed to get announcement",
 			err,
 			"tenant_id", tenant.ID.String(),
-			"user_id", user.ID.String(),
 			"announcement_id", announcementID.String(),
 		)
 	}
@@ -1725,6 +1778,43 @@ func (s *apiServer) GetAnnouncement(
 			isRead:           announcementIsRead(row.IsRead),
 			readAt:           row.ReadAt,
 			createdAt:        row.CreatedAt,
+			pinned:           row.Pinned,
+			pinnedUntil:      row.PinnedUntil,
+		}),
+	}), nil
+}
+
+// GetPinnedAnnouncement answers the banner the site draws above every page.
+//
+// It takes no session on purpose: the answer is the same for every reader of a
+// tenant, which is what lets a site cache it once instead of per reader.
+func (s *apiServer) GetPinnedAnnouncement(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetPinnedAnnouncementRequest],
+) (*connect.Response[publirav1.GetPinnedAnnouncementResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := s.queriesFor(ctx).GetPinnedAnnouncementForTenant(ctx, tenant.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publirav1.GetPinnedAnnouncementResponse{}), nil
+		}
+		return nil, s.internalDBError(ctx, "failed to get pinned announcement", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publirav1.GetPinnedAnnouncementResponse{
+		Announcement: toAnnouncementItem(announcementPageRow{
+			id:               row.ID,
+			announcementType: row.AnnouncementType,
+			title:            row.Title,
+			body:             row.Body,
+			linkURL:          row.LinkUrl,
+			createdAt:        row.CreatedAt,
+			pinned:           row.Pinned,
+			pinnedUntil:      row.PinnedUntil,
 		}),
 	}), nil
 }

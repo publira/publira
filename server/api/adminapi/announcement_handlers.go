@@ -16,6 +16,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/pinnedannouncements"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
 
@@ -35,6 +36,37 @@ func isValidAnnouncementLinkURL(raw string) bool {
 	return strings.HasPrefix(raw, "https://") || strings.HasPrefix(raw, "http://")
 }
 
+// parsePinnedUntil reads the instant a banner is asked to stop at. An instant
+// already behind us is refused rather than stored, because it would post an
+// announcement whose banner never shows.
+func parsePinnedUntil(raw string, now time.Time) (sql.NullTime, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return sql.NullTime{}, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return sql.NullTime{}, errors.New("pinned_until must be an RFC 3339 instant")
+	}
+	if !parsed.After(now) {
+		return sql.NullTime{}, errors.New("pinned_until must be in the future")
+	}
+	return sql.NullTime{Time: parsed, Valid: true}, nil
+}
+
+// revalidatePinnedAnnouncement drops the tag a tenant's site holds its banner
+// under. The console cannot reach web-host's cache itself, and the band would
+// otherwise stay as it was until the entry expired. Best-effort like the audit
+// row: failing an action the operator already performed would be worse.
+func (s *adminServer) revalidatePinnedAnnouncement(ctx context.Context, tenantID uuid.UUID) {
+	if s.reval == nil {
+		return
+	}
+	if err := s.reval.RevalidateTags(ctx, pinnedannouncements.RevalidateTags(tenantID)); err != nil {
+		s.logger.Warn("failed to request next revalidate after a pinned announcement change", "tenant_id", tenantID.String(), "error", err)
+	}
+}
+
 type announcementPageRow struct {
 	id                 uuid.UUID
 	targetUserID       uuid.NullUUID
@@ -44,6 +76,8 @@ type announcementPageRow struct {
 	targetUserPublicID sql.NullString
 	targetUserName     sql.NullString
 	createdAt          time.Time
+	pinned             bool
+	pinnedUntil        sql.NullTime
 }
 
 func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForTenantDescRow) []announcementPageRow {
@@ -58,6 +92,8 @@ func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForTenantDescRow) 
 			targetUserPublicID: row.TargetUserPublicID,
 			targetUserName:     row.TargetUserName,
 			createdAt:          row.CreatedAt,
+			pinned:             row.Pinned,
+			pinnedUntil:        row.PinnedUntil,
 		})
 	}
 	return mapped
@@ -75,6 +111,8 @@ func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForTenantAscRow) []
 			targetUserPublicID: row.TargetUserPublicID,
 			targetUserName:     row.TargetUserName,
 			createdAt:          row.CreatedAt,
+			pinned:             row.Pinned,
+			pinnedUntil:        row.PinnedUntil,
 		})
 	}
 	return mapped
@@ -95,7 +133,18 @@ func mapAdminAnnouncementFromRow(row announcementPageRow) *publiraadminv1.AdminA
 		TargetUserPublicId: row.targetUserPublicID.String,
 		TargetUserName:     row.targetUserName.String,
 		CreatedAt:          row.createdAt.UTC().Format(time.RFC3339),
+		Pinned:             row.pinned,
+		PinnedUntil:        formatPinnedUntil(row.pinnedUntil),
 	}
+}
+
+// formatPinnedUntil renders the instant a banner stops at. An empty answer is
+// a banner with no end rather than one that has already ended.
+func formatPinnedUntil(pinnedUntil sql.NullTime) string {
+	if !pinnedUntil.Valid {
+		return ""
+	}
+	return pinnedUntil.Time.UTC().Format(time.RFC3339)
 }
 
 // announcementPage loads one over-fetched page. Admin ListAnnouncements is
@@ -229,6 +278,22 @@ func (s *adminServer) CreateAnnouncement(
 		audienceType = publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS
 	}
 
+	pinned := req.Msg.Pinned
+	// The banner is the tenant's word to everyone who opens the site, and the
+	// read behind it answers no one in particular, so an announcement addressed
+	// to named readers has nowhere to show. Refusing it beats storing a flag
+	// that does nothing.
+	if pinned && audienceType != publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("pinned is only available for an announcement addressed to everyone"))
+	}
+	pinnedUntil := sql.NullTime{}
+	if pinned {
+		pinnedUntil, err = parsePinnedUntil(req.Msg.PinnedUntil, time.Now())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+
 	selectedUsers := make([]dbmodels.GetUserByPublicIDForTenantRow, 0)
 	if audienceType == publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS {
 		targetPublicIDs := make([]string, 0, len(req.Msg.TargetUserPublicIds))
@@ -269,12 +334,17 @@ func (s *adminServer) CreateAnnouncement(
 	}
 
 	created, err := s.storeAnnouncements(ctx, tenant.ID, announcementContent{
-		title:   title,
-		body:    body,
-		linkURL: linkURL,
+		title:       title,
+		body:        body,
+		linkURL:     linkURL,
+		pinned:      pinned,
+		pinnedUntil: pinnedUntil,
 	}, selectedUsers)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create announcement", err, "tenant_id", tenant.ID.String())
+	}
+	if pinned {
+		s.revalidatePinnedAnnouncement(ctx, tenant.ID)
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -300,6 +370,10 @@ type announcementContent struct {
 	title   string
 	body    string
 	linkURL string
+	// pinned and its window reach a broadcast only: CreateAnnouncement refuses
+	// the pair on a targeted announcement, which the banner read never sees.
+	pinned      bool
+	pinnedUntil sql.NullTime
 }
 
 // storeAnnouncements writes the announcement rows and, in the same
@@ -336,6 +410,8 @@ func (s *adminServer) storeAnnouncements(
 			LinkUrl:      row.LinkUrl.String,
 			AudienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
 			CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339),
+			Pinned:       row.Pinned,
+			PinnedUntil:  formatPinnedUntil(row.PinnedUntil),
 		})
 	}
 	for _, userRow := range targets {
@@ -353,6 +429,8 @@ func (s *adminServer) storeAnnouncements(
 			TargetUserPublicId: userRow.PublicID,
 			TargetUserName:     userRow.Name,
 			CreatedAt:          row.CreatedAt.UTC().Format(time.RFC3339),
+			Pinned:             row.Pinned,
+			PinnedUntil:        formatPinnedUntil(row.PinnedUntil),
 		})
 	}
 
@@ -384,6 +462,8 @@ func createAnnouncementRow(
 		Body:             content.body,
 		LinkUrl:          sql.NullString{String: content.linkURL, Valid: content.linkURL != ""},
 		Metadata:         json.RawMessage("{}"),
+		Pinned:           content.pinned,
+		PinnedUntil:      content.pinnedUntil,
 	})
 	if err != nil {
 		return dbmodels.Announcement{}, err
@@ -421,4 +501,50 @@ func enqueueAnnouncementNotification(
 	}
 	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAnnouncementNotification, payload,
 		outbox.AnnouncementIdempotencyKey(row.ID))
+}
+
+// UnpinAnnouncement takes a banner down and leaves the announcement where it
+// is. Deleting the row would be the other way to stop a banner, and it would
+// take the announcement out of the list its readers were pointed at.
+func (s *adminServer) UnpinAnnouncement(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UnpinAnnouncementRequest],
+) (*connect.Response[publiraadminv1.UnpinAnnouncementResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
+	}
+
+	if _, err := s.queriesFor(ctx).UnpinAnnouncement(ctx, dbmodels.UnpinAnnouncementParams{
+		ID:       announcementID,
+		TenantID: tenant.ID,
+	}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to unpin announcement", err, "tenant_id", tenant.ID.String(), "announcement_id", announcementID.String())
+	}
+	s.revalidatePinnedAnnouncement(ctx, tenant.ID)
+
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    tenant.ID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "announcement_unpinned",
+		TargetType:  "announcement",
+		TargetID:    announcementID.String(),
+		Outcome:     auditlog.OutcomeSuccess,
+		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+	})
+
+	return connect.NewResponse(&publiraadminv1.UnpinAnnouncementResponse{}), nil
 }

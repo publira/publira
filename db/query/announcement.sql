@@ -7,9 +7,11 @@ INSERT INTO announcements (
     title,
     body,
     link_url,
-    metadata
+    metadata,
+    pinned,
+    pinned_until
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
 -- Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
@@ -29,6 +31,8 @@ SELECT
     n.link_url,
     n.metadata,
     n.created_at,
+    n.pinned,
+    n.pinned_until,
     u.public_id AS target_user_public_id,
     u.name AS target_user_name
 FROM announcements n
@@ -59,6 +63,8 @@ SELECT
     n.link_url,
     n.metadata,
     n.created_at,
+    n.pinned,
+    n.pinned_until,
     u.public_id AS target_user_public_id,
     u.name AS target_user_name
 FROM announcements n
@@ -91,9 +97,9 @@ SELECT
     nr.read_at
 FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
-    AND nr.user_id = sqlc.arg('user_id')
+    AND nr.user_id = sqlc.narg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
-    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.arg('user_id'))
+    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.narg('user_id'))
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -115,9 +121,9 @@ SELECT
     nr.read_at
 FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
-    AND nr.user_id = sqlc.arg('user_id')
+    AND nr.user_id = sqlc.narg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
-    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.arg('user_id'))
+    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.narg('user_id'))
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -142,10 +148,10 @@ SELECT
     nr.read_at
 FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
-    AND nr.user_id = sqlc.arg('user_id')
+    AND nr.user_id = sqlc.narg('user_id')
 WHERE n.id = sqlc.arg('id')
     AND n.tenant_id = sqlc.arg('tenant_id')
-    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.arg('user_id'));
+    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.narg('user_id'));
 
 -- name: MarkAnnouncementAsRead :one
 -- Upserts, so marking an already-read announcement refreshes read_at instead
@@ -175,3 +181,43 @@ WHERE n.tenant_id = $1
             AND nr.user_id = $2
     )
 ON CONFLICT (announcement_id, user_id) DO NOTHING;
+
+-- name: GetPinnedAnnouncementForTenant :one
+-- What the site shows as a banner: the newest tenant-wide announcement still
+-- inside its pinned window. It names no user, so a visitor with no session gets
+-- the same answer as a signed-in reader and the site caches it once per tenant.
+SELECT *
+FROM announcements
+WHERE tenant_id = $1
+    AND target_user_id IS NULL
+    AND pinned
+    AND (pinned_until IS NULL OR pinned_until > NOW())
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+
+-- name: UnpinAnnouncement :one
+-- Takes the banner down and leaves the row where it is, so the announcement is
+-- still in the list it was posted to. pinned_until keeps whatever it held, as
+-- the instant the operator had planned to stop at.
+UPDATE announcements
+SET pinned = false
+WHERE id = $1
+    AND tenant_id = $2
+RETURNING id;
+
+-- name: ListPinnedAnnouncementsDue :many
+-- Every announcement whose pinned window has passed, across all tenants, for
+-- the ticker job that clears the flag and drops what the sites cached.
+SELECT id, tenant_id
+FROM announcements
+WHERE pinned
+    AND pinned_until IS NOT NULL
+    AND pinned_until <= NOW()
+ORDER BY tenant_id, id;
+
+-- name: ClearAnnouncementPin :exec
+-- The ticker job's write. It is what makes a boundary stop being due, so a run
+-- that was down over one still catches up instead of collecting it.
+UPDATE announcements
+SET pinned = false
+WHERE id = $1;

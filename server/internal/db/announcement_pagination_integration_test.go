@@ -34,7 +34,7 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 	queries := dbmodels.New(pg.DB)
 	firstPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID: tenantID,
-		UserID:   userID,
+		UserID:   uuid.NullUUID{UUID: userID, Valid: true},
 		Limit:    2,
 	})
 	if err != nil {
@@ -46,7 +46,7 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 
 	inclusiveNextPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID:        tenantID,
-		UserID:          userID,
+		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
 		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
 		CursorCreatedAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
 		CursorInclusive: true,
@@ -61,7 +61,7 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 
 	secondPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID:        tenantID,
-		UserID:          userID,
+		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
 		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
 		CursorCreatedAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
 		Limit:           2,
@@ -75,7 +75,7 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 
 	previousPage, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
 		TenantID:        tenantID,
-		UserID:          userID,
+		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
 		CursorID:        uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
 		CursorCreatedAt: sql.NullTime{Time: secondPage[0].CreatedAt, Valid: true},
 		Limit:           2,
@@ -90,7 +90,7 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 
 	inclusivePreviousPage, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
 		TenantID:        tenantID,
-		UserID:          userID,
+		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
 		CursorID:        uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
 		CursorCreatedAt: sql.NullTime{Time: secondPage[0].CreatedAt, Valid: true},
 		CursorInclusive: true,
@@ -125,7 +125,7 @@ func TestListAnnouncementsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 	queries := dbmodels.New(pg.DB)
 	firstPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID: tenantID,
-		UserID:   userID,
+		UserID:   uuid.NullUUID{UUID: userID, Valid: true},
 		Limit:    2,
 	})
 	if err != nil {
@@ -136,7 +136,7 @@ func TestListAnnouncementsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 	}
 	secondPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID:        tenantID,
-		UserID:          userID,
+		UserID:          uuid.NullUUID{UUID: userID, Valid: true},
 		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
 		CursorCreatedAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
 		Limit:           2,
@@ -176,7 +176,7 @@ func TestGetAnnouncementForUserRespectsInbox(t *testing.T) {
 	broadcast, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
 		ID:       broadcastID,
 		TenantID: tenantID,
-		UserID:   userID,
+		UserID:   uuid.NullUUID{UUID: userID, Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("GetAnnouncementForUser broadcast: %v", err)
@@ -188,7 +188,7 @@ func TestGetAnnouncementForUserRespectsInbox(t *testing.T) {
 	mine, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
 		ID:       mineID,
 		TenantID: tenantID,
-		UserID:   userID,
+		UserID:   uuid.NullUUID{UUID: userID, Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("GetAnnouncementForUser targeted: %v", err)
@@ -201,7 +201,7 @@ func TestGetAnnouncementForUserRespectsInbox(t *testing.T) {
 		_, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
 			ID:       announcementID,
 			TenantID: tenantID,
-			UserID:   userID,
+			UserID:   uuid.NullUUID{UUID: userID, Valid: true},
 		})
 		if err != sql.ErrNoRows {
 			t.Fatalf("GetAnnouncementForUser %s err = %v, want sql.ErrNoRows", announcementID, err)

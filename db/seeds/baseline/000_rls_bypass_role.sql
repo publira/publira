@@ -141,10 +141,11 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 -- when someone puts it in this list, and a job that starts reading a table it
 -- was never granted fails in its integration test rather than in production.
 --
--- Reads: the due listings and windows, the catalog rows the log lines name, and
--- the recipients each notification fans out to.
+-- Reads: the due listings, windows and pinned banners, the catalog rows the log
+-- lines name, and the recipients each notification fans out to.
 GRANT SELECT ON
     episode_listings,
+    announcements,
     episodes,
     series,
     tenants,
@@ -159,9 +160,9 @@ GRANT SELECT ON
     platform_user_roles
 TO publira_ticker;
 
--- Writes: the listing a publish promotes, the window boundary a drop answers
--- for, and the rows the fan-out files. SELECT rides along on the last three
+-- Writes: the listing a publish promotes, the window boundary and the pinned
+-- flag a drop answers for, and the rows the fan-out files. SELECT rides along on the last three
 -- because each insert is an ON CONFLICT DO NOTHING with a RETURNING clause.
-GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
+GRANT UPDATE ON episode_listings, episode_free_windows, announcements TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;
 

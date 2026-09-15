@@ -73,7 +73,7 @@ func newAuthedPublicRequest[T any](msg *T, tenantID string) *connect.Request[T] 
 
 func announcementColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "is_read", "read_at",
+		"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until", "is_read", "read_at",
 	})
 }
 
@@ -93,6 +93,8 @@ func addAnnouncementRow(
 		"/series/S001/episodes/E001",
 		json.RawMessage("{}"),
 		createdAt,
+		false,
+		sql.NullTime{},
 		true,
 		createdAt,
 	)
@@ -132,7 +134,7 @@ func TestAuthListAnnouncementsSuccess(t *testing.T) {
 	client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
-		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "New Episode", now))
 
 	req := newListAnnouncementsRequest(tenantID)
@@ -166,7 +168,7 @@ func TestAuthListAnnouncementsFirstPageReportsNextToken(t *testing.T) {
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
-		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addAnnouncementRow(
 			addAnnouncementRow(
 				addAnnouncementRow(announcementColumns(), ids[0], tenantID, "first", now),
@@ -208,7 +210,7 @@ func TestAuthListAnnouncementsFollowsNextToken(t *testing.T) {
 	client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
-		WithArgs(userID, tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), uuid.Must(uuid.NewV7()), tenantID, "last", now.Add(-2*time.Minute)))
 
 	req := newListAnnouncementsRequest(tenantID)
@@ -237,7 +239,7 @@ func TestAuthListAnnouncementsFollowsPreviousTokenBackwards(t *testing.T) {
 	client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserAscQuery)).
-		WithArgs(userID, tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addAnnouncementRow(
 			addAnnouncementRow(announcementColumns(), uuid.Must(uuid.NewV7()), tenantID, "older", now.Add(-2*time.Minute)),
 			uuid.Must(uuid.NewV7()), tenantID, "newer", now.Add(-time.Minute),
@@ -296,7 +298,7 @@ func TestAuthListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 			client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(userID, tenantID, boundaryID, false, now, int32(21)).
+				WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, boundaryID, false, now, int32(21)).
 				WillReturnRows(announcementColumns())
 
 			req := newListAnnouncementsRequest(tenantID)
@@ -325,7 +327,7 @@ func TestAuthListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 				recoveryRows = addAnnouncementRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, "older", now.Add(-time.Minute))
 			}
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
-				WithArgs(userID, tenantID, boundaryID, true, now, int32(21)).
+				WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, boundaryID, true, now, int32(21)).
 				WillReturnRows(recoveryRows)
 
 			recoveryReq := newListAnnouncementsRequest(tenantID)
@@ -373,7 +375,7 @@ func TestAuthListAnnouncementsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 			client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(userID, tenantID, boundaryID, true, now, int32(21)).
+				WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, boundaryID, true, now, int32(21)).
 				WillReturnRows(announcementColumns())
 
 			req := newListAnnouncementsRequest(tenantID)
