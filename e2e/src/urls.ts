@@ -276,6 +276,12 @@ export const WEB_HOST_AGE_VERIFICATION_BASE_URL = envUrl(
   withHostname(WEB_HOST_EDGE_BASE_URL, "age.localhost")
 );
 
+/** Admin console of the same age-verification tenant. */
+export const WEB_ADMIN_AGE_VERIFICATION_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_AGE_VERIFICATION_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.age.localhost")
+);
+
 /**
  * Public site of the Japanese-default tenant from the scenario seed
  * `db/seeds/scenarios/080_locale_switching.sql`.

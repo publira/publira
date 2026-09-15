@@ -27,6 +27,7 @@ import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteSettings } from "#lib/site-settings";
+import { getTenantAgeVerification } from "#lib/tenant-age-verification";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantId } from "#lib/tenant-id";
@@ -34,12 +35,14 @@ import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
 import { SiteSettingsForm } from "./_components/site-settings-form";
+import { TenantAgeVerificationForm } from "./_components/tenant-age-verification-form";
 import { TenantCommentSettingsForm } from "./_components/tenant-comment-settings-form";
 import { TenantDefaultLocaleForm } from "./_components/tenant-default-locale-form";
 import type { TenantDefaultLocaleFormOption } from "./_components/tenant-default-locale-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 import {
   updateSiteSettingsAction,
+  updateTenantAgeVerificationAction,
   updateTenantCommentSettingsAction,
   updateTenantDefaultLocaleAction,
   updateTenantTimezoneAction,
@@ -78,6 +81,12 @@ const SettingsFormsSkeleton = () => (
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
     </AdminSection>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-40" />
+      <Skeleton className="h-12" />
+      <Skeleton className="h-12" />
+      <Skeleton className="h-12" />
+    </AdminSection>
   </AdminSections>
 );
 
@@ -96,6 +105,7 @@ const SettingsForms = async () => {
     timezoneResult,
     defaultLocaleResult,
     commentSettingsResult,
+    ageVerificationResult,
     currentUserResult,
     options,
   ] = await Promise.all([
@@ -103,6 +113,7 @@ const SettingsForms = async () => {
     getTenantTimezone(tenantId, locale),
     getTenantDefaultLocale(tenantId, locale),
     getTenantCommentSettings(tenantId, locale),
+    getTenantAgeVerification(tenantId, locale),
     getAdminCurrentUser(tenantId),
     tenantDefaultLocaleOptions(),
   ]);
@@ -112,6 +123,7 @@ const SettingsForms = async () => {
     timezoneResult,
     defaultLocaleResult,
     commentSettingsResult,
+    ageVerificationResult,
     currentUserResult
   );
 
@@ -170,6 +182,19 @@ const SettingsForms = async () => {
         }
         loadErrorMessage={
           commentSettingsResult.ok ? undefined : commentSettingsResult.message
+        }
+      />
+
+      <TenantAgeVerificationForm
+        action={updateTenantAgeVerificationAction}
+        canEdit={canEdit}
+        initialAgeVerification={
+          ageVerificationResult.ok
+            ? ageVerificationResult.ageVerification
+            : undefined
+        }
+        loadErrorMessage={
+          ageVerificationResult.ok ? undefined : ageVerificationResult.message
         }
       />
     </AdminSections>

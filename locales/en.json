@@ -1474,6 +1474,33 @@
           "auto_hide_range": "Enter a whole number between 0 and {$max}."
         }
       },
+      "age_verification": {
+        "title": "Age verification",
+        "description": "Which of your age ratings a reader has to prove an age for. A reader proves theirs by saving a date of birth on their account, and a work they are not old enough for stays closed to them.",
+        "label": "Ratings that need a proven age",
+        "options": {
+          "none": {
+            "label": "Check no ages",
+            "description": "A rated series keeps its rating and still asks the reader to confirm, but no date of birth is asked for or checked."
+          },
+          "r18": {
+            "label": "Check R18 only",
+            "description": "An R18 series opens only to a reader who has proven they are 18, and an R15 series is left to the reader's own confirmation."
+          },
+          "r15_and_r18": {
+            "label": "Check R15 and R18",
+            "description": "An R15 series opens only to a reader who has proven they are 15, and an R18 series only to one who has proven they are 18."
+          }
+        },
+        "load_error_hint": "Saving now would overwrite the stored setting, so reload the page before changing it.",
+        "submit": "Save the age verification",
+        "saved": "The age verification was saved.",
+        "load_failed": "Could not load the age verification. Please try again later.",
+        "save_failed": "Could not save the age verification. Please try again later.",
+        "validation": {
+          "required": "Select which ratings need a proven age."
+        }
+      },
       "icon": {
         "title": "Icon",
         "description": "The icon the public site shows in a browser tab and in the address bar.",

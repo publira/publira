@@ -45,6 +45,11 @@ import {
   updateTenantSiteSettings,
 } from "#lib/site-settings";
 import {
+  tenantAgeVerificationCacheTag,
+  updateTenantAgeVerification,
+} from "#lib/tenant-age-verification";
+import { TENANT_AGE_VERIFICATIONS } from "#lib/tenant-age-verification-shared";
+import {
   tenantCommentSettingsCacheTag,
   updateTenantCommentSettings,
 } from "#lib/tenant-comment-settings";
@@ -72,6 +77,7 @@ import {
 import type {
   EmailChangeActionState,
   SiteSettingsActionState,
+  TenantAgeVerificationActionState,
   TenantCommentSettingsActionState,
   TenantDefaultLocaleActionState,
   TenantEmailSettingsFormState,
@@ -315,6 +321,16 @@ const tenantCommentSettingsSchema = async (locale: Locale) => {
       ),
     commentMode: z.enum(TENANT_COMMENT_MODES, {
       error: t("admin.settings.comments.validation.mode_required"),
+    }),
+  });
+};
+
+const tenantAgeVerificationSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    ageVerification: z.enum(TENANT_AGE_VERIFICATIONS, {
+      error: t("admin.settings.age_verification.validation.required"),
     }),
   });
 };
@@ -852,6 +868,60 @@ export const updateTenantCommentSettingsAction = async (
     autoHideReportThreshold: result.autoHideReportThreshold,
     commentMode: result.commentMode,
     message: t("admin.settings.comments.saved"),
+    ok: true,
+  };
+};
+
+export const updateTenantAgeVerificationAction = async (
+  _prevState: TenantAgeVerificationActionState,
+  formData: FormData
+): Promise<TenantAgeVerificationActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const t = await getMessagesFor(locale);
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!tenantId) {
+    return {
+      message: t("admin.settings.tenant_missing"),
+      ok: false,
+    };
+  }
+
+  const schema = await tenantAgeVerificationSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ageVerification: { kind: "value", name: "age_verification" },
+    })
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantAgeVerification(
+      { ageVerification: parsed.data.ageVerification, tenantId },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the rule through a private cache, so without this
+  // the operator would keep seeing the previous choice in the same session. The
+  // storefront's own cached copies are dropped by the API as the update lands.
+  updateTag(tenantAgeVerificationCacheTag(tenantId));
+
+  return {
+    ageVerification: result.ageVerification,
+    message: t("admin.settings.age_verification.saved"),
     ok: true,
   };
 };

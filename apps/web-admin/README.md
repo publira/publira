@@ -11,6 +11,7 @@ The console where publishers and editors enter and operate their content.
 - Read-through reporting: how many members finished each episode, over the member views of the same period
 - Comment moderation: approving, removing, restoring, and purging the comments readers leave on episodes
 - The tenant's comment policy: whether episodes take comments at all, whether a comment appears at once or waits for approval, and how many reader reports remove one without waiting for a moderator
+- The tenant's age verification rule: which of its age ratings a reader has to prove a birth date for, from none through `r18` alone to `r15` and `r18` together
 
 ## UI locale
 
