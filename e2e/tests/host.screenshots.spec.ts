@@ -7,7 +7,11 @@ import {
   VIEWER_EPISODE_PATH,
   viewerPageLabel,
 } from "../src/scenarios/viewer-pages";
-import { expectScreenshot, SCREENSHOT_VIEWPORTS } from "../src/screenshots";
+import {
+  expectElementScreenshot,
+  expectScreenshot,
+  SCREENSHOT_VIEWPORTS,
+} from "../src/screenshots";
 import { hostPath } from "../src/urls";
 
 /**
@@ -72,6 +76,9 @@ const TOP_PAGE_SECTIONS = [
   { href: "/labels/", name: "Featured labels" },
   { href: "/creators/", name: "Featured authors" },
 ] as const;
+
+/** The width the drawer below is recorded at: the narrower of the two. */
+const [PHONE_VIEWPORT] = SCREENSHOT_VIEWPORTS;
 
 test.describe("web-host screenshots", () => {
   for (const viewport of SCREENSHOT_VIEWPORTS) {
@@ -316,4 +323,55 @@ test.describe("web-host screenshots", () => {
       });
     });
   }
+});
+
+/**
+ * The drawer the phone band opens, with its language row closed and then open.
+ *
+ * At 390px only: from `md` up the band draws these controls itself and the
+ * drawer is never rendered, so a second width would record nothing. The shot
+ * is of the drawer rather than of the page, because the drawer floats over the
+ * document a full-page shot walks.
+ */
+test.describe("web-host screenshots of the navigation drawer", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize(PHONE_VIEWPORT);
+  });
+
+  test("the navigation drawer, closed and opened onto the languages", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/series"));
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Open navigation" }).click();
+
+    const menu = page.getByRole("dialog", { name: "Menu" });
+    const language = menu.getByRole("button", { name: "Language" });
+
+    await expect(language).toHaveAttribute("aria-expanded", "false");
+
+    await expectElementScreenshot(
+      page,
+      PHONE_VIEWPORT,
+      menu,
+      "navigation-drawer"
+    );
+
+    await language.click();
+
+    await expect(menu.getByRole("link", { name: "English" })).toHaveAttribute(
+      "aria-current",
+      "true"
+    );
+
+    await expectElementScreenshot(
+      page,
+      PHONE_VIEWPORT,
+      menu,
+      "navigation-drawer-language"
+    );
+  });
 });

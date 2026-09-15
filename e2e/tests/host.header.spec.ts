@@ -123,12 +123,53 @@ test.describe("web-host header at a phone width", () => {
     // search, so the rows beside it do not repeat it as a destination.
     await expect(menu.getByRole("search")).toHaveCount(1);
     await expect(links.getByRole("link", { name: "Search" })).toHaveCount(0);
+    // The language is one row until it is asked for, so the catalog rows above
+    // it are not outnumbered by the five the registry holds.
+    const language = menu.getByRole("button", { name: "Language" });
+    await expect(language).toHaveAttribute("aria-expanded", "false");
+    await expect(menu.getByRole("link", { name: "English" })).toHaveCount(0);
+
+    await language.click();
+
+    await expect(language).toHaveAttribute("aria-expanded", "true");
     await expect(menu.getByRole("link", { name: "English" })).toHaveAttribute(
       "aria-current",
       "true"
     );
     await expect(menu.getByRole("link", { name: "Sign in" })).toBeVisible();
     await expect(menu.getByRole("link", { name: "Get started" })).toBeVisible();
+  });
+
+  test("opens the language from the keyboard and lands on the page in the language chosen", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/series"));
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Open navigation" }).click();
+
+    const menu = page.getByRole("dialog", { name: "Menu" });
+    const language = menu.getByRole("button", { name: "Language" });
+
+    // Focus reaches the row and moves on into what it opens, without a pointer
+    // touching either.
+    await language.focus();
+    await expect(language).toBeFocused();
+    await language.press("Enter");
+    await expect(language).toHaveAttribute("aria-expanded", "true");
+
+    const japanese = menu.getByRole("link", { name: "日本語" });
+    await japanese.focus();
+    await expect(japanese).toBeFocused();
+    await japanese.press("Enter");
+
+    await expect(page).toHaveURL((url) => url.pathname.startsWith("/ja/"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+    ).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Menu" })).toBeHidden();
   });
 
   test("closes the menu on the way to the page it was asked for", async ({

@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
 /**
@@ -108,4 +108,25 @@ export const expectScreenshot = async (
   await expect(page).toHaveScreenshot(`${name}-${viewport.label}.png`, {
     fullPage: true,
   });
+};
+
+/**
+ * Record one element of a screen, or compare it with what was recorded before.
+ *
+ * A panel that floats over the page is not part of the document a full-page
+ * shot walks, so what changed inside one is photographed as the panel itself.
+ * The waits are the ones {@link expectScreenshot} explains; the overflow
+ * measurement is not among them, because it is about the page column rather
+ * than about a panel of a fixed width.
+ */
+export const expectElementScreenshot = async (
+  page: Page,
+  viewport: ScreenshotViewport,
+  element: Locator,
+  name: string
+): Promise<void> => {
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
+
+  await expect(element).toHaveScreenshot(`${name}-${viewport.label}.png`);
 };

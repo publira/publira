@@ -9,6 +9,9 @@ import {
   SiteLayoutMobileNavigation,
   SiteLayoutMobileNavigationActions,
   SiteLayoutMobileNavigationCloseButton,
+  SiteLayoutMobileNavigationDisclosure,
+  SiteLayoutMobileNavigationDisclosurePanel,
+  SiteLayoutMobileNavigationDisclosureTrigger,
   SiteLayoutMobileNavigationHeader,
   SiteLayoutMobileNavigationLink,
   SiteLayoutMobileNavigationLinks,
@@ -54,10 +57,24 @@ const renderHeader = () =>
             <SiteLayoutMobileNavigationLink href="/series">
               Series
             </SiteLayoutMobileNavigationLink>
-            <SiteLayoutMobileNavigationLink current href="/en/series" lang="en">
-              English
-            </SiteLayoutMobileNavigationLink>
           </SiteLayoutMobileNavigationLinks>
+          <SiteLayoutMobileNavigationDisclosure>
+            <SiteLayoutMobileNavigationDisclosureTrigger>
+              Language
+            </SiteLayoutMobileNavigationDisclosureTrigger>
+            <SiteLayoutMobileNavigationDisclosurePanel>
+              <SiteLayoutMobileNavigationLink
+                current
+                href="/en/series"
+                lang="en"
+              >
+                English
+              </SiteLayoutMobileNavigationLink>
+              <SiteLayoutMobileNavigationLink href="/ja/series" lang="ja">
+                Japanese
+              </SiteLayoutMobileNavigationLink>
+            </SiteLayoutMobileNavigationDisclosurePanel>
+          </SiteLayoutMobileNavigationDisclosure>
           <SiteLayoutMobileNavigationActions>
             <SiteLayoutMobileNavigationSecondaryAction href="/login">
               Sign in
@@ -74,6 +91,10 @@ const renderHeader = () =>
 
 const openNavigation = () => {
   fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+};
+
+const openDisclosure = () => {
+  fireEvent.click(screen.getByRole("button", { name: "Language" }));
 };
 
 describe("Site mobile navigation", () => {
@@ -96,9 +117,40 @@ describe("Site mobile navigation", () => {
     ).toBe("/signup");
   });
 
+  it("keeps the disclosure's rows behind the one row it draws closed", () => {
+    renderHeader();
+    openNavigation();
+
+    expect(screen.queryByRole("link", { name: "English" })).toBe(null);
+
+    const trigger = screen.getByRole("button", { name: "Language" });
+
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(trigger);
+
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("link", { name: "Japanese" })).toBeTruthy();
+  });
+
+  it("marks the disclosure's own row while the keyboard is on it", () => {
+    renderHeader();
+    openNavigation();
+
+    const trigger = screen.getByRole("button", { name: "Language" });
+
+    trigger.focus();
+
+    expect(document.activeElement).toBe(trigger);
+    // jsdom resolves no Tailwind utilities, so the ring the row is marked with
+    // is only visible here as the class that declares it.
+    expect(trigger.className).toContain("focus-visible:ring-2");
+  });
+
   it("marks the link in effect and names the language it leads to", () => {
     renderHeader();
     openNavigation();
+    openDisclosure();
 
     const option = screen.getByRole("link", { name: "English" });
 
@@ -107,6 +159,16 @@ describe("Site mobile navigation", () => {
     expect(
       screen.getByRole("link", { name: "Series" }).getAttribute("aria-current")
     ).toBe(null);
+  });
+
+  it("closes the drawer when a language behind the disclosure is chosen", () => {
+    renderHeader();
+    openNavigation();
+    openDisclosure();
+
+    fireEvent.click(screen.getByRole("link", { name: "Japanese" }));
+
+    expect(screen.queryByRole("navigation")).toBe(null);
   });
 
   it("closes when a link inside it is followed", () => {
