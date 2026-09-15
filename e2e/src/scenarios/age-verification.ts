@@ -10,8 +10,25 @@
 export const AGE_VERIFICATION_SCENARIO = "190_age_verification";
 
 export const AGE_VERIFICATION_TENANT = {
+  /**
+   * The tenant's uuid, not its `public_id`: web-host's cache tags are built
+   * from the routing id, and the console suite drops them after writing the
+   * rule back behind the app.
+   */
+  id: "018f0fa0-0001-7000-8000-000000000001",
   name: "Age Verification Tenant",
   publicId: "AverTNNTAAA1",
+} as const;
+
+/**
+ * Tenant admin of that tenant, who picks the rule in the settings console.
+ * Password hash is the same as `adminpass`.
+ */
+export const AGE_VERIFICATION_ADMIN = {
+  email: "age-admin@example.com",
+  name: "Age E2E Admin",
+  password: "adminpass",
+  publicId: "AverADMNAAA1",
 } as const;
 
 /** The rated series and its one free episode, which the rule still withholds. */

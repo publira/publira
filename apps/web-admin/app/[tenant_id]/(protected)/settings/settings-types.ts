@@ -3,6 +3,7 @@ import type { TenantTheme } from "@publira/utils/theme-css-variables";
 
 import type { TenantSmtpSettings } from "#lib/email-settings";
 import type { TenantPaymentSettings } from "#lib/payment-settings";
+import type { TenantAgeVerification } from "#lib/tenant-age-verification-shared";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
 
@@ -119,6 +120,18 @@ export type TenantCommentSettingsActionState =
       message: string;
       commentMode: TenantCommentMode;
       autoHideReportThreshold: number;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
+
+export type TenantAgeVerificationActionState =
+  | {
+      ok: true;
+      message: string;
+      ageVerification: TenantAgeVerification;
     }
   | {
       ok: false;

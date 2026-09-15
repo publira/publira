@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 import {
   BROWSER_WS_ENDPOINT,
+  WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_HOST_BASE_URL,
   WEB_HOST_EDGE_BASE_URL,
@@ -45,6 +46,14 @@ const platformOperatorManagementSpecs = /platform\.operator-management\./u;
  * their requests cannot keep the old mode live while that round trip runs.
  */
 const commentModerationSpecs = /admin\.comment-moderation\./u;
+
+/**
+ * The spec that changes its tenant's saved age verification rule and waits for
+ * the public gate to observe each value. `host.age-verification.spec.ts` reads
+ * the same tenant through the rule the scenario seeds, so this one runs after
+ * the parallel projects rather than beside it.
+ */
+const ageVerificationSpecs = /admin\.age-verification\./u;
 
 /**
  * The spec that drives initial setup. `/setup` renders only while the platform
@@ -158,6 +167,7 @@ export default defineConfig({
       testIgnore: [
         processIsolatedSpecs,
         commentModerationSpecs,
+        ageVerificationSpecs,
         performanceSpecs,
         screenshotSpecs,
       ],
@@ -303,6 +313,21 @@ export default defineConfig({
         baseURL: WEB_ADMIN_BASE_URL,
       },
     },
+    // The same shape, on the tenant that makes readers prove an age: the
+    // console writes the rule and the storefront is asked to read it back. It
+    // follows the moderation round trip rather than running beside it, so the
+    // two cache revalidations are never in flight at once.
+    {
+      dependencies: ["admin-comment-moderation"],
+      fullyParallel: false,
+      name: "admin-age-verification",
+      testMatch: [ageVerificationSpecs],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
+      },
+    },
     // Last, and on its own: it measures elapsed time, so nothing else may be
     // competing for the CPU. Depending on the tail of every chain above is what
     // empties the worker pool for it. Its baseURL is the Traefik edge, the only
@@ -312,7 +337,7 @@ export default defineConfig({
         "catalog-error-boundary",
         "admin-error-boundary",
         "platform-operator-management",
-        "admin-comment-moderation",
+        "admin-age-verification",
       ],
       fullyParallel: false,
       name: "viewer-performance",

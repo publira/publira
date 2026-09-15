@@ -25,6 +25,7 @@
 --   series   AverSERSAAA1 (rated r18)
 --   episode  AverEPSDAAA1 (free, published)
 --   members  AverMMBRAAA1 (adult) / AverMMBRAAA2 (minor) / AverMMBRAAA3 (no date)
+--   admin    AverADMNAAA1 (age-admin@example.com)
 
 WITH tenant_seed AS (
     SELECT '018f0fa0-0001-7000-8000-000000000001'::uuid AS id
@@ -312,3 +313,49 @@ SET tenant_id = EXCLUDED.tenant_id,
     status = EXCLUDED.status,
     email_verified_at = EXCLUDED.email_verified_at,
     birth_date = EXCLUDED.birth_date;
+
+-- The tenant admin the console step signs in as. The rule is one setting for
+-- the whole tenant, so the console that changes it has to be this tenant's own;
+-- the dev seed admin administers a tenant whose rated series another suite
+-- opens by confirming. Password hash matches the dev seed (`adminpass`).
+WITH admin_user_seed AS (
+    SELECT '018f0fa8-0001-7000-8000-000000000001'::uuid AS id
+)
+INSERT INTO users (
+    id,
+    tenant_id,
+    public_id,
+    email,
+    password_hash,
+    name,
+    status,
+    email_verified_at
+)
+SELECT
+    aus.id,
+    t.id,
+    'AverADMNAAA1',
+    'age-admin@example.com',
+    '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
+    'Age E2E Admin',
+    'active',
+    NOW()
+FROM admin_user_seed aus
+JOIN tenants t ON t.domain = 'age.localhost'
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    email = EXCLUDED.email,
+    password_hash = EXCLUDED.password_hash,
+    name = EXCLUDED.name,
+    status = EXCLUDED.status,
+    email_verified_at = EXCLUDED.email_verified_at;
+
+INSERT INTO tenant_user_roles (id, user_id, role, tenant_id)
+SELECT
+    '018f0fa9-0001-7000-8000-000000000001'::uuid,
+    u.id,
+    'tenant_admin',
+    u.tenant_id
+FROM users u
+WHERE u.public_id = 'AverADMNAAA1'
+ON CONFLICT (user_id, role) DO NOTHING;
