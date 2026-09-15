@@ -80,6 +80,13 @@ class OfflineCatalogRepository implements CatalogRepository {
     }
   }
 
+  /// The search results, which only the API can answer: matching a keyword
+  /// against every published title and synopsis is a read of the whole
+  /// catalog, and the device holds one page of it.
+  @override
+  Future<SeriesPage> searchSeries({required String query, String token = ''}) =>
+      _origin.searchSeries(query: query, token: token);
+
   /// The new-arrivals shelf, which only the API can answer.
   ///
   /// It is another order over the same series, and keeping it too would

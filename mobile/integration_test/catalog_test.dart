@@ -240,6 +240,73 @@ void main() {
       });
     });
 
+    testWidgets('finds a series by part of its title and opens it', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-search', () async {
+        await pumpApp(tester);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('catalog-search')),
+        );
+        await tester.tap(find.byKey(const ValueKey('catalog-search')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('search-field')),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('search-field')),
+          'Seed Series',
+        );
+        final tile = find.byKey(
+          const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+        );
+        await pumpUntilRouteSettled(tester, tile);
+        await tester.tap(tile);
+        await pumpUntilRouteSettled(
+          tester,
+          find.text(ConnectFixtureServer.seedEpisodeTitle),
+        );
+
+        expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsWidgets);
+      });
+    });
+
+    testWidgets('clearing the keyword takes the results away', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-search-cleared', () async {
+        await pumpApp(tester, initialLocation: AppRoutes.search);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('search-field')),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('search-field')),
+          'Seed Series',
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('search-clear')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('search-prompt')),
+        );
+
+        expect(
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+          findsNothing,
+        );
+      });
+    });
+
     testWidgets('opens the reader on a free episode body', (tester) async {
       await withFailureScreenshot(tester, 'fixture-viewer', () async {
         await pumpApp(
@@ -683,6 +750,33 @@ void main() {
           find.byKey(const ValueKey('catalog-new-arrivals-error')),
           findsNothing,
         );
+      });
+    });
+
+    testWidgets('a keyword finds the seed series on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-search', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.search);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('search-field')),
+          timeout: const Duration(seconds: 20),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('search-field')),
+          'Seed Series',
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+          timeout: const Duration(seconds: 20),
+        );
+
+        expect(find.byKey(const ValueKey('search-error')), findsNothing);
       });
     });
 

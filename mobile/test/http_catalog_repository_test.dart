@@ -121,6 +121,71 @@ void main() {
     expect((await catalog.listSeries()).nextToken, isEmpty);
   });
 
+  test('searchSeries maps the matching series onto SeriesItem', () async {
+    final page = await catalog.searchSeries(query: 'Kitchen');
+
+    expect(page.series.single.id, 'series-kitchen');
+    expect(page.series.single.title, 'The Little Kitchen');
+  });
+
+  test('searchSeries asks for the keyword the reader typed', () async {
+    await catalog.searchSeries(query: 'Kitchen');
+
+    final request = server.requestsTo('SearchPublishedSeries').single;
+    expect(request.body['query'], 'Kitchen');
+    expect(request.body['limit'], 20);
+    // protojson omits a default, and an omitted token is the first page.
+    expect(request.body.containsKey('token'), isFalse);
+  });
+
+  test('searchSeries asks for the page its token names', () async {
+    server.seriesPageSize = 1;
+    server.series = [
+      ...ConnectFixtureServer.populatedSeries(),
+      {'publicId': 'series-second-kitchen', 'title': 'Kitchen Nights'},
+    ];
+
+    final first = await catalog.searchSeries(query: 'Kitchen');
+
+    expect(first.series.single.id, 'series-kitchen');
+    expect(first.nextToken, isNotEmpty);
+
+    final second = await catalog.searchSeries(
+      query: 'Kitchen',
+      token: first.nextToken,
+    );
+
+    expect(second.series.single.id, 'series-second-kitchen');
+    expect(second.nextToken, isEmpty);
+    final request = server.requestsTo('SearchPublishedSeries').last;
+    expect(request.body['token'], first.nextToken);
+    // The token belongs to the keyword it was built for, so it travels with
+    // the same query rather than on its own.
+    expect(request.body['query'], 'Kitchen');
+  });
+
+  test('searchSeries reads a keyword nothing matches as empty', () async {
+    final page = await catalog.searchSeries(query: 'nothing here');
+
+    expect(page.series, isEmpty);
+    expect(page.nextToken, isEmpty);
+  });
+
+  test('a search the API could not answer is a network failure', () async {
+    server.searchStatus = HttpStatus.serviceUnavailable;
+
+    expect(
+      () => catalog.searchSeries(query: 'Kitchen'),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.network,
+        ),
+      ),
+    );
+  });
+
   test('listNewestSeries asks for one short page of the newest', () async {
     final items = await catalog.listNewestSeries(limit: 10);
 

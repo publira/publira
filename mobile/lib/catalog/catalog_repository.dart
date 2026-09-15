@@ -3,6 +3,10 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 
+/// How long a search keyword may be, as `SearchPublishedSeries` measures it:
+/// Unicode code points rather than UTF-16 units.
+const searchQueryMaxRunes = 100;
+
 /// Public catalog reads. Implementations talk to the Connect API or a fake.
 abstract class CatalogRepository {
   /// One page of the configured tenant's published series, by title.
@@ -16,6 +20,18 @@ abstract class CatalogRepository {
   /// unchanged. Returns an empty page when the tenant has no published series.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesPage> listSeries({String token});
+
+  /// One page of the published series whose title or synopsis contains
+  /// [query], by title.
+  ///
+  /// [query] is what the reader typed, trimmed and at most
+  /// [searchQueryMaxRunes] long; the API refuses an empty one. [token] is
+  /// empty for the first page, and otherwise the [SeriesPage.nextToken] of the
+  /// page above the one wanted. A token belongs to the query it was built for,
+  /// so a changed keyword starts again at the first page.
+  ///
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<SeriesPage> searchSeries({required String query, String token});
 
   /// The newest published series, at most [limit] of them.
   ///

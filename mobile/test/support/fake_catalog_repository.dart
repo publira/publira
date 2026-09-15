@@ -17,8 +17,12 @@ class FakeCatalogRepository implements CatalogRepository {
     this.episodes = const {},
     this.recentSeries = const [],
     this.readingPositions = const {},
+    this.searchResults = const [],
+    this.searchPageSize = 20,
     this.listError,
     this.listMoreError,
+    this.searchError,
+    this.searchMoreError,
     this.newestSeriesError,
     this.rankedSeriesError,
     this.detailError,
@@ -34,6 +38,13 @@ class FakeCatalogRepository implements CatalogRepository {
 
   /// How many of [series] one page of [listSeries] holds.
   int seriesPageSize;
+
+  /// What [searchSeries] pages over, whatever keyword it is asked for. The
+  /// screen is about which rows arrive for a keyword, not about matching.
+  List<SeriesItem> searchResults;
+
+  /// How many of [searchResults] one page of [searchSeries] holds.
+  int searchPageSize;
 
   /// What the new-arrivals shelf is answered with.
   List<SeriesItem> newestSeries;
@@ -59,6 +70,11 @@ class FakeCatalogRepository implements CatalogRepository {
   /// What a read of a page under the first one fails with, so a test can fail
   /// one page of the catalog without failing the screen.
   CatalogFailure? listMoreError;
+  CatalogFailure? searchError;
+
+  /// What a read of a page under the first one fails with, so a test can fail
+  /// one page of the results without failing the screen.
+  CatalogFailure? searchMoreError;
   CatalogFailure? newestSeriesError;
   CatalogFailure? rankedSeriesError;
   CatalogFailure? detailError;
@@ -75,6 +91,11 @@ class FakeCatalogRepository implements CatalogRepository {
   /// Tokens [listSeries] was called with, in order. The first page is the
   /// empty one.
   final List<String> seriesTokens = <String>[];
+
+  /// Keywords [searchSeries] was called with, in order, each with the token
+  /// it was asked for. The first page of a keyword is the empty token.
+  final List<({String query, String token})> searchRequests =
+      <({String query, String token})>[];
 
   /// Limits [listRecentSeries] was called with, in order.
   final List<int> recentSeriesLimits = <int>[];
@@ -102,6 +123,25 @@ class FakeCatalogRepository implements CatalogRepository {
     return SeriesPage(
       series: List<SeriesItem>.from(series.sublist(start, end)),
       nextToken: end < series.length ? '$end' : '',
+    );
+  }
+
+  /// Pages over [searchResults] the way [listSeries] pages over the catalog.
+  @override
+  Future<SeriesPage> searchSeries({
+    required String query,
+    String token = '',
+  }) async {
+    searchRequests.add((query: query, token: token));
+    final error = token.isEmpty ? searchError : searchMoreError ?? searchError;
+    if (error != null) {
+      throw error;
+    }
+    final start = token.isEmpty ? 0 : int.parse(token);
+    final end = min(start + searchPageSize, searchResults.length);
+    return SeriesPage(
+      series: List<SeriesItem>.from(searchResults.sublist(start, end)),
+      nextToken: end < searchResults.length ? '$end' : '',
     );
   }
 

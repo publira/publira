@@ -150,6 +150,7 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | Path | Screen |
 | --- | --- |
 | `/` | Catalog list |
+| `/search` | Search results |
 | `/sign-in` | Sign-in form |
 | `/account` | Signed-in reader and sign-out |
 | `/series/:seriesId` | Series details |
@@ -158,7 +159,7 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 
 Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
-The catalog's app bar carries the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one.
+The catalog's app bar carries the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one, and under the title a search field, which opens `/search`.
 
 ### The catalog screen
 
@@ -174,6 +175,14 @@ The catalog is four sections, top to bottom. Each reads its own page of `Catalog
 The first three are horizontal shelves, and a shelf answered with nothing takes its heading with it: a reader in the middle of nothing and a tenant with no chart are offered no row rather than an empty one. The whole-catalog list is ordered by title because the newest of it already stands above it as a shelf of its own.
 
 Only the whole-catalog list is kept for reading without a network. The shelves above it are another order over the same series, a chart of a window that has closed, and one reader's own history — none of which the device can answer on its own, so each reports that it could not reach the API.
+
+### The search screen
+
+`/search` is a keyword and the published series `SearchPublishedSeries` matches it against, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. The field in the catalog's app bar cannot be typed into: it opens this screen, and the field here — the app bar's title — is the only place the keyword is held.
+
+The field is searched for once it has stood still for a moment, so a word typed letter by letter costs one request, and it is limited to the 100 code points the API accepts. Emptying it puts the screen back to asking for a keyword rather than searching for nothing, and the catalog stands behind the screen, so a reader who cleared it leaves by going back. A keyword nothing matches says so, and a search the API could not answer offers a retry.
+
+Search is answered by the API alone. Matching a keyword against every published title and synopsis is a read of the whole catalog, and what the device keeps is one page of it.
 
 ## Localization
 

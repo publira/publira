@@ -598,6 +598,33 @@ void main() {
     },
   );
 
+  test('a search is answered by the API alone', () async {
+    final catalog = build();
+    await catalog.listSeries();
+    origin.searchResults = const [
+      SeriesItem(
+        id: 'series-kitchen',
+        title: 'The Little Kitchen',
+        description: '',
+      ),
+    ];
+
+    final results = await catalog.searchSeries(query: 'Kitchen');
+
+    expect(results.series.single.id, 'series-kitchen');
+    expect(origin.searchRequests.single.query, 'Kitchen');
+    // The results are another read over the catalog, so they do not replace
+    // the page the device keeps for reading without a network.
+    expect((await library.readSeriesList())!.series.single.id, _seriesId);
+  });
+
+  test('a search the API cannot answer is not answered from the device', () {
+    final catalog = build();
+    origin.searchError = _network;
+
+    expect(() => catalog.searchSeries(query: 'Seed'), throwsA(_network));
+  });
+
   test('the ranking shelf is answered by the API alone', () async {
     origin.rankedSeries = [
       RankedSeriesItem(rank: 1, series: origin.series.single),

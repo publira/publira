@@ -26,6 +26,7 @@ class ConnectFixtureServer {
     this.episodeComments = const {},
     this.myEpisodeComments = const {},
     this.listStatus = HttpStatus.ok,
+    this.searchStatus = HttpStatus.ok,
     this.rankedStatus = HttpStatus.ok,
     this.detailStatus = HttpStatus.ok,
     this.episodeStatus = HttpStatus.ok,
@@ -371,6 +372,7 @@ class ConnectFixtureServer {
   /// sent and see it in the next list.
   Map<String, List<Map<String, Object?>>> myEpisodeComments;
   int listStatus;
+  int searchStatus;
   int rankedStatus;
   int detailStatus;
   int episodeStatus;
@@ -485,6 +487,16 @@ class ConnectFixtureServer {
               if (listStatus != HttpStatus.ok) 'message': 'unavailable',
             },
       );
+      return;
+    }
+
+    if (path.endsWith('/SearchPublishedSeries')) {
+      await _write(request, searchStatus, {
+        if (searchStatus == HttpStatus.ok)
+          ..._searchPage(body['query'], body['token']),
+        if (searchStatus != HttpStatus.ok) 'code': 'unavailable',
+        if (searchStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
       return;
     }
 
@@ -654,6 +666,26 @@ class ConnectFixtureServer {
     return {
       'series': series.sublist(min(start, series.length), end),
       if (end < series.length) 'nextToken': '$end',
+    };
+  }
+
+  /// One page of the series whose title or synopsis contains [query], the
+  /// case-insensitive substring match `SearchPublishedSeries` performs.
+  Map<String, Object?> _searchPage(Object? query, Object? token) {
+    final keyword = query is String ? query.trim().toLowerCase() : '';
+    final matches = series.where((item) {
+      final title = '${item['title'] ?? ''}'.toLowerCase();
+      final synopsis = '${item['synopsis'] ?? ''}'.toLowerCase();
+      return title.contains(keyword) || synopsis.contains(keyword);
+    }).toList();
+    if (seriesPageSize <= 0) {
+      return {'series': matches};
+    }
+    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
+    final end = min(start + seriesPageSize, matches.length);
+    return {
+      'series': matches.sublist(min(start, matches.length), end),
+      if (end < matches.length) 'nextToken': '$end',
     };
   }
 

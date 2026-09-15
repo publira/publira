@@ -2527,6 +2527,13 @@
     "push": {
       "open": "打开"
     },
+    "search": {
+      "clear": "清除关键词",
+      "failed": "无法显示搜索结果。请重试。",
+      "label": "搜索作品",
+      "no_results": "没有与“{$query}”匹配的系列。",
+      "prompt": "请输入关键词搜索已发布的系列。"
+    },
     "series": {
       "age_gate": {
         "confirm_r15": "我已满 15 岁",
