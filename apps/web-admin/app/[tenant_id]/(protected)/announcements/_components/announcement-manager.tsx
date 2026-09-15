@@ -17,6 +17,7 @@ import {
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
+import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
@@ -24,6 +25,7 @@ import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
 
+import { unpinAnnouncementAction } from "../_lib/actions";
 import type { AnnouncementItem } from "../announcement-types";
 
 type AnnouncementManagerProps = CursorPageHrefs & {
@@ -31,6 +33,7 @@ type AnnouncementManagerProps = CursorPageHrefs & {
   announcements: AnnouncementItem[];
   locale: Locale;
   pageSize: number;
+  tenantId: string;
   timeZone: string;
 };
 
@@ -71,6 +74,82 @@ const formatAnnouncementDateTime = (
   timeZone: string
 ): string => (value ? formatDateTime(value, { locale, timeZone }) : "—");
 
+/**
+ * Whether the site is showing this announcement as a banner, and until when.
+ * Each branch names its key inside the `<Message>` it returns, the same way the
+ * audience does.
+ */
+const BannerStateLabel = ({
+  announcement,
+  locale,
+  timeZone,
+}: {
+  announcement: AnnouncementItem;
+  locale: Locale;
+  timeZone: string;
+}) => {
+  if (!announcement.pinnedUntil) {
+    return <Message message="admin.announcements.banner_showing" />;
+  }
+
+  return (
+    <Message
+      message="admin.announcements.banner_showing_until"
+      values={{
+        until: formatAnnouncementDateTime(
+          announcement.pinnedUntil,
+          locale,
+          timeZone
+        ),
+      }}
+    />
+  );
+};
+
+/**
+ * The banner column of one row: what it says now, and the control that takes it
+ * down. Only a pinned announcement has either — an ordinary one is a row in the
+ * list and nothing else.
+ */
+const BannerCell = ({
+  announcement,
+  locale,
+  tenantId,
+  timeZone,
+}: {
+  announcement: AnnouncementItem;
+  locale: Locale;
+  tenantId: string;
+  timeZone: string;
+}) => {
+  if (!announcement.pinned) {
+    return "—";
+  }
+
+  return (
+    <div className="grid gap-2">
+      <span>
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <BannerStateLabel
+            announcement={announcement}
+            locale={locale}
+            timeZone={timeZone}
+          />
+        </Suspense>
+      </span>
+      <ActionForm action={unpinAnnouncementAction} className="grid gap-2">
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="announcement_id" type="hidden" value={announcement.id} />
+        <ActionFormSubmit className="justify-self-start" variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.announcements.unpin_action" />
+          </Suspense>
+        </ActionFormSubmit>
+      </ActionForm>
+    </div>
+  );
+};
+
 const AnnouncementListBody = ({
   announcements,
   emptyDescription,
@@ -79,6 +158,7 @@ const AnnouncementListBody = ({
   itemLabel,
   listErrorMessage,
   locale,
+  tenantId,
   timeZone,
 }: {
   /** The empty state's copy, resolved by the async parent. */
@@ -89,6 +169,7 @@ const AnnouncementListBody = ({
   itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
+  tenantId: string;
   timeZone: string;
 }) => {
   // A failed fetch still hands an empty `announcements` array; do not show the
@@ -143,6 +224,11 @@ const AnnouncementListBody = ({
               <Message message="admin.announcements.columns.audience" />
             </Suspense>
           </TableHead>
+          <TableHead className="w-40">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.announcements.columns.banner" />
+            </Suspense>
+          </TableHead>
           <TableHead className="w-60">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.announcements.columns.link" />
@@ -167,6 +253,14 @@ const AnnouncementListBody = ({
                 <AudienceLabel item={announcement} />
               </Suspense>
             </TableCell>
+            <TableCell>
+              <BannerCell
+                announcement={announcement}
+                locale={locale}
+                tenantId={tenantId}
+                timeZone={timeZone}
+              />
+            </TableCell>
             <TableCell>{announcement.linkUrl || "—"}</TableCell>
           </TableRow>
         ))}
@@ -186,6 +280,7 @@ export const AnnouncementManager = async ({
   locale,
   pageSize,
   previousHref,
+  tenantId,
   timeZone,
 }: AnnouncementManagerProps) => {
   const t = await getMessagesFor(locale);
@@ -205,6 +300,7 @@ export const AnnouncementManager = async ({
         itemLabel={t("admin.announcements.title")}
         listErrorMessage={listErrorMessage}
         locale={locale}
+        tenantId={tenantId}
         timeZone={timeZone}
       />
 

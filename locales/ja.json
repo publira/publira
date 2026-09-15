@@ -253,6 +253,7 @@
         "title": "タイトル",
         "body": "本文",
         "audience": "対象",
+        "banner": "バナー",
         "link": "リンク先"
       },
       "form": {
@@ -270,7 +271,11 @@
         "target_users_unavailable": "対象ユーザー一覧を取得できないため、指定ユーザー配信は利用できません。全員向けにするか、時間をおいて再試行してください。",
         "user_option": "{$name} ({$id})",
         "submitting": "送信中…",
-        "submit": "お知らせを配信"
+        "submit": "お知らせを配信",
+        "pinned": "サイトのバナーとして掲出する",
+        "pinned_description": "このお知らせをサイトの全ページの上部に掲出します。",
+        "pinned_until": "掲出を終える日時",
+        "pinned_until_description": "時刻は {$time_zone} です。空欄にすると、掲出をやめるまで表示し続けます。"
       },
       "validation": {
         "audience_invalid": "配信対象が不正です。",
@@ -278,8 +283,15 @@
         "tenant_missing": "テナント ID が見つかりません。",
         "title_required": "タイトルは必須です。",
         "target_users_required": "指定ユーザー配信では対象ユーザーを 1 件以上選択してください。",
-        "link_invalid": "リンク先は / もしくは http(s):// で入力してください。"
-      }
+        "link_invalid": "リンク先は / もしくは http(s):// で入力してください。",
+        "pinned_audience": "バナーとして掲出できるのは、全体に配信するお知らせだけです。",
+        "pinned_until_invalid": "掲出を終える日時を正しく入力してください。",
+        "pinned_until_future": "掲出を終える日時には未来の時刻を指定してください。"
+      },
+      "banner_showing": "掲出中",
+      "banner_showing_until": "{$until} まで掲出",
+      "unpin_action": "掲出をやめる",
+      "unpin_failed": "バナーの掲出を止められませんでした。時間をおいて再試行してください。"
     },
     "comments": {
       "title": "コメント",
@@ -1772,6 +1784,8 @@
   },
   "host": {
     "announcements": {
+      "banner_dismiss": "このお知らせを閉じる",
+      "banner_link": "お知らせを読む",
       "description": "運営から配信されたお知らせを確認できます。",
       "first_page": "お知らせ一覧の先頭を表示",
       "list_empty": "現在表示できるお知らせはありません。",

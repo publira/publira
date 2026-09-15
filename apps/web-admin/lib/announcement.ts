@@ -46,6 +46,8 @@ type RawAnnouncement = Pick<
   | "createdAt"
   | "id"
   | "linkUrl"
+  | "pinned"
+  | "pinnedUntil"
   | "targetUserName"
   | "targetUserPublicId"
   | "title"
@@ -58,6 +60,8 @@ const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => ({
   createdAt: item.createdAt,
   id: item.id,
   linkUrl: item.linkUrl,
+  pinned: item.pinned,
+  pinnedUntil: item.pinnedUntil,
   targetUserName: item.targetUserName,
   targetUserPublicId: item.targetUserPublicId,
   title: item.title,
@@ -227,6 +231,9 @@ export const createAnnouncement = async (
     linkUrl: string;
     audienceType: "all" | "selected";
     targetUserPublicIds: string[];
+    pinned: boolean;
+    /** RFC 3339 instant, or empty for a banner with no end. */
+    pinnedUntil: string;
   },
   locale: Locale
 ): Promise<
@@ -254,6 +261,8 @@ export const createAnnouncement = async (
         audienceType: audienceTypeEnum,
         body: input.body,
         linkUrl: input.linkUrl,
+        pinned: input.pinned,
+        pinnedUntil: input.pinnedUntil,
         targetUserPublicIds: input.targetUserPublicIds,
         tenant: { tenantId: input.tenantId },
         title: input.title,
@@ -272,6 +281,49 @@ export const createAnnouncement = async (
       message: mapErrorMessage(
         error,
         t("admin.announcements.create_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+/**
+ * Stop showing an announcement as a banner, leaving the announcement itself in
+ * the list it was posted to. It is what an operator reaches for when the event
+ * a notice was about is over, which is not the same as deleting the notice.
+ */
+export const unpinAnnouncement = async (
+  input: { tenantId: string; announcementId: string },
+  locale: Locale
+): Promise<{ ok: true } | { ok: false; message: string }> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.announcement.unpinAnnouncement(
+      {
+        announcementId: input.announcementId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: mapErrorMessage(
+        error,
+        t("admin.announcements.unpin_failed"),
         locale
       ),
       ok: false,

@@ -49,6 +49,8 @@ const announcement = (id: string): AnnouncementItem => ({
   createdAt: "2026-06-01T00:00:00Z",
   id,
   linkUrl: "/series/S001",
+  pinned: false,
+  pinnedUntil: "",
   targetUserName: "",
   targetUserPublicId: "",
   title: "Scheduled maintenance",
@@ -65,6 +67,7 @@ describe("AnnouncementManager", () => {
         announcements: [],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "Asia/Tokyo",
       })
     );
@@ -80,6 +83,7 @@ describe("AnnouncementManager", () => {
         locale: "en",
         pageSize: 20,
         previousHref: "?token=previous",
+        tenantId: "TENANT001",
         timeZone: "Asia/Tokyo",
       })
     );
@@ -101,6 +105,7 @@ describe("AnnouncementManager", () => {
         nextHref: "?token=next",
         pageSize: 20,
         previousHref: "?token=previous",
+        tenantId: "TENANT001",
         timeZone: "Asia/Tokyo",
       })
     );
@@ -125,6 +130,7 @@ describe("AnnouncementManager", () => {
         nextHref: "?token=next",
         pageSize: 20,
         previousHref: "?token=previous",
+        tenantId: "TENANT001",
         timeZone: "Asia/Tokyo",
       })
     );
@@ -152,6 +158,7 @@ describe("AnnouncementManager", () => {
         announcements: [announcement("n1")],
         locale: "en",
         pageSize: 20,
+        tenantId: "TENANT001",
         timeZone: "America/Los_Angeles",
       })
     );

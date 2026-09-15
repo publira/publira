@@ -63,6 +63,7 @@ const AnnouncementManagerData = async ({
       announcements={listResult.announcements}
       locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
+      tenantId={tenantId}
       timeZone={timeZone}
     />
   );

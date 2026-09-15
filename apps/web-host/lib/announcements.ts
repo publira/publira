@@ -1,7 +1,5 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
-  Code,
-  isRpcError,
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
@@ -16,7 +14,11 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { tenantIdSchema } from "./auth-input";
-import { applyCacheTag, tenantAnnouncementsTag } from "./cache-tags";
+import {
+  applyCacheTag,
+  tenantAnnouncementsTag,
+  tenantPinnedAnnouncementTag,
+} from "./cache-tags";
 import { getMessagesFor } from "./messages";
 
 export interface MemberAnnouncementItem {
@@ -29,14 +31,6 @@ export interface MemberAnnouncementItem {
 }
 
 /**
- * The only argument this call carries besides paging is the session header, so
- * a rejected one is a session problem rather than bad form input. The caller
- * sends the reader back through login on this.
- */
-const isSignInRequiredError = (error: unknown): boolean =>
-  isRpcError(error, Code.Unauthenticated, Code.InvalidArgument);
-
-/**
  * Tag the cached inbox read carries, so `updateTag` in the Server Action
  * makes a mark-read visible on the next list render.
  */
@@ -46,11 +40,6 @@ export const announcementsCacheTag = tenantAnnouncementsTag;
  * `locale` reaches the read as an argument rather than being resolved inside
  * the cached scope, so the wording a failure is stored with belongs to the
  * cache key instead of to whichever request filled the entry.
- *
- * The `invalid-argument` override is why this list words its own session
- * failure: {@link isSignInRequiredError} counts that category as a rejected
- * session, so the shared "The submitted values are invalid. Check them and
- * try again." would contradict the login redirect it triggers.
  */
 const mapErrorToMessage = async (
   error: unknown,
@@ -60,9 +49,6 @@ const mapErrorToMessage = async (
 
   return rpcErrorMessage(error, t("host.announcements.list_failed"), {
     locale,
-    overrides: {
-      "invalid-argument": t("errors.rpc.unauthenticated"),
-    },
   });
 };
 
@@ -129,12 +115,7 @@ interface MyAnnouncementsPage {
 
 export type ListMyAnnouncementsResult =
   | ({ ok: true } & MyAnnouncementsPage)
-  | ({
-      ok: false;
-      message: string;
-      /** The reader has to sign in again before this list can be shown. */
-      requiresSignIn: boolean;
-    } & MyAnnouncementsPage);
+  | ({ ok: false; message: string } & MyAnnouncementsPage);
 
 const emptyListPage = {
   announcements: [] as MemberAnnouncementItem[],
@@ -171,7 +152,6 @@ const readAnnouncementList = async (
       error,
       message: await mapErrorToMessage(error, options.locale),
       ok: false,
-      requiresSignIn: isSignInRequiredError(error),
     };
   }
 };
@@ -313,4 +293,67 @@ export const markAllAnnouncementsAsRead = async (
     rethrowUnclassifiedRpcError(error);
     return 0;
   }
+};
+
+/** What the banner above every page shows, and the link it carries. */
+export interface PinnedAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  linkUrl: string;
+}
+
+interface CachedPinnedAnnouncementResult {
+  error?: unknown;
+  value: PinnedAnnouncement | null;
+}
+
+/**
+ * The announcement the tenant has pinned right now, or null when it has none.
+ *
+ * Unlike the inbox reads this one names no reader — the API answers it without
+ * a session — so one entry serves every visitor of a tenant and the band above
+ * the page costs no round trip per request. What makes the entry stale is a pin,
+ * an unpin, or the window closing, and each of those drops
+ * {@link tenantPinnedAnnouncementTag} from the side that knows it happened.
+ *
+ * A read that fails answers null: the banner is an addition to the page rather
+ * than part of it, and a site that cannot say what is pinned should show the
+ * page rather than an apology above it.
+ */
+const readPinnedAnnouncement = async (
+  tenantId: string
+): Promise<CachedPinnedAnnouncementResult> => {
+  "use cache: remote";
+
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId) {
+    return { value: null };
+  }
+  applyCacheTag(tenantPinnedAnnouncementTag(normalizedTenantId));
+
+  try {
+    const response = await apiClient.auth.getPinnedAnnouncement({
+      tenant: { tenantId: normalizedTenantId },
+    });
+    if (!response.announcement) {
+      return { value: null };
+    }
+
+    const { body, id, linkUrl, title } = response.announcement;
+    return { value: { body, id, linkUrl, title } };
+  } catch (error) {
+    dropFailedCacheEntry();
+    return { error, value: null };
+  }
+};
+
+export const getPinnedAnnouncement = async (
+  tenantId: string
+): Promise<PinnedAnnouncement | null> => {
+  const result = await readPinnedAnnouncement(tenantId);
+  if (result.error !== undefined) {
+    rethrowUnclassifiedRpcError(result.error);
+  }
+  return result.value;
 };

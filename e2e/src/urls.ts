@@ -195,6 +195,24 @@ export const WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the banner tenant from the scenario seed
+ * `db/seeds/scenarios/200_announcement_banner.sql`.
+ *
+ * A pinned announcement is drawn above every page of its tenant's site, so it
+ * is pinned in a tenant no other spec browses.
+ */
+export const WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL = envUrl(
+  "E2E_WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "banner.localhost")
+);
+
+/** Admin console of the same banner tenant. */
+export const WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.banner.localhost")
+);
+
+/**
  * Admin console of the operator-settings tenant from
  * `db/seeds/scenarios/130_admin_operator_settings.sql`.
  *

@@ -86,6 +86,16 @@ describe("web-host proxy session handling", () => {
     expect(location.searchParams.get("returnTo")).toBe("/settings");
   });
 
+  it("The announcements page is read without a session", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/announcements")
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+  });
+
   it("Sending to login keeps reader locale", async () => {
     const { proxy } = await import("./proxy");
 

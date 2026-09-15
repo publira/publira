@@ -94,6 +94,7 @@ import {
 import { getTenantId } from "#lib/tenant-id";
 import { resolveTenantLogoVariant } from "#lib/tenant-logo";
 
+import { PinnedAnnouncementBanner } from "./pinned-announcement-banner";
 import { SignOutForm } from "./sign-out-form";
 
 const notificationMenuLimit = 5;
@@ -664,6 +665,14 @@ const TenantBrandLink = async () => {
  */
 export const SiteChrome = ({ children }: { children: ReactNode }) => (
   <SiteLayout>
+    {/*
+      The band has no skeleton: a tenant with nothing pinned draws nothing here,
+      and a placeholder above the header would push the page down on every
+      render only to disappear.
+    */}
+    <Suspense fallback={null}>
+      <PinnedAnnouncementBanner />
+    </Suspense>
     <SiteLayoutHeader>
       <Suspense fallback={<SiteLayoutBrandSkeleton />}>
         <TenantBrandLink />

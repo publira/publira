@@ -5,6 +5,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { toSafeAnnouncementLinkUrl } from "#lib/announcement-link";
 import {
   announcementsCacheTag,
   getMyAnnouncement,
@@ -23,31 +24,6 @@ import { tenantLocalePath } from "#lib/tenant-locale-path";
 const ANNOUNCEMENTS_RETURN_TO = "/announcements";
 
 const announcementIdFormSchema = z.string().trim().min(1).max(64);
-
-/**
- * Operator-authored destination on the authorized announcement row.
- * Form-supplied URLs never reach `redirect()`.
- */
-const toSafeAnnouncementLinkUrl = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > 2048) {
-    return null;
-  }
-
-  const isInternalPath =
-    trimmed.startsWith("/") &&
-    !trimmed.startsWith("//") &&
-    !trimmed.startsWith("/\\");
-  if (
-    isInternalPath ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("http://")
-  ) {
-    return trimmed;
-  }
-
-  return null;
-};
 
 const markAnnouncementAsReadFormSchema = z.object({
   announcementId: announcementIdFormSchema,

@@ -253,6 +253,7 @@
         "title": "标题",
         "body": "正文",
         "audience": "投放对象",
+        "banner": "横幅",
         "link": "链接"
       },
       "form": {
@@ -270,7 +271,11 @@
         "target_users_unavailable": "用户列表加载失败，因此无法投放给指定用户。",
         "user_option": "{$name}（{$id}）",
         "submitting": "正在发送…",
-        "submit": "投放公告"
+        "submit": "投放公告",
+        "pinned": "作为站点横幅展示",
+        "pinned_description": "把该公告展示在站点每个页面的顶部。",
+        "pinned_until": "停止展示的时间",
+        "pinned_until_description": "时间以 {$time_zone} 为准。留空则一直展示，直到你撤下为止。"
       },
       "validation": {
         "audience_invalid": "投放对象无效。",
@@ -278,8 +283,15 @@
         "tenant_missing": "缺少租户 ID。",
         "title_required": "标题为必填项。",
         "target_users_required": "投放给指定用户时，请至少选择一位用户。",
-        "link_invalid": "链接必须以 / 或 http(s):// 开头。"
-      }
+        "link_invalid": "链接必须以 / 或 http(s):// 开头。",
+        "pinned_audience": "只有面向全体投放的公告才能作为横幅展示。",
+        "pinned_until_invalid": "请正确填写停止展示的时间。",
+        "pinned_until_future": "停止展示的时间需要晚于当前时间。"
+      },
+      "banner_showing": "展示中",
+      "banner_showing_until": "展示至 {$until}",
+      "unpin_action": "停止展示",
+      "unpin_failed": "无法撤下横幅。请稍后再试。"
     },
     "comments": {
       "title": "评论",
@@ -1772,6 +1784,8 @@
   },
   "host": {
     "announcements": {
+      "banner_dismiss": "关闭该公告",
+      "banner_link": "阅读公告",
       "description": "站点运营方发布的公告。",
       "first_page": "前往第一页",
       "list_empty": "暂无可显示的公告。",
