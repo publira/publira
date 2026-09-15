@@ -84,9 +84,12 @@ export E2E_MAILPIT_BASE_URL="${E2E_MAILPIT_BASE_URL:-http://127.0.0.1:${E2E_MAIL
 # reach that stack's browser rather than the first one's.
 export E2E_BROWSER_WS_ENDPOINT="${E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${E2E_BROWSER_PORT}}"
 
-# publish-episodes interval (seconds). Short so scheduled episodes can land in
-# the same Playwright run without multi-minute waits.
+# The three periodic jobs the outbox worker runs, in seconds. Short so a
+# scheduled episode, a free window boundary, and a tenant's midnight all land
+# within the same Playwright run instead of after multi-minute waits.
 export E2E_PUBLISH_EPISODES_INTERVAL_SEC="${E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2}"
+export E2E_FREE_WINDOW_INTERVAL_SEC="${E2E_FREE_WINDOW_INTERVAL_SEC:-2}"
+export E2E_TENANT_DAY_INTERVAL_SEC="${E2E_TENANT_DAY_INTERVAL_SEC:-2}"
 
 export PUBLIRA_CACHE_APP="${PUBLIRA_CACHE_APP:-web-host}"
 

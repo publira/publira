@@ -110,21 +110,22 @@ start_profile() {
     PUBLIRA_S3_FORCE_PATH_STYLE="${PUBLIRA_S3_FORCE_PATH_STYLE}" \
     PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
     "${REPO_ROOT}/server/bin/image-server"
+  # The worker also runs the three periodic jobs that promote due episodes,
+  # apply free window boundaries, and turn over each tenant's calendar day, so
+  # it carries the ticker role's connection and the revalidate targets too.
   dev_env_start_background "${run_dir}" outbox-worker env \
     PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
+    PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL}" \
     PUBLIRA_WORKER_ADDR=":${PUBLIRA_OUTBOX_WORKER_PORT}" \
     PUBLIRA_EMAIL_RENDERER_URL="${PUBLIRA_EMAIL_RENDERER_URL}" \
     PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
     PUBLIRA_SECRET_ENCRYPTION_KEYS="${DEV_ENV_SECRET_ENCRYPTION_KEYS}" \
     PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}" \
-    "${REPO_ROOT}/server/bin/outbox-worker"
-  dev_env_start_background "${run_dir}" publish-episodes env \
-    PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
-    "${REPO_ROOT}/server/bin/batch" publish-episodes
+    "${REPO_ROOT}/server/bin/outbox-worker"
   dev_env_start_background "${run_dir}" email-renderer env PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
     pnpm --dir "${REPO_ROOT}/apps/email-renderer" dev
   dev_env_start_background "${run_dir}" web-host env PORT="${PUBLIRA_WEB_HOST_PORT}" \

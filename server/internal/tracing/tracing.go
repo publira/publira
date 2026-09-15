@@ -285,6 +285,18 @@ func ConnectHandlerOption(serviceName string) connect.HandlerOption {
 	return connect.WithInterceptors(interceptor, rpcSpanNameInterceptor())
 }
 
+// TracerProvider returns the provider Setup built for serviceName, so work
+// that shares a process with another service can record its spans under its
+// own service.name instead of the process default. A name Setup was not given
+// — every name while tracing is disabled — falls back to the global provider,
+// which is the no-op one when tracing is off.
+func TracerProvider(serviceName string) trace.TracerProvider {
+	if provider, ok := serviceProvider(serviceName); ok {
+		return provider
+	}
+	return otel.GetTracerProvider()
+}
+
 func serviceProvider(serviceName string) (trace.TracerProvider, bool) {
 	providers := serviceProviders.Load()
 	if providers == nil {

@@ -121,7 +121,7 @@ docker build -f infra/docker/image/Dockerfile \
 docker build -f infra/docker/batch/Dockerfile \
   -t publira/batch:local .
 
-docker run --rm publira/batch:local publish-episodes
+docker run --rm publira/batch:local purge-content-events
 
 # Node
 docker build -f infra/docker/node/Dockerfile \

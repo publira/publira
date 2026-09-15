@@ -65,6 +65,25 @@ type Config struct {
 	// can pick jobs up without waiting on the production 1s poll.
 	FetchCooldown     time.Duration
 	FetchPollInterval time.Duration
+	// Periodic is work this process runs on River's schedule besides the
+	// outbox drain. Nil runs the drain alone.
+	Periodic PeriodicRegistrar
+}
+
+// PeriodicRegistrar is a set of jobs that rides the same River client as the
+// outbox drain. One client per process is the point: a second would start a
+// second copy of River's maintenance services over the same tables, and the
+// deployment that runs the jobs would be one more to supervise.
+type PeriodicRegistrar interface {
+	// Register adds the workers for those jobs to the client's registry.
+	Register(workers *river.Workers) error
+	// PeriodicJobs is the schedule they are enqueued on.
+	PeriodicJobs() []*river.PeriodicJob
+	// Queues are the queues they run on, merged into the client's own. They
+	// must not name the default queue: the outbox drain sizes that one, and a
+	// job long enough to want a queue of its own is a job that must not hold a
+	// worker the drain is counting on.
+	Queues() map[string]river.QueueConfig
 }
 
 func (c Config) withDefaults() Config {
@@ -152,24 +171,39 @@ func Start(ctx context.Context, db *sql.DB, cfg Config) (*Worker, error) {
 		return nil, fmt.Errorf("outbox: register process worker: %w", err)
 	}
 
+	periodicJobs := []*river.PeriodicJob{
+		river.NewPeriodicJob(
+			river.PeriodicInterval(cfg.DrainInterval),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return DrainArgs{}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: true},
+		),
+	}
+	queues := map[string]river.QueueConfig{
+		river.QueueDefault: {MaxWorkers: cfg.MaxWorkers},
+	}
+	if cfg.Periodic != nil {
+		if err := cfg.Periodic.Register(workers); err != nil {
+			return nil, err
+		}
+		periodicJobs = append(periodicJobs, cfg.Periodic.PeriodicJobs()...)
+		for name, queue := range cfg.Periodic.Queues() {
+			if name == river.QueueDefault {
+				return nil, fmt.Errorf("outbox: periodic jobs may not resize the %q queue", river.QueueDefault)
+			}
+			queues[name] = queue
+		}
+	}
+
 	riverCfg := &river.Config{
 		Logger:            cfg.Logger,
 		MaxAttempts:       5,
 		FetchCooldown:     cfg.FetchCooldown,
 		FetchPollInterval: cfg.FetchPollInterval,
-		Queues: map[string]river.QueueConfig{
-			river.QueueDefault: {MaxWorkers: cfg.MaxWorkers},
-		},
-		Workers: workers,
-		PeriodicJobs: []*river.PeriodicJob{
-			river.NewPeriodicJob(
-				river.PeriodicInterval(cfg.DrainInterval),
-				func() (river.JobArgs, *river.InsertOpts) {
-					return DrainArgs{}, nil
-				},
-				&river.PeriodicJobOpts{RunOnStart: true},
-			),
-		},
+		Queues:            queues,
+		Workers:           workers,
+		PeriodicJobs:      periodicJobs,
 	}
 
 	client, err := river.NewClient(riverdatabasesql.New(db), riverCfg)

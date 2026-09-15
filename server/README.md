@@ -26,14 +26,14 @@ server/
 - Business logic for content submission and publication
 - Full rebuilds of the daily content statistics
 - Purging view events past their retention window
-- The scheduled publication batch (transition into the published state)
+- The scheduled publication job (transition into the published state)
 - Authentication and security foundations
 
 ## Implementation rules
 
 1. Schema-first development: change `proto/` or the golang-migrate files under `db/migrations/` (`.up.sql` / `.down.sql`) first, then run `task gen`
 2. Keep `cmd/` thin and put the implementation in `internal/`
-3. Every batch lives in the single `cmd/batch` binary, and the subcommand in the first argument picks the job to run. `batch publish-episodes` is the tick processing for scheduled publication. The Outbox worker (`cmd/outbox-worker`) is a long-lived process separated from the APIs, where River executes the jobs
+3. Every one-shot batch lives in the single `cmd/batch` binary, and the subcommand in the first argument picks the job to run. The Outbox worker (`cmd/outbox-worker`) is a long-lived process separated from the APIs, where River executes the jobs — the Outbox drain and the three periodic jobs that promote due episodes, apply free window boundaries, and turn over each tenant's calendar day
 
 ## Development commands
 
@@ -70,8 +70,8 @@ task server:test
 
 - API server: [cmd/api-server/README.md](cmd/api-server/README.md)
 - Image server: [cmd/image-server/README.md](cmd/image-server/README.md)
-- Batch (scheduled publishing / daily content stats / ranking aggregation / content event purge / recommend feature build): [cmd/batch/README.md](cmd/batch/README.md)
-- Outbox worker: [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
+- Batch (daily content stats / ranking aggregation / content event purge / recommend feature build): [cmd/batch/README.md](cmd/batch/README.md)
+- Outbox worker (Outbox drain / scheduled publishing / free window boundaries / tenant day roll): [cmd/outbox-worker/README.md](cmd/outbox-worker/README.md)
 
 ## Graceful shutdown
 
@@ -159,7 +159,7 @@ Building requires libvips. For the details, see [cmd/image-server/README.md](cmd
 
 ## Internal URLs for Next.js revalidation
 
-With `PUBLIRA_REVALIDATE_TOKEN` set, `api-server`, `batch publish-episodes`, and `batch apply-free-windows` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
+With `PUBLIRA_REVALIDATE_TOKEN` set, `api-server` and the periodic jobs in `outbox-worker` send cache tags to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app. All three URLs are required together.
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
@@ -188,7 +188,7 @@ outbox-worker mirrors member notifications onto the devices the mobile app regis
 
 Any one of the three turns push on. The project id counts on its own because Application Default Credentials resolves more than an explicit key file — a well-known `gcloud` file, and the metadata server of an instance with an attached service account — and a deployment relying on either leaves both credential variables empty. Naming the project is what it can still say.
 
-With none of them set, the `member_push_notification` handler is not registered and push is off, so a local stack without Firebase still runs. `batch publish-episodes` writes the outbox row either way, and an unhandled row retries and then goes dead without affecting the publish.
+With none of them set, the `member_push_notification` handler is not registered and push is off, so a local stack without Firebase still runs. The `ticker.publish_episodes` job writes the outbox row either way, and an unhandled row retries and then goes dead without affecting the publish.
 
 A send reaches the devices it can. A run that reached none of them is retried as an outage; one that reached some completes, because a retry re-runs the whole send and FCM keeps no delivery record, so the devices that already took the message would take it again once per remaining attempt. The devices a partial run could not reach lose that alert and keep the `notifications` row behind it.
 
@@ -254,7 +254,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-image-server` / `publira-outbox-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `cmd/batch` resolves it per subcommand, so it becomes `publira-publish-episodes` / `publira-apply-free-windows` / `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | A default per process (`publira-image-server` / `publira-outbox-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `outbox-worker` adds one per periodic job on top of its own default — `publira-publish-episodes` / `publira-apply-free-windows` / `publira-roll-tenant-day` — carried by the span each run hangs off, so the three stay apart in a trace UI now that they share a process. `cmd/batch` resolves it per subcommand, so it becomes `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
@@ -557,6 +557,7 @@ Each namespace connects with its own dedicated PostgreSQL login user, which keep
 | `publira.admin.v1` | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
 | `publira.v1` | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
 | outbox-worker | `publira_outbox` (BYPASSRLS) | `PUBLIRA_WORKER_DB_URL` | `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable` |
+| outbox-worker periodic jobs | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
 | batch project-episode-reads | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`, falling back to `PUBLIRA_CONTENT_EVENTS_DB_URL` → `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch aggregate-content-stats | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch aggregate-rankings | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
@@ -566,15 +567,12 @@ Each namespace connects with its own dedicated PostgreSQL login user, which keep
 | batch purge-withdrawn-comments | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_COMMENT_PURGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch publish-episodes | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
-| batch apply-free-windows | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
-| batch roll-tenant-day | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
 
 `publira_platform`, `publira_content_stats`, `publira_outbox`, and `publira_ticker` carry the BYPASSRLS attribute and access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID.
 
 `PUBLIRA_WORKER_DB_URL` resolves on its own, with no fallback to `PUBLIRA_DB_URL`: leaving it unset lands on the development default in the table above and fails to authenticate anywhere that role's password is not `outboxpass`, rather than silently running the worker on the migration tooling's connection. Local development sets it to `publira_outbox` too — a `dev-env` profile writes that URL, and the Dev Container leaves the variable unset and takes the same role from the default — so the grants that role holds, `CREATE ON SCHEMA public` among them, are exercised on the first local run instead of on a production deploy.
 
-`PUBLIRA_TICKER_DB_URL` resolves on its own for the same reason, and `publira_ticker` is the one role the seed grants table by table: it is named in no blanket `GRANT ... ON ALL TABLES` and in no `ALTER DEFAULT PRIVILEGES`, so a table a later migration adds reaches it only when someone puts it in that list. The three ticker jobs read a known set of catalog, follow, and recipient tables and write four of them, which is little enough to enumerate — and `TestTickerRole*` in `internal/db` runs the real jobs on this connection, so a query that starts reading a table the seed never granted fails there rather than in production.
+`PUBLIRA_TICKER_DB_URL` resolves on its own for the same reason, and outbox-worker opens it as a second pool: the periodic jobs run inside that process but must not inherit the `CREATE ON SCHEMA public` their host holds for `rivermigrate`. `publira_ticker` is also the one role the seed grants table by table — it is named in no blanket `GRANT ... ON ALL TABLES` and in no `ALTER DEFAULT PRIVILEGES`, so a table a later migration adds reaches it only when someone puts it in that list. The three jobs read a known set of catalog, follow, and recipient tables and write four of them, which is little enough to enumerate, and `TestTickerRole*` in `internal/db` runs them on this connection so a query that starts reading a table the seed never granted fails there rather than in production.
 
 River's tables, sequences, enum, and function belong to whichever role created them, and `rivermigrate` alters them in place on a later River release. A database that ran the worker on another connection before it had a role of its own therefore keeps an owner the worker cannot alter, which surfaces as `must be owner of table river_job` at startup the next time River ships a schema change. `db/seeds/baseline/010_river_object_owner.sql` hands those objects to `publira_outbox`; it runs with the rest of the seed, so re-running `task db:setup` against an existing database is the fix.
 
@@ -595,7 +593,7 @@ ALTER ROLE publira_admin    PASSWORD '<secure_password>';
 ALTER ROLE publira_public   PASSWORD '<secure_password>';
 ```
 
-Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers, outbox-worker, and the ticker jobs read only the variables named for the roles they serve as, and never fall back from one to another, so an unset one leaves that process on a development password it cannot authenticate with; the one-shot batches fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
+Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and both of outbox-worker's pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the one-shot batches fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
 
 ## Notes on initial data
 

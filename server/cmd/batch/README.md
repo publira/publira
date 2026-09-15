@@ -1,30 +1,29 @@
 # batch
 
-Every batch job ships in this single binary. The first argument names the job:
+Every one-shot batch job ships in this single binary. The first argument names the job:
 
 ```bash
 task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the twelve below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the nine below, the binary prints its usage to stderr and exits non-zero.
 
-| Subcommand | Lifetime | What it does |
-| --- | --- | --- |
-| `publish-episodes` | Ticker, until `SIGINT` / `SIGTERM` | Promotes episodes whose scheduled time has passed |
-| `apply-free-windows` | Ticker, until `SIGINT` / `SIGTERM` | Drops the public site caches at each free window boundary |
-| `roll-tenant-day` | Ticker, until `SIGINT` / `SIGTERM` | Drops the public site caches a tenant's calendar day decides, at that tenant's midnight |
-| `project-episode-reads` | One-shot | Files the missing `episode_complete` events for stored `episode_reads` |
-| `aggregate-content-stats` | One-shot | Rebuilds one calendar day of `content_daily_stats` per tenant |
-| `aggregate-rankings` | One-shot | Rebuilds the daily and weekly `content_ranking_snapshots` |
-| `purge-content-events` | One-shot | Deletes `content_events` rows past their retention window |
-| `purge-ranking-snapshots` | One-shot | Deletes `content_ranking_snapshots` rows past their retention window |
-| `purge-mfa-challenges` | One-shot | Deletes the spent admin MFA challenges whose tokens have expired |
-| `purge-withdrawn-comments` | One-shot | Deletes the comments their authors withdrew past the retention window |
-| `purge-orphan-images` | One-shot | Deletes the image rows and storage objects nothing references |
-| `build-recommend-features` | One-shot | Rebuilds the daily user and item recommend feature snapshots |
+Each one rebuilds or purges a period of data and exits, which is what makes an external schedule the right thing to invoke it. The jobs that instead have to act the moment a stored instant passes — promoting due episodes, applying free window boundaries, turning over a tenant's calendar day — are River periodic jobs inside [outbox-worker](../outbox-worker/README.md).
 
-Each subcommand reads its own environment variables — the prefixes do not overlap — and owns its own lifecycle. OpenTelemetry reports `service.name` as `publira-<subcommand>`, still overridable with `OTEL_SERVICE_NAME`.
+| Subcommand | What it does |
+| --- | --- |
+| `project-episode-reads` | Files the missing `episode_complete` events for stored `episode_reads` |
+| `aggregate-content-stats` | Rebuilds one calendar day of `content_daily_stats` per tenant |
+| `aggregate-rankings` | Rebuilds the daily and weekly `content_ranking_snapshots` |
+| `purge-content-events` | Deletes `content_events` rows past their retention window |
+| `purge-ranking-snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
+| `purge-mfa-challenges` | Deletes the spent admin MFA challenges whose tokens have expired |
+| `purge-withdrawn-comments` | Deletes the comments their authors withdrew past the retention window |
+| `purge-orphan-images` | Deletes the image rows and storage objects nothing references |
+| `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
+
+Each subcommand reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<subcommand>`, still overridable with `OTEL_SERVICE_NAME`.
 
 The container image carries the same binary, with the subcommand passed as a container argument:
 
@@ -32,68 +31,6 @@ The container image carries the same binary, with the subcommand passed as a con
 task docker:build:batch
 docker run --rm publira/batch:local purge-content-events
 ```
-
-## publish-episodes
-
-Promotes scheduled episodes on a ticker. It runs one pass on startup and then one per tick, and shuts down gracefully on `SIGINT` / `SIGTERM`.
-
-```bash
-go run ./server/cmd/batch publish-episodes
-```
-
-Environment variables:
-
-- `PUBLIRA_TICKER_DB_URL`: the `publira_ticker` connection the three ticker subcommands share. It has no fallback to `PUBLIRA_DB_URL`: that is the superuser connection locally and the migration tooling's in production, so an unset variable lands on this role's development password and fails to authenticate rather than running the job with the privilege to drop the schema.
-- `PUBLIRA_PUBLISH_INTERVAL_SECONDS`: seconds between passes. Defaults to `60`; a non-numeric or non-positive value falls back to the default.
-- `PUBLIRA_PUBLISH_MAX_RETRIES`: retries per episode. Defaults to `3`.
-
-### Next.js revalidation
-
-With `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` all set, the cache tags of every episode that reaches its publication time are sent to `POST /api/v1/revalidate` on all `web-*` apps.
-
-## apply-free-windows
-
-Drops the public site caches at both ends of every scheduled episode free window, on a ticker. It runs one pass on startup and then one per tick, and shuts down gracefully on `SIGINT` / `SIGTERM`.
-
-```bash
-go run ./server/cmd/batch apply-free-windows
-```
-
-The window itself needs no batch to take effect: the API compares the stored period against the current instant, so an episode inside a window answers as free from the moment it opens. What this subcommand fixes is what the web apps cached before that — the episode page a reader is served would otherwise keep its price, or its free body, until the tag happened to expire. Each end of a window is recorded once it has been dropped, so a pass that missed a boundary while the process was down applies it on the next one instead of leaving the site on the wrong side of it.
-
-Environment variables:
-
-- `PUBLIRA_TICKER_DB_URL`: the same `publira_ticker` connection as `publish-episodes`, resolved the same way. The listing spans every tenant, which is why that role bypasses RLS.
-- `PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS`: seconds between passes. Defaults to `60`; a non-numeric or non-positive value falls back to the default. It bounds how long the site can stay on the wrong side of a boundary.
-
-### Next.js revalidation
-
-The same `PUBLIRA_REVALIDATE_TOKEN` and `PUBLIRA_WEB_*_INTERNAL_URL` variables as `publish-episodes`. Without them there is nothing to drop, and the pass records the boundaries it crossed anyway rather than collecting them.
-
-## roll-tenant-day
-
-Drops the public site cache entries whose answer is the tenant's own calendar day, at that tenant's midnight, on a ticker. It runs one pass on startup and then one per tick, and shuts down gracefully on `SIGINT` / `SIGTERM`.
-
-```bash
-go run ./server/cmd/batch roll-tenant-day
-```
-
-One module asks what day it is: the storefront's weekly schedule, which opens on the day it is where the tenant publishes. Nothing in the database changes at midnight — the schedule is the same seven days it was yesterday — and the home page is prerendered, so the day it names is the day its cache entry was filled on. Turning that entry over once a day is what keeps it true, and it is why the page does not have to be rendered per request to say what day it is.
-
-The tag is `tenant:<id>:today`, and only the schedule read carries it. A daily drop aimed at the catalog's own tags would rebuild every series list and every series page for the sake of one number on one module.
-
-Which midnight matters is the tenant's, resolved from `tenants.timezone` (falling back to `platform_config.default_timezone`), so one pass turns over a tenant in Tokyo hours before one in Los Angeles. A tenant whose stored zone cannot be loaded is logged and skipped without stopping the rest, and a drop that does not go through is retried on the next pass rather than recorded.
-
-Which day each tenant was last rolled on is remembered in the process rather than in a column. A drop is idempotent, so a restart costs one extra drop of one narrow tag per tenant — which is why the first pass after startup turns every tenant over.
-
-Environment variables:
-
-- `PUBLIRA_TICKER_DB_URL`: the same `publira_ticker` connection as `publish-episodes`, resolved the same way. The listing spans every tenant, which is why that role bypasses RLS.
-- `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS`: seconds between passes. Defaults to `60`; a non-numeric or non-positive value falls back to the default. It bounds how long after midnight the site can keep naming yesterday.
-
-### Next.js revalidation
-
-The same `PUBLIRA_REVALIDATE_TOKEN` and `PUBLIRA_WEB_*_INTERNAL_URL` variables as `publish-episodes`. Without them there is nothing to drop, and each pass records the day it saw rather than collecting it.
 
 ## project-episode-reads
 

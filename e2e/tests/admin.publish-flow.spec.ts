@@ -33,7 +33,7 @@ const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;
 
 /**
- * Advance a scheduled episode so the publish-episodes worker can pick it up
+ * Advance a scheduled episode so the ticker.publish_episodes job can pick it up
  * without waiting for the minute-granularity `datetime-local` value.
  * The listing stays `scheduled`; only `scheduled_at` moves into the past.
  */
@@ -50,7 +50,7 @@ const nudgeScheduledEpisodeReady = (episodePublicId: string): void => {
 };
 
 /**
- * Wait until the publish-episodes worker has promoted the listing.
+ * Wait until the ticker.publish_episodes job has promoted the listing.
  * Poll via SQL (not web-host): a premature host request would cache the 404
  * under `"use cache"` and keep failing after the worker succeeds.
  */

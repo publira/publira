@@ -672,7 +672,7 @@ describe("catalog-top section loaders", () => {
   /**
    * The day the strip opens on is the tenant's, not the one the process this
    * runs in happens to be on. It is read at fill time and stays put until the
-   * `roll-tenant-day` batch drops the entry, which is what keeps the home page
+   * `ticker.roll_tenant_day` job drops the entry, which is what keeps the home page
    * prerendered.
    */
   it("getCatalogTopWeeklySchedule opens the strip on the day it is in the tenant's zone", async () => {

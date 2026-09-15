@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Start/stop the outbox/River worker.
+# Start/stop the outbox/River worker, which also runs the three periodic jobs
+# that promote due episodes, apply free window boundaries, and roll tenant days.
 set -euo pipefail
 
 # shellcheck source=lib.sh
@@ -30,11 +31,12 @@ start_outbox_worker() {
     exit 1
   fi
 
-  e2e_log "starting outbox-worker (addr :${E2E_OUTBOX_WORKER_PORT})"
+  e2e_log "starting outbox-worker (addr :${E2E_OUTBOX_WORKER_PORT}, ticker intervals ${E2E_PUBLISH_EPISODES_INTERVAL_SEC}s/${E2E_FREE_WINDOW_INTERVAL_SEC}s/${E2E_TENANT_DAY_INTERVAL_SEC}s)"
   (
     cd "${REPO_ROOT}/server"
     exec env \
       PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
+      PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL}" \
       PUBLIRA_WORKER_ADDR=":${E2E_OUTBOX_WORKER_PORT}" \
       PUBLIRA_EMAIL_RENDERER_URL="${PUBLIRA_EMAIL_RENDERER_URL}" \
       PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
@@ -43,6 +45,13 @@ start_outbox_worker() {
       PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY="${PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY:-}" \
       PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY="${PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY:-}" \
       PUBLIRA_WEBPUSH_SUBJECT="${PUBLIRA_WEBPUSH_SUBJECT:-}" \
+      PUBLIRA_PUBLISH_INTERVAL_SECONDS="${E2E_PUBLISH_EPISODES_INTERVAL_SEC}" \
+      PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS="${E2E_FREE_WINDOW_INTERVAL_SEC}" \
+      PUBLIRA_TENANT_DAY_INTERVAL_SECONDS="${E2E_TENANT_DAY_INTERVAL_SEC}" \
+      PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+      PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
+      PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
+      PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
       "${bin}"
   ) >>"${LOG_DIR}/outbox-worker.log" 2>&1 &
   write_pid "outbox-worker" $!

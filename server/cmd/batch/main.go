@@ -1,6 +1,9 @@
-// Command batch runs this repository's batch jobs. The first argument names
-// the job; every job is configured through environment variables and owns its
-// own lifecycle, from the publish-episodes ticker to the one-shot rebuilds.
+// Command batch runs this repository's one-shot batch jobs. The first argument
+// names the job; every job is configured through environment variables, rebuilds
+// or purges a period of data, and exits.
+//
+// The jobs that have to act the moment a stored instant passes are not here:
+// they run as River periodic jobs inside outbox-worker (internal/tickerjobs).
 package main
 
 import (
@@ -28,21 +31,6 @@ type subcommand struct {
 }
 
 var subcommands = []subcommand{
-	{
-		name:    "publish-episodes",
-		summary: "Promote scheduled episodes on a ticker until interrupted",
-		run:     runPublishEpisodes,
-	},
-	{
-		name:    "apply-free-windows",
-		summary: "Drop the public site caches at every free window boundary, on a ticker until interrupted",
-		run:     runApplyFreeWindows,
-	},
-	{
-		name:    "roll-tenant-day",
-		summary: "Drop the public site caches a tenant's calendar day decides, on a ticker until interrupted",
-		run:     runRollTenantDay,
-	},
 	{
 		name:    "project-episode-reads",
 		summary: "File the missing episode_complete events for stored episode reads",
@@ -155,27 +143,6 @@ func usage() string {
 	}
 	b.WriteString("\nEvery subcommand reads its settings from the environment.\n")
 	return b.String()
-}
-
-// defaultTickerDBURL is the development connection of the ticker jobs. Their
-// variable has no fallback, so this is what an unset PUBLIRA_TICKER_DB_URL
-// lands on.
-const defaultTickerDBURL = "postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable"
-
-// resolveTickerDBURL returns the connection the three ticker jobs run on.
-//
-// PUBLIRA_DB_URL is deliberately not a fallback, the way it is for the one-shot
-// batches below: it is the superuser connection locally and the migration
-// tooling's connection in production, and a ticker left unconfigured would then
-// promote episodes and drop caches as a role that can drop the schema. An unset
-// variable lands on this role's development password instead and fails to
-// authenticate anywhere that password is not set, which is a startup error
-// rather than a silent privilege escalation.
-func resolveTickerDBURL() string {
-	if url := strings.TrimSpace(os.Getenv("PUBLIRA_TICKER_DB_URL")); url != "" {
-		return url
-	}
-	return defaultTickerDBURL
 }
 
 // resolveDBURL returns the first non-empty environment variable in names, so a
