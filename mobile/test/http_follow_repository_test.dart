@@ -167,6 +167,18 @@ void main() {
     expect(page.follows.single.targetId, seriesId);
   });
 
+  test('a reader who follows nothing reads as an empty page', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    final page = await repository().listMyFollows();
+
+    // protojson omits an empty repeated field, so the answer carries no
+    // `follows` key at all.
+    expect(server.requestsTo('ListMyFollows'), hasLength(1));
+    expect(page.follows, isEmpty);
+    expect(page.nextToken, isEmpty);
+  });
+
   test('a reader who is signed out asks for no list of their own', () async {
     expect((await repository().listMyFollows()).follows, isEmpty);
     expect(server.requestsTo('ListMyFollows'), isEmpty);

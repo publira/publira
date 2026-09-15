@@ -859,12 +859,15 @@ class ConnectFixtureServer {
   /// the page under it when there is one.
   Map<String, Object?> _followsPage(Object? token) {
     if (followsPageSize <= 0) {
-      return {'follows': myFollows};
+      // protojson omits an empty repeated field, which is how a reader who
+      // follows nothing is answered.
+      return {if (myFollows.isNotEmpty) 'follows': myFollows};
     }
     final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
     final end = min(start + followsPageSize, myFollows.length);
+    final page = myFollows.sublist(min(start, myFollows.length), end);
     return {
-      'follows': myFollows.sublist(min(start, myFollows.length), end),
+      if (page.isNotEmpty) 'follows': page,
       if (end < myFollows.length) 'nextToken': '$end',
     };
   }

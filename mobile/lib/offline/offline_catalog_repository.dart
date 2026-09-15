@@ -134,9 +134,14 @@ class OfflineCatalogRepository implements CatalogRepository {
     }
   }
 
-  /// One creator's name, which only the API can answer: the device keeps
-  /// series and episodes, and a name is read to write a row beside a follow
-  /// the API has just listed.
+  /// The two name reads, which go straight to the API and leave the device
+  /// alone: they name a row of what the reader follows rather than a screen
+  /// they opened, so neither may save a series here nor take the episodes
+  /// saved under one away.
+  @override
+  Future<String?> getSeriesTitle(String publicId) =>
+      _origin.getSeriesTitle(publicId);
+
   @override
   Future<SeriesCreator?> getCreator(String publicId) =>
       _origin.getCreator(publicId);

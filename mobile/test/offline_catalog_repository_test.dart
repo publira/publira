@@ -260,6 +260,21 @@ void main() {
     },
   );
 
+  test('a name read neither saves a series nor drops a saved one', () async {
+    await build().getEpisode(_seriesId, _episodeId);
+    library.details.clear();
+
+    expect(await build().getSeriesTitle(_seriesId), 'Seed Series 001');
+    expect(library.details, isEmpty);
+
+    // A series the API stopped publishing between the follow and the list is
+    // still not a reason to take what the reader downloaded off the device.
+    origin.details = const {};
+
+    expect(await build().getSeriesTitle(_seriesId), isNull);
+    expect(library.episodes, hasLength(1));
+  });
+
   test('getSeries drops a series the API no longer has', () async {
     await build().getSeries(_seriesId);
     origin.details = const {};

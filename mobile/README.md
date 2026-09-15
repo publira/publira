@@ -232,12 +232,12 @@ The comments on an episode are offered at the end of it and nowhere else: what a
 
 ## Follows
 
-A reader follows a series, and each author credited on it, from the series screen, and reads back what they follow from the account screen. A follow is what a new-episode notification is delivered by, and it is the same list the site writes: `FollowService` holds it, and no part of it is kept on the device.
+A reader follows a series, and each author credited on it, from the series screen, and reads back what they follow from the account screen. A follow is what a new-episode notification is delivered by, and it is the same list the site writes: `FollowService` holds it, and nothing of it is written to the device.
 
 - The series screen carries one control for the series and one for each author credited on it. An author row leads nowhere — the app has no author screen — and is there to name the author and to be followed
 - What a reader follows is theirs, and the API answers a request without a session `unauthenticated`, so a guest is offered the way to sign in rather than a control that cannot act
 - A state the API could not answer leaves the control offering to follow, which is the request the API takes the same way whether or not the follow is already there. A follow the reader asked for that did not happen says why
-- `/account/follows` lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own, and a row whose name could not be read is named by its public id. A series row opens its series; every row unfollows without asking the API what it already knows
+- `/account/follows` lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own — one that leaves the device alone, because a reader who follows a series has not opened it — and a row whose name could not be read is named by its public id. A series row opens its series; every row unfollows without asking the API what it already knows
 - The API lists only targets that are still public, so a series taken down leaves the list rather than standing in it as a row nothing names
 
 ## Offline reading

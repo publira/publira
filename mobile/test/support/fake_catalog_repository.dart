@@ -186,6 +186,15 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<String?> getSeriesTitle(String publicId) async {
+    final error = detailError;
+    if (error != null) {
+      throw error;
+    }
+    return details[publicId]?.series.title;
+  }
+
+  @override
   Future<SeriesCreator?> getCreator(String publicId) async {
     final error = creatorError;
     if (error != null) {

@@ -136,8 +136,10 @@ class _FollowsScreenState extends State<FollowsScreen> {
   ///
   /// `ListMyFollows` answers with public ids alone, so every row costs a
   /// catalog read of its own; they are asked for together rather than one
-  /// after the next. A read that failed leaves the row named by its public id,
-  /// which is still a row the reader can unfollow.
+  /// after the next. The reads name the target without going through what the
+  /// device keeps, because a reader who follows a series has not opened it. A
+  /// read that failed leaves the row named by its public id, which is still a
+  /// row the reader can unfollow.
   Future<List<_FollowedTarget>> _resolveNames(
     CatalogRepository catalog,
     List<MyFollow> follows,
@@ -155,9 +157,9 @@ class _FollowsScreenState extends State<FollowsScreen> {
   Future<String> _name(CatalogRepository catalog, MyFollow follow) async {
     try {
       final name = switch (follow.kind) {
-        FollowTargetKind.series => (await catalog.getSeries(
+        FollowTargetKind.series => await catalog.getSeriesTitle(
           follow.targetId,
-        ))?.series.title,
+        ),
         FollowTargetKind.creator => (await catalog.getCreator(
           follow.targetId,
         ))?.name,

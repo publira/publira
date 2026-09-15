@@ -192,6 +192,10 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<String?> getSeriesTitle(String publicId) async =>
+      (await getSeries(publicId))?.series.title;
+
+  @override
   Future<SeriesCreator?> getCreator(String publicId) async {
     try {
       final tenantId = await _tenants.resolve();
