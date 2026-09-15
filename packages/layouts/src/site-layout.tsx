@@ -132,7 +132,7 @@ export const SiteLayoutNavSkeleton = () => (
     <Skeleton className="inline-block h-4 w-14 rounded-control" />
     <Skeleton className="inline-block h-4 w-12 rounded-control" />
     <Skeleton className="inline-block h-4 w-12 rounded-control" />
-    <Skeleton className="inline-block h-4 w-12 rounded-control" />
+    <Skeleton className="inline-block h-4 w-14 rounded-control" />
   </div>
 );
 
