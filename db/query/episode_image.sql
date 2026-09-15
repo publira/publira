@@ -6,6 +6,7 @@ RETURNING *;
 -- name: CreateEpisodeImageVariant :one
 INSERT INTO episode_image_variants (
     id,
+    tenant_id,
     episode_image_id,
     label,
     storage_provider,
@@ -15,7 +16,7 @@ INSERT INTO episode_image_variants (
     width,
     height
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
 -- name: ListEpisodeImagesByEpisodeID :many

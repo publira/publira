@@ -216,6 +216,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 
 INSERT INTO episode_image_variants (
     id,
+    tenant_id,
     episode_image_id,
     label,
     storage_provider,
@@ -227,6 +228,7 @@ INSERT INTO episode_image_variants (
 )
 SELECT
     ('018f0f78-0001-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    e.tenant_id,
     ('018f0f77-0001-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
     'original',
     's3',
@@ -241,9 +243,12 @@ SELECT
     -- db/seeds/objects/episode-page/page-NN.jpg
     1050,
     1500
-FROM generate_series(1, 3) AS page_number
+FROM episodes e
+CROSS JOIN generate_series(1, 3) AS page_number
+WHERE e.id = '018f0f74-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (id) DO UPDATE
-SET episode_image_id = EXCLUDED.episode_image_id,
+SET tenant_id = EXCLUDED.tenant_id,
+    episode_image_id = EXCLUDED.episode_image_id,
     label = EXCLUDED.label,
     storage_provider = EXCLUDED.storage_provider,
     object_key = EXCLUDED.object_key,

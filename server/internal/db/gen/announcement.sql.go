@@ -619,8 +619,8 @@ func (q *Queries) ListPinnedAnnouncementsDue(ctx context.Context) ([]ListPinnedA
 }
 
 const markAllAnnouncementsAsRead = `-- name: MarkAllAnnouncementsAsRead :execrows
-INSERT INTO announcement_reads (announcement_id, user_id, read_at)
-SELECT n.id, $2, NOW()
+INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
+SELECT n.id, n.tenant_id, $2, NOW()
 FROM announcements n
 WHERE n.tenant_id = $1
     AND (n.target_user_id IS NULL OR n.target_user_id = $2)
@@ -649,15 +649,15 @@ func (q *Queries) MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnn
 }
 
 const markAnnouncementAsRead = `-- name: MarkAnnouncementAsRead :one
-INSERT INTO announcement_reads (announcement_id, user_id, read_at)
-SELECT n.id, $3, NOW()
+INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
+SELECT n.id, n.tenant_id, $3, NOW()
 FROM announcements n
 WHERE n.id = $1
     AND n.tenant_id = $2
     AND (n.target_user_id IS NULL OR n.target_user_id = $3)
 ON CONFLICT (announcement_id, user_id) DO UPDATE
 SET read_at = EXCLUDED.read_at
-RETURNING announcement_id, user_id, read_at
+RETURNING announcement_id, user_id, read_at, tenant_id
 `
 
 type MarkAnnouncementAsReadParams struct {
@@ -671,7 +671,12 @@ type MarkAnnouncementAsReadParams struct {
 func (q *Queries) MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error) {
 	row := q.db.QueryRowContext(ctx, markAnnouncementAsRead, arg.ID, arg.TenantID, arg.UserID)
 	var i AnnouncementRead
-	err := row.Scan(&i.AnnouncementID, &i.UserID, &i.ReadAt)
+	err := row.Scan(
+		&i.AnnouncementID,
+		&i.UserID,
+		&i.ReadAt,
+		&i.TenantID,
+	)
 	return i, err
 }
 

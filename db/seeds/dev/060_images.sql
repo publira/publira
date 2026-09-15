@@ -424,6 +424,7 @@ WITH tenant_scope AS (
 ),
 seed_episode AS (
     SELECT
+        e.tenant_id,
         ROW_NUMBER() OVER (ORDER BY s.title, e.order_index) AS episode_no
     FROM episodes e
     JOIN series s ON s.id = e.series_id
@@ -432,6 +433,7 @@ seed_episode AS (
 ),
 seed_page AS (
     SELECT
+        se.tenant_id,
         ((se.episode_no - 1) * 8 + page.page_no) AS seq_no,
         page.page_no
     FROM seed_episode se
@@ -439,6 +441,7 @@ seed_page AS (
 )
 INSERT INTO episode_image_variants (
     id,
+    tenant_id,
     episode_image_id,
     label,
     storage_provider,
@@ -455,6 +458,7 @@ SELECT
         || '-7000-8000-'
         || LPAD(TO_HEX(sp.seq_no::int), 12, '0')
     )::uuid,
+    sp.tenant_id,
     (
         '018f0e7c-'
         || LPAD(TO_HEX(sp.seq_no::int), 4, '0')
@@ -473,7 +477,8 @@ SELECT
     1500
 FROM seed_page sp
 ON CONFLICT (id) DO UPDATE
-SET episode_image_id = EXCLUDED.episode_image_id,
+SET tenant_id = EXCLUDED.tenant_id,
+    episode_image_id = EXCLUDED.episode_image_id,
     label = EXCLUDED.label,
     storage_provider = EXCLUDED.storage_provider,
     object_key = EXCLUDED.object_key,

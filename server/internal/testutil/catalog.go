@@ -550,11 +550,11 @@ func (e *PostgresEnv) SeedEpisodeImage(t *testing.T, tenantID, episodeID uuid.UU
 	}
 	if _, err := e.DB.ExecContext(ctx, `
 		INSERT INTO episode_image_variants (
-			id, episode_image_id, label, storage_provider, object_key,
+			id, tenant_id, episode_image_id, label, storage_provider, object_key,
 			content_type, file_size_bytes, width, height
 		)
-		VALUES ($1, $2, 'original', 'local', $3, 'image/webp', 1024, 1200, 1800)
-	`, uuid.Must(uuid.NewV7()), imageID, "episodes/"+episodeID.String()+"/"+imageID.String()); err != nil {
+		VALUES ($1, $2, $3, 'original', 'local', $4, 'image/webp', 1024, 1200, 1800)
+	`, uuid.Must(uuid.NewV7()), tenantID, imageID, "episodes/"+episodeID.String()+"/"+imageID.String()); err != nil {
 		t.Fatalf("insert episode_image_variants for image %s: %v", imageID, err)
 	}
 

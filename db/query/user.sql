@@ -432,12 +432,13 @@ RETURNING *;
 -- name: GetUserNotificationSettings :one
 SELECT *
 FROM user_notification_settings
-WHERE user_id = $1
+WHERE tenant_id = $1
+    AND user_id = $2
 LIMIT 1;
 
 -- name: UpsertUserNotificationSettings :one
-INSERT INTO user_notification_settings (user_id, email_notifications_enabled, updated_at)
-VALUES ($1, $2, NOW())
+INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled, updated_at)
+VALUES ($1, $2, $3, NOW())
 ON CONFLICT (user_id) DO UPDATE
 SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
     updated_at = NOW()

@@ -47,6 +47,7 @@ func (q *Queries) CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImage
 const createEpisodeImageVariant = `-- name: CreateEpisodeImageVariant :one
 INSERT INTO episode_image_variants (
     id,
+    tenant_id,
     episode_image_id,
     label,
     storage_provider,
@@ -56,12 +57,13 @@ INSERT INTO episode_image_variants (
     width,
     height
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, episode_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, episode_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at, tenant_id
 `
 
 type CreateEpisodeImageVariantParams struct {
 	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
 	EpisodeImageID  uuid.UUID `json:"episode_image_id"`
 	Label           string    `json:"label"`
 	StorageProvider string    `json:"storage_provider"`
@@ -75,6 +77,7 @@ type CreateEpisodeImageVariantParams struct {
 func (q *Queries) CreateEpisodeImageVariant(ctx context.Context, arg CreateEpisodeImageVariantParams) (EpisodeImageVariant, error) {
 	row := q.db.QueryRowContext(ctx, createEpisodeImageVariant,
 		arg.ID,
+		arg.TenantID,
 		arg.EpisodeImageID,
 		arg.Label,
 		arg.StorageProvider,
@@ -96,6 +99,7 @@ func (q *Queries) CreateEpisodeImageVariant(ctx context.Context, arg CreateEpiso
 		&i.Width,
 		&i.Height,
 		&i.CreatedAt,
+		&i.TenantID,
 	)
 	return i, err
 }

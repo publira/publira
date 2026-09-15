@@ -43,6 +43,7 @@ type AnnouncementRead struct {
 	AnnouncementID uuid.UUID `json:"announcement_id"`
 	UserID         uuid.UUID `json:"user_id"`
 	ReadAt         time.Time `json:"read_at"`
+	TenantID       uuid.UUID `json:"tenant_id"`
 }
 
 type AuditLog struct {
@@ -246,6 +247,7 @@ type EpisodeImageVariant struct {
 	Width           int32     `json:"width"`
 	Height          int32     `json:"height"`
 	CreatedAt       time.Time `json:"created_at"`
+	TenantID        uuid.UUID `json:"tenant_id"`
 }
 
 type EpisodeListing struct {
@@ -816,6 +818,7 @@ type UserNotificationSetting struct {
 	UserID                    uuid.UUID `json:"user_id"`
 	EmailNotificationsEnabled bool      `json:"email_notifications_enabled"`
 	UpdatedAt                 time.Time `json:"updated_at"`
+	TenantID                  uuid.UUID `json:"tenant_id"`
 }
 
 type UserPasswordResetToken struct {

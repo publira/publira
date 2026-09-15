@@ -281,11 +281,11 @@ func seedEpisodeImage(t *testing.T, db *sql.DB, tenantID, episodeID uuid.UUID, o
 	`, imageID, tenantID, episodeID)
 	exec(t, db, `
 		INSERT INTO episode_image_variants (
-			id, episode_image_id, label, storage_provider, object_key,
+			id, tenant_id, episode_image_id, label, storage_provider, object_key,
 			content_type, file_size_bytes, width, height
 		)
-		VALUES ($1, $2, 'original', 's3', $3, 'image/webp', 1024, 1200, 1800)
-	`, uuid.Must(uuid.NewV7()), imageID, objectKey)
+		VALUES ($1, $2, $3, 'original', 's3', $4, 'image/webp', 1024, 1200, 1800)
+	`, uuid.Must(uuid.NewV7()), tenantID, imageID, objectKey)
 	return imageID
 }
 

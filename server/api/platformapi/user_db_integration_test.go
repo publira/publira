@@ -209,8 +209,8 @@ func TestDBDeleteEndUserCascadesRelatedRows(t *testing.T) {
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
 	reader := seedEndUser(t, pg, tenantID, "ENDUSER00001", "reader@example.com", "Reader One")
 	kept := seedEndUser(t, pg, tenantID, "ENDUSER00002", "kept@example.com", "Reader Two")
-	seedUserNotificationSetting(t, pg, reader.ID)
-	seedUserNotificationSetting(t, pg, kept.ID)
+	seedUserNotificationSetting(t, pg, tenantID, reader.ID)
+	seedUserNotificationSetting(t, pg, tenantID, kept.ID)
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	deleteResp, err := client.DeleteEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.DeleteEndUserRequest{
@@ -318,12 +318,13 @@ func setUserStatus(t *testing.T, pg *testutil.PostgresEnv, publicID, status stri
 	}
 }
 
-func seedUserNotificationSetting(t *testing.T, pg *testutil.PostgresEnv, userID uuid.UUID) {
+func seedUserNotificationSetting(t *testing.T, pg *testutil.PostgresEnv, tenantID, userID uuid.UUID) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := dbmodels.New(pg.DB).UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
+		TenantID:                  tenantID,
 		UserID:                    userID,
 		EmailNotificationsEnabled: true,
 	}); err != nil {
