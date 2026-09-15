@@ -10,6 +10,13 @@ export const NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED =
 export const NOTIFICATION_TYPE_COMMENT_AWAITING_APPROVAL =
   "comment_awaiting_approval";
 export const NOTIFICATION_TYPE_COMMENT_REPORTED = "comment_reported";
+export const NOTIFICATION_TYPE_ANNOUNCEMENT_POSTED = "announcement_posted";
+
+/**
+ * Where an `announcement_posted` row takes a member of staff: the delivery
+ * list this console posts from, not the reader's own inbox on the storefront.
+ */
+const ANNOUNCEMENTS_HREF = "/announcements";
 
 /**
  * Public IDs that can sit in a path segment. Anything else is dropped so a
@@ -41,6 +48,7 @@ const optionalLabel = z.preprocess((value) => {
  * field becomes `undefined` so the rest of the payload can still be used.
  */
 const payloadSchema = z.object({
+  announcement_title: optionalLabel,
   episode_id: optionalResourceId,
   episode_title: optionalLabel,
   series_id: optionalResourceId,
@@ -131,6 +139,22 @@ export const notificationDisplay = async (
   const t = await getMessagesFor(locale);
   const href = notificationHref(payload);
   const type = notificationType.trim();
+
+  if (type === NOTIFICATION_TYPE_ANNOUNCEMENT_POSTED) {
+    // An announcement addresses every user of the tenant, staff included, so
+    // this row reaches the console as well as the storefront bell.
+    return {
+      description: payload.announcement_title
+        ? t("admin.notifications.events.announcement_posted_description", {
+            title: payload.announcement_title,
+          })
+        : t(
+            "admin.notifications.events.announcement_posted_description_unknown"
+          ),
+      href: ANNOUNCEMENTS_HREF,
+      title: t("admin.notifications.events.announcement_posted_title"),
+    };
+  }
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISHED) {
     const subject = await episodeSubject(

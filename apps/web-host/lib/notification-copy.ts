@@ -7,6 +7,10 @@ import { getMessagesFor } from "./messages";
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
 export const NOTIFICATION_TYPE_COMMENT_APPROVED = "comment_approved";
 export const NOTIFICATION_TYPE_COMMENT_HIDDEN = "comment_hidden";
+export const NOTIFICATION_TYPE_ANNOUNCEMENT_POSTED = "announcement_posted";
+
+/** Where an `announcement_posted` row takes the reader: the whole inbox. */
+const ANNOUNCEMENTS_HREF = "/announcements";
 
 /** The `hidden_reason` categories `comment_hidden` carries. */
 const COMMENT_HIDDEN_REASON_STAFF = "staff";
@@ -56,6 +60,7 @@ const optionalHiddenReason = z.preprocess((value) => {
  * field becomes `undefined` so the rest of the payload can still be used.
  */
 const payloadSchema = z.object({
+  announcement_title: optionalLabel,
   episode_id: optionalResourceId,
   episode_title: optionalLabel,
   hidden_reason: optionalHiddenReason,
@@ -171,6 +176,21 @@ export const notificationDisplay = async (
   const t = await getMessagesFor(locale);
   const href = notificationHref(payload);
   const type = notificationType.trim();
+
+  if (type === NOTIFICATION_TYPE_ANNOUNCEMENT_POSTED) {
+    // The row links at the inbox rather than at one announcement: there is no
+    // per-announcement screen, and the list is where the body and the
+    // mark-as-read control are.
+    return {
+      description: payload.announcement_title
+        ? t("host.notifications.announcement_posted_description", {
+            title: payload.announcement_title,
+          })
+        : t("host.notifications.announcement_posted_description_unknown"),
+      href: ANNOUNCEMENTS_HREF,
+      title: t("host.notifications.announcement_posted_title"),
+    };
+  }
 
   if (type === NOTIFICATION_TYPE_EPISODE_PUBLISHED) {
     const subject =

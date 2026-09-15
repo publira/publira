@@ -174,6 +174,30 @@ describe("notificationDisplay", () => {
     });
   });
 
+  it("names a posted announcement and opens the announcements inbox", async () => {
+    await expect(
+      notificationDisplay(
+        "announcement_posted",
+        { announcement_title: "Scheduled maintenance" },
+        EN
+      )
+    ).resolves.toEqual({
+      description: "“Scheduled maintenance” was posted by the operator.",
+      href: "/announcements",
+      title: "A new announcement",
+    });
+  });
+
+  it("keeps the announcement row on the inbox when the payload carries no title", async () => {
+    await expect(
+      notificationDisplay("announcement_posted", { series_id: "SR01" }, EN)
+    ).resolves.toEqual({
+      description: "The operator posted a new announcement.",
+      href: "/announcements",
+      title: "A new announcement",
+    });
+  });
+
   it("Don't drop unknown types and make them generic", async () => {
     await expect(
       notificationDisplay("episode_publish_failed", { series_id: "SR01" }, EN)

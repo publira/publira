@@ -1640,6 +1640,9 @@
         "comments_awaiting_approval_description": "{$subject}に承認待ちのコメントが届いています。",
         "comments_reported_title": "コメントが報告されました",
         "comments_reported_description": "{$subject}のコメントが読者から報告されました。",
+        "announcement_posted_title": "お知らせを配信しました",
+        "announcement_posted_description": "「{$title}」を配信対象に配信しました。",
+        "announcement_posted_description_unknown": "お知らせを配信対象に配信しました。",
         "unknown_title": "通知",
         "unknown_description": "内容の詳細はありません。"
       }
@@ -2155,6 +2158,9 @@
       "signup": "はじめる"
     },
     "notifications": {
+      "announcement_posted_description": "運営から「{$title}」が届きました。",
+      "announcement_posted_description_unknown": "運営から新しいお知らせが届きました。",
+      "announcement_posted_title": "新しいお知らせ",
       "comment_approved_description": "{$subject}へのコメントが公開されました。",
       "comment_approved_title": "コメントが公開されました",
       "comment_hidden_description": "{$subject}へのコメントが非表示になりました。",

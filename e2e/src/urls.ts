@@ -176,6 +176,25 @@ export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the delivery tenant from the scenario seed
+ * `db/seeds/scenarios/180_announcement_delivery.sql`.
+ *
+ * Posting an announcement notifies every reader it addresses, so the tenant a
+ * delivery is posted into is the opposite of the inbox tenant above: everything
+ * that arrives in it arrived on purpose.
+ */
+export const WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
+  "E2E_WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "announce.localhost")
+);
+
+/** Admin console of the same delivery tenant. */
+export const WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
+  "E2E_WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.announce.localhost")
+);
+
+/**
  * Admin console of the operator-settings tenant from
  * `db/seeds/scenarios/130_admin_operator_settings.sql`.
  *

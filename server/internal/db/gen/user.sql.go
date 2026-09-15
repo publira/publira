@@ -153,6 +153,31 @@ func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getTenantUserID = `-- name: GetTenantUserID :one
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.id = $2
+`
+
+type GetTenantUserIDParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	UserID   uuid.UUID     `json:"user_id"`
+}
+
+// Worker check: the recipient a notification names is a user of the tenant the
+// notification belongs to. `notifications` carries `tenant_id` and `user_id` as
+// two separate foreign keys and its RLS policy reads only the tenant, so a pair
+// from two different tenants is stored rather than rejected; a producer that
+// takes the recipient from a payload asks here before it inserts. No rows means
+// the user is not this tenant's.
+func (q *Queries) GetTenantUserID(ctx context.Context, arg GetTenantUserIDParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getTenantUserID, arg.TenantID, arg.UserID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
 SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users
@@ -787,6 +812,53 @@ func (q *Queries) ListTenantMembersDesc(ctx context.Context, arg ListTenantMembe
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantUserIDs = `-- name: ListTenantUserIDs :many
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.id > $2
+ORDER BY u.id
+LIMIT $3
+`
+
+type ListTenantUserIDsParams struct {
+	TenantID    uuid.NullUUID `json:"tenant_id"`
+	AfterUserID uuid.UUID     `json:"after_user_id"`
+	Limit       int32         `json:"limit"`
+}
+
+// Worker fan-out: everyone an announcement addressed to the whole tenant
+// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
+// row to — every user the tenant owns — so the bell counts what the
+// announcements inbox lists rather than a subset of it.
+//
+// Keyset paging on user_id, because the result grows with the tenant's
+// readership and the caller writes one row per recipient. The pair is
+// `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
+// below every UUID, so it is what the first page asks for.
+func (q *Queries) ListTenantUserIDs(ctx context.Context, arg ListTenantUserIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantUserIDs, arg.TenantID, arg.AfterUserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

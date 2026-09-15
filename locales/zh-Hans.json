@@ -1640,6 +1640,9 @@
         "comments_awaiting_approval_description": "{$subject}有新的评论等待审核。",
         "comments_reported_title": "有评论被举报",
         "comments_reported_description": "读者举报了{$subject}的评论。",
+        "announcement_posted_title": "公告已发布",
+        "announcement_posted_description": "《{$title}》已发送给其目标受众。",
+        "announcement_posted_description_unknown": "公告已发送给其目标受众。",
         "unknown_title": "通知",
         "unknown_description": "没有更多详情。"
       }
@@ -2155,6 +2158,9 @@
       "signup": "立即开始"
     },
     "notifications": {
+      "announcement_posted_description": "运营方发布了《{$title}》。",
+      "announcement_posted_description_unknown": "运营方发布了新公告。",
+      "announcement_posted_title": "新公告",
       "comment_approved_description": "您在{$subject}下的评论已公开。",
       "comment_approved_title": "您的评论已公开",
       "comment_hidden_description": "您在{$subject}下的评论已被隐藏。",

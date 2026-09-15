@@ -25,6 +25,7 @@ It also handles these non-mail events:
 | `member_push_notification` | The FCM or Web Push delivery that mirrors a member's `notifications` row, one message per registered device |
 | `comment_awaiting_approval_notification` | A `notifications` row for every member of the tenant's staff, saying that one episode has comments waiting in the approval queue |
 | `comment_reported_notification` | The same, for an episode whose comments readers have reported |
+| `announcement_notification` | A `notifications` row for every reader one posted announcement addresses — every user of the tenant on a broadcast, the single named recipient on a targeted one |
 
 The push handler is registered when either Firebase or Web Push credentials are configured; see [Main environment variables](#main-environment-variables).
 
