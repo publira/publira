@@ -21,5 +21,6 @@ export { MenuIcon } from "./menu-icon";
 export { MinimizeIcon } from "./minimize-icon";
 export { PlusIcon } from "./plus-icon";
 export { SettingsIcon } from "./settings-icon";
+export { ShareIcon } from "./share-icon";
 export type { IconProps } from "./types";
 export { UserIcon } from "./user-icon";

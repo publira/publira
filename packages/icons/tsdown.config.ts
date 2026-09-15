@@ -27,6 +27,7 @@ export default defineConfig({
     "src/minimize-icon.tsx",
     "src/plus-icon.tsx",
     "src/settings-icon.tsx",
+    "src/share-icon.tsx",
     "src/user-icon.tsx",
   ],
   format: "esm",
