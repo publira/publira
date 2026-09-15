@@ -137,8 +137,8 @@ void main() {
   test('listSeries keeps the catalog the API answered', () async {
     await build().listSeries();
 
-    expect(library.series, hasLength(1));
-    expect(library.series!.single.id, _seriesId);
+    expect(library.series!.series, hasLength(1));
+    expect(library.series!.series.single.id, _seriesId);
   });
 
   test(
@@ -147,9 +147,9 @@ void main() {
       await build().listSeries();
       origin.listError = _network;
 
-      final series = await build().listSeries();
+      final page = await build().listSeries();
 
-      expect(series.single.id, _seriesId);
+      expect(page.series.single.id, _seriesId);
     },
   );
 
@@ -168,10 +168,10 @@ void main() {
 
     // An unreachable API is not an unreachable image-server: the saved catalog
     // has to come back with the headers a cover request needs.
-    final series = await build().listSeries();
+    final page = await build().listSeries();
 
-    expect(series.single.eyeCatchVariants.single.url, _coverVariant.url);
-    expect(series.single.imageRequestHeaders, _imageHeaders);
+    expect(page.series.single.eyeCatchVariants.single.url, _coverVariant.url);
+    expect(page.series.single.imageRequestHeaders, _imageHeaders);
   });
 
   test('a series read off the device can still address its cover', () async {
@@ -183,6 +183,61 @@ void main() {
     expect(detail!.series.eyeCatchVariants.single.url, _coverVariant.url);
     expect(detail.series.imageRequestHeaders, _imageHeaders);
     expect(detail.episodes.single.id, _episodeId);
+  });
+
+  test('the catalog kept on the device carries its next token', () async {
+    origin
+      ..series = fixtureCatalog(3)
+      ..seriesPageSize = 2;
+
+    final page = await build().listSeries();
+
+    expect(library.series!.series, hasLength(2));
+    expect(page.nextToken, isNotEmpty);
+    expect(library.series!.nextToken, page.nextToken);
+  });
+
+  test('a page under the first one does not replace the saved one', () async {
+    origin
+      ..series = fixtureCatalog(3)
+      ..seriesPageSize = 2;
+    final catalog = build();
+    final first = await catalog.listSeries();
+
+    await catalog.listSeries(token: first.nextToken);
+
+    // The device keeps the page a launch without a network opens on, which is
+    // the first one however far the reader scrolled past it.
+    expect(library.series!.series, hasLength(2));
+    expect(library.series!.series.first.id, first.series.first.id);
+  });
+
+  test('the saved catalog comes back with the page left to read', () async {
+    origin
+      ..series = fixtureCatalog(3)
+      ..seriesPageSize = 2;
+    final saved = await build().listSeries();
+    origin.listError = _network;
+
+    final page = await build().listSeries();
+
+    expect(page.series, hasLength(2));
+    expect(page.nextToken, saved.nextToken);
+  });
+
+  test('a page under the saved one is reported, not answered', () async {
+    origin
+      ..series = fixtureCatalog(3)
+      ..seriesPageSize = 2;
+    final saved = await build().listSeries();
+    origin.listMoreError = _network;
+
+    // The device holds the first page and nothing under it, so scrolling past
+    // it reaches the API or nothing at all.
+    expect(
+      await failureOf(() => build().listSeries(token: saved.nextToken)),
+      CatalogFailureKind.network,
+    );
   });
 
   test('listSeries does not cover a failure that is not the network', () async {
@@ -523,7 +578,7 @@ void main() {
     expect(origin.newestSeriesLimits, [10]);
     // The device still holds the catalog page rather than the few rows the
     // shelf asked for.
-    expect((await library.readSeriesList())!.single.id, _seriesId);
+    expect((await library.readSeriesList())!.series.single.id, _seriesId);
   });
 
   test(

@@ -5,15 +5,17 @@ import 'package:publira/models/series_item.dart';
 
 /// Public catalog reads. Implementations talk to the Connect API or a fake.
 abstract class CatalogRepository {
-  /// Published series for the configured tenant by title, first page.
+  /// One page of the configured tenant's published series, by title.
   ///
   /// It is the whole catalog to browse, which is why it is ordered by title
   /// rather than by date: the newest of it stands above as its own shelf, and
   /// a list in the same order would be that shelf again.
   ///
-  /// Returns an empty list when the tenant has no published series.
+  /// [token] is empty for the first page, and otherwise the
+  /// [SeriesPage.nextToken] of the page above the one wanted, passed back
+  /// unchanged. Returns an empty page when the tenant has no published series.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<List<SeriesItem>> listSeries();
+  Future<SeriesPage> listSeries({String token});
 
   /// The newest published series, at most [limit] of them.
   ///

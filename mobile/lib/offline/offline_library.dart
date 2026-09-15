@@ -102,9 +102,13 @@ bool isReadableOffline(
 /// is best effort for the same reason.
 abstract class OfflineLibrary implements EpisodePageStore {
   /// The saved catalog snapshot, or `null` when the device has none.
-  Future<List<SeriesItem>?> readSeriesList();
+  ///
+  /// It is the first page as the API last answered it, token and all, so a
+  /// launch without a network opens on the same rows and still knows there is
+  /// a page under them to ask for.
+  Future<SeriesPage?> readSeriesList();
 
-  Future<void> writeSeriesList(List<SeriesItem> series);
+  Future<void> writeSeriesList(SeriesPage page);
 
   Future<SeriesDetail?> readSeriesDetail(String seriesPublicId);
 

@@ -56,27 +56,47 @@ class HttpCatalogRepository implements CatalogRepository {
   static const seriesPageLimit = 20;
 
   @override
-  Future<List<SeriesItem>> listSeries() =>
-      _listPublishedSeries(seriesPageLimit, 'SERIES_ORDER_TITLE_ASC');
+  Future<SeriesPage> listSeries({String token = ''}) => _listPublishedSeries(
+    seriesPageLimit,
+    'SERIES_ORDER_TITLE_ASC',
+    token: token,
+  );
 
   @override
-  Future<List<SeriesItem>> listNewestSeries({required int limit}) =>
-      _listPublishedSeries(limit, 'SERIES_ORDER_PUBLISHED_AT_DESC');
+  Future<List<SeriesItem>> listNewestSeries({required int limit}) async {
+    final page = await _listPublishedSeries(
+      limit,
+      'SERIES_ORDER_PUBLISHED_AT_DESC',
+    );
+    return page.series;
+  }
 
   /// One page of `ListPublishedSeries`, in [order] as the enum names it.
   ///
   /// The order is always stated rather than left to the API's default, because
   /// the catalog screen shows two pages of this list at once — the newest few
   /// above the whole of it — and it is the orders that tell them apart.
-  Future<List<SeriesItem>> _listPublishedSeries(int limit, String order) async {
+  ///
+  /// [token] is left off an empty request the way protojson leaves off a
+  /// default, which is what asks for the first page.
+  Future<SeriesPage> _listPublishedSeries(
+    int limit,
+    String order, {
+    String token = '',
+  }) async {
     try {
       final tenantId = await _tenants.resolve();
       final body = await _client.unary(_listProcedure, {
         'limit': limit,
         'order': order,
+        if (token.isNotEmpty) 'token': token,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
-      return _parseSeriesList(body['series']);
+      return SeriesPage(
+        series: _parseSeriesList(body['series']),
+        // protojson omits an empty string, which is how the last page arrives.
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }

@@ -106,43 +106,69 @@ void main() {
   }
 
   test('a saved catalog is read back by the next launch', () async {
-    await open().writeSeriesList(const [
-      SeriesItem(
-        id: _seriesId,
-        title: 'Seed Series 001',
-        description: 'Summer holidays',
+    await open().writeSeriesList(
+      const SeriesPage(
+        series: [
+          SeriesItem(
+            id: _seriesId,
+            title: 'Seed Series 001',
+            description: 'Summer holidays',
+          ),
+        ],
+        nextToken: 'page-2',
       ),
-    ]);
+    );
 
     // A second instance stands in for the next launch: nothing carries over in
     // memory, so what comes back came off the disk.
     final restored = await open().readSeriesList();
 
-    expect(restored, hasLength(1));
-    expect(restored!.single.id, _seriesId);
-    expect(restored.single.description, 'Summer holidays');
+    expect(restored!.series, hasLength(1));
+    expect(restored.series.single.id, _seriesId);
+    expect(restored.series.single.description, 'Summer holidays');
+    // The token comes back with the page, so a launch without a network still
+    // knows there is a page under the saved one to ask for.
+    expect(restored.nextToken, 'page-2');
+  });
+
+  test('a saved catalog that ended keeps no token', () async {
+    await open().writeSeriesList(
+      const SeriesPage(
+        series: [
+          SeriesItem(id: _seriesId, title: 'Seed Series 001', description: ''),
+        ],
+      ),
+    );
+
+    expect((await open().readSeriesList())!.nextToken, isEmpty);
   });
 
   test('a saved catalog keeps the cover renditions of its series', () async {
-    await open().writeSeriesList([
-      SeriesItem(
-        id: _seriesId,
-        title: 'Seed Series 001',
-        description: 'Summer holidays',
-        eyeCatchVariants: [
-          EyeCatchVariant(
-            variantType: 'portrait',
-            url: Uri.parse('http://images.test/images/series/IMG/portrait/800'),
-            width: 800,
-            height: 1066,
+    await open().writeSeriesList(
+      SeriesPage(
+        series: [
+          SeriesItem(
+            id: _seriesId,
+            title: 'Seed Series 001',
+            description: 'Summer holidays',
+            eyeCatchVariants: [
+              EyeCatchVariant(
+                variantType: 'portrait',
+                url: Uri.parse(
+                  'http://images.test/images/series/IMG/portrait/800',
+                ),
+                width: 800,
+                height: 1066,
+              ),
+            ],
           ),
         ],
       ),
-    ]);
+    );
 
     final restored = await open().readSeriesList();
 
-    final cover = restored!.single.eyeCatchVariants.single;
+    final cover = restored!.series.single.eyeCatchVariants.single;
     expect(cover.variantType, 'portrait');
     expect(
       cover.url.toString(),
@@ -438,9 +464,13 @@ void main() {
   test('clear leaves nothing behind', () async {
     final library = open();
     final pageKey = episodePageKey(_pageUrl('EP1', 1));
-    await library.writeSeriesList(const [
-      SeriesItem(id: _seriesId, title: 'Seed Series 001', description: ''),
-    ]);
+    await library.writeSeriesList(
+      const SeriesPage(
+        series: [
+          SeriesItem(id: _seriesId, title: 'Seed Series 001', description: ''),
+        ],
+      ),
+    );
     await library.writeEpisode(_episode('EP1'));
     await library.writePage(pageKey, _bytes(64, 3));
 

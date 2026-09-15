@@ -12,6 +12,10 @@ import 'support/fake_catalog_repository.dart';
 import 'support/fake_offline_library.dart';
 import 'support/pump_until.dart';
 
+/// A screen the height of a phone, so the list holds fewer rows than one page
+/// and a test about paging has to scroll the way a reader does.
+const phoneSize = Size(400, 900);
+
 void main() {
   late GoRouter router;
   late FakeCatalogRepository catalog;
@@ -29,11 +33,17 @@ void main() {
     offline = InMemoryOfflineLibrary();
   });
 
-  Future<void> pumpApp(WidgetTester tester, {AuthSession? session}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    AuthSession? session,
     // Four sections stand above one another, and a screen the height of a
     // phone would leave the ones at the bottom unbuilt — a test about a
-    // section the viewport never reached proves nothing about it.
-    tester.view.physicalSize = const Size(800, 2400);
+    // section the viewport never reached proves nothing about it. A test about
+    // paging asks for [phoneSize] instead, because what it is about is the
+    // rows a reader has to scroll to reach.
+    Size size = const Size(800, 2400),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
@@ -56,6 +66,25 @@ void main() {
       find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
     );
   }
+
+  /// Drags the catalog up until [finder] matches, which is what asks for the
+  /// pages between where the list started and what it names.
+  Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+    for (var drags = 0; drags < 40; drags++) {
+      if (finder.evaluate().isNotEmpty) {
+        await tester.ensureVisible(finder);
+        await tester.pump();
+        return;
+      }
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    fail('Timed out scrolling to $finder');
+  }
+
+  Finder tileOf(int number) =>
+      find.byKey(ValueKey('series-tile-catalog-series-$number'));
 
   testWidgets('the ranking shelf shows the week in the snapshot positions', (
     tester,
@@ -179,6 +208,87 @@ void main() {
 
     expect(find.byKey(const ValueKey('catalog-error')), findsOneWidget);
     expect(find.byKey(const ValueKey('catalog-new-arrivals')), findsOneWidget);
+  });
+
+  testWidgets('the catalog pages on as the reader nears the end of it', (
+    tester,
+  ) async {
+    catalog.series = fixtureCatalog(50);
+    await pumpApp(tester, size: phoneSize);
+    await pumpUntilFound(tester, tileOf(1));
+
+    await scrollTo(tester, tileOf(50));
+
+    expect(tileOf(50), findsOneWidget);
+    // Three pages of twenty, each asked for by the token the one above it
+    // answered with.
+    expect(catalog.seriesTokens, ['', '20', '40']);
+    // The catalog ends there, so nothing stands under its last row.
+    expect(find.byKey(const ValueKey('catalog-more-loading')), findsNothing);
+  });
+
+  testWidgets('a catalog of one page asks for nothing under it', (
+    tester,
+  ) async {
+    await pumpLoadedApp(tester);
+
+    expect(catalog.seriesTokens, ['']);
+    expect(find.byKey(const ValueKey('catalog-more-loading')), findsNothing);
+  });
+
+  testWidgets('a page the API could not answer is offered again', (
+    tester,
+  ) async {
+    catalog
+      ..series = fixtureCatalog(50)
+      ..listMoreError = const CatalogFailure(CatalogFailureKind.network);
+    await pumpApp(tester, size: phoneSize);
+    await pumpUntilFound(tester, tileOf(1));
+
+    await scrollTo(tester, find.byKey(const ValueKey('catalog-more-error')));
+
+    // The rows that did arrive stay where the reader left them, and what went
+    // wrong is reported under them.
+    expect(tileOf(20), findsOneWidget);
+    expect(
+      find.textContaining('Could not connect to the server'),
+      findsOneWidget,
+    );
+
+    catalog.listMoreError = null;
+    await tester.tap(find.byKey(const ValueKey('catalog-more-retry')));
+    await pumpUntilFound(tester, tileOf(21));
+
+    expect(find.byKey(const ValueKey('catalog-more-error')), findsNothing);
+  });
+
+  testWidgets('pulling to refresh reads the catalog from its first page', (
+    tester,
+  ) async {
+    catalog.series = fixtureCatalog(50);
+    await pumpApp(tester);
+    await pumpUntilFound(tester, tileOf(21));
+
+    // A pull arms the indicator only once it passes a quarter of the viewport,
+    // which is what this distance is measured against.
+    await tester.fling(
+      find.byType(CustomScrollView),
+      const Offset(0, 800),
+      1000,
+    );
+    await tester.pump();
+    await pumpUntilTrue(
+      tester,
+      () => catalog.seriesTokens.length > 2,
+      description: 'the pull to refresh to read the catalog again',
+    );
+    await pumpUntilFound(tester, tileOf(1));
+
+    // The pages the reader had scrolled into are dropped: the list asks for
+    // the first page again, and then for the page under it from the top.
+    expect(catalog.seriesTokens, containsAllInOrder(['', '20', '']));
+    // The shelves above the list are read again by the same pull.
+    expect(catalog.newestSeriesLimits, [10, 10]);
   });
 
   testWidgets('a signed-in reader is offered all four sections at once', (

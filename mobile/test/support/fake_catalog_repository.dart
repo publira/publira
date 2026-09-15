@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
@@ -9,6 +10,7 @@ import 'package:publira/models/series_item.dart';
 class FakeCatalogRepository implements CatalogRepository {
   FakeCatalogRepository({
     this.series = const [],
+    this.seriesPageSize = 20,
     this.newestSeries = const [],
     this.rankedSeries = const [],
     this.details = const {},
@@ -16,6 +18,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.recentSeries = const [],
     this.readingPositions = const {},
     this.listError,
+    this.listMoreError,
     this.newestSeriesError,
     this.rankedSeriesError,
     this.detailError,
@@ -26,7 +29,11 @@ class FakeCatalogRepository implements CatalogRepository {
     this.reactions = const {},
   });
 
+  /// The whole catalog [listSeries] pages over.
   List<SeriesItem> series;
+
+  /// How many of [series] one page of [listSeries] holds.
+  int seriesPageSize;
 
   /// What the new-arrivals shelf is answered with.
   List<SeriesItem> newestSeries;
@@ -48,6 +55,10 @@ class FakeCatalogRepository implements CatalogRepository {
   Map<String, int> readingPositions;
 
   CatalogFailure? listError;
+
+  /// What a read of a page under the first one fails with, so a test can fail
+  /// one page of the catalog without failing the screen.
+  CatalogFailure? listMoreError;
   CatalogFailure? newestSeriesError;
   CatalogFailure? rankedSeriesError;
   CatalogFailure? detailError;
@@ -61,6 +72,10 @@ class FakeCatalogRepository implements CatalogRepository {
 
   Map<String, EpisodeReaction> reactions;
 
+  /// Tokens [listSeries] was called with, in order. The first page is the
+  /// empty one.
+  final List<String> seriesTokens = <String>[];
+
   /// Limits [listRecentSeries] was called with, in order.
   final List<int> recentSeriesLimits = <int>[];
 
@@ -70,13 +85,24 @@ class FakeCatalogRepository implements CatalogRepository {
   /// Periods [listRankedSeries] was called with, in order.
   final List<RankingPeriod> rankedSeriesPeriods = <RankingPeriod>[];
 
+  /// Pages over [series], [seriesPageSize] at a time.
+  ///
+  /// The token stands in for the API's opaque cursor and is the index of the
+  /// page's first row, written out. A test passes back whatever it was given,
+  /// the way the screen does.
   @override
-  Future<List<SeriesItem>> listSeries() async {
-    final error = listError;
+  Future<SeriesPage> listSeries({String token = ''}) async {
+    seriesTokens.add(token);
+    final error = token.isEmpty ? listError : listMoreError ?? listError;
     if (error != null) {
       throw error;
     }
-    return List<SeriesItem>.from(series);
+    final start = token.isEmpty ? 0 : int.parse(token);
+    final end = min(start + seriesPageSize, series.length);
+    return SeriesPage(
+      series: List<SeriesItem>.from(series.sublist(start, end)),
+      nextToken: end < series.length ? '$end' : '',
+    );
   }
 
   @override
@@ -268,6 +294,18 @@ final fixtureSeries = <SeriesItem>[
     description: 'Everyday cooking, one plate at a time.',
     episodeCount: 8,
   ),
+];
+
+/// A catalog of [count] series, for a tenant holding more than one page of
+/// them. The titles are numbered so the row a test scrolls to can be named,
+/// and carry nothing else: what paging is about is which rows arrive.
+List<SeriesItem> fixtureCatalog(int count) => [
+  for (var n = 1; n <= count; n++)
+    SeriesItem(
+      id: 'catalog-series-$n',
+      title: 'Catalog Series ${n.toString().padLeft(3, '0')}',
+      description: 'Series $n of the paged catalog.',
+    ),
 ];
 
 /// A restricted series used to exercise the confirmation before the body

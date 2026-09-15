@@ -9,18 +9,21 @@ import 'package:publira/offline/offline_library.dart';
 /// and a test asserting what the app saved wants to read it back without
 /// going through the encrypted files.
 class InMemoryOfflineLibrary implements OfflineLibrary {
-  List<SeriesItem>? series;
+  SeriesPage? series;
   final Map<String, SeriesDetail> details = {};
   final Map<String, SavedEpisode> episodes = {};
   final Map<String, SavedReadingPosition> positions = {};
   final Map<String, Uint8List> pages = {};
 
   @override
-  Future<List<SeriesItem>?> readSeriesList() async => series;
+  Future<SeriesPage?> readSeriesList() async => series;
 
   @override
-  Future<void> writeSeriesList(List<SeriesItem> series) async {
-    this.series = List<SeriesItem>.unmodifiable(series);
+  Future<void> writeSeriesList(SeriesPage page) async {
+    series = SeriesPage(
+      series: List<SeriesItem>.unmodifiable(page.series),
+      nextToken: page.nextToken,
+    );
   }
 
   @override
