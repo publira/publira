@@ -14,6 +14,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -135,15 +136,19 @@ func TestCreateAnnouncementForSelectedUsers(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 			AddRow(user2ID, "USER002", "User Two", "u2@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
 		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}")).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
 			AddRow(announcement1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now))
+	expectAnnouncementNotificationEvent(mock, tenantID, announcement1ID)
 
 	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
 		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}")).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
 			AddRow(announcement2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now))
+	expectAnnouncementNotificationEvent(mock, tenantID, announcement2ID)
+	mock.ExpectCommit()
 
 	expectAdminAuditLogInsert(mock)
 
@@ -170,6 +175,73 @@ func TestCreateAnnouncementForSelectedUsers(t *testing.T) {
 	}
 
 	assertExpectations(t, mock)
+}
+
+func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	announcementID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
+		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}")).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
+			AddRow(announcementID, tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", nil, json.RawMessage("{}"), now))
+	expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
+	mock.ExpectCommit()
+
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
+		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:        "Update",
+		Body:         "Body",
+		AudienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.CreateAnnouncement(context.Background(), req); err != nil {
+		t.Fatalf("CreateAnnouncement: %v", err)
+	}
+
+	assertExpectations(t, mock)
+}
+
+// expectAnnouncementNotificationEvent is the outbox row CreateAnnouncement
+// writes beside every announcement, in the same transaction: the worker turns
+// it into one bell notification per reader the announcement addresses.
+func expectAnnouncementNotificationEvent(
+	mock sqlmock.Sqlmock,
+	tenantID, announcementID uuid.UUID,
+) {
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: InsertOutboxEvent :one\n")).
+		WithArgs(
+			sqlmock.AnyArg(),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeAnnouncementNotification,
+			sqlmock.AnyArg(),
+			outbox.AnnouncementIdempotencyKey(announcementID),
+			sqlmock.AnyArg(),
+		).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "event_type", "payload", "idempotency_key",
+			"status", "attempts", "available_at", "last_error", "created_at", "updated_at",
+		}).AddRow(
+			uuid.Must(uuid.NewV7()),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeAnnouncementNotification,
+			json.RawMessage("{}"),
+			outbox.AnnouncementIdempotencyKey(announcementID),
+			"pending", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(),
+		))
 }
 
 func TestListAnnouncementsSuccess(t *testing.T) {

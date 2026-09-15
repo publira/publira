@@ -1640,6 +1640,9 @@
         "comments_awaiting_approval_description": "New comments on {$subject} are waiting for approval.",
         "comments_reported_title": "Comments were reported",
         "comments_reported_description": "Readers reported comments on {$subject}.",
+        "announcement_posted_title": "An announcement was posted",
+        "announcement_posted_description": "“{$title}” was delivered to its audience.",
+        "announcement_posted_description_unknown": "An announcement was delivered to its audience.",
         "unknown_title": "Notification",
         "unknown_description": "No further details are available."
       }
@@ -2155,6 +2158,9 @@
       "signup": "Get started"
     },
     "notifications": {
+      "announcement_posted_description": "“{$title}” was posted by the operator.",
+      "announcement_posted_description_unknown": "The operator posted a new announcement.",
+      "announcement_posted_title": "A new announcement",
       "comment_approved_description": "Your comment on {$subject} is now visible to everyone.",
       "comment_approved_title": "Your comment is now public",
       "comment_hidden_description": "Your comment on {$subject} was removed.",

@@ -161,6 +161,20 @@ describe("notificationDisplay", () => {
     );
   });
 
+  it("names a posted announcement and opens the delivery list", async () => {
+    await expect(
+      notificationDisplay(
+        "announcement_posted",
+        { announcement_title: "Scheduled maintenance" },
+        en
+      )
+    ).resolves.toEqual({
+      description: "“Scheduled maintenance” was delivered to its audience.",
+      href: "/announcements",
+      title: "An announcement was posted",
+    });
+  });
+
   it("keeps an unknown type as generic instead of dropping it", async () => {
     await expect(
       notificationDisplay("invite_accepted", { series_id: "SR01" }, en)

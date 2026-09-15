@@ -1,10 +1,12 @@
 import type { Page } from "@playwright/test";
 
+import { ANNOUNCEMENT_DELIVERY_MEMBER } from "./scenarios/announcement-delivery";
 import { SEED_MEMBER } from "./scenarios/member-announcements";
 import { NOTIFICATION_INBOX_MEMBER } from "./scenarios/notification-inbox";
 import { fillLoginForm } from "./session";
 import {
   hostPath,
+  WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL,
   WEB_HOST_BASE_URL,
   WEB_HOST_NOTIFICATION_INBOX_BASE_URL,
 } from "./urls";
@@ -41,6 +43,19 @@ export const signInAsNotificationInboxMember = async (
     NOTIFICATION_INBOX_MEMBER,
     returnTo,
     WEB_HOST_NOTIFICATION_INBOX_BASE_URL
+  );
+};
+
+/** Sign in as the delivery tenant's reader, on that tenant's own public site. */
+export const signInAsAnnouncementDeliveryMember = async (
+  page: Page,
+  returnTo = "/my"
+): Promise<void> => {
+  await signInAsMember(
+    page,
+    ANNOUNCEMENT_DELIVERY_MEMBER,
+    returnTo,
+    WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL
   );
 };
 

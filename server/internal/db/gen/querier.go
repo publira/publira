@@ -1309,6 +1309,16 @@ type Querier interface {
 	// in reverse. The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error)
+	// Worker fan-out: everyone an announcement addressed to the whole tenant
+	// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
+	// row to — every user the tenant owns — so the bell counts what the
+	// announcements inbox lists rather than a subset of it.
+	//
+	// Keyset paging on user_id, because the result grows with the tenant's
+	// readership and the caller writes one row per recipient. The pair is
+	// `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
+	// below every UUID, so it is what the first page asks for.
+	ListTenantUserIDs(ctx context.Context, arg ListTenantUserIDsParams) ([]uuid.UUID, error)
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error)
 	// Admin ListTenantUsers is (created_at, id) DESC. Forward uses the DESC

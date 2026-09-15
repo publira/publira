@@ -1640,6 +1640,9 @@
         "comments_awaiting_approval_description": "{$subject}에 승인을 기다리는 댓글이 도착했습니다.",
         "comments_reported_title": "댓글이 신고되었습니다",
         "comments_reported_description": "독자가 {$subject}의 댓글을 신고했습니다.",
+        "announcement_posted_title": "공지사항이 게시되었습니다",
+        "announcement_posted_description": "“{$title}”이(가) 대상에게 전달되었습니다.",
+        "announcement_posted_description_unknown": "공지사항이 대상에게 전달되었습니다.",
         "unknown_title": "알림",
         "unknown_description": "자세한 내용이 없습니다."
       }
@@ -2155,6 +2158,9 @@
       "signup": "시작하기"
     },
     "notifications": {
+      "announcement_posted_description": "운영자가 “{$title}”을(를) 게시했습니다.",
+      "announcement_posted_description_unknown": "운영자가 새 공지사항을 게시했습니다.",
+      "announcement_posted_title": "새 공지사항",
       "comment_approved_description": "{$subject}에 남긴 댓글이 공개되었습니다.",
       "comment_approved_title": "댓글이 공개되었습니다",
       "comment_hidden_description": "{$subject}에 남긴 댓글이 숨김 처리되었습니다.",

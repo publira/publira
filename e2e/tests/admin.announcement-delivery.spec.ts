@@ -4,23 +4,45 @@ import { expect, test } from "@playwright/test";
 import {
   fillField,
   formMessage,
-  signInAsNotificationInboxAdmin,
+  signInAsAnnouncementDeliveryAdmin,
+  signInAsAnnouncementDeliveryTarget,
 } from "../src/admin";
-import { applyScenarioSql, runSql } from "../src/db";
+import { applyScenarioSql, querySql, runSql } from "../src/db";
 import {
   openHostUserMenu,
-  signInAsNotificationInboxMember,
+  signInAsAnnouncementDeliveryMember,
   signInAsSeedMember,
 } from "../src/host";
 import { uniqueSuffix } from "../src/scenarios/admin-publish";
 import {
-  NOTIFICATION_INBOX_SCENARIO,
-  NOTIFICATION_INBOX_TENANT,
-} from "../src/scenarios/notification-inbox";
-import { hostPath, WEB_HOST_NOTIFICATION_INBOX_BASE_URL } from "../src/urls";
+  ANNOUNCEMENT_DELIVERY_SCENARIO,
+  ANNOUNCEMENT_DELIVERY_TARGET,
+  ANNOUNCEMENT_DELIVERY_TENANT,
+} from "../src/scenarios/announcement-delivery";
+import {
+  hostPath,
+  WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL,
+  WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL,
+} from "../src/urls";
 
-const inboxHostUrl = (pathname: string): string =>
-  `${WEB_HOST_NOTIFICATION_INBOX_BASE_URL}${hostPath(pathname)}`;
+const deliveryHostUrl = (pathname: string): string =>
+  `${WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL}${hostPath(pathname)}`;
+
+const deliveryAdminUrl = (pathname: string): string =>
+  `${WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL}${pathname}`;
+
+/** This tenant's announcement events the worker has still to drain. */
+const queuedAnnouncementEvents = (): number =>
+  Number(
+    querySql(`
+      SELECT COUNT(*)
+      FROM outbox_events e
+      JOIN tenants t ON t.id = e.tenant_id
+      WHERE t.public_id = '${ANNOUNCEMENT_DELIVERY_TENANT.publicId}'
+        AND e.event_type = 'announcement_notification'
+        AND e.status IN ('pending', 'processing');
+    `)
+  );
 
 const announcementFormFields = (page: Page) => ({
   body: page.getByRole("textbox", { name: /Body/u }),
@@ -33,6 +55,40 @@ const announcementArticle = (page: Page, title: string): Locator =>
   });
 
 /**
+ * How one announcement is recognized in a notification inbox. Every row of
+ * this type is headed "A new announcement", so what stands for the
+ * announcement is the title its description quotes — on the storefront's
+ * articles and in the console's table alike.
+ */
+const notificationMention = (page: Page, title: string): Locator =>
+  page.getByText(`“${title}”`);
+
+/** Fill in the console form and deliver it to the audience it names. */
+const deliverAnnouncement = async (
+  page: Page,
+  fields: { body: string; targetUserName?: string; title: string }
+): Promise<void> => {
+  await expect(
+    page.getByRole("heading", { name: "Create an announcement" })
+  ).toBeVisible();
+
+  const form = announcementFormFields(page);
+  await fillField(form.title, fields.title);
+  await fillField(form.body, fields.body);
+  if (fields.targetUserName) {
+    await page.getByRole("radio", { name: "Selected users" }).check();
+    await page
+      .getByRole("checkbox", { name: new RegExp(fields.targetUserName, "u") })
+      .check();
+  }
+  await page.getByRole("button", { name: "Deliver the announcement" }).click();
+  await expect(page).toHaveURL(/\/announcements\/?$/u);
+  await expect(
+    page.getByRole("cell", { exact: true, name: fields.title })
+  ).toBeVisible();
+};
+
+/**
  * Read the member announcement list until it shows `title` as the leading
  * row. The admin write is stored immediately, but the host list is a cached
  * private read and the first navigation after the write can still be served
@@ -43,7 +99,7 @@ const expectLeadingAnnouncement = async (
   title: string
 ): Promise<void> => {
   await expect(async () => {
-    await page.goto(inboxHostUrl("/announcements"));
+    await page.goto(deliveryHostUrl("/announcements"));
     await expect(page.locator("article h3").first()).toHaveText(title, {
       timeout: 5000,
     });
@@ -51,48 +107,65 @@ const expectLeadingAnnouncement = async (
 };
 
 /**
- * Announcement delivery: the console form under `/announcements/new` and the
- * member list it feeds on the same tenant's web-host.
+ * Read a notification inbox until the announcement's row is on it and the
+ * header bell counts it.
  *
- * `/announcements` is the delivery list; the header bell is the operational
- * inbox (`host.notifications.spec.ts` / `admin.notifications.spec.ts`). The
- * unread marker this suite asserts is the one on the delivered row.
+ * Two delays are waited out at once: the Outbox worker writes the notification
+ * rows after the console request has returned, and both the list and the count
+ * are cached private reads. Retrying the navigation covers both, and the count
+ * is asserted inside the retry because it is an entry of its own — a bell read
+ * before the worker wrote stays at zero until that entry is replaced.
+ */
+const expectUnreadNotification = async (
+  page: Page,
+  url: string,
+  title: string,
+  unreadCount: number
+): Promise<void> => {
+  await expect(async () => {
+    await page.goto(url);
+    await expect(
+      page.getByRole("button", {
+        name: `Notifications, ${unreadCount} unread`,
+      })
+    ).toBeVisible({ timeout: 5000 });
+    await expect(notificationMention(page, title)).toHaveCount(1, {
+      timeout: 5000,
+    });
+  }).toPass({ timeout: 60_000 });
+};
+
+/**
+ * Announcement delivery: the console form under `/announcements/new`, the
+ * member list it feeds on the same tenant's web-host, and the notification it
+ * raises for every reader it addresses.
  *
- * The inbox tenant's accounts exist so a post here cannot land in the seed
- * member's list that `announcements.pagination` pages through, or in the
- * seed tenant an episode publish notifies. Each run uses a unique title and
- * `afterEach` deletes the rows it created, so a long-lived stack does not
- * accumulate them.
+ * Its tenant is its own, because a delivery here is a delivery: the bell of
+ * everyone the announcement addresses stops being empty, which is exactly what
+ * the tenant of `host.notifications.spec.ts` / `admin.notifications.spec.ts`
+ * exists to keep. The scenario file empties this tenant and `afterEach` empties
+ * it again, so a long-lived stack does not accumulate what the runs delivered.
  */
 test.describe("admin announcement delivery", () => {
-  const createdTitles: string[] = [];
-
   test.beforeAll(() => {
-    applyScenarioSql(NOTIFICATION_INBOX_SCENARIO);
-    runSql(`
-      DELETE FROM announcements a
-      USING tenants t
-      WHERE a.tenant_id = t.id
-        AND t.public_id = '${NOTIFICATION_INBOX_TENANT.publicId}';
-    `);
+    applyScenarioSql(ANNOUNCEMENT_DELIVERY_SCENARIO);
   });
 
-  test.afterEach(() => {
-    if (createdTitles.length === 0) {
-      return;
-    }
-
-    const literals = createdTitles.map(
-      (title) => `'${title.replaceAll("'", "''")}'`
-    );
+  test.afterEach(async () => {
+    // The notification rows are written after the console request has
+    // returned, so a clean-up that ran before the worker drained the event
+    // would leave them behind for the next test's bell to count.
+    await expect.poll(queuedAnnouncementEvents, { timeout: 30_000 }).toBe(0);
     runSql(`
+      DELETE FROM notifications n
+      USING tenants t
+      WHERE n.tenant_id = t.id
+        AND t.public_id = '${ANNOUNCEMENT_DELIVERY_TENANT.publicId}';
       DELETE FROM announcements a
       USING tenants t
       WHERE a.tenant_id = t.id
-        AND t.public_id = '${NOTIFICATION_INBOX_TENANT.publicId}'
-        AND a.title IN (${literals.join(", ")});
+        AND t.public_id = '${ANNOUNCEMENT_DELIVERY_TENANT.publicId}';
     `);
-    createdTitles.length = 0;
   });
 
   test("a posted announcement reaches the same tenant's members and not another tenant's", async ({
@@ -100,31 +173,15 @@ test.describe("admin announcement delivery", () => {
   }) => {
     const title = `E2E delivery ${uniqueSuffix()}`;
     const body = `Console delivery body ${uniqueSuffix()}`;
-    createdTitles.push(title);
 
-    await signInAsNotificationInboxAdmin(page, "/announcements/new");
-    await expect(
-      page.getByRole("heading", { name: "Create an announcement" })
-    ).toBeVisible();
-
-    const fields = announcementFormFields(page);
-    await fillField(fields.title, title);
-    await fillField(fields.body, body);
-    await fillField(page.getByRole("textbox", { name: /Link/u }), "/my");
-    await page
-      .getByRole("button", { name: "Deliver the announcement" })
-      .click();
-
-    await expect(page).toHaveURL(/\/announcements\/?$/u);
-    await expect(
-      page.getByRole("cell", { exact: true, name: title })
-    ).toBeVisible();
+    await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
+    await deliverAnnouncement(page, { body, title });
 
     // The reader lands on another screen and reaches the inbox through the
     // header account menu, which is the navigation that points at it. Going
     // straight to `/announcements` would assert delivery to a page nothing
     // leads to.
-    await signInAsNotificationInboxMember(page);
+    await signInAsAnnouncementDeliveryMember(page);
     await openHostUserMenu(page);
     await page.getByRole("menuitem", { name: "Announcements" }).click();
     await expect(page).toHaveURL(/\/announcements\/?$/u);
@@ -150,29 +207,94 @@ test.describe("admin announcement delivery", () => {
     await expect(
       page.getByRole("heading", { exact: true, level: 3, name: title })
     ).toHaveCount(0);
+  });
 
-    await page.goto(inboxHostUrl("/announcements"));
-    await expect(delivered.getByText("Unread", { exact: true })).toBeVisible();
-    await delivered
-      .getByRole("button", { name: "Open and mark as read" })
-      .click();
-    await expect(page).toHaveURL(/\/my\/?$/u);
+  test("a posted announcement raises the addressed reader's unread notification count", async ({
+    page,
+  }) => {
+    const title = `E2E bell ${uniqueSuffix()}`;
 
-    await expect(async () => {
-      await page.goto(inboxHostUrl("/announcements"));
-      await expect(delivered.getByText("Read", { exact: true })).toBeVisible({
-        timeout: 5000,
-      });
-    }).toPass({ timeout: 30_000 });
+    await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
+    await deliverAnnouncement(page, {
+      body: `Bell delivery body ${uniqueSuffix()}`,
+      title,
+    });
+
+    await signInAsAnnouncementDeliveryMember(page);
+    await expectUnreadNotification(
+      page,
+      deliveryHostUrl("/notifications"),
+      title,
+      1
+    );
+
+    const row = page
+      .locator("article")
+      .filter({ hasText: `“${title}”` })
+      .first();
     await expect(
-      delivered.getByRole("button", { name: "Open and mark as read" })
-    ).toHaveCount(0);
+      row.getByRole("heading", {
+        exact: true,
+        level: 3,
+        name: "A new announcement",
+      })
+    ).toBeVisible();
+    await expect(row.getByText("Unread", { exact: true })).toBeVisible();
+
+    // The bell's own row opens the announcements inbox rather than a screen of
+    // its own.
+    const bell = page.getByRole("button", { name: "Notifications, 1 unread" });
+    await bell.click();
+    const menu = page.getByRole("dialog");
+    await expect(menu.getByText(`“${title}”`)).toBeVisible();
+    await menu.getByRole("link", { name: /A new announcement/u }).click();
+    await expect(page).toHaveURL(/\/announcements\/?$/u);
+
+    // The tenant boundary: another tenant's reader is addressed by none of it.
+    await signInAsSeedMember(page, "/notifications");
+    await expect(
+      page.getByRole("heading", {
+        exact: true,
+        level: 1,
+        name: "Notifications",
+      })
+    ).toBeVisible();
+    await expect(notificationMention(page, title)).toHaveCount(0);
+  });
+
+  test("a targeted announcement notifies its recipient and nobody else", async ({
+    page,
+  }) => {
+    const title = `E2E targeted ${uniqueSuffix()}`;
+
+    await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
+    await deliverAnnouncement(page, {
+      body: `Targeted delivery body ${uniqueSuffix()}`,
+      targetUserName: ANNOUNCEMENT_DELIVERY_TARGET.name,
+      title,
+    });
+
+    await signInAsAnnouncementDeliveryTarget(page, "/");
+    await expectUnreadNotification(
+      page,
+      deliveryAdminUrl("/notifications"),
+      title,
+      1
+    );
+
+    // The reader of the same tenant was not addressed, so the announcement
+    // reaches neither their inbox nor their bell.
+    await signInAsAnnouncementDeliveryMember(page, "/notifications");
+    await expect(
+      page.getByRole("button", { name: "Notifications, none unread" })
+    ).toBeVisible();
+    await expect(notificationMention(page, title)).toHaveCount(0);
   });
 
   test("a missing required field shows the error instead of submitting", async ({
     page,
   }) => {
-    await signInAsNotificationInboxAdmin(page, "/announcements/new");
+    await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
     const fields = announcementFormFields(page);
 
     // The controls are `required`, so the browser refuses to submit: the

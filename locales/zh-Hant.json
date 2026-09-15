@@ -1640,6 +1640,9 @@
         "comments_awaiting_approval_description": "{$subject}有新的留言等待審核。",
         "comments_reported_title": "有留言被檢舉",
         "comments_reported_description": "讀者檢舉了{$subject}的留言。",
+        "announcement_posted_title": "公告已發布",
+        "announcement_posted_description": "《{$title}》已發送給其目標對象。",
+        "announcement_posted_description_unknown": "公告已發送給其目標對象。",
         "unknown_title": "通知",
         "unknown_description": "沒有更多詳細資訊。"
       }
@@ -2155,6 +2158,9 @@
       "signup": "立即開始"
     },
     "notifications": {
+      "announcement_posted_description": "營運方發布了《{$title}》。",
+      "announcement_posted_description_unknown": "營運方發布了新公告。",
+      "announcement_posted_title": "新公告",
       "comment_approved_description": "您在{$subject}下的留言已公開。",
       "comment_approved_title": "您的留言已公開",
       "comment_hidden_description": "您在{$subject}下的留言已被隱藏。",

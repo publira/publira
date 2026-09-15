@@ -6,9 +6,14 @@ import {
   SEED_CATALOG,
   toTokyoDateTimeLocal,
 } from "./scenarios/admin-publish";
+import {
+  ANNOUNCEMENT_DELIVERY_ADMIN,
+  ANNOUNCEMENT_DELIVERY_TARGET,
+} from "./scenarios/announcement-delivery";
 import { NOTIFICATION_INBOX_ADMIN } from "./scenarios/notification-inbox";
 import { fillLoginForm } from "./session";
 import {
+  WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL,
 } from "./urls";
@@ -46,6 +51,32 @@ export const signInAsNotificationInboxAdmin = async (
     NOTIFICATION_INBOX_ADMIN,
     nextPath,
     WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL
+  );
+};
+
+/** Sign in as the delivery tenant's admin, the one that posts announcements. */
+export const signInAsAnnouncementDeliveryAdmin = async (
+  page: Page,
+  nextPath = "/announcements"
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    ANNOUNCEMENT_DELIVERY_ADMIN,
+    nextPath,
+    WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL
+  );
+};
+
+/** Sign in as the tenant admin a targeted announcement names. */
+export const signInAsAnnouncementDeliveryTarget = async (
+  page: Page,
+  nextPath = "/announcements"
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    ANNOUNCEMENT_DELIVERY_TARGET,
+    nextPath,
+    WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL
   );
 };
 

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
@@ -266,65 +268,13 @@ func (s *adminServer) CreateAnnouncement(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid audience_type"))
 	}
 
-	created := make([]*publiraadminv1.AdminAnnouncement, 0)
-	metadata := json.RawMessage("{}")
-	if audienceType == publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS {
-		announcementID, idErr := uuid.NewV7()
-		if idErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, idErr)
-		}
-		row, createErr := s.queriesFor(ctx).CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
-			ID:               announcementID,
-			TenantID:         tenant.ID,
-			TargetUserID:     uuid.NullUUID{},
-			AnnouncementType: announcementTypeAdmin,
-			Title:            title,
-			Body:             body,
-			LinkUrl:          sql.NullString{String: linkURL, Valid: linkURL != ""},
-			Metadata:         metadata,
-		})
-		if createErr != nil {
-			return nil, s.internalDBError(ctx, "failed to create announcement", createErr, "tenant_id", tenant.ID.String())
-		}
-		created = append(created, &publiraadminv1.AdminAnnouncement{
-			Id:           row.ID.String(),
-			Title:        row.Title,
-			Body:         row.Body,
-			LinkUrl:      row.LinkUrl.String,
-			AudienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
-			CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339),
-		})
-	} else {
-		created = make([]*publiraadminv1.AdminAnnouncement, 0, len(selectedUsers))
-		for _, userRow := range selectedUsers {
-			announcementID, idErr := uuid.NewV7()
-			if idErr != nil {
-				return nil, connect.NewError(connect.CodeInternal, idErr)
-			}
-			row, createErr := s.queriesFor(ctx).CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
-				ID:               announcementID,
-				TenantID:         tenant.ID,
-				TargetUserID:     uuid.NullUUID{UUID: userRow.ID, Valid: true},
-				AnnouncementType: announcementTypeAdmin,
-				Title:            title,
-				Body:             body,
-				LinkUrl:          sql.NullString{String: linkURL, Valid: linkURL != ""},
-				Metadata:         metadata,
-			})
-			if createErr != nil {
-				return nil, s.internalDBError(ctx, "failed to create announcement", createErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String())
-			}
-			created = append(created, &publiraadminv1.AdminAnnouncement{
-				Id:                 row.ID.String(),
-				Title:              row.Title,
-				Body:               row.Body,
-				LinkUrl:            row.LinkUrl.String,
-				AudienceType:       publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS,
-				TargetUserPublicId: userRow.PublicID,
-				TargetUserName:     userRow.Name,
-				CreatedAt:          row.CreatedAt.UTC().Format(time.RFC3339),
-			})
-		}
+	created, err := s.storeAnnouncements(ctx, tenant.ID, announcementContent{
+		title:   title,
+		body:    body,
+		linkURL: linkURL,
+	}, selectedUsers)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to create announcement", err, "tenant_id", tenant.ID.String())
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -341,4 +291,134 @@ func (s *adminServer) CreateAnnouncement(
 	return connect.NewResponse(&publiraadminv1.CreateAnnouncementResponse{
 		Announcements: created,
 	}), nil
+}
+
+// announcementContent is what every row one CreateAnnouncement call writes
+// shares. A targeted delivery is the same announcement addressed to each
+// recipient separately, so only the recipient differs between its rows.
+type announcementContent struct {
+	title   string
+	body    string
+	linkURL string
+}
+
+// storeAnnouncements writes the announcement rows and, in the same
+// transaction, the events that put each of them in its readers' notification
+// inboxes.
+//
+// An empty `targets` is the broadcast, which is one row addressed to nobody in
+// particular; a targeted delivery is one row per named reader. One transaction,
+// so a delivery nobody is ever told about cannot outlive the request that made
+// it, and a targeted post reaches either all of its recipients or none of them.
+func (s *adminServer) storeAnnouncements(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	content announcementContent,
+	targets []dbmodels.GetUserByPublicIDForTenantRow,
+) ([]*publiraadminv1.AdminAnnouncement, error) {
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	created := make([]*publiraadminv1.AdminAnnouncement, 0, max(len(targets), 1))
+	if len(targets) == 0 {
+		row, createErr := createAnnouncementRow(ctx, txq, tenantID, content, uuid.NullUUID{})
+		if createErr != nil {
+			return nil, createErr
+		}
+		created = append(created, &publiraadminv1.AdminAnnouncement{
+			Id:           row.ID.String(),
+			Title:        row.Title,
+			Body:         row.Body,
+			LinkUrl:      row.LinkUrl.String,
+			AudienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
+			CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+	for _, userRow := range targets {
+		row, createErr := createAnnouncementRow(ctx, txq, tenantID, content,
+			uuid.NullUUID{UUID: userRow.ID, Valid: true})
+		if createErr != nil {
+			return nil, createErr
+		}
+		created = append(created, &publiraadminv1.AdminAnnouncement{
+			Id:                 row.ID.String(),
+			Title:              row.Title,
+			Body:               row.Body,
+			LinkUrl:            row.LinkUrl.String,
+			AudienceType:       publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS,
+			TargetUserPublicId: userRow.PublicID,
+			TargetUserName:     userRow.Name,
+			CreatedAt:          row.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return created, nil
+}
+
+// createAnnouncementRow writes one announcement and queues the notification
+// event for the readers it addresses.
+func createAnnouncementRow(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.UUID,
+	content announcementContent,
+	targetUserID uuid.NullUUID,
+) (dbmodels.Announcement, error) {
+	announcementID, err := uuid.NewV7()
+	if err != nil {
+		return dbmodels.Announcement{}, fmt.Errorf("allocate announcement id: %w", err)
+	}
+	row, err := queries.CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
+		ID:               announcementID,
+		TenantID:         tenantID,
+		TargetUserID:     targetUserID,
+		AnnouncementType: announcementTypeAdmin,
+		Title:            content.title,
+		Body:             content.body,
+		LinkUrl:          sql.NullString{String: content.linkURL, Valid: content.linkURL != ""},
+		Metadata:         json.RawMessage("{}"),
+	})
+	if err != nil {
+		return dbmodels.Announcement{}, err
+	}
+	if err := enqueueAnnouncementNotification(ctx, queries, tenantID, row); err != nil {
+		return dbmodels.Announcement{}, err
+	}
+	return row, nil
+}
+
+// enqueueAnnouncementNotification queues the bell delivery of one announcement.
+//
+// The worker owns the fan-out: a broadcast addresses every user the tenant has,
+// and an operator submitting the console form must not wait on an insert per
+// person. The idempotency key is the announcement's own identity, so a
+// redelivered event notifies nobody a second time.
+func enqueueAnnouncementNotification(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.UUID,
+	row dbmodels.Announcement,
+) error {
+	target := ""
+	if row.TargetUserID.Valid {
+		target = row.TargetUserID.UUID.String()
+	}
+	payload, err := json.Marshal(outbox.AnnouncementNotificationPayload{
+		TenantID:       tenantID.String(),
+		AnnouncementID: row.ID.String(),
+		TargetUserID:   target,
+		Title:          row.Title,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal announcement notification event: %w", err)
+	}
+	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAnnouncementNotification, payload,
+		outbox.AnnouncementIdempotencyKey(row.ID))
 }

@@ -797,6 +797,53 @@ func (q *Queries) ListTenantMembersDesc(ctx context.Context, arg ListTenantMembe
 	return items, nil
 }
 
+const listTenantUserIDs = `-- name: ListTenantUserIDs :many
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.id > $2
+ORDER BY u.id
+LIMIT $3
+`
+
+type ListTenantUserIDsParams struct {
+	TenantID    uuid.NullUUID `json:"tenant_id"`
+	AfterUserID uuid.UUID     `json:"after_user_id"`
+	Limit       int32         `json:"limit"`
+}
+
+// Worker fan-out: everyone an announcement addressed to the whole tenant
+// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
+// row to — every user the tenant owns — so the bell counts what the
+// announcements inbox lists rather than a subset of it.
+//
+// Keyset paging on user_id, because the result grows with the tenant's
+// readership and the caller writes one row per recipient. The pair is
+// `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
+// below every UUID, so it is what the first page asks for.
+func (q *Queries) ListTenantUserIDs(ctx context.Context, arg ListTenantUserIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantUserIDs, arg.TenantID, arg.AfterUserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTenantUserRoles = `-- name: ListTenantUserRoles :many
 SELECT role
 FROM tenant_user_roles

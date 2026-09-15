@@ -442,3 +442,20 @@ ON CONFLICT (user_id) DO UPDATE
 SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
     updated_at = NOW()
 RETURNING *;
+
+-- name: ListTenantUserIDs :many
+-- Worker fan-out: everyone an announcement addressed to the whole tenant
+-- reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
+-- row to — every user the tenant owns — so the bell counts what the
+-- announcements inbox lists rather than a subset of it.
+--
+-- Keyset paging on user_id, because the result grows with the tenant's
+-- readership and the caller writes one row per recipient. The pair is
+-- `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
+-- below every UUID, so it is what the first page asks for.
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.id > sqlc.arg('after_user_id')
+ORDER BY u.id
+LIMIT sqlc.arg('limit');
