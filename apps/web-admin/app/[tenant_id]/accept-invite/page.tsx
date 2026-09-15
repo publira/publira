@@ -3,7 +3,10 @@ import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenNote,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -157,22 +160,28 @@ const AcceptInviteFallback = () => (
 
 const AcceptInvitePage = ({ searchParams }: AcceptInvitePageProps) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>
-        <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-          <Message message="admin.auth.accept_invite.title" />
-        </Suspense>
-      </AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="admin.auth.accept_invite.description" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.auth.accept_invite.title" />
+          </Suspense>
+        </AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="admin.auth.accept_invite.description" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<AcceptInviteFallback />}>
-      <AcceptInvitePageContent searchParams={searchParams} />
-    </Suspense>
+      <Suspense fallback={<AcceptInviteFallback />}>
+        <AcceptInvitePageContent searchParams={searchParams} />
+      </Suspense>
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

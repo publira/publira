@@ -3,6 +3,7 @@ import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenTagline,
   AuthScreenText,
   AuthScreenTitle,
@@ -192,15 +193,17 @@ const VerifyPage = ({
   searchParams: Promise<{ token?: string | string[] }>;
 }) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
-        <VerifyHeader />
-      </Suspense>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+          <VerifyHeader />
+        </Suspense>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<VerificationFallback />}>
-      <VerificationContent searchParams={searchParams} />
-    </Suspense>
+      <Suspense fallback={<VerificationFallback />}>
+        <VerificationContent searchParams={searchParams} />
+      </Suspense>
+    </AuthScreenMain>
   </AuthScreen>
 );
 

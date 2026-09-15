@@ -2,7 +2,10 @@ import {
   AuthScreen,
   AuthScreenBody,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenNote,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -72,20 +75,26 @@ const SetupContentSkeleton = () => (
 
 const SetupPage = () => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>Publira</AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <SetupMessage message="platform.auth.setup.title" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>Publira</AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <SetupMessage message="platform.auth.setup.title" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
 
-    <AuthScreenBody>
-      <Suspense fallback={<SetupContentSkeleton />}>
-        <SetupContent />
-      </Suspense>
-    </AuthScreenBody>
+      <AuthScreenBody>
+        <Suspense fallback={<SetupContentSkeleton />}>
+          <SetupContent />
+        </Suspense>
+      </AuthScreenBody>
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

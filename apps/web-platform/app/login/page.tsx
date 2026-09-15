@@ -1,6 +1,9 @@
 import {
   AuthScreen,
   AuthScreenHeader,
+  AuthScreenMain,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -71,27 +74,33 @@ const LoginFlash = async ({
 
 const LoginPage = ({ searchParams }: PageProps<"/login">) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>Publira</AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-          <Message message="platform.auth.login.eyebrow" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>Publira</AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="platform.auth.login.eyebrow" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
 
-    <LoginForm
-      flash={
-        <Suspense fallback={null}>
-          <LoginFlash searchParams={searchParams} />
-        </Suspense>
-      }
-      nextField={
-        <Suspense fallback={null}>
-          <NextPathField searchParams={searchParams} />
-        </Suspense>
-      }
-    />
+      <LoginForm
+        flash={
+          <Suspense fallback={null}>
+            <LoginFlash searchParams={searchParams} />
+          </Suspense>
+        }
+        nextField={
+          <Suspense fallback={null}>
+            <NextPathField searchParams={searchParams} />
+          </Suspense>
+        }
+      />
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

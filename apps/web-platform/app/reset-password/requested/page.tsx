@@ -2,7 +2,10 @@ import {
   AuthScreen,
   AuthScreenBody,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenNote,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -62,45 +65,54 @@ const ResetPasswordRequestedPage = ({
   searchParams: Promise<{ email?: string | string[] }>;
 }) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>Publira</AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-          <Message message="platform.auth.reset_password_requested.title" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
-
-    <AuthScreenBody>
-      <FormMessage variant="success">
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="platform.auth.reset_password_requested.sent" />
-        </Suspense>
-      </FormMessage>
-
-      <Suspense fallback={null}>
-        <SentTo searchParams={searchParams} />
-      </Suspense>
-
-      <AuthScreenNote>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="platform.auth.reset_password_requested.check_spam" />
-        </Suspense>
-      </AuthScreenNote>
-
-      <div className="flex flex-wrap gap-3">
-        <LinkButton render={<Link href="/login" />}>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <Message message="platform.auth.reset_password_requested.to_login" />
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>Publira</AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+            <Message message="platform.auth.reset_password_requested.title" />
           </Suspense>
-        </LinkButton>
-        <LinkButton render={<Link href="/reset-password" />} variant="outline">
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <Message message="platform.auth.reset_password_requested.try_another_email" />
+        </AuthScreenTagline>
+      </AuthScreenHeader>
+
+      <AuthScreenBody>
+        <FormMessage variant="success">
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.reset_password_requested.sent" />
           </Suspense>
-        </LinkButton>
-      </div>
-    </AuthScreenBody>
+        </FormMessage>
+
+        <Suspense fallback={null}>
+          <SentTo searchParams={searchParams} />
+        </Suspense>
+
+        <AuthScreenNote>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.reset_password_requested.check_spam" />
+          </Suspense>
+        </AuthScreenNote>
+
+        <div className="flex flex-wrap gap-3">
+          <LinkButton render={<Link href="/login" />}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.auth.reset_password_requested.to_login" />
+            </Suspense>
+          </LinkButton>
+          <LinkButton
+            render={<Link href="/reset-password" />}
+            variant="outline"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.auth.reset_password_requested.try_another_email" />
+            </Suspense>
+          </LinkButton>
+        </div>
+      </AuthScreenBody>
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

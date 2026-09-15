@@ -3,6 +3,7 @@ import {
   AuthScreenBody,
   AuthScreenFooter,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenTagline,
   AuthScreenText,
   AuthScreenTitle,
@@ -213,15 +214,17 @@ const ConfirmPasswordPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/confirm-password">) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
-        <ConfirmPasswordHeader />
-      </Suspense>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+          <ConfirmPasswordHeader />
+        </Suspense>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<ConfirmPasswordFormSkeleton />}>
-      <ConfirmPasswordFormContent searchParams={searchParams} />
-    </Suspense>
+      <Suspense fallback={<ConfirmPasswordFormSkeleton />}>
+        <ConfirmPasswordFormContent searchParams={searchParams} />
+      </Suspense>
+    </AuthScreenMain>
   </AuthScreen>
 );
 
