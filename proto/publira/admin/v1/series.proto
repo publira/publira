@@ -293,6 +293,74 @@ message ReplaceEpisodeCreditsResponse {
   repeated publira.types.v1.Creator creators = 1;
 }
 
+// Adds one credit to every episode of the range that does not carry it
+// already. The row is written as the series', because a range edit is how the
+// standing team is corrected; a guest is credited on the episode itself.
+message AddEpisodeCreditOperation {
+  EpisodeCreatorCredit credit = 1;
+}
+
+// Rewrites one credit into another across the range, on the rows that came
+// from the series alone. An episode that credits the same person as a guest
+// keeps that row, and says so in the response.
+message ReplaceEpisodeCreditOperation {
+  EpisodeCreatorCredit from = 1;
+  EpisodeCreatorCredit to = 2;
+}
+
+// Drops one credit across the range, again from the series' rows alone.
+message RemoveEpisodeCreditOperation {
+  EpisodeCreatorCredit credit = 1;
+}
+
+// One credit correction over a range of episodes, which is what a team change
+// that has to reach episodes already out amounts to. The operations are
+// row-level rather than "replace the set on every episode whose set equals
+// this one": a guest or a spot supervisor makes an episode's set differ, and a
+// set comparison would leave that episode behind without saying so.
+message BulkEditEpisodeCreditsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+  // The episodes to act on, by public_id, rather than a span of order indexes.
+  // Episodes are reordered through this API, so a span would name a different
+  // set of episodes after a reorder than it did when it was composed. The
+  // console resolves its range picker to this list.
+  repeated string episode_public_ids = 3;
+  // Exactly one operation per call. It is a oneof so that the share work can
+  // add a rate operation beside these three without changing what they mean.
+  oneof operation {
+    AddEpisodeCreditOperation add = 4;
+    ReplaceEpisodeCreditOperation replace = 5;
+    RemoveEpisodeCreditOperation remove = 6;
+  }
+}
+
+// Why an episode in the range came out of the operation as it went in.
+enum EpisodeCreditUnchangedReason {
+  EPISODE_CREDIT_UNCHANGED_REASON_UNSPECIFIED = 0;
+  // `add`: the episode already carries that credit, whatever it came from.
+  EPISODE_CREDIT_UNCHANGED_REASON_ALREADY_CREDITED = 1;
+  // `replace` and `remove`: nothing on the episode matched the credit named.
+  EPISODE_CREDIT_UNCHANGED_REASON_NOT_CREDITED = 2;
+  // `replace` and `remove`: the only match is a credit written on the episode
+  // itself — a guest — and a range edit moves the standing team alone.
+  EPISODE_CREDIT_UNCHANGED_REASON_CREDITED_ON_THE_EPISODE = 3;
+}
+
+message UnchangedEpisodeCredit {
+  string episode_public_id = 1;
+  EpisodeCreditUnchangedReason reason = 2;
+}
+
+message BulkEditEpisodeCreditsResponse {
+  // The episodes the operation wrote on, in the order the request listed them.
+  repeated string changed_episode_public_ids = 1;
+  // The episodes it left as they were, in the same order, each with the reason
+  // it did. A deliberate deviation is a visible skip here rather than a silent
+  // one, which is the point of reporting them at all.
+  repeated UnchangedEpisodeCredit unchanged_episodes = 2;
+}
+
 // Replaces the image of one aspect ratio of a series eye-catch. The other
 // ratios keep the images they already hold.
 message UploadSeriesEyeCatchAspectImageRequest {
@@ -379,6 +447,7 @@ service AdminSeriesService {
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
   rpc ListEpisodeCredits(ListEpisodeCreditsRequest) returns (ListEpisodeCreditsResponse) {}
   rpc ReplaceEpisodeCredits(ReplaceEpisodeCreditsRequest) returns (ReplaceEpisodeCreditsResponse) {}
+  rpc BulkEditEpisodeCredits(BulkEditEpisodeCreditsRequest) returns (BulkEditEpisodeCreditsResponse) {}
   rpc UploadSeriesEyeCatchAspectImage(UploadSeriesEyeCatchAspectImageRequest) returns (UploadSeriesEyeCatchAspectImageResponse) {}
   rpc CreateEpisodeFreeWindow(CreateEpisodeFreeWindowRequest) returns (CreateEpisodeFreeWindowResponse) {}
   rpc CreateSeriesFreeWindows(CreateSeriesFreeWindowsRequest) returns (CreateSeriesFreeWindowsResponse) {}

@@ -573,7 +573,7 @@ func (s *adminServer) CreateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
-	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits))
+	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}
@@ -748,7 +748,7 @@ func (s *adminServer) UpdateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
-	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits))
+	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}

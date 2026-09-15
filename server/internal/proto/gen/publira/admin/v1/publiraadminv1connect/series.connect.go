@@ -75,6 +75,9 @@ const (
 	// AdminSeriesServiceReplaceEpisodeCreditsProcedure is the fully-qualified name of the
 	// AdminSeriesService's ReplaceEpisodeCredits RPC.
 	AdminSeriesServiceReplaceEpisodeCreditsProcedure = "/publira.admin.v1.AdminSeriesService/ReplaceEpisodeCredits"
+	// AdminSeriesServiceBulkEditEpisodeCreditsProcedure is the fully-qualified name of the
+	// AdminSeriesService's BulkEditEpisodeCredits RPC.
+	AdminSeriesServiceBulkEditEpisodeCreditsProcedure = "/publira.admin.v1.AdminSeriesService/BulkEditEpisodeCredits"
 	// AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure is the fully-qualified name of the
 	// AdminSeriesService's UploadSeriesEyeCatchAspectImage RPC.
 	AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadSeriesEyeCatchAspectImage"
@@ -105,6 +108,7 @@ type AdminSeriesServiceClient interface {
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
 	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
 	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
+	BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error)
 	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
 	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
 	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
@@ -206,6 +210,12 @@ func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(adminSeriesServiceMethods.ByName("ReplaceEpisodeCredits")),
 			connect.WithClientOptions(opts...),
 		),
+		bulkEditEpisodeCredits: connect.NewClient[v1.BulkEditEpisodeCreditsRequest, v1.BulkEditEpisodeCreditsResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceBulkEditEpisodeCreditsProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("BulkEditEpisodeCredits")),
+			connect.WithClientOptions(opts...),
+		),
 		uploadSeriesEyeCatchAspectImage: connect.NewClient[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse](
 			httpClient,
 			baseURL+AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
@@ -249,6 +259,7 @@ type adminSeriesServiceClient struct {
 	updateEpisodePublishSchedule    *connect.Client[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse]
 	listEpisodeCredits              *connect.Client[v1.ListEpisodeCreditsRequest, v1.ListEpisodeCreditsResponse]
 	replaceEpisodeCredits           *connect.Client[v1.ReplaceEpisodeCreditsRequest, v1.ReplaceEpisodeCreditsResponse]
+	bulkEditEpisodeCredits          *connect.Client[v1.BulkEditEpisodeCreditsRequest, v1.BulkEditEpisodeCreditsResponse]
 	uploadSeriesEyeCatchAspectImage *connect.Client[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse]
 	createEpisodeFreeWindow         *connect.Client[v1.CreateEpisodeFreeWindowRequest, v1.CreateEpisodeFreeWindowResponse]
 	createSeriesFreeWindows         *connect.Client[v1.CreateSeriesFreeWindowsRequest, v1.CreateSeriesFreeWindowsResponse]
@@ -326,6 +337,11 @@ func (c *adminSeriesServiceClient) ReplaceEpisodeCredits(ctx context.Context, re
 	return c.replaceEpisodeCredits.CallUnary(ctx, req)
 }
 
+// BulkEditEpisodeCredits calls publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits.
+func (c *adminSeriesServiceClient) BulkEditEpisodeCredits(ctx context.Context, req *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error) {
+	return c.bulkEditEpisodeCredits.CallUnary(ctx, req)
+}
+
 // UploadSeriesEyeCatchAspectImage calls
 // publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage.
 func (c *adminSeriesServiceClient) UploadSeriesEyeCatchAspectImage(ctx context.Context, req *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {
@@ -364,6 +380,7 @@ type AdminSeriesServiceHandler interface {
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
 	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
 	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
+	BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error)
 	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
 	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
 	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
@@ -461,6 +478,12 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 		connect.WithSchema(adminSeriesServiceMethods.ByName("ReplaceEpisodeCredits")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminSeriesServiceBulkEditEpisodeCreditsHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceBulkEditEpisodeCreditsProcedure,
+		svc.BulkEditEpisodeCredits,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("BulkEditEpisodeCredits")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler := connect.NewUnaryHandler(
 		AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
 		svc.UploadSeriesEyeCatchAspectImage,
@@ -515,6 +538,8 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 			adminSeriesServiceListEpisodeCreditsHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceReplaceEpisodeCreditsProcedure:
 			adminSeriesServiceReplaceEpisodeCreditsHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceBulkEditEpisodeCreditsProcedure:
+			adminSeriesServiceBulkEditEpisodeCreditsHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:
 			adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceCreateEpisodeFreeWindowProcedure:
@@ -586,6 +611,10 @@ func (UnimplementedAdminSeriesServiceHandler) ListEpisodeCredits(context.Context
 
 func (UnimplementedAdminSeriesServiceHandler) ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits is not implemented"))
 }
 
 func (UnimplementedAdminSeriesServiceHandler) UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {

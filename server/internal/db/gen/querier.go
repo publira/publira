@@ -59,6 +59,24 @@ type Querier interface {
 	// selected with a star, so a column added to both tables — a share of the
 	// revenue, say — is one line here.
 	BakeSeriesCreatorsOntoEpisode(ctx context.Context, arg BakeSeriesCreatorsOntoEpisodeParams) error
+	// Credits one person, in one role, on every episode of the range that does not
+	// carry that pair already. The source is `series` because a range edit is how
+	// the standing team is corrected: the row it writes is the one a later range
+	// edit has to be able to move again.
+	//
+	// display_order puts the new credit after what the episode already carries,
+	// which is where a name added to a role belongs; the read sorts by role
+	// priority first, so it only decides the order inside that role.
+	//
+	// ON CONFLICT DO NOTHING makes an episode that already has the credit a row
+	// the RETURNING does not name, which is how the handler tells the two apart in
+	// one statement.
+	BulkAddEpisodeCreator(ctx context.Context, arg BulkAddEpisodeCreatorParams) ([]uuid.UUID, error)
+	BulkRemoveEpisodeCreator(ctx context.Context, arg BulkRemoveEpisodeCreatorParams) ([]uuid.UUID, error)
+	// Rewrites one credit into another across the range. `source = 'series'` is
+	// what keeps a guest credited on one episode of the range where they were: the
+	// range edit moves the standing team and nothing else.
+	BulkReplaceEpisodeCreator(ctx context.Context, arg BulkReplaceEpisodeCreatorParams) ([]uuid.UUID, error)
 	BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error)
 	CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error)
@@ -852,6 +870,16 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodesBySeriesForTenantAscParams) ([]ListEpisodesBySeriesForTenantAscRow, error)
 	ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodesBySeriesForTenantDescParams) ([]ListEpisodesBySeriesForTenantDescRow, error)
+	// The episodes of the range that hold the named credit as their own rather
+	// than as the series'. They are the ones a replace or a remove passes over,
+	// and this is what lets the response say so instead of reporting them beside
+	// the episodes that never held the credit at all.
+	ListEpisodesCreditedOnTheEpisodeItself(ctx context.Context, arg ListEpisodesCreditedOnTheEpisodeItselfParams) ([]uuid.UUID, error)
+	// The episodes a replace would leave crediting the same person twice in the
+	// same role: they carry the credit being replaced as the series', and already
+	// carry the one it would become. The unique constraint would refuse the whole
+	// statement, so the handler refuses first and names them.
+	ListEpisodesHoldingBothEpisodeCredits(ctx context.Context, arg ListEpisodesHoldingBothEpisodeCreditsParams) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	// Resolves the genres a series form assigned. The caller compares the row
@@ -1409,6 +1437,19 @@ type Querier interface {
 	// path having seen no row at all. The advisory lock is taken on the identity of
 	// the rating rather than on a row, so it holds whether one exists yet or not.
 	LockEpisodeRating(ctx context.Context, arg LockEpisodeRatingParams) error
+	// The episodes a range edit names, resolved and locked in one statement. The
+	// lock is the one LockEpisodeByPublicIDForTenant takes, for the same reason: a
+	// credit save on one of these episodes rewrites the whole set hanging off it,
+	// so the two have to serialize on the episode row rather than on credit rows a
+	// replacement is about to delete.
+	//
+	// A public_id of another series or another tenant simply does not come back,
+	// which is what lets the handler refuse the request by comparing counts
+	// instead of checking each episode.
+	//
+	// ORDER BY e.id is what keeps two range edits over overlapping ranges from
+	// deadlocking: both take the row locks in the same order.
+	LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByPublicIDsForTenantAndSeriesParams) ([]LockEpisodesByPublicIDsForTenantAndSeriesRow, error)
 	// Locks every genre of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers

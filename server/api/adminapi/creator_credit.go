@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -43,10 +44,15 @@ func creatorCreditPairs[Credit creatorCreditMessage](credits []Credit) [][2]stri
 // request rather than a silently dropped credit, and so is the same person
 // credited twice in the same role: the pair is the identity of a credit, which
 // is why one person can still appear under two roles.
+//
+// field is the request field the credits came out of, so the violation points
+// at the control the console has to correct: a whole credit list on the series
+// and episode forms, one operation on a range edit.
 func (s *adminServer) resolveCreatorCredits(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	credits [][2]string,
+	field string,
 ) ([]creatorCredit, error) {
 	creatorPublicIDs := make([]string, 0, len(credits))
 	rolePublicIDs := make([]string, 0, len(credits))
@@ -57,15 +63,15 @@ func (s *adminServer) resolveCreatorCredits(
 	for _, credit := range credits {
 		creatorPublicID := strings.TrimSpace(credit[0])
 		if creatorPublicID == "" {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("creator_public_id is required"), "creator_credits")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("creator_public_id is required"), field)
 		}
 		rolePublicID := strings.TrimSpace(credit[1])
 		if rolePublicID == "" {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("role_public_id is required"), "creator_credits")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("role_public_id is required"), field)
 		}
 		pair := [2]string{creatorPublicID, rolePublicID}
 		if _, ok := seenPairs[pair]; ok {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("creator_credits contains the same creator twice in one role"), "creator_credits")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s names the same creator twice in one role", field), field)
 		}
 		seenPairs[pair] = struct{}{}
 		normalized = append(normalized, pair)

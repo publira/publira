@@ -52,6 +52,179 @@ func (q *Queries) BakeSeriesCreatorsOntoEpisode(ctx context.Context, arg BakeSer
 	return err
 }
 
+const bulkAddEpisodeCreator = `-- name: BulkAddEpisodeCreator :many
+INSERT INTO episode_creators (
+        tenant_id,
+        episode_id,
+        creator_id,
+        role_id,
+        display_order,
+        source
+    )
+SELECT $1,
+    target.episode_id,
+    $2::uuid,
+    $3::uuid,
+    COALESCE(
+        (
+            SELECT MAX(ec.display_order) + 1
+            FROM episode_creators ec
+            WHERE ec.episode_id = target.episode_id
+        ),
+        0
+    ),
+    'series'
+FROM unnest($4::uuid[]) AS target(episode_id)
+ON CONFLICT (episode_id, creator_id, role_id) DO NOTHING
+RETURNING episode_id
+`
+
+type BulkAddEpisodeCreatorParams struct {
+	TenantID   uuid.UUID   `json:"tenant_id"`
+	CreatorID  uuid.UUID   `json:"creator_id"`
+	RoleID     uuid.UUID   `json:"role_id"`
+	EpisodeIds []uuid.UUID `json:"episode_ids"`
+}
+
+// Credits one person, in one role, on every episode of the range that does not
+// carry that pair already. The source is `series` because a range edit is how
+// the standing team is corrected: the row it writes is the one a later range
+// edit has to be able to move again.
+//
+// display_order puts the new credit after what the episode already carries,
+// which is where a name added to a role belongs; the read sorts by role
+// priority first, so it only decides the order inside that role.
+//
+// ON CONFLICT DO NOTHING makes an episode that already has the credit a row
+// the RETURNING does not name, which is how the handler tells the two apart in
+// one statement.
+func (q *Queries) BulkAddEpisodeCreator(ctx context.Context, arg BulkAddEpisodeCreatorParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, bulkAddEpisodeCreator,
+		arg.TenantID,
+		arg.CreatorID,
+		arg.RoleID,
+		pq.Array(arg.EpisodeIds),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var episode_id uuid.UUID
+		if err := rows.Scan(&episode_id); err != nil {
+			return nil, err
+		}
+		items = append(items, episode_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const bulkRemoveEpisodeCreator = `-- name: BulkRemoveEpisodeCreator :many
+DELETE FROM episode_creators
+WHERE tenant_id = $1
+    AND episode_id = ANY($2::uuid[])
+    AND creator_id = $3::uuid
+    AND role_id = $4::uuid
+    AND source = 'series'
+RETURNING episode_id
+`
+
+type BulkRemoveEpisodeCreatorParams struct {
+	TenantID   uuid.UUID   `json:"tenant_id"`
+	EpisodeIds []uuid.UUID `json:"episode_ids"`
+	CreatorID  uuid.UUID   `json:"creator_id"`
+	RoleID     uuid.UUID   `json:"role_id"`
+}
+
+func (q *Queries) BulkRemoveEpisodeCreator(ctx context.Context, arg BulkRemoveEpisodeCreatorParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, bulkRemoveEpisodeCreator,
+		arg.TenantID,
+		pq.Array(arg.EpisodeIds),
+		arg.CreatorID,
+		arg.RoleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var episode_id uuid.UUID
+		if err := rows.Scan(&episode_id); err != nil {
+			return nil, err
+		}
+		items = append(items, episode_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const bulkReplaceEpisodeCreator = `-- name: BulkReplaceEpisodeCreator :many
+UPDATE episode_creators
+SET creator_id = $1::uuid,
+    role_id = $2::uuid
+WHERE tenant_id = $3
+    AND episode_id = ANY($4::uuid[])
+    AND creator_id = $5::uuid
+    AND role_id = $6::uuid
+    AND source = 'series'
+RETURNING episode_id
+`
+
+type BulkReplaceEpisodeCreatorParams struct {
+	NewCreatorID uuid.UUID   `json:"new_creator_id"`
+	NewRoleID    uuid.UUID   `json:"new_role_id"`
+	TenantID     uuid.UUID   `json:"tenant_id"`
+	EpisodeIds   []uuid.UUID `json:"episode_ids"`
+	CreatorID    uuid.UUID   `json:"creator_id"`
+	RoleID       uuid.UUID   `json:"role_id"`
+}
+
+// Rewrites one credit into another across the range. `source = 'series'` is
+// what keeps a guest credited on one episode of the range where they were: the
+// range edit moves the standing team and nothing else.
+func (q *Queries) BulkReplaceEpisodeCreator(ctx context.Context, arg BulkReplaceEpisodeCreatorParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, bulkReplaceEpisodeCreator,
+		arg.NewCreatorID,
+		arg.NewRoleID,
+		arg.TenantID,
+		pq.Array(arg.EpisodeIds),
+		arg.CreatorID,
+		arg.RoleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var episode_id uuid.UUID
+		if err := rows.Scan(&episode_id); err != nil {
+			return nil, err
+		}
+		items = append(items, episode_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countEpisodeCreatorsByRoleIDForTenant = `-- name: CountEpisodeCreatorsByRoleIDForTenant :one
 SELECT COUNT(*)::int4 AS credit_count
 FROM episode_creators
@@ -193,6 +366,115 @@ func (q *Queries) ListEpisodeCreatorsByEpisodeIDs(ctx context.Context, episodeId
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodesCreditedOnTheEpisodeItself = `-- name: ListEpisodesCreditedOnTheEpisodeItself :many
+SELECT DISTINCT episode_id
+FROM episode_creators
+WHERE tenant_id = $1
+    AND episode_id = ANY($2::uuid[])
+    AND creator_id = $3::uuid
+    AND role_id = $4::uuid
+    AND source = 'episode'
+`
+
+type ListEpisodesCreditedOnTheEpisodeItselfParams struct {
+	TenantID   uuid.UUID   `json:"tenant_id"`
+	EpisodeIds []uuid.UUID `json:"episode_ids"`
+	CreatorID  uuid.UUID   `json:"creator_id"`
+	RoleID     uuid.UUID   `json:"role_id"`
+}
+
+// The episodes of the range that hold the named credit as their own rather
+// than as the series'. They are the ones a replace or a remove passes over,
+// and this is what lets the response say so instead of reporting them beside
+// the episodes that never held the credit at all.
+func (q *Queries) ListEpisodesCreditedOnTheEpisodeItself(ctx context.Context, arg ListEpisodesCreditedOnTheEpisodeItselfParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodesCreditedOnTheEpisodeItself,
+		arg.TenantID,
+		pq.Array(arg.EpisodeIds),
+		arg.CreatorID,
+		arg.RoleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var episode_id uuid.UUID
+		if err := rows.Scan(&episode_id); err != nil {
+			return nil, err
+		}
+		items = append(items, episode_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodesHoldingBothEpisodeCredits = `-- name: ListEpisodesHoldingBothEpisodeCredits :many
+SELECT DISTINCT replaced.episode_id
+FROM episode_creators replaced
+WHERE replaced.tenant_id = $1
+    AND replaced.episode_id = ANY($2::uuid[])
+    AND replaced.creator_id = $3::uuid
+    AND replaced.role_id = $4::uuid
+    AND replaced.source = 'series'
+    AND EXISTS (
+        SELECT 1
+        FROM episode_creators existing
+        WHERE existing.episode_id = replaced.episode_id
+            AND existing.creator_id = $5::uuid
+            AND existing.role_id = $6::uuid
+    )
+`
+
+type ListEpisodesHoldingBothEpisodeCreditsParams struct {
+	TenantID     uuid.UUID   `json:"tenant_id"`
+	EpisodeIds   []uuid.UUID `json:"episode_ids"`
+	CreatorID    uuid.UUID   `json:"creator_id"`
+	RoleID       uuid.UUID   `json:"role_id"`
+	NewCreatorID uuid.UUID   `json:"new_creator_id"`
+	NewRoleID    uuid.UUID   `json:"new_role_id"`
+}
+
+// The episodes a replace would leave crediting the same person twice in the
+// same role: they carry the credit being replaced as the series', and already
+// carry the one it would become. The unique constraint would refuse the whole
+// statement, so the handler refuses first and names them.
+func (q *Queries) ListEpisodesHoldingBothEpisodeCredits(ctx context.Context, arg ListEpisodesHoldingBothEpisodeCreditsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodesHoldingBothEpisodeCredits,
+		arg.TenantID,
+		pq.Array(arg.EpisodeIds),
+		arg.CreatorID,
+		arg.RoleID,
+		arg.NewCreatorID,
+		arg.NewRoleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var episode_id uuid.UUID
+		if err := rows.Scan(&episode_id); err != nil {
+			return nil, err
+		}
+		items = append(items, episode_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
