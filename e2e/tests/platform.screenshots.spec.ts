@@ -17,6 +17,30 @@ import { expectScreenshot, SCREENSHOT_VIEWPORTS } from "../src/screenshots";
  * create tenants, against the timestamps
  * `db/seeds/scenarios/160_screenshot_baseline.sql` pins.
  */
+/**
+ * The screen before the console has anyone signed in, which is the one screen
+ * here that has to be photographed without the `beforeEach` below.
+ */
+test.describe("web-platform signed-out screenshots", () => {
+  for (const viewport of SCREENSHOT_VIEWPORTS) {
+    test.describe(`at ${viewport.label}px`, () => {
+      test("the sign-in screen", async ({ page }) => {
+        await page.setViewportSize(viewport);
+        await page.goto("/login");
+
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Publira" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "Sign in" })
+        ).toBeVisible();
+
+        await expectScreenshot(page, viewport, "login");
+      });
+    });
+  }
+});
+
 test.describe("web-platform screenshots", () => {
   for (const viewport of SCREENSHOT_VIEWPORTS) {
     test.describe(`at ${viewport.label}px`, () => {

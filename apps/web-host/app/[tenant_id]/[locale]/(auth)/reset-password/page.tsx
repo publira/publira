@@ -1,6 +1,7 @@
 import {
   AuthScreen,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -48,13 +49,15 @@ const ResetPasswordHeader = async () => {
 
 const ResetPasswordPage = () => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <Suspense fallback={<Skeleton className="h-8 w-40" />}>
-        <ResetPasswordHeader />
-      </Suspense>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <Suspense fallback={<Skeleton className="h-8 w-40" />}>
+          <ResetPasswordHeader />
+        </Suspense>
+      </AuthScreenHeader>
 
-    <ResetPasswordForm />
+      <ResetPasswordForm />
+    </AuthScreenMain>
   </AuthScreen>
 );
 
