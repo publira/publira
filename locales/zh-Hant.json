@@ -2442,6 +2442,8 @@
   },
   "mobile": {
     "account": {
+      "follows": "我的追蹤",
+      "follows_description": "您追蹤的系列與作者",
       "name": "名稱",
       "name_unset": "未設定",
       "notifications": "新章節通知",
@@ -2518,6 +2520,25 @@
       "submit": "發表留言",
       "title": "留言"
     },
+    "follow": {
+      "failed": "無法變更追蹤狀態。請重試。",
+      "follow": "追蹤",
+      "follow_aria": "追蹤 {$name}",
+      "sign_in": "登入後追蹤",
+      "sign_in_aria": "登入後追蹤 {$name}",
+      "unfollow": "取消追蹤",
+      "unfollow_aria": "取消追蹤 {$name}",
+      "updating": "正在更新…"
+    },
+    "follows": {
+      "empty": "您還沒有追蹤任何內容。在系列或作者頁面追蹤後，就會顯示在這裡。",
+      "failed": "無法顯示您的追蹤。請重試。",
+      "followed_at": "{$date} 追蹤",
+      "kind_creator": "作者",
+      "kind_series": "系列",
+      "sign_in_prompt": "登入後即可查看您追蹤的系列與作者。",
+      "title": "我的追蹤"
+    },
     "not_found": {
       "message": "「{$uri}」不存在。",
       "title": "找不到頁面"
@@ -2546,6 +2567,7 @@
       },
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",
+      "creators_heading": "作者",
       "episode_count": "{$count} 章",
       "rating": "評分：{$average} · {$count} 位讀者",
       "rating_single": "評分：{$average} · {$count} 位讀者",

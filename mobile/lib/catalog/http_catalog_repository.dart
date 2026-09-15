@@ -37,6 +37,8 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.CatalogService/SearchPublishedSeries';
   static const _rankedProcedure = '/publira.v1.CatalogService/ListRankedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
+  static const _creatorProcedure =
+      '/publira.v1.CatalogService/GetPublishedCreatorDetail';
   static const _episodeProcedure =
       '/publira.v1.CatalogService/GetEpisodeDetail';
   static const _readingPositionProcedure =
@@ -181,6 +183,35 @@ class HttpCatalogRepository implements CatalogRepository {
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
       return _parseSeriesDetail(body);
+    } on ConnectException catch (error) {
+      if (error.isNotFound) {
+        return null;
+      }
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<String?> getSeriesTitle(String publicId) async =>
+      (await getSeries(publicId))?.series.title;
+
+  @override
+  Future<SeriesCreator?> getCreator(String publicId) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_creatorProcedure, {
+        // The response carries a page of the creator's published series, which
+        // this app has no screen for; one is asked for because the API falls
+        // back to twenty.
+        'limit': 1,
+        'publicId': publicId,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      final creator = _expectMap(body['creator'], 'creator');
+      return SeriesCreator(
+        id: _readString(creator, 'publicId', 'creator'),
+        name: _readString(creator, 'name', 'creator'),
+      );
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         return null;

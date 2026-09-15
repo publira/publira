@@ -2442,6 +2442,8 @@
   },
   "mobile": {
     "account": {
+      "follows": "Follows",
+      "follows_description": "The series and authors you follow.",
       "name": "Name",
       "name_unset": "Not set",
       "notifications": "New episode notifications",
@@ -2518,6 +2520,25 @@
       "submit": "Post comment",
       "title": "Comments"
     },
+    "follow": {
+      "failed": "Could not change what you follow. Try again.",
+      "follow": "Follow",
+      "follow_aria": "Follow {$name}",
+      "sign_in": "Sign in to follow",
+      "sign_in_aria": "Sign in to follow {$name}",
+      "unfollow": "Unfollow",
+      "unfollow_aria": "Unfollow {$name}",
+      "updating": "Updating…"
+    },
+    "follows": {
+      "empty": "You are not following anything yet. Follow a series or an author from its page, and it appears here.",
+      "failed": "Could not show what you follow. Try again.",
+      "followed_at": "Followed {$date}",
+      "kind_creator": "Author",
+      "kind_series": "Series",
+      "sign_in_prompt": "Sign in to see the series and authors you follow.",
+      "title": "Follows"
+    },
     "not_found": {
       "message": "“{$uri}” does not exist.",
       "title": "Page not found"
@@ -2546,6 +2567,7 @@
       },
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",
+      "creators_heading": "Authors",
       "episode_count": "{$count} episodes",
       "episodes_empty": "No episodes have been published yet.",
       "rating": "Rating: {$average} · {$count} readers",

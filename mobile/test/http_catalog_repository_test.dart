@@ -518,6 +518,29 @@ void main() {
     expect(await catalog.getSeries('ZZZZZZZZZZZZ'), isNull);
   });
 
+  test('getSeriesTitle names the series a follow row stands for', () async {
+    expect(
+      await catalog.getSeriesTitle(ConnectFixtureServer.seedSeriesId),
+      ConnectFixtureServer.seedSeriesTitle,
+    );
+  });
+
+  test('getSeriesTitle returns null for a series nothing publishes', () async {
+    expect(await catalog.getSeriesTitle('ZZZZZZZZZZZZ'), isNull);
+  });
+
+  test('getCreator names the author a follow row stands for', () async {
+    final creator = await catalog.getCreator('SeedAUTHAAA1');
+
+    expect(creator, isNotNull);
+    expect(creator!.id, 'SeedAUTHAAA1');
+    expect(creator.name, 'Seed Author 001');
+  });
+
+  test('getCreator returns null for an author nothing publishes', () async {
+    expect(await catalog.getCreator('ZZZZZZZZZZZZ'), isNull);
+  });
+
   test('listSeries maps transport failure to CatalogFailure.network', () async {
     server.listStatus = HttpStatus.serviceUnavailable;
     expect(

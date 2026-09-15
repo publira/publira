@@ -25,6 +25,8 @@ class ConnectFixtureServer {
     this.commentMode = 'COMMENT_MODE_IMMEDIATE',
     this.episodeComments = const {},
     this.myEpisodeComments = const {},
+    this.myFollows = const [],
+    this.followsPageSize = 0,
     this.listStatus = HttpStatus.ok,
     this.searchStatus = HttpStatus.ok,
     this.rankedStatus = HttpStatus.ok,
@@ -33,6 +35,7 @@ class ConnectFixtureServer {
     this.tenantStatus = HttpStatus.ok,
     this.pushDeviceStatus = HttpStatus.ok,
     this.commentStatus = HttpStatus.ok,
+    this.followStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
     this.encryptImages = true,
     this.listResponse,
@@ -371,6 +374,19 @@ class ConnectFixtureServer {
   /// `PostEpisodeComment` adds to them, so a test can read back what the app
   /// sent and see it in the next list.
   Map<String, List<Map<String, Object?>>> myEpisodeComments;
+
+  /// `MyFollow` rows of the signed-in member, newest follow first. `Follow`
+  /// and `Unfollow` write here, so a test can read back what the app sent and
+  /// see it in the next list.
+  List<Map<String, Object?>> myFollows;
+
+  /// How many of [myFollows] one `ListMyFollows` page holds. `0` answers the
+  /// whole of it at once, which is what every read that is not about paging
+  /// expects.
+  ///
+  /// The token stands in for the server's opaque cursor and is the index of
+  /// the page's first row, written out.
+  int followsPageSize;
   int listStatus;
   int searchStatus;
   int rankedStatus;
@@ -385,6 +401,10 @@ class ConnectFixtureServer {
   /// What every `CommentService` RPC answers with, so a test can act out an
   /// API that will not take a comment.
   int commentStatus;
+
+  /// What every `FollowService` RPC answers with, so a test can act out an API
+  /// that cannot be reached.
+  int followStatus;
 
   /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
   /// another value to act out a token the API has stopped accepting.
@@ -635,6 +655,27 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.contains('/publira.v1.FollowService/')) {
+      await _writeFollow(request, path, body);
+      return;
+    }
+
+    if (path.endsWith('/GetPublishedCreatorDetail')) {
+      final publicId = _publicIdOf(body);
+      final creator = seedCreators().where((item) {
+        return item['publicId'] == publicId;
+      }).firstOrNull;
+      if (creator == null) {
+        await _write(request, HttpStatus.notFound, {
+          'code': 'not_found',
+          'message': 'creator not found',
+        });
+        return;
+      }
+      await _write(request, HttpStatus.ok, {'creator': creator});
+      return;
+    }
+
     if (path.endsWith('/RegisterPushDevice') ||
         path.endsWith('/UnregisterPushDevice')) {
       final registering = path.endsWith('/RegisterPushDevice');
@@ -751,6 +792,84 @@ class ConnectFixtureServer {
     }
     // Withdrawing and reporting are both deliberately empty answers.
     await _write(request, HttpStatus.ok, const {});
+  }
+
+  /// Answers the follow RPCs of one member, every one of which needs their
+  /// session the way the API refuses one without it.
+  Future<void> _writeFollow(
+    HttpRequest request,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    if (followStatus != HttpStatus.ok) {
+      await _write(request, followStatus, const {
+        'code': 'unavailable',
+        'message': 'unavailable',
+      });
+      return;
+    }
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    if (path.endsWith('/ListMyFollows')) {
+      await _write(request, HttpStatus.ok, _followsPage(body['token']));
+      return;
+    }
+
+    final target = body['target'];
+    final targetType = target is Map ? target['type'] : null;
+    final targetPublicId = target is Map ? target['publicId'] : null;
+    final followed = myFollows.where((follow) {
+      return follow['targetType'] == targetType &&
+          follow['targetPublicId'] == targetPublicId;
+    });
+    if (path.endsWith('/Follow')) {
+      if (followed.isEmpty) {
+        myFollows = [
+          {
+            'targetType': targetType,
+            'targetPublicId': targetPublicId,
+            'followedAt': DateTime.now().toUtc().toIso8601String(),
+          },
+          ...myFollows,
+        ];
+      }
+      await _write(request, HttpStatus.ok, const {'isFollowing': true});
+      return;
+    }
+    if (path.endsWith('/Unfollow')) {
+      myFollows = myFollows.where((follow) {
+        return follow['targetType'] != targetType ||
+            follow['targetPublicId'] != targetPublicId;
+      }).toList();
+      // protojson omits a false, which is what every Unfollow answers with.
+      await _write(request, HttpStatus.ok, const {});
+      return;
+    }
+    await _write(request, HttpStatus.ok, {
+      if (followed.isNotEmpty) 'isFollowing': true,
+    });
+  }
+
+  /// The page of [myFollows] the request's token asks for, with the token of
+  /// the page under it when there is one.
+  Map<String, Object?> _followsPage(Object? token) {
+    if (followsPageSize <= 0) {
+      // protojson omits an empty repeated field, which is how a reader who
+      // follows nothing is answered.
+      return {if (myFollows.isNotEmpty) 'follows': myFollows};
+    }
+    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
+    final end = min(start + followsPageSize, myFollows.length);
+    final page = myFollows.sublist(min(start, myFollows.length), end);
+    return {
+      if (page.isNotEmpty) 'follows': page,
+      if (end < myFollows.length) 'nextToken': '$end',
+    };
   }
 
   /// Answers the reading-position and continue-reading RPCs of one member.

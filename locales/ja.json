@@ -2442,6 +2442,8 @@
   },
   "mobile": {
     "account": {
+      "follows": "フォロー中",
+      "follows_description": "フォローしているシリーズと著者",
       "name": "お名前",
       "name_unset": "（未設定）",
       "notifications": "新着エピソードの通知",
@@ -2518,6 +2520,25 @@
       "submit": "コメントを投稿",
       "title": "コメント"
     },
+    "follow": {
+      "failed": "フォローの状態を変更できませんでした。もう一度お試しください。",
+      "follow": "フォローする",
+      "follow_aria": "「{$name}」をフォローする",
+      "sign_in": "サインインしてフォロー",
+      "sign_in_aria": "サインインして「{$name}」をフォローする",
+      "unfollow": "フォローを解除",
+      "unfollow_aria": "「{$name}」のフォローを解除する",
+      "updating": "更新中…"
+    },
+    "follows": {
+      "empty": "まだ何もフォローしていません。シリーズや著者のページからフォローすると、ここに表示されます。",
+      "failed": "フォロー中の一覧を表示できませんでした。もう一度お試しください。",
+      "followed_at": "{$date} にフォロー",
+      "kind_creator": "著者",
+      "kind_series": "シリーズ",
+      "sign_in_prompt": "サインインすると、フォロー中のシリーズと著者を確認できます。",
+      "title": "フォロー中"
+    },
     "not_found": {
       "message": "「{$uri}」は存在しません。",
       "title": "ページが見つかりません"
@@ -2546,6 +2567,7 @@
       },
       "age_rating_r15": "R15",
       "age_rating_r18": "R18",
+      "creators_heading": "著者",
       "episode_count": "{$count} 話",
       "rating": "評価: {$average}・{$count}人",
       "rating_single": "評価: {$average}・{$count}人",

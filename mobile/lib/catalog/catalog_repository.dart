@@ -59,6 +59,26 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesDetail?> getSeries(String publicId);
 
+  /// What the series [publicId] is called, or `null` when it is missing,
+  /// unpublished, or not in this tenant (same 404 policy as [getSeries]).
+  ///
+  /// `ListMyFollows` answers with public ids alone, so a row of what a reader
+  /// follows is named by a read of its own. It is a name rather than the
+  /// series because the reader has not opened the series: reading one through
+  /// [getSeries] writes it to the device, and a series the API has stopped
+  /// publishing takes the episodes saved under it away, which is not for a
+  /// list of names to do.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<String?> getSeriesTitle(String publicId);
+
+  /// What the creator [publicId] is called, or `null` when they are missing,
+  /// credited on nothing published, or not in this tenant.
+  ///
+  /// The app has no author screen. This is the name a row shows for an author
+  /// the reader follows, read the way [getSeriesTitle] reads a series name.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<SeriesCreator?> getCreator(String publicId);
+
   /// Body of [episodePublicId] for the reader. Returns `null` when the episode
   /// is missing, unpublished, not in this tenant, or belongs to a series other
   /// than [seriesPublicId] (same 404 policy as web-host).

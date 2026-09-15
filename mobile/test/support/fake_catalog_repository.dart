@@ -25,7 +25,9 @@ class FakeCatalogRepository implements CatalogRepository {
     this.searchMoreError,
     this.newestSeriesError,
     this.rankedSeriesError,
+    this.creators = const [],
     this.detailError,
+    this.creatorError,
     this.episodeError,
     this.readingPositionError,
     this.recentSeriesError,
@@ -54,6 +56,9 @@ class FakeCatalogRepository implements CatalogRepository {
 
   Map<String, SeriesDetail> details;
 
+  /// The creators [getCreator] answers from, looked up by public id.
+  List<SeriesCreator> creators;
+
   /// Keyed by [episodeKey] so a fake can hold the same episode id under two
   /// series and still answer each pair separately.
   Map<String, EpisodeDetail> episodes;
@@ -78,6 +83,7 @@ class FakeCatalogRepository implements CatalogRepository {
   CatalogFailure? newestSeriesError;
   CatalogFailure? rankedSeriesError;
   CatalogFailure? detailError;
+  CatalogFailure? creatorError;
   CatalogFailure? episodeError;
   CatalogFailure? readingPositionError;
   CatalogFailure? recentSeriesError;
@@ -177,6 +183,29 @@ class FakeCatalogRepository implements CatalogRepository {
       throw error;
     }
     return details[publicId];
+  }
+
+  @override
+  Future<String?> getSeriesTitle(String publicId) async {
+    final error = detailError;
+    if (error != null) {
+      throw error;
+    }
+    return details[publicId]?.series.title;
+  }
+
+  @override
+  Future<SeriesCreator?> getCreator(String publicId) async {
+    final error = creatorError;
+    if (error != null) {
+      throw error;
+    }
+    for (final creator in creators) {
+      if (creator.id == publicId) {
+        return creator;
+      }
+    }
+    return null;
   }
 
   @override
