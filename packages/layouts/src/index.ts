@@ -29,6 +29,9 @@ export {
   SiteLayoutMobileNavigation,
   SiteLayoutMobileNavigationActions,
   SiteLayoutMobileNavigationCloseButton,
+  SiteLayoutMobileNavigationDisclosure,
+  SiteLayoutMobileNavigationDisclosurePanel,
+  SiteLayoutMobileNavigationDisclosureTrigger,
   SiteLayoutMobileNavigationHeader,
   SiteLayoutMobileNavigationLink,
   SiteLayoutMobileNavigationLinks,
@@ -36,8 +39,6 @@ export {
   SiteLayoutMobileNavigationPrimaryAction,
   SiteLayoutMobileNavigationSearch,
   SiteLayoutMobileNavigationSecondaryAction,
-  SiteLayoutMobileNavigationSection,
-  SiteLayoutMobileNavigationSectionTitle,
   SiteLayoutMobileNavigationTitle,
 } from "./site-layout-client";
 export {

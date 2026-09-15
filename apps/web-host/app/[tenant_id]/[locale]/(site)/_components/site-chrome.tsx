@@ -18,6 +18,9 @@ import {
   SiteLayoutMobileNavigation,
   SiteLayoutMobileNavigationActions,
   SiteLayoutMobileNavigationCloseButton,
+  SiteLayoutMobileNavigationDisclosure,
+  SiteLayoutMobileNavigationDisclosurePanel,
+  SiteLayoutMobileNavigationDisclosureTrigger,
   SiteLayoutMobileNavigationHeader,
   SiteLayoutMobileNavigationLink,
   SiteLayoutMobileNavigationLinks,
@@ -25,8 +28,6 @@ import {
   SiteLayoutMobileNavigationPrimaryAction,
   SiteLayoutMobileNavigationSearch,
   SiteLayoutMobileNavigationSecondaryAction,
-  SiteLayoutMobileNavigationSection,
-  SiteLayoutMobileNavigationSectionTitle,
   SiteLayoutMobileNavigationTitle,
   SiteLayoutNav,
   SiteLayoutNavLink,
@@ -525,16 +526,18 @@ const SiteMobileNavigation = () => (
       <Suspense fallback={<MobileNavigationLinksSkeleton />}>
         <MobileNavigationLinks />
       </Suspense>
-      <SiteLayoutMobileNavigationSection>
-        <SiteLayoutMobileNavigationSectionTitle>
-          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+      <SiteLayoutMobileNavigationDisclosure>
+        <SiteLayoutMobileNavigationDisclosureTrigger>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="host.nav.locale_switcher" />
           </Suspense>
-        </SiteLayoutMobileNavigationSectionTitle>
-        <Suspense fallback={<LocaleSwitcherLinksSkeleton />}>
-          <LocaleSwitcherLinks />
-        </Suspense>
-      </SiteLayoutMobileNavigationSection>
+        </SiteLayoutMobileNavigationDisclosureTrigger>
+        <SiteLayoutMobileNavigationDisclosurePanel>
+          <Suspense fallback={<LocaleSwitcherLinksSkeleton />}>
+            <LocaleSwitcherLinks />
+          </Suspense>
+        </SiteLayoutMobileNavigationDisclosurePanel>
+      </SiteLayoutMobileNavigationDisclosure>
       <Suspense fallback={<MobileNavigationAccountActionsSkeleton />}>
         <MobileNavigationAccountActions />
       </Suspense>

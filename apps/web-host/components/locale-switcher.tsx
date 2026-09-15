@@ -97,21 +97,28 @@ export const LocaleSwitcher = () => {
   );
 };
 
-/** Same footprint as the rendered list, so the drawer does not shift. */
+/**
+ * Same footprint as the rendered list, so the panel does not shift as the copy
+ * arrives. One row per registry entry, counted from the same `getLocales()`
+ * the list itself maps, so a locale added to the registry cannot leave the two
+ * disagreeing.
+ */
 export const LocaleSwitcherLinksSkeleton = () => (
   <div aria-hidden="true" className="grid gap-1">
-    <Skeleton className="h-9 rounded-control" />
-    <Skeleton className="h-9 rounded-control" />
-    <Skeleton className="h-9 rounded-control" />
+    {getLocales().map((locale) => (
+      <Skeleton className="h-9 rounded-control" key={locale} />
+    ))}
   </div>
 );
 
 /**
- * The same choice {@link LocaleSwitcher} offers, laid out as a list.
+ * The same choice {@link LocaleSwitcher} offers, laid out as rows.
  *
  * The drawer the phone header opens is already a panel, so the popover the
- * band uses would be a second one inside it. The options are rows of the
- * drawer instead, and each closes it on the way to the other language.
+ * band uses would be a second one inside it. The options collapse into the
+ * drawer instead, behind the one row
+ * `SiteLayoutMobileNavigationDisclosureTrigger` draws, and each closes the
+ * drawer on the way to the other language.
  */
 export const LocaleSwitcherLinks = () => {
   const currentLocale = useLocale();

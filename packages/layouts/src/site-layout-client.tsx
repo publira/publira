@@ -1,7 +1,8 @@
 "use client";
 
+import { Collapsible } from "@base-ui/react/collapsible";
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
-import { CloseIcon, MenuIcon } from "@publira/icons";
+import { ChevronDownIcon, CloseIcon, MenuIcon } from "@publira/icons";
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
 import {
@@ -155,18 +156,53 @@ export const SiteLayoutMobileNavigationLinks = ({
   children: ReactNode;
 }) => <nav className="grid gap-1">{children}</nav>;
 
-export const SiteLayoutMobileNavigationSection = ({
+/**
+ * A row of the drawer that holds rows of its own behind it.
+ *
+ * The drawer is already a panel, so a choice offered from inside it cannot be
+ * a second panel floating over the first. It collapses into the drawer
+ * instead: one row until the reader asks for it, and the options underneath
+ * the row that asked.
+ */
+export const SiteLayoutMobileNavigationDisclosure = ({
   children,
 }: {
   children: ReactNode;
-}) => <div className="grid gap-1">{children}</div>;
+}) => <Collapsible.Root className="grid gap-1">{children}</Collapsible.Root>;
 
-export const SiteLayoutMobileNavigationSectionTitle = ({
+/**
+ * The one row the disclosure occupies while closed. It reads as the rows
+ * beside it and adds the caret that says there is more behind it.
+ */
+export const SiteLayoutMobileNavigationDisclosureTrigger = ({
   children,
 }: {
   children: ReactNode;
 }) => (
-  <p className="px-3 text-xs font-medium text-muted-foreground">{children}</p>
+  <Collapsible.Trigger className="group flex w-full items-center justify-between gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-panel-open:bg-muted">
+    {children}
+    <ChevronDownIcon
+      aria-hidden="true"
+      className="size-4 shrink-0 text-muted-foreground transition-transform duration-state ease-state group-data-panel-open:rotate-180 motion-reduce:transition-none"
+    />
+  </Collapsible.Trigger>
+);
+
+/**
+ * What the trigger opens onto, at the height Base UI measures for it, with the
+ * rows indented so they read as belonging to the row above. The grid is the
+ * element inside the panel rather than the panel itself, which keeps the panel
+ * free of a `display` that would outrank the `hidden` Base UI sets on it while
+ * it is closed.
+ */
+export const SiteLayoutMobileNavigationDisclosurePanel = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <Collapsible.Panel className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height] duration-state ease-state data-ending-style:h-0 data-starting-style:h-0 motion-reduce:transition-none">
+    <div className="grid gap-1 pl-3">{children}</div>
+  </Collapsible.Panel>
 );
 
 export const SiteLayoutMobileNavigationLink = ({
