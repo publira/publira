@@ -42,12 +42,21 @@ class FakeAuthRepository implements AuthRepository {
     this.session = fakeSession,
     this.signInFailure,
     this.refreshFailure,
+    this.birthDateOnFile = false,
+    this.birthDateFailure,
   });
 
   /// What [signIn] returns, and what [refresh] echoes the user of.
   AuthSession session;
   AuthFailure? signInFailure;
   AuthFailure? refreshFailure;
+
+  /// What [hasBirthDate] answers, which is what the age gate reads to tell a
+  /// reader who has given no date from one whose date is too recent.
+  bool birthDateOnFile;
+
+  /// Thrown by [hasBirthDate], standing in for an account that cannot be read.
+  AuthFailure? birthDateFailure;
 
   /// Held open by a test that needs to act while [refresh] is still in flight.
   Completer<void>? refreshGate;
@@ -83,6 +92,15 @@ class FakeAuthRepository implements AuthRepository {
       userName: this.session.userName,
     );
   }
+
+  @override
+  Future<bool> hasBirthDate(AuthSession session) async {
+    final failure = birthDateFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return birthDateOnFile;
+  }
 }
 
 const fakeSession = AuthSession(
@@ -97,9 +115,11 @@ AuthController fakeAuthController({
   AuthSession? storedSession,
   FakeAuthRepository? repository,
   InMemorySessionStore? store,
+  bool birthDateOnFile = false,
 }) {
   return AuthController(
-    repository: repository ?? FakeAuthRepository(),
+    repository:
+        repository ?? FakeAuthRepository(birthDateOnFile: birthDateOnFile),
     store: store ?? InMemorySessionStore(session: storedSession),
     session: session,
   );

@@ -2626,6 +2626,11 @@
     },
     "viewer": {
       "back_to_series": "시리즈로 돌아가기",
+      "age_restricted": {
+        "guest": "이 작품을 열려면 나이 확인이 필요합니다. 생년월일을 등록한 계정으로 로그인해 주세요.",
+        "no_birth_date": "이 작품을 열려면 나이 확인이 필요합니다. 계정에 생년월일이 등록되어 있지 않습니다.",
+        "too_young": "이 작품은 현재 나이로는 열람할 수 없습니다."
+      },
       "reaction": {
         "count": "{$count}명이 반응했습니다",
         "count_single": "{$count}명이 반응했습니다",

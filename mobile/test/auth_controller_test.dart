@@ -145,6 +145,40 @@ void main() {
     expect(controller.expired, isFalse);
   });
 
+  test('readerHasBirthDate reports what the account holds', () async {
+    repository.birthDateOnFile = true;
+    final controller = controllerFor();
+    await controller.signIn(
+      email: 'member@example.com',
+      password: 'memberpass',
+    );
+
+    expect(await controller.readerHasBirthDate(), isTrue);
+  });
+
+  test('readerHasBirthDate answers no for a signed-out reader', () async {
+    repository.birthDateOnFile = true;
+    final controller = controllerFor();
+
+    expect(await controller.readerHasBirthDate(), isFalse);
+  });
+
+  test(
+    'readerHasBirthDate answers no when the account cannot be read',
+    () async {
+      repository
+        ..birthDateOnFile = true
+        ..birthDateFailure = const AuthFailure(AuthFailureKind.network);
+      final controller = controllerFor();
+      await controller.signIn(
+        email: 'member@example.com',
+        password: 'memberpass',
+      );
+
+      expect(await controller.readerHasBirthDate(), isFalse);
+    },
+  );
+
   test('restore drops a token that has already expired', () async {
     final controller = controllerFor(
       stored: AuthSession(

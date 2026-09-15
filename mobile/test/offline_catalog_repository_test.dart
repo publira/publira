@@ -367,6 +367,28 @@ void main() {
     expect(library.episodes, isEmpty);
   });
 
+  test(
+    'a body withheld over the reader\'s age is taken off the device',
+    () async {
+      readerId = _reader;
+      origin.episodes = {
+        episodeKey(_seriesId, _episodeId): _detail(
+          access: EpisodeAccess.entitled,
+        ),
+      };
+      await build().getEpisode(_seriesId, _episodeId);
+
+      origin.episodes = {
+        episodeKey(_seriesId, _episodeId): _detail(
+          access: EpisodeAccess.ageRestricted,
+        ),
+      };
+      await build().getEpisode(_seriesId, _episodeId);
+
+      expect(library.episodes, isEmpty);
+    },
+  );
+
   test('a body the API no longer has is taken off the device', () async {
     await build().getEpisode(_seriesId, _episodeId);
     origin.episodes = const {};

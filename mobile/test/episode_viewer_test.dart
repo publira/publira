@@ -77,6 +77,7 @@ void main() {
     AuthSession? session,
     Size screen = portrait,
     FakeCommentRepository? comments,
+    bool birthDateOnFile = false,
   }) async {
     tester.view
       ..physicalSize = screen
@@ -86,7 +87,10 @@ void main() {
       PubliraApp(
         router: router,
         catalog: catalog,
-        auth: fakeAuthController(session: session),
+        auth: fakeAuthController(
+          session: session,
+          birthDateOnFile: birthDateOnFile,
+        ),
         comments: comments,
         offline: offline,
       ),
@@ -302,6 +306,63 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+  });
+
+  testWidgets('a guest is asked to sign in for an age-rated body', (
+    tester,
+  ) async {
+    catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
+    await pumpApp(tester);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-age-restricted')),
+    );
+
+    expect(
+      find.text(
+        'Your age is checked before this work opens. '
+        'Sign in with an account that has your date of birth.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+
+    await tester.tap(find.text('Sign in'));
+    await pumpUntilFound(tester, find.text('Email address'));
+  });
+
+  testWidgets('a reader with no birth date on file is told so', (tester) async {
+    catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-age-restricted')),
+    );
+
+    expect(
+      find.text(
+        'Your age is checked before this work opens, '
+        'and your account has no date of birth on it.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(FilledButton), findsNothing);
+  });
+
+  testWidgets('a reader whose date of birth is too recent is told so', (
+    tester,
+  ) async {
+    catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
+    await pumpApp(tester, session: fakeSession, birthDateOnFile: true);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-age-restricted')),
+    );
+
+    expect(
+      find.text('This work is not available for your age.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('an episode without pages shows the empty notice', (

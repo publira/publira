@@ -719,6 +719,25 @@ void main() {
     expect(detail.images, isEmpty);
   });
 
+  test('getEpisode reports a body withheld over the reader\'s age', () async {
+    server.episodeResponse = {
+      'episode': {'publicId': 'EP', 'title': 'Rated'},
+      'series': {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+      },
+      'access': 'EPISODE_ACCESS_AGE_RESTRICTED',
+    };
+
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+    );
+
+    expect(detail!.access, EpisodeAccess.ageRestricted);
+    expect(detail.images, isEmpty);
+  });
+
   test('getEpisode returns null for a missing public id', () async {
     expect(
       await catalog.getEpisode(

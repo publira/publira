@@ -2626,6 +2626,11 @@
     },
     "viewer": {
       "back_to_series": "返回系列",
+      "age_restricted": {
+        "guest": "打开本作品前需要核对年龄。请使用已登记出生日期的账户登录。",
+        "no_birth_date": "打开本作品前需要核对年龄。您的账户尚未登记出生日期。",
+        "too_young": "本作品不适用于您的年龄。"
+      },
       "reaction": {
         "count": "{$count} 位读者已反馈",
         "count_single": "{$count} 位读者已反馈",

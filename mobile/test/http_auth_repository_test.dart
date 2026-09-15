@@ -87,6 +87,27 @@ void main() {
     expect(refreshed.userPublicId, ConnectFixtureServer.memberPublicId);
   });
 
+  test('hasBirthDate reports the date the account holds', () async {
+    server.memberBirthDate = '1990-04-02';
+    const stored = AuthSession(
+      accessToken: ConnectFixtureServer.memberAccessToken,
+      userPublicId: ConnectFixtureServer.memberPublicId,
+      userName: ConnectFixtureServer.memberName,
+    );
+
+    expect(await auth.hasBirthDate(stored), isTrue);
+  });
+
+  test('hasBirthDate reports an account that holds none', () async {
+    const stored = AuthSession(
+      accessToken: ConnectFixtureServer.memberAccessToken,
+      userPublicId: ConnectFixtureServer.memberPublicId,
+      userName: ConnectFixtureServer.memberName,
+    );
+
+    expect(await auth.hasBirthDate(stored), isFalse);
+  });
+
   test('refresh maps a token the API rejects to sessionExpired', () async {
     server.activeAccessToken = 'another-token';
     const stored = AuthSession(

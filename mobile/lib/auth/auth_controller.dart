@@ -91,6 +91,26 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Whether the signed-in reader has a birth date on file, which is what
+  /// separates "give us yours" from "not available for your age" on the age
+  /// gate.
+  ///
+  /// A signed-out reader and a read that fails both answer `false`. That gate
+  /// asks for the date either way, so a reader whose connection dropped is
+  /// pointed at the one thing they can still do rather than being told their
+  /// age is the problem.
+  Future<bool> readerHasBirthDate() async {
+    final session = _session;
+    if (session == null) {
+      return false;
+    }
+    try {
+      return await _repository.hasBirthDate(session);
+    } on AuthFailure {
+      return false;
+    }
+  }
+
   Future<void> signOut() async {
     await _store.clear();
     _setSession(null);
