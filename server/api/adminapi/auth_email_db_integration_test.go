@@ -89,6 +89,147 @@ func TestDBAdminRequestPasswordResetEnqueuesTheEmail(t *testing.T) {
 	}
 }
 
+// Reset requests for one console account, arriving at once, still leave one live
+// link. The delete the handler opens with locks only the rows it finds, so
+// without the lock on the account row each request would insert a token and
+// every mailed link would open the same account.
+func TestDBAdminRequestPasswordResetKeepsOneLinkUnderConcurrentRequests(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.authClient()
+
+	for range testutil.ConcurrentBursts {
+		testutil.RunConcurrently(t, testutil.ConcurrentRequests, func() error {
+			_, err := client.RequestPasswordReset(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
+				Tenant: tenant.tenantContext(),
+				Email:  tenant.User.Email,
+			}))
+			return err
+		})
+		// Every burst is checked on its own: the next burst would replace the
+		// tokens a race left behind, and the account would look untouched at the
+		// end.
+		live := env.countRows(t, `
+			SELECT count(*) FROM user_password_reset_tokens
+			WHERE user_id = $1 AND completed_at IS NULL
+		`, tenant.User.ID)
+		if live != 1 {
+			t.Fatalf("live password reset tokens = %d, want 1", live)
+		}
+	}
+
+	// The event a superseded request left behind names a token that is gone, and
+	// the worker drops it rather than mailing a dead link, so what the count is
+	// about is the mails that still have a request to announce.
+	if mails := env.countRows(t, `
+		SELECT count(*) FROM outbox_events event
+		JOIN user_password_reset_tokens token ON token.id = (event.payload ->> 'token_id')::uuid
+		WHERE event.event_type = $1
+	`, outbox.EventTypeAdminPasswordResetEmail); mails != 1 {
+		t.Fatalf("password reset mails with a request to announce = %d, want 1", mails)
+	}
+}
+
+// One outstanding address change per console account, however many requests
+// arrive at once: a second live request would leave the operator two pairs of
+// links, each pointing at an address change the other one does not know about.
+func TestDBAdminRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.authClient()
+
+	for range testutil.ConcurrentBursts {
+		testutil.RunConcurrently(t, testutil.ConcurrentRequests, func() error {
+			_, err := client.RequestEmailChange(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
+				Tenant:          tenant.tenantContext(),
+				CurrentEmail:    tenant.User.Email,
+				NewEmail:        "moved@tenant-a.example.com",
+				CurrentPassword: testutil.SeededPassword,
+			}))
+			return err
+		})
+		// Every burst is checked on its own: the next burst would replace the
+		// tokens a race left behind, and the account would look untouched at the
+		// end.
+		live := env.countRows(t, `
+			SELECT count(*) FROM user_email_change_tokens
+			WHERE user_id = $1 AND completed_at IS NULL
+		`, tenant.User.ID)
+		if live != 1 {
+			t.Fatalf("live email change requests = %d, want 1", live)
+		}
+	}
+
+	// The events a superseded request left behind name a token that is gone and
+	// are dropped unsent, and the one live request invites both of its addresses
+	// to confirm.
+	if mails := env.countRows(t, `
+		SELECT count(*) FROM outbox_events event
+		JOIN user_email_change_tokens token ON token.id = (event.payload ->> 'token_id')::uuid
+		WHERE event.event_type = $1
+	`, outbox.EventTypeAdminEmailChangeConfirmationEmail); mails != 2 {
+		t.Fatalf("confirmation mails with a request to announce = %d, want the 2 of one request", mails)
+	}
+}
+
+// A password set while an address change waits for the account lock ends that
+// change: it was authorized by a password the account no longer has, and the
+// lock is where it finds that out. Holding the row from the test is what makes
+// the order a step rather than a race.
+func TestDBAdminRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+
+	held, err := env.PG.DB.Begin()
+	if err != nil {
+		t.Fatalf("begin the transaction holding the account: %v", err)
+	}
+	defer held.Rollback() //nolint:errcheck
+	if _, err := held.Exec(`SELECT id FROM users WHERE id = $1 FOR UPDATE`, tenant.User.ID); err != nil {
+		t.Fatalf("hold the account row: %v", err)
+	}
+
+	errs := make(chan error, 1)
+	go func() {
+		_, err := env.authClient().RequestEmailChange(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
+			Tenant:          tenant.tenantContext(),
+			CurrentEmail:    tenant.User.Email,
+			NewEmail:        "moved@tenant-a.example.com",
+			CurrentPassword: testutil.SeededPassword,
+		}))
+		errs <- err
+	}()
+	testutil.WaitForBlockedBackend(t, env.PG.DB)
+
+	newHash, err := auth.HashPassword("a-brand-new-password")
+	if err != nil {
+		t.Fatalf("hash the replacement password: %v", err)
+	}
+	if _, err := held.Exec(`
+		UPDATE users SET password_hash = $2, credentials_version = credentials_version + 1
+		WHERE id = $1
+	`, tenant.User.ID, newHash); err != nil {
+		t.Fatalf("set the replacement password: %v", err)
+	}
+	if err := held.Commit(); err != nil {
+		t.Fatalf("commit the replacement password: %v", err)
+	}
+
+	// Unauthenticated, not invalid_argument: the session the request carried is
+	// the thing that ended, and the caller has to sign in again.
+	if err := <-errs; connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("RequestEmailChange code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+	if count := env.countRows(t, `
+		SELECT count(*) FROM user_email_change_tokens WHERE user_id = $1
+	`, tenant.User.ID); count != 0 {
+		t.Fatalf("email change requests = %d, want none", count)
+	}
+	if count := env.countRows(t, `SELECT count(*) FROM outbox_events`); count != 0 {
+		t.Fatalf("queued mails = %d, want none", count)
+	}
+}
+
 // One event per address to confirm, each with its own key, so a failure to
 // deliver to one side is retried on its own.
 func TestDBAdminRequestEmailChangeEnqueuesOneEmailPerSide(t *testing.T) {
