@@ -319,10 +319,10 @@ func (s *adminServer) ReorderCreatorRoles(
 	if err != nil {
 		return nil, err
 	}
-	if err := validateReorderPublicIDs(req.Msg.CreatorRolePublicIds, "creator_role_public_ids", "creator role"); err != nil {
+	if err := validateDistinctPublicIDs(req.Msg.CreatorRolePublicIds, "creator_role_public_ids", "creator role"); err != nil {
 		return nil, err
 	}
-	if err := validateReorderPublicIDs(req.Msg.ExpectedCreatorRolePublicIds, "expected_creator_role_public_ids", "creator role"); err != nil {
+	if err := validateDistinctPublicIDs(req.Msg.ExpectedCreatorRolePublicIds, "expected_creator_role_public_ids", "creator role"); err != nil {
 		return nil, err
 	}
 	if !samePublicIDSet(req.Msg.CreatorRolePublicIds, req.Msg.ExpectedCreatorRolePublicIds) {
