@@ -2354,6 +2354,15 @@
         "failed": "無法顯示你的評分"
       }
     },
+    "share": {
+      "action": "分享",
+      "aria": "分享《{$title}》",
+      "copied": "已複製連結",
+      "copy_failed": "無法複製連結",
+      "copy_link": "複製連結",
+      "line": "分享到 LINE",
+      "x": "分享到 X"
+    },
     "settings": {
       "birth_date_help": "本網站在開啟有年齡限制的作品前會核對年齡。登錄後無法變更。",
       "birth_date_label": "出生日期",

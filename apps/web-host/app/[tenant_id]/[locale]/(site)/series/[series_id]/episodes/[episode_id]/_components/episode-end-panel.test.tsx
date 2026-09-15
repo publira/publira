@@ -67,6 +67,17 @@ vi.mock("#components/follow-control", () => ({
   ),
 }));
 
+// The share control resolves the tenant's own origin, which
+// `share-menu.test.tsx` and `tenant-locale-path.test.ts` cover between them;
+// what this file asserts is which page it is offered on and for what.
+vi.mock("#components/share-control", () => ({
+  ShareControl: ({ path, title }: { path: string; title: string }) => (
+    <button data-path={path} type="button">
+      {`Share ${title}`}
+    </button>
+  ),
+}));
+
 afterEach(cleanup);
 
 const episode: EpisodeDetail = {
@@ -119,6 +130,7 @@ const renderPanel = async ({
       nextEpisode: neighbor,
       previousEpisode: previousNeighbor,
       series,
+      shareTitle: "Episode 2 Second light",
       tenantId: "TENANT_001",
     })
   );
@@ -146,6 +158,19 @@ describe("EpisodeEndPanel", () => {
     ).toBe("/series/SERIES_001/episodes/EPISODE_001");
     expect(screen.getByText("Episode 3")).toBeDefined();
     expect(screen.getByText("Episode 1")).toBeDefined();
+  });
+
+  it("offers to pass this episode on, whichever episode it is", async () => {
+    await renderPanel({
+      neighbor: nextEpisode,
+      previousNeighbor: previousEpisode,
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Share Episode 2 Second light" })
+        .dataset.path,
+      "the share control hands over this episode's own page"
+    ).toBe("/series/SERIES_001/episodes/EPISODE_002");
   });
 
   it("marks the next episode alone, so the page keeps one Shu", async () => {
