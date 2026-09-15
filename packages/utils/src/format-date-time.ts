@@ -234,7 +234,14 @@ export const toInstantIsoString = (value: string, timeZone: string): string => {
   );
 };
 
-const plainDateOrNull = (value: string): Temporal.PlainDate | null => {
+/**
+ * Calendar day (`YYYY-MM-DD`) → the day it names, or `null` for anything else.
+ *
+ * Only that one shape is accepted. `Temporal.PlainDate.from` also reads a full
+ * instant and a `YYYY-MM` month, and both would silently turn a value that is
+ * not a day into one.
+ */
+export const plainDateOrNull = (value: string): Temporal.PlainDate | null => {
   const trimmed = value.trim();
   if (!PLAIN_DATE_RE.test(trimmed)) {
     return null;

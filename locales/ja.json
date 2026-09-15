@@ -1815,6 +1815,7 @@
         "signup_failed": "新規登録に失敗しました。入力内容をご確認ください。"
       },
       "fields": {
+        "birth_date_invalid": "生年月日を過去の日付で入力してください。",
         "check_spam": "メールが届かない場合は、迷惑メールフォルダもご確認ください。",
         "email_invalid": "メールアドレスの形式が正しくありません。",
         "email_label": "メールアドレス",
@@ -1855,6 +1856,8 @@
         "title": "再設定メール送信"
       },
       "signup": {
+        "birth_date_help": "年齢制限のある作品を開くときに年齢を確認します。あとから登録することもできますが、一度登録すると変更できません。",
+        "birth_date_label": "生年月日",
         "have_account": "すでにアカウントをお持ちの方は",
         "login": "ログイン",
         "name_label": "お名前",
@@ -1924,6 +1927,13 @@
       "series_pagination_aria": "関連シリーズページング"
     },
     "episode": {
+      "age_gate": {
+        "add_birth_date": "生年月日を登録する",
+        "guest_description": "この作品を開くには年齢の確認が必要です。生年月日を登録したアカウントでログインしてください。",
+        "no_birth_date_description": "この作品を開くには年齢の確認が必要です。設定画面で生年月日を登録してください。",
+        "title": "このエピソードには年齢制限があります",
+        "too_young_description": "この作品はお客様の年齢では閲覧できません。"
+      },
       "body_error": "本文を表示できませんでした",
       "body_label": "エピソード本文",
       "checkout_cancelled": "購入手続きをキャンセルしました。料金は発生していません。",
@@ -2302,6 +2312,9 @@
       }
     },
     "settings": {
+      "birth_date_help": "年齢制限のある作品を開くときに年齢を確認します。一度登録すると変更できません。",
+      "birth_date_label": "生年月日",
+      "birth_date_set_help": "生年月日は変更できません。誤りがある場合はサイト運営者へお問い合わせください。",
       "browser_notifications_denied": "このサイトの通知がオフになっています。ブラウザの設定でオンにしてください。",
       "browser_notifications_failed": "通知をオンにできませんでした。もう一度お試しください。",
       "browser_notifications_heading": "ブラウザ通知",

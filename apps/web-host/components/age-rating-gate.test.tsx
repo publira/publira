@@ -50,11 +50,12 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-const renderGate = (rating?: "r15" | "r18") =>
+const renderGate = (rating?: "r15" | "r18", proven?: "r15" | "r18") =>
   render(
     <AgeRatingGate
       backHref="/"
       backMessage="host.common.back_to_top"
+      provenAgeRating={proven}
       rating={rating}
       seriesTitle="Night Side"
     >
@@ -124,6 +125,26 @@ describe("AgeRatingGate", () => {
         screen.getByText("host.series.age_gate.r18_title:Night Side")
       ).not.toBeNull();
     });
+    expect(screen.queryByText("Series body")).toBeNull();
+  });
+
+  it("Skips the confirmation for a reader whose birth date proves the rating", () => {
+    renderGate("r18", "r18");
+
+    expect(screen.getByText("Series body")).not.toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "host.series.age_gate.confirm_r18",
+      })
+    ).toBeNull();
+  });
+
+  it("Still asks a reader whose birth date falls short of the rating", () => {
+    renderGate("r18", "r15");
+
+    expect(
+      screen.getByText("host.series.age_gate.r18_title:Night Side")
+    ).not.toBeNull();
     expect(screen.queryByText("Series body")).toBeNull();
   });
 });

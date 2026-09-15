@@ -1815,6 +1815,7 @@
         "signup_failed": "無法建立您的帳戶。請檢查您輸入的內容。"
       },
       "fields": {
+        "birth_date_invalid": "請以過去的日期填寫出生日期。",
         "check_spam": "如果沒有收到郵件，請查看垃圾郵件資料夾。",
         "email_invalid": "請輸入有效的電子郵件地址。",
         "email_label": "電子郵件地址",
@@ -1855,6 +1856,8 @@
         "title": "重設郵件已寄出"
       },
       "signup": {
+        "birth_date_help": "本網站在開啟有年齡限制的作品前會核對年齡。您也可以稍後登錄，但登錄後無法變更。",
+        "birth_date_label": "出生日期",
         "have_account": "已經有帳戶了嗎？",
         "login": "登入",
         "name_label": "名稱",
@@ -1924,6 +1927,13 @@
       "series_pagination_aria": "相關系列分頁"
     },
     "episode": {
+      "age_gate": {
+        "add_birth_date": "登錄出生日期",
+        "guest_description": "開啟本作品前需要核對年齡。請使用已登錄出生日期的帳戶登入。",
+        "no_birth_date_description": "開啟本作品前需要核對年齡。請在設定中登錄您的出生日期。",
+        "title": "本章設有年齡限制",
+        "too_young_description": "本作品不適用於您的年齡。"
+      },
       "body_error": "無法顯示該章節",
       "body_label": "章節正文",
       "checkout_cancelled": "購買已取消，未產生任何扣款。",
@@ -2302,6 +2312,9 @@
       }
     },
     "settings": {
+      "birth_date_help": "本網站在開啟有年齡限制的作品前會核對年齡。登錄後無法變更。",
+      "birth_date_label": "出生日期",
+      "birth_date_set_help": "出生日期無法變更。如有錯誤，請聯絡本網站。",
       "browser_notifications_denied": "本站的通知已關閉。請在瀏覽器設定中開啟。",
       "browser_notifications_failed": "無法開啟通知。請重試。",
       "browser_notifications_heading": "瀏覽器通知",

@@ -35,9 +35,29 @@ export interface PublicSession {
 }
 
 export interface MeInfo {
+  /** `YYYY-MM-DD`, and empty when the reader has given none. */
+  birthDate: string;
   name: string;
   publicId: string;
   role: string;
+}
+
+/**
+ * What the profile form may write. An empty `birthDate` leaves the stored one
+ * alone; the date is written once, and `UpdateMe` refuses a second write.
+ */
+export interface ProfileUpdate {
+  birthDate: string;
+  name: string;
+}
+
+/** What the sign-up form collects. `birthDate` is empty when it did not ask. */
+export interface SignupInput {
+  birthDate: string;
+  email: string;
+  name: string;
+  password: string;
+  tenantId: string;
 }
 
 export interface NotificationSettings {
@@ -76,14 +96,16 @@ export const loginPublic = async (
  * therefore means the request was accepted and the address was written to — not
  * that an account was created.
  */
-export const signupPublic = async (
-  name: string,
-  email: string,
-  password: string,
-  tenantId: string
-): Promise<boolean> => {
+export const signupPublic = async ({
+  birthDate,
+  email,
+  name,
+  password,
+  tenantId,
+}: SignupInput): Promise<boolean> => {
   try {
     const response = await apiClient.auth.createUser({
+      birthDate,
       email,
       name,
       password,
@@ -373,6 +395,7 @@ export const getMe = async (
           }
 
           return {
+            birthDate: response.user.birthDate,
             name: response.user.name,
             publicId: response.user.publicId,
             role: response.user.role,
@@ -396,7 +419,7 @@ export const getMe = async (
 
 export const updateMe = async (
   tenantId: string,
-  name: string,
+  { birthDate, name }: ProfileUpdate,
   accessToken?: string
 ): Promise<MeInfo | null> => {
   const sid = await resolveAccessToken(accessToken);
@@ -407,6 +430,7 @@ export const updateMe = async (
   try {
     const response = await apiClient.auth.updateMe(
       {
+        birthDate,
         name,
         tenant: { tenantId },
       },
@@ -418,6 +442,7 @@ export const updateMe = async (
     }
 
     return {
+      birthDate: response.user.birthDate,
       name: response.user.name,
       publicId: response.user.publicId,
       role: response.user.role,

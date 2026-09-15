@@ -241,9 +241,15 @@ const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
 
 /**
  * Viewer access for an episode body. Matches `EpisodeAccess` on
- * GetEpisodeDetail: free body, paid-and-locked, or a valid purchase/ticket.
+ * GetEpisodeDetail: free body, paid-and-locked, a valid purchase/ticket, or an
+ * age the tenant's rule makes the reader prove and they have not. The last
+ * outranks the others, so a free body and a bought one both answer with it.
  */
-export type EpisodeAccessState = "free" | "locked" | "entitled";
+export type EpisodeAccessState =
+  | "age_restricted"
+  | "entitled"
+  | "free"
+  | "locked";
 
 /**
  * Map the RPC enum onto the public-site union. Unspecified falls back to
@@ -261,6 +267,9 @@ export const toEpisodeAccessState = (
   }
   if (access === EpisodeAccess.LOCKED) {
     return "locked";
+  }
+  if (access === EpisodeAccess.AGE_RESTRICTED) {
+    return "age_restricted";
   }
   return price > 0 ? "locked" : "free";
 };

@@ -1815,6 +1815,7 @@
         "signup_failed": "계정을 만들지 못했습니다. 입력한 내용을 확인해 주세요."
       },
       "fields": {
+        "birth_date_invalid": "생년월일을 과거 날짜로 입력해 주세요.",
         "check_spam": "메일이 도착하지 않으면 스팸함도 확인해 주세요.",
         "email_invalid": "올바른 이메일 주소를 입력해 주세요.",
         "email_label": "이메일 주소",
@@ -1855,6 +1856,8 @@
         "title": "재설정 메일 발송"
       },
       "signup": {
+        "birth_date_help": "연령 제한이 있는 작품을 열 때 나이를 확인합니다. 나중에 등록할 수도 있지만, 한 번 등록하면 변경할 수 없습니다.",
+        "birth_date_label": "생년월일",
         "have_account": "이미 계정이 있으신가요?",
         "login": "로그인",
         "name_label": "이름",
@@ -1924,6 +1927,13 @@
       "series_pagination_aria": "관련 시리즈 페이지 이동"
     },
     "episode": {
+      "age_gate": {
+        "add_birth_date": "생년월일 등록하기",
+        "guest_description": "이 작품을 열려면 나이 확인이 필요합니다. 생년월일을 등록한 계정으로 로그인해 주세요.",
+        "no_birth_date_description": "이 작품을 열려면 나이 확인이 필요합니다. 설정에서 생년월일을 등록해 주세요.",
+        "title": "이 에피소드에는 연령 제한이 있습니다",
+        "too_young_description": "이 작품은 현재 나이로는 열람할 수 없습니다."
+      },
       "body_error": "에피소드를 표시할 수 없습니다",
       "body_label": "에피소드 본문",
       "checkout_cancelled": "구매를 취소했습니다. 요금은 청구되지 않았습니다.",
@@ -2302,6 +2312,9 @@
       }
     },
     "settings": {
+      "birth_date_help": "연령 제한이 있는 작품을 열 때 나이를 확인합니다. 한 번 등록하면 변경할 수 없습니다.",
+      "birth_date_label": "생년월일",
+      "birth_date_set_help": "생년월일은 변경할 수 없습니다. 잘못되었다면 사이트 운영자에게 문의해 주세요.",
       "browser_notifications_denied": "이 사이트의 알림이 꺼져 있습니다. 브라우저 설정에서 켜 주세요.",
       "browser_notifications_failed": "알림을 켜지 못했습니다. 다시 시도해 주세요.",
       "browser_notifications_heading": "브라우저 알림",

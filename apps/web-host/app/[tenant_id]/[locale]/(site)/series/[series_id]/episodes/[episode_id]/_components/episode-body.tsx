@@ -20,8 +20,10 @@ import type {
 } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
+import { readerHasBirthDate } from "#lib/reader-age";
 
 import { EpisodeAccessGate } from "./episode-access-gate";
+import { EpisodeAgeGate } from "./episode-age-gate";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeViewer } from "./episode-viewer";
 
@@ -72,15 +74,26 @@ export const EpisodeBody = async ({
     resolveAccessToken(),
   ]);
   if (!sessionId) {
+    // The shared read answers anonymously, so an age rule the tenant applies to
+    // this series already stops a guest here and the price never comes up.
     return (
       <EpisodeBodyNotice>
-        <EpisodeAccessGate
-          acceptsPayments={acceptsPayments}
-          episodePublicId={episode.publicId}
-          seriesPublicId={series.publicId}
-          signedIn={false}
-          tenantId={tenantId}
-        />
+        {access === "age_restricted" ? (
+          <EpisodeAgeGate
+            episodePublicId={episode.publicId}
+            hasBirthDate={false}
+            seriesPublicId={series.publicId}
+            signedIn={false}
+          />
+        ) : (
+          <EpisodeAccessGate
+            acceptsPayments={acceptsPayments}
+            episodePublicId={episode.publicId}
+            seriesPublicId={series.publicId}
+            signedIn={false}
+            tenantId={tenantId}
+          />
+        )}
       </EpisodeBodyNotice>
     );
   }
@@ -112,7 +125,12 @@ export const EpisodeBody = async ({
   if (!viewer.value) {
     notFound();
   }
-  if (viewer.value.access === "entitled") {
+  // A free body the age rule withheld from the shared read comes back as free
+  // once the reader behind the bearer clears it, so both openings are read here.
+  if (
+    viewer.value.access === "entitled" ||
+    isPublicEpisodeBody(viewer.value.access)
+  ) {
     return (
       <EpisodeViewer
         commentMode={commentMode}
@@ -123,6 +141,19 @@ export const EpisodeBody = async ({
         previousEpisode={previousEpisode}
         series={series}
       />
+    );
+  }
+
+  if (viewer.value.access === "age_restricted") {
+    return (
+      <EpisodeBodyNotice>
+        <EpisodeAgeGate
+          episodePublicId={episode.publicId}
+          hasBirthDate={await readerHasBirthDate(tenantId)}
+          seriesPublicId={series.publicId}
+          signedIn
+        />
+      </EpisodeBodyNotice>
     );
   }
 

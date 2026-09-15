@@ -1,4 +1,5 @@
 import { SeriesAgeRating } from "@publira/api-client/public/types";
+import { plainDateOrNull } from "@publira/utils";
 
 /**
  * Ratings a reader has to confirm before the pages open. `all` and an
@@ -26,23 +27,55 @@ export const toRestrictedAgeRating = (
 };
 
 /**
- * Whether a stored confirmation is enough for this rating. Confirming `r18`
- * covers `r15` as well; confirming `r15` does not open an `r18` series.
+ * Whether a rating the reader already carries — confirmed in this browser, or
+ * proven by their birth date — is enough for the one a series does. `r18`
+ * covers `r15` as well; `r15` does not open an `r18` series.
  */
-export const ageRatingMeetsConfirmation = (
+export const ageRatingSatisfiedBy = (
   required?: RestrictedAgeRating,
-  confirmed?: RestrictedAgeRating
+  held?: RestrictedAgeRating
 ): boolean => {
   if (!required) {
     return true;
   }
-  if (!confirmed) {
+  if (!held) {
     return false;
   }
   if (required === "r15") {
     return true;
   }
-  return confirmed === "r18";
+  return held === "r18";
+};
+
+/** Each rating's own number, so it and the age it demands cannot drift apart. */
+const MINIMUM_AGE = { r15: 15, r18: 18 } as const satisfies Record<
+  RestrictedAgeRating,
+  number
+>;
+
+/**
+ * The highest rating a reader born on `birthDate` carries on `today`, and
+ * `undefined` when they are younger than either asks for. `today` is the
+ * tenant's calendar day, as on the server (`age_gate.go`), so a birthday
+ * arrives when the tenant's calendar says it does.
+ */
+export const provenAgeRating = (
+  birthDate: string,
+  today: Temporal.PlainDate
+): RestrictedAgeRating | undefined => {
+  const born = plainDateOrNull(birthDate);
+  if (!born) {
+    return undefined;
+  }
+
+  const { years } = today.since(born, { largestUnit: "year" });
+  if (years >= MINIMUM_AGE.r18) {
+    return "r18";
+  }
+  if (years >= MINIMUM_AGE.r15) {
+    return "r15";
+  }
+  return undefined;
 };
 
 /** Spread onto a mapped record so all-ages series do not carry a blank field. */

@@ -244,6 +244,21 @@ export const WEB_ADMIN_COMMENT_MODERATION_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the tenant that makes readers prove an age, from the scenario
+ * seed `db/seeds/scenarios/190_age_verification.sql`.
+ *
+ * `tenant_config.age_verification` is tenant-wide, so the tenant that checks
+ * ages is not one whose rated series another suite opens by confirming.
+ *
+ * Through the edge, because the suite reads a body that opened: a page image
+ * resolves on the reader's own origin alone.
+ */
+export const WEB_HOST_AGE_VERIFICATION_BASE_URL = envUrl(
+  "E2E_WEB_HOST_AGE_VERIFICATION_BASE_URL",
+  withHostname(WEB_HOST_EDGE_BASE_URL, "age.localhost")
+);
+
+/**
  * Public site of the Japanese-default tenant from the scenario seed
  * `db/seeds/scenarios/080_locale_switching.sql`.
  *

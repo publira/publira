@@ -1,4 +1,6 @@
+import type { Locale } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { formatPlainDate } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -16,6 +18,7 @@ import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantAgeVerification } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
@@ -82,6 +85,64 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   redirect(`${loginPath}?${params.toString()}`);
 };
 
+/**
+ * The birth date the account carries, which is written once: a stored date is
+ * shown back rather than offered for editing, and the input appears only where
+ * the tenant checks ages and the reader has given none.
+ */
+const BirthDateRow = async ({
+  birthDate,
+  locale,
+  tenantId,
+}: {
+  birthDate: string;
+  locale: Locale;
+  tenantId: string;
+}) => {
+  const [ageVerification, t] = await Promise.all([
+    getTenantAgeVerification(tenantId),
+    getMessagesFor(locale),
+  ]);
+
+  if (birthDate) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm font-medium">
+          {t("host.settings.birth_date_label")}
+        </p>
+        <p className="text-sm tabular-nums">
+          {formatPlainDate(birthDate, { locale })}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {t("host.settings.birth_date_set_help")}
+        </p>
+      </div>
+    );
+  }
+
+  if (ageVerification === "none") {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium" htmlFor="birthDate">
+        {t("host.settings.birth_date_label")}
+      </label>
+      <input
+        autoComplete="bday"
+        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        id="birthDate"
+        name="birthDate"
+        type="date"
+      />
+      <p className="text-xs text-muted-foreground">
+        {t("host.settings.birth_date_help")}
+      </p>
+    </div>
+  );
+};
+
 const ProfileSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [me, t] = await Promise.all([
@@ -123,6 +184,12 @@ const ProfileSection = async () => {
             {t("host.settings.name_help")}
           </p>
         </div>
+
+        <BirthDateRow
+          birthDate={me?.birthDate.trim() ?? ""}
+          locale={locale}
+          tenantId={tenantId}
+        />
 
         <div className="flex justify-end">
           <button

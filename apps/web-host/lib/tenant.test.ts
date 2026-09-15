@@ -1,7 +1,9 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { AgeVerification } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  getTenantAgeVerification,
   getTenantDefaultLocale,
   getTenantDisplayTimeZone,
   getTenantSiteInfo,
@@ -117,6 +119,26 @@ describe("tenant", () => {
     });
 
     await expect(getTenantWebPushPublicKey("TENANT_001")).resolves.toBeNull();
+  });
+
+  it("Carry the ratings the tenant makes a reader prove an age for", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      ageVerification: AgeVerification.R15_AND_R18,
+    });
+
+    await expect(getTenantAgeVerification("TENANT_001")).resolves.toBe(
+      "r15_and_r18"
+    );
+  });
+
+  it("Treat a tenant that has chosen no age rule as asking for nothing", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      ageVerification: AgeVerification.UNSPECIFIED,
+    });
+
+    await expect(getTenantAgeVerification("TENANT_001")).resolves.toBe("none");
   });
 
   it("You can get the variant if the tenant icon is set.", async () => {
