@@ -279,11 +279,15 @@ dev_env_write_profile() {
     printf 'PUBLIRA_IMAGE_SERVER_PORT=%s\n' "$((port_base + 20))"
     printf 'PUBLIRA_EMAIL_RENDERER_PORT=%s\n' "$((port_base + 30))"
     printf 'PUBLIRA_OUTBOX_WORKER_PORT=%s\n' "$((port_base + 40))"
+    # The profile's front door: a browser asks for `/images…` on the origin the
+    # page it is reading came from, and only the edge knows that path is the
+    # image server's. The platform console URL below is therefore the edge's.
+    printf 'PUBLIRA_EDGE_PORT=%s\n' "$((port_base + 50))"
     printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
     printf 'PUBLIRA_WEB_HOST_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
     printf 'PUBLIRA_WEB_ADMIN_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 2))"
-    printf 'PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:%s\n' "$((port_base + 2))"
+    printf 'PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:%s\n' "$((port_base + 50))"
     printf 'PUBLIRA_EMAIL_RENDERER_URL=http://127.0.0.1:%s\n' "$((port_base + 30))"
   } >"${tmp_path}"
   chmod 600 "${tmp_path}"
@@ -332,6 +336,25 @@ dev_env_load_profile() {
   if [[ "${PUBLIRA_WORKER_DB_URL}" == "postgres://postgres:password@${postgres}/${database}?sslmode=disable" ]]; then
     PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@${postgres}/${database}?sslmode=disable"
     export PUBLIRA_WORKER_DB_URL
+  fi
+
+  # A profile written before it had an edge carries no port for one, and names
+  # the platform console by the port web-platform itself listens on. Both are
+  # derived from the port block the profile already holds, so an old profile
+  # gets its images routed without being recreated; a platform URL a developer
+  # pointed elsewhere is left alone, the way the worker URL above is.
+  local edge_port
+  if ! edge_port="$(dev_env_profile_value "${profile_path}" PUBLIRA_EDGE_PORT)"; then
+    PUBLIRA_EDGE_PORT="$((PUBLIRA_WEB_HOST_PORT + 50))"
+  elif [[ -z "${edge_port}" ]]; then
+    dev_env_die "profile has an empty PUBLIRA_EDGE_PORT: ${profile_path}"
+  else
+    PUBLIRA_EDGE_PORT="${edge_port}"
+  fi
+  export PUBLIRA_EDGE_PORT
+  if [[ "${PUBLIRA_PLATFORM_APP_URL}" == "http://platform.localhost:${PUBLIRA_WEB_PLATFORM_PORT}" ]]; then
+    PUBLIRA_PLATFORM_APP_URL="http://platform.localhost:${PUBLIRA_EDGE_PORT}"
+    export PUBLIRA_PLATFORM_APP_URL
   fi
 
   # A profile written while each console had an API server of its own has a
@@ -398,9 +421,87 @@ dev_env_profile_run_dir() {
 # them: a stop removes the pid file of every service it ended, but the logs of
 # that run are kept for reading afterwards, so the directory itself says only
 # that the profile was started once. A pid file exists for as long as the
-# processes it names do, which is the question both start and destroy ask.
+# processes it names do, which is the question both start and destroy ask. The
+# edge answers it with the services file it is given, which a stop removes once
+# the container is down.
 dev_env_profile_has_running_processes() {
-  compgen -G "$(dev_env_profile_run_dir "$1")/*.pid" >/dev/null
+  compgen -G "$(dev_env_profile_run_dir "$1")/*.pid" >/dev/null ||
+    [[ -f "$(dev_env_edge_services_file "$1")" ]]
+}
+
+# The reverse proxy in front of one profile's processes. A profile without one
+# serves no image: `/images…` is the image server's, and a browser asks for it
+# on the origin the page it is reading came from, so something has to stand in
+# front of both. It is a container rather than an eighth process because the
+# routing every environment runs is Traefik configuration, and answering the
+# same contract in a second implementation is how the two drift apart.
+DEV_ENV_EDGE_COMPOSE_FILE="${DEV_ENV_DIR}/compose.yaml"
+
+dev_env_edge_project() {
+  printf 'publira-dev-env-%s\n' "$1"
+}
+
+# Where the backend addresses of one profile's edge are written. It is also
+# what says the edge is up: it is written just before the container starts and
+# removed once it is down.
+dev_env_edge_services_file() {
+  printf '%s/edge-services.yaml\n' "$(dev_env_profile_run_dir "$1")"
+}
+
+# Starts the edge of a loaded profile, replacing the committed backend
+# addresses with this profile's ports. The routing itself — routes.yaml, the
+# whole of `infra/proxy/README.md`'s contract — is mounted as it stands.
+dev_env_start_edge() {
+  local name="$1" services_file
+  dev_env_require_commands docker
+  services_file="$(dev_env_edge_services_file "${name}")"
+  cat >"${services_file}" <<EOF
+# Written by scripts/dev-env.sh for profile ${name}. Edits are overwritten by
+# the next start.
+http:
+  services:
+    web-host:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${PUBLIRA_WEB_HOST_PORT}"
+    web-admin:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${PUBLIRA_WEB_ADMIN_PORT}"
+    web-platform:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${PUBLIRA_WEB_PLATFORM_PORT}"
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${PUBLIRA_PUBLIC_API_PORT}"
+    image-server:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:${PUBLIRA_IMAGE_SERVER_PORT}"
+EOF
+  COMPOSE_PROJECT_NAME="$(dev_env_edge_project "${name}")" \
+    PUBLIRA_DEV_ENV_EDGE_SERVICES_FILE="${services_file}" \
+    docker compose --file "${DEV_ENV_EDGE_COMPOSE_FILE}" up --detach --wait
+}
+
+# Ends the edge of a profile and reports whether it is gone. `down` takes the
+# project by name, so a stop needs none of the settings a start reads and works
+# for a profile whose file has already been edited or removed.
+dev_env_stop_edge() {
+  local name="$1" services_file
+  services_file="$(dev_env_edge_services_file "${name}")"
+  [[ -f "${services_file}" ]] || return 0
+  if ! command -v docker >/dev/null 2>&1; then
+    dev_env_error "docker is not installed; the edge of profile ${name} is still running"
+    return 1
+  fi
+  if ! docker compose --project-name "$(dev_env_edge_project "${name}")" down; then
+    dev_env_error "the edge of profile ${name} was not stopped"
+    return 1
+  fi
+  rm -f "${services_file}"
 }
 
 # Starts one service of a profile, detached, and records the pid that stands
@@ -471,6 +572,7 @@ dev_env_stop_profile() {
   local name="$1" run_dir pid_file pgid survivors=0
   run_dir="$(dev_env_profile_run_dir "${name}")"
   [[ -d "${run_dir}" ]] || return 0
+  dev_env_stop_edge "${name}" || survivors=1
   for pid_file in "${run_dir}"/*.pid; do
     [[ -f "${pid_file}" ]] || continue
     pgid="$(<"${pid_file}")"

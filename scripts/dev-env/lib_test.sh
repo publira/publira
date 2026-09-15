@@ -51,7 +51,7 @@ alpha_path="$(dev_env_profile_path alpha)"
 bravo_path="$(dev_env_profile_path bravo)"
 charlie_path="$(dev_env_profile_path charlie)"
 
-for key in PUBLIRA_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_REDIS_URL PUBLIRA_S3_BUCKET PUBLIRA_COOKIE_SUFFIX PUBLIRA_WEB_HOST_PORT; do
+for key in PUBLIRA_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_REDIS_URL PUBLIRA_S3_BUCKET PUBLIRA_COOKIE_SUFFIX PUBLIRA_WEB_HOST_PORT PUBLIRA_EDGE_PORT; do
   alpha_value="$(dev_env_profile_value "${alpha_path}" "${key}")"
   bravo_value="$(dev_env_profile_value "${bravo_path}" "${key}")"
   [[ "${alpha_value}" != "${bravo_value}" ]] || fail "${key} is shared by alpha and bravo"
@@ -117,6 +117,43 @@ pass "a profile created with the host loopback variables addresses the services 
 
 expect_profile_value "${charlie_path}" PUBLIRA_TICKER_DB_URL "postgres://publira_ticker:tickerpass@127.0.0.1:5432/publira_charlie?sslmode=disable"
 pass "a new profile points the ticker jobs at their own login"
+
+expect_profile_value "${alpha_path}" PUBLIRA_EDGE_PORT "13150"
+expect_profile_value "${alpha_path}" PUBLIRA_PLATFORM_APP_URL "http://platform.localhost:13150"
+pass "a new profile carries the port of an edge of its own and names the platform console by it"
+
+# A profile written before it had an edge carries neither the port of one nor a
+# platform URL that goes through it. Loading it must answer both, because a
+# profile that cannot route /images serves no image at all.
+(
+  export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
+  export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
+  export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:9000"
+  dev_env_write_profile "echo" 5
+)
+echo_path="$(dev_env_profile_path echo)"
+grep -v '^PUBLIRA_EDGE_PORT=' "${echo_path}" |
+  sed 's|^PUBLIRA_PLATFORM_APP_URL=.*$|PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:13502|' \
+    >"${echo_path}.before-the-edge"
+mv "${echo_path}.before-the-edge" "${echo_path}"
+echo_edge="$(
+  dev_env_load_profile echo >/dev/null
+  printf '%s %s\n' "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}"
+)"
+[[ "${echo_edge}" == "13550 http://platform.localhost:13550" ]] ||
+  fail "a profile written before the edge resolved to ${echo_edge}"
+
+# A platform URL a developer pointed elsewhere is not one this script wrote,
+# so the repair above leaves it alone.
+sed -i 's|^PUBLIRA_PLATFORM_APP_URL=.*$|PUBLIRA_PLATFORM_APP_URL=http://platform.example.com|' "${echo_path}"
+echo_platform_url="$(
+  dev_env_load_profile echo >/dev/null
+  printf '%s\n' "${PUBLIRA_PLATFORM_APP_URL}"
+)"
+[[ "${echo_platform_url}" == "http://platform.example.com" ]] ||
+  fail "a platform URL pointed elsewhere became ${echo_platform_url}"
+rm -f "${echo_path}"
+pass "a profile written before the edge takes its port and its platform URL from the ports it holds"
 
 # A profile written before the ticker jobs had a login of their own carries no
 # PUBLIRA_TICKER_DB_URL. Loading it must still not put those jobs on the
@@ -266,3 +303,17 @@ if dev_env_profile_has_running_processes never-started; then
   fail "a profile with no run directory was reported as running"
 fi
 pass "a profile that was never started is not reported as running"
+
+# The edge has no pid file: it is a container, and the services file it is
+# started with stands for it until a stop takes it down. A profile whose edge
+# is still up is a running one, because the port that edge holds is the one a
+# start would put the next edge on.
+edged_services_file="$(dev_env_edge_services_file edged)"
+mkdir -p "$(dev_env_profile_run_dir edged)"
+: >"${edged_services_file}"
+dev_env_profile_has_running_processes edged || fail "a profile whose edge is up was not reported as running"
+rm -f "${edged_services_file}"
+if dev_env_profile_has_running_processes edged; then
+  fail "a profile whose edge is down was reported as running"
+fi
+pass "a profile is running while its edge is, not only while one of its processes is"
