@@ -78,6 +78,8 @@ cli_bin_dir="${test_dir}/cli-bin"
 write_stub "${cli_bin_dir}/aws" "${no_such_bucket}"
 write_stub "${cli_bin_dir}/psql" 'exit 0'
 write_stub "${cli_bin_dir}/valkey-cli" 'exit 0'
+unflushable_bin_dir="${test_dir}/cli-bin-unflushable"
+write_stub "${unflushable_bin_dir}/valkey-cli" 'echo "Could not connect to Valkey" >&2; exit 1'
 
 (PATH="${test_dir}/aws-ok:${PATH}" dev_env_remove_bucket publira-present http://127.0.0.1:9000) ||
   fail "removing a bucket that is there was reported as a failure"
@@ -112,7 +114,7 @@ held_profiles="$( DEV_ENV_PROFILES_DIR="${full_home}/profiles"; dev_env_slot_hol
   fail "the slot holders are not listed in slot order"
 pass "a full slot table yields no slot and names every profile holding one"
 
-for refused_slot in "" 0 "$((DEV_ENV_SLOT_MAX + 1))"; do
+for refused_slot in "" 0 "$((DEV_ENV_SLOT_MAX + 1))" 18446744073709551617; do
   if (dev_env_write_profile "slotless" "${refused_slot}") >/dev/null 2>&1; then
     fail "a profile was written with slot '${refused_slot}'"
   fi
@@ -398,9 +400,21 @@ pass "a profile is running while its edge is, not only while one of its processe
 golf_path="$(dev_env_profile_path golf)"
 [[ "$(dev_env_next_slot)" == "5" ]] || fail "the profile under destroy does not hold slot 4"
 run_destroy() {
-  printf '%s\n' "$1" | PUBLIRA_DEV_ENV_HOME="${DEV_ENV_HOME}" PATH="${cli_bin_dir}:${PATH}" \
+  printf '%s\n' "$1" | PUBLIRA_DEV_ENV_HOME="${DEV_ENV_HOME}" PATH="${2:-${cli_bin_dir}}:${cli_bin_dir}:${PATH}" \
     bash "${REPO_ROOT}/scripts/dev-env.sh" destroy "$1" 2>&1
 }
+
+# The profile file is what reserves the slot, so a Valkey database that could
+# not be flushed has to keep it: the next profile given that slot would read
+# whatever is still in it.
+if unflushed_output="$(run_destroy golf "${unflushable_bin_dir}")"; then
+  fail "destroying a profile whose Valkey database could not be flushed reported success"
+fi
+[[ -e "${golf_path}" ]] || fail "the profile holding an unflushed Valkey database was removed"
+[[ "$(dev_env_next_slot)" == "5" ]] || fail "an unflushed Valkey database's slot was handed out again"
+[[ "${unflushed_output}" == *"Valkey database 4"* ]] ||
+  fail "the Valkey database that was not flushed was not named: ${unflushed_output}"
+pass "a profile whose Valkey database could not be flushed keeps its slot and its profile file"
 
 destroy_output="$(run_destroy golf)" ||
   fail "destroying a profile whose bucket is already gone failed: ${destroy_output}"

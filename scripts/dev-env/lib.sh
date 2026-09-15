@@ -41,7 +41,10 @@ dev_env_identifier_is_valid() {
 # range on purpose: a profile that took it would flush that environment on
 # destroy.
 dev_env_slot_is_valid() {
-  [[ "$1" =~ ^[1-9][0-9]*$ ]] && (($1 >= DEV_ENV_SLOT_MIN && $1 <= DEV_ENV_SLOT_MAX))
+  # The digits are counted before they are compared: bash arithmetic is done in
+  # intmax_t, and a decimal past its width wraps rather than failing, so 2^64+1
+  # would otherwise pass as slot 1.
+  [[ "$1" =~ ^[1-9][0-9]{0,4}$ ]] && (($1 >= DEV_ENV_SLOT_MIN && $1 <= DEV_ENV_SLOT_MAX))
 }
 
 dev_env_profile_path() {

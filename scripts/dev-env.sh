@@ -172,7 +172,7 @@ start_profile() {
 }
 
 destroy_profile() {
-  local name="$1" profile_path db_name in_use redis_cli
+  local name="$1" profile_path db_name in_use redis_cli slot_is_clean=true
   local leftovers=()
   dev_env_validate_name "${name}"
   profile_path="$(dev_env_profile_path "${name}")"
@@ -194,20 +194,28 @@ destroy_profile() {
   [[ "${confirmation}" == "${name}" ]] || dev_env_die "confirmation did not match; nothing was destroyed"
   db_name="publira_${DEV_ENV_NAME//-/_}"
   # Each step is judged by what it leaves behind rather than by its exit status,
-  # because what is already gone is the outcome this command wanted. The profile
-  # file goes either way: keeping it for a step that could not run is what holds
-  # a Valkey slot nothing uses, so whatever is left is named instead.
+  # because what is already gone is the outcome this command wanted.
   psql "$(dev_env_postgres_admin_url)" \
     -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db_name}\" WITH (FORCE)" ||
     leftovers+=("the database ${db_name}")
-  "${redis_cli}" -u "${PUBLIRA_REDIS_URL}" FLUSHDB ||
+  if ! "${redis_cli}" -u "${PUBLIRA_REDIS_URL}" FLUSHDB; then
     leftovers+=("the contents of Valkey database ${DEV_ENV_SLOT}")
+    slot_is_clean=false
+  fi
   dev_env_remove_bucket "${PUBLIRA_S3_BUCKET}" "${PUBLIRA_S3_ENDPOINT}" ||
     leftovers+=("the bucket ${PUBLIRA_S3_BUCKET}")
-  rm -f "${profile_path}"
+  # The profile file is what reserves the slot, so it goes as soon as the slot is
+  # clean: keeping it for a database or a bucket that outlived it holds a slot
+  # nothing uses. A slot still holding data keeps its reservation instead, or the
+  # next profile given it would read what is left there.
+  if [[ "${slot_is_clean}" == true ]]; then
+    rm -f "${profile_path}"
+  fi
   if ((${#leftovers[@]} > 0)); then
-    dev_env_error "removed profile ${name}, but these are still there:"
+    dev_env_error "profile ${name} was not fully destroyed; these are still there:"
     printf '  %s\n' "${leftovers[@]}" >&2
+    [[ "${slot_is_clean}" == true ]] ||
+      dev_env_error "it goes on holding slot ${DEV_ENV_SLOT} until that flush succeeds; destroy it again"
     exit 1
   fi
   printf 'destroyed profile %q\n' "${name}"
