@@ -392,13 +392,6 @@ const SiteNav = async () => {
           <Message message="host.nav.genres" />
         </Suspense>
       </SiteLayoutNavLink>
-      <SiteLayoutNavLink
-        href={withLocalePrefix(locale, defaultLocale, "/search")}
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-          <Message message="host.nav.search" />
-        </Suspense>
-      </SiteLayoutNavLink>
     </SiteLayoutNav>
   );
 };
@@ -408,14 +401,13 @@ const MobileNavigationOpenButtonSkeleton = () => (
   <Skeleton className="size-9 rounded-control md:hidden" />
 );
 
-/** Same five rows the drawer draws, at the height the links render at. */
+/** Same four rows the drawer draws, at the height the links render at. */
 const MobileNavigationLinksSkeleton = () => (
   <div aria-hidden="true" className="grid gap-1">
     <SkeletonLine className="my-2 h-4 w-14" />
     <SkeletonLine className="my-2 h-4 w-12" />
     <SkeletonLine className="my-2 h-4 w-12" />
     <SkeletonLine className="my-2 h-4 w-14" />
-    <SkeletonLine className="my-2 h-4 w-12" />
   </div>
 );
 
@@ -486,7 +478,7 @@ const MobileNavigationAccountActions = async () => {
 };
 
 /**
- * The drawer's five catalog rows. Their hrefs carry a locale prefix only when
+ * The drawer's four catalog rows. Their hrefs carry a locale prefix only when
  * the request's locale is not the tenant's stored default, so the list is
  * resolved rather than static — the same wait the band's own row makes.
  */
@@ -524,13 +516,6 @@ const MobileNavigationLinks = async () => {
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
           <Message message="host.nav.genres" />
-        </Suspense>
-      </SiteLayoutMobileNavigationLink>
-      <SiteLayoutMobileNavigationLink
-        href={withLocalePrefix(locale, defaultLocale, "/search")}
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-          <Message message="host.nav.search" />
         </Suspense>
       </SiteLayoutMobileNavigationLink>
     </SiteLayoutMobileNavigationLinks>
