@@ -36,6 +36,17 @@ dev_env_identifier_is_valid() {
   [[ "$1" =~ ^[a-z][a-z0-9-]{0,31}$ ]]
 }
 
+# Whether a value names one of the Valkey logical databases a profile may hold.
+# Database 0 is the shared development environment's own, so it is outside the
+# range on purpose: a profile that took it would flush that environment on
+# destroy.
+dev_env_slot_is_valid() {
+  # The digits are counted before they are compared: bash arithmetic is done in
+  # intmax_t, and a decimal past its width wraps rather than failing, so 2^64+1
+  # would otherwise pass as slot 1.
+  [[ "$1" =~ ^[1-9][0-9]{0,4}$ ]] && (($1 >= DEV_ENV_SLOT_MIN && $1 <= DEV_ENV_SLOT_MAX))
+}
+
 dev_env_profile_path() {
   printf '%s/%s.env\n' "${DEV_ENV_PROFILES_DIR}" "$1"
 }
@@ -109,6 +120,10 @@ dev_env_profile_in_use() {
   done < <(git -C "${REPO_ROOT}" worktree list --porcelain | awk '/^worktree / {print $2}')
 }
 
+# Prints the lowest slot no profile holds. Prints nothing and fails when every
+# one is held, rather than dying: a die here would end only the command
+# substitution that called it, and the caller would go on to write a profile
+# with no slot at all.
 dev_env_next_slot() {
   local used_slots=() profile slot
   shopt -s nullglob
@@ -132,7 +147,21 @@ dev_env_next_slot() {
       return 0
     fi
   done
-  dev_env_die "no Valkey logical database is available (slots ${DEV_ENV_SLOT_MIN}-${DEV_ENV_SLOT_MAX})"
+  return 1
+}
+
+# Prints "<name> (slot <n>)" for every profile that holds a slot, in slot order,
+# so that a developer who cannot get one is told what to destroy.
+dev_env_slot_holders() {
+  local profile name slot
+  shopt -s nullglob
+  for profile in "${DEV_ENV_PROFILES_DIR}"/*.env; do
+    slot="$(dev_env_profile_value "${profile}" DEV_ENV_SLOT || true)"
+    [[ "${slot}" =~ ^[0-9]+$ ]] || continue
+    name="$(dev_env_profile_value "${profile}" DEV_ENV_NAME || true)"
+    printf '%s\t%s (slot %s)\n' "${slot}" "${name:-${profile##*/}}" "${slot}"
+  done | sort -n | cut -f2-
+  shopt -u nullglob
 }
 
 dev_env_random_secret() {
@@ -223,6 +252,21 @@ dev_env_s3_endpoint() {
   printf '%s\n' "${PUBLIRA_S3_ENDPOINT:-http://rustfs:9000}"
 }
 
+# Removes a bucket with everything in it, and reports a bucket that is already
+# gone as the success it is: `rb --force` lists the objects before it deletes
+# the bucket, so it fails on ListObjectsV2 rather than finding nothing to do.
+# Any other failure is passed on with the message the CLI printed.
+dev_env_remove_bucket() {
+  local bucket="$1" endpoint="${2:-}" endpoint_args=() output status=0
+  [[ -z "${endpoint}" ]] || endpoint_args=(--endpoint-url "${endpoint}")
+  output="$(aws "${endpoint_args[@]}" s3 rb "s3://${bucket}" --force 2>&1)" || status=$?
+  if ((status == 0)) || [[ "${output}" == *NoSuchBucket* ]]; then
+    return 0
+  fi
+  printf '%s\n' "${output}" >&2
+  return "${status}"
+}
+
 # Administrator connection for creating and dropping a profile's database.
 # A loaded profile's PUBLIRA_DB_URL is the superuser URL of that database, so
 # the maintenance database on the same server is reached by swapping the path;
@@ -243,6 +287,10 @@ dev_env_write_profile() {
   local name="$1"
   local slot="$2"
   local profile_path tmp_path port_base postgres redis
+  # A profile written with no slot would carry PUBLIRA_REDIS_URL=redis://host/,
+  # a URL that resolves to database 0.
+  dev_env_slot_is_valid "${slot}" ||
+    dev_env_die "profile ${name} was given the slot '${slot}', outside ${DEV_ENV_SLOT_MIN}-${DEV_ENV_SLOT_MAX}"
   profile_path="$(dev_env_profile_path "${name}")"
   tmp_path="${profile_path}.tmp.$$"
   port_base=$((13000 + slot * 100))
@@ -305,7 +353,7 @@ dev_env_load_profile() {
   dev_env_load_required_profile_value "${profile_path}" DEV_ENV_OWNER_WORKTREE
   [[ "${DEV_ENV_NAME}" == "${name}" ]] || dev_env_die "profile name mismatch: ${profile_path}"
   dev_env_identifier_is_valid "${DEV_ENV_NAME}" || dev_env_die "invalid profile name in ${profile_path}"
-  [[ "${DEV_ENV_SLOT}" =~ ^([1-9]|1[0-5])$ ]] || dev_env_die "invalid Valkey slot in ${profile_path}"
+  dev_env_slot_is_valid "${DEV_ENV_SLOT}" || dev_env_die "invalid Valkey slot in ${profile_path}"
 
   local key
   for key in \
