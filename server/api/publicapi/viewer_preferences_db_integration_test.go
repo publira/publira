@@ -136,6 +136,10 @@ func TestDBViewerPreferencesAreMemberScopedByRLS(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTVPF", "viewer-pref-f.example.com", "Viewer Pref F")
 	first := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPF", "member-viewer-pref-f@example.com", "Member F", "tenant_member")
 	second := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPG", "member-viewer-pref-g@example.com", "Member G", "tenant_member")
+	// The insert below is aimed at a reader who has saved nothing, so the row it
+	// writes collides with no primary key: a policy that stopped refusing the
+	// write would be the only thing left that could refuse it.
+	unsaved := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPJ", "member-viewer-pref-j@example.com", "Member J", "tenant_member")
 	client := env.authClient()
 
 	if _, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, tokenFor(t, tenant, first), proto.Bool(true))); err != nil {
@@ -163,11 +167,14 @@ func TestDBViewerPreferencesAreMemberScopedByRLS(t *testing.T) {
 		}
 		created, err := conn.ExecContext(ctx,
 			"INSERT INTO user_viewer_preferences (tenant_id, user_id, wide_viewer_enabled) VALUES ($1, $2, false)",
-			tenant.ID, first.ID,
+			tenant.ID, unsaved.ID,
 		)
 		if err == nil {
-			t.Fatalf("write a first member preference as another member succeeded: %#v", created)
+			t.Fatalf("write another member's preference succeeded: %#v", created)
 		}
+		// The SQLSTATE rather than any error, so a constraint the row happened to
+		// break cannot stand in for the policy that has to refuse it.
+		assertInsufficientPrivilege(t, err, "write another member's preference")
 		updated, err := conn.ExecContext(ctx,
 			"UPDATE user_viewer_preferences SET wide_viewer_enabled = false WHERE tenant_id = $1 AND user_id = $2",
 			tenant.ID, first.ID,

@@ -8,9 +8,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/publira/publira/server/internal/testutil"
 )
+
+// insufficientPrivilege is the SQLSTATE PostgreSQL raises when a row would break
+// a row-level security policy.
+const insufficientPrivilege = "42501"
+
+// assertInsufficientPrivilege fails unless err is that refusal. A bare "some
+// error came back" would be satisfied by a unique constraint the planted row
+// happened to break, which says nothing about the policy under test.
+func assertInsufficientPrivilege(t *testing.T, err error, what string) {
+	t.Helper()
+
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilege {
+		t.Fatalf("%s error = %v, want SQLSTATE %s", what, err, insufficientPrivilege)
+	}
+}
 
 // These tests bypass the handlers and talk to PostgreSQL as publira_public
 // directly. The RPC-level cases prove the handlers filter by tenant; these prove
