@@ -2157,7 +2157,6 @@
     "nav": {
       "account_menu": "アカウントメニュー",
       "announcements": "お知らせ",
-      "creators": "著者",
       "footer_links": "フッターリンク",
       "genres": "ジャンル",
       "labels": "レーベル",
@@ -2174,7 +2173,6 @@
       "search": "検索",
       "search_label": "作品を検索",
       "search_submit": "検索",
-      "series": "シリーズ",
       "signup": "はじめる"
     },
     "notifications": {

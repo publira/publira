@@ -112,9 +112,10 @@ test.describe("web-host header at a phone width", () => {
     const menu = page.getByRole("dialog", { name: "Menu" });
     const links = menu.getByRole("navigation");
 
-    await expect(links.getByRole("link", { name: "Series" })).toBeVisible();
-    await expect(links.getByRole("link", { name: "Labels" })).toBeVisible();
-    await expect(links.getByRole("link", { name: "Authors" })).toBeVisible();
+    // The rows are the two ways in that stay useful as the catalog grows. A
+    // flat list of every author and a flat list of every series are not among
+    // them, so the drawer offers neither as a destination.
+    await expect(links.getByRole("link")).toHaveText(["Labels", "Genres"]);
     await expect(
       menu.getByRole("searchbox", { name: "Search works" })
     ).toBeVisible();
@@ -154,9 +155,11 @@ test.describe("web-host header at a phone width", () => {
 /**
  * The site header at a desktop width, where the band draws the whole row.
  *
- * The catalog field is the one way into the results there. A link beside it
- * would be a second door to the same room, and the page behind that door opens
- * by asking for the keyword the field already takes.
+ * The row names the ways in that stay useful as the catalog grows — the labels,
+ * the genres, and the field — and nothing that grows into a wall of names with
+ * it. The field is the one way into the results: a link beside it would be a
+ * second door to the same room, and the page behind that door opens by asking
+ * for the keyword the field already takes.
  */
 test.describe("web-host header at a desktop width", () => {
   test.beforeEach(async ({ page }) => {
@@ -206,6 +209,23 @@ test.describe("web-host header at a desktop width", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 2, name: "Labels" })
+    ).toBeVisible();
+  });
+
+  test("links to the labels and the genres, and to neither flat list", async ({
+    page,
+  }) => {
+    await page.goto(hostPath(`/series/${SEED_TENANT.series.publicId}`));
+
+    const nav = page.getByRole("banner").getByRole("navigation");
+    await expect(nav.getByRole("link")).toHaveText(["Labels", "Genres"]);
+
+    // The two lists the band stopped naming are still there, and the work a
+    // reader is looking at is one of the ways back to them.
+    await page.getByRole("link", { name: "Back to the series list" }).click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
   });
 });

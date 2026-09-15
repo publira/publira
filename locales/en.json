@@ -2157,7 +2157,6 @@
     "nav": {
       "account_menu": "Account menu",
       "announcements": "Announcements",
-      "creators": "Authors",
       "footer_links": "Footer links",
       "genres": "Genres",
       "labels": "Labels",
@@ -2174,7 +2173,6 @@
       "search": "Search",
       "search_label": "Search works",
       "search_submit": "Search",
-      "series": "Series",
       "signup": "Get started"
     },
     "notifications": {

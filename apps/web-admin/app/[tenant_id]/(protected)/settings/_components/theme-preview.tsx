@@ -16,26 +16,22 @@ interface ThemePreviewProps {
 
 /**
  * The site's own navigation, taken from `host.*` rather than restated under
- * `admin.*`: a facsimile that says "Series" where the site says something else
- * is a picture of a site nobody visits. Only the sample content — the site
- * name and the two works — is the preview's own copy, because the site has no
- * fixed wording for it.
+ * `admin.*`: a facsimile that says "Labels" where the site says something else
+ * is a picture of a site nobody visits. The row is the one the site header
+ * draws, so it names what that row names and changes with it. Only the sample
+ * content — the site name and the two works — is the preview's own copy,
+ * because the site has no fixed wording for it.
  */
 const SiteNavLabels = () => (
   <>
     <span>
       <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <ClientMessage message="host.nav.series" />
+        <ClientMessage message="host.nav.labels" />
       </Suspense>
     </span>
     <span>
       <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
-        <ClientMessage message="host.nav.creators" />
-      </Suspense>
-    </span>
-    <span>
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <ClientMessage message="host.nav.labels" />
+        <ClientMessage message="host.nav.genres" />
       </Suspense>
     </span>
   </>

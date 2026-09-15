@@ -2157,7 +2157,6 @@
     "nav": {
       "account_menu": "계정 메뉴",
       "announcements": "공지사항",
-      "creators": "작가",
       "footer_links": "푸터 링크",
       "genres": "장르",
       "labels": "레이블",
@@ -2174,7 +2173,6 @@
       "search": "검색",
       "search_label": "작품 검색",
       "search_submit": "검색",
-      "series": "시리즈",
       "signup": "시작하기"
     },
     "notifications": {

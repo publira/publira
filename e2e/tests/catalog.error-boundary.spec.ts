@@ -82,7 +82,7 @@ test.describe("web-host site error boundary", () => {
       await expect(page.getByText("Could not show this page")).toBeVisible();
       // Site chrome survives — the failure is inside the layout, not above it.
       await expect(
-        page.getByRole("link", { exact: true, name: "Series" })
+        page.getByRole("link", { exact: true, name: "Labels" })
       ).toBeVisible();
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
@@ -101,7 +101,7 @@ test.describe("web-host site error boundary", () => {
     ).toBeVisible();
     await expect(page.getByText("Could not show this page")).toHaveCount(0);
     await expect(
-      page.getByRole("link", { exact: true, name: "Series" })
+      page.getByRole("link", { exact: true, name: "Labels" })
     ).toBeVisible();
   });
 });
