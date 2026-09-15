@@ -179,6 +179,25 @@ void main() {
     },
   );
 
+  test(
+    'readerHasBirthDate signs out a reader the API no longer knows',
+    () async {
+      repository
+        ..birthDateOnFile = true
+        ..birthDateFailure = const AuthFailure(AuthFailureKind.sessionExpired);
+      final controller = controllerFor();
+      await controller.signIn(
+        email: 'member@example.com',
+        password: 'memberpass',
+      );
+
+      expect(await controller.readerHasBirthDate(), isFalse);
+      expect(controller.isSignedIn, isFalse);
+      expect(store.session, isNull);
+      expect(controller.acknowledgeExpiry(), isTrue);
+    },
+  );
+
   test('restore drops a token that has already expired', () async {
     final controller = controllerFor(
       stored: AuthSession(

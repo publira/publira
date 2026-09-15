@@ -116,10 +116,15 @@ AuthController fakeAuthController({
   FakeAuthRepository? repository,
   InMemorySessionStore? store,
   bool birthDateOnFile = false,
+  AuthFailure? birthDateFailure,
 }) {
   return AuthController(
     repository:
-        repository ?? FakeAuthRepository(birthDateOnFile: birthDateOnFile),
+        repository ??
+        FakeAuthRepository(
+          birthDateOnFile: birthDateOnFile,
+          birthDateFailure: birthDateFailure,
+        ),
     store: store ?? InMemorySessionStore(session: storedSession),
     session: session,
   );

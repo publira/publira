@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
@@ -78,6 +79,7 @@ void main() {
     Size screen = portrait,
     FakeCommentRepository? comments,
     bool birthDateOnFile = false,
+    AuthFailure? birthDateFailure,
   }) async {
     tester.view
       ..physicalSize = screen
@@ -90,6 +92,7 @@ void main() {
         auth: fakeAuthController(
           session: session,
           birthDateOnFile: birthDateOnFile,
+          birthDateFailure: birthDateFailure,
         ),
         comments: comments,
         offline: offline,
@@ -361,6 +364,36 @@ void main() {
 
     expect(
       find.text('This work is not available for your age.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a session the API has dropped leads back to sign-in', (
+    tester,
+  ) async {
+    catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
+    await pumpApp(
+      tester,
+      session: fakeSession,
+      birthDateFailure: const AuthFailure(AuthFailureKind.sessionExpired),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-age-restricted')),
+    );
+
+    // The bearer is one the API has stopped accepting, so the reader is signed
+    // out: the gate stands them where a guest stands, and the app's own expiry
+    // notice offers the way back in.
+    expect(
+      find.text(
+        'Your age is checked before this work opens. '
+        'Sign in with an account that has your date of birth.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Your session is no longer valid. Please sign in again.'),
       findsOneWidget,
     );
   });
