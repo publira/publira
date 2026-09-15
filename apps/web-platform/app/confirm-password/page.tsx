@@ -2,7 +2,10 @@ import {
   AuthScreen,
   AuthScreenBody,
   AuthScreenHeader,
+  AuthScreenMain,
   AuthScreenNote,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -165,18 +168,24 @@ const ConfirmPasswordPage = ({
   }>;
 }) => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>Publira</AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-          <Message message="platform.auth.confirm_password.title" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>Publira</AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="platform.auth.confirm_password.title" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
 
-    <Suspense fallback={<ConfirmPasswordFallback />}>
-      <ConfirmPasswordPageContent searchParams={searchParams} />
-    </Suspense>
+      <Suspense fallback={<ConfirmPasswordFallback />}>
+        <ConfirmPasswordPageContent searchParams={searchParams} />
+      </Suspense>
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

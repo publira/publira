@@ -1,6 +1,9 @@
 import {
   AuthScreen,
   AuthScreenHeader,
+  AuthScreenMain,
+  AuthScreenPanel,
+  AuthScreenPattern,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
@@ -23,16 +26,22 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 const ResetPasswordPage = () => (
   <AuthScreen>
-    <AuthScreenHeader>
-      <AuthScreenTitle>Publira</AuthScreenTitle>
-      <AuthScreenTagline>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="platform.auth.reset_password.description" />
-        </Suspense>
-      </AuthScreenTagline>
-    </AuthScreenHeader>
+    <AuthScreenMain>
+      <AuthScreenHeader>
+        <AuthScreenTitle>Publira</AuthScreenTitle>
+        <AuthScreenTagline>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.reset_password.description" />
+          </Suspense>
+        </AuthScreenTagline>
+      </AuthScreenHeader>
 
-    <ResetPasswordForm />
+      <ResetPasswordForm />
+    </AuthScreenMain>
+
+    <AuthScreenPanel>
+      <AuthScreenPattern />
+    </AuthScreenPanel>
   </AuthScreen>
 );
 

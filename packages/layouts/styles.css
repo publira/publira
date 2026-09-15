@@ -38,3 +38,32 @@
     }
   }
 }
+
+/**
+ * The paper a console sign-in screen fills `AuthScreenPanel` with, ruled into
+ * squares a line of type wide.
+ *
+ * Every stop is hard, so each line is a hairline and the square between them is
+ * left at the colour it sits on: these are rules drawn on paper, not a surface
+ * washed from one colour into another. The line is mixed down from `border`
+ * because it repeats every 1.5rem, where the hairline that separates one
+ * section from the next appears once.
+ *
+ * Reading `border` is also what carries a tenant's own palette into the panel:
+ * the tenant console is painted from `/theme.css` like every other screen in
+ * it.
+ */
+@utility auth-screen-pattern {
+  --auth-screen-rule: color-mix(in oklab, var(--color-border) 60%, transparent);
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--auth-screen-rule) 0 1px,
+      transparent 1px 1.5rem
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--auth-screen-rule) 0 1px,
+      transparent 1px 1.5rem
+    );
+}
