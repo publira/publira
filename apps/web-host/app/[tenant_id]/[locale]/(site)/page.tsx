@@ -1021,7 +1021,9 @@ const FeaturedCreatorsSection = async () => {
 };
 
 const Page = () => (
-  <main className="mx-auto grid max-w-6xl gap-12 px-6 py-10">
+  /* Four times the largest space a section keeps inside itself, so a boundary
+     reads before its heading does. */
+  <main className="mx-auto grid max-w-6xl gap-24 px-6 py-10">
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -1169,7 +1171,7 @@ const Page = () => (
       </div>
     </section>
 
-    <div className="grid gap-12 md:grid-cols-2">
+    <div className="grid gap-24 md:grid-cols-2 md:gap-12">
       <section aria-labelledby="featured-labels">
         <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
           <h2 className="font-serif text-xl leading-tight" id="featured-labels">
