@@ -40,7 +40,7 @@ import type {
 } from "../episode-types";
 import {
   MAX_BULK_EPISODE_CREDIT_EPISODES,
-  episodesInInclusiveRange,
+  episodesSelectedInReadingOrder,
 } from "./credit-range";
 
 const createEpisodeSchema = async (locale: Locale) => {
@@ -261,14 +261,9 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
   return z
     .object({
       creatorPublicId: optionalTrimmedString(),
-      firstEpisodePublicId: requiredTrimmedString(
-        t("admin.series.episodes.credits.validation.range_required")
-      ),
+      episodePublicIds: jsonStringArrayFormSchema,
       fromCreatorPublicId: optionalTrimmedString(),
       fromRolePublicId: optionalTrimmedString(),
-      lastEpisodePublicId: requiredTrimmedString(
-        t("admin.series.episodes.credits.validation.range_required")
-      ),
       operation: requiredTrimmedString(
         t("admin.series.episodes.credits.validation.operation_required")
       ),
@@ -457,10 +452,9 @@ export const bulkEditEpisodeCreditsAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       creatorPublicId: { kind: "value", name: "creator_public_id" },
-      firstEpisodePublicId: { kind: "value", name: "first_episode_public_id" },
+      episodePublicIds: { kind: "value", name: "episode_public_ids" },
       fromCreatorPublicId: { kind: "value", name: "from_creator_public_id" },
       fromRolePublicId: { kind: "value", name: "from_role_public_id" },
-      lastEpisodePublicId: { kind: "value", name: "last_episode_public_id" },
       operation: "value",
       rolePublicId: { kind: "value", name: "role_public_id" },
       seriesPublicId: { kind: "value", name: "series_public_id" },
@@ -499,20 +493,19 @@ export const bulkEditEpisodeCreditsAction = async (
     };
   }
 
-  const range = episodesInInclusiveRange(
+  const selected = episodesSelectedInReadingOrder(
     listed.episodes,
-    parsed.data.firstEpisodePublicId,
-    parsed.data.lastEpisodePublicId
+    parsed.data.episodePublicIds
   );
-  if (range.length === 0) {
+  if (selected.length === 0) {
     return {
-      message: t("admin.series.episodes.credits.validation.range_required"),
+      message: t("admin.series.episodes.credits.validation.selection_required"),
       ok: false,
     };
   }
-  if (range.length > MAX_BULK_EPISODE_CREDIT_EPISODES) {
+  if (selected.length > MAX_BULK_EPISODE_CREDIT_EPISODES) {
     return {
-      message: t("admin.series.episodes.credits.range_too_many", {
+      message: t("admin.series.episodes.credits.selection_too_many", {
         count: String(MAX_BULK_EPISODE_CREDIT_EPISODES),
       }),
       ok: false,
@@ -522,7 +515,7 @@ export const bulkEditEpisodeCreditsAction = async (
   return await withAdminSessionReauth(() =>
     bulkEditEpisodeCredits(
       {
-        episodePublicIds: range.map((episode) => episode.publicId),
+        episodePublicIds: selected.map((episode) => episode.publicId),
         operation,
         seriesPublicId: parsed.data.seriesPublicId,
         tenantId: parsed.data.tenantId,

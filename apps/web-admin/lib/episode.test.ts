@@ -575,7 +575,7 @@ describe("bulkEditEpisodeCredits", () => {
     });
   });
 
-  it("maps a duplicate-credit precondition to the range-edit wording", async () => {
+  it("maps a duplicate-credit precondition to the selection-edit wording", async () => {
     mockBulkEditEpisodeCredits.mockRejectedValue(
       new ConnectError("already credited", Code.FailedPrecondition)
     );
@@ -597,7 +597,7 @@ describe("bulkEditEpisodeCredits", () => {
 
     expect(result).toEqual({
       message:
-        "Some episodes in the range already credit the author this would become. Change the replacement or the range.",
+        "Some of the selected episodes already credit the author this would become. Change the replacement or the selection.",
       ok: false,
     });
   });

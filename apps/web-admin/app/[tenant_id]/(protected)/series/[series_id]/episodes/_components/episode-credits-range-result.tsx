@@ -37,7 +37,7 @@ interface EpisodeCreditsRangeResultProps {
 }
 
 /**
- * What one range edit did: the episodes it wrote on, and the ones it left,
+ * What one bulk edit did: the episodes it wrote on, and the ones it left,
  * each with the reason the server gave. A skip is a guest or a deliberate
  * deviation, not an error, so it is listed rather than toasted away.
  */

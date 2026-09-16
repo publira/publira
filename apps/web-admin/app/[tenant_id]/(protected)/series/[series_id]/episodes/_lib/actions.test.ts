@@ -117,24 +117,28 @@ describe("episode create actions", () => {
   });
 });
 
+const fortyEpisodes = Array.from({ length: 40 }, (_, index) => ({
+  publicId: `EP${String(index + 1).padStart(2, "0")}`,
+  title: `Episode ${index + 1}`,
+}));
+
 const bulkCreditFormData = (): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("series_public_id", "SERIES001");
   formData.set("operation", "replace");
-  formData.set("first_episode_public_id", "EP01");
-  formData.set("last_episode_public_id", "EP11");
+  formData.set(
+    "episode_public_ids",
+    JSON.stringify(
+      fortyEpisodes.slice(0, 11).map((episode) => episode.publicId)
+    )
+  );
   formData.set("from_creator_public_id", "CREATOR_B");
   formData.set("from_role_public_id", "ROLE_ARTIST");
   formData.set("to_creator_public_id", "CREATOR_C");
   formData.set("to_role_public_id", "ROLE_ARTIST");
   return formData;
 };
-
-const fortyEpisodes = Array.from({ length: 40 }, (_, index) => ({
-  publicId: `EP${String(index + 1).padStart(2, "0")}`,
-  title: `Episode ${index + 1}`,
-}));
 
 describe("bulkEditEpisodeCreditsAction", () => {
   beforeEach(() => {
@@ -147,7 +151,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
     });
   });
 
-  it("resolves episodes 1–11 of a 40-episode series and sends only those public ids", async () => {
+  it("resolves the checked episodes of a 40-episode series and sends only those public ids", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValueOnce({
       changedEpisodePublicIds: fortyEpisodes
         .slice(0, 11)
@@ -188,15 +192,40 @@ describe("bulkEditEpisodeCreditsAction", () => {
     expect(result.changedEpisodePublicIds.includes("EP12")).toBe(false);
   });
 
-  it("refuses a range whose ends are not on the series", async () => {
+  it("sends a sparse selection in reading order and drops ids that are not on the series", async () => {
+    mockBulkEditEpisodeCredits.mockResolvedValueOnce({
+      changedEpisodePublicIds: ["EP01", "EP07", "EP11"],
+      ok: true,
+      unchangedEpisodes: [],
+    });
+
     const formData = bulkCreditFormData();
-    formData.set("last_episode_public_id", "MISSING");
+    formData.set(
+      "episode_public_ids",
+      JSON.stringify(["EP11", "MISSING", "EP01", "EP07"])
+    );
+
+    const { bulkEditEpisodeCreditsAction } = await import("./actions");
+    const result = await bulkEditEpisodeCreditsAction(null, formData);
+
+    expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        episodePublicIds: ["EP01", "EP07", "EP11"],
+      }),
+      "en"
+    );
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it("refuses when nothing checked is on the series", async () => {
+    const formData = bulkCreditFormData();
+    formData.set("episode_public_ids", JSON.stringify(["MISSING"]));
 
     const { bulkEditEpisodeCreditsAction } = await import("./actions");
     const result = await bulkEditEpisodeCreditsAction(null, formData);
 
     expect(result).toEqual({
-      message: "Choose the first and last episode of the range.",
+      message: "Choose at least one episode.",
       ok: false,
     });
     expect(mockBulkEditEpisodeCredits).not.toHaveBeenCalled();

@@ -45,10 +45,15 @@ const emptyCatalog: ListEpisodeCreditRangeCatalogResult = {
 
 /**
  * The Credits action on the series episode list. The list itself is cursor
- * paged, so the range picker walks `ListEpisodes` when the dialog opens
- * rather than depending on the page that happens to be on screen. Authors
- * and roles are loaded then too, so opening the list does not wait on the
- * catalogs the dialog needs.
+ * paged, so the checklist walks `ListEpisodes` when the dialog opens rather
+ * than depending on the page that happens to be on screen. Authors and roles
+ * are loaded then too, so opening the list does not wait on the catalogs the
+ * dialog needs.
+ *
+ * Checks on the list and checks in this dialog are the same set: the list
+ * seeds a sparse selection, and the dialog is where episodes from other
+ * pages can be added. Series-form credits stay the template for new
+ * episodes; this writes on the ones that already exist.
  */
 export const EpisodeCreditsRangeDialog = ({
   seriesPublicId,
@@ -91,8 +96,9 @@ export const EpisodeCreditsRangeDialog = ({
       if (!nextOpen) {
         return;
       }
-      // Remount the form so a previous result or half-filled range does not
-      // survive from the last time the dialog was open.
+      // Remount the form so a previous result or half-filled credit does not
+      // survive from the last time the dialog was open. The checked episodes
+      // live on the list provider and are left as they are.
       setSessionKey((current) => current + 1);
       setCatalog(emptyCatalog);
       setHasLoaded(false);
@@ -113,7 +119,7 @@ export const EpisodeCreditsRangeDialog = ({
       <DialogPortal>
         <DialogBackdrop />
         <DialogViewport>
-          <DialogPopup className="flex max-h-[min(90vh,44rem)] min-h-0 w-[min(92vw,40rem)] flex-col overflow-y-auto">
+          <DialogPopup className="flex max-h-[min(90vh,44rem)] min-h-0 w-[min(92vw,40rem)] scroll-pb-16 flex-col overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">
                 {t("admin.series.episodes.credits.dialog_title")}

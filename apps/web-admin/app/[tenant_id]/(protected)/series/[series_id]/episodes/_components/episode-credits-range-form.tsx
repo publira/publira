@@ -21,7 +21,7 @@ import { useTenantId } from "#lib/use-tenant-id";
 
 import {
   MAX_BULK_EPISODE_CREDIT_EPISODES,
-  episodesInInclusiveRange,
+  episodesSelectedInReadingOrder,
 } from "../_lib/credit-range";
 import type {
   BulkEditEpisodeCreditsActionState,
@@ -34,6 +34,7 @@ import type {
   CreditPair,
 } from "./episode-credits-range-editor";
 import { EpisodeCreditsRangeResult } from "./episode-credits-range-result";
+import { useEpisodeCreditsSelection } from "./episode-credits-selection";
 
 const isCreditOperation = (value: string): value is CreditOperation =>
   value === "add" || value === "replace" || value === "remove";
@@ -51,12 +52,6 @@ const optionName = (
   publicId: string
 ): string =>
   options.find((option) => option.publicId === publicId)?.name ?? publicId;
-
-const optionTitle = (
-  options: readonly EpisodeCreditRangeOption[],
-  publicId: string
-): string =>
-  options.find((option) => option.publicId === publicId)?.title ?? publicId;
 
 const isReplaceSame = (
   operation: CreditOperation,
@@ -80,15 +75,15 @@ const isCreditComplete = (
   return isCompletePair(credit);
 };
 
-const canApplyCreditRange = (input: {
+const canApplyCreditSelection = (input: {
   creditComplete: boolean;
   hasCreators: boolean;
   hasRoles: boolean;
   isEpisodePending: boolean;
   isPending: boolean;
-  rangeCount: number;
-  rangeTooMany: boolean;
   replaceSame: boolean;
+  selectedCount: number;
+  selectionTooMany: boolean;
 }): boolean => {
   if (input.isPending || input.isEpisodePending || input.replaceSame) {
     return false;
@@ -96,39 +91,35 @@ const canApplyCreditRange = (input: {
   if (!(input.creditComplete && input.hasCreators && input.hasRoles)) {
     return false;
   }
-  return input.rangeCount > 0 && !input.rangeTooMany;
+  return input.selectedCount > 0 && !input.selectionTooMany;
 };
 
-const creditRangePreview = (input: {
+const creditSelectionPreview = (input: {
   credit: CreditPair;
   creditComplete: boolean;
   creatorRoles: CreditPickerOption[];
   creators: CreditPickerOption[];
   from: CreditPair;
   operation: CreditOperation;
-  range: EpisodeCreditRangeOption[];
-  rangeTooMany: boolean;
   replaceSame: boolean;
+  selectedCount: number;
+  selectionTooMany: boolean;
   t: AdminMessageAccessor;
   to: CreditPair;
 }): string => {
   if (
-    !(input.creditComplete && input.range.length > 0) ||
-    input.rangeTooMany ||
+    !(input.creditComplete && input.selectedCount > 0) ||
+    input.selectionTooMany ||
     input.replaceSame
   ) {
     return "";
   }
-  const count = String(input.range.length);
-  const first = optionTitle(input.range, input.range.at(0)?.publicId ?? "");
-  const last = optionTitle(input.range, input.range.at(-1)?.publicId ?? "");
+  const count = String(input.selectedCount);
   if (input.operation === "replace") {
     return input.t("admin.series.episodes.credits.preview_replace", {
       count,
-      first,
       from_creator: optionName(input.creators, input.from.creatorPublicId),
       from_role: optionName(input.creatorRoles, input.from.rolePublicId),
-      last,
       to_creator: optionName(input.creators, input.to.creatorPublicId),
       to_role: optionName(input.creatorRoles, input.to.rolePublicId),
     });
@@ -140,8 +131,6 @@ const creditRangePreview = (input: {
   return input.t(previewKey, {
     count,
     creator: optionName(input.creators, input.credit.creatorPublicId),
-    first,
-    last,
     role: optionName(input.creatorRoles, input.credit.rolePublicId),
   });
 };
@@ -180,13 +169,26 @@ export const EpisodeCreditsRangeForm = ({
   }
   const t = useAdminMessages();
   const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
+  const { clear, selectedIds, selectMany, toggle } =
+    useEpisodeCreditsSelection();
+  const runAction = useCallback(
+    async (
+      prevState: BulkEditEpisodeCreditsActionState,
+      formData: FormData
+    ): Promise<BulkEditEpisodeCreditsActionState> => {
+      const next = await action(prevState, formData);
+      if (next?.ok) {
+        clear();
+      }
+      return next;
+    },
+    [action, clear]
+  );
+  const [state, formAction, isPending] = useActionState(runAction, null);
   const [operation, setOperation] = useState<CreditOperation>("add");
   const [credit, setCredit] = useState(() => emptyPair(creatorRoles));
   const [from, setFrom] = useState(() => emptyPair(creatorRoles));
   const [to, setTo] = useState(() => emptyPair(creatorRoles));
-  const [firstEpisodePublicId, setFirstEpisodePublicId] = useState("");
-  const [lastEpisodePublicId, setLastEpisodePublicId] = useState("");
 
   const creatorItems = useMemo<ComboboxItem[]>(
     () =>
@@ -205,45 +207,30 @@ export const EpisodeCreditsRangeForm = ({
       })),
     [creatorRoles]
   );
-  const episodeItems = useMemo<ComboboxItem[]>(
-    () =>
-      episodes.map((episode) => ({
-        label: t("admin.series.episodes.credits.episode_option", {
-          id: episode.publicId,
-          title: episode.title,
-        }),
-        value: episode.publicId,
-      })),
-    [episodes, t]
-  );
-  const range = episodesInInclusiveRange(
-    episodes,
-    firstEpisodePublicId,
-    lastEpisodePublicId
-  );
-  const rangeTooMany = range.length > MAX_BULK_EPISODE_CREDIT_EPISODES;
+  const selected = episodesSelectedInReadingOrder(episodes, [...selectedIds]);
+  const selectionTooMany = selected.length > MAX_BULK_EPISODE_CREDIT_EPISODES;
   const replaceSame = isReplaceSame(operation, from, to);
   const creditComplete = isCreditComplete(operation, credit, from, to);
-  const canSubmit = canApplyCreditRange({
+  const canSubmit = canApplyCreditSelection({
     creditComplete,
     hasCreators: creatorItems.length > 0,
     hasRoles: roleItems.length > 0,
     isEpisodePending,
     isPending,
-    rangeCount: range.length,
-    rangeTooMany,
     replaceSame,
+    selectedCount: selected.length,
+    selectionTooMany,
   });
-  const preview = creditRangePreview({
+  const preview = creditSelectionPreview({
     creatorRoles,
     creators,
     credit,
     creditComplete,
     from,
     operation,
-    range,
-    rangeTooMany,
     replaceSame,
+    selectedCount: selected.length,
+    selectionTooMany,
     t,
     to,
   });
@@ -280,20 +267,20 @@ export const EpisodeCreditsRangeForm = ({
       creatorRolesErrorMessage={creatorRolesErrorMessage}
       creatorsEmpty={creatorItems.length === 0}
       creatorsErrorMessage={creatorsErrorMessage}
-      episodeItems={episodeItems}
+      episodes={episodes}
       episodesEmpty={
         !isEpisodePending && !episodesErrorMessage && episodes.length === 0
       }
       episodesErrorMessage={episodesErrorMessage}
       errorMessage={state && !state.ok ? state.message : ""}
-      firstEpisodePublicId={firstEpisodePublicId}
       formAction={formAction}
       from={from}
       hidden={{
         credit,
-        firstEpisodePublicId,
+        episodePublicIds: JSON.stringify(
+          selected.map((episode) => episode.publicId)
+        ),
         from,
-        lastEpisodePublicId,
         operation,
         seriesPublicId,
         tenantId,
@@ -301,20 +288,21 @@ export const EpisodeCreditsRangeForm = ({
       }}
       isEpisodePending={isEpisodePending}
       isPending={isPending}
-      lastEpisodePublicId={lastEpisodePublicId}
+      onClearSelection={clear}
       onCreditChange={setCredit}
-      onFirstChange={setFirstEpisodePublicId}
       onFromChange={setFrom}
-      onLastChange={setLastEpisodePublicId}
       onOperationChange={handleOperationChange}
       onRetryEpisodes={onRetryEpisodes}
+      onSelectMany={selectMany}
       onToChange={setTo}
+      onToggle={toggle}
       operation={operation}
       preview={preview}
-      rangeCount={range.length}
-      rangeTooMany={rangeTooMany}
       replaceSame={replaceSame}
       roleItems={roleItems}
+      selectedIds={selectedIds}
+      selectedCount={selected.length}
+      selectionTooMany={selectionTooMany}
       to={to}
     />
   );

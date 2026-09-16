@@ -42,6 +42,7 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeCreditsRangeDialog } from "./_components/episode-credits-range-dialog";
+import { EpisodeCreditsSelectionProvider } from "./_components/episode-credits-selection";
 import { EpisodesSortableList } from "./_components/episodes-sortable-list";
 import { reorderEpisodesAction } from "./_lib/actions";
 
@@ -233,32 +234,34 @@ const SeriesEpisodesPage = ({
   params,
   searchParams,
 }: SeriesEpisodesPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <Suspense fallback={<SeriesEpisodesHeaderSkeleton />}>
-        <SeriesEpisodesChrome params={params} />
-      </Suspense>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <FlashToast
-        keyName="reordered"
-        message="admin.series.episodes.reordered"
-      />
-      <FlashToast
-        keyName="reorder_error"
-        message="admin.series.episodes.reorder_error"
-      />
-      {/*
-        A failed read hands back an empty `episodes`, so the empty state
-        has to stay behind `result.ok`. Otherwise the screen says the list
-        could not be displayed and that nothing is registered at once, and
-        offers a create button for a list nobody managed to read.
-      */}
-      <Suspense fallback={<SeriesEpisodesListSkeleton />}>
-        <SeriesEpisodesData params={params} searchParams={searchParams} />
-      </Suspense>
-    </AdminPageContent>
-  </AdminPage>
+  <EpisodeCreditsSelectionProvider>
+    <AdminPage>
+      <AdminPageHeader>
+        <Suspense fallback={<SeriesEpisodesHeaderSkeleton />}>
+          <SeriesEpisodesChrome params={params} />
+        </Suspense>
+      </AdminPageHeader>
+      <AdminPageContent>
+        <FlashToast
+          keyName="reordered"
+          message="admin.series.episodes.reordered"
+        />
+        <FlashToast
+          keyName="reorder_error"
+          message="admin.series.episodes.reorder_error"
+        />
+        {/*
+          A failed read hands back an empty `episodes`, so the empty state
+          has to stay behind `result.ok`. Otherwise the screen says the list
+          could not be displayed and that nothing is registered at once, and
+          offers a create button for a list nobody managed to read.
+        */}
+        <Suspense fallback={<SeriesEpisodesListSkeleton />}>
+          <SeriesEpisodesData params={params} searchParams={searchParams} />
+        </Suspense>
+      </AdminPageContent>
+    </AdminPage>
+  </EpisodeCreditsSelectionProvider>
 );
 
 export default SeriesEpisodesPage;

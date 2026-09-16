@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
   Combobox,
@@ -12,12 +13,15 @@ import {
 import { DialogClose, DialogFooter } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import { useAdminMessages } from "#components/admin-locale-context";
 
 import { MAX_BULK_EPISODE_CREDIT_EPISODES } from "../_lib/credit-range";
+import type { EpisodeCreditRangeOption } from "../episode-types";
+import { selectionCheckboxProps } from "./episode-credits-selection";
 
 export const OPERATIONS = ["add", "replace", "remove"] as const;
 
@@ -182,90 +186,108 @@ const CreditTargetFields = ({
   );
 };
 
-const EpisodeRangeFields = ({
-  episodeItems,
+const episodeMatchesQuery = (
+  episode: EpisodeCreditRangeOption,
+  query: string
+): boolean => {
+  if (query.length === 0) {
+    return true;
+  }
+  const needle = query.toLowerCase();
+  return (
+    episode.title.toLowerCase().includes(needle) ||
+    episode.publicId.toLowerCase().includes(needle)
+  );
+};
+
+const EpisodeSelectionFields = ({
+  episodes,
   episodesEmpty,
   episodesErrorMessage,
-  firstEpisodePublicId,
   isEpisodePending,
-  lastEpisodePublicId,
-  onFirstChange,
-  onLastChange,
+  onClearSelection,
   onRetryEpisodes,
-  rangeCount,
-  rangeTooMany,
+  onSelectMany,
+  onToggle,
+  selectedCount,
+  selectedIds,
+  selectionTooMany,
 }: {
-  episodeItems: ComboboxItem[];
+  episodes: EpisodeCreditRangeOption[];
   episodesEmpty: boolean;
   episodesErrorMessage?: string;
-  firstEpisodePublicId: string;
   isEpisodePending: boolean;
-  lastEpisodePublicId: string;
-  onFirstChange: (next: string) => void;
-  onLastChange: (next: string) => void;
+  onClearSelection: () => void;
   onRetryEpisodes: () => void;
-  rangeCount: number;
-  rangeTooMany: boolean;
+  onSelectMany: (publicIds: readonly string[], selected: boolean) => void;
+  onToggle: (publicId: string, selected: boolean) => void;
+  selectedCount: number;
+  selectedIds: ReadonlySet<string>;
+  selectionTooMany: boolean;
 }) => {
   const t = useAdminMessages();
-  const firstEpisodeId = useId();
-  const lastEpisodeId = useId();
-  const pickersDisabled = isEpisodePending || episodeItems.length === 0;
+  const searchId = useId();
+  const selectVisibleId = useId();
+  const listId = useId();
+  const [query, setQuery] = useState("");
+  const visibleEpisodes = episodes.filter((episode) =>
+    episodeMatchesQuery(episode, query.trim())
+  );
+  const visibleIds = visibleEpisodes.map((episode) => episode.publicId);
+  const selectedVisibleCount = visibleIds.filter((publicId) =>
+    selectedIds.has(publicId)
+  ).length;
+  const allVisibleSelected =
+    visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+  const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
+  const listDisabled = isEpisodePending || episodes.length === 0;
 
   return (
     <fieldset className="grid gap-3">
       <legend className="text-sm font-medium text-foreground">
-        {t("admin.series.episodes.credits.range")}
+        {t("admin.series.episodes.credits.selection")}
       </legend>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor={firstEpisodeId}>
-            {t("admin.series.episodes.credits.range_first")}
-          </FieldLabel>
-          <FieldContent>
-            <Combobox
-              disabled={pickersDisabled}
-              id={firstEpisodeId}
-              items={episodeItems}
-              onValueChange={onFirstChange}
-              value={firstEpisodePublicId}
-            >
-              <ComboboxInput
-                placeholder={t("admin.series.episodes.credits.range_search")}
-              />
-              <ComboboxPopup>
-                <ComboboxEmpty>
-                  {t("admin.series.episodes.credits.range_no_match")}
-                </ComboboxEmpty>
-                <ComboboxItems />
-              </ComboboxPopup>
-            </Combobox>
-          </FieldContent>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor={lastEpisodeId}>
-            {t("admin.series.episodes.credits.range_last")}
-          </FieldLabel>
-          <FieldContent>
-            <Combobox
-              disabled={pickersDisabled}
-              id={lastEpisodeId}
-              items={episodeItems}
-              onValueChange={onLastChange}
-              value={lastEpisodePublicId}
-            >
-              <ComboboxInput
-                placeholder={t("admin.series.episodes.credits.range_search")}
-              />
-              <ComboboxPopup>
-                <ComboboxEmpty>
-                  {t("admin.series.episodes.credits.range_no_match")}
-                </ComboboxEmpty>
-                <ComboboxItems />
-              </ComboboxPopup>
-            </Combobox>
-          </FieldContent>
-        </Field>
+      <Field>
+        <FieldLabel htmlFor={searchId}>
+          {t("admin.series.episodes.credits.selection_search")}
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            disabled={listDisabled}
+            id={searchId}
+            onChange={(event) => setQuery(event.currentTarget.value)}
+            placeholder={t("admin.series.episodes.credits.selection_search")}
+            type="search"
+            value={query}
+          />
+        </FieldContent>
+      </Field>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            {...selectionCheckboxProps(allVisibleSelected, someVisibleSelected)}
+            disabled={listDisabled || visibleIds.length === 0}
+            id={selectVisibleId}
+            onCheckedChange={(checked) => {
+              onSelectMany(visibleIds, checked);
+            }}
+          />
+          <label
+            className="text-xs text-muted-foreground"
+            htmlFor={selectVisibleId}
+          >
+            {t("admin.series.episodes.credits.selection_select_visible")}
+          </label>
+        </div>
+        <Button
+          disabled={selectedCount === 0}
+          onClick={onClearSelection}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          {t("admin.series.episodes.credits.selection_clear")}
+        </Button>
       </div>
       {isEpisodePending ? (
         <p className="text-xs text-muted-foreground">
@@ -289,14 +311,50 @@ const EpisodeRangeFields = ({
           {t("admin.series.episodes.credits.episodes_empty")}
         </p>
       ) : null}
-      {rangeCount > 0 ? (
+      {!isEpisodePending && !episodesEmpty && visibleEpisodes.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {t("admin.series.episodes.credits.selection_no_match")}
+        </p>
+      ) : null}
+      {visibleEpisodes.length > 0 ? (
+        <div className="max-h-72 overflow-y-auto border border-border p-3">
+          <div className="grid gap-2">
+            {visibleEpisodes.map((episode) => {
+              const rowId = `${listId}-${episode.publicId}`;
+              return (
+                <label
+                  className="flex items-center gap-2 text-sm"
+                  htmlFor={rowId}
+                  key={episode.publicId}
+                >
+                  <Checkbox
+                    checked={selectedIds.has(episode.publicId)}
+                    disabled={listDisabled}
+                    id={rowId}
+                    onCheckedChange={(checked) => {
+                      onToggle(episode.publicId, checked);
+                    }}
+                  />
+                  <span>
+                    {t("admin.series.episodes.credits.episode_option", {
+                      id: episode.publicId,
+                      title: episode.title,
+                    })}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {selectedCount > 0 ? (
         <p aria-live="polite" className="text-xs text-muted-foreground">
-          {rangeTooMany
-            ? t("admin.series.episodes.credits.range_too_many", {
+          {selectionTooMany
+            ? t("admin.series.episodes.credits.selection_too_many", {
                 count: String(MAX_BULK_EPISODE_CREDIT_EPISODES),
               })
-            : t("admin.series.episodes.credits.range_count", {
-                count: String(rangeCount),
+            : t("admin.series.episodes.credits.selection_count", {
+                count: String(selectedCount),
               })}
         </p>
       ) : null}
@@ -312,18 +370,16 @@ export interface EpisodeCreditsRangeEditorProps {
   creatorRolesErrorMessage?: string;
   creatorsEmpty: boolean;
   creatorsErrorMessage?: string;
-  episodeItems: ComboboxItem[];
+  episodes: EpisodeCreditRangeOption[];
   episodesEmpty: boolean;
   episodesErrorMessage?: string;
   errorMessage?: string;
-  firstEpisodePublicId: string;
   formAction: (formData: FormData) => void;
   from: CreditPair;
   hidden: {
     credit: CreditPair;
-    firstEpisodePublicId: string;
+    episodePublicIds: string;
     from: CreditPair;
-    lastEpisodePublicId: string;
     operation: CreditOperation;
     seriesPublicId: string;
     tenantId: string;
@@ -331,20 +387,21 @@ export interface EpisodeCreditsRangeEditorProps {
   };
   isEpisodePending: boolean;
   isPending: boolean;
-  lastEpisodePublicId: string;
+  onClearSelection: () => void;
   onCreditChange: (next: CreditPair) => void;
-  onFirstChange: (next: string) => void;
   onFromChange: (next: CreditPair) => void;
-  onLastChange: (next: string) => void;
   onOperationChange: (next: string) => void;
   onRetryEpisodes: () => void;
+  onSelectMany: (publicIds: readonly string[], selected: boolean) => void;
   onToChange: (next: CreditPair) => void;
+  onToggle: (publicId: string, selected: boolean) => void;
   operation: CreditOperation;
   preview?: string;
-  rangeCount: number;
-  rangeTooMany: boolean;
   replaceSame: boolean;
   roleItems: ComboboxItem[];
+  selectedCount: number;
+  selectedIds: ReadonlySet<string>;
+  selectionTooMany: boolean;
   to: CreditPair;
 }
 
@@ -356,30 +413,30 @@ export const EpisodeCreditsRangeEditor = ({
   creatorRolesErrorMessage,
   creatorsEmpty,
   creatorsErrorMessage,
-  episodeItems,
+  episodes,
   episodesEmpty,
   episodesErrorMessage,
   errorMessage,
-  firstEpisodePublicId,
   formAction,
   from,
   hidden,
   isEpisodePending,
   isPending,
-  lastEpisodePublicId,
+  onClearSelection,
   onCreditChange,
-  onFirstChange,
   onFromChange,
-  onLastChange,
   onOperationChange,
   onRetryEpisodes,
+  onSelectMany,
   onToChange,
+  onToggle,
   operation,
   preview,
-  rangeCount,
-  rangeTooMany,
   replaceSame,
   roleItems,
+  selectedCount,
+  selectedIds,
+  selectionTooMany,
   to,
 }: EpisodeCreditsRangeEditorProps) => {
   const t = useAdminMessages();
@@ -395,14 +452,9 @@ export const EpisodeCreditsRangeEditor = ({
       />
       <input name="operation" type="hidden" value={hidden.operation} />
       <input
-        name="first_episode_public_id"
+        name="episode_public_ids"
         type="hidden"
-        value={hidden.firstEpisodePublicId}
-      />
-      <input
-        name="last_episode_public_id"
-        type="hidden"
-        value={hidden.lastEpisodePublicId}
+        value={hidden.episodePublicIds}
       />
       <input
         name="creator_public_id"
@@ -483,18 +535,18 @@ export const EpisodeCreditsRangeEditor = ({
         to={to}
       />
 
-      <EpisodeRangeFields
-        episodeItems={episodeItems}
+      <EpisodeSelectionFields
+        episodes={episodes}
         episodesEmpty={episodesEmpty}
         episodesErrorMessage={episodesErrorMessage}
-        firstEpisodePublicId={firstEpisodePublicId}
         isEpisodePending={isEpisodePending}
-        lastEpisodePublicId={lastEpisodePublicId}
-        onFirstChange={onFirstChange}
-        onLastChange={onLastChange}
+        onClearSelection={onClearSelection}
         onRetryEpisodes={onRetryEpisodes}
-        rangeCount={rangeCount}
-        rangeTooMany={rangeTooMany}
+        onSelectMany={onSelectMany}
+        onToggle={onToggle}
+        selectedCount={selectedCount}
+        selectedIds={selectedIds}
+        selectionTooMany={selectionTooMany}
       />
 
       {creatorsErrorMessage ? (

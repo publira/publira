@@ -27,7 +27,7 @@ const render = (
 afterEach(cleanup);
 
 describe("EpisodeCreditsRangeResult", () => {
-  it("lists the episodes the operation wrote on, in the order the range named them", () => {
+  it("lists the episodes the operation wrote on, in the order they were changed", () => {
     render({
       changedEpisodePublicIds: ["EP01", "EP02", "EP11"],
       ok: true,
@@ -60,7 +60,7 @@ describe("EpisodeCreditsRangeResult", () => {
     expect(screen.getByText("Episode 9 — Already credited")).toBeDefined();
   });
 
-  it("says nothing changed when every episode in the range was skipped", () => {
+  it("says nothing changed when every selected episode was skipped", () => {
     render({
       changedEpisodePublicIds: [],
       ok: true,
