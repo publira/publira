@@ -196,6 +196,7 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	resp, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
 		EpisodePublicId: "EPISODE001",
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
 	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
@@ -206,11 +207,49 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	if env.checkout.secretKey != testCheckoutSecretKey {
 		t.Fatalf("checkout secret = %q, want tenant secret", env.checkout.secretKey)
 	}
-	if !strings.HasPrefix(env.checkout.input.successURL, "https://tenant.example/series/SERIES001/episodes/EPISODE001") {
-		t.Fatalf("successURL = %q, want tenant domain return URL", env.checkout.input.successURL)
+	if env.checkout.input.successURL != "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success&session_id=%7BCHECKOUT_SESSION_ID%7D" {
+		t.Fatalf("successURL = %q, want web return URL", env.checkout.input.successURL)
 	}
-	if !strings.Contains(env.checkout.input.successURL, "checkout=success") {
-		t.Fatalf("successURL = %q, want checkout=success", env.checkout.input.successURL)
+	if env.checkout.input.cancelURL != "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled" {
+		t.Fatalf("cancelURL = %q, want web return URL", env.checkout.input.cancelURL)
+	}
+	assertNoSecretLeak(t, env.logs.String())
+	assertPublicExpectations(t, env.mock)
+}
+
+func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
+	encryptor := newPublicTestEncryptor(t)
+	env := newPublicPaymentServer(t, encryptor)
+
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
+	expectAuthSession(env.mock, tenantID, userID, now)
+	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	env.mock.ExpectQuery(regexp.QuoteMeta(getPurchasableEpisodeByPublicIDForTenantQuery)).
+		WithArgs("EPISODE001", tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours"}).
+			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}))
+	env.mock.ExpectQuery(regexp.QuoteMeta(userHasValidPurchaseForEpisodeQuery)).
+		WithArgs(tenantID, userID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+
+	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+		EpisodePublicId: "EPISODE001",
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
+	}, tenantID.String()))
+	if err != nil {
+		t.Fatalf("StartEpisodeCheckout: %v", err)
+	}
+	if env.checkout.input.successURL != "https://tenant.example/en/checkout/return?episode=EPISODE001&status=success" {
+		t.Fatalf("successURL = %q, want mobile success return URL", env.checkout.input.successURL)
+	}
+	if env.checkout.input.cancelURL != "https://tenant.example/en/checkout/return?episode=EPISODE001&status=cancelled" {
+		t.Fatalf("cancelURL = %q, want mobile cancellation return URL", env.checkout.input.cancelURL)
 	}
 	assertNoSecretLeak(t, env.logs.String())
 	assertPublicExpectations(t, env.mock)

@@ -1077,8 +1077,17 @@ service ContentViewService {
 // A one-time paid-episode checkout. Purchases are created only by the Stripe
 // webhook after a successful payment, never by the browser's return URL.
 message StartEpisodeCheckoutRequest {
+  enum Client {
+    CLIENT_UNSPECIFIED = 0;
+    CLIENT_WEB = 1;
+    CLIENT_MOBILE = 2;
+  }
+
   publira.types.v1.TenantContext tenant = 1;
   string episode_public_id = 2;
+  // Where Stripe should return the reader after checkout. Unspecified keeps
+  // the existing web return URL for backwards compatibility.
+  Client client = 3;
 }
 
 message StartEpisodeCheckoutResponse {
