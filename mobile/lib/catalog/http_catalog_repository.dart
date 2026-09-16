@@ -676,6 +676,7 @@ class HttpCatalogRepository implements CatalogRepository {
       'EPISODE_ACCESS_FREE' => EpisodeAccess.free,
       'EPISODE_ACCESS_LOCKED' => EpisodeAccess.locked,
       'EPISODE_ACCESS_ENTITLED' => EpisodeAccess.entitled,
+      'EPISODE_ACCESS_AGE_RESTRICTED' => EpisodeAccess.ageRestricted,
       _ => EpisodeAccess.unknown,
     };
   }

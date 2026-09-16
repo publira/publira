@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
@@ -20,10 +21,20 @@ import 'package:publira/viewer/reading_position.dart';
 /// One episode as this screen opens it: its body, and the page the reader
 /// stopped on last time.
 class _OpenEpisode {
-  const _OpenEpisode({required this.detail, required this.startPage});
+  const _OpenEpisode({
+    required this.detail,
+    required this.startPage,
+    this.readerHasBirthDate = false,
+  });
 
   final EpisodeDetail detail;
   final int startPage;
+
+  /// Whether the reader has a birth date on their account. Asked about only
+  /// where it decides what is shown, which is a body withheld over an age:
+  /// it is what tells "we hold no date for you" apart from "the date we hold
+  /// is too recent".
+  final bool readerHasBirthDate;
 }
 
 /// Episode reader. Loads the body of one published episode and hands its pages
@@ -108,7 +119,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         pageIndex,
       ),
     );
-    _future = _load(catalog);
+    _future = _load(catalog, AuthScope.of(context));
     final comments = CommentScope.maybeOf(context);
     if (comments != null) {
       unawaited(_loadCommentMode(comments));
@@ -178,7 +189,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// Both reads are started before either is awaited: the position does not
   /// depend on the body, and a reader made to wait out two round trips in a
   /// row would see the first page later for it.
-  Future<_OpenEpisode?> _load(CatalogRepository catalog) async {
+  Future<_OpenEpisode?> _load(
+    CatalogRepository catalog,
+    AuthController auth,
+  ) async {
     final position = _savedPageIndex(catalog);
     final detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
     final saved = await position;
@@ -188,6 +202,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     return _OpenEpisode(
       detail: detail,
       startPage: resumePageIndex(saved, detail.images.length),
+      readerHasBirthDate:
+          detail.access == EpisodeAccess.ageRestricted &&
+          await auth.readerHasBirthDate(),
     );
   }
 
@@ -209,7 +226,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   void _reload() {
     setState(() {
-      _future = _load(CatalogScope.of(context));
+      _future = _load(CatalogScope.of(context), AuthScope.of(context));
     });
   }
 
@@ -266,6 +283,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   Widget _body(AppMessages messages, _OpenEpisode open) {
     final detail = open.detail;
+    if (detail.access == EpisodeAccess.ageRestricted) {
+      return _ageRestricted(messages, open);
+    }
     if (detail.access == EpisodeAccess.locked) {
       if (AuthScope.of(context).isSignedIn) {
         return _ViewerMessage(
@@ -304,6 +324,28 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       onNextEpisode: next == null ? null : () => _open(next),
       onPreviousEpisode: previous == null ? null : () => _open(previous),
       pageStore: OfflineScope.maybeOf(context),
+    );
+  }
+
+  /// What stands where the pages would be when the tenant makes a reader
+  /// prove an age for this series and they have not.
+  ///
+  /// Its three states are the three things that can be missing: the session,
+  /// the birth date, or the years themselves.
+  Widget _ageRestricted(AppMessages messages, _OpenEpisode open) {
+    if (!AuthScope.of(context).isSignedIn) {
+      return _ViewerMessage(
+        key: const ValueKey('episode-age-restricted'),
+        message: messages.viewerAgeRestrictedGuest,
+        actionLabel: messages.commonSignIn,
+        onAction: () => context.push(AppRoutes.signIn),
+      );
+    }
+    return _ViewerMessage(
+      key: const ValueKey('episode-age-restricted'),
+      message: open.readerHasBirthDate
+          ? messages.viewerAgeRestrictedTooYoung
+          : messages.viewerAgeRestrictedNoBirthDate,
     );
   }
 

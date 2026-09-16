@@ -37,6 +37,7 @@ class ConnectFixtureServer {
     this.commentStatus = HttpStatus.ok,
     this.followStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
+    this.memberBirthDate = '',
     this.encryptImages = true,
     this.listResponse,
     this.detailResponse,
@@ -410,6 +411,11 @@ class ConnectFixtureServer {
   /// another value to act out a token the API has stopped accepting.
   String? activeAccessToken;
 
+  /// The date `GetMe` reports for the member, as `YYYY-MM-DD`. Empty is the
+  /// account of a reader who has given none, which is what the API sends when
+  /// the column is unset.
+  String memberBirthDate;
+
   /// Whether a page leaves as ciphertext. Set it to false to act out an
   /// image-server instance a rolling deploy has not replaced yet, which the
   /// reader still has to work against for the length of the rollout.
@@ -570,6 +576,9 @@ class ConnectFixtureServer {
           'publicId': memberPublicId,
           'name': memberName,
           'role': 'member',
+          // protojson omits an empty string, the way the API does for a
+          // reader who has recorded no date.
+          if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
         },
       });
       return;

@@ -2626,6 +2626,11 @@
     },
     "viewer": {
       "back_to_series": "返回系列",
+      "age_restricted": {
+        "guest": "開啟本作品前需要核對年齡。請使用已登錄出生日期的帳戶登入。",
+        "no_birth_date": "開啟本作品前需要核對年齡。您的帳戶尚未登錄出生日期。",
+        "too_young": "本作品不適用於您的年齡。"
+      },
       "reaction": {
         "count": "{$count} 位讀者已回應",
         "count_single": "{$count} 位讀者已回應",

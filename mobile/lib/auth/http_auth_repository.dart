@@ -54,10 +54,25 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<AuthSession> refresh(AuthSession session) async {
+    final user = await _getMe(session);
+    return session.withUser(
+      userPublicId: _readString(user, 'publicId'),
+      userName: _readString(user, 'name'),
+    );
+  }
+
+  @override
+  Future<bool> hasBirthDate(AuthSession session) async {
+    return _readString(await _getMe(session), 'birthDate').isNotEmpty;
+  }
+
+  /// The `User` behind [session], as `GetMe` answers with it.
+  ///
+  /// The token under test travels explicitly, so a check does not depend on
+  /// the app having already adopted the session it is checking.
+  Future<Map<String, Object?>> _getMe(AuthSession session) async {
     try {
       final tenantId = await _tenants.resolve();
-      // The token under test travels explicitly, so the check does not depend
-      // on the app having already adopted it.
       final body = await _client.unary(
         _getMeProcedure,
         {
@@ -66,11 +81,7 @@ class HttpAuthRepository implements AuthRepository {
         tenantId: tenantId,
         accessToken: session.accessToken,
       );
-      final user = _expectMap(body['user'], 'user');
-      return session.withUser(
-        userPublicId: _readString(user, 'publicId'),
-        userName: _readString(user, 'name'),
-      );
+      return _expectMap(body['user'], 'user');
     } on ConnectException catch (error) {
       if (error.code == 'unauthenticated') {
         throw AuthFailure(

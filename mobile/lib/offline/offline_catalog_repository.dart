@@ -319,7 +319,9 @@ class OfflineCatalogRepository implements CatalogRepository {
     final keep = switch (detail.access) {
       EpisodeAccess.free => true,
       EpisodeAccess.entitled => reader.isNotEmpty,
-      EpisodeAccess.locked || EpisodeAccess.unknown => false,
+      EpisodeAccess.ageRestricted ||
+      EpisodeAccess.locked ||
+      EpisodeAccess.unknown => false,
     };
     if (!keep) {
       await library.removeEpisode(detail.seriesId, detail.episode.id);

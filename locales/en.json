@@ -2626,6 +2626,11 @@
     },
     "viewer": {
       "back_to_series": "Back to the series",
+      "age_restricted": {
+        "guest": "Your age is checked before this work opens. Sign in with an account that has your date of birth.",
+        "no_birth_date": "Your age is checked before this work opens, and your account has no date of birth on it.",
+        "too_young": "This work is not available for your age."
+      },
       "reaction": {
         "count": "{$count} readers reacted",
         "count_single": "{$count} reader reacted",

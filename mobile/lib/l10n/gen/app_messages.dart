@@ -520,6 +520,15 @@ abstract class AppMessages {
   /// `mobile.sign_in.website_note`
   String get signInWebsiteNote;
 
+  /// `mobile.viewer.age_restricted.guest`
+  String get viewerAgeRestrictedGuest;
+
+  /// `mobile.viewer.age_restricted.no_birth_date`
+  String get viewerAgeRestrictedNoBirthDate;
+
+  /// `mobile.viewer.age_restricted.too_young`
+  String get viewerAgeRestrictedTooYoung;
+
   /// `mobile.viewer.back_to_series`
   String get viewerBackToSeries;
 
@@ -1332,6 +1341,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get signInWebsiteNote {
     return 'アカウントの作成とパスワードの再設定はウェブサイトで行えます。';
+  }
+
+  @override
+  String get viewerAgeRestrictedGuest {
+    return 'この作品を開くには年齢の確認が必要です。生年月日を登録したアカウントでサインインしてください。';
+  }
+
+  @override
+  String get viewerAgeRestrictedNoBirthDate {
+    return 'この作品を開くには年齢の確認が必要です。アカウントに生年月日が登録されていません。';
+  }
+
+  @override
+  String get viewerAgeRestrictedTooYoung {
+    return 'この作品はお客様の年齢では閲覧できません。';
   }
 
   @override
@@ -2203,6 +2227,21 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedGuest {
+    return 'Your age is checked before this work opens. Sign in with an account that has your date of birth.';
+  }
+
+  @override
+  String get viewerAgeRestrictedNoBirthDate {
+    return 'Your age is checked before this work opens, and your account has no date of birth on it.';
+  }
+
+  @override
+  String get viewerAgeRestrictedTooYoung {
+    return 'This work is not available for your age.';
+  }
+
+  @override
   String get viewerBackToSeries {
     return 'Back to the series';
   }
@@ -3068,6 +3107,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get signInWebsiteNote {
     return '계정 생성과 비밀번호 재설정은 웹사이트에서 할 수 있습니다.';
+  }
+
+  @override
+  String get viewerAgeRestrictedGuest {
+    return '이 작품을 열려면 나이 확인이 필요합니다. 생년월일을 등록한 계정으로 로그인해 주세요.';
+  }
+
+  @override
+  String get viewerAgeRestrictedNoBirthDate {
+    return '이 작품을 열려면 나이 확인이 필요합니다. 계정에 생년월일이 등록되어 있지 않습니다.';
+  }
+
+  @override
+  String get viewerAgeRestrictedTooYoung {
+    return '이 작품은 현재 나이로는 열람할 수 없습니다.';
   }
 
   @override
@@ -3939,6 +3993,21 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedGuest {
+    return '打开本作品前需要核对年龄。请使用已登记出生日期的账户登录。';
+  }
+
+  @override
+  String get viewerAgeRestrictedNoBirthDate {
+    return '打开本作品前需要核对年龄。您的账户尚未登记出生日期。';
+  }
+
+  @override
+  String get viewerAgeRestrictedTooYoung {
+    return '本作品不适用于您的年龄。';
+  }
+
+  @override
   String get viewerBackToSeries {
     return '返回系列';
   }
@@ -4804,6 +4873,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get signInWebsiteNote {
     return '請在網站上建立帳戶或重設密碼。';
+  }
+
+  @override
+  String get viewerAgeRestrictedGuest {
+    return '開啟本作品前需要核對年齡。請使用已登錄出生日期的帳戶登入。';
+  }
+
+  @override
+  String get viewerAgeRestrictedNoBirthDate {
+    return '開啟本作品前需要核對年齡。您的帳戶尚未登錄出生日期。';
+  }
+
+  @override
+  String get viewerAgeRestrictedTooYoung {
+    return '本作品不適用於您的年齡。';
   }
 
   @override

@@ -12,6 +12,11 @@ enum EpisodeAccess {
   /// The episode is paid and this reader holds a purchase or an active ticket.
   entitled,
 
+  /// The tenant makes a reader prove an age for this series' rating and this
+  /// reader has not. It outranks the three above, so a free body and a bought
+  /// one are both withheld.
+  ageRestricted,
+
   /// The server named an access state this build does not know.
   unknown,
 }
