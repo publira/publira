@@ -12,7 +12,6 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 
-import { AgeRatingGate } from "#components/age-rating-gate";
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { CreatorCredits } from "#components/creator-credits";
 import { Message } from "#components/message";
@@ -26,7 +25,6 @@ import {
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
-import { getReaderProvenAgeRating } from "#lib/reader-age";
 import { shareText } from "#lib/share-text";
 import {
   getTenantPublicOrigin,
@@ -39,6 +37,7 @@ import { tenantLocaleUrl } from "#lib/tenant-locale-path";
 import { CheckoutNotice } from "./_components/checkout-notice";
 import { EpisodeBody } from "./_components/episode-body";
 import { EpisodeEndPanel } from "./_components/episode-end-panel";
+import { EpisodeRatingGate } from "./_components/episode-rating-gate";
 import {
   COMMENT_TOKEN_PARAM,
   parseCommentSearchParams,
@@ -183,6 +182,10 @@ const EpisodeContent = async (
   const { episode_id, series_id } = parsedParams;
   const purchaseSearchParams = parsePurchaseSearchParams(searchParams);
   const commentSearchParams = parseCommentSearchParams(searchParams);
+  const checkoutSessionId =
+    purchaseSearchParams.checkout === "success"
+      ? purchaseSearchParams.session_id
+      : "";
 
   // Missing / unpublished / other-series / other-tenant episodes resolve to
   // `null`, and the public site must not tell those apart. A failed read is a
@@ -209,11 +212,6 @@ const EpisodeContent = async (
 
   const { access, episode, images, nextEpisode, previousEpisode, series } =
     result.value;
-  // Read only for a series that carries a rating: an unrated page has nothing
-  // to ask the reader, so it never touches the session cookie.
-  const provenAgeRating = series.ageRating
-    ? await getReaderProvenAgeRating(tenantId)
-    : undefined;
   // GetSeriesDetail resolves a series override against the tenant default.
   // If that read failed, do not offer a form whose submission might be
   // rejected; the next request retries the uncached failure value.
@@ -246,12 +244,15 @@ const EpisodeContent = async (
   });
 
   return (
-    <AgeRatingGate
-      backHref={`/series/${series.publicId}`}
-      backMessage="host.episode.to_series_detail"
-      provenAgeRating={provenAgeRating}
+    <EpisodeRatingGate
+      access={access}
+      checkoutSessionId={checkoutSessionId}
+      episodePublicId={episode.publicId}
+      locale={locale}
       rating={series.ageRating}
+      seriesPublicId={series.publicId}
       seriesTitle={series.title}
+      tenantId={tenantId}
     >
       <main>
         <ContentViewTracker kind="episode" publicId={episode.publicId} />
@@ -273,11 +274,7 @@ const EpisodeContent = async (
               <EpisodeBody
                 access={access}
                 acceptsPayments={tenant?.acceptsPayments ?? false}
-                checkoutSessionId={
-                  purchaseSearchParams.checkout === "success"
-                    ? purchaseSearchParams.session_id
-                    : ""
-                }
+                checkoutSessionId={checkoutSessionId}
                 commentMode={commentMode}
                 commentToken={commentSearchParams[COMMENT_TOKEN_PARAM]}
                 episode={episode}
@@ -389,7 +386,7 @@ const EpisodeContent = async (
           />
         </EpisodeColumn>
       </main>
-    </AgeRatingGate>
+    </EpisodeRatingGate>
   );
 };
 

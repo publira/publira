@@ -16,10 +16,10 @@ import { episodePageLabel } from "../src/scenarios/viewer-pages";
 import { hostPath, WEB_HOST_AGE_VERIFICATION_BASE_URL } from "../src/urls";
 
 /**
- * An `r18` body on a tenant that verifies ages. The browser's own confirmation
- * is still what stands in front of the page, but it no longer opens the body:
- * that is decided by the birth date on the reader's account, and a reader who
- * cannot clear it is offered the one thing that would.
+ * An `r18` body on a tenant that verifies ages. The birth date on the reader's
+ * account decides whether the body opens, and a reader it stops is told so
+ * straight away rather than first asked to confirm an age that would open
+ * nothing; they are offered the one thing that would.
  */
 
 const episodeUrl = `${WEB_HOST_AGE_VERIFICATION_BASE_URL}${hostPath(AGE_VERIFICATION_EPISODE_PATH)}`;
@@ -30,16 +30,9 @@ const firstPage = (page: Page) =>
     `canvas[aria-label="${episodePageLabel(AGE_VERIFICATION_EPISODE.title, 1)}"]`
   );
 
-/** Answer the interstitial, which is per browser and says nothing about age. */
-const confirmR18 = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "I am 18 or older" }).click();
-  await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: new RegExp(AGE_VERIFICATION_EPISODE.title, "u"),
-    })
-  ).toBeVisible();
-};
+/** The browser's own interstitial, which a stopped reader must never meet. */
+const ratingConfirmation = (page: Page) =>
+  page.getByRole("button", { name: "I am 18 or older" });
 
 // The last test gives the third member a birth date, which is written once, so
 // the suite runs in order and resets itself around either outcome.
@@ -55,11 +48,10 @@ test.describe("web-host age verification", () => {
     applyScenarioSql(AGE_VERIFICATION_SCENARIO);
   });
 
-  test("a guest who confirms the interstitial is asked to sign in instead of being read the body", async ({
+  test("a guest is asked to sign in without first being asked to confirm the rating", async ({
     page,
   }) => {
     await page.goto(episodeUrl);
-    await confirmR18(page);
 
     await expect(
       page.getByText("This episode is age-restricted")
@@ -67,6 +59,7 @@ test.describe("web-host age verification", () => {
     await expect(
       page.getByRole("link", { name: "Sign in to read" })
     ).toBeVisible();
+    await expect(ratingConfirmation(page)).toHaveCount(0);
     await expect(firstPage(page)).toHaveCount(0);
   });
 
@@ -79,7 +72,6 @@ test.describe("web-host age verification", () => {
       AGE_VERIFICATION_EPISODE_PATH,
       WEB_HOST_AGE_VERIFICATION_BASE_URL
     );
-    await confirmR18(page);
 
     await expect(
       page.getByText("This work is not available for your age.")
@@ -87,6 +79,7 @@ test.describe("web-host age verification", () => {
     await expect(
       page.getByRole("link", { name: "Add your date of birth" })
     ).toHaveCount(0);
+    await expect(ratingConfirmation(page)).toHaveCount(0);
     await expect(firstPage(page)).toHaveCount(0);
   });
 
@@ -101,15 +94,13 @@ test.describe("web-host age verification", () => {
     );
 
     await expect(firstPage(page)).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "I am 18 or older" })
-    ).toHaveCount(0);
+    await expect(ratingConfirmation(page)).toHaveCount(0);
     await expect(page.getByText("This episode is age-restricted")).toHaveCount(
       0
     );
   });
 
-  test("a reader with no date on file gives one in their settings and the body opens", async ({
+  test("a reader with no date on file is sent to their settings without confirming the rating, and the body opens once they give one", async ({
     page,
   }) => {
     await signInAsMember(
@@ -118,13 +109,13 @@ test.describe("web-host age verification", () => {
       AGE_VERIFICATION_EPISODE_PATH,
       WEB_HOST_AGE_VERIFICATION_BASE_URL
     );
-    await confirmR18(page);
 
     await expect(
       page.getByText(
         "This site checks your age before opening this work. Add your date of birth in your settings."
       )
     ).toBeVisible();
+    await expect(ratingConfirmation(page)).toHaveCount(0);
     await page.getByRole("link", { name: "Add your date of birth" }).click();
 
     await expect(page).toHaveURL(/\/settings$/u);
