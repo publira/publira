@@ -3,7 +3,7 @@
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
+import { ErrorBoundaryMessage } from "#components/error-boundary-message";
 import { ErrorScreen } from "#components/error-screen";
 
 /**
@@ -26,10 +26,10 @@ import { ErrorScreen } from "#components/error-screen";
  *
  * Sitting directly under the root layout is also why every string below has its
  * own `<Suspense>`: nothing above this boundary can absorb a suspend, and
- * `<ClientMessage>` suspends while it loads the catalog. Without a fallback to
- * flush, React cuts the response short after the 200 is already committed and
- * the operator gets the browser's own network-error page instead of this
- * screen.
+ * `<ErrorBoundaryMessage>` suspends while it loads the catalog. Without a
+ * fallback to flush, React cuts the response short after the 200 is already
+ * committed and the operator gets the browser's own network-error page instead
+ * of this screen.
  */
 const RootError = ({
   error,
@@ -44,24 +44,24 @@ const RootError = ({
     <ErrorScreen
       description={
         <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-          <ClientMessage message="platform.errors.root_description" />
+          <ErrorBoundaryMessage message="platform.errors.root_description" />
         </Suspense>
       }
       digest={error.digest}
       digestLabel={
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-          <ClientMessage message="platform.common.error_id" />
+          <ErrorBoundaryMessage message="platform.common.error_id" />
         </Suspense>
       }
       retry={retry}
       retryLabel={
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-          <ClientMessage message="platform.common.retry" />
+          <ErrorBoundaryMessage message="platform.common.retry" />
         </Suspense>
       }
       title={
         <Suspense fallback={<SkeletonLine className="h-8 w-96" />}>
-          <ClientMessage message="platform.errors.root_title" />
+          <ErrorBoundaryMessage message="platform.errors.root_title" />
         </Suspense>
       }
     />
