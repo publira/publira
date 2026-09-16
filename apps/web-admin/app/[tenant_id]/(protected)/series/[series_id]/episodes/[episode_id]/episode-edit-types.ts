@@ -1,4 +1,4 @@
-export type EpisodeEditMode = "schedule" | "pages";
+export type EpisodeEditMode = "schedule" | "pages" | "layout";
 
 export type EpisodeEditActionState =
   | {

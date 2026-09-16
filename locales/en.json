@@ -1038,7 +1038,15 @@
           "disabled": "Do not accept comments",
           "immediate": "Publish straight away",
           "approval_required": "Publish after approval"
-        }
+        },
+        "reading_direction": "Reading direction",
+        "reading_direction_description": "Which way readers turn the pages of this series' episodes. An episode can set its own on its edit page.",
+        "reading_direction_options": {
+          "rtl": "Right to left",
+          "ltr": "Left to right"
+        },
+        "spread_start": "Spreads start at page",
+        "spread_start_description": "Pages before this one are shown alone, and from it on two pages share a screen. 2 keeps the cover alone and 1 pairs from the first page. An episode with fewer pages is shown without spreads, and an episode can set its own on its edit page."
       },
       "validation": {
         "label_required": "A label is required.",
@@ -1052,7 +1060,9 @@
         "age_rating_invalid": "Select an age rating.",
         "tags_too_many": "A series can carry at most {$count} tags.",
         "comment_mode_invalid": "Select how comments on this series are published.",
-        "creator_credits_invalid": "Every author credit needs an author and a role."
+        "creator_credits_invalid": "Every author credit needs an author and a role.",
+        "reading_direction_invalid": "Select a reading direction.",
+        "spread_start_invalid": "Enter the page spreads start at as a whole number of 1 or more."
       },
       "created": "Series created.",
       "updated": "Series updated.",
@@ -1172,7 +1182,27 @@
           "epub_required": "Select the ePub file to upload.",
           "zip_invalid": "Select a ZIP (.zip) file.",
           "epub_invalid": "Select an ePub (.epub) file.",
-          "pages_required": "Select page images to add."
+          "pages_required": "Select page images to add.",
+          "reading_direction_invalid": "Select a reading direction, or follow the series.",
+          "spread_start_invalid": "Enter the page spreads start at as a whole number of 1 or more.",
+          "spread_start_past_last_page": "Spreads cannot start past the episode's last page. Choose one of its pages."
+        },
+        "layout": {
+          "title": "Page layout",
+          "description": "Which way this episode's pages are turned and where spreads start. A value that follows the series changes when the series does.",
+          "error": "Could not display the page layout",
+          "reading_direction": "Reading direction",
+          "follow_series": "Follow the series",
+          "follow_series_direction": "Follow the series ({$direction})",
+          "spread_start": "Spreads start",
+          "follow_series_spread_start": "Follow the series (page {$page})",
+          "spread_start_override": "Set for this episode",
+          "spread_start_page": "Spreads start at page",
+          "spread_start_page_description": "A page from 1 to {$count}. Pages before it are shown alone.",
+          "spread_start_no_pages": "Add page images before setting where this episode's spreads start.",
+          "update": "Update page layout",
+          "updated": "Page layout updated.",
+          "failed": "Could not update the page layout. Please try again later."
         },
         "credits": {
           "dialog_title": "Edit credits on selected episodes",

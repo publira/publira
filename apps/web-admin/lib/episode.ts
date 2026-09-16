@@ -1,10 +1,15 @@
 import { EpisodeCreditUnchangedReason } from "@publira/api-client/admin/series";
+import type {
+  GetEpisodeResponse,
+  UpdateEpisodeLayoutResponse,
+} from "@publira/api-client/admin/series";
 import type { Episode, EpisodeImage } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
   RPC_ERROR_REASON,
+  rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
@@ -22,6 +27,11 @@ import {
   emptyCursorPageTokens,
 } from "./cursor-page";
 import { getMessagesFor } from "./messages";
+import {
+  READING_DIRECTION_ENUM,
+  toReadingDirectionValue,
+} from "./reading-direction-enum";
+import type { EpisodeReadingLayoutOverrides } from "./reading-layout";
 import { getAccessToken } from "./session";
 
 export interface EpisodeItem {
@@ -68,7 +78,16 @@ export type ListEpisodesResult = CursorPageTokens &
  * another tenant's episode would leak whether it exists.
  */
 export type GetEpisodeResult =
-  | { ok: true; episode: EpisodeItem }
+  | {
+      ok: true;
+      episode: EpisodeItem;
+      /**
+       * What the episode states of its own, apart from the layout it resolves
+       * to: the form offers following the series as a choice, so it needs to
+       * know which values are the series' rather than what they add up to.
+       */
+      layout: EpisodeReadingLayoutOverrides;
+    }
   | { notFound: true; ok: false }
   | {
       message: string;
@@ -80,6 +99,10 @@ export type GetEpisodeResult =
 
 export type UpdateEpisodePublishScheduleResult =
   | { ok: true; episode: EpisodeItem }
+  | { ok: false; message: string };
+
+export type UpdateEpisodeLayoutResult =
+  | { ok: true; layout: EpisodeReadingLayoutOverrides }
   | { ok: false; message: string };
 
 export type UploadEpisodePagesResult =
@@ -192,6 +215,27 @@ const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   status: episode.status,
   title: episode.title,
 });
+
+/**
+ * A direction naming neither value is reported rather than read as following
+ * the series: the form would open on that choice, and the next save would
+ * write it over the direction the episode holds.
+ */
+const toEpisodeLayoutOverrides = (
+  response: Pick<
+    GetEpisodeResponse | UpdateEpisodeLayoutResponse,
+    "readingDirection" | "spreadStartIndex"
+  >
+): EpisodeReadingLayoutOverrides | undefined => {
+  const readingDirection = toReadingDirectionValue(response.readingDirection);
+  if (readingDirection === undefined) {
+    return;
+  }
+  return {
+    readingDirection,
+    spreadStartIndex: response.spreadStartIndex,
+  };
+};
 
 /** The generated `EpisodeImage` fields {@link mapEpisodeImage} reads (see `series.ts`). */
 type RawEpisodeImage = Pick<
@@ -535,7 +579,8 @@ export const getEpisode = async (
       withSessionHeaders(sessionId)
     );
 
-    if (!response.episode?.publicId?.trim()) {
+    const layout = toEpisodeLayoutOverrides(response);
+    if (!response.episode?.publicId?.trim() || layout === undefined) {
       return {
         message: t("admin.series.episodes.get_failed"),
         ok: false,
@@ -544,6 +589,7 @@ export const getEpisode = async (
 
     return {
       episode: mapEpisode(response.episode),
+      layout,
       ok: true,
     };
   } catch (error) {
@@ -611,6 +657,78 @@ export const updateEpisodePublishSchedule = async (
         error,
         t("admin.series.episodes.schedule_failed"),
         locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Writes both overrides on every call, so the empty direction and an absent
+ * index put that value back on following the series.
+ */
+export const updateEpisodeLayout = async (
+  input: {
+    tenantId: string;
+    episodePublicId: string;
+  } & EpisodeReadingLayoutOverrides,
+  locale: Locale
+): Promise<UpdateEpisodeLayoutResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.updateEpisodeLayout(
+      {
+        episodePublicId: input.episodePublicId,
+        readingDirection: input.readingDirection
+          ? READING_DIRECTION_ENUM[input.readingDirection]
+          : undefined,
+        spreadStartIndex: input.spreadStartIndex,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    const layout = toEpisodeLayoutOverrides(response);
+    if (layout === undefined) {
+      return {
+        message: t("admin.series.episodes.layout.failed"),
+        ok: false,
+      };
+    }
+
+    return { layout, ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.series.episodes.layout.failed"),
+        {
+          locale,
+          overrides: {
+            // Only the server counts the pages, so it is what refuses a page
+            // past the last one when the form had no count to limit it by.
+            "invalid-argument": rpcErrorHasFieldViolation(
+              error,
+              "spread_start_index"
+            )
+              ? t(
+                  "admin.series.episodes.validation.spread_start_past_last_page"
+                )
+              : t("errors.rpc.invalid-argument"),
+          },
+        }
       ),
       ok: false,
     };

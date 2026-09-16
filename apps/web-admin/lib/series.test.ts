@@ -1,5 +1,6 @@
 import {
   CommentMode,
+  ReadingDirection,
   SeriesAgeRating,
   SeriesStatus,
 } from "@publira/api-client/admin/types";
@@ -356,8 +357,10 @@ describe("the classification a series carries", () => {
         isPublished: true,
         labelPublicId: "LABEL001",
         publicId: "SERIES001",
+        readingDirection: "rtl",
         readingPeriodHours: 24,
         scheduleWeekdays: [2],
+        spreadStartIndex: 1,
         status: "completed",
         synopsis: "A synopsis",
         tagNames: ["seaside"],
@@ -462,8 +465,10 @@ describe("the comment mode a series states", () => {
         isPublished: true,
         labelPublicId: "LABEL001",
         publicId: "SERIES001",
+        readingDirection: "rtl",
         readingPeriodHours: 24,
         scheduleWeekdays: [],
+        spreadStartIndex: 1,
         status: "ongoing",
         synopsis: "A synopsis",
         tagNames: [],
@@ -494,8 +499,10 @@ describe("the comment mode a series states", () => {
         isPublished: true,
         labelPublicId: "LABEL001",
         publicId: "SERIES001",
+        readingDirection: "rtl",
         readingPeriodHours: 24,
         scheduleWeekdays: [],
+        spreadStartIndex: 1,
         status: "ongoing",
         synopsis: "A synopsis",
         tagNames: [],
@@ -507,6 +514,109 @@ describe("the comment mode a series states", () => {
 
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       expect.objectContaining({ commentMode: CommentMode.UNSPECIFIED }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+});
+
+/**
+ * `series_listings.reading_direction` and `spread_start_index` are the layout
+ * every episode of the series follows unless it states its own.
+ */
+describe("the layout a series states", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("reads the layout back beside the series", async () => {
+    mockGetSeries.mockResolvedValue({
+      readingDirection: ReadingDirection.LEFT_TO_RIGHT,
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+      spreadStartIndex: 0,
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      readingLayout: { readingDirection: "ltr", spreadStartIndex: 0 },
+    });
+  });
+
+  it("reads a response that carries no layout as the one a new series has", async () => {
+    mockGetSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      readingLayout: { readingDirection: "rtl", spreadStartIndex: 1 },
+    });
+  });
+
+  // Opening the form on right to left for a direction this build cannot name
+  // would write right to left over it on the next save.
+  it("reports a direction it cannot name rather than answering with the default", async () => {
+    mockGetSeries.mockResolvedValue({
+      readingDirection: 99,
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+      spreadStartIndex: 1,
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("sends the layout on every update", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries(
+      {
+        ageRating: "all",
+        commentMode: "",
+        creatorCredits: [],
+        genrePublicIds: [],
+        isPublished: true,
+        labelPublicId: "LABEL001",
+        publicId: "SERIES001",
+        readingDirection: "ltr",
+        readingPeriodHours: 24,
+        scheduleWeekdays: [],
+        spreadStartIndex: 0,
+        status: "ongoing",
+        synopsis: "A synopsis",
+        tagNames: [],
+        tenantId: "TENANT001",
+        title: "Series title",
+      },
+      "en"
+    );
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readingDirection: ReadingDirection.LEFT_TO_RIGHT,
+        spreadStartIndex: 0,
+      }),
       { headers: { Authorization: "Bearer session-token" } }
     );
   });

@@ -41,6 +41,12 @@ import {
 import { ClientMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import {
+  DEFAULT_READING_DIRECTION,
+  DEFAULT_SPREAD_START_INDEX,
+  spreadStartPageOf,
+} from "#lib/reading-layout";
+import type { ReadingLayout } from "#lib/reading-layout";
+import {
   DEFAULT_SERIES_AGE_RATING,
   DEFAULT_SERIES_STATUS,
 } from "#lib/series-classification";
@@ -63,6 +69,10 @@ import type {
   CreatorOption,
   CreatorRoleOption,
 } from "./series-creator-credits-field";
+import {
+  SeriesReadingDirectionField,
+  SeriesSpreadStartField,
+} from "./series-reading-layout-fields";
 
 interface LabelOption {
   publicId: string;
@@ -98,6 +108,12 @@ interface SeriesFormProps {
   initialCommentMode?: SeriesCommentMode;
   /** What the tenant publishes comments under, for the option that follows it. */
   tenantCommentMode?: TenantCommentMode;
+  /**
+   * The layout the series states, beside {@link SeriesFormProps.initialSeries}
+   * for the reason the comment mode is. Absent on create, which opens on the
+   * layout a series nobody has set is read in.
+   */
+  initialReadingLayout?: ReadingLayout;
   timeZone: string;
 }
 
@@ -293,8 +309,12 @@ const EyeCatchImageField = ({
 
 const useSeriesFormState = ({
   initialCommentMode,
+  initialReadingLayout,
   initialSeries,
-}: Pick<SeriesFormProps, "initialCommentMode" | "initialSeries">) => {
+}: Pick<
+  SeriesFormProps,
+  "initialCommentMode" | "initialReadingLayout" | "initialSeries"
+>) => {
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' label.
   const [selectedLabelPublicId, setSelectedLabelPublicId] = useState(
@@ -315,6 +335,9 @@ const useSeriesFormState = ({
   const [tagNames, setTagNames] = useState(() => initialSeries?.tagNames ?? []);
   const [commentMode, setCommentMode] = useState<SeriesCommentMode>(
     () => initialCommentMode ?? ""
+  );
+  const [readingDirection, setReadingDirection] = useState(
+    () => initialReadingLayout?.readingDirection ?? DEFAULT_READING_DIRECTION
   );
   const [uploadedEyeCatchPreviewUrl, setUploadedEyeCatchPreviewUrl] =
     useState("");
@@ -358,11 +381,13 @@ const useSeriesFormState = ({
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
+    readingDirection,
     scheduleWeekdays,
     selectedGenrePublicIds,
     selectedLabelPublicId,
     setAgeRating,
     setCommentMode,
+    setReadingDirection,
     setScheduleWeekdays,
     setSelectedGenrePublicIds,
     setSelectedLabelPublicId,
@@ -389,6 +414,7 @@ export const SeriesForm = ({
   tagSuggestionsErrorMessage,
   initialSeries,
   initialCommentMode,
+  initialReadingLayout,
   tenantCommentMode,
   timeZone,
 }: SeriesFormProps) => {
@@ -417,11 +443,13 @@ export const SeriesForm = ({
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
+    readingDirection,
     scheduleWeekdays,
     selectedGenrePublicIds,
     selectedLabelPublicId,
     setAgeRating,
     setCommentMode,
+    setReadingDirection,
     setScheduleWeekdays,
     setSelectedGenrePublicIds,
     setSelectedLabelPublicId,
@@ -429,7 +457,11 @@ export const SeriesForm = ({
     setTagNames,
     status,
     tagNames,
-  } = useSeriesFormState({ initialCommentMode, initialSeries });
+  } = useSeriesFormState({
+    initialCommentMode,
+    initialReadingLayout,
+    initialSeries,
+  });
 
   const useLabelFallbackInput =
     Boolean(labelsErrorMessage) || labelItems.length === 0;
@@ -590,6 +622,17 @@ export const SeriesForm = ({
           onChange={setCommentMode}
           tenantCommentMode={tenantCommentMode}
           value={commentMode}
+        />
+
+        <SeriesReadingDirectionField
+          onChange={setReadingDirection}
+          value={readingDirection}
+        />
+
+        <SeriesSpreadStartField
+          defaultPage={spreadStartPageOf(
+            initialReadingLayout?.spreadStartIndex ?? DEFAULT_SPREAD_START_INDEX
+          )}
         />
       </div>
 

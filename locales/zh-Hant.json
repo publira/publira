@@ -1038,7 +1038,15 @@
           "disabled": "不接受留言",
           "immediate": "立即公開",
           "approval_required": "審核後公開"
-        }
+        },
+        "reading_direction": "閱讀方向",
+        "reading_direction_description": "本作品各章節翻頁的方向。可在各章節的編輯頁面為單一章節另行設定。",
+        "reading_direction_options": {
+          "rtl": "從右到左",
+          "ltr": "從左到右"
+        },
+        "spread_start": "跨頁起始頁",
+        "spread_start_description": "此頁之前逐頁顯示，從此頁起兩頁並排顯示。填寫 2 表示封面單獨顯示，填寫 1 表示從第一頁起跨頁顯示。頁數少於此值的章節不以跨頁顯示。可在各章節的編輯頁面為單一章節另行設定。"
       },
       "validation": {
         "label_required": "品牌為必填。",
@@ -1052,7 +1060,9 @@
         "age_rating_invalid": "請選擇年齡分級。",
         "tags_too_many": "標籤最多 {$count} 個。",
         "comment_mode_invalid": "請選擇本作品公開留言的方式。",
-        "creator_credits_invalid": "作者署名需要同時指定作者與角色。"
+        "creator_credits_invalid": "作者署名需要同時指定作者與角色。",
+        "reading_direction_invalid": "請選擇閱讀方向。",
+        "spread_start_invalid": "跨頁起始頁請填寫 1 或以上的整數。"
       },
       "created": "系列已建立。",
       "updated": "系列已更新。",
@@ -1172,7 +1182,27 @@
           "epub_required": "請選擇要上傳的 ePub 檔案。",
           "zip_invalid": "請選擇 ZIP（.zip）檔案。",
           "epub_invalid": "請選擇 ePub（.epub）檔案。",
-          "pages_required": "請選擇要新增的頁面圖片。"
+          "pages_required": "請選擇要新增的頁面圖片。",
+          "reading_direction_invalid": "請選擇閱讀方向，或沿用作品設定。",
+          "spread_start_invalid": "跨頁起始頁請填寫 1 或以上的整數。",
+          "spread_start_past_last_page": "跨頁不能從章節最後一頁之後開始。請指定該章節中的一頁。"
+        },
+        "layout": {
+          "title": "頁面版面",
+          "description": "該章節的翻頁方向與跨頁起始頁。沿用作品設定的值會隨作品設定的變更而變化。",
+          "error": "無法顯示頁面版面",
+          "reading_direction": "閱讀方向",
+          "follow_series": "沿用作品設定",
+          "follow_series_direction": "沿用作品設定（{$direction}）",
+          "spread_start": "跨頁起始",
+          "follow_series_spread_start": "沿用作品設定（第 {$page} 頁）",
+          "spread_start_override": "為該章節指定",
+          "spread_start_page": "跨頁起始頁",
+          "spread_start_page_description": "指定第 1 至 {$count} 頁中的一頁。此前的頁面逐頁顯示。",
+          "spread_start_no_pages": "若要為該章節指定跨頁起始頁，請先新增頁面圖片。",
+          "update": "更新頁面版面",
+          "updated": "頁面版面已更新。",
+          "failed": "無法更新頁面版面。請稍後再試。"
         },
         "credits": {
           "dialog_title": "編輯所選章節的署名",

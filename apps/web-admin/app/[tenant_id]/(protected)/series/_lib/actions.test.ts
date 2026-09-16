@@ -96,6 +96,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01T10:00");
     formData.set("clear_eye_catch_image", "0");
 
@@ -115,8 +117,10 @@ describe("series actions", () => {
         // "2030-01-01T10:00" is a zone-less wall clock, read in the tenant zone
         // (Asia/Tokyo here) — never as the server process's local zone.
         publishedAt: "2030-01-01T01:00:00Z",
+        readingDirection: "rtl",
         readingPeriodHours: 24,
         scheduleWeekdays: [],
+        spreadStartIndex: 1,
         status: "ongoing",
         synopsis: "A synopsis",
         tagNames: [],
@@ -157,6 +161,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01T10:00:00-08:00");
 
     await updateSeriesAction(null, formData);
@@ -197,6 +203,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01T10:00");
 
     await updateSeriesAction(null, formData);
@@ -230,6 +238,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01");
 
     const result = await updateSeriesAction(null, formData);
@@ -254,6 +264,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     formData.set("clear_eye_catch_image", "0");
 
     const result = await updateSeriesEyeCatchAction(null, formData);
@@ -294,6 +306,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
 
     await createSeriesAction(null, formData);
 
@@ -318,6 +332,8 @@ describe("series actions", () => {
     formData.set("status", "hiatus");
     formData.set("age_rating", "r18");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     formData.append("schedule_weekdays", "5");
     formData.append("schedule_weekdays", "1");
     formData.append("genre_public_ids", "GENRE001");
@@ -357,6 +373,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     formData.append("schedule_weekdays", "7");
     // An empty value would be Sunday if it were read with `Number`.
     formData.append("schedule_weekdays", "");
@@ -382,6 +400,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     for (let index = 0; index <= 20; index += 1) {
       formData.append("tag_names", `tag-${index}`);
     }
@@ -414,6 +434,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "approval_required");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
 
     await createSeriesAction(null, formData);
 
@@ -434,6 +456,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "moderated");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
 
     const result = await createSeriesAction(null, formData);
 
@@ -444,6 +468,92 @@ describe("series actions", () => {
     });
     expect(mockCreateSeries).not.toHaveBeenCalled();
   });
+
+  // The form counts pages from 1 and the API indexes them from 0.
+  it("sends the layout the series states, with the page turned into an index", async () => {
+    mockUpdateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { publicId: "SERIES001" },
+    });
+
+    const { updateSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("public_id", "SERIES001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
+    formData.set("reading_direction", "ltr");
+    formData.set("spread_start_page", "1");
+
+    await updateSeriesAction(null, formData);
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readingDirection: "ltr",
+        spreadStartIndex: 0,
+      }),
+      "en"
+    );
+  });
+
+  // `UpdateSeries` stores the default for a direction left out, so a save that
+  // arrived without one would turn a left-to-right work back around.
+  it("refuses a save that carries no reading direction", async () => {
+    const { updateSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("public_id", "SERIES001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
+    formData.set("spread_start_page", "2");
+
+    const result = await updateSeriesAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Select a reading direction.",
+      mode: "update",
+      ok: false,
+    });
+    expect(mockUpdateSeries).not.toHaveBeenCalled();
+  });
+
+  it.each(["", "0", "1.5", "-1", "two"])(
+    "refuses %j as the page spreads start at",
+    async (page) => {
+      const { createSeriesAction } = await import("./actions");
+      const formData = new FormData();
+      formData.set("tenant_id", "TENANT001");
+      formData.set("title", "Series title");
+      formData.set("synopsis", "A synopsis");
+      formData.set("reading_period_hours", "24");
+      formData.set("label_public_id", "LABEL001");
+      formData.set("status", "ongoing");
+      formData.set("age_rating", "all");
+      formData.set("comment_mode", "");
+      formData.set("reading_direction", "rtl");
+      formData.set("spread_start_page", page);
+
+      const result = await createSeriesAction(null, formData);
+
+      expect(result).toEqual({
+        message:
+          "Enter the page spreads start at as a whole number of 1 or more.",
+        mode: "create",
+        ok: false,
+      });
+      expect(mockCreateSeries).not.toHaveBeenCalled();
+    }
+  );
 
   it("sends the credit list the form posted, in the order it posted it", async () => {
     mockCreateSeries.mockResolvedValueOnce({
@@ -461,6 +571,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     // One person credited twice under two roles, which is what the pair being
     // the identity of a credit allows.
     formData.set(
@@ -499,6 +611,8 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
     formData.set(
       "creator_credits",
       JSON.stringify([{ creatorPublicId: "CREATOR001", rolePublicId: "" }])
@@ -525,6 +639,8 @@ describe("series actions", () => {
     formData.set("status", "cancelled");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
 
     const result = await createSeriesAction(null, formData);
 

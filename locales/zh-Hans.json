@@ -1038,7 +1038,15 @@
           "disabled": "不接受评论",
           "immediate": "立即公开",
           "approval_required": "审核后公开"
-        }
+        },
+        "reading_direction": "阅读方向",
+        "reading_direction_description": "本作品各章节翻页的方向。可在各章节的编辑页面为单个章节另行设置。",
+        "reading_direction_options": {
+          "rtl": "从右到左",
+          "ltr": "从左到右"
+        },
+        "spread_start": "跨页起始页",
+        "spread_start_description": "此页之前逐页显示，从此页起两页并排显示。填写 2 表示封面单独显示，填写 1 表示从第一页起跨页显示。页数少于此值的章节不以跨页显示。可在各章节的编辑页面为单个章节另行设置。"
       },
       "validation": {
         "label_required": "品牌为必填项。",
@@ -1052,7 +1060,9 @@
         "age_rating_invalid": "请选择年龄分级。",
         "tags_too_many": "标签最多 {$count} 个。",
         "comment_mode_invalid": "请选择本作品公开评论的方式。",
-        "creator_credits_invalid": "作者署名需要同时指定作者和角色。"
+        "creator_credits_invalid": "作者署名需要同时指定作者和角色。",
+        "reading_direction_invalid": "请选择阅读方向。",
+        "spread_start_invalid": "跨页起始页请填写 1 或以上的整数。"
       },
       "created": "系列已创建。",
       "updated": "系列已更新。",
@@ -1172,7 +1182,27 @@
           "epub_required": "请选择要上传的 ePub 文件。",
           "zip_invalid": "请选择 ZIP（.zip）文件。",
           "epub_invalid": "请选择 ePub（.epub）文件。",
-          "pages_required": "请选择要添加的页面图片。"
+          "pages_required": "请选择要添加的页面图片。",
+          "reading_direction_invalid": "请选择阅读方向，或沿用作品设置。",
+          "spread_start_invalid": "跨页起始页请填写 1 或以上的整数。",
+          "spread_start_past_last_page": "跨页不能从章节最后一页之后开始。请指定该章节中的一页。"
+        },
+        "layout": {
+          "title": "页面布局",
+          "description": "该章节的翻页方向和跨页起始页。沿用作品设置的值会随作品设置的变更而变化。",
+          "error": "无法显示页面布局",
+          "reading_direction": "阅读方向",
+          "follow_series": "沿用作品设置",
+          "follow_series_direction": "沿用作品设置（{$direction}）",
+          "spread_start": "跨页起始",
+          "follow_series_spread_start": "沿用作品设置（第 {$page} 页）",
+          "spread_start_override": "为该章节指定",
+          "spread_start_page": "跨页起始页",
+          "spread_start_page_description": "指定第 1 至 {$count} 页中的一页。此前的页面逐页显示。",
+          "spread_start_no_pages": "要为该章节指定跨页起始页，请先添加页面图片。",
+          "update": "更新页面布局",
+          "updated": "页面布局已更新。",
+          "failed": "无法更新页面布局。请稍后再试。"
         },
         "credits": {
           "dialog_title": "编辑所选章节的署名",

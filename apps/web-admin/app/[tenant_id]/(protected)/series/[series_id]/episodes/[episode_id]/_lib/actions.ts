@@ -14,6 +14,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   reorderEpisodeImages,
+  updateEpisodeLayout,
   updateEpisodePublishSchedule,
   uploadEpisodePages,
 } from "#lib/episode";
@@ -23,8 +24,10 @@ import {
   optionalFileFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
+  spreadStartPageFormSchema,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { READING_DIRECTIONS } from "#lib/reading-layout";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type {
@@ -185,6 +188,82 @@ export const updateEpisodeScheduleAction = async (
 
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?schedule_updated=1`
+  );
+};
+
+const layoutFormSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    hiddenParamsSchema(locale),
+  ]);
+  const spreadStartInvalid = t(
+    "admin.series.episodes.validation.spread_start_invalid"
+  );
+
+  return base.extend({
+    // The empty value is the episode following its series.
+    readingDirection: z.enum(["", ...READING_DIRECTIONS], {
+      error: t("admin.series.episodes.validation.reading_direction_invalid"),
+    }),
+    spreadStart: z.discriminatedUnion(
+      "source",
+      [
+        z.object({ source: z.literal("series") }),
+        z.object({
+          page: spreadStartPageFormSchema(spreadStartInvalid),
+          source: z.literal("episode"),
+        }),
+      ],
+      { error: spreadStartInvalid }
+    ),
+  });
+};
+
+export const updateEpisodeLayoutAction = async (
+  _prevState: EpisodeEditActionState,
+  formData: FormData
+): Promise<EpisodeEditActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await layoutFormSchema(locale);
+  const input = toFormDataInput(formData, {
+    ...hiddenFormFields,
+    readingDirection: { kind: "value", name: "reading_direction" },
+    spreadStartPage: { kind: "value", name: "spread_start_page" },
+    spreadStartSource: { kind: "value", name: "spread_start_source" },
+  });
+  const parsed = schema.safeParse({
+    ...input,
+    spreadStart: {
+      page: input.spreadStartPage,
+      source: input.spreadStartSource,
+    },
+  });
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "layout");
+  }
+
+  const { episodePublicId, readingDirection, seriesPublicId, spreadStart } =
+    parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateEpisodeLayout(
+      {
+        episodePublicId,
+        readingDirection,
+        spreadStartIndex:
+          spreadStart.source === "episode" ? spreadStart.page : undefined,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return toFailure(result.message, "layout");
+  }
+
+  redirect(
+    `/series/${seriesPublicId}/episodes/${episodePublicId}?layout_updated=1`
   );
 };
 

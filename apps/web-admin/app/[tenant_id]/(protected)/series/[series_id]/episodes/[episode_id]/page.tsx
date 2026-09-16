@@ -33,14 +33,17 @@ import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getEpisode, listEpisodeImages } from "#lib/episode";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
+import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
 import {
   reorderEpisodeImagesAction,
+  updateEpisodeLayoutAction,
   updateEpisodeScheduleAction,
   uploadEpisodePagesAction,
 } from "./_lib/actions";
@@ -72,30 +75,38 @@ const EditEpisodePage = async ({
   const { episode_id, series_id } = parsedParams;
 
   const locale = await getLocale(tenantId);
-  const [episodeResult, imagesResult, timeZone, t] = await Promise.all([
-    getEpisode(
-      {
-        publicId: episode_id,
-        seriesPublicId: series_id,
-        tenantId,
-      },
-      locale
-    ),
-    listEpisodeImages(
-      {
-        episodePublicId: episode_id,
-        tenantId,
-      },
-      locale
-    ),
-    getTenantDisplayTimeZone(tenantId),
-    getMessagesFor(locale),
-  ]);
+  const [episodeResult, imagesResult, seriesResult, timeZone, t] =
+    await Promise.all([
+      getEpisode(
+        {
+          publicId: episode_id,
+          seriesPublicId: series_id,
+          tenantId,
+        },
+        locale
+      ),
+      listEpisodeImages(
+        {
+          episodePublicId: episode_id,
+          tenantId,
+        },
+        locale
+      ),
+      // Only to name what the layout options that follow the series follow, so
+      // a read that failed leaves them unnamed rather than the form unusable.
+      getSeries({ publicId: series_id, tenantId }, locale),
+      getTenantDisplayTimeZone(tenantId),
+      getMessagesFor(locale),
+    ]);
   if (!episodeResult.ok && episodeResult.notFound) {
     notFound();
   }
 
-  await redirectToLoginIfSessionRejected(episodeResult, imagesResult);
+  await redirectToLoginIfSessionRejected(
+    episodeResult,
+    imagesResult,
+    seriesResult
+  );
 
   return (
     <AdminPage>
@@ -142,6 +153,10 @@ const EditEpisodePage = async ({
         <FlashToast
           keyName="schedule_updated"
           title={t("admin.series.episodes.schedule_updated")}
+        />
+        <FlashToast
+          keyName="layout_updated"
+          title={t("admin.series.episodes.layout.updated")}
         />
         <FlashToast
           keyName="pages_uploaded"
@@ -235,6 +250,35 @@ const EditEpisodePage = async ({
               />
             ) : null}
           </section>
+
+          {episodeResult.ok ? (
+            <EpisodeReadingLayoutForm
+              action={updateEpisodeLayoutAction}
+              episodePublicId={episode_id}
+              initialLayout={episodeResult.layout}
+              key={`${episode_id}:${episodeResult.layout.readingDirection}:${episodeResult.layout.spreadStartIndex ?? ""}`}
+              pageCount={
+                imagesResult.ok ? imagesResult.images.length : undefined
+              }
+              seriesLayout={
+                seriesResult.ok ? seriesResult.readingLayout : undefined
+              }
+              seriesPublicId={series_id}
+            />
+          ) : (
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.series.episodes.layout.error" />
+                  </Suspense>
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {episodeResult.message}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
+          )}
         </div>
       </AdminPageContent>
     </AdminPage>
