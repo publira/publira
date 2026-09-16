@@ -3,7 +3,12 @@ import type {
   GetEpisodeResponse,
   UpdateEpisodeLayoutResponse,
 } from "@publira/api-client/admin/series";
-import type { Episode, EpisodeImage } from "@publira/api-client/admin/types";
+import type {
+  Creator,
+  CreatorCreditSource,
+  Episode,
+  EpisodeImage,
+} from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
@@ -156,6 +161,20 @@ export type BulkEditEpisodeCreditsResult =
     }
   | { ok: false; message: string };
 
+export interface EpisodeCreatorCreditItem {
+  creatorPublicId: string;
+  rolePublicId: string;
+  source: CreatorCreditSource;
+}
+
+export type ListEpisodeCreditsResult =
+  | { ok: true; credits: EpisodeCreatorCreditItem[] }
+  | { ok: false; message: string; requiresSignIn: boolean };
+
+export type ReplaceEpisodeCreditsResult =
+  | { ok: true; credits: EpisodeCreatorCreditItem[] }
+  | { ok: false; message: string };
+
 /**
  * Page size for the order-index scan a reorder needs. The RPC caps `limit` at
  * 100, so this is the fewest round trips a series can be read in.
@@ -258,6 +277,102 @@ const mapEpisodeImage = (image: RawEpisodeImage): EpisodeImageItem => ({
   imageUrl: image.imageUrl,
   width: image.width,
 });
+
+type RawEpisodeCredit = Pick<Creator, "publicId" | "role" | "source">;
+
+const mapEpisodeCredit = (
+  credit: RawEpisodeCredit
+): EpisodeCreatorCreditItem => ({
+  creatorPublicId: credit.publicId,
+  rolePublicId: credit.role?.publicId ?? "",
+  source: credit.source,
+});
+
+export const listEpisodeCredits = async (
+  input: { tenantId: string; episodePublicId: string },
+  locale: Locale
+): Promise<ListEpisodeCreditsResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+  try {
+    const response = await apiClient.series.listEpisodeCredits(
+      {
+        episodePublicId: input.episodePublicId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return {
+      credits: (response.creators ?? []).map(mapEpisodeCredit),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.credits_list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+export const replaceEpisodeCredits = async (
+  input: {
+    tenantId: string;
+    episodePublicId: string;
+    creatorCredits: Pick<
+      EpisodeCreatorCreditItem,
+      "creatorPublicId" | "rolePublicId"
+    >[];
+  },
+  locale: Locale
+): Promise<ReplaceEpisodeCreditsResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+  try {
+    const response = await apiClient.series.replaceEpisodeCredits(
+      {
+        creatorCredits: input.creatorCredits,
+        episodePublicId: input.episodePublicId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return {
+      credits: (response.creators ?? []).map(mapEpisodeCredit),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.credits_save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
 
 /**
  * Every archive rejection is `invalid_argument`, so the code alone cannot say

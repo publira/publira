@@ -39,6 +39,14 @@ message CreatorRole {
   string name = 2;
 }
 
+// Where an episode credit was written. Series rows are baked onto an episode
+// when it is created; episode rows are additions made for that episode alone.
+enum CreatorCreditSource {
+  CREATOR_CREDIT_SOURCE_UNSPECIFIED = 0;
+  CREATOR_CREDIT_SOURCE_SERIES = 1;
+  CREATOR_CREDIT_SOURCE_EPISODE = 2;
+}
+
 message Creator {
   // 3 held `role` as a free string. The field keeps its name and becomes a
   // CreatorRole, so the old number is reserved to keep a client from reading
@@ -55,6 +63,9 @@ message Creator {
   // on a series; empty where it stands for the person alone, as the creator
   // console reads them.
   CreatorRole role = 8;
+  // Set when this creator stands for an episode credit. It lets an editor see
+  // which rows are local additions that a later range edit must leave alone.
+  CreatorCreditSource source = 9;
 }
 
 message Label {

@@ -273,6 +273,12 @@ func EpisodeCreditsByEpisodeID(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRo
 				Name:     row.RoleName.String,
 			}
 		}
+		switch row.Source {
+		case "episode":
+			creator.Source = publirattypesv1.CreatorCreditSource_CREATOR_CREDIT_SOURCE_EPISODE
+		case "series":
+			creator.Source = publirattypesv1.CreatorCreditSource_CREATOR_CREDIT_SOURCE_SERIES
+		}
 		credits[row.EpisodeID] = append(credits[row.EpisodeID], creator)
 	}
 	return credits
