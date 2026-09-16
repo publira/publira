@@ -29,6 +29,8 @@ import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { listAllCreators } from "#lib/creator";
+import { listCreatorRoles } from "#lib/creator-roles";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -41,6 +43,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { EpisodeCreditsRangeDialog } from "./_components/episode-credits-range-dialog";
 import { EpisodesSortableList } from "./_components/episodes-sortable-list";
 import { reorderEpisodesAction } from "./_lib/actions";
 
@@ -73,6 +76,7 @@ const SeriesEpisodesPageSkeleton = () => (
         <div className="flex gap-2">
           <SkeletonLine className="h-10 w-28" />
           <SkeletonLine className="h-10 w-28" />
+          <SkeletonLine className="h-10 w-28" />
         </div>
       </AdminPageActions>
     </AdminPageHeader>
@@ -100,19 +104,26 @@ const SeriesEpisodesPage = async ({
 
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [result, timeZone, t] = await Promise.all([
-    listEpisodes(
-      {
-        seriesPublicId: series_id,
-        tenantId,
-        token,
-      },
-      locale
-    ),
-    getTenantDisplayTimeZone(tenantId),
-    getMessagesFor(locale),
-  ]);
-  await redirectToLoginIfSessionRejected(result);
+  const [result, creatorsResult, creatorRolesResult, timeZone, t] =
+    await Promise.all([
+      listEpisodes(
+        {
+          seriesPublicId: series_id,
+          tenantId,
+          token,
+        },
+        locale
+      ),
+      listAllCreators(tenantId, locale),
+      listCreatorRoles(tenantId, locale),
+      getTenantDisplayTimeZone(tenantId),
+      getMessagesFor(locale),
+    ]);
+  await redirectToLoginIfSessionRejected(
+    result,
+    creatorsResult,
+    creatorRolesResult
+  );
 
   const pageHrefs = cursorPageHrefs(result);
   const hasPageLinks = hasCursorPageLinks(pageHrefs);
@@ -137,6 +148,17 @@ const SeriesEpisodesPage = async ({
               >
                 <Message message="admin.series.episodes.new_action" />
               </LinkButton>
+              <EpisodeCreditsRangeDialog
+                creatorRoles={creatorRolesResult.creatorRoles}
+                creatorRolesErrorMessage={
+                  creatorRolesResult.ok ? undefined : creatorRolesResult.message
+                }
+                creators={creatorsResult.creators}
+                creatorsErrorMessage={
+                  creatorsResult.ok ? undefined : creatorsResult.message
+                }
+                seriesPublicId={series_id}
+              />
               <LinkButton
                 render={<Link href={`/series/${series_id}`} />}
                 variant="outline"
