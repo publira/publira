@@ -1,20 +1,21 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
+import type { Locale } from "@publira/i18n";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { Select } from "@publira/ui-components/select";
-import type { SelectProps } from "@publira/ui-components/select";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useCallback, useId, useState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "#components/action-form";
+import type { FormActionState } from "#components/action-form";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -22,163 +23,96 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import {
-  isReadingDirectionValue,
-  spreadStartPageOf,
-} from "#lib/reading-layout";
+import { Message } from "#components/message";
+import { getMessagesFor } from "#lib/messages";
+import { spreadStartPageOf } from "#lib/reading-layout";
 import type {
   EpisodeReadingLayoutOverrides,
-  ReadingDirectionValue,
   ReadingLayout,
 } from "#lib/reading-layout";
-import { useTenantId } from "#lib/use-tenant-id";
 
-import type { EpisodeEditActionState } from "../episode-edit-types";
-
-type SpreadStartSource = "episode" | "series";
-
-const isSpreadStartSource = (value: string): value is SpreadStartSource =>
-  value === "episode" || value === "series";
-
-/**
- * Suspends as a whole while the catalog loads, so no option renders
- * half-filled. The first option names what the series is read in, and says
- * only that it follows the series when that read failed.
- */
-const ReadingDirectionSelect = ({
-  seriesDirection,
-  ...props
-}: Omit<SelectProps, "items"> & {
-  seriesDirection?: ReadingDirectionValue;
-}) => {
-  const t = useClientMessages();
-
-  let followSeries = t("admin.series.episodes.layout.follow_series");
-  if (seriesDirection === "rtl") {
-    followSeries = t("admin.series.episodes.layout.follow_series_direction", {
-      direction: t("admin.series.form.reading_direction_options.rtl"),
-    });
-  } else if (seriesDirection === "ltr") {
-    followSeries = t("admin.series.episodes.layout.follow_series_direction", {
-      direction: t("admin.series.form.reading_direction_options.ltr"),
-    });
-  }
-
-  return (
-    <Select
-      {...props}
-      items={[
-        { label: followSeries, value: "" },
-        {
-          label: t("admin.series.form.reading_direction_options.rtl"),
-          value: "rtl",
-        },
-        {
-          label: t("admin.series.form.reading_direction_options.ltr"),
-          value: "ltr",
-        },
-      ]}
-    />
-  );
-};
-
-/**
- * Suspends as a whole, for the reason {@link ReadingDirectionSelect} does. An
- * episode with no pages has none to name, so following is its only option.
- */
-const SpreadStartSourceSelect = ({
-  hasNoPages,
-  seriesSpreadStartPage,
-  ...props
-}: Omit<SelectProps, "items"> & {
-  hasNoPages: boolean;
-  seriesSpreadStartPage?: number;
-}) => {
-  const t = useClientMessages();
-
-  const followSeries =
-    seriesSpreadStartPage === undefined
-      ? t("admin.series.episodes.layout.follow_series")
-      : t("admin.series.episodes.layout.follow_series_spread_start", {
-          page: String(seriesSpreadStartPage),
-        });
-  const items = [{ label: followSeries, value: "series" }];
-  if (!hasNoPages) {
-    items.push({
-      label: t("admin.series.episodes.layout.spread_start_override"),
-      value: "episode",
-    });
-  }
-
-  return <Select {...props} items={items} />;
-};
+import {
+  ReadingDirectionField,
+  SpreadStartSourceField,
+} from "./episode-reading-layout-controls";
 
 interface EpisodeReadingLayoutFormProps {
-  seriesPublicId: string;
+  action: (
+    prevState: FormActionState,
+    formData: FormData
+  ) => Promise<FormActionState>;
   episodePublicId: string;
   /**
    * What the episode states of its own. Seeded once per mount: the page keys
    * this form by these values, so a saved change remounts it.
    */
   initialLayout: EpisodeReadingLayoutOverrides;
-  /**
-   * What the series states, for the options that follow it. Absent when that
-   * read failed, and the options then say only that they follow the series — a
-   * wrong value named there would be read as the series' own.
-   */
-  seriesLayout?: ReadingLayout;
+  locale: Locale;
   /**
    * How many pages the episode has, which bounds the page spreads can start
    * at. Absent when the page list failed to load, and the server is then what
    * refuses a page past the last one.
    */
   pageCount?: number;
-  action: (
-    prevState: EpisodeEditActionState,
-    formData: FormData
-  ) => Promise<EpisodeEditActionState>;
+  /**
+   * What the series states, for the options that follow it. Absent when that
+   * read failed, and the options then say only that they follow the series.
+   */
+  seriesLayout?: ReadingLayout;
+  seriesPublicId: string;
+  tenantId: string;
 }
 
-export const EpisodeReadingLayoutForm = ({
-  seriesPublicId,
+export const EpisodeReadingLayoutForm = async ({
+  action,
   episodePublicId,
   initialLayout,
-  seriesLayout,
+  locale,
   pageCount,
-  action,
+  seriesLayout,
+  seriesPublicId,
+  tenantId,
 }: EpisodeReadingLayoutFormProps) => {
-  const t = useAdminMessages();
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [readingDirection, setReadingDirection] = useState(
-    () => initialLayout.readingDirection
-  );
-  const [spreadStartSource, setSpreadStartSource] = useState<SpreadStartSource>(
-    () => (initialLayout.spreadStartIndex === undefined ? "series" : "episode")
-  );
-  // `Select` renders a trigger rather than a Field control, so each label
-  // needs an id to point at.
-  const directionSelectId = useId();
-  const spreadStartSelectId = useId();
+  const t = await getMessagesFor(locale);
 
-  const handleDirectionChange = useCallback((next: string) => {
-    if (next === "" || isReadingDirectionValue(next)) {
-      setReadingDirection(next);
-    }
-  }, []);
+  let followSeriesDirection = t("admin.series.episodes.layout.follow_series");
+  if (seriesLayout?.readingDirection === "rtl") {
+    followSeriesDirection = t(
+      "admin.series.episodes.layout.follow_series_direction",
+      { direction: t("admin.series.form.reading_direction_options.rtl") }
+    );
+  } else if (seriesLayout?.readingDirection === "ltr") {
+    followSeriesDirection = t(
+      "admin.series.episodes.layout.follow_series_direction",
+      { direction: t("admin.series.form.reading_direction_options.ltr") }
+    );
+  }
 
-  const handleSpreadStartSourceChange = useCallback((next: string) => {
-    if (isSpreadStartSource(next)) {
-      setSpreadStartSource(next);
-    }
-  }, []);
-
-  const hasNoPages = pageCount === 0;
   const seriesSpreadStartPage =
     seriesLayout === undefined
       ? undefined
       : spreadStartPageOf(seriesLayout.spreadStartIndex);
+  const spreadStartItems = [
+    {
+      label:
+        seriesSpreadStartPage === undefined
+          ? t("admin.series.episodes.layout.follow_series")
+          : t("admin.series.episodes.layout.follow_series_spread_start", {
+              page: String(seriesSpreadStartPage),
+            }),
+      value: "series",
+    },
+  ];
+  // An episode with no pages has none to name, so following is its only
+  // option until pages are added.
+  const hasNoPages = pageCount === 0;
+  if (!hasNoPages) {
+    spreadStartItems.push({
+      label: t("admin.series.episodes.layout.spread_start_override"),
+      value: "episode",
+    });
+  }
+
   let defaultSpreadStartPage = 1;
   if (initialLayout.spreadStartIndex !== undefined) {
     defaultSpreadStartPage = spreadStartPageOf(initialLayout.spreadStartIndex);
@@ -195,120 +129,109 @@ export const EpisodeReadingLayoutForm = ({
         <AdminSectionHeading>
           <AdminSectionTitle>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.layout.title" />
+              <Message message="admin.series.episodes.layout.title" />
             </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-              <ClientMessage message="admin.series.episodes.layout.description" />
+              <Message message="admin.series.episodes.layout.description" />
             </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <form action={formAction} className="grid gap-4">
+      <ActionForm action={action} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-        <Field>
-          <FieldLabel htmlFor={directionSelectId}>
+        <ReadingDirectionField
+          initialValue={initialLayout.readingDirection}
+          items={[
+            { label: followSeriesDirection, value: "" },
+            {
+              label: t("admin.series.form.reading_direction_options.rtl"),
+              value: "rtl",
+            },
+            {
+              label: t("admin.series.form.reading_direction_options.ltr"),
+              value: "ltr",
+            },
+          ]}
+          label={
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.layout.reading_direction" />
+              <Message message="admin.series.episodes.layout.reading_direction" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-              <ReadingDirectionSelect
-                id={directionSelectId}
-                onValueChange={handleDirectionChange}
-                seriesDirection={seriesLayout?.readingDirection}
-                value={readingDirection}
-              />
-            </Suspense>
-            <input
-              name="reading_direction"
-              type="hidden"
-              value={readingDirection}
-            />
-          </FieldContent>
-        </Field>
+          }
+        />
 
-        <Field>
-          <FieldLabel htmlFor={spreadStartSelectId}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.layout.spread_start" />
-            </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-              <SpreadStartSourceSelect
-                hasNoPages={hasNoPages}
-                id={spreadStartSelectId}
-                onValueChange={handleSpreadStartSourceChange}
-                seriesSpreadStartPage={seriesSpreadStartPage}
-                value={spreadStartSource}
-              />
-            </Suspense>
-            <input
-              name="spread_start_source"
-              type="hidden"
-              value={spreadStartSource}
-            />
-            {hasNoPages ? (
+        <SpreadStartSourceField
+          description={
+            hasNoPages ? (
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                  <ClientMessage message="admin.series.episodes.layout.spread_start_no_pages" />
+                  <Message message="admin.series.episodes.layout.spread_start_no_pages" />
                 </Suspense>
               </FieldDescription>
-            ) : null}
-          </FieldContent>
-        </Field>
-
-        {spreadStartSource === "episode" ? (
-          <Field>
-            <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                <ClientMessage message="admin.series.episodes.layout.spread_start_page" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={defaultSpreadStartPage}
-                max={pageCount}
-                min={1}
-                name="spread_start_page"
-                required
-                step={1}
-                type="number"
-              />
-              {pageCount === undefined ? null : (
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                    <ClientMessage
-                      message="admin.series.episodes.layout.spread_start_page_description"
-                      values={{ count: String(pageCount) }}
-                    />
-                  </Suspense>
-                </FieldDescription>
-              )}
-            </FieldContent>
-          </Field>
-        ) : null}
-
-        {state && state.mode === "layout" ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
-          </FormMessage>
-        ) : null}
+            ) : null
+          }
+          initialValue={
+            initialLayout.spreadStartIndex === undefined ? "series" : "episode"
+          }
+          items={spreadStartItems}
+          label={
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.episodes.layout.spread_start" />
+            </Suspense>
+          }
+          pageField={
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                  <Message message="admin.series.episodes.layout.spread_start_page" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={defaultSpreadStartPage}
+                  max={pageCount}
+                  min={1}
+                  name="spread_start_page"
+                  required
+                  step={1}
+                  type="number"
+                />
+                {pageCount === undefined ? null : (
+                  <FieldDescription>
+                    <Suspense
+                      fallback={<SkeletonLine className="h-4 w-full" />}
+                    >
+                      <Message
+                        message="admin.series.episodes.layout.spread_start_page_description"
+                        values={{ count: String(pageCount) }}
+                      />
+                    </Suspense>
+                  </FieldDescription>
+                )}
+              </FieldContent>
+            </Field>
+          }
+        />
 
         <div className="mt-2 flex justify-end gap-2">
-          <Button disabled={isPending} type="submit">
-            {isPending
-              ? t("admin.series.episodes.updating")
-              : t("admin.series.episodes.layout.update")}
-          </Button>
+          <ActionFormSubmit>
+            <ActionFormIdle>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.layout.update" />
+              </Suspense>
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.updating" />
+              </Suspense>
+            </ActionFormPending>
+          </ActionFormSubmit>
         </div>
-      </form>
+      </ActionForm>
     </AdminSection>
   );
 };

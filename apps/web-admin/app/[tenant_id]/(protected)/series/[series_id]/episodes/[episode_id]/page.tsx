@@ -257,6 +257,7 @@ const EditEpisodePage = async ({
               episodePublicId={episode_id}
               initialLayout={episodeResult.layout}
               key={`${episode_id}:${episodeResult.layout.readingDirection}:${episodeResult.layout.spreadStartIndex ?? ""}`}
+              locale={locale}
               pageCount={
                 imagesResult.ok ? imagesResult.images.length : undefined
               }
@@ -264,6 +265,7 @@ const EditEpisodePage = async ({
                 seriesResult.ok ? seriesResult.readingLayout : undefined
               }
               seriesPublicId={series_id}
+              tenantId={tenantId}
             />
           ) : (
             <SectionError>

@@ -8,6 +8,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import type { FormActionState } from "#components/action-form";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
@@ -220,9 +221,9 @@ const layoutFormSchema = async (locale: Locale) => {
 };
 
 export const updateEpisodeLayoutAction = async (
-  _prevState: EpisodeEditActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<EpisodeEditActionState> => {
+): Promise<FormActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await layoutFormSchema(locale);
@@ -240,7 +241,7 @@ export const updateEpisodeLayoutAction = async (
     },
   });
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error, { locale }), "layout");
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { episodePublicId, readingDirection, seriesPublicId, spreadStart } =
@@ -259,7 +260,7 @@ export const updateEpisodeLayoutAction = async (
   );
 
   if (!result.ok) {
-    return toFailure(result.message, "layout");
+    return { message: result.message, ok: false };
   }
 
   redirect(

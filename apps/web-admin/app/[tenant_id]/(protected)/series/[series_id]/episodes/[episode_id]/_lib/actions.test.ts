@@ -146,7 +146,6 @@ describe("episode actions", () => {
 
     expect(result).toEqual({
       message: "Select a reading direction, or follow the series.",
-      mode: "layout",
       ok: false,
     });
     expect(mockUpdateEpisodeLayout).not.toHaveBeenCalled();
@@ -168,7 +167,6 @@ describe("episode actions", () => {
       expect(result).toEqual({
         message:
           "Enter the page spreads start at as a whole number of 1 or more.",
-        mode: "layout",
         ok: false,
       });
       expect(mockUpdateEpisodeLayout).not.toHaveBeenCalled();
@@ -195,7 +193,6 @@ describe("episode actions", () => {
     expect(result).toEqual({
       message:
         "Spreads cannot start past the episode's last page. Choose one of its pages.",
-      mode: "layout",
       ok: false,
     });
     expect(mockRedirect).not.toHaveBeenCalled();
