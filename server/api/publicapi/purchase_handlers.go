@@ -18,6 +18,7 @@ import (
 	"github.com/stripe/stripe-go/v86/webhook"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -113,6 +114,14 @@ func (s *apiServer) StartEpisodeCheckout(
 
 	successURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "success")
 	cancelURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "cancelled")
+	if req.Msg.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
+		locale, err := locale.Resolve(tenant.DefaultLocale)
+		if err != nil {
+			return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+		}
+		successURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "success")
+		cancelURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "cancelled")
+	}
 	checkoutURL, err := stripeProvider.create(ctx, stripeCheckoutInput{
 		cancelURL:          cancelURL,
 		episodeID:          episode.ID,
@@ -351,6 +360,16 @@ func purchaseReturnURL(base *url.URL, seriesPublicID, episodePublicID, checkout 
 	if checkout == "success" {
 		query.Set("session_id", "{CHECKOUT_SESSION_ID}")
 	}
+	result.RawQuery = query.Encode()
+	return result.String()
+}
+
+func mobilePurchaseReturnURL(base *url.URL, locale, episodePublicID, status string) string {
+	result := *base
+	result.Path, _ = url.JoinPath("/", locale, "checkout", "return")
+	query := result.Query()
+	query.Set("episode", episodePublicID)
+	query.Set("status", status)
 	result.RawQuery = query.Encode()
 	return result.String()
 }

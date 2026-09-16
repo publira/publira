@@ -420,6 +420,55 @@ func (ContentViewTargetType) EnumDescriptor() ([]byte, []int) {
 	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{6}
 }
 
+type StartEpisodeCheckoutRequest_Client int32
+
+const (
+	StartEpisodeCheckoutRequest_CLIENT_UNSPECIFIED StartEpisodeCheckoutRequest_Client = 0
+	StartEpisodeCheckoutRequest_CLIENT_WEB         StartEpisodeCheckoutRequest_Client = 1
+	StartEpisodeCheckoutRequest_CLIENT_MOBILE      StartEpisodeCheckoutRequest_Client = 2
+)
+
+// Enum value maps for StartEpisodeCheckoutRequest_Client.
+var (
+	StartEpisodeCheckoutRequest_Client_name = map[int32]string{
+		0: "CLIENT_UNSPECIFIED",
+		1: "CLIENT_WEB",
+		2: "CLIENT_MOBILE",
+	}
+	StartEpisodeCheckoutRequest_Client_value = map[string]int32{
+		"CLIENT_UNSPECIFIED": 0,
+		"CLIENT_WEB":         1,
+		"CLIENT_MOBILE":      2,
+	}
+)
+
+func (x StartEpisodeCheckoutRequest_Client) Enum() *StartEpisodeCheckoutRequest_Client {
+	p := new(StartEpisodeCheckoutRequest_Client)
+	*p = x
+	return p
+}
+
+func (x StartEpisodeCheckoutRequest_Client) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StartEpisodeCheckoutRequest_Client) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_v1_catalog_proto_enumTypes[7].Descriptor()
+}
+
+func (StartEpisodeCheckoutRequest_Client) Type() protoreflect.EnumType {
+	return &file_publira_v1_catalog_proto_enumTypes[7]
+}
+
+func (x StartEpisodeCheckoutRequest_Client) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StartEpisodeCheckoutRequest_Client.Descriptor instead.
+func (StartEpisodeCheckoutRequest_Client) EnumDescriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{74, 0}
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListPublishedLabelsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
@@ -5254,8 +5303,11 @@ type StartEpisodeCheckoutRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Where Stripe should return the reader after checkout. Unspecified keeps
+	// the existing web return URL for backwards compatibility.
+	Client        StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StartEpisodeCheckoutRequest) Reset() {
@@ -5300,6 +5352,13 @@ func (x *StartEpisodeCheckoutRequest) GetEpisodePublicId() string {
 		return x.EpisodePublicId
 	}
 	return ""
+}
+
+func (x *StartEpisodeCheckoutRequest) GetClient() StartEpisodeCheckoutRequest_Client {
+	if x != nil {
+		return x.Client
+	}
+	return StartEpisodeCheckoutRequest_CLIENT_UNSPECIFIED
 }
 
 type StartEpisodeCheckoutResponse struct {
@@ -6002,10 +6061,16 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x18RecordContentViewRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
 	"\x06target\x18\x02 \x01(\v2\x1d.publira.v1.ContentViewTargetR\x06target\"\x1b\n" +
-	"\x19RecordContentViewResponse\"\x82\x01\n" +
+	"\x19RecordContentViewResponse\"\x8f\x02\n" +
 	"\x1bStartEpisodeCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\"A\n" +
+	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12F\n" +
+	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\"C\n" +
+	"\x06Client\x12\x16\n" +
+	"\x12CLIENT_UNSPECIFIED\x10\x00\x12\x0e\n" +
+	"\n" +
+	"CLIENT_WEB\x10\x01\x12\x11\n" +
+	"\rCLIENT_MOBILE\x10\x02\"A\n" +
 	"\x1cStartEpisodeCheckoutResponse\x12!\n" +
 	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\x8e\x02\n" +
 	"\n" +
@@ -6118,7 +6183,7 @@ func file_publira_v1_catalog_proto_rawDescGZIP() []byte {
 	return file_publira_v1_catalog_proto_rawDescData
 }
 
-var file_publira_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
+var file_publira_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
 var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 81)
 var file_publira_v1_catalog_proto_goTypes = []any{
 	(SeriesOrder)(0),                          // 0: publira.v1.SeriesOrder
@@ -6128,261 +6193,263 @@ var file_publira_v1_catalog_proto_goTypes = []any{
 	(FollowTargetType)(0),                     // 4: publira.v1.FollowTargetType
 	(EpisodeRatingMode)(0),                    // 5: publira.v1.EpisodeRatingMode
 	(ContentViewTargetType)(0),                // 6: publira.v1.ContentViewTargetType
-	(*ListPublishedLabelsRequest)(nil),        // 7: publira.v1.ListPublishedLabelsRequest
-	(*ListPublishedLabelsResponse)(nil),       // 8: publira.v1.ListPublishedLabelsResponse
-	(*ListPublishedSeriesRequest)(nil),        // 9: publira.v1.ListPublishedSeriesRequest
-	(*ListPublishedSeriesResponse)(nil),       // 10: publira.v1.ListPublishedSeriesResponse
-	(*GetSeriesDetailRequest)(nil),            // 11: publira.v1.GetSeriesDetailRequest
-	(*GetSeriesDetailResponse)(nil),           // 12: publira.v1.GetSeriesDetailResponse
-	(*GetEpisodeDetailRequest)(nil),           // 13: publira.v1.GetEpisodeDetailRequest
-	(*EpisodeNeighbor)(nil),                   // 14: publira.v1.EpisodeNeighbor
-	(*GetEpisodeDetailResponse)(nil),          // 15: publira.v1.GetEpisodeDetailResponse
-	(*PublishedCreator)(nil),                  // 16: publira.v1.PublishedCreator
-	(*ListPublishedCreatorsRequest)(nil),      // 17: publira.v1.ListPublishedCreatorsRequest
-	(*ListPublishedCreatorsResponse)(nil),     // 18: publira.v1.ListPublishedCreatorsResponse
-	(*GetPublishedCreatorDetailRequest)(nil),  // 19: publira.v1.GetPublishedCreatorDetailRequest
-	(*GetPublishedCreatorDetailResponse)(nil), // 20: publira.v1.GetPublishedCreatorDetailResponse
-	(*PublishedLabel)(nil),                    // 21: publira.v1.PublishedLabel
-	(*GetPublishedLabelDetailRequest)(nil),    // 22: publira.v1.GetPublishedLabelDetailRequest
-	(*GetPublishedLabelDetailResponse)(nil),   // 23: publira.v1.GetPublishedLabelDetailResponse
-	(*PublishedGenre)(nil),                    // 24: publira.v1.PublishedGenre
-	(*ListPublishedGenresRequest)(nil),        // 25: publira.v1.ListPublishedGenresRequest
-	(*ListPublishedGenresResponse)(nil),       // 26: publira.v1.ListPublishedGenresResponse
-	(*PublishedTag)(nil),                      // 27: publira.v1.PublishedTag
-	(*ListPublishedTagsRequest)(nil),          // 28: publira.v1.ListPublishedTagsRequest
-	(*ListPublishedTagsResponse)(nil),         // 29: publira.v1.ListPublishedTagsResponse
-	(*SearchPublishedSeriesRequest)(nil),      // 30: publira.v1.SearchPublishedSeriesRequest
-	(*SearchPublishedSeriesResponse)(nil),     // 31: publira.v1.SearchPublishedSeriesResponse
-	(*SearchPublishedCreatorsRequest)(nil),    // 32: publira.v1.SearchPublishedCreatorsRequest
-	(*SearchPublishedCreatorsResponse)(nil),   // 33: publira.v1.SearchPublishedCreatorsResponse
-	(*SearchPublishedLabelsRequest)(nil),      // 34: publira.v1.SearchPublishedLabelsRequest
-	(*SearchPublishedLabelsResponse)(nil),     // 35: publira.v1.SearchPublishedLabelsResponse
-	(*ListRecommendedSeriesRequest)(nil),      // 36: publira.v1.ListRecommendedSeriesRequest
-	(*ListRecommendedSeriesResponse)(nil),     // 37: publira.v1.ListRecommendedSeriesResponse
-	(*RankedSeries)(nil),                      // 38: publira.v1.RankedSeries
-	(*ListRankedSeriesRequest)(nil),           // 39: publira.v1.ListRankedSeriesRequest
-	(*ListRankedSeriesResponse)(nil),          // 40: publira.v1.ListRankedSeriesResponse
-	(*ListRelatedSeriesRequest)(nil),          // 41: publira.v1.ListRelatedSeriesRequest
-	(*ListRelatedSeriesResponse)(nil),         // 42: publira.v1.ListRelatedSeriesResponse
-	(*MarkEpisodeAsReadRequest)(nil),          // 43: publira.v1.MarkEpisodeAsReadRequest
-	(*MarkEpisodeAsReadResponse)(nil),         // 44: publira.v1.MarkEpisodeAsReadResponse
-	(*ReadingPosition)(nil),                   // 45: publira.v1.ReadingPosition
-	(*SaveReadingPositionRequest)(nil),        // 46: publira.v1.SaveReadingPositionRequest
-	(*SaveReadingPositionResponse)(nil),       // 47: publira.v1.SaveReadingPositionResponse
-	(*GetMyReadingPositionRequest)(nil),       // 48: publira.v1.GetMyReadingPositionRequest
-	(*GetMyReadingPositionResponse)(nil),      // 49: publira.v1.GetMyReadingPositionResponse
-	(*GetMySeriesProgressRequest)(nil),        // 50: publira.v1.GetMySeriesProgressRequest
-	(*SeriesProgress)(nil),                    // 51: publira.v1.SeriesProgress
-	(*GetMySeriesProgressResponse)(nil),       // 52: publira.v1.GetMySeriesProgressResponse
-	(*RecentSeries)(nil),                      // 53: publira.v1.RecentSeries
-	(*ListMyRecentSeriesRequest)(nil),         // 54: publira.v1.ListMyRecentSeriesRequest
-	(*ListMyRecentSeriesResponse)(nil),        // 55: publira.v1.ListMyRecentSeriesResponse
-	(*MyEpisodeRead)(nil),                     // 56: publira.v1.MyEpisodeRead
-	(*ListMyEpisodeReadsRequest)(nil),         // 57: publira.v1.ListMyEpisodeReadsRequest
-	(*ListMyEpisodeReadsResponse)(nil),        // 58: publira.v1.ListMyEpisodeReadsResponse
-	(*FollowTarget)(nil),                      // 59: publira.v1.FollowTarget
-	(*GetMyFollowStatusRequest)(nil),          // 60: publira.v1.GetMyFollowStatusRequest
-	(*GetMyFollowStatusResponse)(nil),         // 61: publira.v1.GetMyFollowStatusResponse
-	(*FollowRequest)(nil),                     // 62: publira.v1.FollowRequest
-	(*FollowResponse)(nil),                    // 63: publira.v1.FollowResponse
-	(*UnfollowRequest)(nil),                   // 64: publira.v1.UnfollowRequest
-	(*UnfollowResponse)(nil),                  // 65: publira.v1.UnfollowResponse
-	(*MyFollow)(nil),                          // 66: publira.v1.MyFollow
-	(*ListMyFollowsRequest)(nil),              // 67: publira.v1.ListMyFollowsRequest
-	(*ListMyFollowsResponse)(nil),             // 68: publira.v1.ListMyFollowsResponse
-	(*FollowUpdate)(nil),                      // 69: publira.v1.FollowUpdate
-	(*ListMyFollowUpdatesRequest)(nil),        // 70: publira.v1.ListMyFollowUpdatesRequest
-	(*ListMyFollowUpdatesResponse)(nil),       // 71: publira.v1.ListMyFollowUpdatesResponse
-	(*RateEpisodeRequest)(nil),                // 72: publira.v1.RateEpisodeRequest
-	(*RateEpisodeResponse)(nil),               // 73: publira.v1.RateEpisodeResponse
-	(*GetMyEpisodeRatingRequest)(nil),         // 74: publira.v1.GetMyEpisodeRatingRequest
-	(*GetMyEpisodeRatingResponse)(nil),        // 75: publira.v1.GetMyEpisodeRatingResponse
-	(*GetMySeriesRatingRequest)(nil),          // 76: publira.v1.GetMySeriesRatingRequest
-	(*GetMySeriesRatingResponse)(nil),         // 77: publira.v1.GetMySeriesRatingResponse
-	(*ContentViewTarget)(nil),                 // 78: publira.v1.ContentViewTarget
-	(*RecordContentViewRequest)(nil),          // 79: publira.v1.RecordContentViewRequest
-	(*RecordContentViewResponse)(nil),         // 80: publira.v1.RecordContentViewResponse
-	(*StartEpisodeCheckoutRequest)(nil),       // 81: publira.v1.StartEpisodeCheckoutRequest
-	(*StartEpisodeCheckoutResponse)(nil),      // 82: publira.v1.StartEpisodeCheckoutResponse
-	(*MyPurchase)(nil),                        // 83: publira.v1.MyPurchase
-	(*ListMyPurchasesRequest)(nil),            // 84: publira.v1.ListMyPurchasesRequest
-	(*ListMyPurchasesResponse)(nil),           // 85: publira.v1.ListMyPurchasesResponse
-	(*ProcessStripeWebhookRequest)(nil),       // 86: publira.v1.ProcessStripeWebhookRequest
-	(*ProcessStripeWebhookResponse)(nil),      // 87: publira.v1.ProcessStripeWebhookResponse
-	(*v1.TenantContext)(nil),                  // 88: publira.types.v1.TenantContext
-	(*v1.Label)(nil),                          // 89: publira.types.v1.Label
-	(v1.SeriesStatus)(0),                      // 90: publira.types.v1.SeriesStatus
-	(*v1.Series)(nil),                         // 91: publira.types.v1.Series
-	(*v1.Episode)(nil),                        // 92: publira.types.v1.Episode
-	(v1.CommentMode)(0),                       // 93: publira.types.v1.CommentMode
-	(*v1.Creator)(nil),                        // 94: publira.types.v1.Creator
-	(*v1.EpisodeImage)(nil),                   // 95: publira.types.v1.EpisodeImage
-	(*v1.SeriesEyeCatchVariant)(nil),          // 96: publira.types.v1.SeriesEyeCatchVariant
+	(StartEpisodeCheckoutRequest_Client)(0),   // 7: publira.v1.StartEpisodeCheckoutRequest.Client
+	(*ListPublishedLabelsRequest)(nil),        // 8: publira.v1.ListPublishedLabelsRequest
+	(*ListPublishedLabelsResponse)(nil),       // 9: publira.v1.ListPublishedLabelsResponse
+	(*ListPublishedSeriesRequest)(nil),        // 10: publira.v1.ListPublishedSeriesRequest
+	(*ListPublishedSeriesResponse)(nil),       // 11: publira.v1.ListPublishedSeriesResponse
+	(*GetSeriesDetailRequest)(nil),            // 12: publira.v1.GetSeriesDetailRequest
+	(*GetSeriesDetailResponse)(nil),           // 13: publira.v1.GetSeriesDetailResponse
+	(*GetEpisodeDetailRequest)(nil),           // 14: publira.v1.GetEpisodeDetailRequest
+	(*EpisodeNeighbor)(nil),                   // 15: publira.v1.EpisodeNeighbor
+	(*GetEpisodeDetailResponse)(nil),          // 16: publira.v1.GetEpisodeDetailResponse
+	(*PublishedCreator)(nil),                  // 17: publira.v1.PublishedCreator
+	(*ListPublishedCreatorsRequest)(nil),      // 18: publira.v1.ListPublishedCreatorsRequest
+	(*ListPublishedCreatorsResponse)(nil),     // 19: publira.v1.ListPublishedCreatorsResponse
+	(*GetPublishedCreatorDetailRequest)(nil),  // 20: publira.v1.GetPublishedCreatorDetailRequest
+	(*GetPublishedCreatorDetailResponse)(nil), // 21: publira.v1.GetPublishedCreatorDetailResponse
+	(*PublishedLabel)(nil),                    // 22: publira.v1.PublishedLabel
+	(*GetPublishedLabelDetailRequest)(nil),    // 23: publira.v1.GetPublishedLabelDetailRequest
+	(*GetPublishedLabelDetailResponse)(nil),   // 24: publira.v1.GetPublishedLabelDetailResponse
+	(*PublishedGenre)(nil),                    // 25: publira.v1.PublishedGenre
+	(*ListPublishedGenresRequest)(nil),        // 26: publira.v1.ListPublishedGenresRequest
+	(*ListPublishedGenresResponse)(nil),       // 27: publira.v1.ListPublishedGenresResponse
+	(*PublishedTag)(nil),                      // 28: publira.v1.PublishedTag
+	(*ListPublishedTagsRequest)(nil),          // 29: publira.v1.ListPublishedTagsRequest
+	(*ListPublishedTagsResponse)(nil),         // 30: publira.v1.ListPublishedTagsResponse
+	(*SearchPublishedSeriesRequest)(nil),      // 31: publira.v1.SearchPublishedSeriesRequest
+	(*SearchPublishedSeriesResponse)(nil),     // 32: publira.v1.SearchPublishedSeriesResponse
+	(*SearchPublishedCreatorsRequest)(nil),    // 33: publira.v1.SearchPublishedCreatorsRequest
+	(*SearchPublishedCreatorsResponse)(nil),   // 34: publira.v1.SearchPublishedCreatorsResponse
+	(*SearchPublishedLabelsRequest)(nil),      // 35: publira.v1.SearchPublishedLabelsRequest
+	(*SearchPublishedLabelsResponse)(nil),     // 36: publira.v1.SearchPublishedLabelsResponse
+	(*ListRecommendedSeriesRequest)(nil),      // 37: publira.v1.ListRecommendedSeriesRequest
+	(*ListRecommendedSeriesResponse)(nil),     // 38: publira.v1.ListRecommendedSeriesResponse
+	(*RankedSeries)(nil),                      // 39: publira.v1.RankedSeries
+	(*ListRankedSeriesRequest)(nil),           // 40: publira.v1.ListRankedSeriesRequest
+	(*ListRankedSeriesResponse)(nil),          // 41: publira.v1.ListRankedSeriesResponse
+	(*ListRelatedSeriesRequest)(nil),          // 42: publira.v1.ListRelatedSeriesRequest
+	(*ListRelatedSeriesResponse)(nil),         // 43: publira.v1.ListRelatedSeriesResponse
+	(*MarkEpisodeAsReadRequest)(nil),          // 44: publira.v1.MarkEpisodeAsReadRequest
+	(*MarkEpisodeAsReadResponse)(nil),         // 45: publira.v1.MarkEpisodeAsReadResponse
+	(*ReadingPosition)(nil),                   // 46: publira.v1.ReadingPosition
+	(*SaveReadingPositionRequest)(nil),        // 47: publira.v1.SaveReadingPositionRequest
+	(*SaveReadingPositionResponse)(nil),       // 48: publira.v1.SaveReadingPositionResponse
+	(*GetMyReadingPositionRequest)(nil),       // 49: publira.v1.GetMyReadingPositionRequest
+	(*GetMyReadingPositionResponse)(nil),      // 50: publira.v1.GetMyReadingPositionResponse
+	(*GetMySeriesProgressRequest)(nil),        // 51: publira.v1.GetMySeriesProgressRequest
+	(*SeriesProgress)(nil),                    // 52: publira.v1.SeriesProgress
+	(*GetMySeriesProgressResponse)(nil),       // 53: publira.v1.GetMySeriesProgressResponse
+	(*RecentSeries)(nil),                      // 54: publira.v1.RecentSeries
+	(*ListMyRecentSeriesRequest)(nil),         // 55: publira.v1.ListMyRecentSeriesRequest
+	(*ListMyRecentSeriesResponse)(nil),        // 56: publira.v1.ListMyRecentSeriesResponse
+	(*MyEpisodeRead)(nil),                     // 57: publira.v1.MyEpisodeRead
+	(*ListMyEpisodeReadsRequest)(nil),         // 58: publira.v1.ListMyEpisodeReadsRequest
+	(*ListMyEpisodeReadsResponse)(nil),        // 59: publira.v1.ListMyEpisodeReadsResponse
+	(*FollowTarget)(nil),                      // 60: publira.v1.FollowTarget
+	(*GetMyFollowStatusRequest)(nil),          // 61: publira.v1.GetMyFollowStatusRequest
+	(*GetMyFollowStatusResponse)(nil),         // 62: publira.v1.GetMyFollowStatusResponse
+	(*FollowRequest)(nil),                     // 63: publira.v1.FollowRequest
+	(*FollowResponse)(nil),                    // 64: publira.v1.FollowResponse
+	(*UnfollowRequest)(nil),                   // 65: publira.v1.UnfollowRequest
+	(*UnfollowResponse)(nil),                  // 66: publira.v1.UnfollowResponse
+	(*MyFollow)(nil),                          // 67: publira.v1.MyFollow
+	(*ListMyFollowsRequest)(nil),              // 68: publira.v1.ListMyFollowsRequest
+	(*ListMyFollowsResponse)(nil),             // 69: publira.v1.ListMyFollowsResponse
+	(*FollowUpdate)(nil),                      // 70: publira.v1.FollowUpdate
+	(*ListMyFollowUpdatesRequest)(nil),        // 71: publira.v1.ListMyFollowUpdatesRequest
+	(*ListMyFollowUpdatesResponse)(nil),       // 72: publira.v1.ListMyFollowUpdatesResponse
+	(*RateEpisodeRequest)(nil),                // 73: publira.v1.RateEpisodeRequest
+	(*RateEpisodeResponse)(nil),               // 74: publira.v1.RateEpisodeResponse
+	(*GetMyEpisodeRatingRequest)(nil),         // 75: publira.v1.GetMyEpisodeRatingRequest
+	(*GetMyEpisodeRatingResponse)(nil),        // 76: publira.v1.GetMyEpisodeRatingResponse
+	(*GetMySeriesRatingRequest)(nil),          // 77: publira.v1.GetMySeriesRatingRequest
+	(*GetMySeriesRatingResponse)(nil),         // 78: publira.v1.GetMySeriesRatingResponse
+	(*ContentViewTarget)(nil),                 // 79: publira.v1.ContentViewTarget
+	(*RecordContentViewRequest)(nil),          // 80: publira.v1.RecordContentViewRequest
+	(*RecordContentViewResponse)(nil),         // 81: publira.v1.RecordContentViewResponse
+	(*StartEpisodeCheckoutRequest)(nil),       // 82: publira.v1.StartEpisodeCheckoutRequest
+	(*StartEpisodeCheckoutResponse)(nil),      // 83: publira.v1.StartEpisodeCheckoutResponse
+	(*MyPurchase)(nil),                        // 84: publira.v1.MyPurchase
+	(*ListMyPurchasesRequest)(nil),            // 85: publira.v1.ListMyPurchasesRequest
+	(*ListMyPurchasesResponse)(nil),           // 86: publira.v1.ListMyPurchasesResponse
+	(*ProcessStripeWebhookRequest)(nil),       // 87: publira.v1.ProcessStripeWebhookRequest
+	(*ProcessStripeWebhookResponse)(nil),      // 88: publira.v1.ProcessStripeWebhookResponse
+	(*v1.TenantContext)(nil),                  // 89: publira.types.v1.TenantContext
+	(*v1.Label)(nil),                          // 90: publira.types.v1.Label
+	(v1.SeriesStatus)(0),                      // 91: publira.types.v1.SeriesStatus
+	(*v1.Series)(nil),                         // 92: publira.types.v1.Series
+	(*v1.Episode)(nil),                        // 93: publira.types.v1.Episode
+	(v1.CommentMode)(0),                       // 94: publira.types.v1.CommentMode
+	(*v1.Creator)(nil),                        // 95: publira.types.v1.Creator
+	(*v1.EpisodeImage)(nil),                   // 96: publira.types.v1.EpisodeImage
+	(*v1.SeriesEyeCatchVariant)(nil),          // 97: publira.types.v1.SeriesEyeCatchVariant
 }
 var file_publira_v1_catalog_proto_depIdxs = []int32{
-	88,  // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	89,  // 1: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.types.v1.Label
-	88,  // 2: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	89,  // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	90,  // 1: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.types.v1.Label
+	89,  // 2: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,   // 3: publira.v1.ListPublishedSeriesRequest.order:type_name -> publira.v1.SeriesOrder
-	90,  // 4: publira.v1.ListPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	91,  // 5: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
-	88,  // 6: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	91,  // 7: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
-	92,  // 8: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
-	93,  // 9: publira.v1.GetSeriesDetailResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	88,  // 10: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	94,  // 11: publira.v1.EpisodeNeighbor.creators:type_name -> publira.types.v1.Creator
-	92,  // 12: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
-	91,  // 13: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
-	95,  // 14: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
+	91,  // 4: publira.v1.ListPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	92,  // 5: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	89,  // 6: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	92,  // 7: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
+	93,  // 8: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
+	94,  // 9: publira.v1.GetSeriesDetailResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	89,  // 10: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 11: publira.v1.EpisodeNeighbor.creators:type_name -> publira.types.v1.Creator
+	93,  // 12: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
+	92,  // 13: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
+	96,  // 14: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
 	1,   // 15: publira.v1.GetEpisodeDetailResponse.access:type_name -> publira.v1.EpisodeAccess
-	14,  // 16: publira.v1.GetEpisodeDetailResponse.previous_episode:type_name -> publira.v1.EpisodeNeighbor
-	14,  // 17: publira.v1.GetEpisodeDetailResponse.next_episode:type_name -> publira.v1.EpisodeNeighbor
-	88,  // 18: publira.v1.ListPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16,  // 19: publira.v1.ListPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
-	88,  // 20: publira.v1.GetPublishedCreatorDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16,  // 21: publira.v1.GetPublishedCreatorDetailResponse.creator:type_name -> publira.v1.PublishedCreator
-	91,  // 22: publira.v1.GetPublishedCreatorDetailResponse.series:type_name -> publira.types.v1.Series
-	96,  // 23: publira.v1.PublishedLabel.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	88,  // 24: publira.v1.GetPublishedLabelDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	21,  // 25: publira.v1.GetPublishedLabelDetailResponse.label:type_name -> publira.v1.PublishedLabel
-	91,  // 26: publira.v1.GetPublishedLabelDetailResponse.series:type_name -> publira.types.v1.Series
-	88,  // 27: publira.v1.ListPublishedGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
-	24,  // 28: publira.v1.ListPublishedGenresResponse.genres:type_name -> publira.v1.PublishedGenre
-	88,  // 29: publira.v1.ListPublishedTagsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	27,  // 30: publira.v1.ListPublishedTagsResponse.tags:type_name -> publira.v1.PublishedTag
-	88,  // 31: publira.v1.SearchPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	91,  // 32: publira.v1.SearchPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
-	88,  // 33: publira.v1.SearchPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16,  // 34: publira.v1.SearchPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
-	88,  // 35: publira.v1.SearchPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	89,  // 36: publira.v1.SearchPublishedLabelsResponse.labels:type_name -> publira.types.v1.Label
-	88,  // 37: publira.v1.ListRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	91,  // 38: publira.v1.ListRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
+	15,  // 16: publira.v1.GetEpisodeDetailResponse.previous_episode:type_name -> publira.v1.EpisodeNeighbor
+	15,  // 17: publira.v1.GetEpisodeDetailResponse.next_episode:type_name -> publira.v1.EpisodeNeighbor
+	89,  // 18: publira.v1.ListPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17,  // 19: publira.v1.ListPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
+	89,  // 20: publira.v1.GetPublishedCreatorDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17,  // 21: publira.v1.GetPublishedCreatorDetailResponse.creator:type_name -> publira.v1.PublishedCreator
+	92,  // 22: publira.v1.GetPublishedCreatorDetailResponse.series:type_name -> publira.types.v1.Series
+	97,  // 23: publira.v1.PublishedLabel.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	89,  // 24: publira.v1.GetPublishedLabelDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	22,  // 25: publira.v1.GetPublishedLabelDetailResponse.label:type_name -> publira.v1.PublishedLabel
+	92,  // 26: publira.v1.GetPublishedLabelDetailResponse.series:type_name -> publira.types.v1.Series
+	89,  // 27: publira.v1.ListPublishedGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
+	25,  // 28: publira.v1.ListPublishedGenresResponse.genres:type_name -> publira.v1.PublishedGenre
+	89,  // 29: publira.v1.ListPublishedTagsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28,  // 30: publira.v1.ListPublishedTagsResponse.tags:type_name -> publira.v1.PublishedTag
+	89,  // 31: publira.v1.SearchPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	92,  // 32: publira.v1.SearchPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	89,  // 33: publira.v1.SearchPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17,  // 34: publira.v1.SearchPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
+	89,  // 35: publira.v1.SearchPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	90,  // 36: publira.v1.SearchPublishedLabelsResponse.labels:type_name -> publira.types.v1.Label
+	89,  // 37: publira.v1.ListRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	92,  // 38: publira.v1.ListRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
 	2,   // 39: publira.v1.ListRecommendedSeriesResponse.source:type_name -> publira.v1.RecommendationSource
-	91,  // 40: publira.v1.RankedSeries.series:type_name -> publira.types.v1.Series
-	88,  // 41: publira.v1.ListRankedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	92,  // 40: publira.v1.RankedSeries.series:type_name -> publira.types.v1.Series
+	89,  // 41: publira.v1.ListRankedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3,   // 42: publira.v1.ListRankedSeriesRequest.period:type_name -> publira.v1.RankingPeriod
-	38,  // 43: publira.v1.ListRankedSeriesResponse.ranked_series:type_name -> publira.v1.RankedSeries
-	88,  // 44: publira.v1.ListRelatedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	91,  // 45: publira.v1.ListRelatedSeriesResponse.series:type_name -> publira.types.v1.Series
-	88,  // 46: publira.v1.MarkEpisodeAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	88,  // 47: publira.v1.SaveReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	45,  // 48: publira.v1.SaveReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
-	88,  // 49: publira.v1.GetMyReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	45,  // 50: publira.v1.GetMyReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
-	88,  // 51: publira.v1.GetMySeriesProgressRequest.tenant:type_name -> publira.types.v1.TenantContext
-	92,  // 52: publira.v1.SeriesProgress.episode:type_name -> publira.types.v1.Episode
-	45,  // 53: publira.v1.SeriesProgress.position:type_name -> publira.v1.ReadingPosition
-	51,  // 54: publira.v1.GetMySeriesProgressResponse.progress:type_name -> publira.v1.SeriesProgress
-	91,  // 55: publira.v1.RecentSeries.series:type_name -> publira.types.v1.Series
-	92,  // 56: publira.v1.RecentSeries.episode:type_name -> publira.types.v1.Episode
-	45,  // 57: publira.v1.RecentSeries.position:type_name -> publira.v1.ReadingPosition
-	88,  // 58: publira.v1.ListMyRecentSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	53,  // 59: publira.v1.ListMyRecentSeriesResponse.series:type_name -> publira.v1.RecentSeries
-	91,  // 60: publira.v1.MyEpisodeRead.series:type_name -> publira.types.v1.Series
-	92,  // 61: publira.v1.MyEpisodeRead.episode:type_name -> publira.types.v1.Episode
-	88,  // 62: publira.v1.ListMyEpisodeReadsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	56,  // 63: publira.v1.ListMyEpisodeReadsResponse.reads:type_name -> publira.v1.MyEpisodeRead
+	39,  // 43: publira.v1.ListRankedSeriesResponse.ranked_series:type_name -> publira.v1.RankedSeries
+	89,  // 44: publira.v1.ListRelatedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	92,  // 45: publira.v1.ListRelatedSeriesResponse.series:type_name -> publira.types.v1.Series
+	89,  // 46: publira.v1.MarkEpisodeAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	89,  // 47: publira.v1.SaveReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	46,  // 48: publira.v1.SaveReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
+	89,  // 49: publira.v1.GetMyReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	46,  // 50: publira.v1.GetMyReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
+	89,  // 51: publira.v1.GetMySeriesProgressRequest.tenant:type_name -> publira.types.v1.TenantContext
+	93,  // 52: publira.v1.SeriesProgress.episode:type_name -> publira.types.v1.Episode
+	46,  // 53: publira.v1.SeriesProgress.position:type_name -> publira.v1.ReadingPosition
+	52,  // 54: publira.v1.GetMySeriesProgressResponse.progress:type_name -> publira.v1.SeriesProgress
+	92,  // 55: publira.v1.RecentSeries.series:type_name -> publira.types.v1.Series
+	93,  // 56: publira.v1.RecentSeries.episode:type_name -> publira.types.v1.Episode
+	46,  // 57: publira.v1.RecentSeries.position:type_name -> publira.v1.ReadingPosition
+	89,  // 58: publira.v1.ListMyRecentSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	54,  // 59: publira.v1.ListMyRecentSeriesResponse.series:type_name -> publira.v1.RecentSeries
+	92,  // 60: publira.v1.MyEpisodeRead.series:type_name -> publira.types.v1.Series
+	93,  // 61: publira.v1.MyEpisodeRead.episode:type_name -> publira.types.v1.Episode
+	89,  // 62: publira.v1.ListMyEpisodeReadsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	57,  // 63: publira.v1.ListMyEpisodeReadsResponse.reads:type_name -> publira.v1.MyEpisodeRead
 	4,   // 64: publira.v1.FollowTarget.type:type_name -> publira.v1.FollowTargetType
-	88,  // 65: publira.v1.GetMyFollowStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
-	59,  // 66: publira.v1.GetMyFollowStatusRequest.target:type_name -> publira.v1.FollowTarget
-	88,  // 67: publira.v1.FollowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	59,  // 68: publira.v1.FollowRequest.target:type_name -> publira.v1.FollowTarget
-	88,  // 69: publira.v1.UnfollowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	59,  // 70: publira.v1.UnfollowRequest.target:type_name -> publira.v1.FollowTarget
+	89,  // 65: publira.v1.GetMyFollowStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
+	60,  // 66: publira.v1.GetMyFollowStatusRequest.target:type_name -> publira.v1.FollowTarget
+	89,  // 67: publira.v1.FollowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	60,  // 68: publira.v1.FollowRequest.target:type_name -> publira.v1.FollowTarget
+	89,  // 69: publira.v1.UnfollowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	60,  // 70: publira.v1.UnfollowRequest.target:type_name -> publira.v1.FollowTarget
 	4,   // 71: publira.v1.MyFollow.target_type:type_name -> publira.v1.FollowTargetType
-	88,  // 72: publira.v1.ListMyFollowsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	66,  // 73: publira.v1.ListMyFollowsResponse.follows:type_name -> publira.v1.MyFollow
-	91,  // 74: publira.v1.FollowUpdate.series:type_name -> publira.types.v1.Series
-	92,  // 75: publira.v1.FollowUpdate.episode:type_name -> publira.types.v1.Episode
-	88,  // 76: publira.v1.ListMyFollowUpdatesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	69,  // 77: publira.v1.ListMyFollowUpdatesResponse.updates:type_name -> publira.v1.FollowUpdate
-	88,  // 78: publira.v1.RateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	89,  // 72: publira.v1.ListMyFollowsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	67,  // 73: publira.v1.ListMyFollowsResponse.follows:type_name -> publira.v1.MyFollow
+	92,  // 74: publira.v1.FollowUpdate.series:type_name -> publira.types.v1.Series
+	93,  // 75: publira.v1.FollowUpdate.episode:type_name -> publira.types.v1.Episode
+	89,  // 76: publira.v1.ListMyFollowUpdatesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	70,  // 77: publira.v1.ListMyFollowUpdatesResponse.updates:type_name -> publira.v1.FollowUpdate
+	89,  // 78: publira.v1.RateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
 	5,   // 79: publira.v1.RateEpisodeResponse.mode:type_name -> publira.v1.EpisodeRatingMode
-	88,  // 80: publira.v1.GetMyEpisodeRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	89,  // 80: publira.v1.GetMyEpisodeRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
 	5,   // 81: publira.v1.GetMyEpisodeRatingResponse.mode:type_name -> publira.v1.EpisodeRatingMode
-	88,  // 82: publira.v1.GetMySeriesRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	89,  // 82: publira.v1.GetMySeriesRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
 	6,   // 83: publira.v1.ContentViewTarget.type:type_name -> publira.v1.ContentViewTargetType
-	88,  // 84: publira.v1.RecordContentViewRequest.tenant:type_name -> publira.types.v1.TenantContext
-	78,  // 85: publira.v1.RecordContentViewRequest.target:type_name -> publira.v1.ContentViewTarget
-	88,  // 86: publira.v1.StartEpisodeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	92,  // 87: publira.v1.MyPurchase.episode:type_name -> publira.types.v1.Episode
-	91,  // 88: publira.v1.MyPurchase.series:type_name -> publira.types.v1.Series
-	88,  // 89: publira.v1.ListMyPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	83,  // 90: publira.v1.ListMyPurchasesResponse.purchases:type_name -> publira.v1.MyPurchase
-	88,  // 91: publira.v1.ProcessStripeWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
-	7,   // 92: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
-	9,   // 93: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	11,  // 94: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	13,  // 95: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	17,  // 96: publira.v1.CatalogService.ListPublishedCreators:input_type -> publira.v1.ListPublishedCreatorsRequest
-	19,  // 97: publira.v1.CatalogService.GetPublishedCreatorDetail:input_type -> publira.v1.GetPublishedCreatorDetailRequest
-	22,  // 98: publira.v1.CatalogService.GetPublishedLabelDetail:input_type -> publira.v1.GetPublishedLabelDetailRequest
-	25,  // 99: publira.v1.CatalogService.ListPublishedGenres:input_type -> publira.v1.ListPublishedGenresRequest
-	28,  // 100: publira.v1.CatalogService.ListPublishedTags:input_type -> publira.v1.ListPublishedTagsRequest
-	30,  // 101: publira.v1.CatalogService.SearchPublishedSeries:input_type -> publira.v1.SearchPublishedSeriesRequest
-	32,  // 102: publira.v1.CatalogService.SearchPublishedCreators:input_type -> publira.v1.SearchPublishedCreatorsRequest
-	34,  // 103: publira.v1.CatalogService.SearchPublishedLabels:input_type -> publira.v1.SearchPublishedLabelsRequest
-	36,  // 104: publira.v1.CatalogService.ListRecommendedSeries:input_type -> publira.v1.ListRecommendedSeriesRequest
-	39,  // 105: publira.v1.CatalogService.ListRankedSeries:input_type -> publira.v1.ListRankedSeriesRequest
-	41,  // 106: publira.v1.CatalogService.ListRelatedSeries:input_type -> publira.v1.ListRelatedSeriesRequest
-	43,  // 107: publira.v1.EpisodeReadService.MarkEpisodeAsRead:input_type -> publira.v1.MarkEpisodeAsReadRequest
-	46,  // 108: publira.v1.EpisodeReadService.SaveReadingPosition:input_type -> publira.v1.SaveReadingPositionRequest
-	48,  // 109: publira.v1.EpisodeReadService.GetMyReadingPosition:input_type -> publira.v1.GetMyReadingPositionRequest
-	50,  // 110: publira.v1.EpisodeReadService.GetMySeriesProgress:input_type -> publira.v1.GetMySeriesProgressRequest
-	54,  // 111: publira.v1.EpisodeReadService.ListMyRecentSeries:input_type -> publira.v1.ListMyRecentSeriesRequest
-	57,  // 112: publira.v1.EpisodeReadService.ListMyEpisodeReads:input_type -> publira.v1.ListMyEpisodeReadsRequest
-	60,  // 113: publira.v1.FollowService.GetMyFollowStatus:input_type -> publira.v1.GetMyFollowStatusRequest
-	62,  // 114: publira.v1.FollowService.Follow:input_type -> publira.v1.FollowRequest
-	64,  // 115: publira.v1.FollowService.Unfollow:input_type -> publira.v1.UnfollowRequest
-	67,  // 116: publira.v1.FollowService.ListMyFollows:input_type -> publira.v1.ListMyFollowsRequest
-	70,  // 117: publira.v1.FollowService.ListMyFollowUpdates:input_type -> publira.v1.ListMyFollowUpdatesRequest
-	72,  // 118: publira.v1.RatingService.RateEpisode:input_type -> publira.v1.RateEpisodeRequest
-	74,  // 119: publira.v1.RatingService.GetMyEpisodeRating:input_type -> publira.v1.GetMyEpisodeRatingRequest
-	76,  // 120: publira.v1.RatingService.GetMySeriesRating:input_type -> publira.v1.GetMySeriesRatingRequest
-	79,  // 121: publira.v1.ContentViewService.RecordContentView:input_type -> publira.v1.RecordContentViewRequest
-	81,  // 122: publira.v1.PurchaseService.StartEpisodeCheckout:input_type -> publira.v1.StartEpisodeCheckoutRequest
-	84,  // 123: publira.v1.PurchaseService.ListMyPurchases:input_type -> publira.v1.ListMyPurchasesRequest
-	86,  // 124: publira.v1.PurchaseService.ProcessStripeWebhook:input_type -> publira.v1.ProcessStripeWebhookRequest
-	8,   // 125: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
-	10,  // 126: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	12,  // 127: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	15,  // 128: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	18,  // 129: publira.v1.CatalogService.ListPublishedCreators:output_type -> publira.v1.ListPublishedCreatorsResponse
-	20,  // 130: publira.v1.CatalogService.GetPublishedCreatorDetail:output_type -> publira.v1.GetPublishedCreatorDetailResponse
-	23,  // 131: publira.v1.CatalogService.GetPublishedLabelDetail:output_type -> publira.v1.GetPublishedLabelDetailResponse
-	26,  // 132: publira.v1.CatalogService.ListPublishedGenres:output_type -> publira.v1.ListPublishedGenresResponse
-	29,  // 133: publira.v1.CatalogService.ListPublishedTags:output_type -> publira.v1.ListPublishedTagsResponse
-	31,  // 134: publira.v1.CatalogService.SearchPublishedSeries:output_type -> publira.v1.SearchPublishedSeriesResponse
-	33,  // 135: publira.v1.CatalogService.SearchPublishedCreators:output_type -> publira.v1.SearchPublishedCreatorsResponse
-	35,  // 136: publira.v1.CatalogService.SearchPublishedLabels:output_type -> publira.v1.SearchPublishedLabelsResponse
-	37,  // 137: publira.v1.CatalogService.ListRecommendedSeries:output_type -> publira.v1.ListRecommendedSeriesResponse
-	40,  // 138: publira.v1.CatalogService.ListRankedSeries:output_type -> publira.v1.ListRankedSeriesResponse
-	42,  // 139: publira.v1.CatalogService.ListRelatedSeries:output_type -> publira.v1.ListRelatedSeriesResponse
-	44,  // 140: publira.v1.EpisodeReadService.MarkEpisodeAsRead:output_type -> publira.v1.MarkEpisodeAsReadResponse
-	47,  // 141: publira.v1.EpisodeReadService.SaveReadingPosition:output_type -> publira.v1.SaveReadingPositionResponse
-	49,  // 142: publira.v1.EpisodeReadService.GetMyReadingPosition:output_type -> publira.v1.GetMyReadingPositionResponse
-	52,  // 143: publira.v1.EpisodeReadService.GetMySeriesProgress:output_type -> publira.v1.GetMySeriesProgressResponse
-	55,  // 144: publira.v1.EpisodeReadService.ListMyRecentSeries:output_type -> publira.v1.ListMyRecentSeriesResponse
-	58,  // 145: publira.v1.EpisodeReadService.ListMyEpisodeReads:output_type -> publira.v1.ListMyEpisodeReadsResponse
-	61,  // 146: publira.v1.FollowService.GetMyFollowStatus:output_type -> publira.v1.GetMyFollowStatusResponse
-	63,  // 147: publira.v1.FollowService.Follow:output_type -> publira.v1.FollowResponse
-	65,  // 148: publira.v1.FollowService.Unfollow:output_type -> publira.v1.UnfollowResponse
-	68,  // 149: publira.v1.FollowService.ListMyFollows:output_type -> publira.v1.ListMyFollowsResponse
-	71,  // 150: publira.v1.FollowService.ListMyFollowUpdates:output_type -> publira.v1.ListMyFollowUpdatesResponse
-	73,  // 151: publira.v1.RatingService.RateEpisode:output_type -> publira.v1.RateEpisodeResponse
-	75,  // 152: publira.v1.RatingService.GetMyEpisodeRating:output_type -> publira.v1.GetMyEpisodeRatingResponse
-	77,  // 153: publira.v1.RatingService.GetMySeriesRating:output_type -> publira.v1.GetMySeriesRatingResponse
-	80,  // 154: publira.v1.ContentViewService.RecordContentView:output_type -> publira.v1.RecordContentViewResponse
-	82,  // 155: publira.v1.PurchaseService.StartEpisodeCheckout:output_type -> publira.v1.StartEpisodeCheckoutResponse
-	85,  // 156: publira.v1.PurchaseService.ListMyPurchases:output_type -> publira.v1.ListMyPurchasesResponse
-	87,  // 157: publira.v1.PurchaseService.ProcessStripeWebhook:output_type -> publira.v1.ProcessStripeWebhookResponse
-	125, // [125:158] is the sub-list for method output_type
-	92,  // [92:125] is the sub-list for method input_type
-	92,  // [92:92] is the sub-list for extension type_name
-	92,  // [92:92] is the sub-list for extension extendee
-	0,   // [0:92] is the sub-list for field type_name
+	89,  // 84: publira.v1.RecordContentViewRequest.tenant:type_name -> publira.types.v1.TenantContext
+	79,  // 85: publira.v1.RecordContentViewRequest.target:type_name -> publira.v1.ContentViewTarget
+	89,  // 86: publira.v1.StartEpisodeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	7,   // 87: publira.v1.StartEpisodeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
+	93,  // 88: publira.v1.MyPurchase.episode:type_name -> publira.types.v1.Episode
+	92,  // 89: publira.v1.MyPurchase.series:type_name -> publira.types.v1.Series
+	89,  // 90: publira.v1.ListMyPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	84,  // 91: publira.v1.ListMyPurchasesResponse.purchases:type_name -> publira.v1.MyPurchase
+	89,  // 92: publira.v1.ProcessStripeWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8,   // 93: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
+	10,  // 94: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	12,  // 95: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	14,  // 96: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	18,  // 97: publira.v1.CatalogService.ListPublishedCreators:input_type -> publira.v1.ListPublishedCreatorsRequest
+	20,  // 98: publira.v1.CatalogService.GetPublishedCreatorDetail:input_type -> publira.v1.GetPublishedCreatorDetailRequest
+	23,  // 99: publira.v1.CatalogService.GetPublishedLabelDetail:input_type -> publira.v1.GetPublishedLabelDetailRequest
+	26,  // 100: publira.v1.CatalogService.ListPublishedGenres:input_type -> publira.v1.ListPublishedGenresRequest
+	29,  // 101: publira.v1.CatalogService.ListPublishedTags:input_type -> publira.v1.ListPublishedTagsRequest
+	31,  // 102: publira.v1.CatalogService.SearchPublishedSeries:input_type -> publira.v1.SearchPublishedSeriesRequest
+	33,  // 103: publira.v1.CatalogService.SearchPublishedCreators:input_type -> publira.v1.SearchPublishedCreatorsRequest
+	35,  // 104: publira.v1.CatalogService.SearchPublishedLabels:input_type -> publira.v1.SearchPublishedLabelsRequest
+	37,  // 105: publira.v1.CatalogService.ListRecommendedSeries:input_type -> publira.v1.ListRecommendedSeriesRequest
+	40,  // 106: publira.v1.CatalogService.ListRankedSeries:input_type -> publira.v1.ListRankedSeriesRequest
+	42,  // 107: publira.v1.CatalogService.ListRelatedSeries:input_type -> publira.v1.ListRelatedSeriesRequest
+	44,  // 108: publira.v1.EpisodeReadService.MarkEpisodeAsRead:input_type -> publira.v1.MarkEpisodeAsReadRequest
+	47,  // 109: publira.v1.EpisodeReadService.SaveReadingPosition:input_type -> publira.v1.SaveReadingPositionRequest
+	49,  // 110: publira.v1.EpisodeReadService.GetMyReadingPosition:input_type -> publira.v1.GetMyReadingPositionRequest
+	51,  // 111: publira.v1.EpisodeReadService.GetMySeriesProgress:input_type -> publira.v1.GetMySeriesProgressRequest
+	55,  // 112: publira.v1.EpisodeReadService.ListMyRecentSeries:input_type -> publira.v1.ListMyRecentSeriesRequest
+	58,  // 113: publira.v1.EpisodeReadService.ListMyEpisodeReads:input_type -> publira.v1.ListMyEpisodeReadsRequest
+	61,  // 114: publira.v1.FollowService.GetMyFollowStatus:input_type -> publira.v1.GetMyFollowStatusRequest
+	63,  // 115: publira.v1.FollowService.Follow:input_type -> publira.v1.FollowRequest
+	65,  // 116: publira.v1.FollowService.Unfollow:input_type -> publira.v1.UnfollowRequest
+	68,  // 117: publira.v1.FollowService.ListMyFollows:input_type -> publira.v1.ListMyFollowsRequest
+	71,  // 118: publira.v1.FollowService.ListMyFollowUpdates:input_type -> publira.v1.ListMyFollowUpdatesRequest
+	73,  // 119: publira.v1.RatingService.RateEpisode:input_type -> publira.v1.RateEpisodeRequest
+	75,  // 120: publira.v1.RatingService.GetMyEpisodeRating:input_type -> publira.v1.GetMyEpisodeRatingRequest
+	77,  // 121: publira.v1.RatingService.GetMySeriesRating:input_type -> publira.v1.GetMySeriesRatingRequest
+	80,  // 122: publira.v1.ContentViewService.RecordContentView:input_type -> publira.v1.RecordContentViewRequest
+	82,  // 123: publira.v1.PurchaseService.StartEpisodeCheckout:input_type -> publira.v1.StartEpisodeCheckoutRequest
+	85,  // 124: publira.v1.PurchaseService.ListMyPurchases:input_type -> publira.v1.ListMyPurchasesRequest
+	87,  // 125: publira.v1.PurchaseService.ProcessStripeWebhook:input_type -> publira.v1.ProcessStripeWebhookRequest
+	9,   // 126: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
+	11,  // 127: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	13,  // 128: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	16,  // 129: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	19,  // 130: publira.v1.CatalogService.ListPublishedCreators:output_type -> publira.v1.ListPublishedCreatorsResponse
+	21,  // 131: publira.v1.CatalogService.GetPublishedCreatorDetail:output_type -> publira.v1.GetPublishedCreatorDetailResponse
+	24,  // 132: publira.v1.CatalogService.GetPublishedLabelDetail:output_type -> publira.v1.GetPublishedLabelDetailResponse
+	27,  // 133: publira.v1.CatalogService.ListPublishedGenres:output_type -> publira.v1.ListPublishedGenresResponse
+	30,  // 134: publira.v1.CatalogService.ListPublishedTags:output_type -> publira.v1.ListPublishedTagsResponse
+	32,  // 135: publira.v1.CatalogService.SearchPublishedSeries:output_type -> publira.v1.SearchPublishedSeriesResponse
+	34,  // 136: publira.v1.CatalogService.SearchPublishedCreators:output_type -> publira.v1.SearchPublishedCreatorsResponse
+	36,  // 137: publira.v1.CatalogService.SearchPublishedLabels:output_type -> publira.v1.SearchPublishedLabelsResponse
+	38,  // 138: publira.v1.CatalogService.ListRecommendedSeries:output_type -> publira.v1.ListRecommendedSeriesResponse
+	41,  // 139: publira.v1.CatalogService.ListRankedSeries:output_type -> publira.v1.ListRankedSeriesResponse
+	43,  // 140: publira.v1.CatalogService.ListRelatedSeries:output_type -> publira.v1.ListRelatedSeriesResponse
+	45,  // 141: publira.v1.EpisodeReadService.MarkEpisodeAsRead:output_type -> publira.v1.MarkEpisodeAsReadResponse
+	48,  // 142: publira.v1.EpisodeReadService.SaveReadingPosition:output_type -> publira.v1.SaveReadingPositionResponse
+	50,  // 143: publira.v1.EpisodeReadService.GetMyReadingPosition:output_type -> publira.v1.GetMyReadingPositionResponse
+	53,  // 144: publira.v1.EpisodeReadService.GetMySeriesProgress:output_type -> publira.v1.GetMySeriesProgressResponse
+	56,  // 145: publira.v1.EpisodeReadService.ListMyRecentSeries:output_type -> publira.v1.ListMyRecentSeriesResponse
+	59,  // 146: publira.v1.EpisodeReadService.ListMyEpisodeReads:output_type -> publira.v1.ListMyEpisodeReadsResponse
+	62,  // 147: publira.v1.FollowService.GetMyFollowStatus:output_type -> publira.v1.GetMyFollowStatusResponse
+	64,  // 148: publira.v1.FollowService.Follow:output_type -> publira.v1.FollowResponse
+	66,  // 149: publira.v1.FollowService.Unfollow:output_type -> publira.v1.UnfollowResponse
+	69,  // 150: publira.v1.FollowService.ListMyFollows:output_type -> publira.v1.ListMyFollowsResponse
+	72,  // 151: publira.v1.FollowService.ListMyFollowUpdates:output_type -> publira.v1.ListMyFollowUpdatesResponse
+	74,  // 152: publira.v1.RatingService.RateEpisode:output_type -> publira.v1.RateEpisodeResponse
+	76,  // 153: publira.v1.RatingService.GetMyEpisodeRating:output_type -> publira.v1.GetMyEpisodeRatingResponse
+	78,  // 154: publira.v1.RatingService.GetMySeriesRating:output_type -> publira.v1.GetMySeriesRatingResponse
+	81,  // 155: publira.v1.ContentViewService.RecordContentView:output_type -> publira.v1.RecordContentViewResponse
+	83,  // 156: publira.v1.PurchaseService.StartEpisodeCheckout:output_type -> publira.v1.StartEpisodeCheckoutResponse
+	86,  // 157: publira.v1.PurchaseService.ListMyPurchases:output_type -> publira.v1.ListMyPurchasesResponse
+	88,  // 158: publira.v1.PurchaseService.ProcessStripeWebhook:output_type -> publira.v1.ProcessStripeWebhookResponse
+	126, // [126:159] is the sub-list for method output_type
+	93,  // [93:126] is the sub-list for method input_type
+	93,  // [93:93] is the sub-list for extension type_name
+	93,  // [93:93] is the sub-list for extension extendee
+	0,   // [0:93] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }
@@ -6397,7 +6464,7 @@ func file_publira_v1_catalog_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_catalog_proto_rawDesc), len(file_publira_v1_catalog_proto_rawDesc)),
-			NumEnums:      7,
+			NumEnums:      8,
 			NumMessages:   81,
 			NumExtensions: 0,
 			NumServices:   6,
