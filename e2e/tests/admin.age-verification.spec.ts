@@ -44,6 +44,10 @@ const firstPage = (page: Page) =>
     `canvas[aria-label="${episodePageLabel(AGE_VERIFICATION_EPISODE.title, 1)}"]`
   );
 
+/** The browser's own interstitial, which the tenant's rule is answered before. */
+const ratingConfirmation = (page: Page) =>
+  page.getByRole("button", { name: "I am 18 or older" });
+
 /** The card's radio for one rule, by the label the console shows it under. */
 const ruleRadio = (page: Page, option: string) =>
   page.getByRole("radio", { exact: true, name: option });
@@ -65,19 +69,25 @@ const saveAgeVerification = async (
  * the request right after it is still answered from the old copy. Waiting on a
  * single navigation would be waiting on a page that can never change.
  *
- * The title heading is drawn whichever way the gate decides, so waiting for it
- * first means each round reads a page that has rendered rather than one that
- * has not arrived.
+ * Each round first waits for one of the three things the page can settle on —
+ * the age gate, the rating confirmation, or the episode's own title — so it
+ * reads a page that has rendered rather than one that has not arrived.
  */
 const pollAgeGate = (page: Page) =>
   expect.poll(
     async () => {
       await page.goto(episodeUrl);
       await expect(
-        page.getByRole("heading", {
-          level: 1,
-          name: new RegExp(AGE_VERIFICATION_EPISODE.title, "u"),
-        })
+        page
+          .getByText(AGE_GATE_MESSAGE)
+          .or(ratingConfirmation(page))
+          .or(
+            page.getByRole("heading", {
+              level: 1,
+              name: new RegExp(AGE_VERIFICATION_EPISODE.title, "u"),
+            })
+          )
+          .first()
       ).toBeVisible();
       return await page.getByText(AGE_GATE_MESSAGE).count();
     },
@@ -174,26 +184,26 @@ test.describe("web-admin age verification", () => {
     const readerContext = await browser.newContext();
     const readerPage = await readerContext.newPage();
     try {
-      // Sixteen, so `r18` is a rating this reader can never prove. The browser
-      // confirmation is answered once and remembered for the tenant, which
-      // leaves the tenant's rule as the only thing still closing the body.
+      // Sixteen, so `r18` is a rating this reader can never prove, and the
+      // rule stops them before the browser confirmation is ever offered.
       await signInAsMember(
         readerPage,
         AGE_VERIFICATION_MINOR,
         AGE_VERIFICATION_EPISODE_PATH,
         WEB_HOST_AGE_VERIFICATION_BASE_URL
       );
-      await readerPage
-        .getByRole("button", { name: "I am 18 or older" })
-        .click();
       await expect(readerPage.getByText(AGE_GATE_MESSAGE)).toBeVisible();
+      await expect(ratingConfirmation(readerPage)).toHaveCount(0);
 
       await saveAgeVerification(page, "Check no ages");
       await expect(
         page.getByText("The age verification was saved.")
       ).toBeVisible();
 
+      // With the rule gone, only the browser confirmation stands in front of
+      // the body, and answering it is what opens it.
       await pollAgeGate(readerPage).toBe(0);
+      await ratingConfirmation(readerPage).click();
       await expect(firstPage(readerPage)).toBeVisible();
 
       // Back on the rule the rest of the suite runs on, and read from the API
