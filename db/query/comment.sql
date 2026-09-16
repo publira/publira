@@ -11,8 +11,9 @@
 --   ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 --     -> idx_episode_comments_tenant_user_created_at
 --   ListEpisodeCommentsForModerationByCreatedAt*
---     -> idx_episode_comments_tenant_status_created_at with a status filter,
---        idx_episode_comments_tenant_created_at without one
+--     -> idx_episode_comments_tenant_user_created_at with a user filter,
+--        idx_episode_comments_tenant_status_created_at with a status filter,
+--        idx_episode_comments_tenant_created_at without either
 --   CountPendingEpisodeCommentsForTenant
 --     -> idx_episode_comments_tenant_status_created_at
 --   PurgeWithdrawnEpisodeComments
@@ -201,8 +202,9 @@ LIMIT sqlc.arg('limit');
 -- The console queues: 'pending' is the approval queue, 'hidden' the removed
 -- comments staff can restore, 'withdrawn' what an author deleted and the
 -- retention window still keeps. Every filter is optional, so the same query
--- answers a tenant-wide queue, one series, one episode, and the whole history
--- of any of them; a moderator does not have to open an episode to find work.
+-- answers a tenant-wide queue, one series, one episode, one reader, and the
+-- whole history of any of them; a moderator does not have to open an episode to
+-- find work.
 --
 -- The author and the episode are joined in because a comment cannot be judged
 -- from its text alone: staff need to know who wrote it and what it is about.
@@ -224,6 +226,7 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
     AND (sqlc.narg('episode_id')::uuid IS NULL OR c.episode_id = sqlc.narg('episode_id')::uuid)
     AND (sqlc.narg('series_id')::uuid IS NULL OR e.series_id = sqlc.narg('series_id')::uuid)
+    AND (sqlc.narg('user_id')::uuid IS NULL OR c.user_id = sqlc.narg('user_id')::uuid)
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (
@@ -265,6 +268,7 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
     AND (sqlc.narg('episode_id')::uuid IS NULL OR c.episode_id = sqlc.narg('episode_id')::uuid)
     AND (sqlc.narg('series_id')::uuid IS NULL OR e.series_id = sqlc.narg('series_id')::uuid)
+    AND (sqlc.narg('user_id')::uuid IS NULL OR c.user_id = sqlc.narg('user_id')::uuid)
     AND (
         sqlc.narg('cursor_created_at')::timestamptz IS NULL
         OR (

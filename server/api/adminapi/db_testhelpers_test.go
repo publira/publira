@@ -173,6 +173,10 @@ func (e *adminDBEnv) notificationClient() publiraadminv1connect.AdminNotificatio
 	return publiraadminv1connect.NewAdminNotificationServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *adminDBEnv) userClient() publiraadminv1connect.AdminUserServiceClient {
+	return publiraadminv1connect.NewAdminUserServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *adminDBEnv) commentClient() publiraadminv1connect.AdminCommentServiceClient {
 	return publiraadminv1connect.NewAdminCommentServiceClient(e.Server.Client(), e.Server.URL)
 }

@@ -210,6 +210,346 @@ func (x *ListTenantUsersResponse) GetNextToken() string {
 	return ""
 }
 
+// A reader of the tenant's site: an account of the tenant that holds no staff
+// role.
+type AdminReader struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Email    string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	// One of active, suspended, inactive.
+	Status    string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt string `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// When the reader confirmed their address. Empty until they have.
+	EmailVerifiedAt string `protobuf:"bytes,6,opt,name=email_verified_at,json=emailVerifiedAt,proto3" json:"email_verified_at,omitempty"`
+	// Whether the reader has recorded a birth date. The date itself stays with
+	// the reader.
+	HasBirthDate  bool `protobuf:"varint,7,opt,name=has_birth_date,json=hasBirthDate,proto3" json:"has_birth_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminReader) Reset() {
+	*x = AdminReader{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminReader) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminReader) ProtoMessage() {}
+
+func (x *AdminReader) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminReader.ProtoReflect.Descriptor instead.
+func (*AdminReader) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AdminReader) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *AdminReader) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AdminReader) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *AdminReader) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AdminReader) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *AdminReader) GetEmailVerifiedAt() string {
+	if x != nil {
+		return x.EmailVerifiedAt
+	}
+	return ""
+}
+
+func (x *AdminReader) GetHasBirthDate() bool {
+	if x != nil {
+		return x.HasBirthDate
+	}
+	return false
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+type ListReadersRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Matches a substring of the name or the email, ignoring case. Empty lists
+	// every reader.
+	Query string `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	// One of active, suspended, inactive. Empty lists every status. Anything
+	// else is invalid_argument.
+	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,5,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReadersRequest) Reset() {
+	*x = ListReadersRequest{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReadersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReadersRequest) ProtoMessage() {}
+
+func (x *ListReadersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReadersRequest.ProtoReflect.Descriptor instead.
+func (*ListReadersRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListReadersRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ListReadersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ListReadersRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListReadersRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListReadersRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type ListReadersResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Newest first.
+	Readers []*AdminReader `protobuf:"bytes,1,rep,name=readers,proto3" json:"readers,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReadersResponse) Reset() {
+	*x = ListReadersResponse{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReadersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReadersResponse) ProtoMessage() {}
+
+func (x *ListReadersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReadersResponse.ProtoReflect.Descriptor instead.
+func (*ListReadersResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListReadersResponse) GetReaders() []*AdminReader {
+	if x != nil {
+		return x.Readers
+	}
+	return nil
+}
+
+func (x *ListReadersResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListReadersResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
+}
+
+type GetReaderRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetReaderRequest) Reset() {
+	*x = GetReaderRequest{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetReaderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetReaderRequest) ProtoMessage() {}
+
+func (x *GetReaderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetReaderRequest.ProtoReflect.Descriptor instead.
+func (*GetReaderRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetReaderRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetReaderRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+type GetReaderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reader        *AdminReader           `protobuf:"bytes,1,opt,name=reader,proto3" json:"reader,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetReaderResponse) Reset() {
+	*x = GetReaderResponse{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetReaderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetReaderResponse) ProtoMessage() {}
+
+func (x *GetReaderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetReaderResponse.ProtoReflect.Descriptor instead.
+func (*GetReaderResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetReaderResponse) GetReader() *AdminReader {
+	if x != nil {
+		return x.Reader
+	}
+	return nil
+}
+
 var File_publira_admin_v1_user_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_user_proto_rawDesc = "" +
@@ -228,9 +568,36 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x05users\x18\x01 \x03(\v2!.publira.admin.v1.AdminTenantUserR\x05users\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken2|\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xdd\x01\n" +
+	"\vAdminReader\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12*\n" +
+	"\x11email_verified_at\x18\x06 \x01(\tR\x0femailVerifiedAt\x12$\n" +
+	"\x0ehas_birth_date\x18\a \x01(\bR\fhasBirthDate\"\xa7\x01\n" +
+	"\x12ListReadersRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05query\x18\x02 \x01(\tR\x05query\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x05 \x01(\tR\x05token\"\x94\x01\n" +
+	"\x13ListReadersResponse\x127\n" +
+	"\areaders\x18\x01 \x03(\v2\x1d.publira.admin.v1.AdminReaderR\areaders\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"h\n" +
+	"\x10GetReaderRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"J\n" +
+	"\x11GetReaderResponse\x125\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader2\xb2\x02\n" +
 	"\x10AdminUserService\x12h\n" +
-	"\x0fListTenantUsers\x12(.publira.admin.v1.ListTenantUsersRequest\x1a).publira.admin.v1.ListTenantUsersResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x0fListTenantUsers\x12(.publira.admin.v1.ListTenantUsersRequest\x1a).publira.admin.v1.ListTenantUsersResponse\"\x00\x12\\\n" +
+	"\vListReaders\x12$.publira.admin.v1.ListReadersRequest\x1a%.publira.admin.v1.ListReadersResponse\"\x00\x12V\n" +
+	"\tGetReader\x12\".publira.admin.v1.GetReaderRequest\x1a#.publira.admin.v1.GetReaderResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_user_proto_rawDescOnce sync.Once
@@ -244,23 +611,36 @@ func file_publira_admin_v1_user_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_user_proto_rawDescData
 }
 
-var file_publira_admin_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_publira_admin_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_publira_admin_v1_user_proto_goTypes = []any{
 	(*AdminTenantUser)(nil),         // 0: publira.admin.v1.AdminTenantUser
 	(*ListTenantUsersRequest)(nil),  // 1: publira.admin.v1.ListTenantUsersRequest
 	(*ListTenantUsersResponse)(nil), // 2: publira.admin.v1.ListTenantUsersResponse
-	(*v1.TenantContext)(nil),        // 3: publira.types.v1.TenantContext
+	(*AdminReader)(nil),             // 3: publira.admin.v1.AdminReader
+	(*ListReadersRequest)(nil),      // 4: publira.admin.v1.ListReadersRequest
+	(*ListReadersResponse)(nil),     // 5: publira.admin.v1.ListReadersResponse
+	(*GetReaderRequest)(nil),        // 6: publira.admin.v1.GetReaderRequest
+	(*GetReaderResponse)(nil),       // 7: publira.admin.v1.GetReaderResponse
+	(*v1.TenantContext)(nil),        // 8: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_user_proto_depIdxs = []int32{
-	3, // 0: publira.admin.v1.ListTenantUsersRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8, // 0: publira.admin.v1.ListTenantUsersRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0, // 1: publira.admin.v1.ListTenantUsersResponse.users:type_name -> publira.admin.v1.AdminTenantUser
-	1, // 2: publira.admin.v1.AdminUserService.ListTenantUsers:input_type -> publira.admin.v1.ListTenantUsersRequest
-	2, // 3: publira.admin.v1.AdminUserService.ListTenantUsers:output_type -> publira.admin.v1.ListTenantUsersResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	8, // 2: publira.admin.v1.ListReadersRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3, // 3: publira.admin.v1.ListReadersResponse.readers:type_name -> publira.admin.v1.AdminReader
+	8, // 4: publira.admin.v1.GetReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3, // 5: publira.admin.v1.GetReaderResponse.reader:type_name -> publira.admin.v1.AdminReader
+	1, // 6: publira.admin.v1.AdminUserService.ListTenantUsers:input_type -> publira.admin.v1.ListTenantUsersRequest
+	4, // 7: publira.admin.v1.AdminUserService.ListReaders:input_type -> publira.admin.v1.ListReadersRequest
+	6, // 8: publira.admin.v1.AdminUserService.GetReader:input_type -> publira.admin.v1.GetReaderRequest
+	2, // 9: publira.admin.v1.AdminUserService.ListTenantUsers:output_type -> publira.admin.v1.ListTenantUsersResponse
+	5, // 10: publira.admin.v1.AdminUserService.ListReaders:output_type -> publira.admin.v1.ListReadersResponse
+	7, // 11: publira.admin.v1.AdminUserService.GetReader:output_type -> publira.admin.v1.GetReaderResponse
+	9, // [9:12] is the sub-list for method output_type
+	6, // [6:9] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_user_proto_init() }
@@ -274,7 +654,7 @@ func file_publira_admin_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_user_proto_rawDesc), len(file_publira_admin_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

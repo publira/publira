@@ -353,9 +353,13 @@ type ListCommentsRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,6,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Token string `protobuf:"bytes,6,opt,name=token,proto3" json:"token,omitempty"`
+	// Narrow the list to the comments one reader wrote. Composes with the other
+	// filters, and like them an identifier naming no user of this tenant is an
+	// empty list.
+	AuthorPublicId string `protobuf:"bytes,7,opt,name=author_public_id,json=authorPublicId,proto3" json:"author_public_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ListCommentsRequest) Reset() {
@@ -426,6 +430,13 @@ func (x *ListCommentsRequest) GetLimit() int32 {
 func (x *ListCommentsRequest) GetToken() string {
 	if x != nil {
 		return x.Token
+	}
+	return ""
+}
+
+func (x *ListCommentsRequest) GetAuthorPublicId() string {
+	if x != nil {
+		return x.AuthorPublicId
 	}
 	return ""
 }
@@ -1291,14 +1302,15 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"resolvedAt\x12,\n" +
 	"\x12reporter_public_id\x18\a \x01(\tR\x10reporterPublicId\x12#\n" +
 	"\rreporter_name\x18\b \x01(\tR\freporterName\x128\n" +
-	"\acomment\x18\t \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\xe8\x01\n" +
+	"\acomment\x18\t \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\x92\x02\n" +
 	"\x13ListCommentsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12(\n" +
 	"\x10series_public_id\x18\x03 \x01(\tR\x0eseriesPublicId\x12*\n" +
 	"\x11episode_public_id\x18\x04 \x01(\tR\x0fepisodePublicId\x12\x14\n" +
 	"\x05limit\x18\x05 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x06 \x01(\tR\x05token\"\x98\x01\n" +
+	"\x05token\x18\x06 \x01(\tR\x05token\x12(\n" +
+	"\x10author_public_id\x18\a \x01(\tR\x0eauthorPublicId\"\x98\x01\n" +
 	"\x14ListCommentsResponse\x12:\n" +
 	"\bcomments\x18\x01 \x03(\v2\x1e.publira.admin.v1.AdminCommentR\bcomments\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +

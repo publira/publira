@@ -25,6 +25,60 @@ message ListTenantUsersResponse {
   string next_token = 3;
 }
 
+// A reader of the tenant's site: an account of the tenant that holds no staff
+// role.
+message AdminReader {
+  string public_id = 1;
+  string name = 2;
+  string email = 3;
+  // One of active, suspended, inactive.
+  string status = 4;
+  string created_at = 5;
+  // When the reader confirmed their address. Empty until they have.
+  string email_verified_at = 6;
+  // Whether the reader has recorded a birth date. The date itself stays with
+  // the reader.
+  bool has_birth_date = 7;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListReadersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Matches a substring of the name or the email, ignoring case. Empty lists
+  // every reader.
+  string query = 2;
+  // One of active, suspended, inactive. Empty lists every status. Anything
+  // else is invalid_argument.
+  string status = 3;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 4;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 5;
+}
+
+message ListReadersResponse {
+  // Newest first.
+  repeated AdminReader readers = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetReaderRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetReaderResponse {
+  AdminReader reader = 1;
+}
+
 service AdminUserService {
   rpc ListTenantUsers(ListTenantUsersRequest) returns (ListTenantUsersResponse) {}
+  // Lists the tenant's readers, newest first. Staff accounts are never in it.
+  rpc ListReaders(ListReadersRequest) returns (ListReadersResponse) {}
+  // Reads one reader. not_found for a staff account and for an account of
+  // another tenant.
+  rpc GetReader(GetReaderRequest) returns (GetReaderResponse) {}
 }

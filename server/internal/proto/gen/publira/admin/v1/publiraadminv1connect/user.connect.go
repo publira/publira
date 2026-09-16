@@ -36,11 +36,22 @@ const (
 	// AdminUserServiceListTenantUsersProcedure is the fully-qualified name of the AdminUserService's
 	// ListTenantUsers RPC.
 	AdminUserServiceListTenantUsersProcedure = "/publira.admin.v1.AdminUserService/ListTenantUsers"
+	// AdminUserServiceListReadersProcedure is the fully-qualified name of the AdminUserService's
+	// ListReaders RPC.
+	AdminUserServiceListReadersProcedure = "/publira.admin.v1.AdminUserService/ListReaders"
+	// AdminUserServiceGetReaderProcedure is the fully-qualified name of the AdminUserService's
+	// GetReader RPC.
+	AdminUserServiceGetReaderProcedure = "/publira.admin.v1.AdminUserService/GetReader"
 )
 
 // AdminUserServiceClient is a client for the publira.admin.v1.AdminUserService service.
 type AdminUserServiceClient interface {
 	ListTenantUsers(context.Context, *connect.Request[v1.ListTenantUsersRequest]) (*connect.Response[v1.ListTenantUsersResponse], error)
+	// Lists the tenant's readers, newest first. Staff accounts are never in it.
+	ListReaders(context.Context, *connect.Request[v1.ListReadersRequest]) (*connect.Response[v1.ListReadersResponse], error)
+	// Reads one reader. not_found for a staff account and for an account of
+	// another tenant.
+	GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error)
 }
 
 // NewAdminUserServiceClient constructs a client for the publira.admin.v1.AdminUserService service.
@@ -60,12 +71,26 @@ func NewAdminUserServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminUserServiceMethods.ByName("ListTenantUsers")),
 			connect.WithClientOptions(opts...),
 		),
+		listReaders: connect.NewClient[v1.ListReadersRequest, v1.ListReadersResponse](
+			httpClient,
+			baseURL+AdminUserServiceListReadersProcedure,
+			connect.WithSchema(adminUserServiceMethods.ByName("ListReaders")),
+			connect.WithClientOptions(opts...),
+		),
+		getReader: connect.NewClient[v1.GetReaderRequest, v1.GetReaderResponse](
+			httpClient,
+			baseURL+AdminUserServiceGetReaderProcedure,
+			connect.WithSchema(adminUserServiceMethods.ByName("GetReader")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // adminUserServiceClient implements AdminUserServiceClient.
 type adminUserServiceClient struct {
 	listTenantUsers *connect.Client[v1.ListTenantUsersRequest, v1.ListTenantUsersResponse]
+	listReaders     *connect.Client[v1.ListReadersRequest, v1.ListReadersResponse]
+	getReader       *connect.Client[v1.GetReaderRequest, v1.GetReaderResponse]
 }
 
 // ListTenantUsers calls publira.admin.v1.AdminUserService.ListTenantUsers.
@@ -73,9 +98,24 @@ func (c *adminUserServiceClient) ListTenantUsers(ctx context.Context, req *conne
 	return c.listTenantUsers.CallUnary(ctx, req)
 }
 
+// ListReaders calls publira.admin.v1.AdminUserService.ListReaders.
+func (c *adminUserServiceClient) ListReaders(ctx context.Context, req *connect.Request[v1.ListReadersRequest]) (*connect.Response[v1.ListReadersResponse], error) {
+	return c.listReaders.CallUnary(ctx, req)
+}
+
+// GetReader calls publira.admin.v1.AdminUserService.GetReader.
+func (c *adminUserServiceClient) GetReader(ctx context.Context, req *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error) {
+	return c.getReader.CallUnary(ctx, req)
+}
+
 // AdminUserServiceHandler is an implementation of the publira.admin.v1.AdminUserService service.
 type AdminUserServiceHandler interface {
 	ListTenantUsers(context.Context, *connect.Request[v1.ListTenantUsersRequest]) (*connect.Response[v1.ListTenantUsersResponse], error)
+	// Lists the tenant's readers, newest first. Staff accounts are never in it.
+	ListReaders(context.Context, *connect.Request[v1.ListReadersRequest]) (*connect.Response[v1.ListReadersResponse], error)
+	// Reads one reader. not_found for a staff account and for an account of
+	// another tenant.
+	GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error)
 }
 
 // NewAdminUserServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -91,10 +131,26 @@ func NewAdminUserServiceHandler(svc AdminUserServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminUserServiceMethods.ByName("ListTenantUsers")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminUserServiceListReadersHandler := connect.NewUnaryHandler(
+		AdminUserServiceListReadersProcedure,
+		svc.ListReaders,
+		connect.WithSchema(adminUserServiceMethods.ByName("ListReaders")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminUserServiceGetReaderHandler := connect.NewUnaryHandler(
+		AdminUserServiceGetReaderProcedure,
+		svc.GetReader,
+		connect.WithSchema(adminUserServiceMethods.ByName("GetReader")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminUserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminUserServiceListTenantUsersProcedure:
 			adminUserServiceListTenantUsersHandler.ServeHTTP(w, r)
+		case AdminUserServiceListReadersProcedure:
+			adminUserServiceListReadersHandler.ServeHTTP(w, r)
+		case AdminUserServiceGetReaderProcedure:
+			adminUserServiceGetReaderHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -106,4 +162,12 @@ type UnimplementedAdminUserServiceHandler struct{}
 
 func (UnimplementedAdminUserServiceHandler) ListTenantUsers(context.Context, *connect.Request[v1.ListTenantUsersRequest]) (*connect.Response[v1.ListTenantUsersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.ListTenantUsers is not implemented"))
+}
+
+func (UnimplementedAdminUserServiceHandler) ListReaders(context.Context, *connect.Request[v1.ListReadersRequest]) (*connect.Response[v1.ListReadersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.ListReaders is not implemented"))
+}
+
+func (UnimplementedAdminUserServiceHandler) GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.GetReader is not implemented"))
 }
