@@ -821,6 +821,7 @@
       "labels_label": "レーベル",
       "operations": "運用",
       "pages_label": "ページ",
+      "readers_label": "読者",
       "series_label": "シリーズ",
       "settings_label": "設定"
     },
@@ -928,6 +929,35 @@
           "actions": "操作"
         },
         "version_option": "v{$version}・{$status}"
+      }
+    },
+    "readers": {
+      "title": "読者",
+      "page_description": "このサイトに登録した読者を、名前やメールアドレスで探します。",
+      "item_label": "読者",
+      "list_error": "読者を表示できませんでした",
+      "list_failed": "読者を取得できませんでした。時間をおいて再試行してください。",
+      "empty_title": "表示できる読者はいません。",
+      "empty_description": "このサイトに登録した読者はまだいません。",
+      "empty_filtered_description": "この条件に一致する読者はいません。別の名前やメールアドレスで検索するか、条件をリセットしてください。",
+      "pagination_aria": "読者のページ送り",
+      "pagination_description": "1ページあたり最大{$count}件を登録日の新しい順に表示します。",
+      "status_active": "有効",
+      "status_suspended": "停止中",
+      "status_inactive": "無効",
+      "columns": {
+        "name": "名前",
+        "email": "メールアドレス",
+        "status": "状態",
+        "created_at": "登録日"
+      },
+      "filter": {
+        "query": "名前またはメールアドレス",
+        "query_placeholder": "例: reader@example.com",
+        "status": "状態",
+        "status_all": "すべての状態",
+        "apply": "適用",
+        "reset": "リセット"
       }
     },
     "series": {

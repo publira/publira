@@ -821,6 +821,7 @@
       "labels_label": "品牌",
       "operations": "營運",
       "pages_label": "頁面",
+      "readers_label": "讀者",
       "series_label": "系列",
       "settings_label": "設定"
     },
@@ -928,6 +929,35 @@
           "actions": "操作"
         },
         "version_option": "v{$version} · {$status}"
+      }
+    },
+    "readers": {
+      "title": "讀者",
+      "page_description": "依姓名或電子郵件尋找在本站註冊的讀者。",
+      "item_label": "讀者",
+      "list_error": "無法顯示讀者",
+      "list_failed": "無法載入讀者。請稍後再試。",
+      "empty_title": "沒有可顯示的讀者。",
+      "empty_description": "還沒有人在本站註冊。",
+      "empty_filtered_description": "沒有符合這些條件的讀者。請換一個姓名或電子郵件搜尋，或重設篩選條件。",
+      "pagination_aria": "讀者分頁",
+      "pagination_description": "每頁最多顯示 {$count} 位讀者，依註冊時間由新到舊排列。",
+      "status_active": "啟用",
+      "status_suspended": "已暫停",
+      "status_inactive": "未啟用",
+      "columns": {
+        "name": "姓名",
+        "email": "電子郵件",
+        "status": "狀態",
+        "created_at": "註冊時間"
+      },
+      "filter": {
+        "query": "姓名或電子郵件",
+        "query_placeholder": "例如：reader@example.com",
+        "status": "狀態",
+        "status_all": "全部狀態",
+        "apply": "套用",
+        "reset": "重設"
       }
     },
     "series": {

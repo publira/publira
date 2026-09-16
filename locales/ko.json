@@ -821,6 +821,7 @@
       "labels_label": "레이블",
       "operations": "운영",
       "pages_label": "페이지",
+      "readers_label": "독자",
       "series_label": "시리즈",
       "settings_label": "설정"
     },
@@ -928,6 +929,35 @@
           "actions": "작업"
         },
         "version_option": "v{$version} · {$status}"
+      }
+    },
+    "readers": {
+      "title": "독자",
+      "page_description": "이 사이트에 가입한 독자를 이름이나 이메일로 찾습니다.",
+      "item_label": "독자",
+      "list_error": "독자를 표시할 수 없습니다",
+      "list_failed": "독자를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "empty_title": "표시할 독자가 없습니다.",
+      "empty_description": "아직 이 사이트에 가입한 독자가 없습니다.",
+      "empty_filtered_description": "이 조건에 맞는 독자가 없습니다. 다른 이름이나 이메일로 검색하거나 조건을 초기화하세요.",
+      "pagination_aria": "독자 목록 페이지 이동",
+      "pagination_description": "가입일 최신순으로 한 페이지에 최대 {$count}명까지 표시합니다.",
+      "status_active": "활성",
+      "status_suspended": "정지됨",
+      "status_inactive": "비활성",
+      "columns": {
+        "name": "이름",
+        "email": "이메일",
+        "status": "상태",
+        "created_at": "가입일"
+      },
+      "filter": {
+        "query": "이름 또는 이메일",
+        "query_placeholder": "예: reader@example.com",
+        "status": "상태",
+        "status_all": "모든 상태",
+        "apply": "적용",
+        "reset": "초기화"
       }
     },
     "series": {
