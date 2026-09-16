@@ -30,30 +30,27 @@ import {
   bulkEditEpisodeCreditsAction,
   listEpisodeCreditRangeOptionsAction,
 } from "../_lib/actions";
-import type {
-  CreditPickerOption,
-  EpisodeCreditRangeOption,
-} from "../episode-types";
+import type { ListEpisodeCreditRangeCatalogResult } from "../episode-types";
 import { EpisodeCreditsRangeForm } from "./episode-credits-range-form";
 
 interface EpisodeCreditsRangeDialogProps {
-  creatorRoles: CreditPickerOption[];
-  creatorRolesErrorMessage?: string;
-  creators: CreditPickerOption[];
-  creatorsErrorMessage?: string;
   seriesPublicId: string;
 }
+
+const emptyCatalog: ListEpisodeCreditRangeCatalogResult = {
+  creatorRoles: [],
+  creators: [],
+  episodes: [],
+};
 
 /**
  * The Credits action on the series episode list. The list itself is cursor
  * paged, so the range picker walks `ListEpisodes` when the dialog opens
- * rather than depending on the page that happens to be on screen.
+ * rather than depending on the page that happens to be on screen. Authors
+ * and roles are loaded then too, so opening the list does not wait on the
+ * catalogs the dialog needs.
  */
 export const EpisodeCreditsRangeDialog = ({
-  creatorRoles,
-  creatorRolesErrorMessage,
-  creators,
-  creatorsErrorMessage,
   seriesPublicId,
 }: EpisodeCreditsRangeDialogProps) => {
   const locale = useContext(AdminLocaleContext);
@@ -64,31 +61,27 @@ export const EpisodeCreditsRangeDialog = ({
   const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [sessionKey, setSessionKey] = useState(0);
-  const [episodes, setEpisodes] = useState<EpisodeCreditRangeOption[]>([]);
-  const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
-  const [isEpisodePending, startEpisodeTransition] = useTransition();
-  const episodeRequestIdRef = useRef(0);
+  const [catalog, setCatalog] =
+    useState<ListEpisodeCreditRangeCatalogResult>(emptyCatalog);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [isCatalogPending, startCatalogTransition] = useTransition();
+  const catalogRequestIdRef = useRef(0);
 
-  const loadEpisodes = useCallback(() => {
-    const requestId = episodeRequestIdRef.current + 1;
-    episodeRequestIdRef.current = requestId;
+  const loadCatalog = useCallback(() => {
+    const requestId = catalogRequestIdRef.current + 1;
+    catalogRequestIdRef.current = requestId;
 
-    startEpisodeTransition(async () => {
+    startCatalogTransition(async () => {
       const result = await listEpisodeCreditRangeOptionsAction(
         tenantId,
         seriesPublicId,
         locale
       );
-      if (requestId !== episodeRequestIdRef.current) {
+      if (requestId !== catalogRequestIdRef.current) {
         return;
       }
-      if (result.ok) {
-        setEpisodes(result.episodes);
-        setEpisodesErrorMessage(undefined);
-        return;
-      }
-      setEpisodes([]);
-      setEpisodesErrorMessage(result.message);
+      setCatalog(result);
+      setHasLoaded(true);
     });
   }, [locale, seriesPublicId, tenantId]);
 
@@ -101,11 +94,11 @@ export const EpisodeCreditsRangeDialog = ({
       // Remount the form so a previous result or half-filled range does not
       // survive from the last time the dialog was open.
       setSessionKey((current) => current + 1);
-      setEpisodes([]);
-      setEpisodesErrorMessage(undefined);
-      loadEpisodes();
+      setCatalog(emptyCatalog);
+      setHasLoaded(false);
+      loadCatalog();
     },
-    [loadEpisodes]
+    [loadCatalog]
   );
 
   return (
@@ -130,19 +123,25 @@ export const EpisodeCreditsRangeDialog = ({
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
-              <EpisodeCreditsRangeForm
-                action={bulkEditEpisodeCreditsAction}
-                creatorRoles={creatorRoles}
-                creatorRolesErrorMessage={creatorRolesErrorMessage}
-                creators={creators}
-                creatorsErrorMessage={creatorsErrorMessage}
-                episodes={episodes}
-                episodesErrorMessage={episodesErrorMessage}
-                isEpisodePending={isEpisodePending}
-                key={sessionKey}
-                onRetryEpisodes={loadEpisodes}
-                seriesPublicId={seriesPublicId}
-              />
+              {hasLoaded ? (
+                <EpisodeCreditsRangeForm
+                  action={bulkEditEpisodeCreditsAction}
+                  creatorRoles={catalog.creatorRoles}
+                  creatorRolesErrorMessage={catalog.creatorRolesErrorMessage}
+                  creators={catalog.creators}
+                  creatorsErrorMessage={catalog.creatorsErrorMessage}
+                  episodes={catalog.episodes}
+                  episodesErrorMessage={catalog.episodesErrorMessage}
+                  isEpisodePending={isCatalogPending}
+                  key={sessionKey}
+                  onRetryEpisodes={loadCatalog}
+                  seriesPublicId={seriesPublicId}
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {t("admin.series.episodes.credits.episodes_loading")}
+                </p>
+              )}
             </div>
           </DialogPopup>
         </DialogViewport>

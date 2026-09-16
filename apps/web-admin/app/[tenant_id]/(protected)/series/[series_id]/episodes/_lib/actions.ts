@@ -13,6 +13,8 @@ import {
   redirectToLoginIfSessionRejected,
   withAdminSessionReauth,
 } from "#lib/auth-session";
+import { listAllCreators } from "#lib/creator";
+import { listCreatorRoles } from "#lib/creator-roles";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
@@ -34,7 +36,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import type {
   BulkEditEpisodeCreditsActionState,
   EpisodeActionState,
-  ListEpisodeCreditRangeOptionsResult,
+  ListEpisodeCreditRangeCatalogResult,
 } from "../episode-types";
 import {
   MAX_BULK_EPISODE_CREDIT_EPISODES,
@@ -384,42 +386,61 @@ export const listEpisodeCreditRangeOptionsAction = async (
   tenantId: string,
   seriesPublicId: string,
   locale: Locale
-): Promise<ListEpisodeCreditRangeOptionsResult> => {
+): Promise<ListEpisodeCreditRangeCatalogResult> => {
   const schema = await listEpisodeCreditRangeOptionsSchema(locale);
   const parsed = schema.safeParse({
     seriesPublicId,
     tenantId,
   });
   if (!parsed.success) {
+    const message = toFormErrorMessage(parsed.error, { locale });
     return {
+      creatorRoles: [],
+      creators: [],
       episodes: [],
-      message: toFormErrorMessage(parsed.error, { locale }),
-      ok: false,
+      episodesErrorMessage: message,
     };
   }
 
-  const result = await listAllEpisodes(
-    {
-      seriesPublicId: parsed.data.seriesPublicId,
-      tenantId: parsed.data.tenantId,
-    },
-    locale
+  const [episodesResult, creatorsResult, creatorRolesResult] =
+    await Promise.all([
+      listAllEpisodes(
+        {
+          seriesPublicId: parsed.data.seriesPublicId,
+          tenantId: parsed.data.tenantId,
+        },
+        locale
+      ),
+      listAllCreators(parsed.data.tenantId, locale),
+      listCreatorRoles(parsed.data.tenantId, locale),
+    ]);
+  await redirectToLoginIfSessionRejected(
+    episodesResult,
+    creatorsResult,
+    creatorRolesResult
   );
-  await redirectToLoginIfSessionRejected(result);
-  if (!result.ok) {
-    return {
-      episodes: [],
-      message: result.message,
-      ok: false,
-    };
-  }
 
   return {
-    episodes: result.episodes.map((episode) => ({
-      publicId: episode.publicId,
-      title: episode.title,
+    creatorRoles: creatorRolesResult.creatorRoles,
+    creatorRolesErrorMessage: creatorRolesResult.ok
+      ? undefined
+      : creatorRolesResult.message,
+    creators: creatorsResult.creators.map((creator) => ({
+      name: creator.name,
+      publicId: creator.publicId,
     })),
-    ok: true,
+    creatorsErrorMessage: creatorsResult.ok
+      ? undefined
+      : creatorsResult.message,
+    episodes: episodesResult.ok
+      ? episodesResult.episodes.map((episode) => ({
+          publicId: episode.publicId,
+          title: episode.title,
+        }))
+      : [],
+    episodesErrorMessage: episodesResult.ok
+      ? undefined
+      : episodesResult.message,
   };
 };
 

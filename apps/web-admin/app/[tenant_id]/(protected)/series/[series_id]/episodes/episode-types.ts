@@ -26,9 +26,14 @@ export interface CreditPickerOption {
   name: string;
 }
 
-export type ListEpisodeCreditRangeOptionsResult =
-  | { ok: true; episodes: EpisodeCreditRangeOption[] }
-  | { ok: false; episodes: []; message: string };
+export interface ListEpisodeCreditRangeCatalogResult {
+  creatorRoles: CreditPickerOption[];
+  creatorRolesErrorMessage?: string;
+  creators: CreditPickerOption[];
+  creatorsErrorMessage?: string;
+  episodes: EpisodeCreditRangeOption[];
+  episodesErrorMessage?: string;
+}
 
 export type BulkEditEpisodeCreditsActionState =
   | {
