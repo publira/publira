@@ -192,7 +192,8 @@ export type ListReadersRequest = Message<"publira.admin.v1.ListReadersRequest"> 
   limit: number;
 
   /**
-   * Opaque token from a previous response. Empty for the first page.
+   * Opaque token from a previous response. Empty for the first page. A token
+   * issued for another query or status is invalid_argument.
    *
    * @generated from field: string token = 5;
    */

@@ -52,7 +52,8 @@ message ListReadersRequest {
   string status = 3;
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 4;
-  // Opaque token from a previous response. Empty for the first page.
+  // Opaque token from a previous response. Empty for the first page. A token
+  // issued for another query or status is invalid_argument.
   string token = 5;
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/url"
 	"strings"
 	"time"
 
@@ -43,6 +44,75 @@ func normalizeReaderStatusFilter(raw string) (sql.NullString, error) {
 	}
 }
 
+// readerListFilters holds the optional narrowing of the reader list in the
+// shape the keyset queries accept.
+type readerListFilters struct {
+	query  sql.NullString
+	status sql.NullString
+}
+
+func (filters readerListFilters) active() bool {
+	return filters.query.Valid || filters.status.Valid
+}
+
+// key names the filtered list a cursor points into, so a token issued for
+// another filter is refused. The query is escaped so that no search text can
+// spell another filter.
+func (filters readerListFilters) key() string {
+	key := "created_at_desc"
+	if filters.query.Valid {
+		key += "+query:" + url.QueryEscape(filters.query.String)
+	}
+	if filters.status.Valid {
+		key += "+status:" + filters.status.String
+	}
+	return key
+}
+
+func encodeReaderListToken(direction pagination.Direction, filters readerListFilters, at time.Time, id uuid.UUID) string {
+	if !filters.active() {
+		return pagination.EncodeTimeUUID(direction, at, id)
+	}
+	return pagination.Encode(direction, filters.key(), at.UTC().Format(time.RFC3339Nano), id.String())
+}
+
+func encodeReaderListRecoveryToken(direction pagination.Direction, filters readerListFilters, keys pagination.TimeUUIDKeys) string {
+	if !filters.active() {
+		return pagination.EncodeTimeUUIDRecovery(direction, keys.Time, keys.ID)
+	}
+	return pagination.Encode(direction, filters.key(), keys.Time.UTC().Format(time.RFC3339Nano), keys.ID.String(), "inclusive")
+}
+
+func decodeReaderListCursor(cursor pagination.Cursor, filters readerListFilters) (pagination.TimeUUIDKeys, error) {
+	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	if !filters.active() {
+		keys, err := pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return pagination.TimeUUIDKeys{}, invalid
+		}
+		return keys, nil
+	}
+	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
+		return pagination.TimeUUIDKeys{}, invalid
+	}
+	inclusive := len(cursor.Keys) == 4
+	if inclusive && cursor.Keys[3] != "inclusive" {
+		return pagination.TimeUUIDKeys{}, invalid
+	}
+	if cursor.Keys[0] != filters.key() {
+		return pagination.TimeUUIDKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another filter"))
+	}
+	at, err := time.Parse(time.RFC3339Nano, cursor.Keys[1])
+	if err != nil {
+		return pagination.TimeUUIDKeys{}, invalid
+	}
+	id, err := uuid.Parse(cursor.Keys[2])
+	if err != nil {
+		return pagination.TimeUUIDKeys{}, invalid
+	}
+	return pagination.TimeUUIDKeys{Time: at.UTC(), ID: id, Inclusive: inclusive, Valid: true}, nil
+}
+
 func adminReader(row readerRow) *publiraadminv1.AdminReader {
 	return &publiraadminv1.AdminReader{
 		PublicId:        row.PublicID,
@@ -61,15 +131,15 @@ func adminReader(row readerRow) *publiraadminv1.AdminReader {
 func (s *adminServer) readerPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	keyword, status sql.NullString,
+	filters readerListFilters,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
 ) ([]readerRow, error) {
 	params := dbmodels.ListTenantReadersDescParams{
 		TenantID:        uuid.NullUUID{UUID: tenantID, Valid: true},
-		Query:           keyword,
-		Status:          status,
+		Query:           filters.query,
+		Status:          filters.status,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -116,6 +186,11 @@ func (s *adminServer) ListReaders(
 	if err != nil {
 		return nil, err
 	}
+	query := strings.TrimSpace(req.Msg.Query)
+	filters := readerListFilters{
+		query:  sql.NullString{String: query, Valid: query != ""},
+		status: status,
+	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultReaderListLimit, maxReaderListLimit)
 	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
@@ -123,17 +198,14 @@ func (s *adminServer) ListReaders(
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
+		keys, err = decodeReaderListCursor(cursor, filters)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, err
 		}
 	}
 
-	query := strings.TrimSpace(req.Msg.Query)
-	keyword := sql.NullString{String: query, Valid: query != ""}
-
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.readerPage(ctx, tenant.ID, keyword, status, keys, cursor.Direction, limit+1)
+	rows, err := s.readerPage(ctx, tenant.ID, filters, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list readers", err, "tenant_id", tenant.ID.String())
 	}
@@ -149,20 +221,20 @@ func (s *adminServer) ListReaders(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
+			res.PreviousToken = encodeReaderListToken(pagination.Backward, filters, rows[0].CreatedAt, rows[0].ID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+			res.NextToken = encodeReaderListToken(pagination.Forward, filters, last.CreatedAt, last.ID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, and only once:
 	// when the recovery query is itself empty the boundary row is gone too, so
 	// both tokens stay empty and the client starts over from the first page.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = encodeReaderListRecoveryToken(pagination.Backward, filters, keys)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = encodeReaderListRecoveryToken(pagination.Forward, filters, keys)
 	}
 
 	return connect.NewResponse(res), nil

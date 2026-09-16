@@ -84,6 +84,41 @@ func TestDBAdminListReadersListsReadersOnlyAndPages(t *testing.T) {
 	}
 }
 
+func TestDBAdminListReadersBindsTokensToTheFilters(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RTKTENANT001", "reader-token.example.com", "Token", "RTKADMIN0001", "admin@reader-token.example.com")
+	first := env.PG.SeedEndUser(t, admin.Tenant.ID, "RTKFIRST0001", "first@reader-token.example.com", "Match First")
+	env.PG.SeedUnverifiedEndUser(t, admin.Tenant.ID, "RTKOTHER0001", "other@reader-token.example.com", "Match Other")
+	second := env.PG.SeedEndUser(t, admin.Tenant.ID, "RTKSECOND001", "second@reader-token.example.com", "Match Second")
+
+	filtered := &publiraadminv1.ListReadersRequest{Query: "match", Status: "active", Limit: 1}
+	page := env.listReaders(t, admin, filtered)
+	if got := adminReaderPublicIDs(page.Readers); !slices.Equal(got, []string{second.PublicID}) {
+		t.Fatalf("first filtered page = %v, want %s", got, second.PublicID)
+	}
+	next := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Query: "match", Status: "active", Limit: 1, Token: page.NextToken})
+	if got := adminReaderPublicIDs(next.Readers); !slices.Equal(got, []string{first.PublicID}) {
+		t.Fatalf("second filtered page = %v, want %s", got, first.PublicID)
+	}
+	if next.NextToken != "" {
+		t.Fatalf("second filtered page next_token = %q, want empty on the last page", next.NextToken)
+	}
+
+	// A token names a position in one filtered list, so any other list refuses it.
+	for _, req := range []*publiraadminv1.ListReadersRequest{
+		{Query: "match", Limit: 1},
+		{Status: "active", Limit: 1},
+		{Query: "match first", Status: "active", Limit: 1},
+		{Limit: 1},
+	} {
+		req.Tenant = admin.tenantContext()
+		req.Token = page.NextToken
+		if _, err := env.userClient().ListReaders(context.Background(), newAdminDBRequest(admin, req)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("ListReaders query=%q status=%q with another filter's token error = %v, want invalid_argument", req.Query, req.Status, err)
+		}
+	}
+}
+
 func TestDBAdminListReadersRejectsAnUnknownStatus(t *testing.T) {
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RSTTENANT001", "reader-status.example.com", "Status", "RSTADMIN0001", "admin@reader-status.example.com")
