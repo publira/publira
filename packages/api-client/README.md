@@ -129,7 +129,9 @@ import {
 | `rpcErrorRawMessage(error)` | The server's body with the `[code]` prefix stripped. **Only for passing through wording written for an operator** |
 | `rpcErrorHasFieldViolation(error, field)` | Type-safe check for a `google.rpc.BadRequest` request field |
 | `rpcErrorHasReason(error, reason)` | Type-safe check for a Publira `google.rpc.ErrorInfo` reason |
+| `rpcErrorReasonMetadataNumber(error, reason, key)` | Numeric `ErrorInfo` metadata for a Publira reason, or `null` |
 | `RPC_ERROR_REASON` | The constants for the `ErrorInfo` reasons Publira sends |
+| `RPC_ERROR_METADATA` | The constants for the `ErrorInfo` metadata keys Publira sends |
 
 ```ts
 try {

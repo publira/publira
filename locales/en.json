@@ -646,7 +646,8 @@
       "list_failed": "Could not load the author roles. Please try again later.",
       "save_failed": "Could not save the role. Please try again later.",
       "delete_failed": "Could not delete the role. Please try again later.",
-      "delete_in_use": "A series or an episode is still credited in this role. Re-credit them before deleting it.",
+      "delete_in_use": "This role is still in use (credit count: {$count}). Re-credit those credits before deleting it.",
+      "delete_in_use_unknown": "A series or an episode is still credited in this role. Re-credit them before deleting it.",
       "reorder_failed": "Could not change the role priority. Please try again later.",
       "reorder_conflict": "The role priority changed somewhere else. Reload the page and try again."
     },

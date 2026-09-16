@@ -19,6 +19,7 @@ const (
 	ReasonArchiveInvalidEPUB      = "ARCHIVE_INVALID_EPUB"
 	ReasonArchiveInvalidEPUBSpine = "ARCHIVE_INVALID_EPUB_SPINE"
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"
+	ReasonCreatorRoleInUse        = "CREATOR_ROLE_IN_USE"
 	ReasonInvitationCanceled      = "INVITATION_CANCELED"
 	ReasonMfaInvalidCode          = "MFA_INVALID_CODE"
 	ReasonMfaLocked               = "MFA_LOCKED"
@@ -29,6 +30,11 @@ const (
 	ReasonSMTPTestTLS             = "SMTP_TEST_TLS"
 	ReasonSMTPTestTimeout         = "SMTP_TEST_TIMEOUT"
 	ReasonSMTPTestUnknown         = "SMTP_TEST_UNKNOWN"
+
+	// MetadataCreditCount is the ErrorInfo metadata key for how many credits
+	// still name a creator role that cannot be deleted. The value is a decimal
+	// integer in decimal digits, with no sign or thousands separator.
+	MetadataCreditCount = "credit_count"
 )
 
 // NewFieldViolationError reports that one request field caused a rejected RPC.
@@ -42,9 +48,16 @@ func NewFieldViolationError(code connect.Code, err error, field string) *connect
 // NewErrorInfoError reports a stable reason for a failure that is not tied to a
 // single invalid request field.
 func NewErrorInfoError(code connect.Code, err error, reason string) *connect.Error {
+	return NewErrorInfoErrorWithMetadata(code, err, reason, nil)
+}
+
+// NewErrorInfoErrorWithMetadata is NewErrorInfoError with stringly-typed
+// metadata the caller can read without parsing the English message.
+func NewErrorInfoErrorWithMetadata(code connect.Code, err error, reason string, metadata map[string]string) *connect.Error {
 	return withDetail(code, err, &errdetails.ErrorInfo{
-		Domain: ErrorInfoDomain,
-		Reason: reason,
+		Domain:   ErrorInfoDomain,
+		Reason:   reason,
+		Metadata: metadata,
 	})
 }
 
