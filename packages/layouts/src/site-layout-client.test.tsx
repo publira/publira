@@ -197,4 +197,14 @@ describe("Site mobile navigation", () => {
 
     expect(screen.queryByRole("navigation")).toBe(null);
   });
+
+  it("wraps the popup in a viewport so swipe and scroll locking stay enabled", () => {
+    renderHeader();
+    openNavigation();
+
+    const dialog = screen.getByRole("dialog");
+
+    expect(dialog.parentElement?.role).toBe("presentation");
+    expect(dialog.dataset.swipeDirection).toBe("right");
+  });
 });

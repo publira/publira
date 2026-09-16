@@ -127,6 +127,25 @@ describe("Console layout slots", () => {
       screen.getByRole("button", { name: "Close navigation" })
     ).toBeTruthy();
   });
+
+  it("wraps the popup in a viewport so swipe and scroll locking stay enabled", () => {
+    render(
+      <ConsoleLayout>
+        <ConsoleMobileNavigation>
+          <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
+        </ConsoleMobileNavigation>
+        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
+        <div />
+      </ConsoleLayout>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+
+    const dialog = screen.getByRole("dialog");
+
+    expect(dialog.parentElement?.role).toBe("presentation");
+    expect(dialog.dataset.swipeDirection).toBe("left");
+  });
 });
 
 const currentHrefs = () =>

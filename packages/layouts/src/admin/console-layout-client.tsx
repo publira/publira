@@ -41,9 +41,12 @@ export const ConsoleMobileNavigation = ({
 }) => (
   <BaseDrawer.Portal>
     <BaseDrawer.Backdrop className="fixed inset-0 z-30 bg-foreground/20 lg:hidden" />
-    <BaseDrawer.Popup className="fixed inset-y-0 left-0 z-40 flex w-60 max-w-[86vw] flex-col border-r border-border bg-surface px-3 py-4 shadow-floating lg:hidden">
-      {children}
-    </BaseDrawer.Popup>
+    {/* Viewport is what Base UI binds swipe and touch scroll locking to. */}
+    <BaseDrawer.Viewport className="fixed inset-0 z-40 lg:hidden">
+      <BaseDrawer.Popup className="fixed inset-y-0 left-0 z-40 flex w-60 max-w-[86vw] flex-col border-r border-border bg-surface px-3 py-4 shadow-floating lg:hidden">
+        {children}
+      </BaseDrawer.Popup>
+    </BaseDrawer.Viewport>
   </BaseDrawer.Portal>
 );
 
@@ -205,7 +208,12 @@ export const ConsoleLayoutClient = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <BaseDrawer.Root modal open={mobileNavOpen} onOpenChange={handleOpenChange}>
+    <BaseDrawer.Root
+      modal
+      onOpenChange={handleOpenChange}
+      open={mobileNavOpen}
+      swipeDirection="left"
+    >
       <ConsoleMobileNavigationContext value={mobileNavigation}>
         <div className="flex min-h-dvh bg-background text-foreground">
           {children}
