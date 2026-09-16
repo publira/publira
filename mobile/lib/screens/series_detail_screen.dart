@@ -8,6 +8,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/series_cover.dart';
 import 'package:publira/follow/follow_control.dart';
@@ -280,14 +281,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         ],
         if (series.creators.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(
+          CreatorCredits(
             key: const ValueKey('series-creators'),
-            messages.formatList([
-              for (final creator in series.creators) creator.name,
-            ]),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            credits: series.creators,
+            style: theme.textTheme.bodyMedium,
           ),
         ],
         const SizedBox(height: 8),
@@ -378,7 +375,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          for (final creator in series.creators)
+          // A person credited in two roles is still one person to follow.
+          for (final creator in {
+            for (final credit in series.creators) credit.id: credit,
+          }.values)
             ListTile(
               key: ValueKey('series-creator-${creator.id}'),
               contentPadding: EdgeInsets.zero,

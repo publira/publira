@@ -127,7 +127,11 @@ void main() {
           title: 'Seed Series 001',
           description: 'synopsis',
           creators: [
-            SeriesCreator(id: 'SeedAUTHAAA1', name: 'Seed Author 001'),
+            SeriesCreator(
+              id: 'SeedAUTHAAA1',
+              name: 'Seed Author 001',
+              roleName: 'Story',
+            ),
             SeriesCreator(id: 'SeedAUTHAAA2', name: 'Seed Author 002'),
           ],
         ),
@@ -142,6 +146,66 @@ void main() {
       'Seed Author 002',
     ]);
     expect(creators.first.id, 'SeedAUTHAAA1');
+    expect(creators.map((creator) => creator.roleName), ['Story', '']);
+  });
+
+  test('the credits of a saved episode survive the round trip', () {
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: '',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          detail: const EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 0,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            access: EpisodeAccess.free,
+            images: [],
+            creators: [
+              SeriesCreator(
+                id: 'SeedAUTHAAA4',
+                name: 'Guest Artist',
+                roleName: 'Art',
+              ),
+            ],
+          ),
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final creator = decoded!.episodes.values.single.detail.creators.single;
+    expect(creator.id, 'SeedAUTHAAA4');
+    expect(creator.name, 'Guest Artist');
+    expect(creator.roleName, 'Art');
+  });
+
+  test('a credit saved before roles were saved reads without a role', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free', ownerId: ''),
+        series: [
+          {
+            'id': 'SeedSERSAAA1',
+            'title': 'Seed Series 001',
+            'description': 'synopsis',
+            'creators': [
+              {'id': 'SeedAUTHAAA1', 'name': 'Seed Author 001'},
+            ],
+          },
+        ],
+      ),
+    );
+
+    final creator = decoded!.series!.single.creators.single;
+    expect(creator.name, 'Seed Author 001');
+    expect(creator.roleName, isEmpty);
   });
 
   test('the classification of a saved series survives the round trip', () {

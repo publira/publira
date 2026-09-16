@@ -290,8 +290,29 @@ void main() {
         'Seed Author 003',
       ]);
       expect(creators.first.id, 'SeedAUTHAAA1');
+      expect(creators.map((creator) => creator.roleName), [
+        'Story',
+        'Art',
+        'Art',
+      ]);
     },
   );
+
+  test('listSeries reads a credit with no role as carrying none', () async {
+    server.series = [
+      {
+        'publicId': ConnectFixtureServer.seedSeriesId,
+        'title': ConnectFixtureServer.seedSeriesTitle,
+        'creators': [
+          {'publicId': 'SeedAUTHAAA1', 'name': 'Seed Author 001'},
+        ],
+      },
+    ];
+
+    final items = (await catalog.listSeries()).series;
+
+    expect(items.first.creators.single.roleName, isEmpty);
+  });
 
   test(
     'listSeries reads a series credited to nobody as carrying none',
@@ -708,6 +729,34 @@ void main() {
     expect(detail!.previousEpisode, isNull);
     expect(detail.nextEpisode, isNull);
   });
+
+  test('getEpisode carries the credits of the episode itself', () async {
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+    );
+
+    expect(
+      detail!.creators.map((creator) => (creator.roleName, creator.name)),
+      [
+        ('Story', 'Seed Author 001'),
+        ('Art', 'Seed Author 002'),
+        ('Art', 'Seed Author 003'),
+      ],
+    );
+  });
+
+  test(
+    'getEpisode reads an episode credited to nobody as carrying none',
+    () async {
+      final detail = await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.paidEpisodeId,
+      );
+
+      expect(detail!.creators, isEmpty);
+    },
+  );
 
   test('getEpisode reports a locked paid body with no pages', () async {
     final detail = await catalog.getEpisode(

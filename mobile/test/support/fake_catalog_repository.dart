@@ -329,12 +329,14 @@ final fixtureEyeCatchVariants = <EyeCatchVariant>[
     ),
 ];
 
-/// The people credited on [fixtureSeries]' first series. The second series is
-/// credited to nobody, which is what leaves its credit line off the screen.
+/// The people credited on [fixtureSeries]' first series, in role priority
+/// order. The two neighbouring artists are what a screen groups under one
+/// role. The second series is credited to nobody, which is what leaves its
+/// credit line off the screen.
 const fixtureCreators = <SeriesCreator>[
-  SeriesCreator(id: 'SeedAUTHAAA1', name: 'Seed Author 001'),
-  SeriesCreator(id: 'SeedAUTHAAA2', name: 'Seed Author 002'),
-  SeriesCreator(id: 'SeedAUTHAAA3', name: 'Seed Author 003'),
+  SeriesCreator(id: 'SeedAUTHAAA1', name: 'Seed Author 001', roleName: 'Story'),
+  SeriesCreator(id: 'SeedAUTHAAA2', name: 'Seed Author 002', roleName: 'Art'),
+  SeriesCreator(id: 'SeedAUTHAAA3', name: 'Seed Author 003', roleName: 'Art'),
 ];
 
 /// The first genre of the development seed, which [fixtureSeries]' first

@@ -24,14 +24,22 @@ class EyeCatchVariant {
   final int height;
 }
 
-/// One person credited on a series, as `publira.types.v1.Creator` describes
-/// them.
+/// One person credited on a series or an episode, as
+/// `publira.types.v1.Creator` describes them.
 class SeriesCreator {
-  const SeriesCreator({required this.id, required this.name});
+  const SeriesCreator({
+    required this.id,
+    required this.name,
+    this.roleName = '',
+  });
 
   /// Public id (`public_id`), which addresses the creator.
   final String id;
   final String name;
+
+  /// The role this credit is held in. Empty on a credit written before the
+  /// tenant curated any role, and on a creator read as the person alone.
+  final String roleName;
 }
 
 /// Whether a series is still gaining episodes, as

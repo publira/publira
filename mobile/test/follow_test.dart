@@ -97,6 +97,36 @@ void main() {
       }
     });
 
+    testWidgets('offers an author credited in two roles once', (tester) async {
+      catalog.details = {
+        series.id: SeriesDetail(
+          series: SeriesItem(
+            id: series.id,
+            title: series.title,
+            description: series.description,
+            creators: [
+              SeriesCreator(
+                id: creator.id,
+                name: creator.name,
+                roleName: 'Story',
+              ),
+              SeriesCreator(
+                id: creator.id,
+                name: creator.name,
+                roleName: 'Art',
+              ),
+            ],
+          ),
+          episodes: fixtureDetail(series).episodes,
+        ),
+      };
+      await openSeries(tester, session: fakeSession);
+      await pumpUntilFound(tester, find.byKey(ValueKey('follow-${series.id}')));
+
+      expect(find.byKey(ValueKey('series-creator-${creator.id}')), findsOne);
+      expect(find.byKey(ValueKey('follow-${creator.id}')), findsOne);
+    });
+
     testWidgets('sends a reader who is signed out to sign in', (tester) async {
       await openSeries(tester);
 

@@ -360,6 +360,7 @@ class OfflineCatalogRepository implements CatalogRepository {
       previousEpisode: detail.previousEpisode,
       nextEpisode: detail.nextEpisode,
       ageRating: detail.ageRating,
+      creators: detail.creators,
       images: [
         for (final image in detail.images)
           EpisodeImageItem(

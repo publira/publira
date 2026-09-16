@@ -9,6 +9,7 @@ import 'package:publira/auth/reader_age.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -293,6 +294,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         }
         return _shell(
           title: open.detail.episode.title,
+          credits: open.detail.creators,
           body: AgeRatingGate(
             rating: open.detail.ageRating,
             seriesTitle: open.detail.seriesTitle,
@@ -410,11 +412,34 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// The reader is dark so a page carries the screen; every state of this
   /// route shares that shell to keep the transition from one to the next from
   /// flashing.
-  Widget _shell({required String title, required Widget body}) {
+  Widget _shell({
+    required String title,
+    required Widget body,
+    List<SeriesCreator> credits = const [],
+  }) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(title),
+        // The episode's own credits under its title, never the series': an
+        // artist who took over part way through is on the episodes they drew.
+        title: credits.isEmpty
+            ? Text(title)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  CreatorCredits(
+                    key: const ValueKey('episode-credits'),
+                    credits: credits,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    roleColor: Colors.white70,
+                    nameColor: Colors.white,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),

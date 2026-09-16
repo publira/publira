@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
+import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/series_cover.dart';
 import 'package:publira/catalog/series_tile.dart';
@@ -206,7 +207,7 @@ class _ContinueReadingShelf extends StatelessWidget {
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('continue-reading-${item.series.id}'),
         series: item.series,
-        subtitle: item.episode.title,
+        subtitle: item.episode.title.isEmpty ? null : Text(item.episode.title),
         onTap: () => context.push(
           AppRoutes.episodeViewerPath(item.series.id, item.episode.id),
         ),
@@ -239,7 +240,9 @@ class _RankingShelf extends StatelessWidget {
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('catalog-ranking-${item.series.id}'),
         series: item.series,
-        subtitle: creditLine(messages, item.series),
+        subtitle: item.series.creators.isEmpty
+            ? null
+            : CreatorCredits(credits: item.series.creators),
         rank: item.rank,
         onTap: () => context.push(AppRoutes.seriesDetailPath(item.series.id)),
       ),
@@ -265,7 +268,9 @@ class _NewArrivalsShelf extends StatelessWidget {
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('catalog-new-arrivals-${item.id}'),
         series: item,
-        subtitle: creditLine(messages, item),
+        subtitle: item.creators.isEmpty
+            ? null
+            : CreatorCredits(credits: item.creators),
         onTap: () => context.push(AppRoutes.seriesDetailPath(item.id)),
       ),
     );
@@ -512,7 +517,7 @@ class _ShelfCard extends StatelessWidget {
   const _ShelfCard({
     super.key,
     required this.series,
-    required this.subtitle,
+    this.subtitle,
     required this.onTap,
     this.rank,
   });
@@ -520,8 +525,8 @@ class _ShelfCard extends StatelessWidget {
   final SeriesItem series;
 
   /// The second line: the episode a reader would continue from, or who the
-  /// series is credited to. Empty leaves the line off.
-  final String subtitle;
+  /// series is credited to. `null` leaves the line off.
+  final Widget? subtitle;
 
   final VoidCallback onTap;
 
@@ -533,6 +538,7 @@ class _ShelfCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final rank = this.rank;
+    final subtitle = this.subtitle;
     return SizedBox(
       width: _shelfCardWidth,
       child: InkWell(
@@ -559,15 +565,15 @@ class _ShelfCard extends StatelessWidget {
                 style: theme.textTheme.bodyMedium,
               ),
             ),
-            if (subtitle.isNotEmpty)
+            if (subtitle != null)
               Flexible(
-                child: Text(
-                  subtitle,
+                child: DefaultTextStyle.merge(
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
+                  child: subtitle,
                 ),
               ),
           ],
