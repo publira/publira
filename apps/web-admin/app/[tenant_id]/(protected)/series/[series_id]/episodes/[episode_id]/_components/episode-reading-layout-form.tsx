@@ -1,4 +1,3 @@
-import type { Locale } from "@publira/i18n";
 import {
   Field,
   FieldContent,
@@ -24,7 +23,6 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { getMessagesFor } from "#lib/messages";
 import { spreadStartPageOf } from "#lib/reading-layout";
 import type {
   EpisodeReadingLayoutOverrides,
@@ -47,7 +45,6 @@ interface EpisodeReadingLayoutFormProps {
    * this form by these values, so a saved change remounts it.
    */
   initialLayout: EpisodeReadingLayoutOverrides;
-  locale: Locale;
   /**
    * How many pages the episode has, which bounds the page spreads can start
    * at. Absent when the page list failed to load, and the server is then what
@@ -63,55 +60,20 @@ interface EpisodeReadingLayoutFormProps {
   tenantId: string;
 }
 
-export const EpisodeReadingLayoutForm = async ({
+export const EpisodeReadingLayoutForm = ({
   action,
   episodePublicId,
   initialLayout,
-  locale,
   pageCount,
   seriesLayout,
   seriesPublicId,
   tenantId,
 }: EpisodeReadingLayoutFormProps) => {
-  const t = await getMessagesFor(locale);
-
-  let followSeriesDirection = t("admin.series.episodes.layout.follow_series");
-  if (seriesLayout?.readingDirection === "rtl") {
-    followSeriesDirection = t(
-      "admin.series.episodes.layout.follow_series_direction",
-      { direction: t("admin.series.form.reading_direction_options.rtl") }
-    );
-  } else if (seriesLayout?.readingDirection === "ltr") {
-    followSeriesDirection = t(
-      "admin.series.episodes.layout.follow_series_direction",
-      { direction: t("admin.series.form.reading_direction_options.ltr") }
-    );
-  }
-
   const seriesSpreadStartPage =
     seriesLayout === undefined
       ? undefined
       : spreadStartPageOf(seriesLayout.spreadStartIndex);
-  const spreadStartItems = [
-    {
-      label:
-        seriesSpreadStartPage === undefined
-          ? t("admin.series.episodes.layout.follow_series")
-          : t("admin.series.episodes.layout.follow_series_spread_start", {
-              page: String(seriesSpreadStartPage),
-            }),
-      value: "series",
-    },
-  ];
-  // An episode with no pages has none to name, so following is its only
-  // option until pages are added.
   const hasNoPages = pageCount === 0;
-  if (!hasNoPages) {
-    spreadStartItems.push({
-      label: t("admin.series.episodes.layout.spread_start_override"),
-      value: "episode",
-    });
-  }
 
   let defaultSpreadStartPage = 1;
   if (initialLayout.spreadStartIndex !== undefined) {
@@ -146,22 +108,12 @@ export const EpisodeReadingLayoutForm = async ({
 
         <ReadingDirectionField
           initialValue={initialLayout.readingDirection}
-          items={[
-            { label: followSeriesDirection, value: "" },
-            {
-              label: t("admin.series.form.reading_direction_options.rtl"),
-              value: "rtl",
-            },
-            {
-              label: t("admin.series.form.reading_direction_options.ltr"),
-              value: "ltr",
-            },
-          ]}
           label={
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.episodes.layout.reading_direction" />
             </Suspense>
           }
+          seriesDirection={seriesLayout?.readingDirection}
         />
 
         <SpreadStartSourceField
@@ -174,10 +126,10 @@ export const EpisodeReadingLayoutForm = async ({
               </FieldDescription>
             ) : null
           }
+          hasNoPages={hasNoPages}
           initialValue={
             initialLayout.spreadStartIndex === undefined ? "series" : "episode"
           }
-          items={spreadStartItems}
           label={
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.episodes.layout.spread_start" />
@@ -215,6 +167,7 @@ export const EpisodeReadingLayoutForm = async ({
               </FieldContent>
             </Field>
           }
+          seriesSpreadStartPage={seriesSpreadStartPage}
         />
 
         <div className="mt-2 flex justify-end gap-2">
