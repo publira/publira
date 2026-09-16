@@ -8,35 +8,34 @@ import {
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import type { SelectProps } from "@publira/ui-components/select";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense, useCallback, useId } from "react";
 
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { isReadingDirectionValue } from "#lib/reading-layout";
 import type { ReadingDirectionValue } from "#lib/reading-layout";
 
-/**
- * `SelectProps["items"]` takes a `ReactNode` label, so each option keeps a
- * boundary of its own rather than the trigger waiting on the whole catalog.
- */
-const READING_DIRECTION_ITEMS = [
-  {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-        <ClientMessage message="admin.series.form.reading_direction_options.rtl" />
-      </Suspense>
-    ),
-    value: "rtl",
-  },
-  {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-        <ClientMessage message="admin.series.form.reading_direction_options.ltr" />
-      </Suspense>
-    ),
-    value: "ltr",
-  },
-];
+/** Suspends as a whole while the catalog loads, so no option renders half-filled. */
+const ReadingDirectionSelect = (props: Omit<SelectProps, "items">) => {
+  const t = useClientMessages();
+
+  return (
+    <Select
+      {...props}
+      items={[
+        {
+          label: t("admin.series.form.reading_direction_options.rtl"),
+          value: "rtl",
+        },
+        {
+          label: t("admin.series.form.reading_direction_options.ltr"),
+          value: "ltr",
+        },
+      ]}
+    />
+  );
+};
 
 export const SeriesReadingDirectionField = ({
   onChange,
@@ -66,12 +65,13 @@ export const SeriesReadingDirectionField = ({
         </Suspense>
       </FieldLabel>
       <FieldContent>
-        <Select
-          id={selectId}
-          items={READING_DIRECTION_ITEMS}
-          onValueChange={handleValueChange}
-          value={value}
-        />
+        <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+          <ReadingDirectionSelect
+            id={selectId}
+            onValueChange={handleValueChange}
+            value={value}
+          />
+        </Suspense>
         <input name="reading_direction" type="hidden" value={value} />
         <FieldDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>

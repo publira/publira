@@ -10,7 +10,8 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import type { SelectProps } from "@publira/ui-components/select";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense, useActionState, useCallback, useId, useState } from "react";
 
 import { useAdminMessages } from "#components/admin-locale-context";
@@ -21,7 +22,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
   isReadingDirectionValue,
   spreadStartPageOf,
@@ -41,23 +42,76 @@ const isSpreadStartSource = (value: string): value is SpreadStartSource =>
   value === "episode" || value === "series";
 
 /**
- * The option that leaves the direction following the series, naming the one
- * the series is read in. Its own component because that name is one catalog
- * string written into another.
+ * Suspends as a whole while the catalog loads, so no option renders
+ * half-filled. The first option names what the series is read in, and says
+ * only that it follows the series when that read failed.
  */
-const SeriesDirectionOptionLabel = ({
-  direction,
-}: {
-  direction: ReadingDirectionValue;
+const ReadingDirectionSelect = ({
+  seriesDirection,
+  ...props
+}: Omit<SelectProps, "items"> & {
+  seriesDirection?: ReadingDirectionValue;
 }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
-  return t("admin.series.episodes.layout.follow_series_direction", {
-    direction:
-      direction === "ltr"
-        ? t("admin.series.form.reading_direction_options.ltr")
-        : t("admin.series.form.reading_direction_options.rtl"),
-  });
+  let followSeries = t("admin.series.episodes.layout.follow_series");
+  if (seriesDirection === "rtl") {
+    followSeries = t("admin.series.episodes.layout.follow_series_direction", {
+      direction: t("admin.series.form.reading_direction_options.rtl"),
+    });
+  } else if (seriesDirection === "ltr") {
+    followSeries = t("admin.series.episodes.layout.follow_series_direction", {
+      direction: t("admin.series.form.reading_direction_options.ltr"),
+    });
+  }
+
+  return (
+    <Select
+      {...props}
+      items={[
+        { label: followSeries, value: "" },
+        {
+          label: t("admin.series.form.reading_direction_options.rtl"),
+          value: "rtl",
+        },
+        {
+          label: t("admin.series.form.reading_direction_options.ltr"),
+          value: "ltr",
+        },
+      ]}
+    />
+  );
+};
+
+/**
+ * Suspends as a whole, for the reason {@link ReadingDirectionSelect} does. An
+ * episode with no pages has none to name, so following is its only option.
+ */
+const SpreadStartSourceSelect = ({
+  hasNoPages,
+  seriesSpreadStartPage,
+  ...props
+}: Omit<SelectProps, "items"> & {
+  hasNoPages: boolean;
+  seriesSpreadStartPage?: number;
+}) => {
+  const t = useClientMessages();
+
+  const followSeries =
+    seriesSpreadStartPage === undefined
+      ? t("admin.series.episodes.layout.follow_series")
+      : t("admin.series.episodes.layout.follow_series_spread_start", {
+          page: String(seriesSpreadStartPage),
+        });
+  const items = [{ label: followSeries, value: "series" }];
+  if (!hasNoPages) {
+    items.push({
+      label: t("admin.series.episodes.layout.spread_start_override"),
+      value: "episode",
+    });
+  }
+
+  return <Select {...props} items={items} />;
 };
 
 interface EpisodeReadingLayoutFormProps {
@@ -135,71 +189,6 @@ export const EpisodeReadingLayoutForm = ({
     defaultSpreadStartPage = seriesSpreadStartPage;
   }
 
-  const directionItems = [
-    {
-      label: (
-        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-          {seriesLayout === undefined ? (
-            <ClientMessage message="admin.series.episodes.layout.follow_series" />
-          ) : (
-            <SeriesDirectionOptionLabel
-              direction={seriesLayout.readingDirection}
-            />
-          )}
-        </Suspense>
-      ),
-      value: "",
-    },
-    {
-      label: (
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <ClientMessage message="admin.series.form.reading_direction_options.rtl" />
-        </Suspense>
-      ),
-      value: "rtl",
-    },
-    {
-      label: (
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <ClientMessage message="admin.series.form.reading_direction_options.ltr" />
-        </Suspense>
-      ),
-      value: "ltr",
-    },
-  ];
-
-  const spreadStartItems = [
-    {
-      label: (
-        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-          {seriesSpreadStartPage === undefined ? (
-            <ClientMessage message="admin.series.episodes.layout.follow_series" />
-          ) : (
-            <ClientMessage
-              message="admin.series.episodes.layout.follow_series_spread_start"
-              values={{ page: String(seriesSpreadStartPage) }}
-            />
-          )}
-        </Suspense>
-      ),
-      value: "series",
-    },
-    // An episode with no pages has none to name, so following is its only
-    // choice until pages are added.
-    ...(hasNoPages
-      ? []
-      : [
-          {
-            label: (
-              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                <ClientMessage message="admin.series.episodes.layout.spread_start_override" />
-              </Suspense>
-            ),
-            value: "episode",
-          },
-        ]),
-  ];
-
   return (
     <AdminSection>
       <AdminSectionHeader>
@@ -228,12 +217,14 @@ export const EpisodeReadingLayoutForm = ({
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Select
-              id={directionSelectId}
-              items={directionItems}
-              onValueChange={handleDirectionChange}
-              value={readingDirection}
-            />
+            <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+              <ReadingDirectionSelect
+                id={directionSelectId}
+                onValueChange={handleDirectionChange}
+                seriesDirection={seriesLayout?.readingDirection}
+                value={readingDirection}
+              />
+            </Suspense>
             <input
               name="reading_direction"
               type="hidden"
@@ -249,12 +240,15 @@ export const EpisodeReadingLayoutForm = ({
             </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Select
-              id={spreadStartSelectId}
-              items={spreadStartItems}
-              onValueChange={handleSpreadStartSourceChange}
-              value={spreadStartSource}
-            />
+            <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+              <SpreadStartSourceSelect
+                hasNoPages={hasNoPages}
+                id={spreadStartSelectId}
+                onValueChange={handleSpreadStartSourceChange}
+                seriesSpreadStartPage={seriesSpreadStartPage}
+                value={spreadStartSource}
+              />
+            </Suspense>
             <input
               name="spread_start_source"
               type="hidden"
