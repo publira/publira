@@ -294,10 +294,34 @@ func readerNotFoundError() error {
 	return connect.NewError(connect.CodeNotFound, errors.New("reader not found"))
 }
 
-// recordReaderAudit names the reader by public id, which still identifies the
-// row after DeleteReader has removed the account it points at.
-func (s *adminServer) recordReaderAudit(ctx context.Context, headers http.Header, sessionCtx rpcmiddleware.SessionContext, action, readerPublicID string) {
-	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+// errReaderUnchanged is what a reader action's write returns when its statement
+// matched no row, so the transaction rolls back without an audit entry.
+var errReaderUnchanged = errors.New("reader unchanged")
+
+// changeReader commits a reader action and its audit entry together, because a
+// retried action records nothing and so cannot make up for a dropped entry.
+func (s *adminServer) changeReader(
+	ctx context.Context,
+	headers http.Header,
+	sessionCtx rpcmiddleware.SessionContext,
+	action, readerPublicID string,
+	write func(queries *dbmodels.Queries) error,
+) error {
+	tenantID := sessionCtx.Tenant.ID.String()
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to begin reader transaction", err, "tenant_id", tenantID, "action", action)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	queries := dbmodels.New(tx)
+	if err := write(queries); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errReaderUnchanged
+		}
+		return s.internalDBError(ctx, "failed to change reader", err, "tenant_id", tenantID, "action", action, "public_id", readerPublicID)
+	}
+	if err := auditlog.WriteTenant(ctx, queries, s.logger, auditlog.TenantEntry{
 		TenantID:    sessionCtx.Tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -306,7 +330,13 @@ func (s *adminServer) recordReaderAudit(ctx context.Context, headers http.Header
 		TargetID:    readerPublicID,
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(headers),
-	})
+	}); err != nil {
+		return s.internalDBError(ctx, "failed to record reader action", err, "tenant_id", tenantID, "action", action, "public_id", readerPublicID)
+	}
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit reader action", err, "tenant_id", tenantID, "action", action, "public_id", readerPublicID)
+	}
+	return nil
 }
 
 // SuspendReader suspends a reader of the tenant. The credentials_version bump
@@ -329,11 +359,15 @@ func (s *adminServer) SuspendReader(
 		return nil, err
 	}
 
-	updated, err := s.queriesFor(ctx).SuspendTenantReader(ctx, dbmodels.SuspendTenantReaderParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		PublicID: publicID,
+	var updated dbmodels.SuspendTenantReaderRow
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_suspended", publicID, func(queries *dbmodels.Queries) error {
+		updated, err = queries.SuspendTenantReader(ctx, dbmodels.SuspendTenantReaderParams{
+			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			PublicID: publicID,
+		})
+		return err
 	})
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, errReaderUnchanged) {
 		// Either no such reader or one already suspended; the read tells which.
 		row, err := s.tenantReader(ctx, tenant.ID, publicID)
 		if err != nil {
@@ -342,10 +376,9 @@ func (s *adminServer) SuspendReader(
 		return connect.NewResponse(&publiraadminv1.SuspendReaderResponse{Reader: adminReader(row)}), nil
 	}
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to suspend reader", err, "tenant_id", tenant.ID.String(), "public_id", publicID)
+		return nil, err
 	}
 
-	s.recordReaderAudit(ctx, req.Header(), sessionCtx, "reader_suspended", publicID)
 	return connect.NewResponse(&publiraadminv1.SuspendReaderResponse{Reader: adminReader(readerRow(updated))}), nil
 }
 
@@ -367,11 +400,15 @@ func (s *adminServer) UnsuspendReader(
 		return nil, err
 	}
 
-	updated, err := s.queriesFor(ctx).UnsuspendTenantReader(ctx, dbmodels.UnsuspendTenantReaderParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		PublicID: publicID,
+	var updated dbmodels.UnsuspendTenantReaderRow
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_unsuspended", publicID, func(queries *dbmodels.Queries) error {
+		updated, err = queries.UnsuspendTenantReader(ctx, dbmodels.UnsuspendTenantReaderParams{
+			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			PublicID: publicID,
+		})
+		return err
 	})
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, errReaderUnchanged) {
 		// Either no such reader or one who is not suspended; the read tells which.
 		row, err := s.tenantReader(ctx, tenant.ID, publicID)
 		if err != nil {
@@ -380,10 +417,9 @@ func (s *adminServer) UnsuspendReader(
 		return connect.NewResponse(&publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(row)}), nil
 	}
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to unsuspend reader", err, "tenant_id", tenant.ID.String(), "public_id", publicID)
+		return nil, err
 	}
 
-	s.recordReaderAudit(ctx, req.Header(), sessionCtx, "reader_unsuspended", publicID)
 	return connect.NewResponse(&publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(readerRow(updated))}), nil
 }
 
@@ -407,16 +443,19 @@ func (s *adminServer) DeleteReader(
 		return nil, err
 	}
 
-	if _, err := s.queriesFor(ctx).DeleteTenantReader(ctx, dbmodels.DeleteTenantReaderParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		PublicID: publicID,
-	}); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, readerNotFoundError()
-		}
-		return nil, s.internalDBError(ctx, "failed to delete reader", err, "tenant_id", tenant.ID.String(), "public_id", publicID)
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_deleted", publicID, func(queries *dbmodels.Queries) error {
+		_, err := queries.DeleteTenantReader(ctx, dbmodels.DeleteTenantReaderParams{
+			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			PublicID: publicID,
+		})
+		return err
+	})
+	if errors.Is(err, errReaderUnchanged) {
+		return nil, readerNotFoundError()
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	s.recordReaderAudit(ctx, req.Header(), sessionCtx, "reader_deleted", publicID)
 	return connect.NewResponse(&publiraadminv1.DeleteReaderResponse{PublicId: publicID}), nil
 }
