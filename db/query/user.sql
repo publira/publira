@@ -348,6 +348,103 @@ WHERE u.tenant_id = sqlc.arg('tenant_id')
 ORDER BY u.created_at ASC, u.id ASC
 LIMIT sqlc.arg('limit');
 
+-- Admin ListReaders lists the tenant's readers: its accounts that hold no
+-- tenant_user_roles row, so staff never appear. (created_at, id) DESC, walked
+-- through idx_users_tenant_created_at. Forward uses the DESC query; backward
+-- uses ASC, and the handler flips ASC rows back into display order.
+-- cursor rules: proto/README.md.
+-- name: ListTenantReadersDesc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('query')::text IS NULL
+        OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.email), lower(sqlc.narg('query')::text)) > 0
+    )
+    AND (sqlc.narg('status')::text IS NULL OR u.status = sqlc.narg('status')::text)
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantReadersAsc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('query')::text IS NULL
+        OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.email), lower(sqlc.narg('query')::text)) > 0
+    )
+    AND (sqlc.narg('status')::text IS NULL OR u.status = sqlc.narg('status')::text)
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: GetTenantReaderByPublicID :one
+-- One reader in the shape ListTenantReaders* returns. A staff account and an
+-- account of another tenant are both no rows.
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.public_id = sqlc.arg('public_id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    );
+
 -- name: DeleteTenantUserRolesByUserID :exec
 DELETE FROM tenant_user_roles
 WHERE user_id = $1;

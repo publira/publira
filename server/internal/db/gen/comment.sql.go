@@ -146,8 +146,9 @@ type CreateEpisodeCommentParams struct {
 //	ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 //	  -> idx_episode_comments_tenant_user_created_at
 //	ListEpisodeCommentsForModerationByCreatedAt*
-//	  -> idx_episode_comments_tenant_status_created_at with a status filter,
-//	     idx_episode_comments_tenant_created_at without one
+//	  -> idx_episode_comments_tenant_user_created_at with a user filter,
+//	     idx_episode_comments_tenant_status_created_at with a status filter,
+//	     idx_episode_comments_tenant_created_at without either
 //	CountPendingEpisodeCommentsForTenant
 //	  -> idx_episode_comments_tenant_status_created_at
 //	PurgeWithdrawnEpisodeComments
@@ -364,26 +365,27 @@ WHERE c.tenant_id = $1
     AND ($2::text IS NULL OR c.status = $2::text)
     AND ($3::uuid IS NULL OR c.episode_id = $3::uuid)
     AND ($4::uuid IS NULL OR e.series_id = $4::uuid)
+    AND ($5::uuid IS NULL OR c.user_id = $5::uuid)
     AND (
-        $5::timestamptz IS NULL
+        $6::timestamptz IS NULL
         OR (
-            $6::boolean
+            $7::boolean
             AND (c.created_at, c.id) >= (
-                $5::timestamptz,
-                $7::uuid
+                $6::timestamptz,
+                $8::uuid
             )
         )
         OR (
-            NOT $6::boolean
+            NOT $7::boolean
             AND (c.created_at, c.id) > (
-                $5::timestamptz,
-                $7::uuid
+                $6::timestamptz,
+                $8::uuid
             )
         )
     )
 ORDER BY c.created_at ASC,
     c.id ASC
-LIMIT $8
+LIMIT $9
 `
 
 type ListEpisodeCommentsForModerationByCreatedAtAscParams struct {
@@ -391,6 +393,7 @@ type ListEpisodeCommentsForModerationByCreatedAtAscParams struct {
 	Status          sql.NullString `json:"status"`
 	EpisodeID       uuid.NullUUID  `json:"episode_id"`
 	SeriesID        uuid.NullUUID  `json:"series_id"`
+	UserID          uuid.NullUUID  `json:"user_id"`
 	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
@@ -429,6 +432,7 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Con
 		arg.Status,
 		arg.EpisodeID,
 		arg.SeriesID,
+		arg.UserID,
 		arg.CursorCreatedAt,
 		arg.CursorInclusive,
 		arg.CursorID,
@@ -497,26 +501,27 @@ WHERE c.tenant_id = $1
     AND ($2::text IS NULL OR c.status = $2::text)
     AND ($3::uuid IS NULL OR c.episode_id = $3::uuid)
     AND ($4::uuid IS NULL OR e.series_id = $4::uuid)
+    AND ($5::uuid IS NULL OR c.user_id = $5::uuid)
     AND (
-        $5::timestamptz IS NULL
+        $6::timestamptz IS NULL
         OR (
-            $6::boolean
+            $7::boolean
             AND (c.created_at, c.id) <= (
-                $5::timestamptz,
-                $7::uuid
+                $6::timestamptz,
+                $8::uuid
             )
         )
         OR (
-            NOT $6::boolean
+            NOT $7::boolean
             AND (c.created_at, c.id) < (
-                $5::timestamptz,
-                $7::uuid
+                $6::timestamptz,
+                $8::uuid
             )
         )
     )
 ORDER BY c.created_at DESC,
     c.id DESC
-LIMIT $8
+LIMIT $9
 `
 
 type ListEpisodeCommentsForModerationByCreatedAtDescParams struct {
@@ -524,6 +529,7 @@ type ListEpisodeCommentsForModerationByCreatedAtDescParams struct {
 	Status          sql.NullString `json:"status"`
 	EpisodeID       uuid.NullUUID  `json:"episode_id"`
 	SeriesID        uuid.NullUUID  `json:"series_id"`
+	UserID          uuid.NullUUID  `json:"user_id"`
 	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
@@ -558,8 +564,9 @@ type ListEpisodeCommentsForModerationByCreatedAtDescRow struct {
 // The console queues: 'pending' is the approval queue, 'hidden' the removed
 // comments staff can restore, 'withdrawn' what an author deleted and the
 // retention window still keeps. Every filter is optional, so the same query
-// answers a tenant-wide queue, one series, one episode, and the whole history
-// of any of them; a moderator does not have to open an episode to find work.
+// answers a tenant-wide queue, one series, one episode, one reader, and the
+// whole history of any of them; a moderator does not have to open an episode to
+// find work.
 //
 // The author and the episode are joined in because a comment cannot be judged
 // from its text alone: staff need to know who wrote it and what it is about.
@@ -569,6 +576,7 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Co
 		arg.Status,
 		arg.EpisodeID,
 		arg.SeriesID,
+		arg.UserID,
 		arg.CursorCreatedAt,
 		arg.CursorInclusive,
 		arg.CursorID,

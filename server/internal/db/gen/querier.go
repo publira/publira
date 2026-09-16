@@ -143,8 +143,9 @@ type Querier interface {
 	//   ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*
 	//     -> idx_episode_comments_tenant_user_created_at
 	//   ListEpisodeCommentsForModerationByCreatedAt*
-	//     -> idx_episode_comments_tenant_status_created_at with a status filter,
-	//        idx_episode_comments_tenant_created_at without one
+	//     -> idx_episode_comments_tenant_user_created_at with a user filter,
+	//        idx_episode_comments_tenant_status_created_at with a status filter,
+	//        idx_episode_comments_tenant_created_at without either
 	//   CountPendingEpisodeCommentsForTenant
 	//     -> idx_episode_comments_tenant_status_created_at
 	//   PurgeWithdrawnEpisodeComments
@@ -523,6 +524,9 @@ type Querier interface {
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
+	// One reader in the shape ListTenantReaders* returns. A staff account and an
+	// account of another tenant are both no rows.
+	GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	// Worker check: the recipient a notification names is a user of the tenant the
@@ -801,8 +805,9 @@ type Querier interface {
 	// The console queues: 'pending' is the approval queue, 'hidden' the removed
 	// comments staff can restore, 'withdrawn' what an author deleted and the
 	// retention window still keeps. Every filter is optional, so the same query
-	// answers a tenant-wide queue, one series, one episode, and the whole history
-	// of any of them; a moderator does not have to open an episode to find work.
+	// answers a tenant-wide queue, one series, one episode, one reader, and the
+	// whole history of any of them; a moderator does not have to open an episode to
+	// find work.
 	//
 	// The author and the episode are joined in because a comment cannot be judged
 	// from its text alone: staff need to know who wrote it and what it is about.
@@ -1357,6 +1362,13 @@ type Querier interface {
 	// in reverse. The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error)
+	ListTenantReadersAsc(ctx context.Context, arg ListTenantReadersAscParams) ([]ListTenantReadersAscRow, error)
+	// Admin ListReaders lists the tenant's readers: its accounts that hold no
+	// tenant_user_roles row, so staff never appear. (created_at, id) DESC, walked
+	// through idx_users_tenant_created_at. Forward uses the DESC query; backward
+	// uses ASC, and the handler flips ASC rows back into display order.
+	// cursor rules: proto/README.md.
+	ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error)
 	// Worker fan-out: everyone an announcement addressed to the whole tenant
 	// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
 	// row to — every user the tenant owns — so the bell counts what the

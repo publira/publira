@@ -171,6 +171,7 @@ type commentPageFilter struct {
 	status    sql.NullString
 	seriesID  uuid.NullUUID
 	episodeID uuid.NullUUID
+	authorID  uuid.NullUUID
 }
 
 // commentPage runs the keyset query for one page. The list reads newest first,
@@ -188,6 +189,7 @@ func (s *adminServer) commentPage(
 		Status:          filter.status,
 		EpisodeID:       filter.episodeID,
 		SeriesID:        filter.seriesID,
+		UserID:          filter.authorID,
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
@@ -517,6 +519,20 @@ func (s *adminServer) ListComments(
 			return nil, s.internalDBError(ctx, "failed to resolve episode for list comments", episodeErr, "tenant_id", tenant.ID.String())
 		}
 		filter.episodeID = uuid.NullUUID{UUID: episode.ID, Valid: true}
+	}
+
+	if authorPublicID := strings.TrimSpace(req.Msg.AuthorPublicId); authorPublicID != "" {
+		author, authorErr := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			PublicID: authorPublicID,
+		})
+		if authorErr != nil {
+			if errors.Is(authorErr, sql.ErrNoRows) {
+				return connect.NewResponse(&publiraadminv1.ListCommentsResponse{Comments: []*publiraadminv1.AdminComment{}}), nil
+			}
+			return nil, s.internalDBError(ctx, "failed to resolve author for list comments", authorErr, "tenant_id", tenant.ID.String())
+		}
+		filter.authorID = uuid.NullUUID{UUID: author.ID, Valid: true}
 	}
 
 	// One row past the page: its presence is what says another page exists.

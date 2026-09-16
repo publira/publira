@@ -153,6 +153,59 @@ func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getTenantReaderByPublicID = `-- name: GetTenantReaderByPublicID :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.public_id = $2
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+`
+
+type GetTenantReaderByPublicIDParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	PublicID string        `json:"public_id"`
+}
+
+type GetTenantReaderByPublicIDRow struct {
+	ID              uuid.UUID    `json:"id"`
+	PublicID        string       `json:"public_id"`
+	Name            string       `json:"name"`
+	Email           string       `json:"email"`
+	Status          string       `json:"status"`
+	CreatedAt       time.Time    `json:"created_at"`
+	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
+	HasBirthDate    bool         `json:"has_birth_date"`
+}
+
+// One reader in the shape ListTenantReaders* returns. A staff account and an
+// account of another tenant are both no rows.
+func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getTenantReaderByPublicID, arg.TenantID, arg.PublicID)
+	var i GetTenantReaderByPublicIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.Email,
+		&i.Status,
+		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.HasBirthDate,
+	)
+	return i, err
+}
+
 const getTenantUserID = `-- name: GetTenantUserID :one
 SELECT u.id
 FROM users u
@@ -819,6 +872,207 @@ func (q *Queries) ListTenantMembersDesc(ctx context.Context, arg ListTenantMembe
 			&i.Role,
 			&i.Status,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantReadersAsc = `-- name: ListTenantReadersAsc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+FROM users u
+WHERE u.tenant_id = $1
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        $2::text IS NULL
+        OR strpos(lower(u.name), lower($2::text)) > 0
+        OR strpos(lower(u.email), lower($2::text)) > 0
+    )
+    AND ($3::text IS NULL OR u.status = $3::text)
+    AND (
+        $4::uuid IS NULL
+        OR (
+            $5::boolean
+            AND (u.created_at, u.id) >= ($6::timestamptz, $4::uuid)
+        )
+        OR (
+            NOT $5::boolean
+            AND (u.created_at, u.id) > ($6::timestamptz, $4::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT $7
+`
+
+type ListTenantReadersAscParams struct {
+	TenantID        uuid.NullUUID  `json:"tenant_id"`
+	Query           sql.NullString `json:"query"`
+	Status          sql.NullString `json:"status"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
+}
+
+type ListTenantReadersAscRow struct {
+	ID              uuid.UUID    `json:"id"`
+	PublicID        string       `json:"public_id"`
+	Name            string       `json:"name"`
+	Email           string       `json:"email"`
+	Status          string       `json:"status"`
+	CreatedAt       time.Time    `json:"created_at"`
+	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
+	HasBirthDate    bool         `json:"has_birth_date"`
+}
+
+func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReadersAscParams) ([]ListTenantReadersAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantReadersAsc,
+		arg.TenantID,
+		arg.Query,
+		arg.Status,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTenantReadersAscRow
+	for rows.Next() {
+		var i ListTenantReadersAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.Email,
+			&i.Status,
+			&i.CreatedAt,
+			&i.EmailVerifiedAt,
+			&i.HasBirthDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantReadersDesc = `-- name: ListTenantReadersDesc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+FROM users u
+WHERE u.tenant_id = $1
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        $2::text IS NULL
+        OR strpos(lower(u.name), lower($2::text)) > 0
+        OR strpos(lower(u.email), lower($2::text)) > 0
+    )
+    AND ($3::text IS NULL OR u.status = $3::text)
+    AND (
+        $4::uuid IS NULL
+        OR (
+            $5::boolean
+            AND (u.created_at, u.id) <= ($6::timestamptz, $4::uuid)
+        )
+        OR (
+            NOT $5::boolean
+            AND (u.created_at, u.id) < ($6::timestamptz, $4::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $7
+`
+
+type ListTenantReadersDescParams struct {
+	TenantID        uuid.NullUUID  `json:"tenant_id"`
+	Query           sql.NullString `json:"query"`
+	Status          sql.NullString `json:"status"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
+}
+
+type ListTenantReadersDescRow struct {
+	ID              uuid.UUID    `json:"id"`
+	PublicID        string       `json:"public_id"`
+	Name            string       `json:"name"`
+	Email           string       `json:"email"`
+	Status          string       `json:"status"`
+	CreatedAt       time.Time    `json:"created_at"`
+	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
+	HasBirthDate    bool         `json:"has_birth_date"`
+}
+
+// Admin ListReaders lists the tenant's readers: its accounts that hold no
+// tenant_user_roles row, so staff never appear. (created_at, id) DESC, walked
+// through idx_users_tenant_created_at. Forward uses the DESC query; backward
+// uses ASC, and the handler flips ASC rows back into display order.
+// cursor rules: proto/README.md.
+func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantReadersDesc,
+		arg.TenantID,
+		arg.Query,
+		arg.Status,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTenantReadersDescRow
+	for rows.Next() {
+		var i ListTenantReadersDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.Email,
+			&i.Status,
+			&i.CreatedAt,
+			&i.EmailVerifiedAt,
+			&i.HasBirthDate,
 		); err != nil {
 			return nil, err
 		}
