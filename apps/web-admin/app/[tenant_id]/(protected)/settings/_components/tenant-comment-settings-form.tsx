@@ -10,8 +10,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   AdminSection,
@@ -43,50 +42,36 @@ interface TenantCommentSettingsFormProps {
 
 /**
  * The three modes in the order the card offers them: off, then the two ways of
- * being on. `RadioGroupItem` takes a `ReactNode` for both the label and the
- * description, so each string keeps a boundary of its own instead of the card
- * waiting on a catalog before it can draw the options at all.
+ * being on.
  */
 const commentModeItems = (disabled: boolean) => [
   {
     description: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <ClientMessage message="admin.settings.comments.mode_options.disabled.description" />
-      </Suspense>
+      <ClientMessage message="admin.settings.comments.mode_options.disabled.description" />
     ),
     disabled,
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-        <ClientMessage message="admin.settings.comments.mode_options.disabled.label" />
-      </Suspense>
+      <ClientMessage message="admin.settings.comments.mode_options.disabled.label" />
     ),
     value: "disabled",
   },
   {
     description: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <ClientMessage message="admin.settings.comments.mode_options.immediate.description" />
-      </Suspense>
+      <ClientMessage message="admin.settings.comments.mode_options.immediate.description" />
     ),
     disabled,
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-        <ClientMessage message="admin.settings.comments.mode_options.immediate.label" />
-      </Suspense>
+      <ClientMessage message="admin.settings.comments.mode_options.immediate.label" />
     ),
     value: "immediate",
   },
   {
     description: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <ClientMessage message="admin.settings.comments.mode_options.approval_required.description" />
-      </Suspense>
+      <ClientMessage message="admin.settings.comments.mode_options.approval_required.description" />
     ),
     disabled,
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-        <ClientMessage message="admin.settings.comments.mode_options.approval_required.label" />
-      </Suspense>
+      <ClientMessage message="admin.settings.comments.mode_options.approval_required.label" />
     ),
     value: "approval_required",
   },
@@ -138,14 +123,10 @@ export const TenantCommentSettingsForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-              <ClientMessage message="admin.settings.comments.title" />
-            </Suspense>
+            <ClientMessage message="admin.settings.comments.title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <ClientMessage message="admin.settings.comments.description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.comments.description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -155,9 +136,7 @@ export const TenantCommentSettingsForm = ({
 
         <Field>
           <FieldLabel htmlFor="tenant_comment_mode">
-            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <ClientMessage message="admin.settings.comments.mode_label" />
-            </Suspense>
+            <ClientMessage message="admin.settings.comments.mode_label" />
           </FieldLabel>
           <FieldContent>
             <RadioGroup
@@ -175,9 +154,7 @@ export const TenantCommentSettingsForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <ClientMessage message="admin.settings.comments.auto_hide_label" />
-            </Suspense>
+            <ClientMessage message="admin.settings.comments.auto_hide_label" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -195,18 +172,14 @@ export const TenantCommentSettingsForm = ({
               value={autoHideReportThreshold}
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <ClientMessage message="admin.settings.comments.auto_hide_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.comments.auto_hide_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
-            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <ClientMessage message="admin.settings.admin_only" />
-            </Suspense>
+            <ClientMessage message="admin.settings.admin_only" />
           </FormMessage>
         )}
 
@@ -214,9 +187,7 @@ export const TenantCommentSettingsForm = ({
           <FormMessage variant="destructive">
             <span className="block">{loadErrorMessage}</span>
             <span className="block">
-              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-                <ClientMessage message="admin.settings.comments.load_error_hint" />
-              </Suspense>
+              <ClientMessage message="admin.settings.comments.load_error_hint" />
             </span>
           </FormMessage>
         ) : null}
@@ -229,9 +200,7 @@ export const TenantCommentSettingsForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={fieldsDisabled || isPending} type="submit">
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <SubmitLabel isPending={isPending} />
-            </Suspense>
+            <SubmitLabel isPending={isPending} />
           </Button>
         </div>
       </form>

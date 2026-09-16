@@ -38,8 +38,8 @@ interface ErrorScreenProps {
  * plain markup and hold no server-only code.
  *
  * Every string is a node the boundary passes in. This screen resolves no copy
- * of its own, so the `<Suspense>` each string waits behind is written where the
- * string is chosen and is visible there.
+ * of its own, so a boundary that has to load its copy writes the `<Suspense>`
+ * each string waits behind where the string is chosen.
  *
  * Retry is wired to `retry()` rather than `reset()`: `reset()` only clears the
  * error state, while `retry()` re-fetches and re-renders the boundary's

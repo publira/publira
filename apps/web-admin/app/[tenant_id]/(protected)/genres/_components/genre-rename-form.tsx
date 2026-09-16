@@ -3,11 +3,9 @@
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState } from "react";
+import { useActionState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -29,7 +27,7 @@ interface GenreRenameFormProps {
  * taken.
  */
 export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(
     renameGenreAction,
@@ -57,12 +55,10 @@ export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
           {isPending ? t("admin.genres.saving") : t("admin.genres.save_action")}
         </Button>
         <p className="text-xs text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <ClientMessage
-              message="admin.genres.slug_hint"
-              values={{ slug: genre.slug }}
-            />
-          </Suspense>
+          <ClientMessage
+            message="admin.genres.slug_hint"
+            values={{ slug: genre.slug }}
+          />
         </p>
       </div>
       {state && state.publicId === genre.publicId ? (

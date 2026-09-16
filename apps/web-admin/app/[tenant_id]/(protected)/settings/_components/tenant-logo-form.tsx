@@ -20,11 +20,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Image from "next/image";
-import { Suspense, useActionState, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -32,7 +30,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { tenantBrandingVariant } from "#lib/tenant-branding-image";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -51,7 +49,7 @@ export const TenantLogoForm = ({
   action,
   initialLogo,
 }: TenantLogoFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const formRef = useRef<HTMLFormElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
@@ -84,14 +82,10 @@ export const TenantLogoForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.logo.title" />
-            </Suspense>
+            <ClientMessage message="admin.settings.logo.title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.logo.description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.logo.description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -100,9 +94,7 @@ export const TenantLogoForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.logo.current" />
-            </Suspense>
+            <ClientMessage message="admin.settings.logo.current" />
           </FieldLabel>
           <FieldContent>
             {preview ? (
@@ -115,9 +107,7 @@ export const TenantLogoForm = ({
               />
             ) : (
               <p className="text-sm text-muted-foreground">
-                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                  <ClientMessage message="admin.settings.logo.unset" />
-                </Suspense>
+                <ClientMessage message="admin.settings.logo.unset" />
               </p>
             )}
           </FieldContent>
@@ -125,9 +115,7 @@ export const TenantLogoForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.logo.file" />
-            </Suspense>
+            <ClientMessage message="admin.settings.logo.file" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -136,9 +124,7 @@ export const TenantLogoForm = ({
               type="file"
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.logo.file_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.logo.file_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -155,39 +141,29 @@ export const TenantLogoForm = ({
               <ConfirmDialogTrigger
                 render={
                   <Button disabled={isPending} type="button" variant="outline">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.delete" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.delete" />
                   </Button>
                 }
               />
               <ConfirmDialogContent>
                 <ConfirmDialogHeader>
                   <ConfirmDialogTitle>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.logo.delete_title" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.logo.delete_title" />
                   </ConfirmDialogTitle>
                   <ConfirmDialogDescription>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.logo.delete_description" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.logo.delete_description" />
                   </ConfirmDialogDescription>
                 </ConfirmDialogHeader>
                 <ConfirmDialogFooter>
                   <ConfirmDialogCancel>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.common.cancel" />
-                    </Suspense>
+                    <ClientMessage message="admin.common.cancel" />
                   </ConfirmDialogCancel>
                   <ConfirmDialogAction
                     onClick={() => {
                       formRef.current?.requestSubmit(deleteButtonRef.current);
                     }}
                   >
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.delete_action" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.delete_action" />
                   </ConfirmDialogAction>
                 </ConfirmDialogFooter>
               </ConfirmDialogContent>
@@ -200,9 +176,7 @@ export const TenantLogoForm = ({
             type="submit"
             value="delete"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <ClientMessage message="admin.settings.logo.delete_submit" />
-            </Suspense>
+            <ClientMessage message="admin.settings.logo.delete_submit" />
           </button>
           <Button
             disabled={isPending}

@@ -37,15 +37,12 @@ vi.mock("next/navigation", () => ({
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        {children}
+      </AdminLocaleProvider>
     ),
   });
 
-/**
- * Every string under the tabs suspends on the catalog, so the render and each
- * tab switch are awaited: `act` lets React flush the commit that follows the
- * `import()` instead of leaving the panel on its skeletons.
- */
 const renderForm = async (
   action = vi.fn().mockResolvedValue(null)
 ): Promise<HTMLElement> => {

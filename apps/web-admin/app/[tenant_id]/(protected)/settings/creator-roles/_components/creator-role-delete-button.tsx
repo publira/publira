@@ -13,8 +13,7 @@ import {
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useRef } from "react";
+import { useActionState, useRef } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -59,46 +58,36 @@ export const CreatorRoleDeleteButton = ({
               type="button"
               variant="destructive"
             >
-              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                {isPending ? (
-                  <ClientMessage message="admin.creator_roles.deleting" />
-                ) : (
-                  <ClientMessage message="admin.creator_roles.delete_action" />
-                )}
-              </Suspense>
+              {isPending ? (
+                <ClientMessage message="admin.creator_roles.deleting" />
+              ) : (
+                <ClientMessage message="admin.creator_roles.delete_action" />
+              )}
             </Button>
           }
         />
         <ConfirmDialogContent>
           <ConfirmDialogHeader>
             <ConfirmDialogTitle>
-              <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
-                <ClientMessage message="admin.creator_roles.delete_confirm_title" />
-              </Suspense>
+              <ClientMessage message="admin.creator_roles.delete_confirm_title" />
             </ConfirmDialogTitle>
             <ConfirmDialogDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <ClientMessage
-                  message="admin.creator_roles.delete_confirm_description"
-                  values={{ name: creatorRole.name }}
-                />
-              </Suspense>
+              <ClientMessage
+                message="admin.creator_roles.delete_confirm_description"
+                values={{ name: creatorRole.name }}
+              />
             </ConfirmDialogDescription>
           </ConfirmDialogHeader>
           <ConfirmDialogFooter>
             <ConfirmDialogCancel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                <ClientMessage message="admin.common.cancel" />
-              </Suspense>
+              <ClientMessage message="admin.common.cancel" />
             </ConfirmDialogCancel>
             <ConfirmDialogAction
               onClick={() => {
                 formRef.current?.requestSubmit();
               }}
             >
-              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                <ClientMessage message="admin.creator_roles.delete_confirm_action" />
-              </Suspense>
+              <ClientMessage message="admin.creator_roles.delete_confirm_action" />
             </ConfirmDialogAction>
           </ConfirmDialogFooter>
         </ConfirmDialogContent>

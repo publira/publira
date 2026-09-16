@@ -7,12 +7,8 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
-
-import { useAdminMessages } from "./admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
 interface MfaCodeFieldProps {
   /**
@@ -35,14 +31,12 @@ export const MfaCodeField = ({
   allowRecoveryCode,
   disabled,
 }: MfaCodeFieldProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <Field>
       <FieldLabel required>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ClientMessage message="admin.auth.mfa.code_label" />
-        </Suspense>
+        <ClientMessage message="admin.auth.mfa.code_label" />
       </FieldLabel>
       <FieldContent>
         <Input

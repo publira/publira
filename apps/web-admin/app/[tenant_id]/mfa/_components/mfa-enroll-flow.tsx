@@ -7,9 +7,8 @@ import {
 } from "@publira/layouts/auth-screen";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
-import { Suspense, useActionState } from "react";
+import { useActionState } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { MfaCodeField } from "#components/mfa-code-field";
@@ -77,9 +76,7 @@ export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => {
           className="justify-self-start"
           render={<Link href={confirmState.signedIn ? nextPath : "/login"} />}
         >
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <MfaEnrollDoneLabel signedIn={confirmState.signedIn} />
-          </Suspense>
+          <MfaEnrollDoneLabel signedIn={confirmState.signedIn} />
         </LinkButton>
       </AuthScreenBody>
     );
@@ -106,9 +103,7 @@ export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => {
             disabled={isConfirming}
             type="submit"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <MfaEnrollConfirmLabel isPending={isConfirming} />
-            </Suspense>
+            <MfaEnrollConfirmLabel isPending={isConfirming} />
           </Button>
         </form>
       </AuthScreenBody>
@@ -119,14 +114,10 @@ export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => {
     <>
       <AuthScreenBody>
         <h2 className="font-medium text-foreground">
-          <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
-            <ClientMessage message="admin.auth.mfa.enroll_required_title" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.enroll_required_title" />
         </h2>
         <AuthScreenNote>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage message="admin.auth.mfa.enroll_required_description" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.enroll_required_description" />
         </AuthScreenNote>
 
         <form action={startAction} className="grid gap-4">
@@ -143,9 +134,7 @@ export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => {
             disabled={isStarting}
             type="submit"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <MfaEnrollStartLabel isPending={isStarting} />
-            </Suspense>
+            <MfaEnrollStartLabel isPending={isStarting} />
           </Button>
         </form>
       </AuthScreenBody>
@@ -156,9 +145,7 @@ export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => {
             className="text-primary underline underline-offset-4"
             href="/login"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.auth.mfa.back_to_login" />
-            </Suspense>
+            <ClientMessage message="admin.auth.mfa.back_to_login" />
           </Link>
         </p>
       </AuthScreenFooter>

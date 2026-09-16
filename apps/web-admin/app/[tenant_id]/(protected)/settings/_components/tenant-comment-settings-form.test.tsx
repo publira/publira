@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -9,7 +10,9 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import type { TenantCommentSettingsActionState } from "../settings-types";
 import { TenantCommentSettingsForm } from "./tenant-comment-settings-form";
@@ -20,14 +23,15 @@ vi.mock("next/navigation", () => ({
 
 const noopAction = vi.fn();
 
-/**
- * Every string on the card is a `<ClientMessage>` that suspends on the catalog
- * it imports, so a render is awaited: `act` lets React flush the commit that
- * follows the `import()` instead of leaving the boundaries on their skeletons.
- */
+const EnglishConsole = ({ children }: { children: ReactNode }) => (
+  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+    {children}
+  </AdminLocaleProvider>
+);
+
 const renderCard = async (ui: ReactNode) => {
   await act(() => {
-    render(ui);
+    render(ui, { wrapper: EnglishConsole });
   });
   await screen.findByRole("button", { name: "Save the comment settings" });
 };
@@ -42,15 +46,8 @@ const thresholdInput = () =>
     name: "Reports that remove a comment",
   });
 
-beforeEach(() => {
-  // The language the console served this document in, which is what
-  // `<ClientMessage>` falls back to when no locale cookie names one.
-  document.documentElement.lang = "en";
-});
-
 afterEach(() => {
   cleanup();
-  document.documentElement.lang = "";
 });
 
 describe("TenantCommentSettingsForm", () => {

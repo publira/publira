@@ -13,11 +13,9 @@ import {
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useRef } from "react";
+import { useActionState, useRef } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { deleteGenreAction } from "../_lib/actions";
@@ -39,7 +37,7 @@ export const GenreDeleteButton = ({
   name,
   publicId,
 }: GenreDeleteButtonProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState(
@@ -71,35 +69,27 @@ export const GenreDeleteButton = ({
         <ConfirmDialogContent>
           <ConfirmDialogHeader>
             <ConfirmDialogTitle>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.genres.delete_confirm_title" />
-              </Suspense>
+              <ClientMessage message="admin.genres.delete_confirm_title" />
             </ConfirmDialogTitle>
             <ConfirmDialogDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage
-                  message="admin.genres.delete_confirm_description"
-                  values={{
-                    name,
-                  }}
-                />
-              </Suspense>
+              <ClientMessage
+                message="admin.genres.delete_confirm_description"
+                values={{
+                  name,
+                }}
+              />
             </ConfirmDialogDescription>
           </ConfirmDialogHeader>
           <ConfirmDialogFooter>
             <ConfirmDialogCancel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.common.cancel" />
-              </Suspense>
+              <ClientMessage message="admin.common.cancel" />
             </ConfirmDialogCancel>
             <ConfirmDialogAction
               onClick={() => {
                 formRef.current?.requestSubmit();
               }}
             >
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.genres.delete_confirm_action" />
-              </Suspense>
+              <ClientMessage message="admin.genres.delete_confirm_action" />
             </ConfirmDialogAction>
           </ConfirmDialogFooter>
         </ConfirmDialogContent>

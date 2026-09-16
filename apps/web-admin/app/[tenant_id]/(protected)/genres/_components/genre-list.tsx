@@ -2,16 +2,9 @@
 
 import type { DragEndEvent } from "@dnd-kit/react";
 import { FormMessage } from "@publira/ui-components/form-message";
-import {
-  Suspense,
-  useCallback,
-  useOptimistic,
-  useState,
-  useTransition,
-} from "react";
+import { useCallback, useOptimistic, useState, useTransition } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
   SortableItem,
   SortableItemHandle,
@@ -41,7 +34,7 @@ const genreId = (genre: GenreListItem): string => genre.publicId;
  * screen, which is why this screen does not page.
  */
 export const GenreList = ({ genres }: GenreListProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [isPending, startTransition] = useTransition();
   const [optimisticGenres, setOptimisticGenres] = useOptimistic(
@@ -102,12 +95,10 @@ export const GenreList = ({ genres }: GenreListProps) => {
             {/* The height of the name field beside it, so the grip is level
                 with the row's first line rather than above it. */}
             <SortableItemHandle className="h-10">
-              <Suspense fallback={null}>
-                <ClientMessage
-                  message="admin.genres.reorder_action"
-                  values={{ name: genre.name }}
-                />
-              </Suspense>
+              <ClientMessage
+                message="admin.genres.reorder_action"
+                values={{ name: genre.name }}
+              />
             </SortableItemHandle>
             <GenreRenameForm genre={genre} />
             <GenreDeleteButton name={genre.name} publicId={genre.publicId} />

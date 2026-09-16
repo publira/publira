@@ -14,11 +14,9 @@ import {
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useRef } from "react";
+import { useActionState, useRef } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { revokeAccessTicketAction } from "../_lib/actions";
@@ -29,7 +27,7 @@ interface RevokeTicketButtonProps {
 }
 
 export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const { add } = useToastManager();
   const formRef = useRef<HTMLFormElement>(null);
@@ -76,30 +74,22 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
         <ConfirmDialogContent>
           <ConfirmDialogHeader>
             <ConfirmDialogTitle>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.access_tickets.revoke_confirm_title" />
-              </Suspense>
+              <ClientMessage message="admin.access_tickets.revoke_confirm_title" />
             </ConfirmDialogTitle>
             <ConfirmDialogDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.access_tickets.revoke_confirm_description" />
-              </Suspense>
+              <ClientMessage message="admin.access_tickets.revoke_confirm_description" />
             </ConfirmDialogDescription>
           </ConfirmDialogHeader>
           <ConfirmDialogFooter>
             <ConfirmDialogCancel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.common.cancel" />
-              </Suspense>
+              <ClientMessage message="admin.common.cancel" />
             </ConfirmDialogCancel>
             <ConfirmDialogAction
               onClick={() => {
                 formRef.current?.requestSubmit();
               }}
             >
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.access_tickets.revoke_confirm_action" />
-              </Suspense>
+              <ClientMessage message="admin.access_tickets.revoke_confirm_action" />
             </ConfirmDialogAction>
           </ConfirmDialogFooter>
         </ConfirmDialogContent>

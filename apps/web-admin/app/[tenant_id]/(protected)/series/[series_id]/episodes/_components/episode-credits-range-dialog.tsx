@@ -20,10 +20,8 @@ import {
   useTransition,
 } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import {
@@ -62,7 +60,7 @@ export const EpisodeCreditsRangeDialog = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [sessionKey, setSessionKey] = useState(0);

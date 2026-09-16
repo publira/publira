@@ -17,7 +17,7 @@ import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import { useId, useState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 
 import { MAX_BULK_EPISODE_CREDIT_EPISODES } from "../_lib/credit-range";
 import type { EpisodeCreditRangeOption } from "../episode-types";
@@ -51,7 +51,7 @@ const CreditPairFields = ({
   roleItems,
   roleLabel,
 }: CreditPairFieldsProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const creatorId = useId();
   const roleId = useId();
 
@@ -124,7 +124,7 @@ const CreditTargetFields = ({
   roleItems: ComboboxItem[];
   to: CreditPair;
 }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const creatorLabel = t("admin.series.episodes.credits.creator");
   const roleLabel = t("admin.series.episodes.credits.role");
 
@@ -225,7 +225,7 @@ const EpisodeSelectionFields = ({
   selectedIds: ReadonlySet<string>;
   selectionTooMany: boolean;
 }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const searchId = useId();
   const selectVisibleId = useId();
   const listId = useId();
@@ -439,7 +439,7 @@ export const EpisodeCreditsRangeEditor = ({
   selectionTooMany,
   to,
 }: EpisodeCreditsRangeEditorProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const operationId = useId();
 
   return (

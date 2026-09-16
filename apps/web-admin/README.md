@@ -25,7 +25,8 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | The catalog | `loadAdminMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md) |
 | One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one, `getActionMessages(formData)` in `lib/action-messages.ts` inside a Server Action |
 | One string on the server | `<Message>` in `components/message.tsx` |
-| One string in the browser | `<ClientMessage>` in `components/client-message.tsx`, for `error.tsx` |
+| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the catalog `AdminLocaleProvider` (`components/admin-locale-context.tsx`) carries from the layout that resolved the locale |
+| One string above that layout | `<ErrorBoundaryMessage>` in `components/error-boundary-message.tsx`, for `app/[tenant_id]/error.tsx` |
 | `<html lang>` | The inline `<head>` script in `app/[tenant_id]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`) |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 

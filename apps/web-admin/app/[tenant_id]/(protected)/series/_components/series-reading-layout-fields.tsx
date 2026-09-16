@@ -9,14 +9,12 @@ import {
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import type { SelectProps } from "@publira/ui-components/select";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useCallback, useId } from "react";
+import { useCallback, useId } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { isReadingDirectionValue } from "#lib/reading-layout";
 import type { ReadingDirectionValue } from "#lib/reading-layout";
 
-/** Suspends as a whole while the catalog loads, so no option renders half-filled. */
 const ReadingDirectionSelect = (props: Omit<SelectProps, "items">) => {
   const t = useClientMessages();
 
@@ -60,23 +58,17 @@ export const SeriesReadingDirectionField = ({
   return (
     <Field>
       <FieldLabel htmlFor={selectId}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ClientMessage message="admin.series.form.reading_direction" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.reading_direction" />
       </FieldLabel>
       <FieldContent>
-        <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-          <ReadingDirectionSelect
-            id={selectId}
-            onValueChange={handleValueChange}
-            value={value}
-          />
-        </Suspense>
+        <ReadingDirectionSelect
+          id={selectId}
+          onValueChange={handleValueChange}
+          value={value}
+        />
         <input name="reading_direction" type="hidden" value={value} />
         <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage message="admin.series.form.reading_direction_description" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.reading_direction_description" />
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -94,9 +86,7 @@ export const SeriesSpreadStartField = ({
 }) => (
   <Field>
     <FieldLabel required>
-      <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-        <ClientMessage message="admin.series.form.spread_start" />
-      </Suspense>
+      <ClientMessage message="admin.series.form.spread_start" />
     </FieldLabel>
     <FieldContent>
       <Input
@@ -108,9 +98,7 @@ export const SeriesSpreadStartField = ({
         type="number"
       />
       <FieldDescription>
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <ClientMessage message="admin.series.form.spread_start_description" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.spread_start_description" />
       </FieldDescription>
     </FieldContent>
   </Field>

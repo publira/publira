@@ -14,9 +14,7 @@ import {
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
-  Suspense,
   useCallback,
   useContext,
   useId,
@@ -127,26 +125,6 @@ const toResolvedRolePublicId = (
     ? rolePublicId
     : (roleItems.at(0)?.value ?? "");
 
-/**
- * The search slot of the author picker. Its own component because
- * `placeholder` cannot be a node: only this element waits on the catalog, and
- * the fallback is the same input without the hint.
- */
-const CreatorComboboxInput = () => {
-  const t = useClientMessages();
-
-  return <ComboboxInput placeholder={t("admin.series.form.creators_search")} />;
-};
-
-/** The search slot of a role picker, for the reason above. */
-const RoleComboboxInput = () => {
-  const t = useClientMessages();
-
-  return (
-    <ComboboxInput placeholder={t("admin.series.form.creators_role_search")} />
-  );
-};
-
 interface CreatorCreditRowProps {
   creatorItems: ComboboxItem[];
   creatorPublicId: string;
@@ -187,6 +165,7 @@ const CreatorCreditRow = ({
   roleItems,
   rolePublicId,
 }: CreatorCreditRowProps) => {
+  const t = useClientMessages();
   const creatorComboboxId = useId();
   const roleComboboxId = useId();
 
@@ -199,21 +178,17 @@ const CreatorCreditRow = ({
       type={rolePublicId}
     >
       <SortableItemHandle>
-        <Suspense fallback={null}>
-          <ClientMessage
-            message="admin.series.form.creators_reorder"
-            values={{ position: String(position) }}
-          />
-        </Suspense>
+        <ClientMessage
+          message="admin.series.form.creators_reorder"
+          values={{ position: String(position) }}
+        />
       </SortableItemHandle>
       <Field className="min-w-40 flex-1">
         <FieldLabel className="sr-only" htmlFor={creatorComboboxId}>
-          <Suspense fallback={null}>
-            <ClientMessage
-              message="admin.series.form.creators_creator_field_label"
-              values={{ position: String(position) }}
-            />
-          </Suspense>
+          <ClientMessage
+            message="admin.series.form.creators_creator_field_label"
+            values={{ position: String(position) }}
+          />
         </FieldLabel>
         <FieldContent>
           <Combobox
@@ -222,14 +197,12 @@ const CreatorCreditRow = ({
             onValueChange={onCreatorChange}
             value={creatorPublicId}
           >
-            <Suspense fallback={<ComboboxInput />}>
-              <CreatorComboboxInput />
-            </Suspense>
+            <ComboboxInput
+              placeholder={t("admin.series.form.creators_search")}
+            />
             <ComboboxPopup>
               <ComboboxEmpty>
-                <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                  <ClientMessage message="admin.series.form.creators_no_match" />
-                </Suspense>
+                <ClientMessage message="admin.series.form.creators_no_match" />
               </ComboboxEmpty>
               <ComboboxItems />
             </ComboboxPopup>
@@ -238,12 +211,10 @@ const CreatorCreditRow = ({
       </Field>
       <Field className="min-w-32 flex-1 sm:max-w-48">
         <FieldLabel className="sr-only" htmlFor={roleComboboxId}>
-          <Suspense fallback={null}>
-            <ClientMessage
-              message="admin.series.form.creators_role_field_label"
-              values={{ position: String(position) }}
-            />
-          </Suspense>
+          <ClientMessage
+            message="admin.series.form.creators_role_field_label"
+            values={{ position: String(position) }}
+          />
         </FieldLabel>
         <FieldContent>
           <Combobox
@@ -252,14 +223,12 @@ const CreatorCreditRow = ({
             onValueChange={onRoleChange}
             value={rolePublicId}
           >
-            <Suspense fallback={<ComboboxInput />}>
-              <RoleComboboxInput />
-            </Suspense>
+            <ComboboxInput
+              placeholder={t("admin.series.form.creators_role_search")}
+            />
             <ComboboxPopup>
               <ComboboxEmpty>
-                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                  <ClientMessage message="admin.series.form.creators_role_no_match" />
-                </Suspense>
+                <ClientMessage message="admin.series.form.creators_role_no_match" />
               </ComboboxEmpty>
               <ComboboxItems />
             </ComboboxPopup>
@@ -275,12 +244,10 @@ const CreatorCreditRow = ({
       >
         <CloseIcon aria-hidden="true" className="size-4" />
         <span className="sr-only">
-          <Suspense fallback={null}>
-            <ClientMessage
-              message="admin.series.form.creators_remove"
-              values={{ position: String(position) }}
-            />
-          </Suspense>
+          <ClientMessage
+            message="admin.series.form.creators_remove"
+            values={{ position: String(position) }}
+          />
         </span>
       </Button>
     </SortableItem>
@@ -432,9 +399,7 @@ export const SeriesCreatorCreditsField = ({
   return (
     <fieldset className="grid gap-2">
       <legend className="text-sm font-medium text-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ClientMessage message="admin.series.form.creators" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.creators" />
       </legend>
 
       {creatorsErrorMessage ? (
@@ -448,9 +413,7 @@ export const SeriesCreatorCreditsField = ({
 
       {resolvedRows.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-            <ClientMessage message="admin.series.form.creators_none" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.creators_none" />
         </p>
       ) : (
         <SortableList className="grid gap-2" onDragEnd={handleDragEnd}>
@@ -478,23 +441,17 @@ export const SeriesCreatorCreditsField = ({
 
       {creatorItems.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-            <ClientMessage message="admin.series.form.creators_empty" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.creators_empty" />
         </p>
       ) : null}
       {creatorRoles.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-            <ClientMessage message="admin.series.form.creator_roles_empty" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.creator_roles_empty" />
         </p>
       ) : null}
       {hasExhaustedAuthor ? (
         <p className="text-xs text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-            <ClientMessage message="admin.series.form.creators_all_roles_taken" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.creators_all_roles_taken" />
         </p>
       ) : null}
 
@@ -502,9 +459,7 @@ export const SeriesCreatorCreditsField = ({
         <div>
           <Button onClick={handleAdd} type="button" variant="outline">
             <PlusIcon aria-hidden="true" className="size-4" />
-            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-              <ClientMessage message="admin.series.form.creators_add" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.creators_add" />
           </Button>
         </div>
       ) : null}
@@ -520,14 +475,10 @@ export const SeriesCreatorCreditsField = ({
       />
 
       <p className="text-xs text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <ClientMessage message="admin.series.form.creators_description" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.creators_description" />
       </p>
       <p className="text-xs text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <ClientMessage message="admin.series.form.creators_template_note" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.creators_template_note" />
       </p>
     </fieldset>
   );

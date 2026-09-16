@@ -2,14 +2,7 @@
 
 import type { DragEndEvent } from "@dnd-kit/react";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Suspense,
-  useCallback,
-  useOptimistic,
-  useState,
-  useTransition,
-} from "react";
+import { useCallback, useOptimistic, useState, useTransition } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import {
@@ -114,20 +107,16 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
                 position are level with the row's first line. */}
             <div className="flex h-10 items-center gap-2 sm:w-28">
               <SortableItemHandle className="h-full">
-                <Suspense fallback={null}>
-                  <ClientMessage
-                    message="admin.creator_roles.reorder_action"
-                    values={{ name: creatorRole.name }}
-                  />
-                </Suspense>
+                <ClientMessage
+                  message="admin.creator_roles.reorder_action"
+                  values={{ name: creatorRole.name }}
+                />
               </SortableItemHandle>
               <p className="text-xs text-muted-foreground">
-                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                  <ClientMessage
-                    message="admin.creator_roles.priority_hint"
-                    values={{ position: String(index + 1) }}
-                  />
-                </Suspense>
+                <ClientMessage
+                  message="admin.creator_roles.priority_hint"
+                  values={{ position: String(index + 1) }}
+                />
               </p>
             </div>
             <CreatorRoleRenameForm creatorRole={creatorRole} />

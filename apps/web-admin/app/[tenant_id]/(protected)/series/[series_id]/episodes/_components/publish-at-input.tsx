@@ -8,7 +8,7 @@ import {
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 
 interface PublishAtInputProps {
   defaultValue?: string;
@@ -21,7 +21,7 @@ export const PublishAtInput = ({
   name = "publish_at",
   timeZone,
 }: PublishAtInputProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <Field>

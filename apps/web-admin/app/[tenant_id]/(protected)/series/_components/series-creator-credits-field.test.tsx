@@ -105,7 +105,9 @@ const render = (initialCredits: SeriesCreatorCredit[]) =>
     />,
     {
       wrapper: ({ children }) => (
-        <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+          {children}
+        </AdminLocaleProvider>
       ),
     }
   );

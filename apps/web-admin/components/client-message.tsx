@@ -1,117 +1,32 @@
 "use client";
 
-import {
-  bindMessages,
-  LOCALE_COOKIE_NAME,
-  negotiateInitialLocale,
-  parseLocale,
-  parseLocaleCookie,
-  RESOLVED_LOCALE_COOKIE_NAME,
-} from "@publira/i18n";
-import type { Locale, MessageValues } from "@publira/i18n";
+import { bindMessages } from "@publira/i18n";
+import type { MessageValues } from "@publira/i18n";
 import { use } from "react";
 
-import { loadAdminMessages } from "#lib/messages";
-import type {
-  AdminMessageAccessor,
-  AdminMessageKey,
-  AdminMessages,
-} from "#lib/messages";
-
-const readCookie = (name: string): string => {
-  if (typeof document === "undefined") {
-    return "";
-  }
-
-  const match = document.cookie.match(
-    new RegExp(`(?:^|; )${name}=([^;]*)`, "u")
-  );
-  if (!match?.[1]) {
-    return "";
-  }
-
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
-};
+import { AdminMessagesContext } from "#components/admin-locale-context";
+import type { AdminMessageAccessor, AdminMessageKey } from "#lib/messages";
 
 /**
- * The locale this chunk renders in, from the browser alone.
+ * The accessor a Client Component resolves its copy through, bound to the
+ * catalog `AdminLocaleProvider` carries.
  *
- * The order is the one the server resolves in. `publira_locale` is the
- * operator's own choice; `publira_resolved_locale` is the tenant's saved
- * default, published by `proxy.ts` on the responses it routes precisely so
- * this chunk can read it — the admin API is out of reach here, because the
- * boundary that renders this is the one its failing brought up. `<html lang>`
- * comes next for a document whose language was decided some other way (the
- * switcher writes it once its Action resolves).
- *
- * Only a browser that has never had a console response — no cookie of either
- * kind — falls through to what it asked for.
- */
-const readClientLocale = (): Locale => {
-  if (typeof document === "undefined") {
-    return negotiateInitialLocale(null);
-  }
-
-  return (
-    parseLocaleCookie(readCookie(LOCALE_COOKIE_NAME)) ??
-    parseLocaleCookie(readCookie(RESOLVED_LOCALE_COOKIE_NAME)) ??
-    parseLocale(document.documentElement.lang) ??
-    negotiateInitialLocale(navigator.languages.join(","))
-  );
-};
-
-/**
- * One promise per locale, so `use()` sees the same promise on every render.
- * `loadAdminMessages` is `async`, so calling it during render would hand `use()`
- * a new promise each time and React would suspend again on every retry.
- */
-const catalogs = new Map<Locale, Promise<AdminMessages>>();
-
-const adminCatalog = (locale: Locale): Promise<AdminMessages> => {
-  const loaded = catalogs.get(locale);
-  if (loaded) {
-    return loaded;
-  }
-
-  const pending = loadAdminMessages(locale);
-  catalogs.set(locale, pending);
-
-  return pending;
-};
-
-/**
- * One catalog string for Client Components, which cannot render `<Message>`.
- *
- * `<Message>` is an async Server Component, so anything below a `"use client"`
- * boundary — a route-level `error.tsx`, a control that renders in the browser —
- * resolves its copy here instead. It is what such a component reaches for
- * rather than importing a catalog: `sharedCatalog` is a static map of every
- * locale, so importing it from the client ships all of them, while this loads
- * the one locale the reader is on.
- *
- * The locale cookie is not httpOnly, which is what makes reading it here
- * possible at all.
- *
- * **Wrap it in a `<Suspense>` at the call site**, the same as `<Message>`. An
- * error boundary has no boundary of its own above it, so a suspend with
- * nothing to fall back to leaves React unable to flush the error screen at all.
- *
- * The locale comes from the browser ({@link readClientLocale}) rather than
- * from the server's own resolution, because there is no reaching that from
- * here: the tenant's saved default needs the admin API, and on an error
- * boundary the API failing is what brought this screen up in the first place.
- * The cookie the proxy publishes is a copy of that same server-resolved value,
- * so an ordinary control reads the language the console is already served in.
+ * It does not suspend: the server resolved the catalog for the request, so no
+ * `<Suspense>` is needed around a caller. Missing the provider is a wiring bug
+ * rather than a case to fall back from — a component rendered outside one has
+ * no locale to answer in. `app/[tenant_id]/error.tsx`, which renders above the
+ * layout that seeds the provider, uses `<ErrorBoundaryMessage>` instead.
  */
 export const useClientMessages = (): AdminMessageAccessor => {
-  const messages = use(adminCatalog(readClientLocale()));
+  const messages = use(AdminMessagesContext);
+  if (messages === null) {
+    throw new Error("AdminLocaleProvider is required.");
+  }
 
   return bindMessages(messages);
 };
+
+/** One catalog string rendered by a Client Component. */
 export const ClientMessage = ({
   message,
   values,
@@ -123,18 +38,3 @@ export const ClientMessage = ({
 
   return t(message, values);
 };
-
-/**
- * The accessor itself, for the one element that carries a string-only attribute.
- *
- * `aria-label` on a shared component's slot cannot be a node, so the string has
- * to be resolved by a component rather than rendered by one. Keep that
- * component down to the element carrying the attribute and wrap it in its own
- * `<Suspense>`: everything else the caller draws then stays out of the wait,
- * which is the whole reason {@link ClientMessage} exists.
- *
- * Copy that lands as `children` never comes from here — `<ClientMessage>` is
- * what renders it, one boundary per string. Before reaching for this, check
- * whether the attribute can be a node at all: an icon-only button names itself
- * with an `sr-only` `<span>`, and a list can be `aria-labelledby` its heading.
- */

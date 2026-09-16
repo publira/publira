@@ -126,7 +126,7 @@ const render = ({
     />,
     {
       wrapper: ({ children }) => (
-        <AdminLocaleProvider locale="en">
+        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
           <EpisodeCreditsSelectionProvider
             initialSelectedIds={initialSelectedIds}
           >

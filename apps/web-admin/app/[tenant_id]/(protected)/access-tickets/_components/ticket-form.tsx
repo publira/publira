@@ -17,10 +17,8 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import {
-  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -30,11 +28,8 @@ import {
   useTransition,
 } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -65,7 +60,7 @@ export const TicketForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [isEpisodePending, startEpisodeTransition] = useTransition();
@@ -172,9 +167,7 @@ export const TicketForm = ({
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.access_tickets.form.user" />
-          </Suspense>
+          <ClientMessage message="admin.access_tickets.form.user" />
         </FieldLabel>
         <FieldContent>
           <Input
@@ -184,9 +177,7 @@ export const TicketForm = ({
             type="text"
           />
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.access_tickets.form.user_description" />
-            </Suspense>
+            <ClientMessage message="admin.access_tickets.form.user_description" />
           </FieldDescription>
         </FieldContent>
       </Field>
@@ -194,9 +185,7 @@ export const TicketForm = ({
       {useEpisodeFallbackInput ? (
         <Field>
           <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.access_tickets.form.episode_id" />
-            </Suspense>
+            <ClientMessage message="admin.access_tickets.form.episode_id" />
           </FieldLabel>
           <FieldContent>
             {seriesErrorMessage ? (
@@ -225,9 +214,7 @@ export const TicketForm = ({
         <>
           <Field>
             <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.access_tickets.form.series" />
-              </Suspense>
+              <ClientMessage message="admin.access_tickets.form.series" />
             </FieldLabel>
             <FieldContent>
               <Combobox
@@ -242,26 +229,20 @@ export const TicketForm = ({
                 />
                 <ComboboxPopup>
                   <ComboboxEmpty>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.access_tickets.form.series_empty" />
-                    </Suspense>
+                    <ClientMessage message="admin.access_tickets.form.series_empty" />
                   </ComboboxEmpty>
                   <ComboboxItems />
                 </ComboboxPopup>
               </Combobox>
               <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.access_tickets.form.series_description" />
-                </Suspense>
+                <ClientMessage message="admin.access_tickets.form.series_description" />
               </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
             <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.access_tickets.form.episode" />
-              </Suspense>
+              <ClientMessage message="admin.access_tickets.form.episode" />
             </FieldLabel>
             <FieldContent>
               <Combobox
@@ -279,9 +260,7 @@ export const TicketForm = ({
                 />
                 <ComboboxPopup>
                   <ComboboxEmpty>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.access_tickets.form.episode_empty" />
-                    </Suspense>
+                    <ClientMessage message="admin.access_tickets.form.episode_empty" />
                   </ComboboxEmpty>
                   <ComboboxItems />
                 </ComboboxPopup>
@@ -301,9 +280,7 @@ export const TicketForm = ({
                     type="button"
                     variant="outline"
                   >
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.common.retry" />
-                    </Suspense>
+                    <ClientMessage message="admin.common.retry" />
                   </Button>
                 </>
               ) : null}
@@ -321,29 +298,23 @@ export const TicketForm = ({
 
       <Field>
         <FieldLabel>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.access_tickets.form.expires_at" />
-          </Suspense>
+          <ClientMessage message="admin.access_tickets.form.expires_at" />
         </FieldLabel>
         <FieldContent>
           <Input name="expires_at_local" type="datetime-local" />
           <input defaultValue="" name="expires_at" type="hidden" />
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage
-                message="admin.access_tickets.form.expires_at_description"
-                values={{ time_zone: timeZone }}
-              />
-            </Suspense>
+            <ClientMessage
+              message="admin.access_tickets.form.expires_at_description"
+              values={{ time_zone: timeZone }}
+            />
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.access_tickets.form.note" />
-          </Suspense>
+          <ClientMessage message="admin.access_tickets.form.note" />
         </FieldLabel>
         <FieldContent>
           <Textarea

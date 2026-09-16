@@ -4,23 +4,13 @@ import type { DragEndEvent } from "@dnd-kit/react";
 import { useToastManager } from "@publira/ui-components";
 import { LinkButton } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Suspense,
-  useCallback,
-  useContext,
-  useOptimistic,
-  useTransition,
-} from "react";
+import { useCallback, useContext, useOptimistic, useTransition } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
   SortableItem,
   SortableItemHandle,
@@ -56,7 +46,7 @@ export const EpisodesSortableList = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const { selectedIds, selectMany, toggle } = useEpisodeCreditsSelection();
   const router = useRouter();
@@ -185,12 +175,10 @@ export const EpisodesSortableList = ({
               }}
             />
             <SortableItemHandle>
-              <Suspense fallback={null}>
-                <ClientMessage
-                  message="admin.series.episodes.reorder_action"
-                  values={{ title: episode.title }}
-                />
-              </Suspense>
+              <ClientMessage
+                message="admin.series.episodes.reorder_action"
+                values={{ title: episode.title }}
+              />
             </SortableItemHandle>
 
             <div className="grid flex-1 gap-1">
@@ -198,29 +186,25 @@ export const EpisodesSortableList = ({
                 {episode.orderIndex}. {episode.title}
               </p>
               <p className="text-xs text-muted-foreground">
-                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                  <ClientMessage
-                    message="admin.series.episodes.status_price"
-                    values={{
-                      price: episode.price,
-                      status: episode.status,
-                    }}
-                  />
-                </Suspense>
+                <ClientMessage
+                  message="admin.series.episodes.status_price"
+                  values={{
+                    price: episode.price,
+                    status: episode.status,
+                  }}
+                />
               </p>
               {episode.status === "scheduled" && episode.scheduledAt ? (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                  <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                    <ClientMessage
-                      message="admin.series.episodes.scheduled_at"
-                      values={{
-                        date: formatDateTime(episode.scheduledAt, {
-                          locale,
-                          timeZone,
-                        }),
-                      }}
-                    />
-                  </Suspense>
+                  <ClientMessage
+                    message="admin.series.episodes.scheduled_at"
+                    values={{
+                      date: formatDateTime(episode.scheduledAt, {
+                        locale,
+                        timeZone,
+                      }),
+                    }}
+                  />
                 </p>
               ) : null}
             </div>
@@ -234,9 +218,7 @@ export const EpisodesSortableList = ({
                 }
                 variant="outline"
               >
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.series.episodes.edit_action" />
-                </Suspense>
+                <ClientMessage message="admin.series.episodes.edit_action" />
               </LinkButton>
             </div>
           </SortableItem>

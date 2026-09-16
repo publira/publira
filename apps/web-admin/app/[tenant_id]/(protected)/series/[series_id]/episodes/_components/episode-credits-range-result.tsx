@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import type { EpisodeCreditUnchangedReasonValue } from "#lib/episode";
 
 import type {
@@ -45,7 +45,7 @@ export const EpisodeCreditsRangeResult = ({
   episodes,
   result,
 }: EpisodeCreditsRangeResultProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const titleById = new Map(
     episodes.map((episode) => [episode.publicId, episode.title])
   );

@@ -15,7 +15,7 @@ import {
 } from "@publira/ui-components/dialog";
 import type { ReactEventHandler, ReactNode } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import type { CropRect } from "#lib/crop-rect";
 
 import type { CropAspect, CropSource } from "./crop";
@@ -59,7 +59,7 @@ export const ImageCropDialog = ({
   source,
   title,
 }: ImageCropDialogProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>

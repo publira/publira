@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render as renderBase, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -19,7 +20,9 @@ const render = (
     <EpisodeCreditsRangeResult episodes={episodes} result={result} />,
     {
       wrapper: ({ children }) => (
-        <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+          {children}
+        </AdminLocaleProvider>
       ),
     }
   );

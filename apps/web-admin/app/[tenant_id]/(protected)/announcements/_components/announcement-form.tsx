@@ -11,10 +11,8 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import {
-  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -22,11 +20,8 @@ import {
   useState,
 } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -56,7 +51,7 @@ export const AnnouncementForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [audienceType, setAudienceType] = useState<"all" | "selected">("all");
@@ -119,9 +114,7 @@ export const AnnouncementForm = ({
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.announcements.form.title" />
-          </Suspense>
+          <ClientMessage message="admin.announcements.form.title" />
         </FieldLabel>
         <FieldContent>
           <Input
@@ -136,9 +129,7 @@ export const AnnouncementForm = ({
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.announcements.form.body" />
-          </Suspense>
+          <ClientMessage message="admin.announcements.form.body" />
         </FieldLabel>
         <FieldContent>
           <Textarea
@@ -153,9 +144,7 @@ export const AnnouncementForm = ({
 
       <Field>
         <FieldLabel>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.announcements.form.link" />
-          </Suspense>
+          <ClientMessage message="admin.announcements.form.link" />
         </FieldLabel>
         <FieldContent>
           <Input
@@ -164,18 +153,14 @@ export const AnnouncementForm = ({
             type="text"
           />
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.announcements.form.link_description" />
-            </Suspense>
+            <ClientMessage message="admin.announcements.form.link_description" />
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.announcements.form.audience" />
-          </Suspense>
+          <ClientMessage message="admin.announcements.form.audience" />
         </FieldLabel>
         <FieldContent>
           <div className="grid gap-2">
@@ -187,9 +172,7 @@ export const AnnouncementForm = ({
                 type="radio"
                 value="all"
               />
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.announcements.form.audience_all" />
-              </Suspense>
+              <ClientMessage message="admin.announcements.form.audience_all" />
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -199,9 +182,7 @@ export const AnnouncementForm = ({
                 type="radio"
                 value="selected"
               />
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.announcements.form.audience_selected" />
-              </Suspense>
+              <ClientMessage message="admin.announcements.form.audience_selected" />
             </label>
           </div>
         </FieldContent>
@@ -210,9 +191,7 @@ export const AnnouncementForm = ({
       {audienceType === "all" ? (
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <ClientMessage message="admin.announcements.form.pinned" />
-            </Suspense>
+            <ClientMessage message="admin.announcements.form.pinned" />
           </FieldLabel>
           <FieldContent>
             <Checkbox
@@ -222,9 +201,7 @@ export const AnnouncementForm = ({
               value="on"
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                <ClientMessage message="admin.announcements.form.pinned_description" />
-              </Suspense>
+              <ClientMessage message="admin.announcements.form.pinned_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -233,20 +210,16 @@ export const AnnouncementForm = ({
       {audienceType === "all" && pinned ? (
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.announcements.form.pinned_until" />
-            </Suspense>
+            <ClientMessage message="admin.announcements.form.pinned_until" />
           </FieldLabel>
           <FieldContent>
             <input defaultValue="" name="pinned_until" type="hidden" />
             <Input name="pinned_until_local" step={60} type="datetime-local" />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                <ClientMessage
-                  message="admin.announcements.form.pinned_until_description"
-                  values={{ time_zone: timeZone }}
-                />
-              </Suspense>
+              <ClientMessage
+                message="admin.announcements.form.pinned_until_description"
+                values={{ time_zone: timeZone }}
+              />
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -255,9 +228,7 @@ export const AnnouncementForm = ({
       {audienceType === "selected" ? (
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.announcements.form.target_users" />
-            </Suspense>
+            <ClientMessage message="admin.announcements.form.target_users" />
           </FieldLabel>
           <FieldContent>
             {usersErrorMessage ? (
@@ -268,9 +239,7 @@ export const AnnouncementForm = ({
 
             {sortedUsers.length === 0 ? (
               <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.announcements.form.target_users_unavailable" />
-                </Suspense>
+                <ClientMessage message="admin.announcements.form.target_users_unavailable" />
               </FieldDescription>
             ) : (
               <div className="max-h-72 overflow-y-auto border border-border p-3">
@@ -286,14 +255,10 @@ export const AnnouncementForm = ({
                         type="checkbox"
                         value={user.publicId}
                       />
-                      <Suspense
-                        fallback={<SkeletonLine className="h-4 w-32" />}
-                      >
-                        <ClientMessage
-                          message="admin.announcements.form.user_option"
-                          values={{ id: user.publicId, name: user.name }}
-                        />
-                      </Suspense>
+                      <ClientMessage
+                        message="admin.announcements.form.user_option"
+                        values={{ id: user.publicId, name: user.name }}
+                      />
                     </label>
                   ))}
                 </div>

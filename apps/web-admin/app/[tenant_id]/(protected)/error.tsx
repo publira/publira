@@ -1,9 +1,7 @@
 "use client";
 
 import { LinkButton } from "@publira/ui-components/button";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
-import { Suspense } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
@@ -54,33 +52,15 @@ const ConsoleError = ({
   <ErrorScreen
     actions={
       <LinkButton render={<Link href="/" />} variant="outline">
-        <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-          <ClientMessage message="admin.common.back_to_dashboard" />
-        </Suspense>
+        <ClientMessage message="admin.common.back_to_dashboard" />
       </LinkButton>
     }
-    description={
-      <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-        <ClientMessage message="admin.errors.console_description" />
-      </Suspense>
-    }
+    description={<ClientMessage message="admin.errors.console_description" />}
     digest={error.digest}
-    digestLabel={
-      <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-        <ClientMessage message="admin.common.error_id" />
-      </Suspense>
-    }
+    digestLabel={<ClientMessage message="admin.common.error_id" />}
     retry={retry}
-    retryLabel={
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <ClientMessage message="admin.common.retry" />
-      </Suspense>
-    }
-    title={
-      <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
-        <ClientMessage message="admin.errors.console_title" />
-      </Suspense>
-    }
+    retryLabel={<ClientMessage message="admin.common.retry" />}
+    title={<ClientMessage message="admin.errors.console_title" />}
   />
 );
 

@@ -2,11 +2,9 @@
 
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { toDateTimeLocalValue } from "@publira/utils";
-import { Suspense, useActionState, useCallback } from "react";
+import { useActionState, useCallback } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -14,7 +12,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -39,7 +37,7 @@ export const EpisodeScheduleForm = ({
   action,
   timeZone,
 }: EpisodeScheduleFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -59,14 +57,10 @@ export const EpisodeScheduleForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.schedule_title" />
-            </Suspense>
+            <ClientMessage message="admin.series.episodes.schedule_title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.schedule_description" />
-            </Suspense>
+            <ClientMessage message="admin.series.episodes.schedule_description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>

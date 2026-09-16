@@ -8,6 +8,7 @@ import { AdminLocaleProvider } from "#components/admin-locale-context";
 import { AdminToastProvider } from "#components/admin-toast-provider";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
+import { loadAdminMessages } from "#lib/messages";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeLogo } from "#lib/theme-settings";
@@ -16,9 +17,10 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   const tenantId = await getTenantId();
 
   const locale = await getLocale(tenantId);
-  const [result, logo] = await Promise.all([
+  const [result, logo, messages] = await Promise.all([
     getTenantForSession(tenantId),
     getTenantThemeLogo(tenantId, locale),
+    loadAdminMessages(locale),
   ]);
   if (!result.ok) {
     // The proxy let this request in on a cookie the API has since rejected,
@@ -30,7 +32,7 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AdminLocaleProvider locale={locale}>
+    <AdminLocaleProvider locale={locale} messages={messages}>
       <AdminLayout logo={logo} tenant={result.tenant} tenantId={tenantId}>
         <AdminToastProvider>{children}</AdminToastProvider>
       </AdminLayout>

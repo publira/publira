@@ -7,14 +7,10 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useCallback, useContext, useId, useMemo } from "react";
+import { useCallback, useContext, useId, useMemo } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { isSeriesCommentMode } from "#lib/series-comment-mode";
 import type { SeriesCommentMode } from "#lib/series-comment-mode";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
@@ -35,7 +31,7 @@ const TenantDefaultOptionLabel = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   // The tenant's own wording is written into another message, so each branch
   // names its key here rather than behind a helper the accessor cannot reach.
@@ -58,32 +54,23 @@ const TenantDefaultOptionLabel = ({
 /**
  * The three modes a series may state instead of its tenant's, in the order the
  * settings card offers them: off, then the two ways of being on.
- *
- * `SelectProps["items"]` takes a `ReactNode` label, so each option keeps a
- * boundary of its own rather than the trigger waiting on the whole catalog.
  */
 const SERIES_COMMENT_MODE_ITEMS = [
   {
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-        <ClientMessage message="admin.series.form.comment_mode_options.disabled" />
-      </Suspense>
+      <ClientMessage message="admin.series.form.comment_mode_options.disabled" />
     ),
     value: "disabled",
   },
   {
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-        <ClientMessage message="admin.series.form.comment_mode_options.immediate" />
-      </Suspense>
+      <ClientMessage message="admin.series.form.comment_mode_options.immediate" />
     ),
     value: "immediate",
   },
   {
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-        <ClientMessage message="admin.series.form.comment_mode_options.approval_required" />
-      </Suspense>
+      <ClientMessage message="admin.series.form.comment_mode_options.approval_required" />
     ),
     value: "approval_required",
   },
@@ -111,15 +98,12 @@ export const SeriesCommentModeField = ({
   const items = useMemo(
     () => [
       {
-        label: (
-          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-            {tenantCommentMode === undefined ? (
-              <ClientMessage message="admin.series.form.comment_mode_options.tenant_default" />
-            ) : (
-              <TenantDefaultOptionLabel tenantCommentMode={tenantCommentMode} />
-            )}
-          </Suspense>
-        ),
+        label:
+          tenantCommentMode === undefined ? (
+            <ClientMessage message="admin.series.form.comment_mode_options.tenant_default" />
+          ) : (
+            <TenantDefaultOptionLabel tenantCommentMode={tenantCommentMode} />
+          ),
         value: "",
       },
       ...SERIES_COMMENT_MODE_ITEMS,
@@ -141,9 +125,7 @@ export const SeriesCommentModeField = ({
   return (
     <Field>
       <FieldLabel htmlFor={selectId}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <ClientMessage message="admin.series.form.comment_mode" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.comment_mode" />
       </FieldLabel>
       <FieldContent>
         <Select
@@ -154,9 +136,7 @@ export const SeriesCommentModeField = ({
         />
         <input name="comment_mode" type="hidden" value={value} />
         <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage message="admin.series.form.comment_mode_description" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.comment_mode_description" />
         </FieldDescription>
       </FieldContent>
     </Field>

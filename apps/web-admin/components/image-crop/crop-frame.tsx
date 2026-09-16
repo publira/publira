@@ -4,10 +4,8 @@ import { cn } from "@publira/utils";
 import type { KeyboardEvent, PointerEvent, ReactEventHandler } from "react";
 import { useContext, useRef } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import type { CropRect } from "#lib/crop-rect";
 
 import type { CropAspect, CropCorner, CropSource } from "./crop";
@@ -87,7 +85,7 @@ export const ImageCropFrame = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const imageRef = useRef<HTMLImageElement>(null);
   /**
    * What the pointer is dragging, and where it grabbed the frame. It is read

@@ -95,7 +95,9 @@ const selectSeries = (item: { publicId: string; title: string }) => {
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        {children}
+      </AdminLocaleProvider>
     ),
   });
 

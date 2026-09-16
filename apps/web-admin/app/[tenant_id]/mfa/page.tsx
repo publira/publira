@@ -17,7 +17,7 @@ import { AdminLocaleProvider } from "#components/admin-locale-context";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
 import { getLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
+import { getMessagesFor, loadAdminMessages } from "#lib/messages";
 import { readMfaChallenge } from "#lib/mfa-challenge";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -49,10 +49,8 @@ const MfaPageFallback = () => (
  * at `/login`.
  *
  * The locale provider is here because the console's own layout is behind the
- * session this screen exists to issue, and the shared MFA controls the forms
- * render — the code field, the enrollment secret, the recovery codes — still
- * resolve their copy through it. The two forms themselves do not: their strings
- * are `<ClientMessage>`, one `<Suspense>` boundary each.
+ * session this screen exists to issue, and the forms below resolve their copy
+ * through it.
  */
 const MfaPageContent = async () => {
   const [tenantId, challenge] = await Promise.all([
@@ -64,9 +62,10 @@ const MfaPageContent = async () => {
   }
 
   const locale = await getLocale(tenantId);
+  const messages = await loadAdminMessages(locale);
 
   return (
-    <AdminLocaleProvider locale={locale}>
+    <AdminLocaleProvider locale={locale} messages={messages}>
       {challenge.kind === "enroll" ? (
         <MfaEnrollFlow nextPath={challenge.nextPath} tenantId={tenantId} />
       ) : (

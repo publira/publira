@@ -15,8 +15,7 @@ import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState, useId, useMemo, useRef, useState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type {
@@ -150,7 +149,7 @@ export const EpisodeCreatorCreditsForm = ({
   initialCredits: EpisodeCreatorCredit[];
   seriesPublicId: string;
 }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [rows, setRows] = useState<CreditEditorRow[]>(() =>
