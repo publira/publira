@@ -19,7 +19,11 @@ import {
   ViewportPageSlot,
   ViewportTrack,
 } from "@publira/comic-viewer";
-import type { PageStatusProps, ViewerPage } from "@publira/comic-viewer";
+import type {
+  PageStatusProps,
+  ReadingDirection,
+  ViewerPage,
+} from "@publira/comic-viewer";
 import { formatMessage } from "@publira/i18n";
 import {
   ChevronLeftIcon,
@@ -74,18 +78,6 @@ const useCopy = (): EpisodeComicViewerCopy => {
   }
   return copy;
 };
-
-/**
- * The cover stands alone and pairing starts from the page after it, the way a
- * printed volume opens. Without this the cover would be paired with page 2 and
- * every spread after it would face the wrong way.
- *
- * Which way those spreads face is not set here at all: right to left is the
- * library's own default, and it is the binding this catalog is drawn for, so
- * `readingDirection` is left alone rather than restated as the value it
- * already has.
- */
-const SPREAD_START_INDEX = 1;
 
 const VIEWER_PLUGINS = [acceptNegotiatedImages];
 
@@ -321,6 +313,9 @@ const ViewerPageNavigation = () => {
  * afterwards, so the reader never sees the first page of an episode they are
  * in the middle of.
  *
+ * `readingDirection` and `spreadStartIndex` are the episode's own layout,
+ * already resolved by the public read, so this viewer does not pick a default.
+ *
  * `endPage` is turned to after the last page, which is where the comment form
  * lives. It is drawn on paper rather than on the mat, so the site's own
  * controls read there exactly as they do under the reader.
@@ -331,6 +326,8 @@ export const EpisodeComicViewer = ({
   endPage,
   initialPageIndex = 0,
   pages,
+  readingDirection,
+  spreadStartIndex,
 }: {
   children?: ReactNode;
   copy: EpisodeComicViewerCopy;
@@ -339,6 +336,8 @@ export const EpisodeComicViewer = ({
   /** Zero-based page the reader opens at. */
   initialPageIndex?: number;
   pages: ViewerPage[];
+  readingDirection: ReadingDirection;
+  spreadStartIndex: number;
 }) => {
   const shellRef = useRef<HTMLDivElement>(null);
 
@@ -366,9 +365,10 @@ export const EpisodeComicViewer = ({
         <ComicViewerRoot
           className="relative flex size-full min-h-0 min-w-0 touch-pan-y overflow-hidden bg-foreground text-background"
           initialIndex={initialPageIndex}
+          initialReadingDirection={readingDirection}
           pages={pages}
           plugins={VIEWER_PLUGINS}
-          spreadStartIndex={SPREAD_START_INDEX}
+          spreadStartIndex={spreadStartIndex}
         >
           <ViewerRail>
             <ViewerPageTemplate />

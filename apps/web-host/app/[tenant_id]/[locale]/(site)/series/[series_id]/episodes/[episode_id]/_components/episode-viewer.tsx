@@ -173,6 +173,8 @@ export const EpisodeViewer = async ({
         pages={toViewerPages(episode.title, images, (values) =>
           t("host.episode.viewer.page_title", values)
         )}
+        readingDirection={episode.readingDirection}
+        spreadStartIndex={episode.spreadStartIndex}
       >
         <EpisodeReadRecorder episode={episode} series={series} />
         {accessToken ? (

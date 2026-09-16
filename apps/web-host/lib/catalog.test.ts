@@ -6,6 +6,7 @@ import {
 } from "@publira/api-client/public/catalog";
 import {
   CommentMode,
+  ReadingDirection,
   SeriesAgeRating,
   SeriesStatus,
 } from "@publira/api-client/public/types";
@@ -181,6 +182,8 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.series?.ageRating).toBeUndefined();
     expect(detail?.episode.title).toBe("Episode 2");
     expect(detail?.episode.ratingCount).toBe(12);
+    expect(detail?.episode.readingDirection).toBe("rtl");
+    expect(detail?.episode.spreadStartIndex).toBe(1);
     expect(detail?.access).toBe("locked");
     expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
@@ -215,6 +218,39 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     expect(result.ok && result.value?.series.ageRating).toBe("r15");
+  });
+
+  it("hands the viewer the episode's resolved reading direction and spread start", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingDirection: ReadingDirection.LEFT_TO_RIGHT,
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        spreadStartIndex: 0,
+        status: "published",
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(result.ok && result.value?.episode.readingDirection).toBe("ltr");
+    expect(result.ok && result.value?.episode.spreadStartIndex).toBe(0);
   });
 
   it("Carries the episode's own credits in the order the API sent them", async () => {
