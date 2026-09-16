@@ -70,6 +70,33 @@ export const nonNegativeIntFormSchema = (
     z.number({ error: message }).int(message).min(0, message)
   );
 
+const PAGE_NUMBER_RE = /^\d+$/u;
+
+/** The largest page an `int32` index can name. */
+const MAX_SPREAD_START_PAGE = 2 ** 31;
+
+/**
+ * The page spreads start at, posted as the page number an operator counts in
+ * and parsed to the zero-based index the API stores. Unlike
+ * {@link nonNegativeIntFormSchema} a blank field is an error: a save that read
+ * it as a value would move the series' spreads.
+ */
+export const spreadStartPageFormSchema = (
+  message: string
+): z.ZodType<number, unknown> =>
+  z.preprocess(
+    (value) => {
+      const raw = typeof value === "string" ? value.trim() : "";
+      return PAGE_NUMBER_RE.test(raw) ? Number(raw) : undefined;
+    },
+    z
+      .number({ error: message })
+      .int(message)
+      .min(1, message)
+      .max(MAX_SPREAD_START_PAGE, message)
+      .transform((page) => page - 1)
+  );
+
 /** Checkbox that posts `"on"` when checked and is absent otherwise. */
 export const checkboxOnFormSchema = z.preprocess(
   (value) => value === "on",

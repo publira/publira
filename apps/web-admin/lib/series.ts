@@ -1,3 +1,4 @@
+import type { GetSeriesResponse } from "@publira/api-client/admin/series";
 import {
   CommentMode,
   SeriesAgeRating,
@@ -31,6 +32,15 @@ import {
   mentionsImageRejection,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
+import {
+  READING_DIRECTION_ENUM,
+  toReadingDirectionValue,
+} from "./reading-direction-enum";
+import {
+  DEFAULT_READING_DIRECTION,
+  DEFAULT_SPREAD_START_INDEX,
+} from "./reading-layout";
+import type { ReadingLayout } from "./reading-layout";
 import {
   DEFAULT_SERIES_AGE_RATING,
   DEFAULT_SERIES_STATUS,
@@ -162,6 +172,11 @@ export type GetSeriesResult =
        * together.
        */
       commentMode: SeriesCommentMode;
+      /**
+       * The layout the series' episodes follow. It rides beside the series for
+       * the reason the comment mode does: the API answers it beside `Series`.
+       */
+      readingLayout: ReadingLayout;
     }
   | { notFound: true; ok: false }
   | {
@@ -288,6 +303,29 @@ const toSeriesCommentMode = (
   return SERIES_COMMENT_MODES.find(
     (value) => SERIES_COMMENT_MODE_ENUM[value] === commentMode
   );
+};
+
+/**
+ * A series always states a layout, so unspecified — which only a response that
+ * carried no field at all can hold — reads back as the column default.
+ *
+ * A direction naming neither value is reported instead, for the reason an
+ * unknown comment mode is: the form would open on the default and the next
+ * save would write it over the direction the series holds.
+ */
+const toSeriesReadingLayout = (
+  response: Partial<
+    Pick<GetSeriesResponse, "readingDirection" | "spreadStartIndex">
+  >
+): ReadingLayout | undefined => {
+  const readingDirection = toReadingDirectionValue(response.readingDirection);
+  if (readingDirection === undefined) {
+    return;
+  }
+  return {
+    readingDirection: readingDirection || DEFAULT_READING_DIRECTION,
+    spreadStartIndex: response.spreadStartIndex ?? DEFAULT_SPREAD_START_INDEX,
+  };
 };
 
 const WEEKDAY_COUNT = 7;
@@ -551,7 +589,8 @@ export const getSeries = async (
     }
 
     const commentMode = toSeriesCommentMode(response.commentMode);
-    if (commentMode === undefined) {
+    const readingLayout = toSeriesReadingLayout(response);
+    if (commentMode === undefined || readingLayout === undefined) {
       return {
         message: t("admin.series.list_failed"),
         ok: false,
@@ -561,6 +600,7 @@ export const getSeries = async (
     return {
       commentMode,
       ok: true,
+      readingLayout,
       series: mapSeries(response.series),
     };
   } catch (error) {
@@ -606,6 +646,13 @@ interface SeriesCommentModeInput {
   commentMode: SeriesCommentMode;
 }
 
+/**
+ * The layout every save carries: `UpdateSeries` stores the column default for
+ * a direction or an index left out, so a save without it would turn a
+ * left-to-right work back to right to left.
+ */
+type SeriesReadingLayoutInput = ReadingLayout;
+
 export const createSeries = async (
   input: {
     tenantId: string;
@@ -619,7 +666,8 @@ export const createSeries = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
   } & SeriesClassificationInput &
-    SeriesCommentModeInput,
+    SeriesCommentModeInput &
+    SeriesReadingLayoutInput,
   locale: Locale
 ): Promise<CreateSeriesResult> => {
   const [t, sessionId] = await Promise.all([
@@ -645,8 +693,10 @@ export const createSeries = async (
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
         publishedAt: input.publishedAt,
+        readingDirection: READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
         scheduleWeekdays: input.scheduleWeekdays,
+        spreadStartIndex: input.spreadStartIndex,
         status: SERIES_STATUS_ENUM[input.status],
         synopsis: input.synopsis,
         tagNames: input.tagNames,
@@ -699,7 +749,8 @@ export const updateSeries = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
   } & SeriesClassificationInput &
-    SeriesCommentModeInput,
+    SeriesCommentModeInput &
+    SeriesReadingLayoutInput,
   locale: Locale
 ): Promise<UpdateSeriesResult> => {
   const [t, sessionId] = await Promise.all([
@@ -727,8 +778,10 @@ export const updateSeries = async (
         labelPublicId: input.labelPublicId,
         publicId: input.publicId,
         publishedAt: input.publishedAt,
+        readingDirection: READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
         scheduleWeekdays: input.scheduleWeekdays,
+        spreadStartIndex: input.spreadStartIndex,
         status: SERIES_STATUS_ENUM[input.status],
         synopsis: input.synopsis,
         tagNames: input.tagNames,

@@ -255,6 +255,59 @@ it("opens on the comment mode the series states", () => {
   expect(posted("comment_mode")).toEqual(["disabled"]);
 });
 
+// `UpdateSeries` stores the default for a direction left out, so the form has
+// to open on — and post back — the layout the series holds.
+it("opens on the layout the series states", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      initialReadingLayout={{ readingDirection: "ltr", spreadStartIndex: 0 }}
+      initialSeries={series}
+      labels={labels}
+      mode="update"
+      tagSuggestions={tagSuggestions}
+      timeZone="Asia/Tokyo"
+    />
+  );
+
+  expect(posted("reading_direction")).toEqual(["ltr"]);
+  expect(
+    screen.getByRole<HTMLInputElement>("spinbutton", {
+      name: /Spreads start at page/u,
+    }).value
+  ).toBe("1");
+});
+
+it("opens a new series on the layout the viewers use today", async () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      labels={labels}
+      mode="create"
+      tagSuggestions={tagSuggestions}
+      timeZone="Asia/Tokyo"
+    />
+  );
+
+  expect(posted("reading_direction")).toEqual(["rtl"]);
+  expect(
+    screen.getByRole<HTMLInputElement>("spinbutton", {
+      name: /Spreads start at page/u,
+    }).value
+  ).toBe("2");
+  expect(
+    await screen.findByRole("combobox", { name: /Reading direction/u })
+  ).toBeDefined();
+});
+
 // A series that states nothing follows its tenant, so the option that says so
 // names what the tenant currently publishes comments under — otherwise an
 // editor has to open the settings screen to find out what they are choosing.

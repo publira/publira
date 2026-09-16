@@ -182,6 +182,7 @@ const EditSeriesFormData = async ({
           action={updateSeriesEyeCatchAction}
           commentMode={result.commentMode}
           initialSeries={result.series}
+          readingLayout={result.readingLayout}
         />
         <EyeCatchAspectImages
           publicId={result.series.publicId}
@@ -248,6 +249,7 @@ const EditSeriesFormData = async ({
       genres={genresResult.genres}
       genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
       initialCommentMode={result.commentMode}
+      initialReadingLayout={result.readingLayout}
       initialSeries={result.series}
       key={result.series.publicId}
       labels={labelsResult.labels}

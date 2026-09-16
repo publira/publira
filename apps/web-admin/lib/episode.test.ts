@@ -1,4 +1,9 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import { ReadingDirection } from "@publira/api-client/admin/types";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -7,12 +12,14 @@ const {
   mockGetEpisode,
   mockListEpisodes,
   mockReorderEpisodes,
+  mockUpdateEpisodeLayout,
 } = vi.hoisted(() => ({
   mockBulkEditEpisodeCredits: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockListEpisodes: vi.fn(),
   mockReorderEpisodes: vi.fn(),
+  mockUpdateEpisodeLayout: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -26,6 +33,7 @@ vi.mock("./api", () => ({
       getEpisode: mockGetEpisode,
       listEpisodes: mockListEpisodes,
       reorderEpisodes: mockReorderEpisodes,
+      updateEpisodeLayout: mockUpdateEpisodeLayout,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -283,8 +291,56 @@ describe("getEpisode", () => {
         status: "draft",
         title: "EPISODE001",
       },
+      layout: { readingDirection: "" },
       ok: true,
     });
+  });
+
+  // The resolved layout rides on `episode`; the form reads the overrides beside
+  // it, because following the series is a choice it offers.
+  it("reads the episode's own overrides apart from the layout they resolve to", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE001", 1),
+        readingDirection: ReadingDirection.LEFT_TO_RIGHT,
+        spreadStartIndex: 0,
+      },
+      readingDirection: ReadingDirection.LEFT_TO_RIGHT,
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      layout: { readingDirection: "ltr", spreadStartIndex: undefined },
+      ok: true,
+    });
+  });
+
+  it("reports an override direction it cannot name", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+      readingDirection: 99,
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
   });
 
   it("returns the scheduledAt of a scheduled episode untouched", async () => {
@@ -328,6 +384,103 @@ describe("getEpisode", () => {
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
+  });
+});
+
+describe("updateEpisodeLayout", () => {
+  it("sends the overrides and reads back what was stored", async () => {
+    mockUpdateEpisodeLayout.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+      readingDirection: ReadingDirection.LEFT_TO_RIGHT,
+      spreadStartIndex: 0,
+    });
+
+    const { updateEpisodeLayout } = await import("./episode");
+    const result = await updateEpisodeLayout(
+      {
+        episodePublicId: "EPISODE001",
+        readingDirection: "ltr",
+        spreadStartIndex: 0,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodeLayout).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EPISODE001",
+        readingDirection: ReadingDirection.LEFT_TO_RIGHT,
+        spreadStartIndex: 0,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      layout: { readingDirection: "ltr", spreadStartIndex: 0 },
+      ok: true,
+    });
+  });
+
+  // Unspecified and an absent index are stored as no value, which is what keeps
+  // the episode following its series after the series changes.
+  it("sends nothing of its own for an episode that follows its series", async () => {
+    mockUpdateEpisodeLayout.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+      readingDirection: ReadingDirection.UNSPECIFIED,
+    });
+
+    const { updateEpisodeLayout } = await import("./episode");
+    await updateEpisodeLayout(
+      {
+        episodePublicId: "EPISODE001",
+        readingDirection: "",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodeLayout).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EPISODE001",
+        readingDirection: undefined,
+        spreadStartIndex: undefined,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("says the page is past the last one when the server refuses the index", async () => {
+    mockUpdateEpisodeLayout.mockRejectedValue(
+      new ConnectError(
+        "spread_start_index must name one of the episode's pages",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "spread_start_index" }] },
+          },
+        ]
+      )
+    );
+
+    const { updateEpisodeLayout } = await import("./episode");
+    const result = await updateEpisodeLayout(
+      {
+        episodePublicId: "EPISODE001",
+        readingDirection: "",
+        spreadStartIndex: 12,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "Spreads cannot start past the episode's last page. Choose one of its pages.",
+      ok: false,
+    });
   });
 });
 

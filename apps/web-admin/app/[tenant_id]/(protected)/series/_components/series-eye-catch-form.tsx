@@ -13,6 +13,8 @@ import type { ChangeEventHandler } from "react";
 
 import { useAdminMessages } from "#components/admin-locale-context";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
+import { spreadStartPageOf } from "#lib/reading-layout";
+import type { ReadingLayout } from "#lib/reading-layout";
 import type { SeriesCommentMode } from "#lib/series-comment-mode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -27,6 +29,8 @@ interface SeriesEyeCatchFormProps {
    * along untouched rather than being reset by an image upload.
    */
   commentMode: SeriesCommentMode;
+  /** Carried untouched, for the reason {@link commentMode} is. */
+  readingLayout: ReadingLayout;
   action: (
     prevState: SeriesActionState,
     formData: FormData
@@ -36,6 +40,7 @@ interface SeriesEyeCatchFormProps {
 export const SeriesEyeCatchForm = ({
   initialSeries,
   commentMode,
+  readingLayout,
   action,
 }: SeriesEyeCatchFormProps) => {
   const t = useAdminMessages();
@@ -113,6 +118,16 @@ export const SeriesEyeCatchForm = ({
       <input name="status" type="hidden" value={initialSeries.status} />
       <input name="age_rating" type="hidden" value={initialSeries.ageRating} />
       <input name="comment_mode" type="hidden" value={commentMode} />
+      <input
+        name="reading_direction"
+        type="hidden"
+        value={readingLayout.readingDirection}
+      />
+      <input
+        name="spread_start_page"
+        type="hidden"
+        value={String(spreadStartPageOf(readingLayout.spreadStartIndex))}
+      />
       {initialSeries.scheduleWeekdays.map((weekday) => (
         <input
           key={weekday}

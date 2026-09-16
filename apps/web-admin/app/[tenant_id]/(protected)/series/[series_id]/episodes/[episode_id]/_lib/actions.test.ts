@@ -6,6 +6,7 @@ const {
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockReorderEpisodeImages,
+  mockUpdateEpisodeLayout,
   mockUpdateEpisodePublishSchedule,
   mockUpdateTag,
   mockUploadEpisodePages,
@@ -15,6 +16,7 @@ const {
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
+  mockUpdateEpisodeLayout: vi.fn(),
   mockUpdateEpisodePublishSchedule: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUploadEpisodePages: vi.fn(),
@@ -49,6 +51,7 @@ vi.mock("#lib/session", () => ({
 
 vi.mock("#lib/episode", () => ({
   reorderEpisodeImages: mockReorderEpisodeImages,
+  updateEpisodeLayout: mockUpdateEpisodeLayout,
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
   uploadEpisodePages: mockUploadEpisodePages,
 }));
@@ -56,6 +59,17 @@ vi.mock("#lib/episode", () => ({
 vi.mock("#lib/tenant-timezone", () => ({
   getTenantDisplayTimeZone: mockGetTenantDisplayTimeZone,
 }));
+
+const layoutFormData = (fields: Record<string, string>) => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("series_public_id", "SERIES001");
+  formData.set("episode_public_id", "EP001");
+  for (const [name, value] of Object.entries(fields)) {
+    formData.set(name, value);
+  }
+  return formData;
+};
 
 describe("episode actions", () => {
   beforeEach(() => {
@@ -65,6 +79,123 @@ describe("episode actions", () => {
     // `withAdminSessionReauth` resolves the session before the mutation runs;
     // without a token every Action under test would redirect to /login.
     mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("updating the layout sends the page the episode states as an index", async () => {
+    mockUpdateEpisodeLayout.mockResolvedValueOnce({ ok: true });
+
+    const { updateEpisodeLayoutAction } = await import("./actions");
+    await updateEpisodeLayoutAction(
+      null,
+      layoutFormData({
+        reading_direction: "ltr",
+        spread_start_page: "1",
+        spread_start_source: "episode",
+      })
+    );
+
+    expect(mockUpdateEpisodeLayout).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EP001",
+        readingDirection: "ltr",
+        spreadStartIndex: 0,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001/episodes/EP001?layout_updated=1"
+    );
+  });
+
+  // A page left in the field from before the operator switched back to the
+  // series must not become an override.
+  it("updating the layout sends no override for values that follow the series", async () => {
+    mockUpdateEpisodeLayout.mockResolvedValueOnce({ ok: true });
+
+    const { updateEpisodeLayoutAction } = await import("./actions");
+    await updateEpisodeLayoutAction(
+      null,
+      layoutFormData({
+        reading_direction: "",
+        spread_start_page: "3",
+        spread_start_source: "series",
+      })
+    );
+
+    expect(mockUpdateEpisodeLayout).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EP001",
+        readingDirection: "",
+        spreadStartIndex: undefined,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+  });
+
+  it("updating the layout refuses a direction the form could not have offered", async () => {
+    const { updateEpisodeLayoutAction } = await import("./actions");
+    const result = await updateEpisodeLayoutAction(
+      null,
+      layoutFormData({
+        reading_direction: "ttb",
+        spread_start_source: "series",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "Select a reading direction, or follow the series.",
+      ok: false,
+    });
+    expect(mockUpdateEpisodeLayout).not.toHaveBeenCalled();
+  });
+
+  it.each(["", "0", "2.5"])(
+    "updating the layout refuses %j as the page spreads start at",
+    async (page) => {
+      const { updateEpisodeLayoutAction } = await import("./actions");
+      const result = await updateEpisodeLayoutAction(
+        null,
+        layoutFormData({
+          reading_direction: "",
+          spread_start_page: page,
+          spread_start_source: "episode",
+        })
+      );
+
+      expect(result).toEqual({
+        message:
+          "Enter the page spreads start at as a whole number of 1 or more.",
+        ok: false,
+      });
+      expect(mockUpdateEpisodeLayout).not.toHaveBeenCalled();
+    }
+  );
+
+  it("updating the layout shows the refusal the server gave", async () => {
+    mockUpdateEpisodeLayout.mockResolvedValueOnce({
+      message:
+        "Spreads cannot start past the episode's last page. Choose one of its pages.",
+      ok: false,
+    });
+
+    const { updateEpisodeLayoutAction } = await import("./actions");
+    const result = await updateEpisodeLayoutAction(
+      null,
+      layoutFormData({
+        reading_direction: "",
+        spread_start_page: "40",
+        spread_start_source: "episode",
+      })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Spreads cannot start past the episode's last page. Choose one of its pages.",
+      ok: false,
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 
   it("updating the publish schedule returns an error when a hidden parameter is missing", async () => {

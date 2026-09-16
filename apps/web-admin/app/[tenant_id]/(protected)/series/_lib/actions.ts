@@ -22,9 +22,11 @@ import {
   optionalFileFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
+  spreadStartPageFormSchema,
   trimmedStringListFormSchema,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { READING_DIRECTIONS } from "#lib/reading-layout";
 import {
   createSeries,
   seriesCacheTag,
@@ -127,10 +129,16 @@ const seriesCommonSchema = async (locale: Locale) => {
       t("admin.series.validation.label_required")
     ),
     publishedAt: optionalTrimmedString(),
+    readingDirection: z.enum(READING_DIRECTIONS, {
+      error: t("admin.series.validation.reading_direction_invalid"),
+    }),
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.validation.reading_period_invalid")
     ),
     scheduleWeekdays: scheduleWeekdaysFormSchema,
+    spreadStartIndex: spreadStartPageFormSchema(
+      t("admin.series.validation.spread_start_invalid")
+    ),
     status: z.enum(SERIES_STATUS_VALUES, {
       error: t("admin.series.validation.status_invalid"),
     }),
@@ -177,8 +185,10 @@ const seriesFormFields = {
   isPublished: { kind: "value", name: "is_published" },
   labelPublicId: { kind: "value", name: "label_public_id" },
   publishedAt: { kind: "value", name: "published_at" },
+  readingDirection: { kind: "value", name: "reading_direction" },
   readingPeriodHours: { kind: "value", name: "reading_period_hours" },
   scheduleWeekdays: { kind: "values", name: "schedule_weekdays" },
+  spreadStartIndex: { kind: "value", name: "spread_start_page" },
   status: { kind: "value", name: "status" },
   synopsis: "value",
   tagNames: { kind: "values", name: "tag_names" },
@@ -271,8 +281,10 @@ export const createSeriesAction = async (
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
         labelPublicId: parsed.data.labelPublicId,
         publishedAt: schedule.publishedAt,
+        readingDirection: parsed.data.readingDirection,
         readingPeriodHours: parsed.data.readingPeriodHours,
         scheduleWeekdays: parsed.data.scheduleWeekdays,
+        spreadStartIndex: parsed.data.spreadStartIndex,
         status: parsed.data.status,
         synopsis: parsed.data.synopsis,
         tagNames: parsed.data.tagNames,
@@ -337,8 +349,10 @@ export const updateSeriesAction = async (
         labelPublicId: parsed.data.labelPublicId,
         publicId: parsed.data.publicId,
         publishedAt: schedule.publishedAt,
+        readingDirection: parsed.data.readingDirection,
         readingPeriodHours: parsed.data.readingPeriodHours,
         scheduleWeekdays: parsed.data.scheduleWeekdays,
+        spreadStartIndex: parsed.data.spreadStartIndex,
         status: parsed.data.status,
         synopsis: parsed.data.synopsis,
         tagNames: parsed.data.tagNames,
@@ -417,8 +431,10 @@ export const updateSeriesEyeCatchAction = async (
         labelPublicId: parsed.data.labelPublicId,
         publicId: parsed.data.publicId,
         publishedAt: schedule.publishedAt,
+        readingDirection: parsed.data.readingDirection,
         readingPeriodHours: parsed.data.readingPeriodHours,
         scheduleWeekdays: parsed.data.scheduleWeekdays,
+        spreadStartIndex: parsed.data.spreadStartIndex,
         status: parsed.data.status,
         synopsis: parsed.data.synopsis,
         tagNames: parsed.data.tagNames,

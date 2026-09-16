@@ -5,7 +5,10 @@ import {
 import { Code, ConnectError } from "@connectrpc/connect";
 
 export { Code, ConnectError } from "@connectrpc/connect";
-export { ErrorInfoSchema } from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
+export {
+  BadRequestSchema,
+  ErrorInfoSchema,
+} from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 
 /** Stable reasons attached by Publira APIs through `google.rpc.ErrorInfo`. */
 export const RPC_ERROR_REASON = {

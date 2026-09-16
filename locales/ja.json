@@ -1038,7 +1038,15 @@
           "disabled": "受け付けない",
           "immediate": "すぐに公開する",
           "approval_required": "承認してから公開する"
-        }
+        },
+        "reading_direction": "読む方向",
+        "reading_direction_description": "この作品のエピソードのページをめくる方向です。エピソードごとの設定は各エピソードの編集画面で行えます。",
+        "reading_direction_options": {
+          "rtl": "右から左",
+          "ltr": "左から右"
+        },
+        "spread_start": "見開きを始めるページ",
+        "spread_start_description": "このページより前は 1 ページずつ表示し、このページから 2 ページを並べて表示します。2 にすると表紙だけを単独で表示し、1 にすると最初のページから見開きにします。これよりページ数の少ないエピソードは見開きなしで表示します。エピソードごとの設定は各エピソードの編集画面で行えます。"
       },
       "validation": {
         "label_required": "レーベルは必須です。",
@@ -1052,7 +1060,9 @@
         "age_rating_invalid": "年齢制限を選択してください。",
         "tags_too_many": "タグは最大 {$count} 件です。",
         "comment_mode_invalid": "この作品でコメントを公開する方法を選択してください。",
-        "creator_credits_invalid": "著者のクレジットには著者と役割の両方が必要です。"
+        "creator_credits_invalid": "著者のクレジットには著者と役割の両方が必要です。",
+        "reading_direction_invalid": "読む方向を選択してください。",
+        "spread_start_invalid": "見開きを始めるページは 1 以上の整数で入力してください。"
       },
       "created": "シリーズを作成しました。",
       "updated": "シリーズを更新しました。",
@@ -1172,7 +1182,27 @@
           "epub_required": "入稿する ePub ファイルを選択してください。",
           "zip_invalid": "ZIP 形式（.zip）のファイルを選択してください。",
           "epub_invalid": "ePub 形式（.epub）のファイルを選択してください。",
-          "pages_required": "追加するページ画像を選択してください。"
+          "pages_required": "追加するページ画像を選択してください。",
+          "reading_direction_invalid": "読む方向を選択するか、作品の設定に従ってください。",
+          "spread_start_invalid": "見開きを始めるページは 1 以上の整数で入力してください。",
+          "spread_start_past_last_page": "エピソードの最後のページより後から見開きを始めることはできません。このエピソードのページを指定してください。"
+        },
+        "layout": {
+          "title": "ページレイアウト",
+          "description": "このエピソードのページをめくる方向と、見開きを始めるページです。作品に従う値は、作品の設定を変えるとそれに合わせて変わります。",
+          "error": "ページレイアウトを表示できませんでした",
+          "reading_direction": "読む方向",
+          "follow_series": "作品の設定に従う",
+          "follow_series_direction": "作品の設定に従う（{$direction}）",
+          "spread_start": "見開きの開始",
+          "follow_series_spread_start": "作品の設定に従う（{$page} ページ目）",
+          "spread_start_override": "このエピソードで指定する",
+          "spread_start_page": "見開きを始めるページ",
+          "spread_start_page_description": "1 から {$count} までのページを指定します。それより前のページは 1 ページずつ表示します。",
+          "spread_start_no_pages": "このエピソードで見開きの開始を指定するには、先にページ画像を追加してください。",
+          "update": "ページレイアウトを更新",
+          "updated": "ページレイアウトを更新しました。",
+          "failed": "ページレイアウトの更新に失敗しました。時間をおいて再試行してください。"
         },
         "credits": {
           "dialog_title": "選択したエピソードのクレジットを編集",
