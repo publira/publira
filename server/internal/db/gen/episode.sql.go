@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const countDraftEpisodesForTenant = `-- name: CountDraftEpisodesForTenant :one
@@ -1246,6 +1247,64 @@ func (q *Queries) LockEpisodeByPublicIDForTenant(ctx context.Context, arg LockEp
 	var i LockEpisodeByPublicIDForTenantRow
 	err := row.Scan(&i.ID, &i.PublicID)
 	return i, err
+}
+
+const lockEpisodesByPublicIDsForTenantAndSeries = `-- name: LockEpisodesByPublicIDsForTenantAndSeries :many
+SELECT e.id,
+    e.public_id
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+WHERE e.tenant_id = $1
+    AND s.id = $2
+    AND e.public_id = ANY($3::text[])
+ORDER BY e.id
+FOR UPDATE OF e
+`
+
+type LockEpisodesByPublicIDsForTenantAndSeriesParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	PublicIds []string  `json:"public_ids"`
+}
+
+type LockEpisodesByPublicIDsForTenantAndSeriesRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+}
+
+// The episodes a range edit names, resolved and locked in one statement. The
+// lock is the one LockEpisodeByPublicIDForTenant takes, for the same reason: a
+// credit save on one of these episodes rewrites the whole set hanging off it,
+// so the two have to serialize on the episode row rather than on credit rows a
+// replacement is about to delete.
+//
+// A public_id of another series or another tenant simply does not come back,
+// which is what lets the handler refuse the request by comparing counts
+// instead of checking each episode.
+//
+// ORDER BY e.id is what keeps two range edits over overlapping ranges from
+// deadlocking: both take the row locks in the same order.
+func (q *Queries) LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByPublicIDsForTenantAndSeriesParams) ([]LockEpisodesByPublicIDsForTenantAndSeriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, lockEpisodesByPublicIDsForTenantAndSeries, arg.TenantID, arg.SeriesID, pq.Array(arg.PublicIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LockEpisodesByPublicIDsForTenantAndSeriesRow
+	for rows.Next() {
+		var i LockEpisodesByPublicIDsForTenantAndSeriesRow
+		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const markEpisodePublished = `-- name: MarkEpisodePublished :exec

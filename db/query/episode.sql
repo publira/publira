@@ -201,6 +201,29 @@ WHERE tenant_id = $1
     AND public_id = $2
 FOR UPDATE;
 
+-- name: LockEpisodesByPublicIDsForTenantAndSeries :many
+-- The episodes a range edit names, resolved and locked in one statement. The
+-- lock is the one LockEpisodeByPublicIDForTenant takes, for the same reason: a
+-- credit save on one of these episodes rewrites the whole set hanging off it,
+-- so the two have to serialize on the episode row rather than on credit rows a
+-- replacement is about to delete.
+--
+-- A public_id of another series or another tenant simply does not come back,
+-- which is what lets the handler refuse the request by comparing counts
+-- instead of checking each episode.
+--
+-- ORDER BY e.id is what keeps two range edits over overlapping ranges from
+-- deadlocking: both take the row locks in the same order.
+SELECT e.id,
+    e.public_id
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND s.id = sqlc.arg('series_id')
+    AND e.public_id = ANY(sqlc.arg('public_ids')::text[])
+ORDER BY e.id
+FOR UPDATE OF e;
+
 -- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,

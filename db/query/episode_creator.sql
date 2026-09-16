@@ -86,3 +86,97 @@ SELECT COUNT(*)::int4 AS credit_count
 FROM episode_creators
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND role_id = sqlc.arg('role_id')::uuid;
+
+-- name: BulkAddEpisodeCreator :many
+-- Credits one person, in one role, on every episode of the range that does not
+-- carry that pair already. The source is `series` because a range edit is how
+-- the standing team is corrected: the row it writes is the one a later range
+-- edit has to be able to move again.
+--
+-- display_order puts the new credit after what the episode already carries,
+-- which is where a name added to a role belongs; the read sorts by role
+-- priority first, so it only decides the order inside that role.
+--
+-- ON CONFLICT DO NOTHING makes an episode that already has the credit a row
+-- the RETURNING does not name, which is how the handler tells the two apart in
+-- one statement.
+INSERT INTO episode_creators (
+        tenant_id,
+        episode_id,
+        creator_id,
+        role_id,
+        display_order,
+        source
+    )
+SELECT sqlc.arg('tenant_id'),
+    target.episode_id,
+    sqlc.arg('creator_id')::uuid,
+    sqlc.arg('role_id')::uuid,
+    COALESCE(
+        (
+            SELECT MAX(ec.display_order) + 1
+            FROM episode_creators ec
+            WHERE ec.episode_id = target.episode_id
+        ),
+        0
+    ),
+    'series'
+FROM unnest(sqlc.arg('episode_ids')::uuid[]) AS target(episode_id)
+ON CONFLICT (episode_id, creator_id, role_id) DO NOTHING
+RETURNING episode_id;
+
+-- name: BulkReplaceEpisodeCreator :many
+-- Rewrites one credit into another across the range. `source = 'series'` is
+-- what keeps a guest credited on one episode of the range where they were: the
+-- range edit moves the standing team and nothing else.
+UPDATE episode_creators
+SET creator_id = sqlc.arg('new_creator_id')::uuid,
+    role_id = sqlc.arg('new_role_id')::uuid
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = ANY(sqlc.arg('episode_ids')::uuid[])
+    AND creator_id = sqlc.arg('creator_id')::uuid
+    AND role_id = sqlc.arg('role_id')::uuid
+    AND source = 'series'
+RETURNING episode_id;
+
+-- name: BulkRemoveEpisodeCreator :many
+DELETE FROM episode_creators
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = ANY(sqlc.arg('episode_ids')::uuid[])
+    AND creator_id = sqlc.arg('creator_id')::uuid
+    AND role_id = sqlc.arg('role_id')::uuid
+    AND source = 'series'
+RETURNING episode_id;
+
+-- name: ListEpisodesCreditedOnTheEpisodeItself :many
+-- The episodes of the range that hold the named credit as their own rather
+-- than as the series'. They are the ones a replace or a remove passes over,
+-- and this is what lets the response say so instead of reporting them beside
+-- the episodes that never held the credit at all.
+SELECT DISTINCT episode_id
+FROM episode_creators
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = ANY(sqlc.arg('episode_ids')::uuid[])
+    AND creator_id = sqlc.arg('creator_id')::uuid
+    AND role_id = sqlc.arg('role_id')::uuid
+    AND source = 'episode';
+
+-- name: ListEpisodesHoldingBothEpisodeCredits :many
+-- The episodes a replace would leave crediting the same person twice in the
+-- same role: they carry the credit being replaced as the series', and already
+-- carry the one it would become. The unique constraint would refuse the whole
+-- statement, so the handler refuses first and names them.
+SELECT DISTINCT replaced.episode_id
+FROM episode_creators replaced
+WHERE replaced.tenant_id = sqlc.arg('tenant_id')
+    AND replaced.episode_id = ANY(sqlc.arg('episode_ids')::uuid[])
+    AND replaced.creator_id = sqlc.arg('creator_id')::uuid
+    AND replaced.role_id = sqlc.arg('role_id')::uuid
+    AND replaced.source = 'series'
+    AND EXISTS (
+        SELECT 1
+        FROM episode_creators existing
+        WHERE existing.episode_id = replaced.episode_id
+            AND existing.creator_id = sqlc.arg('new_creator_id')::uuid
+            AND existing.role_id = sqlc.arg('new_role_id')::uuid
+    );

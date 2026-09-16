@@ -339,10 +339,10 @@ func (s *adminServer) ReorderEpisodes(
 	if strings.TrimSpace(req.Msg.SeriesPublicId) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
 	}
-	if err := validateReorderPublicIDs(req.Msg.EpisodePublicIds, "episode_public_ids", "episode"); err != nil {
+	if err := validateDistinctPublicIDs(req.Msg.EpisodePublicIds, "episode_public_ids", "episode"); err != nil {
 		return nil, err
 	}
-	if err := validateReorderPublicIDs(req.Msg.ExpectedEpisodePublicIds, "expected_episode_public_ids", "episode"); err != nil {
+	if err := validateDistinctPublicIDs(req.Msg.ExpectedEpisodePublicIds, "expected_episode_public_ids", "episode"); err != nil {
 		return nil, err
 	}
 	if !samePublicIDSet(req.Msg.EpisodePublicIds, req.Msg.ExpectedEpisodePublicIds) {

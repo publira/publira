@@ -337,10 +337,10 @@ func (s *adminServer) ReorderGenres(
 	if err != nil {
 		return nil, err
 	}
-	if err := validateReorderPublicIDs(req.Msg.GenrePublicIds, "genre_public_ids", "genre"); err != nil {
+	if err := validateDistinctPublicIDs(req.Msg.GenrePublicIds, "genre_public_ids", "genre"); err != nil {
 		return nil, err
 	}
-	if err := validateReorderPublicIDs(req.Msg.ExpectedGenrePublicIds, "expected_genre_public_ids", "genre"); err != nil {
+	if err := validateDistinctPublicIDs(req.Msg.ExpectedGenrePublicIds, "expected_genre_public_ids", "genre"); err != nil {
 		return nil, err
 	}
 	if !samePublicIDSet(req.Msg.GenrePublicIds, req.Msg.ExpectedGenrePublicIds) {

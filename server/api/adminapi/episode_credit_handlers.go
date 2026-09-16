@@ -54,7 +54,7 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
-	credits, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits))
+	credits, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}
