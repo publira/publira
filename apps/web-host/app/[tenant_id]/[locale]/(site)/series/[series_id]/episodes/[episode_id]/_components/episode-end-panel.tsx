@@ -14,6 +14,8 @@ import {
   RelatedSeriesSkeleton,
 } from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { ShareControl } from "#components/share-control";
+import { ShareMenuSkeleton } from "#components/share-menu";
 import type {
   EpisodeDetail,
   EpisodeNeighborItem,
@@ -123,6 +125,8 @@ export const EpisodeEndPanel = async ({
   nextEpisode,
   previousEpisode,
   series,
+  shareText,
+  shareTitle,
   tenantId,
 }: {
   episode: EpisodeDetail;
@@ -137,6 +141,15 @@ export const EpisodeEndPanel = async ({
   /** Absent on the first one. */
   previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
+  /**
+   * What a share of this episode says in words: the work and its credits.
+   * Neither is on this component's own reads, and a share sheet takes a string
+   * rather than a node, so both strings come from the page, which awaits the
+   * catalog for its own landmark label anyway.
+   */
+  shareText: string;
+  /** How the episode names itself — the same string its `<title>` holds. */
+  shareTitle: string;
   tenantId: string;
 }) => {
   const locale = await getLocale();
@@ -145,6 +158,19 @@ export const EpisodeEndPanel = async ({
 
   return (
     <div className="grid gap-10">
+      {/* First, because passing an episode on is what a reader does the moment
+          they finish it — before deciding whether to read the next one. */}
+      <div className="justify-self-start">
+        <Suspense fallback={<ShareMenuSkeleton />}>
+          <ShareControl
+            path={returnTo}
+            tenantId={tenantId}
+            text={shareText}
+            title={shareTitle}
+          />
+        </Suspense>
+      </div>
+
       {previousEpisode || nextEpisode ? (
         <section className="grid gap-4">
           <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">

@@ -2354,6 +2354,16 @@
         "failed": "내 평점을 표시하지 못했습니다"
       }
     },
+    "share": {
+      "action": "공유",
+      "aria": "“{$title}” 공유",
+      "copied": "링크를 복사했습니다",
+      "copy_failed": "링크를 복사할 수 없습니다",
+      "copy_link": "링크 복사",
+      "line": "LINE에 공유",
+      "text": "{$title} ({$creators})",
+      "x": "X에 공유"
+    },
     "settings": {
       "birth_date_help": "연령 제한이 있는 작품을 열 때 나이를 확인합니다. 한 번 등록하면 변경할 수 없습니다.",
       "birth_date_label": "생년월일",

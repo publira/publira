@@ -6,6 +6,7 @@ import {
   getTenantAgeVerification,
   getTenantDefaultLocale,
   getTenantDisplayTimeZone,
+  getTenantPublicOrigin,
   getTenantSiteInfo,
   getTenantTheme,
   getTenantWebPushPublicKey,
@@ -119,6 +120,23 @@ describe("tenant", () => {
     });
 
     await expect(getTenantWebPushPublicKey("TENANT_001")).resolves.toBeNull();
+  });
+
+  it("Write the tenant's public origin from its stored domain", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    await expect(getTenantPublicOrigin("TENANT_001")).resolves.toBe(
+      "https://example.test"
+    );
+  });
+
+  it("Treat a tenant with no stored domain as having no origin", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      tenantDomain: "   ",
+    });
+
+    await expect(getTenantPublicOrigin("TENANT_001")).resolves.toBeNull();
   });
 
   it("Carry the ratings the tenant makes a reader prove an age for", async () => {

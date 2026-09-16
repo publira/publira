@@ -2354,6 +2354,16 @@
         "failed": "Could not show your rating"
       }
     },
+    "share": {
+      "action": "Share",
+      "aria": "Share “{$title}”",
+      "copied": "Link copied",
+      "copy_failed": "Could not copy the link",
+      "copy_link": "Copy link",
+      "line": "Share on LINE",
+      "text": "{$title} by {$creators}",
+      "x": "Share on X"
+    },
     "settings": {
       "birth_date_help": "This site checks your age before opening age-rated works. It cannot be changed once given.",
       "birth_date_label": "Date of birth",

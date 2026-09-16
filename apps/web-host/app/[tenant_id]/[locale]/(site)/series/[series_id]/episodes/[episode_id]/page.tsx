@@ -6,6 +6,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -24,9 +25,16 @@ import {
 } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { resolveOpenGraphImage } from "#lib/open-graph";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { shareText } from "#lib/share-text";
+import {
+  getTenantPublicOrigin,
+  getTenantSiteInfo,
+  getTenantSiteLabel,
+} from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocaleUrl } from "#lib/tenant-locale-path";
 
 import { CheckoutNotice } from "./_components/checkout-notice";
 import { EpisodeBody } from "./_components/episode-body";
@@ -35,6 +43,8 @@ import {
   COMMENT_TOKEN_PARAM,
   parseCommentSearchParams,
 } from "./_lib/comment-search-params";
+import { episodePath } from "./_lib/episode-path";
+import { episodeDisplayTitle } from "./_lib/episode-title";
 import { parsePurchaseSearchParams } from "./_lib/purchase-search-params";
 import { VIEWER_HEIGHT_CLASS } from "./_lib/viewer-layout";
 
@@ -48,6 +58,77 @@ const episodeDetailParamsSchema = z.object({
 
 /** Both neighbours, which is the most the section under the pages holds. */
 const NEIGHBOR_SKELETON_COUNT = 2;
+
+/**
+ * The card a link to this episode unfurls into, and the `<title>` above it.
+ *
+ * The episode names itself the way its running head does, and the work's own
+ * words and artwork stand behind it: an episode carries neither a synopsis nor
+ * an eye-catch of its own anywhere in the data model. Both reads are
+ * `"use cache"` and keyed on their arguments, so passing what the page body
+ * passes costs one RPC each for the two of them.
+ */
+export const generateMetadata = async (
+  props: PageProps<"/[tenant_id]/[locale]/series/[series_id]/episodes/[episode_id]">
+): Promise<Metadata> => {
+  const [rawParams, tenantId, locale] = await Promise.all([
+    props.params,
+    getTenantId(),
+    getLocale(),
+  ]);
+  const parsedParams = parseRouteParams(episodeDetailParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { episode_id, series_id } = parsedParams;
+
+  const [result, seriesResult, url, origin, siteLabel, t] = await Promise.all([
+    getEpisodeDetail(tenantId, series_id, episode_id, locale),
+    getSeriesDetail(tenantId, series_id, locale),
+    tenantLocaleUrl(tenantId, locale, episodePath(series_id, episode_id)),
+    getTenantPublicOrigin(tenantId),
+    getTenantSiteLabel(tenantId, locale),
+    getMessagesFor(locale),
+  ]);
+
+  // As on the series page: an episode that is missing, unpublished, or
+  // unreadable keeps the site label the `(site)` layout puts in the document
+  // title, and unfurls no card of its own.
+  const detail = result.ok ? result.value : undefined;
+  if (!detail) {
+    return {};
+  }
+
+  const { episode, series } = detail;
+  const title = episodeDisplayTitle(t, episode);
+  // Both from the series: an episode carries neither a synopsis nor an
+  // eye-catch of its own, and `GetEpisodeDetail` answers with the work's id,
+  // title, and rating rather than its artwork.
+  const work = seriesResult.ok ? seriesResult.value?.series : undefined;
+  const description = work?.synopsis.trim() || undefined;
+  const image = origin
+    ? resolveOpenGraphImage(origin, work?.eyeCatchImageVariants, series.title)
+    : undefined;
+
+  return {
+    description,
+    openGraph: {
+      description,
+      images: image,
+      siteName: siteLabel,
+      title,
+      type: "article",
+      url: url ?? undefined,
+    },
+    title,
+    twitter: {
+      card: "summary_large_image",
+      description,
+      images: image,
+      title,
+    },
+  };
+};
 
 /** The page under the reader, which is one column of ordinary text. */
 const EpisodeColumn = ({ children }: { children: ReactNode }) => (
@@ -140,6 +221,14 @@ const EpisodeContent = async (
     seriesResult.ok && seriesResult.value
       ? seriesResult.value.series.commentMode
       : "disabled";
+  // A share names the work, not the instalment — which one it is, is what the
+  // address and the card carry. `GetEpisodeDetail` answers with the work's id,
+  // title, and rating rather than its credits, so the names come from the
+  // series read beside it, and a read that failed leaves the title on its own.
+  const workCredits =
+    seriesResult.ok && seriesResult.value
+      ? seriesResult.value.series.credits
+      : [];
   // The site-info read resolves the tenant zone. The fallback only covers an
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
@@ -294,6 +383,8 @@ const EpisodeContent = async (
             nextEpisode={nextEpisode}
             previousEpisode={previousEpisode}
             series={series}
+            shareText={shareText(t, locale, series.title, workCredits)}
+            shareTitle={episodeDisplayTitle(t, episode)}
             tenantId={tenantId}
           />
         </EpisodeColumn>

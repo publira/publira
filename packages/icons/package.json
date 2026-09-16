@@ -103,6 +103,10 @@
       "types": "./dist/settings-icon.d.mts",
       "default": "./dist/settings-icon.mjs"
     },
+    "./share-icon": {
+      "types": "./dist/share-icon.d.mts",
+      "default": "./dist/share-icon.mjs"
+    },
     "./user-icon": {
       "types": "./dist/user-icon.d.mts",
       "default": "./dist/user-icon.mjs"

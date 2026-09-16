@@ -417,3 +417,29 @@ export const getTenantWebPushPublicKey = async (
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.webPushVapidPublicKey ?? null;
 };
+
+/**
+ * The origin every URL that leaves this site is written against — the address
+ * a reader pastes into a chat, and the one a crawler fetches an Open Graph
+ * image from. One entry point, the way {@link getTenantDisplayTimeZone} is, so
+ * no screen decides on its own where the tenant lives.
+ *
+ * It is the tenant's stored domain rather than the request's `Host`, which is
+ * the same choice the Go server makes when it writes a link into mail
+ * (`outbox`): a reader who reached the site through some other name still
+ * shares the address the tenant publishes under. `https` because that is the
+ * only scheme a tenant domain is served over.
+ *
+ * `null` where the tenant read is unavailable or the domain is unset. Both
+ * cases leave a caller with no address to write, and the controls that need one
+ * — sharing, Open Graph — are absent for that request rather than pointing at
+ * a guess.
+ */
+export const getTenantPublicOrigin = async (
+  tenantId: string
+): Promise<string | null> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  const domain = tenant?.domain.trim();
+
+  return domain ? `https://${domain}` : null;
+};

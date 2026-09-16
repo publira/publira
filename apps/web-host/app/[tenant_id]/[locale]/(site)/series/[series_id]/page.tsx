@@ -12,6 +12,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -34,12 +35,22 @@ import {
 } from "#components/related-series";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { SeriesRating, MySeriesRating } from "#components/series-rating";
+import { ShareControl } from "#components/share-control";
+import { ShareMenuSkeleton } from "#components/share-menu";
 import { getSeriesDetail } from "#lib/catalog";
-import type { SeriesSerializationStatus } from "#lib/catalog";
+import type { SeriesDetail, SeriesSerializationStatus } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { resolveOpenGraphImage } from "#lib/open-graph";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
-import { getTenantDisplayTimeZone } from "#lib/tenant";
+import { shareText } from "#lib/share-text";
+import {
+  getTenantDisplayTimeZone,
+  getTenantPublicOrigin,
+  getTenantSiteLabel,
+} from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocaleUrl } from "#lib/tenant-locale-path";
 
 import {
   EpisodeReadMark,
@@ -57,6 +68,67 @@ export const generateStaticParams = () =>
 const seriesDetailParamsSchema = z.object({
   series_id: routeParamString(),
 });
+
+/**
+ * The card a link to this series unfurls into, and the `<title>` above it.
+ *
+ * `getSeriesDetail` is a `"use cache"` read keyed on its arguments, so passing
+ * the same three values the page body does costs one RPC for both.
+ */
+export const generateMetadata = async (
+  props: PageProps<"/[tenant_id]/[locale]/series/[series_id]">
+): Promise<Metadata> => {
+  const [rawParams, tenantId, locale] = await Promise.all([
+    props.params,
+    getTenantId(),
+    getLocale(),
+  ]);
+  const parsedParams = parseRouteParams(seriesDetailParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { series_id } = parsedParams;
+
+  const [result, url, origin, siteLabel] = await Promise.all([
+    getSeriesDetail(tenantId, series_id, locale),
+    tenantLocaleUrl(tenantId, locale, `/series/${series_id}`),
+    getTenantPublicOrigin(tenantId),
+    getTenantSiteLabel(tenantId, locale),
+  ]);
+
+  // A series that is missing, hidden, or unreadable keeps the site label the
+  // `(site)` layout already puts in the document title: the page body below
+  // says which of those happened, and a card for a page nobody can open has
+  // nothing true to put on it.
+  const series = result.ok ? result.value?.series : undefined;
+  if (!series) {
+    return {};
+  }
+
+  const description = series.synopsis.trim() || undefined;
+  const image = origin
+    ? resolveOpenGraphImage(origin, series.eyeCatchImageVariants, series.title)
+    : undefined;
+
+  return {
+    description,
+    openGraph: {
+      description,
+      images: image,
+      siteName: siteLabel,
+      title: series.title,
+      type: "website",
+      url: url ?? undefined,
+    },
+    title: series.title,
+    twitter: {
+      card: "summary_large_image",
+      description,
+      images: image,
+      title: series.title,
+    },
+  };
+};
 
 /** Half a screen of rows, which is what a phone shows of the list at once. */
 const EPISODE_SKELETON_COUNT = 5;
@@ -130,6 +202,34 @@ const SERIES_STATUS_TONES = {
   hiatus: "warning",
   ongoing: "info",
 } as const satisfies Record<SeriesSerializationStatus, BadgeTone>;
+
+/**
+ * The share control, with the message it hands over already worded.
+ *
+ * A component of its own so that the catalog is awaited behind the boundary the
+ * control already sits in: a share sheet takes a string rather than a node, and
+ * resolving it in the page body would hold the cover, the episode list, and the
+ * shelf back on a sentence none of them depend on.
+ */
+const SeriesShareControl = async ({
+  series,
+  tenantId,
+}: {
+  series: SeriesDetail;
+  tenantId: string;
+}) => {
+  const locale = await getLocale();
+  const t = await getMessagesFor(locale);
+
+  return (
+    <ShareControl
+      path={`/series/${series.publicId}`}
+      tenantId={tenantId}
+      text={shareText(t, locale, series.title, series.credits)}
+      title={series.title}
+    />
+  );
+};
 
 const SeriesDetailContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]">
@@ -356,6 +456,9 @@ const SeriesDetailContent = async (
                   />
                 </Suspense>
               </SectionErrorBoundary>
+              <Suspense fallback={<ShareMenuSkeleton />}>
+                <SeriesShareControl series={series} tenantId={tenantId} />
+              </Suspense>
             </div>
           </div>
         </div>
