@@ -36,10 +36,13 @@ const buildPages = (pageCount: number): ViewerPage[] =>
   }));
 
 /** Right to left, as the catalog is drawn: ArrowLeft is the next page. */
-const renderViewer = (pageCount: number) =>
+const renderViewer = (
+  pageCount: number,
+  readingDirection: "ltr" | "rtl" = "rtl"
+) =>
   render(
     <ViewerProvider
-      initialReadingDirection="rtl"
+      initialReadingDirection={readingDirection}
       initialViewMode="single"
       pages={buildPages(pageCount)}
     >
@@ -89,6 +92,14 @@ describe("EpisodeNeighborKeyNavigation", () => {
     renderViewer(1);
     pressForward();
     pressForward();
+
+    expect(mockPush).toHaveBeenCalledExactlyOnceWith(`/en${NEXT_HREF}`);
+  });
+
+  it("opens the next episode with the forward key of a left-to-right episode", () => {
+    renderViewer(1, "ltr");
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
 
     expect(mockPush).toHaveBeenCalledExactlyOnceWith(`/en${NEXT_HREF}`);
   });

@@ -29,8 +29,10 @@ const episode: EpisodeDetail = {
   publicId: "EPISODE_001",
   publishedAt: "2026-08-01T00:00:00Z",
   ratingCount: 0,
+  readingDirection: "rtl",
   readingPeriodHours: 0,
   scheduledAt: "",
+  spreadStartIndex: 1,
   status: "published",
   title: "First light",
 };
@@ -47,12 +49,23 @@ const buildPages = (pageCount: number): ViewerPage[] =>
     title: `Page ${index + 1}`,
   }));
 
-const renderViewer = (initialPageIndex = 0, endPage = false) =>
+const renderViewer = ({
+  endPage = false,
+  initialPageIndex = 0,
+  spreadStartIndex = SPREAD_START_INDEX,
+  viewMode = "single",
+}: {
+  endPage?: boolean;
+  initialPageIndex?: number;
+  spreadStartIndex?: number;
+  viewMode?: "double" | "single";
+} = {}) =>
   render(
     <ViewerProvider
       initialIndex={initialPageIndex}
+      initialViewMode={viewMode}
       pages={buildPages(8)}
-      spreadStartIndex={SPREAD_START_INDEX}
+      spreadStartIndex={spreadStartIndex}
     >
       {endPage ? <EndPage>Leave a comment</EndPage> : null}
       <PreviousPageButton>Previous</PreviousPageButton>
@@ -138,7 +151,7 @@ describe("EpisodeReadingPositionRecorder", () => {
   });
 
   it("saves the page a resumed reader opens on without a turn", async () => {
-    renderViewer(4);
+    renderViewer({ initialPageIndex: 4 });
     settle();
 
     expect(sendBeacon).toHaveBeenCalledOnce();
@@ -146,7 +159,7 @@ describe("EpisodeReadingPositionRecorder", () => {
   });
 
   it("saves the last page of the episode for a reader on the page after it", () => {
-    renderViewer(7, true);
+    renderViewer({ endPage: true, initialPageIndex: 7 });
     settle();
     sendBeacon.mockClear();
 
@@ -167,5 +180,14 @@ describe("EpisodeReadingPositionRecorder", () => {
     settle();
 
     expect(sendBeacon).toHaveBeenCalledOnce();
+  });
+
+  it("saves the start of the spread when pairing begins on the first page", async () => {
+    renderViewer({ spreadStartIndex: 0, viewMode: "double" });
+    turnPage("Next page");
+    settle();
+
+    expect(sendBeacon).toHaveBeenCalledOnce();
+    await expect(savedPageIndex(0)).resolves.toBe(2);
   });
 });

@@ -17,7 +17,11 @@ import type {
   PublishedGenre,
   PublishedTag,
 } from "@publira/api-client/public/catalog";
-import { CommentMode, SeriesStatus } from "@publira/api-client/public/types";
+import {
+  CommentMode,
+  ReadingDirection,
+  SeriesStatus,
+} from "@publira/api-client/public/types";
 import type {
   Creator,
   Episode,
@@ -230,8 +234,18 @@ export interface EpisodeDetail {
    * so a five-press rating still counts as one.
    */
   ratingCount: number;
+  /**
+   * Which way the pages are turned. Already resolved: the episode's own
+   * value where it states one, and its series' where it does not.
+   */
+  readingDirection: "ltr" | "rtl";
   readingPeriodHours: number;
   scheduledAt: string;
+  /**
+   * Zero-based index of the page from which two pages share a screen. Every
+   * page before it stands alone. Already resolved the same way.
+   */
+  spreadStartIndex: number;
   status: string;
   title: string;
 }
@@ -248,11 +262,34 @@ type RawEpisode = Pick<
   | "publicId"
   | "publishedAt"
   | "ratingCount"
+  | "readingDirection"
   | "readingPeriodHours"
   | "scheduledAt"
+  | "spreadStartIndex"
   | "status"
   | "title"
 >;
+
+/**
+ * What a series nobody has set is read in. An unspecified field becomes this
+ * rather than left-to-right, so a missing value cannot flip a work.
+ */
+const DEFAULT_READING_DIRECTION = "rtl" as const;
+
+/**
+ * The cover stands alone. Used only when the field is absent from the
+ * message; `0` is a real value, pairing from the first page.
+ */
+const DEFAULT_SPREAD_START_INDEX = 1;
+
+const toEpisodeReadingDirection = (
+  direction: ReadingDirection | undefined
+): EpisodeDetail["readingDirection"] => {
+  if (direction === ReadingDirection.LEFT_TO_RIGHT) {
+    return "ltr";
+  }
+  return DEFAULT_READING_DIRECTION;
+};
 
 const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
   credits: toCreatorCredits(episode.creators),
@@ -261,8 +298,10 @@ const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
   publicId: episode.publicId ?? "",
   publishedAt: episode.publishedAt ?? "",
   ratingCount: Number(episode.ratingCount ?? 0),
+  readingDirection: toEpisodeReadingDirection(episode.readingDirection),
   readingPeriodHours: episode.readingPeriodHours ?? 0,
   scheduledAt: episode.scheduledAt ?? "",
+  spreadStartIndex: episode.spreadStartIndex ?? DEFAULT_SPREAD_START_INDEX,
   status: episode.status ?? "",
   title: episode.title ?? "",
 });

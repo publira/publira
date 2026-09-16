@@ -95,8 +95,10 @@ const episode: EpisodeDetail = {
   publicId: "EPISODE_002",
   publishedAt: "2026-08-01T00:00:00Z",
   ratingCount: 0,
+  readingDirection: "rtl",
   readingPeriodHours: 0,
   scheduledAt: "",
+  spreadStartIndex: 1,
   status: "published",
   title: "Second light",
 };

@@ -8,12 +8,13 @@ const SPREAD_START_INDEX = 1;
 const visible = (
   currentIndex: number,
   pageCount: number,
-  viewMode: "double" | "single"
+  viewMode: "double" | "single",
+  spreadStartIndex = SPREAD_START_INDEX
 ): boolean =>
   isLastPageVisible({
     currentIndex,
     pageCount,
-    spreadStartIndex: SPREAD_START_INDEX,
+    spreadStartIndex,
     viewMode,
   });
 
@@ -44,6 +45,12 @@ describe("isLastPageVisible", () => {
   it("keeps the cover alone even in a spread layout", () => {
     expect(visible(0, 2, "double")).toBe(false);
     expect(visible(1, 2, "double")).toBe(true);
+  });
+
+  it("counts a first-page pair as finished from its first paint", () => {
+    expect(visible(0, 2, "double", 0)).toBe(true);
+    expect(visible(0, 4, "double", 0)).toBe(false);
+    expect(visible(2, 4, "double", 0)).toBe(true);
   });
 
   it("reports nothing finished for an episode with no pages", () => {

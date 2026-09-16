@@ -27,8 +27,10 @@ const episode: EpisodeDetail = {
   publicId: "EPISODE_001",
   publishedAt: "2026-08-01T00:00:00Z",
   ratingCount: 0,
+  readingDirection: "rtl",
   readingPeriodHours: 0,
   scheduledAt: "",
+  spreadStartIndex: 1,
   status: "published",
   title: "First light",
 };
@@ -67,16 +69,18 @@ const GestureNavigation = () => {
 
 const renderViewer = ({
   pageCount,
+  spreadStartIndex = SPREAD_START_INDEX,
   viewMode = "single",
 }: {
   pageCount: number;
+  spreadStartIndex?: number;
   viewMode?: ViewMode;
 }) =>
   render(
     <ViewerProvider
       initialViewMode={viewMode}
       pages={buildPages(pageCount)}
-      spreadStartIndex={SPREAD_START_INDEX}
+      spreadStartIndex={spreadStartIndex}
     >
       <PreviousPageButton>Previous</PreviousPageButton>
       <NextPageButton>Next</NextPageButton>
@@ -142,6 +146,20 @@ describe("EpisodeReadRecorder", () => {
     turnPage("Next page");
 
     expect(screen.getByText("Pages 4-5 of 5")).toBeDefined();
+    expect(sendBeacon).toHaveBeenCalledOnce();
+  });
+
+  it("shows both pages of a first-page pair on the opening screen", () => {
+    renderViewer({ pageCount: 4, spreadStartIndex: 0, viewMode: "double" });
+
+    expect(screen.getByText("Pages 1-2 of 4")).toBeDefined();
+    expect(sendBeacon).not.toHaveBeenCalled();
+  });
+
+  it("reports a two-page episode that pairs from its first page without a turn", () => {
+    renderViewer({ pageCount: 2, spreadStartIndex: 0, viewMode: "double" });
+
+    expect(screen.getByText("Pages 1-2 of 2")).toBeDefined();
     expect(sendBeacon).toHaveBeenCalledOnce();
   });
 
