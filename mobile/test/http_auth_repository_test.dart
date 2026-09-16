@@ -126,6 +126,21 @@ void main() {
     expect(request.body['birthDate'], '2001-02-03');
   });
 
+  test('recordBirthDate maps a date the API refuses to birthDateInvalid', () {
+    final unreached = DateTime.now().toUtc().add(const Duration(days: 2));
+
+    expect(
+      () => auth.recordBirthDate(stored, unreached),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.birthDateInvalid,
+        ),
+      ),
+    );
+  });
+
   test('recordBirthDate maps a date already set to birthDateAlreadySet', () {
     server.memberBirthDate = '1990-04-02';
 

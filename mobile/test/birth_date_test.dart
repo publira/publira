@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -16,6 +17,7 @@ void main() {
   late GoRouter router;
   late FakeCatalogRepository catalog;
   late FakeAuthRepository repository;
+  late AuthController auth;
 
   final addRow = find.byKey(const ValueKey('account-birth-date-add'));
   final storedRow = find.byKey(const ValueKey('account-birth-date'));
@@ -36,7 +38,10 @@ void main() {
       PubliraApp(
         router: router,
         catalog: catalog,
-        auth: fakeAuthController(session: fakeSession, repository: repository),
+        auth: auth = fakeAuthController(
+          session: fakeSession,
+          repository: repository,
+        ),
       ),
     );
     await tester.pump();
@@ -234,6 +239,22 @@ void main() {
       await pumpUntilFound(tester, find.text('Episodes'));
 
       expect(gate, findsNothing);
+    });
+
+    testWidgets('signing out closes a series the stored date had opened', (
+      tester,
+    ) async {
+      repository.birthDate = '1990-04-02';
+      router = createAppRouter(
+        initialLocation: AppRoutes.seriesDetailPath(series.id),
+      );
+      await pumpApp(tester);
+      await pumpUntilFound(tester, find.text('Episodes'));
+
+      await auth.signOut();
+      await pumpUntilFound(tester, gate);
+
+      expect(find.text('Episodes'), findsNothing);
     });
 
     testWidgets('a date proving only R15 still asks for an R18 series', (

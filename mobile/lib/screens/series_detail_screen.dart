@@ -42,15 +42,20 @@ class _OpenSeries {
 class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
   late Future<_OpenSeries?> _future;
   var _started = false;
+  var _accessToken = '';
 
+  /// Reloads whenever the reader signs in or out, because the rating a birth
+  /// date proves belongs to the reader who was signed in when it was read.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) {
+    final auth = AuthScope.of(context);
+    if (_started && auth.accessToken == _accessToken) {
       return;
     }
     _started = true;
-    _future = _load(CatalogScope.of(context), AuthScope.of(context));
+    _accessToken = auth.accessToken;
+    _future = _load(CatalogScope.of(context), auth);
   }
 
   void _reload() {

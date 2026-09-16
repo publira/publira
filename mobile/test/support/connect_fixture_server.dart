@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:publira/api/image_cipher.dart';
+import 'package:publira/auth/reader_age.dart';
 
 /// In-process Connect JSON server that speaks the public catalog/domain RPCs.
 ///
@@ -953,8 +954,8 @@ class ConnectFixtureServer {
         : const {};
   }
 
-  /// `UpdateMe` as the API applies a birth date: once, and only as a
-  /// well-formed date.
+  /// `UpdateMe` as the API applies a birth date: once, and only as a calendar
+  /// date the tenant has reached and no more than 130 years back.
   Future<void> _writeUpdateMe(
     HttpRequest request,
     Map<String, Object?> body,
@@ -982,7 +983,9 @@ class ConnectFixtureServer {
         });
         return;
       }
-      if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(birthDate)) {
+      final born = parseBirthDate(birthDate);
+      final today = calendarDayIn(tenantTimeZone, DateTime.now())!;
+      if (born == null || born.isAfter(today) || ageOn(born, today) > 130) {
         await _write(request, HttpStatus.badRequest, {
           'code': 'invalid_argument',
           'message': 'invalid birth date',

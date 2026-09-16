@@ -53,14 +53,11 @@ class ReaderAge {
     if (born == null) {
       return null;
     }
-    final tz.Location location;
-    try {
-      location = _location(timeZone);
-    } on tz.LocationNotFoundException {
+    final today = calendarDayIn(timeZone, now);
+    if (today == null) {
       return null;
     }
-    final today = tz.TZDateTime.from(now, location);
-    final years = ageOn(born, DateTime.utc(today.year, today.month, today.day));
+    final years = ageOn(born, today);
     if (years >= 18) {
       return SeriesAgeRating.r18;
     }
@@ -69,6 +66,19 @@ class ReaderAge {
     }
     return null;
   }
+}
+
+/// The calendar day [timeZone] is living through at [now], as a UTC midnight,
+/// or `null` for a zone this build cannot resolve.
+DateTime? calendarDayIn(String timeZone, DateTime now) {
+  final tz.Location location;
+  try {
+    location = _location(timeZone);
+  } on tz.LocationNotFoundException {
+    return null;
+  }
+  final day = tz.TZDateTime.from(now, location);
+  return DateTime.utc(day.year, day.month, day.day);
 }
 
 var _timeZonesLoaded = false;
