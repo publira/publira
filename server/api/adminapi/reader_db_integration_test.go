@@ -195,6 +195,167 @@ func TestDBAdminReaderRPCsRequireTheAdminRole(t *testing.T) {
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("GetReader as an editor error = %v, want permission_denied", err)
 	}
+	if _, err := client.SuspendReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.SuspendReaderRequest{
+		Tenant:   asEditor.tenantContext(),
+		PublicId: reader.PublicID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("SuspendReader as an editor error = %v, want permission_denied", err)
+	}
+	if _, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.UnsuspendReaderRequest{
+		Tenant:   asEditor.tenantContext(),
+		PublicId: reader.PublicID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("UnsuspendReader as an editor error = %v, want permission_denied", err)
+	}
+	if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.DeleteReaderRequest{
+		Tenant:   asEditor.tenantContext(),
+		PublicId: reader.PublicID,
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("DeleteReader as an editor error = %v, want permission_denied", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND status = 'active'", reader.ID); count != 1 {
+		t.Fatalf("active rows for the reader after an editor's attempts = %d, want 1", count)
+	}
+}
+
+func (e *adminDBEnv) readerAuditLogs(t *testing.T, tenant adminDBTenant) []*publiraadminv1.AdminAuditLog {
+	t.Helper()
+
+	res, err := e.auditClient().ListAuditLogs(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListAuditLogsRequest{
+		Tenant: tenant.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	return res.Msg.AuditLogs
+}
+
+func assertReaderAuditLog(t *testing.T, entry *publiraadminv1.AdminAuditLog, action string, actor adminDBTenant, readerPublicID string) {
+	t.Helper()
+
+	if entry.Action != action || entry.TargetType != "user" || entry.TargetId != readerPublicID ||
+		entry.ActorUserPublicId != actor.User.PublicID || entry.Outcome != "success" {
+		t.Fatalf("audit entry = %+v, want a successful %s of %s by %s", entry, action, readerPublicID, actor.User.PublicID)
+	}
+}
+
+func TestDBAdminSuspendAndUnsuspendReaderAreAuditedOncePerChange(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RSUTENANT001", "reader-suspend.example.com", "Suspend", "RSUADMIN0001", "admin@reader-suspend.example.com")
+	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RSUREADER001", "reader@reader-suspend.example.com", "Reader")
+	client := env.userClient()
+
+	suspend := func() *publiraadminv1.AdminReader {
+		t.Helper()
+		res, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+			Tenant:   admin.tenantContext(),
+			PublicId: reader.PublicID,
+		}))
+		if err != nil {
+			t.Fatalf("SuspendReader: %v", err)
+		}
+		return res.Msg.Reader
+	}
+	unsuspend := func() *publiraadminv1.AdminReader {
+		t.Helper()
+		res, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.UnsuspendReaderRequest{
+			Tenant:   admin.tenantContext(),
+			PublicId: reader.PublicID,
+		}))
+		if err != nil {
+			t.Fatalf("UnsuspendReader: %v", err)
+		}
+		return res.Msg.Reader
+	}
+
+	// Lifting a suspension that is not there changes nothing and records nothing.
+	if got := unsuspend(); got.Status != "active" {
+		t.Fatalf("unsuspending an active reader status = %q, want active", got.Status)
+	}
+	if got := suspend(); got.Status != "suspended" || got.PublicId != reader.PublicID {
+		t.Fatalf("suspended reader = %+v, want %s suspended", got, reader.PublicID)
+	}
+	// A second suspension neither bumps the version again nor adds a row.
+	if got := suspend(); got.Status != "suspended" {
+		t.Fatalf("suspending a suspended reader status = %q, want suspended", got.Status)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND credentials_version = $2", reader.ID, reader.CredentialsVersion+1); count != 1 {
+		t.Fatal("credentials_version was not bumped exactly once by two suspensions")
+	}
+	if got := unsuspend(); got.Status != "active" {
+		t.Fatalf("unsuspended reader status = %q, want active", got.Status)
+	}
+
+	logs := env.readerAuditLogs(t, admin)
+	if len(logs) != 2 {
+		t.Fatalf("audit log count = %d, want 2 (%+v)", len(logs), logs)
+	}
+	// Newest first.
+	assertReaderAuditLog(t, logs[0], "reader_unsuspended", admin, reader.PublicID)
+	assertReaderAuditLog(t, logs[1], "reader_suspended", admin, reader.PublicID)
+}
+
+func TestDBAdminDeleteReaderIsAudited(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RDLTENANT001", "reader-delete.example.com", "Delete", "RDLADMIN0001", "admin@reader-delete.example.com")
+	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RDLREADER001", "reader@reader-delete.example.com", "Reader")
+	client := env.userClient()
+
+	req := &publiraadminv1.DeleteReaderRequest{Tenant: admin.tenantContext(), PublicId: reader.PublicID}
+	if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, req)); err != nil {
+		t.Fatalf("DeleteReader: %v", err)
+	}
+	if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, req)); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("DeleteReader for a deleted reader error = %v, want not_found", err)
+	}
+
+	logs := env.readerAuditLogs(t, admin)
+	if len(logs) != 1 {
+		t.Fatalf("audit log count = %d, want 1 (%+v)", len(logs), logs)
+	}
+	assertReaderAuditLog(t, logs[0], "reader_deleted", admin, reader.PublicID)
+}
+
+// A staff account and a reader of another tenant are out of reach of every
+// action, as they are of GetReader.
+func TestDBAdminReaderActionsLeaveStaffAndOtherTenantsAlone(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RSCTENANT001", "reader-scope.example.com", "Scope", "RSCADMIN0001", "admin@reader-scope.example.com")
+	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "RSCEDITOR001", "editor@reader-scope.example.com", "Editor", auth.RoleTenantEditor)
+	other := env.seedTenantWithAdmin(t, "RSOTENANT001", "reader-scope-other.example.com", "Other", "RSOADMIN0001", "admin@reader-scope-other.example.com")
+	outsider := env.PG.SeedEndUser(t, other.Tenant.ID, "RSOREADER001", "reader@reader-scope-other.example.com", "Outsider")
+	client := env.userClient()
+
+	for _, publicID := range []string{editor.PublicID, outsider.PublicID, admin.User.PublicID, "NOSUCHREADER"} {
+		if _, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+			Tenant:   admin.tenantContext(),
+			PublicId: publicID,
+		})); connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("SuspendReader %s error = %v, want not_found", publicID, err)
+		}
+		if _, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.UnsuspendReaderRequest{
+			Tenant:   admin.tenantContext(),
+			PublicId: publicID,
+		})); connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("UnsuspendReader %s error = %v, want not_found", publicID, err)
+		}
+		if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+			Tenant:   admin.tenantContext(),
+			PublicId: publicID,
+		})); connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("DeleteReader %s error = %v, want not_found", publicID, err)
+		}
+	}
+
+	if count := env.countRows(t,
+		"SELECT count(*) FROM users WHERE id IN ($1, $2, $3) AND status = 'active'",
+		editor.ID, outsider.ID, admin.User.ID,
+	); count != 3 {
+		t.Fatalf("untouched active accounts = %d, want 3", count)
+	}
+	if logs := env.readerAuditLogs(t, admin); len(logs) != 0 {
+		t.Fatalf("audit log count = %d, want 0 (%+v)", len(logs), logs)
+	}
 }
 
 func TestDBAdminListCommentsFiltersByAuthor(t *testing.T) {

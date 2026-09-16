@@ -551,6 +551,294 @@ func (x *GetReaderResponse) GetReader() *AdminReader {
 	return nil
 }
 
+type SuspendReaderRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SuspendReaderRequest) Reset() {
+	*x = SuspendReaderRequest{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SuspendReaderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SuspendReaderRequest) ProtoMessage() {}
+
+func (x *SuspendReaderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SuspendReaderRequest.ProtoReflect.Descriptor instead.
+func (*SuspendReaderRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SuspendReaderRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *SuspendReaderRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+type SuspendReaderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reader        *AdminReader           `protobuf:"bytes,1,opt,name=reader,proto3" json:"reader,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SuspendReaderResponse) Reset() {
+	*x = SuspendReaderResponse{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SuspendReaderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SuspendReaderResponse) ProtoMessage() {}
+
+func (x *SuspendReaderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SuspendReaderResponse.ProtoReflect.Descriptor instead.
+func (*SuspendReaderResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SuspendReaderResponse) GetReader() *AdminReader {
+	if x != nil {
+		return x.Reader
+	}
+	return nil
+}
+
+type UnsuspendReaderRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsuspendReaderRequest) Reset() {
+	*x = UnsuspendReaderRequest{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsuspendReaderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsuspendReaderRequest) ProtoMessage() {}
+
+func (x *UnsuspendReaderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsuspendReaderRequest.ProtoReflect.Descriptor instead.
+func (*UnsuspendReaderRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UnsuspendReaderRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UnsuspendReaderRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+type UnsuspendReaderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reader        *AdminReader           `protobuf:"bytes,1,opt,name=reader,proto3" json:"reader,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsuspendReaderResponse) Reset() {
+	*x = UnsuspendReaderResponse{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsuspendReaderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsuspendReaderResponse) ProtoMessage() {}
+
+func (x *UnsuspendReaderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsuspendReaderResponse.ProtoReflect.Descriptor instead.
+func (*UnsuspendReaderResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UnsuspendReaderResponse) GetReader() *AdminReader {
+	if x != nil {
+		return x.Reader
+	}
+	return nil
+}
+
+type DeleteReaderRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteReaderRequest) Reset() {
+	*x = DeleteReaderRequest{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteReaderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteReaderRequest) ProtoMessage() {}
+
+func (x *DeleteReaderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteReaderRequest.ProtoReflect.Descriptor instead.
+func (*DeleteReaderRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DeleteReaderRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *DeleteReaderRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+type DeleteReaderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteReaderResponse) Reset() {
+	*x = DeleteReaderResponse{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteReaderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteReaderResponse) ProtoMessage() {}
+
+func (x *DeleteReaderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteReaderResponse.ProtoReflect.Descriptor instead.
+func (*DeleteReaderResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *DeleteReaderResponse) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
 var File_publira_admin_v1_user_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_user_proto_rawDesc = "" +
@@ -594,11 +882,29 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"J\n" +
 	"\x11GetReaderResponse\x125\n" +
-	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader2\xb2\x02\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"l\n" +
+	"\x14SuspendReaderRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"N\n" +
+	"\x15SuspendReaderResponse\x125\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"n\n" +
+	"\x16UnsuspendReaderRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"P\n" +
+	"\x17UnsuspendReaderResponse\x125\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"k\n" +
+	"\x13DeleteReaderRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"3\n" +
+	"\x14DeleteReaderResponse\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId2\xe1\x04\n" +
 	"\x10AdminUserService\x12h\n" +
 	"\x0fListTenantUsers\x12(.publira.admin.v1.ListTenantUsersRequest\x1a).publira.admin.v1.ListTenantUsersResponse\"\x00\x12\\\n" +
 	"\vListReaders\x12$.publira.admin.v1.ListReadersRequest\x1a%.publira.admin.v1.ListReadersResponse\"\x00\x12V\n" +
-	"\tGetReader\x12\".publira.admin.v1.GetReaderRequest\x1a#.publira.admin.v1.GetReaderResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\tGetReader\x12\".publira.admin.v1.GetReaderRequest\x1a#.publira.admin.v1.GetReaderResponse\"\x00\x12b\n" +
+	"\rSuspendReader\x12&.publira.admin.v1.SuspendReaderRequest\x1a'.publira.admin.v1.SuspendReaderResponse\"\x00\x12h\n" +
+	"\x0fUnsuspendReader\x12(.publira.admin.v1.UnsuspendReaderRequest\x1a).publira.admin.v1.UnsuspendReaderResponse\"\x00\x12_\n" +
+	"\fDeleteReader\x12%.publira.admin.v1.DeleteReaderRequest\x1a&.publira.admin.v1.DeleteReaderResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_user_proto_rawDescOnce sync.Once
@@ -612,7 +918,7 @@ func file_publira_admin_v1_user_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_user_proto_rawDescData
 }
 
-var file_publira_admin_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_publira_admin_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_publira_admin_v1_user_proto_goTypes = []any{
 	(*AdminTenantUser)(nil),         // 0: publira.admin.v1.AdminTenantUser
 	(*ListTenantUsersRequest)(nil),  // 1: publira.admin.v1.ListTenantUsersRequest
@@ -622,26 +928,43 @@ var file_publira_admin_v1_user_proto_goTypes = []any{
 	(*ListReadersResponse)(nil),     // 5: publira.admin.v1.ListReadersResponse
 	(*GetReaderRequest)(nil),        // 6: publira.admin.v1.GetReaderRequest
 	(*GetReaderResponse)(nil),       // 7: publira.admin.v1.GetReaderResponse
-	(*v1.TenantContext)(nil),        // 8: publira.types.v1.TenantContext
+	(*SuspendReaderRequest)(nil),    // 8: publira.admin.v1.SuspendReaderRequest
+	(*SuspendReaderResponse)(nil),   // 9: publira.admin.v1.SuspendReaderResponse
+	(*UnsuspendReaderRequest)(nil),  // 10: publira.admin.v1.UnsuspendReaderRequest
+	(*UnsuspendReaderResponse)(nil), // 11: publira.admin.v1.UnsuspendReaderResponse
+	(*DeleteReaderRequest)(nil),     // 12: publira.admin.v1.DeleteReaderRequest
+	(*DeleteReaderResponse)(nil),    // 13: publira.admin.v1.DeleteReaderResponse
+	(*v1.TenantContext)(nil),        // 14: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_user_proto_depIdxs = []int32{
-	8, // 0: publira.admin.v1.ListTenantUsersRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 1: publira.admin.v1.ListTenantUsersResponse.users:type_name -> publira.admin.v1.AdminTenantUser
-	8, // 2: publira.admin.v1.ListReadersRequest.tenant:type_name -> publira.types.v1.TenantContext
-	3, // 3: publira.admin.v1.ListReadersResponse.readers:type_name -> publira.admin.v1.AdminReader
-	8, // 4: publira.admin.v1.GetReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
-	3, // 5: publira.admin.v1.GetReaderResponse.reader:type_name -> publira.admin.v1.AdminReader
-	1, // 6: publira.admin.v1.AdminUserService.ListTenantUsers:input_type -> publira.admin.v1.ListTenantUsersRequest
-	4, // 7: publira.admin.v1.AdminUserService.ListReaders:input_type -> publira.admin.v1.ListReadersRequest
-	6, // 8: publira.admin.v1.AdminUserService.GetReader:input_type -> publira.admin.v1.GetReaderRequest
-	2, // 9: publira.admin.v1.AdminUserService.ListTenantUsers:output_type -> publira.admin.v1.ListTenantUsersResponse
-	5, // 10: publira.admin.v1.AdminUserService.ListReaders:output_type -> publira.admin.v1.ListReadersResponse
-	7, // 11: publira.admin.v1.AdminUserService.GetReader:output_type -> publira.admin.v1.GetReaderResponse
-	9, // [9:12] is the sub-list for method output_type
-	6, // [6:9] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	14, // 0: publira.admin.v1.ListTenantUsersRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 1: publira.admin.v1.ListTenantUsersResponse.users:type_name -> publira.admin.v1.AdminTenantUser
+	14, // 2: publira.admin.v1.ListReadersRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 3: publira.admin.v1.ListReadersResponse.readers:type_name -> publira.admin.v1.AdminReader
+	14, // 4: publira.admin.v1.GetReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 5: publira.admin.v1.GetReaderResponse.reader:type_name -> publira.admin.v1.AdminReader
+	14, // 6: publira.admin.v1.SuspendReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 7: publira.admin.v1.SuspendReaderResponse.reader:type_name -> publira.admin.v1.AdminReader
+	14, // 8: publira.admin.v1.UnsuspendReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 9: publira.admin.v1.UnsuspendReaderResponse.reader:type_name -> publira.admin.v1.AdminReader
+	14, // 10: publira.admin.v1.DeleteReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 11: publira.admin.v1.AdminUserService.ListTenantUsers:input_type -> publira.admin.v1.ListTenantUsersRequest
+	4,  // 12: publira.admin.v1.AdminUserService.ListReaders:input_type -> publira.admin.v1.ListReadersRequest
+	6,  // 13: publira.admin.v1.AdminUserService.GetReader:input_type -> publira.admin.v1.GetReaderRequest
+	8,  // 14: publira.admin.v1.AdminUserService.SuspendReader:input_type -> publira.admin.v1.SuspendReaderRequest
+	10, // 15: publira.admin.v1.AdminUserService.UnsuspendReader:input_type -> publira.admin.v1.UnsuspendReaderRequest
+	12, // 16: publira.admin.v1.AdminUserService.DeleteReader:input_type -> publira.admin.v1.DeleteReaderRequest
+	2,  // 17: publira.admin.v1.AdminUserService.ListTenantUsers:output_type -> publira.admin.v1.ListTenantUsersResponse
+	5,  // 18: publira.admin.v1.AdminUserService.ListReaders:output_type -> publira.admin.v1.ListReadersResponse
+	7,  // 19: publira.admin.v1.AdminUserService.GetReader:output_type -> publira.admin.v1.GetReaderResponse
+	9,  // 20: publira.admin.v1.AdminUserService.SuspendReader:output_type -> publira.admin.v1.SuspendReaderResponse
+	11, // 21: publira.admin.v1.AdminUserService.UnsuspendReader:output_type -> publira.admin.v1.UnsuspendReaderResponse
+	13, // 22: publira.admin.v1.AdminUserService.DeleteReader:output_type -> publira.admin.v1.DeleteReaderResponse
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_user_proto_init() }
@@ -655,7 +978,7 @@ func file_publira_admin_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_user_proto_rawDesc), len(file_publira_admin_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

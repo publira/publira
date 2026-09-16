@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/user.proto.
  */
 export const file_publira_admin_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3VzZXIucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiQAoPQWRtaW5UZW5hbnRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkidgoWTGlzdFRlbmFudFVzZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkidwoXTGlzdFRlbmFudFVzZXJzUmVzcG9uc2USMAoFdXNlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLkFkbWluVGVuYW50VXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpQBCgtBZG1pblJlYWRlchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVlbWFpbBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRIZChFlbWFpbF92ZXJpZmllZF9hdBgGIAEoCRIWCg5oYXNfYmlydGhfZGF0ZRgHIAEoCCKCAQoSTGlzdFJlYWRlcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVxdWVyeRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSDQoFbGltaXQYBCABKAUSDQoFdG9rZW4YBSABKAkicQoTTGlzdFJlYWRlcnNSZXNwb25zZRIuCgdyZWFkZXJzGAEgAygLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlYKEEdldFJlYWRlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJCChFHZXRSZWFkZXJSZXNwb25zZRItCgZyZWFkZXIYASABKAsyHS5wdWJsaXJhLmFkbWluLnYxLkFkbWluUmVhZGVyMrICChBBZG1pblVzZXJTZXJ2aWNlEmgKD0xpc3RUZW5hbnRVc2VycxIoLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVxdWVzdBopLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVzcG9uc2UiABJcCgtMaXN0UmVhZGVycxIkLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlcnNSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5MaXN0UmVhZGVyc1Jlc3BvbnNlIgASVgoJR2V0UmVhZGVyEiIucHVibGlyYS5hZG1pbi52MS5HZXRSZWFkZXJSZXF1ZXN0GiMucHVibGlyYS5hZG1pbi52MS5HZXRSZWFkZXJSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3VzZXIucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiQAoPQWRtaW5UZW5hbnRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkidgoWTGlzdFRlbmFudFVzZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkidwoXTGlzdFRlbmFudFVzZXJzUmVzcG9uc2USMAoFdXNlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLkFkbWluVGVuYW50VXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpQBCgtBZG1pblJlYWRlchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVlbWFpbBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRIZChFlbWFpbF92ZXJpZmllZF9hdBgGIAEoCRIWCg5oYXNfYmlydGhfZGF0ZRgHIAEoCCKCAQoSTGlzdFJlYWRlcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVxdWVyeRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSDQoFbGltaXQYBCABKAUSDQoFdG9rZW4YBSABKAkicQoTTGlzdFJlYWRlcnNSZXNwb25zZRIuCgdyZWFkZXJzGAEgAygLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlYKEEdldFJlYWRlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJCChFHZXRSZWFkZXJSZXNwb25zZRItCgZyZWFkZXIYASABKAsyHS5wdWJsaXJhLmFkbWluLnYxLkFkbWluUmVhZGVyIloKFFN1c3BlbmRSZWFkZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiRgoVU3VzcGVuZFJlYWRlclJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIiXAoWVW5zdXNwZW5kUmVhZGVyUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIkgKF1Vuc3VzcGVuZFJlYWRlclJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIiWQoTRGVsZXRlUmVhZGVyUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIikKFERlbGV0ZVJlYWRlclJlc3BvbnNlEhEKCXB1YmxpY19pZBgBIAEoCTLhBAoQQWRtaW5Vc2VyU2VydmljZRJoCg9MaXN0VGVuYW50VXNlcnMSKC5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRVc2Vyc1JlcXVlc3QaKS5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRVc2Vyc1Jlc3BvbnNlIgASXAoLTGlzdFJlYWRlcnMSJC5wdWJsaXJhLmFkbWluLnYxLkxpc3RSZWFkZXJzUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlcnNSZXNwb25zZSIAElYKCUdldFJlYWRlchIiLnB1YmxpcmEuYWRtaW4udjEuR2V0UmVhZGVyUmVxdWVzdBojLnB1YmxpcmEuYWRtaW4udjEuR2V0UmVhZGVyUmVzcG9uc2UiABJiCg1TdXNwZW5kUmVhZGVyEiYucHVibGlyYS5hZG1pbi52MS5TdXNwZW5kUmVhZGVyUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuU3VzcGVuZFJlYWRlclJlc3BvbnNlIgASaAoPVW5zdXNwZW5kUmVhZGVyEigucHVibGlyYS5hZG1pbi52MS5VbnN1c3BlbmRSZWFkZXJSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5VbnN1c3BlbmRSZWFkZXJSZXNwb25zZSIAEl8KDERlbGV0ZVJlYWRlchIlLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlUmVhZGVyUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlUmVhZGVyUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminTenantUser
@@ -280,6 +280,123 @@ export const GetReaderResponseSchema: GenMessage<GetReaderResponse> = /*@__PURE_
   messageDesc(file_publira_admin_v1_user, 7);
 
 /**
+ * @generated from message publira.admin.v1.SuspendReaderRequest
+ */
+export type SuspendReaderRequest = Message<"publira.admin.v1.SuspendReaderRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.SuspendReaderRequest.
+ * Use `create(SuspendReaderRequestSchema)` to create a new message.
+ */
+export const SuspendReaderRequestSchema: GenMessage<SuspendReaderRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 8);
+
+/**
+ * @generated from message publira.admin.v1.SuspendReaderResponse
+ */
+export type SuspendReaderResponse = Message<"publira.admin.v1.SuspendReaderResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.AdminReader reader = 1;
+   */
+  reader?: AdminReader | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.SuspendReaderResponse.
+ * Use `create(SuspendReaderResponseSchema)` to create a new message.
+ */
+export const SuspendReaderResponseSchema: GenMessage<SuspendReaderResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 9);
+
+/**
+ * @generated from message publira.admin.v1.UnsuspendReaderRequest
+ */
+export type UnsuspendReaderRequest = Message<"publira.admin.v1.UnsuspendReaderRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UnsuspendReaderRequest.
+ * Use `create(UnsuspendReaderRequestSchema)` to create a new message.
+ */
+export const UnsuspendReaderRequestSchema: GenMessage<UnsuspendReaderRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 10);
+
+/**
+ * @generated from message publira.admin.v1.UnsuspendReaderResponse
+ */
+export type UnsuspendReaderResponse = Message<"publira.admin.v1.UnsuspendReaderResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.AdminReader reader = 1;
+   */
+  reader?: AdminReader | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UnsuspendReaderResponse.
+ * Use `create(UnsuspendReaderResponseSchema)` to create a new message.
+ */
+export const UnsuspendReaderResponseSchema: GenMessage<UnsuspendReaderResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 11);
+
+/**
+ * @generated from message publira.admin.v1.DeleteReaderRequest
+ */
+export type DeleteReaderRequest = Message<"publira.admin.v1.DeleteReaderRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteReaderRequest.
+ * Use `create(DeleteReaderRequestSchema)` to create a new message.
+ */
+export const DeleteReaderRequestSchema: GenMessage<DeleteReaderRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 12);
+
+/**
+ * @generated from message publira.admin.v1.DeleteReaderResponse
+ */
+export type DeleteReaderResponse = Message<"publira.admin.v1.DeleteReaderResponse"> & {
+  /**
+   * @generated from field: string public_id = 1;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteReaderResponse.
+ * Use `create(DeleteReaderResponseSchema)` to create a new message.
+ */
+export const DeleteReaderResponseSchema: GenMessage<DeleteReaderResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 13);
+
+/**
  * @generated from service publira.admin.v1.AdminUserService
  */
 export const AdminUserService: GenService<{
@@ -311,6 +428,41 @@ export const AdminUserService: GenService<{
     methodKind: "unary";
     input: typeof GetReaderRequestSchema;
     output: typeof GetReaderResponseSchema;
+  },
+  /**
+   * Suspends a reader and ends every session they hold. Suspending a reader
+   * who is already suspended changes nothing. not_found as GetReader.
+   *
+   * @generated from rpc publira.admin.v1.AdminUserService.SuspendReader
+   */
+  suspendReader: {
+    methodKind: "unary";
+    input: typeof SuspendReaderRequestSchema;
+    output: typeof SuspendReaderResponseSchema;
+  },
+  /**
+   * Lifts a suspension. The reader returns to active, or to inactive when
+   * they have not confirmed their address yet. Sessions ended by the
+   * suspension stay ended. A reader who is not suspended is left as they are.
+   * not_found as GetReader.
+   *
+   * @generated from rpc publira.admin.v1.AdminUserService.UnsuspendReader
+   */
+  unsuspendReader: {
+    methodKind: "unary";
+    input: typeof UnsuspendReaderRequestSchema;
+    output: typeof UnsuspendReaderResponseSchema;
+  },
+  /**
+   * Deletes a reader's account the way the reader's own DeleteMe does. not_found
+   * as GetReader.
+   *
+   * @generated from rpc publira.admin.v1.AdminUserService.DeleteReader
+   */
+  deleteReader: {
+    methodKind: "unary";
+    input: typeof DeleteReaderRequestSchema;
+    output: typeof DeleteReaderResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_user, 0);

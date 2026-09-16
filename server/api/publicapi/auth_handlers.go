@@ -641,7 +641,7 @@ func (s *apiServer) VerifyUserEmail(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to mark email verified", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
+	if err := s.queriesFor(ctx).ActivateInactiveUserByID(ctx, user.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to activate user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil

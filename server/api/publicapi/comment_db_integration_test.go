@@ -71,6 +71,24 @@ type adminCommentConsole struct {
 func (e *publicDBEnv) openAdminCommentConsole(t *testing.T, tenant testutil.Tenant, staff testutil.TenantUser) adminCommentConsole {
 	t.Helper()
 
+	console := e.openAdminConsole(t, tenant, staff)
+	return adminCommentConsole{
+		client: publiraadminv1connect.NewAdminCommentServiceClient(console.server.Client(), console.server.URL),
+		token:  console.token,
+	}
+}
+
+// adminConsole is the admin API on its own RLS-bound role and a staff token to
+// reach it with, for the cases where what staff do is what the storefront
+// answers to.
+type adminConsole struct {
+	server *httptest.Server
+	token  string
+}
+
+func (e *publicDBEnv) openAdminConsole(t *testing.T, tenant testutil.Tenant, staff testutil.TenantUser) adminConsole {
+	t.Helper()
+
 	adminDB := e.PG.OpenAdminDB(t)
 	adminAPI, err := adminapi.New(
 		adminDB,
@@ -101,10 +119,7 @@ func (e *publicDBEnv) openAdminCommentConsole(t *testing.T, tenant testutil.Tena
 		t.Fatalf("issue admin token: %v", err)
 	}
 
-	return adminCommentConsole{
-		client: publiraadminv1connect.NewAdminCommentServiceClient(adminServer.Client(), adminServer.URL),
-		token:  token,
-	}
+	return adminConsole{server: adminServer, token: token}
 }
 
 func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff testutil.TenantUser, publicID string) {
