@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"slices"
 	"strings"
@@ -192,6 +193,13 @@ func (s *adminServer) ListGenres(
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeCountUUID(cursor)
 		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
+		// The count a token carries is the display_order it was built from, and
+		// display_order is an int4. A client-supplied value outside that range
+		// would silently wrap on the way into the query and compare against a
+		// position no genre holds, so it is refused instead.
+		if keys.Count < math.MinInt32 || keys.Count > math.MaxInt32 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 		}
 	}

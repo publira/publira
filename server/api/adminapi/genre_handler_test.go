@@ -1,12 +1,21 @@
 package adminapi
 
 import (
+	"context"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/pagination"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
 func TestNormalizeCatalogNameTrimsAndSlugs(t *testing.T) {
@@ -82,5 +91,34 @@ func TestNormalizeTagNamesRefusesMoreThanTheLimit(t *testing.T) {
 	atLimit := append(names[:maxSeriesTags:maxSeriesTags], names[0])
 	if _, err := normalizeTagNames(atLimit); err != nil {
 		t.Fatalf("normalizeTagNames at the limit: %v", err)
+	}
+}
+
+// The genre cursor's first key is a display_order, which the column stores as
+// an int4. A token carrying more than that would wrap on the way into the query
+// and name a position no genre holds, so it is refused before any query runs.
+func TestListGenresRejectsACursorOutsideTheColumnRange(t *testing.T) {
+	for _, count := range []int64{math.MaxInt32 + 1, math.MinInt32 - 1} {
+		testServer, mock := newTestAdminServer(t)
+
+		tenantID := uuid.Must(uuid.NewV7())
+		userID := uuid.Must(uuid.NewV7())
+		now := time.Now()
+		sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+		expectTenantLookup(mock, tenantID, "TENANT", now)
+		expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+		client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
+		req := connect.NewRequest(&publiraadminv1.ListGenresRequest{
+			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			Token:  pagination.EncodeCountUUID(pagination.Forward, count, uuid.Must(uuid.NewV7())),
+		})
+		req.Header().Set("Authorization", "Bearer "+sessionToken)
+		_, err := client.ListGenres(context.Background(), req)
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("cursor count %d code = %v, want invalid_argument (err=%v)", count, connect.CodeOf(err), err)
+		}
+
+		assertExpectations(t, mock)
 	}
 }
