@@ -230,6 +230,17 @@ void main() {
     },
   );
 
+  test('a negative spread start is read as the cover standing alone', () {
+    final decoded = OfflineIndex.fromJson(
+      _index({
+        ..._episode(access: 'free', ownerId: ''),
+        'spreadStartIndex': -2,
+      }),
+    );
+
+    expect(decoded!.episodes.values.single.detail.spreadStartIndex, 1);
+  });
+
   test('a credit saved before roles were saved reads without a role', () {
     final decoded = OfflineIndex.fromJson(
       _index(

@@ -411,12 +411,7 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
           ?_creatorFromJson(item),
       ],
       readingDirection: _readingDirectionFromJson(decoded['readingDirection']),
-      // A file written before layout was saved is the layout both viewers
-      // hard-coded: cover standing alone. 0 is pairing from the first page,
-      // so an omitted field is not read as a zero.
-      spreadStartIndex: decoded.containsKey('spreadStartIndex')
-          ? _int(decoded['spreadStartIndex'])
-          : 1,
+      spreadStartIndex: _spreadStartIndexFromJson(decoded['spreadStartIndex']),
     ),
   );
 }
@@ -444,6 +439,20 @@ ReadingDirection _readingDirectionFromJson(Object? decoded) {
   return decoded == ReadingDirection.ltr.name
       ? ReadingDirection.ltr
       : ReadingDirection.rtl;
+}
+
+/// The page from which two pages share a screen.
+///
+/// A file written before layout was saved is the layout both viewers
+/// hard-coded: cover standing alone. 0 is pairing from the first page, so an
+/// omitted field is not read as a zero. A negative index is not a page of
+/// the episode; it is read the same way as an omitted one rather than handed
+/// to the reader as a screen before the first.
+int _spreadStartIndexFromJson(Object? value) {
+  if (value is! int || value < 0) {
+    return 1;
+  }
+  return value;
 }
 
 EpisodeAccess _accessFromName(String name) {
