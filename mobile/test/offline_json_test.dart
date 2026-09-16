@@ -186,6 +186,50 @@ void main() {
     expect(creator.roleName, 'Art');
   });
 
+  test('the layout of a saved episode survives the round trip', () {
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: '',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          detail: const EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 0,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            access: EpisodeAccess.free,
+            images: [],
+            readingDirection: ReadingDirection.ltr,
+            spreadStartIndex: 0,
+          ),
+        ),
+      },
+    ).toJson();
+
+    final decoded = OfflineIndex.fromJson(written);
+
+    final detail = decoded!.episodes.values.single.detail;
+    expect(detail.readingDirection, ReadingDirection.ltr);
+    expect(detail.spreadStartIndex, 0);
+  });
+
+  test(
+    'a body saved before layout was saved reads as it was laid out then',
+    () {
+      final decoded = OfflineIndex.fromJson(
+        _index(_episode(access: 'free', ownerId: '')),
+      );
+
+      final detail = decoded!.episodes.values.single.detail;
+      expect(detail.readingDirection, ReadingDirection.rtl);
+      expect(detail.spreadStartIndex, 1);
+    },
+  );
+
   test('a credit saved before roles were saved reads without a role', () {
     final decoded = OfflineIndex.fromJson(
       _index(

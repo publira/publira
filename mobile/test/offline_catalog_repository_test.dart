@@ -39,6 +39,8 @@ final _pageUrl = Uri.parse(
 EpisodeDetail _detail({
   EpisodeAccess access = EpisodeAccess.free,
   Map<String, String> headers = const {'authorization': 'Bearer reader-token'},
+  ReadingDirection readingDirection = ReadingDirection.rtl,
+  int spreadStartIndex = 1,
 }) {
   return EpisodeDetail(
     episode: const EpisodeItem(
@@ -67,6 +69,8 @@ EpisodeDetail _detail({
       ),
     ],
     imageRequestHeaders: headers,
+    readingDirection: readingDirection,
+    spreadStartIndex: spreadStartIndex,
   );
 }
 
@@ -336,6 +340,22 @@ void main() {
       saved.detail.images.single.url.toString(),
       isNot(contains('media-token')),
     );
+  });
+
+  test('a saved body keeps the layout it was saved with', () async {
+    origin.episodes = {
+      episodeKey(_seriesId, _episodeId): _detail(
+        readingDirection: ReadingDirection.ltr,
+        spreadStartIndex: 0,
+      ),
+    };
+    await build().getEpisode(_seriesId, _episodeId);
+    origin.episodeError = _network;
+
+    final detail = await build().getEpisode(_seriesId, _episodeId);
+
+    expect(detail!.readingDirection, ReadingDirection.ltr);
+    expect(detail.spreadStartIndex, 0);
   });
 
   test('a saved body keeps the episode after it', () async {

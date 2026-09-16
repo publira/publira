@@ -354,6 +354,8 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
     'access': detail.access.name,
     if (detail.ageRating != null) 'ageRating': detail.ageRating!.name,
     'episode': _episodeToJson(detail.episode),
+    'readingDirection': detail.readingDirection.name,
+    'spreadStartIndex': detail.spreadStartIndex,
     'creators': [
       for (final creator in detail.creators) _creatorToJson(creator),
     ],
@@ -408,6 +410,13 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
         for (final item in rawCreators is List ? rawCreators : const [])
           ?_creatorFromJson(item),
       ],
+      readingDirection: _readingDirectionFromJson(decoded['readingDirection']),
+      // A file written before layout was saved is the layout both viewers
+      // hard-coded: cover standing alone. 0 is pairing from the first page,
+      // so an omitted field is not read as a zero.
+      spreadStartIndex: decoded.containsKey('spreadStartIndex')
+          ? _int(decoded['spreadStartIndex'])
+          : 1,
     ),
   );
 }
@@ -429,6 +438,12 @@ SavedReadingPosition? _positionFromJson(Object? decoded) {
     return null;
   }
   return SavedReadingPosition(readerId: readerId, pageIndex: pageIndex);
+}
+
+ReadingDirection _readingDirectionFromJson(Object? decoded) {
+  return decoded == ReadingDirection.ltr.name
+      ? ReadingDirection.ltr
+      : ReadingDirection.rtl;
 }
 
 EpisodeAccess _accessFromName(String name) {

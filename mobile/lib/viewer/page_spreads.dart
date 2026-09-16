@@ -1,10 +1,3 @@
-/// The page after which two pages start sharing one screen.
-///
-/// The cover stands alone and pairing starts from the page after it, the way a
-/// printed volume opens and the way web-host pairs the same body. Pairing from
-/// the cover instead would face every spread the wrong way.
-const spreadStartIndex = 1;
-
 /// How the pages of one episode are laid out over the screens the reader turns
 /// through.
 ///
@@ -13,12 +6,21 @@ const spreadStartIndex = 1;
 /// the episode, not a screen of this device, so rotating a tablet moves the
 /// reader between screen numbering without moving the page they are on.
 class PageSpreads {
-  const PageSpreads({required this.pageCount, required this.paired});
+  const PageSpreads({
+    required this.pageCount,
+    required this.paired,
+    this.spreadStartIndex = 1,
+  });
 
   final int pageCount;
 
   /// Whether two pages share a screen from [spreadStartIndex] on.
   final bool paired;
+
+  /// The page from which two pages share a screen. Every page before it
+  /// stands alone. 1 is the cover standing alone, which is what a series
+  /// nobody has set uses; 0 pairs from the first page.
+  final int spreadStartIndex;
 
   /// How many screens the episode takes.
   int get length {

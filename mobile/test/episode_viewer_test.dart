@@ -147,6 +147,32 @@ void main() {
       nextEpisode: detail.nextEpisode,
       imageRequestHeaders: detail.imageRequestHeaders,
       creators: creators,
+      readingDirection: detail.readingDirection,
+      spreadStartIndex: detail.spreadStartIndex,
+    );
+  }
+
+  /// The fixture body of [episodeId] laid out as [readingDirection] from
+  /// [spreadStartIndex].
+  void layoutEpisode(
+    String episodeId, {
+    ReadingDirection readingDirection = ReadingDirection.rtl,
+    int spreadStartIndex = 1,
+  }) {
+    final key = episodeKey(seriesId, episodeId);
+    final detail = catalog.episodes[key]!;
+    catalog.episodes[key] = EpisodeDetail(
+      episode: detail.episode,
+      seriesId: detail.seriesId,
+      seriesTitle: detail.seriesTitle,
+      access: detail.access,
+      images: detail.images,
+      previousEpisode: detail.previousEpisode,
+      nextEpisode: detail.nextEpisode,
+      imageRequestHeaders: detail.imageRequestHeaders,
+      creators: detail.creators,
+      readingDirection: readingDirection,
+      spreadStartIndex: spreadStartIndex,
     );
   }
 
@@ -396,6 +422,40 @@ void main() {
     expect(next.onPressed, isNull);
     await pumpUntilNoPendingFrameCallbacks(tester);
   });
+
+  testWidgets('a left-to-right episode turns left to right', (tester) async {
+    layoutEpisode(episodeId, readingDirection: ReadingDirection.ltr);
+    await pumpApp(tester);
+    await pumpUntilFound(tester, pageView);
+
+    final view = tester.getRect(pageView);
+    await tester.tapAt(Offset(view.left + view.width * 0.75, view.center.dy));
+    await pumpUntilFound(tester, find.text('2 / 3'));
+
+    expect(find.text('2 / 3'), findsOneWidget);
+    final next = tester.getRect(
+      find.byKey(const ValueKey('episode-next-page')),
+    );
+    final previous = tester.getRect(
+      find.byKey(const ValueKey('episode-previous-page')),
+    );
+    expect(next.center.dx, greaterThan(previous.center.dx));
+  });
+
+  testWidgets(
+    'an episode pairing from its first page shows two pages on the first screen',
+    (tester) async {
+      catalog.episodes = fixtureEpisodes(pageCount: 4);
+      layoutEpisode(episodeId, spreadStartIndex: 0);
+      await pumpApp(tester, screen: landscape);
+      await pumpUntilFound(tester, pageView);
+
+      expect(find.text('1–2 / 4'), findsOneWidget);
+      final first = tester.getRect(page(1));
+      final second = tester.getRect(page(2));
+      expect(first.center.dx, greaterThan(second.center.dx));
+    },
+  );
 
   testWidgets('a locked paid body shows the purchase notice', (tester) async {
     catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);

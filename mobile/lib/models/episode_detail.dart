@@ -1,5 +1,12 @@
 import 'package:publira/models/series_item.dart';
 
+/// Which way the pages of an episode are turned, as
+/// `publira.types.v1.ReadingDirection` names them.
+///
+/// [rtl] is what a series nobody has set is read in. A name this build does
+/// not know is read as [rtl] rather than flipping the work.
+enum ReadingDirection { rtl, ltr }
+
 /// Whether the reader may see an episode body, as `GetEpisodeDetail` reports
 /// it.
 enum EpisodeAccess {
@@ -90,6 +97,8 @@ class EpisodeDetail {
     this.imageRequestHeaders = const {},
     this.ageRating,
     this.creators = const [],
+    this.readingDirection = ReadingDirection.rtl,
+    this.spreadStartIndex = 1,
   });
 
   final EpisodeItem episode;
@@ -120,6 +129,15 @@ class EpisodeDetail {
   /// They are the episode's own rather than the series', so an artist who took
   /// over part way through is named on the episodes they drew and no others.
   final List<SeriesCreator> creators;
+
+  /// Which way the pages are turned. Already resolved: the episode's own
+  /// value where it states one, and its series' where it does not.
+  final ReadingDirection readingDirection;
+
+  /// Zero-based index of the page from which two pages share a screen. Every
+  /// page before it stands alone. Already resolved the same way. 1 is the
+  /// cover standing alone, which is what a series nobody has set uses.
+  final int spreadStartIndex;
 }
 
 /// A member's reaction state for an episode, as `RatingService` reports it.

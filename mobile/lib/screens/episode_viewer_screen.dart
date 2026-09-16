@@ -337,6 +337,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     return EpisodeReader(
       images: detail.images,
       imageHeaders: detail.imageRequestHeaders,
+      readingDirection: detail.readingDirection,
+      spreadStartIndex: detail.spreadStartIndex,
       initialPageIndex: open.startPage,
       onPageChanged: (pageIndex) => _saver?.save(pageIndex),
       endScreen: EpisodeEndPanel(
