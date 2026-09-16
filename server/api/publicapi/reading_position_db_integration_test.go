@@ -191,6 +191,10 @@ func TestDBReadingPositionsAreMemberScopedByRLS(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTPOSD", "position-d.example.com", "Position D")
 	first := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSD", "member-position-d@example.com", "Member D", "tenant_member")
 	second := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSE", "member-position-e@example.com", "Member E", "tenant_member")
+	// The insert below is aimed at a reader who has saved nothing, so the row it
+	// writes collides with no primary key: a policy that stopped refusing the
+	// write would be the only thing left that could refuse it.
+	unsaved := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSI", "member-position-i@example.com", "Member I", "tenant_member")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPOSE", Title: "Public series", Published: true})
 	episode := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEPOSI", Title: "Free", Status: testutil.EpisodeStatusPublished}, 10)
 	client := env.episodeReadClient()
@@ -220,11 +224,14 @@ func TestDBReadingPositionsAreMemberScopedByRLS(t *testing.T) {
 		}
 		created, err := conn.ExecContext(ctx,
 			"INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)",
-			tenant.ID, first.ID, episode.ID,
+			tenant.ID, unsaved.ID, episode.ID,
 		)
 		if err == nil {
-			t.Fatalf("write a first member position as another member succeeded: %#v", created)
+			t.Fatalf("write another member's position succeeded: %#v", created)
 		}
+		// The SQLSTATE rather than any error, so a constraint the row happened to
+		// break cannot stand in for the policy that has to refuse it.
+		assertInsufficientPrivilege(t, err, "write another member's position")
 		updated, err := conn.ExecContext(ctx,
 			"UPDATE episode_reading_positions SET page_index = 0 WHERE tenant_id = $1 AND user_id = $2 AND episode_id = $3",
 			tenant.ID, first.ID, episode.ID,

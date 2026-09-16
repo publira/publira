@@ -153,6 +153,10 @@ func TestDBEpisodeReadsAreMemberScopedByRLS(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTREADC", "read-c.example.com", "Read C")
 	first := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADC", "member-read-c@example.com", "Member C", "tenant_member")
 	second := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADD", "member-read-d@example.com", "Member D", "tenant_member")
+	// The insert below is aimed at a reader who has no row, so the write collides
+	// with no primary key: a policy that stopped refusing it would be the only
+	// thing left that could refuse it.
+	unsaved := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADL", "member-read-l@example.com", "Member L", "tenant_member")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREADD", Title: "Public series", Published: true})
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADH", Title: "Free", Status: testutil.EpisodeStatusPublished})
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), tenant.ID, first.ID, episode.ID); err != nil {
@@ -170,10 +174,13 @@ func TestDBEpisodeReadsAreMemberScopedByRLS(t *testing.T) {
 		if visible != 0 {
 			t.Fatalf("other member visible episode reads = %d, want 0", visible)
 		}
-		created, err := conn.ExecContext(ctx, "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), tenant.ID, first.ID, episode.ID)
+		created, err := conn.ExecContext(ctx, "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), tenant.ID, unsaved.ID, episode.ID)
 		if err == nil {
-			t.Fatalf("create a first member read as another member succeeded: %#v", created)
+			t.Fatalf("write another member's read succeeded: %#v", created)
 		}
+		// The SQLSTATE rather than any error, so a constraint the row happened to
+		// break cannot stand in for the policy that has to refuse it.
+		assertInsufficientPrivilege(t, err, "write another member's read")
 		updated, err := conn.ExecContext(ctx, "UPDATE episode_reads SET read_at = NOW() WHERE tenant_id = $1 AND user_id = $2 AND episode_id = $3", tenant.ID, first.ID, episode.ID)
 		if err != nil {
 			t.Fatalf("attempt to update another member read: %v", err)
