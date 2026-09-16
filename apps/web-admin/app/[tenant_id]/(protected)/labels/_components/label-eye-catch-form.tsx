@@ -11,7 +11,7 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -29,7 +29,7 @@ export const LabelEyeCatchForm = ({
   action,
   initialLabel,
 }: LabelEyeCatchFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);

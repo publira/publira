@@ -4,7 +4,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { Suspense } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ClientMessage } from "./client-message";
+import { ErrorBoundaryMessage } from "./error-boundary-message";
 
 const JA_TITLE = "管理コンソールを表示できませんでした";
 const EN_TITLE = "Could not display the admin console";
@@ -37,7 +37,7 @@ const setBrowserLanguages = (...languages: string[]) => {
 };
 
 /**
- * `<ClientMessage>` suspends on the catalog it loads, so the render is awaited:
+ * `<ErrorBoundaryMessage>` suspends on the catalog it loads, so the render is awaited:
  * `act` lets React flush the commit that follows the `import()` instead of
  * leaving the boundary on its fallback until the query times out.
  */
@@ -45,7 +45,7 @@ const renderTitle = async (): Promise<string> => {
   await act(() => {
     render(
       <Suspense fallback={null}>
-        <ClientMessage message="admin.errors.root_title" />
+        <ErrorBoundaryMessage message="admin.errors.root_title" />
       </Suspense>
     );
   });
@@ -62,7 +62,7 @@ const renderTitle = async (): Promise<string> => {
  * admin API is unreachable — so the tenant's saved default language reaches it
  * as a cookie the proxy published, or not at all.
  */
-describe("ClientMessage", () => {
+describe("ErrorBoundaryMessage", () => {
   afterEach(() => {
     cleanup();
     clearCookies();

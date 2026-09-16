@@ -9,11 +9,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
-import { Suspense, useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -21,7 +19,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { TenantSiteSettings } from "#lib/site-settings";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -39,7 +37,7 @@ export const SiteSettingsForm = ({
   action,
   initialSettings,
 }: SiteSettingsFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [copyrightText, setCopyrightText] = useState(
@@ -76,14 +74,10 @@ export const SiteSettingsForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.site.title" />
-            </Suspense>
+            <ClientMessage message="admin.settings.site.title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.site.description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.site.description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -92,9 +86,7 @@ export const SiteSettingsForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.site.copyright" />
-            </Suspense>
+            <ClientMessage message="admin.settings.site.copyright" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -105,18 +97,14 @@ export const SiteSettingsForm = ({
               value={copyrightText}
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.site.copyright_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.site.copyright_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.site.tagline" />
-            </Suspense>
+            <ClientMessage message="admin.settings.site.tagline" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -127,18 +115,14 @@ export const SiteSettingsForm = ({
               value={siteTagline}
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.site.tagline_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.site.tagline_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.site.site_description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.site.site_description" />
           </FieldLabel>
           <FieldContent>
             <Textarea
@@ -151,9 +135,7 @@ export const SiteSettingsForm = ({
               value={siteDescription}
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.site.site_description_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.site.site_description_description" />
             </FieldDescription>
           </FieldContent>
         </Field>

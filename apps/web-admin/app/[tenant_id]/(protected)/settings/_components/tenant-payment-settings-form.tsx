@@ -11,10 +11,8 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ChangeEvent } from "react";
 import {
-  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -22,10 +20,7 @@ import {
   useState,
 } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -33,7 +28,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { AdminMessageKey } from "#lib/locale";
 import {
   paymentSettingsStatus,
@@ -88,7 +83,7 @@ const PaymentSecretField = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const inputId = useId();
   const [isEditing, setIsEditing] = useState(false);
   const showInput = !configured || isEditing;
@@ -175,7 +170,7 @@ const PaymentSettingsFields = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const enabledId = useId();
   const [enabledOverride, setEnabledOverride] = useState<boolean | null>(null);
@@ -222,25 +217,19 @@ const PaymentSettingsFields = ({
 
       <Field>
         <FieldLabel>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.settings.payment.provider" />
-          </Suspense>
+          <ClientMessage message="admin.settings.payment.provider" />
         </FieldLabel>
         <FieldContent>
           <Input disabled readOnly type="text" value="Stripe" />
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.payment.provider_description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.payment.provider_description" />
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel htmlFor={enabledId}>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.settings.payment.enabled" />
-          </Suspense>
+          <ClientMessage message="admin.settings.payment.enabled" />
         </FieldLabel>
         <FieldContent>
           <label className="inline-flex items-center gap-2 text-sm text-foreground">
@@ -252,14 +241,10 @@ const PaymentSettingsFields = ({
               onChange={handleEnabledChange}
               type="checkbox"
             />
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.payment.enabled_checkbox" />
-            </Suspense>
+            <ClientMessage message="admin.settings.payment.enabled_checkbox" />
           </label>
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.payment.enabled_description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.payment.enabled_description" />
           </FieldDescription>
         </FieldContent>
       </Field>
@@ -287,16 +272,12 @@ const PaymentSettingsFields = ({
       {webhookUrl ? (
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.payment.webhook_url" />
-            </Suspense>
+            <ClientMessage message="admin.settings.payment.webhook_url" />
           </FieldLabel>
           <FieldContent>
             <Input disabled readOnly type="text" value={webhookUrl} />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.payment.webhook_url_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.payment.webhook_url_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -304,9 +285,7 @@ const PaymentSettingsFields = ({
 
       {canEdit ? null : (
         <FormMessage variant="destructive">
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.settings.admin_only" />
-          </Suspense>
+          <ClientMessage message="admin.settings.admin_only" />
         </FormMessage>
       )}
 
@@ -340,7 +319,7 @@ export const TenantPaymentSettingsForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const [saveState, saveFormAction, isSaving] = useActionState(action, null);
   const settings = saveState?.ok ? saveState.settings : initialSettings;
 

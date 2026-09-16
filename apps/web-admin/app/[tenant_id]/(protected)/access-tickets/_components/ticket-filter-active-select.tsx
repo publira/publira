@@ -3,7 +3,7 @@
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { useId } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 
 interface TicketFilterActiveSelectProps {
   defaultValue: string;
@@ -12,7 +12,7 @@ interface TicketFilterActiveSelectProps {
 export const TicketFilterActiveSelect = ({
   defaultValue,
 }: TicketFilterActiveSelectProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   // Native <select> is not a Field control, so the label needs an id to point at.
   const activeSelectId = useId();
 

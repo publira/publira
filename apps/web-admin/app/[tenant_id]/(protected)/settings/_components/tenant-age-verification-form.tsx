@@ -4,8 +4,7 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { RadioGroup } from "@publira/ui-components/radio-group";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   AdminSection,
@@ -34,51 +33,36 @@ interface TenantAgeVerificationFormProps {
 
 /**
  * The rungs of the ladder in the order the card offers them: nothing proven,
- * then `r18`, then both ratings. `RadioGroupItem` takes a `ReactNode` for both
- * the label and the description, so each string keeps a boundary of its own
- * instead of the card waiting on a catalog before it can draw the options at
- * all.
+ * then `r18`, then both ratings.
  */
 const ageVerificationItems = (disabled: boolean) => [
   {
     description: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <ClientMessage message="admin.settings.age_verification.options.none.description" />
-      </Suspense>
+      <ClientMessage message="admin.settings.age_verification.options.none.description" />
     ),
     disabled,
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-        <ClientMessage message="admin.settings.age_verification.options.none.label" />
-      </Suspense>
+      <ClientMessage message="admin.settings.age_verification.options.none.label" />
     ),
     value: "none",
   },
   {
     description: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <ClientMessage message="admin.settings.age_verification.options.r18.description" />
-      </Suspense>
+      <ClientMessage message="admin.settings.age_verification.options.r18.description" />
     ),
     disabled,
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-        <ClientMessage message="admin.settings.age_verification.options.r18.label" />
-      </Suspense>
+      <ClientMessage message="admin.settings.age_verification.options.r18.label" />
     ),
     value: "r18",
   },
   {
     description: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <ClientMessage message="admin.settings.age_verification.options.r15_and_r18.description" />
-      </Suspense>
+      <ClientMessage message="admin.settings.age_verification.options.r15_and_r18.description" />
     ),
     disabled,
     label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-        <ClientMessage message="admin.settings.age_verification.options.r15_and_r18.label" />
-      </Suspense>
+      <ClientMessage message="admin.settings.age_verification.options.r15_and_r18.label" />
     ),
     value: "r15_and_r18",
   },
@@ -127,14 +111,10 @@ export const TenantAgeVerificationForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-              <ClientMessage message="admin.settings.age_verification.title" />
-            </Suspense>
+            <ClientMessage message="admin.settings.age_verification.title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <ClientMessage message="admin.settings.age_verification.description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.age_verification.description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -144,9 +124,7 @@ export const TenantAgeVerificationForm = ({
 
         <Field>
           <FieldLabel htmlFor="tenant_age_verification">
-            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <ClientMessage message="admin.settings.age_verification.label" />
-            </Suspense>
+            <ClientMessage message="admin.settings.age_verification.label" />
           </FieldLabel>
           <FieldContent>
             <RadioGroup
@@ -164,9 +142,7 @@ export const TenantAgeVerificationForm = ({
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
-            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <ClientMessage message="admin.settings.admin_only" />
-            </Suspense>
+            <ClientMessage message="admin.settings.admin_only" />
           </FormMessage>
         )}
 
@@ -174,9 +150,7 @@ export const TenantAgeVerificationForm = ({
           <FormMessage variant="destructive">
             <span className="block">{loadErrorMessage}</span>
             <span className="block">
-              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-                <ClientMessage message="admin.settings.age_verification.load_error_hint" />
-              </Suspense>
+              <ClientMessage message="admin.settings.age_verification.load_error_hint" />
             </span>
           </FormMessage>
         ) : null}
@@ -189,9 +163,7 @@ export const TenantAgeVerificationForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={fieldsDisabled || isPending} type="submit">
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <SubmitLabel isPending={isPending} />
-            </Suspense>
+            <SubmitLabel isPending={isPending} />
           </Button>
         </div>
       </form>

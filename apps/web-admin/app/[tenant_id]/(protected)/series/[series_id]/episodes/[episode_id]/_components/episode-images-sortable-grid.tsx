@@ -4,10 +4,9 @@ import type { DragEndEvent } from "@dnd-kit/react";
 import { useToastManager } from "@publira/ui-components";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Suspense, useCallback, useOptimistic, useTransition } from "react";
+import { useCallback, useOptimistic, useTransition } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
   SortableItem,
   SortableItemHandle,
@@ -34,7 +33,7 @@ export const EpisodeImagesSortableGrid = ({
   images,
   reorderAction,
 }: EpisodeImagesSortableGridProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();
@@ -132,12 +131,10 @@ export const EpisodeImagesSortableGrid = ({
                 {image.displayOrder} / {image.width}x{image.height}
               </span>
               <SortableItemHandle>
-                <Suspense fallback={null}>
-                  <ClientMessage
-                    message="admin.series.episodes.image_reorder_action"
-                    values={{ position: String(index + 1) }}
-                  />
-                </Suspense>
+                <ClientMessage
+                  message="admin.series.episodes.image_reorder_action"
+                  values={{ position: String(index + 1) }}
+                />
               </SortableItemHandle>
             </figcaption>
           </figure>

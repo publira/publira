@@ -7,13 +7,10 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { ChangeEventHandler, RefObject } from "react";
-import { Suspense } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
 import type { EyeCatchVariantItem } from "./types";
 import { EyeCatchVariantSelector } from "./variant-selector";
@@ -45,14 +42,12 @@ export const EyeCatchImageField = ({
   selectedVariantType,
   variants,
 }: EyeCatchImageFieldProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <Field>
       <FieldLabel htmlFor={fileInputId}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ClientMessage message="admin.eye_catch.label" />
-        </Suspense>
+        <ClientMessage message="admin.eye_catch.label" />
       </FieldLabel>
       <FieldContent>
         <div className="grid gap-2">
@@ -120,9 +115,7 @@ export const EyeCatchImageField = ({
           value={clearEyeCatchImage ? "1" : "0"}
         />
         <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.eye_catch.description" />
-          </Suspense>
+          <ClientMessage message="admin.eye_catch.description" />
         </FieldDescription>
       </FieldContent>
     </Field>

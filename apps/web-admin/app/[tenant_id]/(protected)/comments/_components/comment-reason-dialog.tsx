@@ -20,10 +20,8 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useContext, useRef } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { hideCommentAction, purgeCommentAction } from "../_lib/actions";
@@ -63,7 +61,7 @@ export const CommentReasonDialog = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const copy: ReasonDialogCopy =
     action === "hide"
       ? {

@@ -11,13 +11,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useContext, useState } from "react";
+import { useActionState, useContext, useState } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -25,7 +21,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { TenantDefaultLocaleActionState } from "../settings-types";
@@ -58,7 +54,7 @@ export const TenantDefaultLocaleForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [defaultLocale, setDefaultLocale] = useState(initialDefaultLocale);
@@ -79,14 +75,10 @@ export const TenantDefaultLocaleForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.default_locale.title" />
-            </Suspense>
+            <ClientMessage message="admin.settings.default_locale.title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.default_locale.description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.default_locale.description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -96,9 +88,7 @@ export const TenantDefaultLocaleForm = ({
 
         <Field>
           <FieldLabel htmlFor="tenant_default_locale">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.default_locale.label" />
-            </Suspense>
+            <ClientMessage message="admin.settings.default_locale.label" />
           </FieldLabel>
           <FieldContent>
             <Select
@@ -114,18 +104,14 @@ export const TenantDefaultLocaleForm = ({
               value={defaultLocale}
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.default_locale.field_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.default_locale.field_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.admin_only" />
-            </Suspense>
+            <ClientMessage message="admin.settings.admin_only" />
           </FormMessage>
         )}
 
@@ -133,9 +119,7 @@ export const TenantDefaultLocaleForm = ({
           <FormMessage variant="destructive">
             <span className="block">{loadErrorMessage}</span>
             <span className="block">
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <ClientMessage message="admin.settings.default_locale.load_error_hint" />
-              </Suspense>
+              <ClientMessage message="admin.settings.default_locale.load_error_hint" />
             </span>
           </FormMessage>
         ) : null}

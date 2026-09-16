@@ -12,10 +12,8 @@ import {
   useState,
 } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import type { AdminMessageAccessor } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -167,7 +165,7 @@ export const EpisodeCreditsRangeForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const { clear, selectedIds, selectMany, toggle } =
     useEpisodeCreditsSelection();

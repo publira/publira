@@ -4,21 +4,11 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Suspense,
-  useActionState,
-  useCallback,
-  useContext,
-  useState,
-} from "react";
+import { useActionState, useCallback, useContext, useState } from "react";
 import type { ChangeEvent } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
@@ -55,7 +45,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   // Seeded once per mount: the edit route keys this form by the label's public
@@ -83,9 +73,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.labels.form.name" />
-          </Suspense>
+          <ClientMessage message="admin.labels.form.name" />
         </FieldLabel>
         <FieldContent>
           <Input
@@ -102,9 +90,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
       {isUpdate ? null : (
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.labels.form.eye_catch" />
-            </Suspense>
+            <ClientMessage message="admin.labels.form.eye_catch" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -113,9 +99,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
               type="file"
             />
             <p className="text-sm text-muted-foreground">
-              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                <ClientMessage message="admin.labels.form.eye_catch_description" />
-              </Suspense>
+              <ClientMessage message="admin.labels.form.eye_catch_description" />
             </p>
           </FieldContent>
         </Field>
@@ -129,9 +113,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
 
       <div className="mt-2 flex justify-end gap-2">
         <Button disabled={isPending} type="submit">
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <LabelFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
-          </Suspense>
+          <LabelFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
         </Button>
       </div>
     </form>

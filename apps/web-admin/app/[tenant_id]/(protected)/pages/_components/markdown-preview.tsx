@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 
 interface MarkdownPreviewProps {
   content: string;
@@ -281,7 +281,7 @@ const parseMarkdown = (content: string): MarkdownBlock[] => {
 };
 
 export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const blocks = parseMarkdown(content);
 
   if (blocks.length === 0) {

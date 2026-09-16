@@ -11,7 +11,7 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
 import { spreadStartPageOf } from "#lib/reading-layout";
 import type { ReadingLayout } from "#lib/reading-layout";
@@ -43,7 +43,7 @@ export const SeriesEyeCatchForm = ({
   readingLayout,
   action,
 }: SeriesEyeCatchFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminMessages } from "./admin-locale-context";
+import { useClientMessages } from "./client-message";
 
 interface MfaRecoveryCodesProps {
   codes: string[];
@@ -13,7 +13,7 @@ interface MfaRecoveryCodesProps {
  * heading and the warning are resolved here rather than passed in.
  */
 export const MfaRecoveryCodes = ({ codes }: MfaRecoveryCodesProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <div className="grid gap-3 border border-border bg-muted/40 p-4">

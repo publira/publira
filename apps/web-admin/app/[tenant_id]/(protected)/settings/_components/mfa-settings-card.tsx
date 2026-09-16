@@ -5,7 +5,6 @@ import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -13,6 +12,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { useClientMessages } from "#components/client-message";
 import { MfaCodeField } from "#components/mfa-code-field";
 import { MfaEnrollmentSecret } from "#components/mfa-enrollment-secret";
 import { MfaRecoveryCodes } from "#components/mfa-recovery-codes";
@@ -48,7 +48,7 @@ const MfaStartForm = ({
   state,
   tenantId,
 }: MfaFormProps & { state: MfaEnrollmentStartState }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <form action={action} className="grid gap-3">
@@ -81,7 +81,7 @@ const MfaConfirmForm = ({
   secret: string;
   state: MfaEnrollmentConfirmState;
 }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <form action={action} className="grid gap-4">
@@ -110,7 +110,7 @@ const MfaRegenerateForm = ({
   state,
   tenantId,
 }: MfaFormProps & { state: MfaRecoveryCodesState }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <form action={action} className="grid gap-3">
@@ -146,7 +146,7 @@ const MfaDisableForm = ({
   state,
   tenantId,
 }: MfaFormProps & { state: FormActionState }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <form action={action} className="grid gap-3">
@@ -217,7 +217,7 @@ const MfaSetupSection = ({
 };
 
 const MfaStatusSummary = ({ status }: MfaSettingsCardProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <div className="grid gap-1">
@@ -253,7 +253,7 @@ const MfaNotices = ({
   disableState: FormActionState;
   regenerateState: MfaRecoveryCodesState;
 }) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <>
@@ -299,7 +299,7 @@ const issuedRecoveryCodes = (
  * the switch from "off" to "on", taking the only copy of those codes with it.
  */
 export const MfaSettingsCard = ({ status }: MfaSettingsCardProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
 
   const [startState, startAction, isStarting] = useActionState(

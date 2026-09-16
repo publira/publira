@@ -23,10 +23,8 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ChangeEvent } from "react";
 import {
-  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -34,10 +32,7 @@ import {
   useState,
 } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -45,7 +40,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
@@ -94,7 +89,7 @@ const PasswordFieldSection = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <Field>
@@ -184,7 +179,7 @@ const SmtpTestDialog = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const handleSendToSelfChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onSendToSelfChange(event.target.checked);
@@ -197,9 +192,7 @@ const SmtpTestDialog = ({
       <DialogTrigger
         render={
           <Button disabled={!canEdit} type="button" variant="outline">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.test" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.test" />
           </Button>
         }
       />
@@ -209,14 +202,10 @@ const SmtpTestDialog = ({
           <DialogPopup>
             <DialogHeader>
               <DialogTitle>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.email.test_title" />
-                </Suspense>
+                <ClientMessage message="admin.settings.email.test_title" />
               </DialogTitle>
               <DialogDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.email.test_description" />
-                </Suspense>
+                <ClientMessage message="admin.settings.email.test_description" />
               </DialogDescription>
             </DialogHeader>
 
@@ -227,9 +216,7 @@ const SmtpTestDialog = ({
                   onChange={handleSendToSelfChange}
                   type="checkbox"
                 />
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.email.test_send_to_self" />
-                </Suspense>
+                <ClientMessage message="admin.settings.email.test_send_to_self" />
               </label>
               <input
                 form={formId}
@@ -245,9 +232,7 @@ const SmtpTestDialog = ({
               {sendToSelf ? null : (
                 <Field>
                   <FieldLabel required>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.email.test_recipient" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.email.test_recipient" />
                   </FieldLabel>
                   <FieldContent>
                     <Input
@@ -272,9 +257,7 @@ const SmtpTestDialog = ({
               <DialogClose
                 render={
                   <Button type="button" variant="outline">
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.email.close" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.email.close" />
                   </Button>
                 }
               />
@@ -309,7 +292,7 @@ export const TenantEmailSettingsForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const formId = useId();
   const smtpOverrideId = useId();
@@ -370,14 +353,10 @@ export const TenantEmailSettingsForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.title" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -390,9 +369,7 @@ export const TenantEmailSettingsForm = ({
 
         <Field>
           <FieldLabel htmlFor={smtpOverrideId}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.override" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.override" />
           </FieldLabel>
           <FieldContent>
             <label className="inline-flex items-center gap-2 text-sm text-foreground">
@@ -404,23 +381,17 @@ export const TenantEmailSettingsForm = ({
                 onChange={handleOverrideChange}
                 type="checkbox"
               />
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.email.override_checkbox" />
-              </Suspense>
+              <ClientMessage message="admin.settings.email.override_checkbox" />
             </label>
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.email.override_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.email.override_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel required={fieldsInteractive}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.host" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.host" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -436,9 +407,7 @@ export const TenantEmailSettingsForm = ({
 
         <Field>
           <FieldLabel required={fieldsInteractive}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.port" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.port" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -455,9 +424,7 @@ export const TenantEmailSettingsForm = ({
 
         <Field>
           <FieldLabel required={fieldsInteractive}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.username" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.username" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -480,9 +447,7 @@ export const TenantEmailSettingsForm = ({
 
         <Field>
           <FieldLabel required={fieldsInteractive}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.encryption" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.encryption" />
           </FieldLabel>
           <FieldContent>
             <Select
@@ -504,9 +469,7 @@ export const TenantEmailSettingsForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.from_name" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.from_name" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -519,18 +482,14 @@ export const TenantEmailSettingsForm = ({
               type="text"
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.email.from_name_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.email.from_name_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel required={fieldsInteractive}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.from_address" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.from_address" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -546,9 +505,7 @@ export const TenantEmailSettingsForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email.reply_to" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email.reply_to" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -563,9 +520,7 @@ export const TenantEmailSettingsForm = ({
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.admin_only" />
-            </Suspense>
+            <ClientMessage message="admin.settings.admin_only" />
           </FormMessage>
         )}
 

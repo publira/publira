@@ -2,10 +2,8 @@
 
 import { Badge } from "@publira/ui-components/badge";
 import { buttonVariants } from "@publira/ui-components/button";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { toPubliraThemeCssVariables } from "@publira/utils/theme-css-variables";
 import type { TenantTheme } from "@publira/utils/theme-css-variables";
-import { Suspense } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 import { ClientMessage } from "#components/client-message";
@@ -25,14 +23,10 @@ interface ThemePreviewProps {
 const SiteNavLabels = () => (
   <>
     <span>
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <ClientMessage message="host.nav.labels" />
-      </Suspense>
+      <ClientMessage message="host.nav.labels" />
     </span>
     <span>
-      <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
-        <ClientMessage message="host.nav.genres" />
-      </Suspense>
+      <ClientMessage message="host.nav.genres" />
     </span>
   </>
 );
@@ -60,9 +54,7 @@ const WorkRow = ({
       <span className="block text-xs text-muted-foreground">{author}</span>
     </span>
     <Badge tone="success">
-      <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
-        <ClientMessage message="host.common.free" />
-      </Suspense>
+      <ClientMessage message="host.common.free" />
     </Badge>
   </div>
 );
@@ -101,9 +93,7 @@ export const ThemePreview = ({ theme }: ThemePreviewProps) => {
     >
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-3 text-surface-foreground">
         <span className="font-serif text-lg font-medium">
-          <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
-            <ClientMessage message="admin.settings.theme.preview.site_name" />
-          </Suspense>
+          <ClientMessage message="admin.settings.theme.preview.site_name" />
         </span>
         <div className="hidden items-center gap-4 text-sm sm:flex">
           <SiteNavLabels />
@@ -113,19 +103,13 @@ export const ThemePreview = ({ theme }: ThemePreviewProps) => {
             it, and each of these carries `white-space: nowrap`. */}
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <span className="rounded-control border border-input bg-card px-3 py-1.5 text-xs text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
-              <ClientMessage message="host.nav.search" />
-            </Suspense>
+            <ClientMessage message="host.nav.search" />
           </span>
           <span className={buttonVariants({ size: "sm", variant: "ghost" })}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <ClientMessage message="host.nav.login" />
-            </Suspense>
+            <ClientMessage message="host.nav.login" />
           </span>
           <span className={buttonVariants({ size: "sm", variant: "ink" })}>
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <ClientMessage message="host.nav.signup" />
-            </Suspense>
+            <ClientMessage message="host.nav.signup" />
           </span>
         </div>
       </div>
@@ -133,53 +117,37 @@ export const ThemePreview = ({ theme }: ThemePreviewProps) => {
       <div className="grid gap-6 px-4 py-5">
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span className="font-serif">
-            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <ClientMessage message="admin.settings.theme.preview.type_sample" />
-            </Suspense>
+            <ClientMessage message="admin.settings.theme.preview.type_sample" />
           </span>
           <span>
-            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <ClientMessage message="admin.settings.theme.preview.type_sample" />
-            </Suspense>
+            <ClientMessage message="admin.settings.theme.preview.type_sample" />
           </span>
         </div>
 
         <section>
           <div className="flex aspect-16/7 items-center justify-center rounded-surface bg-muted p-3 text-center">
             <span className="font-serif text-lg leading-tight text-muted-foreground">
-              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                <ClientMessage message="admin.settings.theme.preview.works.first.title" />
-              </Suspense>
+              <ClientMessage message="admin.settings.theme.preview.works.first.title" />
             </span>
           </div>
           <p className="mt-3 font-serif text-xl leading-tight">
-            <Suspense fallback={<SkeletonLine className="h-6 w-64" />}>
-              <ClientMessage message="admin.settings.theme.preview.works.first.title" />
-            </Suspense>
+            <ClientMessage message="admin.settings.theme.preview.works.first.title" />
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.theme.preview.works.first.author" />
-            </Suspense>
+            <ClientMessage message="admin.settings.theme.preview.works.first.author" />
           </p>
           <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
             <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                <ClientMessage message="admin.settings.theme.preview.works.first.synopsis" />
-              </Suspense>
+              <ClientMessage message="admin.settings.theme.preview.works.first.synopsis" />
             </p>
             <div className="flex shrink-0 items-center gap-2">
               <span className={buttonVariants({ size: "sm" })}>
-                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                  <ClientMessage message="host.common.view_series_detail" />
-                </Suspense>
+                <ClientMessage message="host.common.view_series_detail" />
               </span>
               <span
                 className={buttonVariants({ size: "sm", variant: "secondary" })}
               >
-                <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
-                  <ClientMessage message="host.common.read" />
-                </Suspense>
+                <ClientMessage message="host.common.read" />
               </span>
             </div>
           </div>
@@ -188,39 +156,27 @@ export const ThemePreview = ({ theme }: ThemePreviewProps) => {
         <section>
           <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
             <p className="font-serif text-base leading-tight">
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <ClientMessage message="host.top.free_heading" />
-              </Suspense>
+              <ClientMessage message="host.top.free_heading" />
             </p>
             <span className="text-xs text-primary underline underline-offset-4">
-              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                <ClientMessage message="host.top.view_all" />
-              </Suspense>
+              <ClientMessage message="host.top.view_all" />
             </span>
           </div>
           <div className="divide-y divide-border">
             <WorkRow
               author={
-                <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
-                  <ClientMessage message="admin.settings.theme.preview.works.first.author" />
-                </Suspense>
+                <ClientMessage message="admin.settings.theme.preview.works.first.author" />
               }
               title={
-                <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                  <ClientMessage message="admin.settings.theme.preview.works.first.title" />
-                </Suspense>
+                <ClientMessage message="admin.settings.theme.preview.works.first.title" />
               }
             />
             <WorkRow
               author={
-                <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
-                  <ClientMessage message="admin.settings.theme.preview.works.second.author" />
-                </Suspense>
+                <ClientMessage message="admin.settings.theme.preview.works.second.author" />
               }
               title={
-                <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                  <ClientMessage message="admin.settings.theme.preview.works.second.title" />
-                </Suspense>
+                <ClientMessage message="admin.settings.theme.preview.works.second.title" />
               }
             />
           </div>
@@ -228,24 +184,16 @@ export const ThemePreview = ({ theme }: ThemePreviewProps) => {
 
         <div className="flex flex-wrap gap-2">
           <Badge tone="success" variant="solid">
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <ClientMessage message="admin.settings.theme.preview.status.success" />
-            </Suspense>
+            <ClientMessage message="admin.settings.theme.preview.status.success" />
           </Badge>
           <Badge tone="warning" variant="solid">
-            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-              <ClientMessage message="admin.settings.theme.preview.status.warning" />
-            </Suspense>
+            <ClientMessage message="admin.settings.theme.preview.status.warning" />
           </Badge>
           <Badge tone="destructive" variant="solid">
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <ClientMessage message="admin.settings.theme.preview.status.destructive" />
-            </Suspense>
+            <ClientMessage message="admin.settings.theme.preview.status.destructive" />
           </Badge>
           <Badge tone="info" variant="solid">
-            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-              <ClientMessage message="admin.settings.theme.preview.status.info" />
-            </Suspense>
+            <ClientMessage message="admin.settings.theme.preview.status.info" />
           </Badge>
         </div>
       </div>
@@ -255,9 +203,7 @@ export const ThemePreview = ({ theme }: ThemePreviewProps) => {
           <SiteNavLabels />
         </div>
         <p>
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <ClientMessage message="admin.settings.theme.preview.site_name" />
-          </Suspense>
+          <ClientMessage message="admin.settings.theme.preview.site_name" />
         </p>
       </div>
     </div>

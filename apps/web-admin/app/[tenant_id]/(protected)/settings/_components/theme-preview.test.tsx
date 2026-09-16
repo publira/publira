@@ -1,23 +1,30 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { DEFAULT_TENANT_THEME } from "@publira/utils/theme-css-variables";
 import { act, cleanup, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import { ThemePreview } from "./theme-preview";
 
-/**
- * Every string in the preview suspends on the catalog `<ClientMessage>` loads,
- * so the render is awaited: `act` lets React flush the commit that follows the
- * `import()` instead of leaving each boundary on its skeleton.
- */
+const EnglishConsole = ({ children }: { children: ReactNode }) => (
+  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+    {children}
+  </AdminLocaleProvider>
+);
+
 const renderPreview = async (
   theme: typeof DEFAULT_TENANT_THEME = DEFAULT_TENANT_THEME
 ): Promise<HTMLElement> => {
   let container: HTMLElement | undefined;
 
   await act(() => {
-    ({ container } = render(<ThemePreview theme={theme} />));
+    ({ container } = render(<ThemePreview theme={theme} />, {
+      wrapper: EnglishConsole,
+    }));
   });
 
   const frame = container?.querySelector<HTMLElement>(".publira-theme-scope");

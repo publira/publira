@@ -125,7 +125,7 @@ export const SortableItem = ({
  * to drop.
  *
  * Its children are its accessible name, rendered visually hidden beside the
- * icon, so the copy stays a node with a boundary of its own.
+ * icon.
  *
  * The grip is the height of its own icon, which leaves it above the middle of
  * a row built around a taller control. Such a row gives it that control's

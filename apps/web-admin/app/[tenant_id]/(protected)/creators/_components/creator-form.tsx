@@ -9,12 +9,10 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import Image from "next/image";
 import type { ChangeEventHandler, ReactEventHandler } from "react";
 import {
-  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -22,11 +20,8 @@ import {
   useState,
 } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { CropAspect, CropSource } from "#components/image-crop/crop";
 import {
   centreCropRect,
@@ -60,7 +55,7 @@ const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const iconImageUrl = initialCreator?.iconImageUrl ?? "";
   const hasExistingIconImage = iconImageUrl.length > 0;
 
@@ -126,9 +121,7 @@ const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
   return (
     <Field>
       <FieldLabel>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ClientMessage message="admin.creators.form.icon" />
-        </Suspense>
+        <ClientMessage message="admin.creators.form.icon" />
       </FieldLabel>
       <FieldContent>
         {localPreviewUrl ? (
@@ -171,9 +164,7 @@ const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
             type="button"
             variant="outline"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.image_crop.adjust" />
-            </Suspense>
+            <ClientMessage message="admin.image_crop.adjust" />
           </Button>
         ) : null}
         {crop ? (
@@ -190,9 +181,7 @@ const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
               onChange={handleClearIconImageChange}
               type="checkbox"
             />
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.creators.form.clear_icon" />
-            </Suspense>
+            <ClientMessage message="admin.creators.form.clear_icon" />
           </label>
         ) : null}
         <input
@@ -201,9 +190,7 @@ const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
           value={clearIconImage ? "1" : "0"}
         />
         <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.creators.form.icon_description" />
-          </Suspense>
+          <ClientMessage message="admin.creators.form.icon_description" />
         </FieldDescription>
       </FieldContent>
 
@@ -242,7 +229,7 @@ export const CreatorForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   // Seeded once per mount: the edit route keys this form by the creator's
@@ -287,9 +274,7 @@ export const CreatorForm = ({
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.creators.form.name" />
-          </Suspense>
+          <ClientMessage message="admin.creators.form.name" />
         </FieldLabel>
         <FieldContent>
           <Input
@@ -305,9 +290,7 @@ export const CreatorForm = ({
 
       <Field>
         <FieldLabel>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.creators.form.profile" />
-          </Suspense>
+          <ClientMessage message="admin.creators.form.profile" />
         </FieldLabel>
         <FieldContent>
           <Textarea
@@ -318,9 +301,7 @@ export const CreatorForm = ({
             value={profileText}
           />
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.creators.form.profile_description" />
-            </Suspense>
+            <ClientMessage message="admin.creators.form.profile_description" />
           </FieldDescription>
         </FieldContent>
       </Field>

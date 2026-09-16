@@ -4,9 +4,9 @@ import { useToastManager } from "@publira/ui-components";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useRef } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
 import type { AdminMessageKey } from "#lib/locale";
 
+import { useClientMessages } from "./client-message";
 import { isFlashFlagSet } from "./flash-flag";
 
 interface FlashToastProps {
@@ -20,7 +20,7 @@ export const FlashToast = ({
   message,
   title,
 }: FlashToastProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const resolvedTitle = title ?? (message ? t(message) : "");
   const pathname = usePathname();
   const router = useRouter();

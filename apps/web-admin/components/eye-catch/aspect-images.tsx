@@ -3,22 +3,11 @@
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { ChangeEventHandler, ReactEventHandler } from "react";
-import {
-  Suspense,
-  useActionState,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useActionState, useContext, useEffect, useRef, useState } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
+import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -26,7 +15,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { CropSource } from "#components/image-crop/crop";
 import {
   centreCropRect,
@@ -77,7 +66,7 @@ const EyeCatchAspectSlot = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const { minHeight, minWidth, variantType } = aspect;
 
@@ -197,23 +186,19 @@ const EyeCatchAspectSlot = ({
           />
         ) : (
           <span className="flex h-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <ClientMessage message="admin.eye_catch.aspect.empty" />
-            </Suspense>
+            <ClientMessage message="admin.eye_catch.aspect.empty" />
           </span>
         )}
       </button>
 
       <p className="text-xs text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-          <ClientMessage
-            message="admin.eye_catch.aspect.minimum"
-            values={{
-              height: String(minHeight),
-              width: String(minWidth),
-            }}
-          />
-        </Suspense>
+        <ClientMessage
+          message="admin.eye_catch.aspect.minimum"
+          values={{
+            height: String(minHeight),
+            width: String(minWidth),
+          }}
+        />
       </p>
 
       <form action={formAction} className="grid gap-2" onSubmit={handleSubmit}>
@@ -242,9 +227,7 @@ const EyeCatchAspectSlot = ({
             type="button"
             variant="outline"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.image_crop.adjust" />
-            </Suspense>
+            <ClientMessage message="admin.image_crop.adjust" />
           </Button>
         ) : null}
         <Button
@@ -306,7 +289,7 @@ export const EyeCatchAspectImages = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <AdminSection>

@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import type {
   CreatorRoleListItem,
@@ -74,14 +77,15 @@ const creatorRoles: CreatorRoleListItem[] = [
   { name: "Writer", publicId: "ROLE003" },
 ];
 
-/**
- * Every string here is a `<ClientMessage>` that suspends on the catalog it
- * imports, so a render is awaited: `act` lets React flush the commit that
- * follows the `import()` instead of leaving the boundaries on their fallbacks.
- */
+const EnglishConsole = ({ children }: { children: ReactNode }) => (
+  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+    {children}
+  </AdminLocaleProvider>
+);
+
 const renderList = async (ui: ReactNode) => {
   await act(() => {
-    render(ui);
+    render(ui, { wrapper: EnglishConsole });
   });
   await screen.findByRole("button", { name: "Reorder Artist" });
 };
@@ -117,16 +121,12 @@ const submittedOrder = (field: string): string[] => {
 };
 
 beforeEach(() => {
-  // The language the console served this document in, which is what
-  // `<ClientMessage>` falls back to when no locale cookie names one.
-  document.documentElement.lang = "en";
   dnd.drop = null;
   reorder.mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
   cleanup();
-  document.documentElement.lang = "";
 });
 
 describe("CreatorRoleList", () => {

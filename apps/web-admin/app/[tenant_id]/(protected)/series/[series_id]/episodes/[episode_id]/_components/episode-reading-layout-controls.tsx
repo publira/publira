@@ -3,18 +3,16 @@
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import type { SelectProps } from "@publira/ui-components/select";
-import { Skeleton } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
-import { Suspense, useCallback, useId, useState } from "react";
+import { useCallback, useId, useState } from "react";
 
 import { useClientMessages } from "#components/client-message";
 import { isReadingDirectionValue } from "#lib/reading-layout";
 import type { ReadingDirectionValue } from "#lib/reading-layout";
 
 /**
- * Suspends as a whole while the catalog loads, so no option renders
- * half-filled. The first option names what the series is read in, and says
- * only that it follows the series when that read failed.
+ * The first option names what the series is read in, and says only that it
+ * follows the series when that read failed.
  */
 const ReadingDirectionSelect = ({
   seriesDirection,
@@ -78,14 +76,12 @@ export const ReadingDirectionField = ({
     <Field>
       <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
       <FieldContent>
-        <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-          <ReadingDirectionSelect
-            id={selectId}
-            onValueChange={handleValueChange}
-            seriesDirection={seriesDirection}
-            value={value}
-          />
-        </Suspense>
+        <ReadingDirectionSelect
+          id={selectId}
+          onValueChange={handleValueChange}
+          seriesDirection={seriesDirection}
+          value={value}
+        />
         <input name="reading_direction" type="hidden" value={value} />
       </FieldContent>
     </Field>
@@ -98,8 +94,7 @@ const isSpreadStartSource = (value: string): value is SpreadStartSource =>
   value === "episode" || value === "series";
 
 /**
- * Suspends as a whole, for the reason {@link ReadingDirectionSelect} does. An
- * episode with no pages has none to name, so following is its only option.
+ * An episode with no pages has none to name, so following is its only option.
  */
 const SpreadStartSourceSelect = ({
   hasNoPages,
@@ -161,15 +156,13 @@ export const SpreadStartSourceField = ({
       <Field>
         <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
         <FieldContent>
-          <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-            <SpreadStartSourceSelect
-              hasNoPages={hasNoPages}
-              id={selectId}
-              onValueChange={handleValueChange}
-              seriesSpreadStartPage={seriesSpreadStartPage}
-              value={value}
-            />
-          </Suspense>
+          <SpreadStartSourceSelect
+            hasNoPages={hasNoPages}
+            id={selectId}
+            onValueChange={handleValueChange}
+            seriesSpreadStartPage={seriesSpreadStartPage}
+            value={value}
+          />
           <input name="spread_start_source" type="hidden" value={value} />
           {description}
         </FieldContent>

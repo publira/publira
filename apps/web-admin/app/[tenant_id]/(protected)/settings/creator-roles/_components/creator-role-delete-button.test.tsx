@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -9,7 +10,10 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import type { CreatorRoleRowActionState } from "../creator-role-types";
 import { CreatorRoleDeleteButton } from "./creator-role-delete-button";
@@ -38,10 +42,17 @@ vi.mock("next/navigation", () => ({
 
 const creatorRole = { name: "Original Author", publicId: "ROLE001" };
 
-/** Every string is a `<ClientMessage>`, so the catalog import is awaited. */
+const EnglishConsole = ({ children }: { children: ReactNode }) => (
+  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+    {children}
+  </AdminLocaleProvider>
+);
+
 const renderButton = async () => {
   await act(() => {
-    render(<CreatorRoleDeleteButton creatorRole={creatorRole} />);
+    render(<CreatorRoleDeleteButton creatorRole={creatorRole} />, {
+      wrapper: EnglishConsole,
+    });
   });
   await screen.findByRole("button", { name: "Delete" });
 };
@@ -65,15 +76,8 @@ const confirmDelete = async () => {
   });
 };
 
-beforeEach(() => {
-  // The language the console served this document in, which is what
-  // `<ClientMessage>` falls back to when no locale cookie names one.
-  document.documentElement.lang = "en";
-});
-
 afterEach(() => {
   cleanup();
-  document.documentElement.lang = "";
 });
 
 describe("CreatorRoleDeleteButton", () => {

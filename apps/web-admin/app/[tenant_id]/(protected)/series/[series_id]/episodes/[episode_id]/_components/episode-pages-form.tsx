@@ -9,11 +9,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useCallback, useRef, useState } from "react";
+import { useActionState, useCallback, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -21,7 +19,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
@@ -40,7 +38,7 @@ export const EpisodePagesForm = ({
   episodePublicId,
   action,
 }: EpisodePagesFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [uploadMode, setUploadMode] = useState<"pages" | "zip" | "epub">(
@@ -146,14 +144,10 @@ export const EpisodePagesForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.pages.title" />
-            </Suspense>
+            <ClientMessage message="admin.series.episodes.pages.title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.pages.description" />
-            </Suspense>
+            <ClientMessage message="admin.series.episodes.pages.description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -165,9 +159,7 @@ export const EpisodePagesForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.pages.target" />
-            </Suspense>
+            <ClientMessage message="admin.series.episodes.pages.target" />
           </FieldLabel>
           <FieldContent>
             <p className="text-sm text-muted-foreground">
@@ -178,9 +170,7 @@ export const EpisodePagesForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.pages.method" />
-            </Suspense>
+            <ClientMessage message="admin.series.episodes.pages.method" />
           </FieldLabel>
           <FieldContent>
             <div className="flex flex-wrap gap-2">
@@ -190,9 +180,7 @@ export const EpisodePagesForm = ({
                 type="button"
                 variant={uploadMode === "pages" ? "default" : "outline"}
               >
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.series.episodes.pages.select_images" />
-                </Suspense>
+                <ClientMessage message="admin.series.episodes.pages.select_images" />
               </Button>
               <Button
                 disabled={isPending}
@@ -200,9 +188,7 @@ export const EpisodePagesForm = ({
                 type="button"
                 variant={uploadMode === "zip" ? "default" : "outline"}
               >
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.series.episodes.pages.select_zip" />
-                </Suspense>
+                <ClientMessage message="admin.series.episodes.pages.select_zip" />
               </Button>
               <Button
                 disabled={isPending}
@@ -210,9 +196,7 @@ export const EpisodePagesForm = ({
                 type="button"
                 variant={uploadMode === "epub" ? "default" : "outline"}
               >
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.series.episodes.pages.select_epub" />
-                </Suspense>
+                <ClientMessage message="admin.series.episodes.pages.select_epub" />
               </Button>
             </div>
           </FieldContent>
@@ -260,9 +244,7 @@ export const EpisodePagesForm = ({
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">
-                  <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                    <ClientMessage message="admin.series.episodes.pages.processing" />
-                  </Suspense>
+                  <ClientMessage message="admin.series.episodes.pages.processing" />
                 </p>
               </div>
             ) : null}

@@ -3,8 +3,7 @@
 import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState } from "react";
+import { useActionState } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -68,10 +67,6 @@ const DecisionDone = ({
  * decision changes nothing about the comment, so there is nothing here a
  * tenant would later owe an author a statement of reasons for. Removing the
  * comment is a separate control on the same row, and that one does ask.
- *
- * The copy comes from `<ClientMessage>` rather than from a catalog this module
- * loads: a catalog imported here would ship every locale to the browser, and
- * each string keeps a boundary of its own this way.
  */
 export const CommentReportDecisionButton = ({
   reportId,
@@ -92,11 +87,7 @@ export const CommentReportDecisionButton = ({
         // The toast renders outside this subtree, so the boundary its copy
         // needs travels with the node rather than sitting at this call site.
         add({
-          title: (
-            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <DecisionDone resolution={resolution} />
-            </Suspense>
-          ),
+          title: <DecisionDone resolution={resolution} />,
           type: "success",
         });
       }
@@ -116,9 +107,7 @@ export const CommentReportDecisionButton = ({
         type="submit"
         variant={resolution === "resolved" ? "default" : "outline"}
       >
-        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-          <DecisionLabel isPending={isPending} resolution={resolution} />
-        </Suspense>
+        <DecisionLabel isPending={isPending} resolution={resolution} />
       </Button>
       {state && !state.ok && state.reportId === reportId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

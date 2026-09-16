@@ -7,9 +7,8 @@ import {
 } from "@publira/layouts/auth-screen";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
-import { Suspense, useActionState } from "react";
+import { useActionState } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { MfaCodeField } from "#components/mfa-code-field";
@@ -40,25 +39,19 @@ export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
     return (
       <AuthScreenBody>
         <h2 className="font-medium text-foreground">
-          <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
-            <ClientMessage message="admin.auth.mfa.recovery_used_title" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.recovery_used_title" />
         </h2>
         <AuthScreenNote>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage
-              message="admin.auth.mfa.recovery_used_description"
-              values={{ count: String(state.remainingRecoveryCodes) }}
-            />
-          </Suspense>
+          <ClientMessage
+            message="admin.auth.mfa.recovery_used_description"
+            values={{ count: String(state.remainingRecoveryCodes) }}
+          />
         </AuthScreenNote>
         <LinkButton
           className="justify-self-start"
           render={<Link href={nextPath} />}
         >
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <ClientMessage message="admin.auth.mfa.continue_to_console" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.continue_to_console" />
         </LinkButton>
       </AuthScreenBody>
     );
@@ -68,9 +61,7 @@ export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
     <>
       <AuthScreenBody>
         <AuthScreenNote>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage message="admin.auth.mfa.verify_description" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.verify_description" />
         </AuthScreenNote>
 
         <form action={formAction} className="grid gap-4">
@@ -87,9 +78,7 @@ export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
             disabled={isPending}
             type="submit"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <MfaVerifySubmitLabel isPending={isPending} />
-            </Suspense>
+            <MfaVerifySubmitLabel isPending={isPending} />
           </Button>
         </form>
       </AuthScreenBody>
@@ -100,9 +89,7 @@ export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
             className="text-primary underline underline-offset-4"
             href="/login"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.auth.mfa.back_to_login" />
-            </Suspense>
+            <ClientMessage message="admin.auth.mfa.back_to_login" />
           </Link>
         </p>
       </AuthScreenFooter>

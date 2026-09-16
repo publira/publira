@@ -1,12 +1,10 @@
 "use client";
 
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import Image from "next/image";
-import { Suspense, useCallback } from "react";
+import { useCallback } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
 import { eyeCatchAspectClassName, eyeCatchAspectOrder } from "./aspects";
 import type { EyeCatchVariantItem } from "./types";
@@ -26,7 +24,7 @@ export const EyeCatchVariantSelector = ({
   selectedVariantType,
   variants,
 }: EyeCatchVariantSelectorProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   const handleButtonClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -58,9 +56,7 @@ export const EyeCatchVariantSelector = ({
   if (variants.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-          <ClientMessage message="admin.eye_catch.variants_empty" />
-        </Suspense>
+        <ClientMessage message="admin.eye_catch.variants_empty" />
       </p>
     );
   }

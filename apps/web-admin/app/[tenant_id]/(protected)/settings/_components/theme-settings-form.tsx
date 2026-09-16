@@ -9,7 +9,6 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Tabs,
   TabsList,
@@ -25,9 +24,8 @@ import type {
   TenantThemeColors,
   TenantThemeFontFamilies,
 } from "@publira/utils/theme-css-variables";
-import { Suspense, useActionState, useCallback, useId, useState } from "react";
+import { useActionState, useCallback, useId, useState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -36,7 +34,7 @@ import {
   AdminSections,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { AdminMessageKey } from "#lib/locale";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -338,7 +336,7 @@ export const ThemeSettingsForm = ({
   action,
   initialTheme,
 }: ThemeSettingsFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const pickerLabel = t("admin.settings.theme.color_picker");
   const tenantId = useTenantId();
   // Seeded once per mount; submitting is what replaces it, with the palette the
@@ -389,14 +387,10 @@ export const ThemeSettingsForm = ({
     <Tabs defaultValue="edit">
       <TabsList>
         <TabsTab value="edit">
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <ClientMessage message="admin.settings.theme.tabs.edit" />
-          </Suspense>
+          <ClientMessage message="admin.settings.theme.tabs.edit" />
         </TabsTab>
         <TabsTab value="preview">
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <ClientMessage message="admin.settings.theme.tabs.preview" />
-          </Suspense>
+          <ClientMessage message="admin.settings.theme.tabs.preview" />
         </TabsTab>
       </TabsList>
 
@@ -409,23 +403,17 @@ export const ThemeSettingsForm = ({
               <AdminSectionHeader>
                 <AdminSectionHeading>
                   <AdminSectionTitle>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.theme.typefaces.title" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.theme.typefaces.title" />
                   </AdminSectionTitle>
                   <AdminSectionDescription>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.theme.typefaces.description" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.theme.typefaces.description" />
                   </AdminSectionDescription>
                 </AdminSectionHeading>
               </AdminSectionHeader>
               <div className="grid gap-5 sm:max-w-3xl">
                 <Field>
                   <FieldLabel>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.theme.typefaces.serif.label" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.theme.typefaces.serif.label" />
                   </FieldLabel>
                   <FieldContent>
                     <Input
@@ -439,11 +427,7 @@ export const ThemeSettingsForm = ({
                       value={theme.serifFontFamily}
                     />
                     <FieldDescription>
-                      <Suspense
-                        fallback={<SkeletonLine className="h-4 w-32" />}
-                      >
-                        <ClientMessage message="admin.settings.theme.typefaces.serif.description" />
-                      </Suspense>
+                      <ClientMessage message="admin.settings.theme.typefaces.serif.description" />
                     </FieldDescription>
                     {fieldErrors?.serifFontFamily ? (
                       <FormMessage variant="destructive">
@@ -454,9 +438,7 @@ export const ThemeSettingsForm = ({
                 </Field>
                 <Field>
                   <FieldLabel>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <ClientMessage message="admin.settings.theme.typefaces.sans.label" />
-                    </Suspense>
+                    <ClientMessage message="admin.settings.theme.typefaces.sans.label" />
                   </FieldLabel>
                   <FieldContent>
                     <Input
@@ -470,11 +452,7 @@ export const ThemeSettingsForm = ({
                       value={theme.sansFontFamily}
                     />
                     <FieldDescription>
-                      <Suspense
-                        fallback={<SkeletonLine className="h-4 w-32" />}
-                      >
-                        <ClientMessage message="admin.settings.theme.typefaces.sans.description" />
-                      </Suspense>
+                      <ClientMessage message="admin.settings.theme.typefaces.sans.description" />
                     </FieldDescription>
                     {fieldErrors?.sansFontFamily ? (
                       <FormMessage variant="destructive">
@@ -607,14 +585,10 @@ export const ThemeSettingsForm = ({
           <AdminSectionHeader>
             <AdminSectionHeading>
               <AdminSectionTitle>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.theme.preview.title" />
-                </Suspense>
+                <ClientMessage message="admin.settings.theme.preview.title" />
               </AdminSectionTitle>
               <AdminSectionDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                  <ClientMessage message="admin.settings.theme.preview.description" />
-                </Suspense>
+                <ClientMessage message="admin.settings.theme.preview.description" />
               </AdminSectionDescription>
             </AdminSectionHeading>
           </AdminSectionHeader>

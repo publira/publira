@@ -25,16 +25,8 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatWeekdayName, WEEKDAY_NUMBERS } from "@publira/utils";
-import {
-  Suspense,
-  useCallback,
-  useContext,
-  useId,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useContext, useId, useMemo, useState } from "react";
 import type { ChangeEventHandler, KeyboardEventHandler } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
@@ -54,8 +46,6 @@ export interface GenreOption {
 /**
  * The locale the console was rendered in, for the values `Intl` words rather
  * than the catalog does — the weekday names and the order genre names sort in.
- * Copy comes from `<ClientMessage>`, which resolves the catalog of that one
- * locale instead of the static map of every one of them.
  */
 const useAdminLocale = () => {
   const locale = useContext(AdminLocaleContext);
@@ -65,60 +55,32 @@ const useAdminLocale = () => {
   return locale;
 };
 
-/**
- * `SelectProps["items"]` takes a `ReactNode` label, so each option keeps a
- * boundary of its own rather than the trigger waiting on the whole catalog.
- */
 const SERIES_STATUS_ITEMS = [
   {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-        <ClientMessage message="admin.series.status.ongoing" />
-      </Suspense>
-    ),
+    label: <ClientMessage message="admin.series.status.ongoing" />,
     value: "ongoing",
   },
   {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-        <ClientMessage message="admin.series.status.completed" />
-      </Suspense>
-    ),
+    label: <ClientMessage message="admin.series.status.completed" />,
     value: "completed",
   },
   {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-        <ClientMessage message="admin.series.status.hiatus" />
-      </Suspense>
-    ),
+    label: <ClientMessage message="admin.series.status.hiatus" />,
     value: "hiatus",
   },
 ];
 
 const SERIES_AGE_RATING_ITEMS = [
   {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-        <ClientMessage message="admin.series.age_rating.all" />
-      </Suspense>
-    ),
+    label: <ClientMessage message="admin.series.age_rating.all" />,
     value: "all",
   },
   {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-        <ClientMessage message="admin.series.age_rating.r15" />
-      </Suspense>
-    ),
+    label: <ClientMessage message="admin.series.age_rating.r15" />,
     value: "r15",
   },
   {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-        <ClientMessage message="admin.series.age_rating.r18" />
-      </Suspense>
-    ),
+    label: <ClientMessage message="admin.series.age_rating.r18" />,
     value: "r18",
   },
 ];
@@ -148,9 +110,7 @@ export const SeriesStatusField = ({
   return (
     <Field>
       <FieldLabel htmlFor={selectId}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <ClientMessage message="admin.series.form.status" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.status" />
       </FieldLabel>
       <FieldContent>
         <Select
@@ -161,9 +121,7 @@ export const SeriesStatusField = ({
         />
         <input name="status" type="hidden" value={value} />
         <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage message="admin.series.form.status_description" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.status_description" />
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -191,9 +149,7 @@ export const SeriesAgeRatingField = ({
   return (
     <Field>
       <FieldLabel htmlFor={selectId}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <ClientMessage message="admin.series.form.age_rating" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.age_rating" />
       </FieldLabel>
       <FieldContent>
         <Select
@@ -207,19 +163,13 @@ export const SeriesAgeRatingField = ({
             than from the guide. */}
         <ul className="grid gap-1 text-xs text-muted-foreground">
           <li>
-            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-              <ClientMessage message="admin.series.form.age_rating_all_hint" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.age_rating_all_hint" />
           </li>
           <li>
-            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <ClientMessage message="admin.series.form.age_rating_r15_hint" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.age_rating_r15_hint" />
           </li>
           <li>
-            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <ClientMessage message="admin.series.form.age_rating_r18_hint" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.age_rating_r18_hint" />
           </li>
         </ul>
       </FieldContent>
@@ -256,9 +206,7 @@ export const SeriesScheduleField = ({
   return (
     <fieldset className="grid gap-2">
       <legend className="text-sm font-medium text-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-          <ClientMessage message="admin.series.form.schedule" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.schedule" />
       </legend>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {WEEKDAY_NUMBERS.map((weekday) => (
@@ -288,49 +236,14 @@ export const SeriesScheduleField = ({
         />
       ))}
       <p className="text-xs text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-          <ClientMessage message="admin.series.form.schedule_description" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.schedule_description" />
       </p>
       {value.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <ClientMessage message="admin.series.form.schedule_irregular" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.schedule_irregular" />
         </p>
       ) : null}
     </fieldset>
-  );
-};
-
-/**
- * The search slot of the genre picker. Its own component because `placeholder`
- * cannot be a node: only this one element waits on the catalog, and the
- * fallback is the same input without the hint, so the picker is usable while
- * the copy is still loading.
- */
-const GenreComboboxInput = ({ hasSelection }: { hasSelection: boolean }) => {
-  const t = useClientMessages();
-
-  return (
-    <MultiComboboxInput
-      placeholder={hasSelection ? "" : t("admin.series.form.genres_search")}
-    />
-  );
-};
-
-/**
- * The button that drops one genre chip. Its own component for the reason
- * {@link GenreComboboxInput} is: `MultiComboboxChipRemove` names itself with an
- * `aria-label`, which has to be a string.
- */
-const GenreChipRemove = () => {
-  const t = useClientMessages();
-
-  return (
-    <MultiComboboxChipRemove
-      aria-label={t("admin.series.form.genres_remove")}
-    />
   );
 };
 
@@ -347,6 +260,7 @@ export const SeriesGenreField = ({
 }) => {
   // `MultiCombobox` renders its own input instead of a Field control, so the
   // label needs an id to point at.
+  const t = useClientMessages();
   const comboboxId = useId();
   // The tenant's own order, which is the order a series presents them in; only
   // the option list is built here.
@@ -358,9 +272,7 @@ export const SeriesGenreField = ({
   return (
     <Field>
       <FieldLabel htmlFor={comboboxId}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-          <ClientMessage message="admin.series.form.genres" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.genres" />
       </FieldLabel>
       <FieldContent>
         {genresErrorMessage ? (
@@ -369,9 +281,7 @@ export const SeriesGenreField = ({
 
         {items.length === 0 ? (
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <ClientMessage message="admin.series.form.genres_empty" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.genres_empty" />
           </FieldDescription>
         ) : (
           <MultiCombobox
@@ -387,25 +297,25 @@ export const SeriesGenreField = ({
                     {selected.map((item) => (
                       <MultiComboboxChip item={item} key={item.value}>
                         {item.label}
-                        <Suspense
-                          fallback={<SkeletonLine className="size-3" />}
-                        >
-                          <GenreChipRemove />
-                        </Suspense>
+                        <MultiComboboxChipRemove
+                          aria-label={t("admin.series.form.genres_remove")}
+                        />
                       </MultiComboboxChip>
                     ))}
-                    <Suspense fallback={<MultiComboboxInput />}>
-                      <GenreComboboxInput hasSelection={selected.length > 0} />
-                    </Suspense>
+                    <MultiComboboxInput
+                      placeholder={
+                        selected.length > 0
+                          ? ""
+                          : t("admin.series.form.genres_search")
+                      }
+                    />
                   </>
                 )}
               </MultiComboboxChips>
             </MultiComboboxInputGroup>
             <ComboboxPopup>
               <ComboboxEmpty>
-                <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-                  <ClientMessage message="admin.series.form.genres_no_match" />
-                </Suspense>
+                <ClientMessage message="admin.series.form.genres_no_match" />
               </ComboboxEmpty>
               <ComboboxItems />
             </ComboboxPopup>
@@ -422,9 +332,7 @@ export const SeriesGenreField = ({
         ))}
 
         <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage message="admin.series.form.genres_description" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.genres_description" />
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -511,9 +419,7 @@ export const SeriesTagField = ({
   return (
     <Field>
       <FieldLabel htmlFor={inputId}>
-        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-          <ClientMessage message="admin.series.form.tags" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.tags" />
       </FieldLabel>
       <FieldContent>
         {suggestionsErrorMessage ? (
@@ -536,15 +442,11 @@ export const SeriesTagField = ({
                   type="button"
                 >
                   <CloseIcon aria-hidden className="h-3 w-3" />
-                  {/* The button's own name, as a node rather than an
-                      `aria-label`, so it keeps a boundary of its own. */}
                   <span className="sr-only">
-                    <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-                      <ClientMessage
-                        message="admin.series.form.tags_remove"
-                        values={{ name: tagName }}
-                      />
-                    </Suspense>
+                    <ClientMessage
+                      message="admin.series.form.tags_remove"
+                      values={{ name: tagName }}
+                    />
                   </span>
                 </button>
               </li>
@@ -569,9 +471,7 @@ export const SeriesTagField = ({
             type="button"
             variant="outline"
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
-              <ClientMessage message="admin.series.form.tags_add" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.tags_add" />
           </Button>
         </div>
 
@@ -586,12 +486,10 @@ export const SeriesTagField = ({
         ))}
 
         <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <ClientMessage
-              message="admin.series.form.tags_description"
-              values={{ count: String(MAX_SERIES_TAGS) }}
-            />
-          </Suspense>
+          <ClientMessage
+            message="admin.series.form.tags_description"
+            values={{ count: String(MAX_SERIES_TAGS) }}
+          />
         </FieldDescription>
       </FieldContent>
     </Field>

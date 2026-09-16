@@ -1,12 +1,8 @@
 "use client";
 
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
-
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { QrCodePath } from "#lib/qr-code";
 
-import { useAdminMessages } from "./admin-locale-context";
 import { QrCode } from "./qr-code";
 
 interface MfaEnrollmentSecretProps {
@@ -23,20 +19,16 @@ export const MfaEnrollmentSecret = ({
   qr,
   secret,
 }: MfaEnrollmentSecretProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
 
   return (
     <div className="grid gap-4">
       <div className="grid gap-1">
         <p className="text-sm font-medium text-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <ClientMessage message="admin.auth.mfa.enroll_scan_title" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.enroll_scan_title" />
         </p>
         <p className="text-xs text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <ClientMessage message="admin.auth.mfa.enroll_scan_description" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.enroll_scan_description" />
         </p>
       </div>
 
@@ -50,9 +42,7 @@ export const MfaEnrollmentSecret = ({
 
       <div className="grid gap-1">
         <p className="text-sm font-medium text-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <ClientMessage message="admin.auth.mfa.enroll_secret_label" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.enroll_secret_label" />
         </p>
         {/*
           The secret is typed into an authenticator by hand when the QR code
@@ -63,9 +53,7 @@ export const MfaEnrollmentSecret = ({
           {secret}
         </code>
         <p className="text-xs text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <ClientMessage message="admin.auth.mfa.enroll_secret_help" />
-          </Suspense>
+          <ClientMessage message="admin.auth.mfa.enroll_secret_help" />
         </p>
       </div>
     </div>

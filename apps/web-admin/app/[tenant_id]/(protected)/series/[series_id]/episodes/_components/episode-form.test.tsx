@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render as renderBase, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -17,7 +18,9 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        {children}
+      </AdminLocaleProvider>
     ),
   });
 

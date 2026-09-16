@@ -18,12 +18,10 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { toDateTimeLocalValue } from "@publira/utils";
 import Image from "next/image";
 import {
-  Suspense,
   useActionState,
   useCallback,
   useContext,
@@ -34,11 +32,8 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import {
-  AdminLocaleContext,
-  useAdminMessages,
-} from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { AdminLocaleContext } from "#components/admin-locale-context";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import {
   DEFAULT_READING_DIRECTION,
@@ -156,7 +151,7 @@ const LabelField = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   // Combobox renders its own input instead of a Field control, so the label
   // needs an id to point at. The fallback Input is a Field control and wires
   // itself up.
@@ -168,9 +163,7 @@ const LabelField = ({
         htmlFor={useLabelFallbackInput ? undefined : comboboxId}
         required
       >
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ClientMessage message="admin.series.form.label" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.label" />
       </FieldLabel>
       <FieldContent>
         {labelsErrorMessage ? (
@@ -188,9 +181,7 @@ const LabelField = ({
               value={selectedLabelPublicId}
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.series.form.label_fallback_description" />
-              </Suspense>
+              <ClientMessage message="admin.series.form.label_fallback_description" />
             </FieldDescription>
           </>
         ) : (
@@ -206,9 +197,7 @@ const LabelField = ({
               />
               <ComboboxPopup>
                 <ComboboxEmpty>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <ClientMessage message="admin.series.form.label_empty" />
-                  </Suspense>
+                  <ClientMessage message="admin.series.form.label_empty" />
                 </ComboboxEmpty>
                 <ComboboxItems />
               </ComboboxPopup>
@@ -221,9 +210,7 @@ const LabelField = ({
             />
 
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.series.form.label_description" />
-              </Suspense>
+              <ClientMessage message="admin.series.form.label_description" />
             </FieldDescription>
           </>
         )}
@@ -247,23 +234,19 @@ const EyeCatchImageField = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const hasPreviewImage = previewImageUrl.length > 0;
 
   return (
     <Field>
       <FieldLabel>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ClientMessage message="admin.series.form.eye_catch" />
-        </Suspense>
+        <ClientMessage message="admin.series.form.eye_catch" />
       </FieldLabel>
       <FieldContent>
         <div className="grid gap-4 border border-border bg-muted/20 p-4">
           <div className="border border-border bg-background p-3">
             <p className="mb-2 text-sm font-medium">
-              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                <ClientMessage message="admin.series.form.eye_catch_preview" />
-              </Suspense>
+              <ClientMessage message="admin.series.form.eye_catch_preview" />
             </p>
             <div className="relative aspect-[3/4] max-w-52 overflow-hidden rounded-surface border border-border bg-muted/50">
               {hasPreviewImage ? (
@@ -277,9 +260,7 @@ const EyeCatchImageField = ({
                 />
               ) : (
                 <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <ClientMessage message="admin.series.form.eye_catch_preview_empty" />
-                  </Suspense>
+                  <ClientMessage message="admin.series.form.eye_catch_preview_empty" />
                 </div>
               )}
             </div>
@@ -298,9 +279,7 @@ const EyeCatchImageField = ({
           value={clearEyeCatchImage ? "1" : "0"}
         />
         <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.series.form.eye_catch_description" />
-          </Suspense>
+          <ClientMessage message="admin.series.form.eye_catch_description" />
         </FieldDescription>
       </FieldContent>
     </Field>
@@ -422,7 +401,7 @@ export const SeriesForm = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const labelItems = useMemo<ComboboxItem[]>(
@@ -491,9 +470,7 @@ export const SeriesForm = ({
       <div className="grid gap-4">
         <Field>
           <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.form.title" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.title" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -508,9 +485,7 @@ export const SeriesForm = ({
 
         <Field>
           <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.form.reading_period" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.reading_period" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -523,18 +498,14 @@ export const SeriesForm = ({
               type="number"
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.series.form.reading_period_description" />
-              </Suspense>
+              <ClientMessage message="admin.series.form.reading_period_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.form.synopsis" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.synopsis" />
           </FieldLabel>
           <FieldContent>
             <Textarea
@@ -566,9 +537,7 @@ export const SeriesForm = ({
 
         <Field>
           <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.form.published_at" />
-            </Suspense>
+            <ClientMessage message="admin.series.form.published_at" />
           </FieldLabel>
           <FieldContent>
             <input defaultValue="" name="published_at" type="hidden" />
@@ -583,14 +552,12 @@ export const SeriesForm = ({
               type="datetime-local"
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage
-                  message="admin.series.form.published_at_description"
-                  values={{
-                    time_zone: timeZone,
-                  }}
-                />
-              </Suspense>
+              <ClientMessage
+                message="admin.series.form.published_at_description"
+                values={{
+                  time_zone: timeZone,
+                }}
+              />
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -652,9 +619,7 @@ export const SeriesForm = ({
 
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit">
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <SeriesFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
-          </Suspense>
+          <SeriesFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
         </Button>
       </div>
     </form>

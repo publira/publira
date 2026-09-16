@@ -5,7 +5,7 @@ import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
+import { useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { approveCommentAction, restoreCommentAction } from "../_lib/actions";
@@ -32,7 +32,7 @@ export const CommentActionButton = ({
   action,
   publicId,
 }: CommentActionButtonProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const copy =
     action === "approve"
       ? {

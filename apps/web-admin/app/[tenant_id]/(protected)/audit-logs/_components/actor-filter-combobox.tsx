@@ -12,11 +12,9 @@ import {
   MultiComboboxInputGroup,
 } from "@publira/ui-components/combobox";
 import type { MultiComboboxItem } from "@publira/ui-components/combobox";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
 interface ActorFilterComboboxProps {
   defaultValue: string;
@@ -27,7 +25,7 @@ export const ActorFilterCombobox = ({
   defaultValue,
   items,
 }: ActorFilterComboboxProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const [selectedValues, setSelectedValues] = useState<string[]>(
     defaultValue ? [defaultValue] : []
   );
@@ -82,9 +80,7 @@ export const ActorFilterCombobox = ({
         </MultiComboboxInputGroup>
         <ComboboxPopup>
           <ComboboxEmpty>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.audit.filter.actor_empty" />
-            </Suspense>
+            <ClientMessage message="admin.audit.filter.actor_empty" />
           </ComboboxEmpty>
           <ComboboxItems />
         </ComboboxPopup>

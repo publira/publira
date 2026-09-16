@@ -50,7 +50,9 @@ const refuseImage = () =>
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        {children}
+      </AdminLocaleProvider>
     ),
   });
 

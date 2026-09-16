@@ -9,11 +9,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useCallback } from "react";
+import { useActionState, useCallback } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -34,7 +32,7 @@ export const EpisodeForm = ({
   action,
   timeZone,
 }: EpisodeFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -61,9 +59,7 @@ export const EpisodeForm = ({
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.series.episodes.form.title" />
-          </Suspense>
+          <ClientMessage message="admin.series.episodes.form.title" />
         </FieldLabel>
         <FieldContent>
           <Input
@@ -77,25 +73,19 @@ export const EpisodeForm = ({
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.series.episodes.form.price" />
-          </Suspense>
+          <ClientMessage message="admin.series.episodes.form.price" />
         </FieldLabel>
         <FieldContent>
           <Input defaultValue={0} min={0} name="price" required type="number" />
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.form.price_description" />
-            </Suspense>
+            <ClientMessage message="admin.series.episodes.form.price_description" />
           </FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ClientMessage message="admin.series.episodes.form.reading_period" />
-          </Suspense>
+          <ClientMessage message="admin.series.episodes.form.reading_period" />
         </FieldLabel>
         <FieldContent>
           <Input
@@ -106,9 +96,7 @@ export const EpisodeForm = ({
             type="number"
           />
           <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.series.episodes.form.reading_period_description" />
-            </Suspense>
+            <ClientMessage message="admin.series.episodes.form.reading_period_description" />
           </FieldDescription>
         </FieldContent>
       </Field>

@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import { CreatorCreditSource } from "@publira/api-client/admin/types";
-import { bindMessages } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,16 +9,6 @@ import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import { EpisodeCreatorCreditsForm } from "./episode-creator-credits-form";
 
-const messages = bindMessages(sharedCatalog("en"));
-vi.mock("#components/client-message", () => ({
-  ClientMessage: ({
-    message,
-    values,
-  }: {
-    message: Parameters<typeof messages>[0];
-    values?: Parameters<typeof messages>[1];
-  }) => messages(message, values),
-}));
 vi.mock("#lib/use-tenant-id", () => ({ useTenantId: () => "TENANT001" }));
 vi.mock("@publira/ui-components/combobox", () => ({
   Combobox: ({
@@ -70,7 +59,9 @@ const renderForm = () =>
     />,
     {
       wrapper: ({ children }) => (
-        <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+          {children}
+        </AdminLocaleProvider>
       ),
     }
   );

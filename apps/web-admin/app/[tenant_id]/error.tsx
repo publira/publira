@@ -3,7 +3,7 @@
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
+import { ErrorBoundaryMessage } from "#components/error-boundary-message";
 import { ErrorScreen } from "#components/error-screen";
 
 /**
@@ -47,24 +47,24 @@ const TenantError = ({
     <ErrorScreen
       description={
         <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-          <ClientMessage message="admin.errors.root_description" />
+          <ErrorBoundaryMessage message="admin.errors.root_description" />
         </Suspense>
       }
       digest={error.digest}
       digestLabel={
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-          <ClientMessage message="admin.common.error_id" />
+          <ErrorBoundaryMessage message="admin.common.error_id" />
         </Suspense>
       }
       retry={retry}
       retryLabel={
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-          <ClientMessage message="admin.common.retry" />
+          <ErrorBoundaryMessage message="admin.common.retry" />
         </Suspense>
       }
       title={
         <Suspense fallback={<SkeletonLine className="h-8 w-80" />}>
-          <ClientMessage message="admin.errors.root_title" />
+          <ErrorBoundaryMessage message="admin.errors.root_title" />
         </Suspense>
       }
     />

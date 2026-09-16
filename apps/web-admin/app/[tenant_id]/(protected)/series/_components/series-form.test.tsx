@@ -51,7 +51,9 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en">{children}</AdminLocaleProvider>
+      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        {children}
+      </AdminLocaleProvider>
     ),
   });
 
@@ -382,7 +384,7 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
   mockLocale.current = "ja";
 
   renderBase(
-    <AdminLocaleProvider locale="ja">
+    <AdminLocaleProvider locale="ja" messages={sharedCatalog("ja")}>
       <SeriesForm
         action={action}
         creatorRoles={creatorRoles}

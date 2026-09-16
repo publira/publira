@@ -9,10 +9,8 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense, useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 
-import { useAdminMessages } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -20,7 +18,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EmailChangeActionState } from "../settings-types";
@@ -33,7 +31,7 @@ interface EmailChangeFormProps {
 }
 
 export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
-  const t = useAdminMessages();
+  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [currentEmail, setCurrentEmail] = useState("");
@@ -66,14 +64,10 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email_change.title" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email_change.title" />
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email_change.description" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email_change.description" />
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
@@ -82,9 +76,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
 
         <Field>
           <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email_change.current_email" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email_change.current_email" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -101,9 +93,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
 
         <Field>
           <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email_change.new_email" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email_change.new_email" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -120,9 +110,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
 
         <Field>
           <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ClientMessage message="admin.settings.email_change.current_password" />
-            </Suspense>
+            <ClientMessage message="admin.settings.email_change.current_password" />
           </FieldLabel>
           <FieldContent>
             <Input
@@ -135,9 +123,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
               value={currentPassword}
             />
             <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.settings.email_change.password_description" />
-              </Suspense>
+              <ClientMessage message="admin.settings.email_change.password_description" />
             </FieldDescription>
           </FieldContent>
         </Field>

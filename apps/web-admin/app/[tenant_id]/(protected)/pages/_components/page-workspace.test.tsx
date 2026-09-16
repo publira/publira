@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -43,16 +44,10 @@ const version: PageVersionListItem = {
   versionNumber: 1,
 };
 
-/**
- * `<ClientMessage>` suspends on the catalog it loads, so the render is awaited
- * and the document names the locale the copy is asserted in.
- */
 const renderWorkspace = async () => {
-  document.documentElement.lang = "en";
-
   await act(() => {
     renderBase(
-      <AdminLocaleProvider locale="en">
+      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
         <PageWorkspace
           initialPage={page}
           initialVersions={[version]}
@@ -80,7 +75,6 @@ const editForm = (): HTMLFormElement => {
 
 afterEach(() => {
   cleanup();
-  document.documentElement.lang = "";
 });
 
 describe("PageWorkspace", () => {
