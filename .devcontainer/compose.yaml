@@ -36,7 +36,7 @@ services:
 
   app:
     init: true
-    image: ghcr.io/publira/base-images/publira-dev:2026.09.16@sha256:33daaa933c8a37f467eae3bb9433be0fe5e0b3f7bb04638b3cf18708ad44ef54
+    image: ghcr.io/publira/base-images/publira-dev:2026.09.16@sha256:53dc0902e99d35ba1a8ab850f67c89ba691e93360135b2beb568de76fb912981
     command: sleep infinity
     volumes:
       # Keep Claude Code login, configuration, and local state across rebuilds.
