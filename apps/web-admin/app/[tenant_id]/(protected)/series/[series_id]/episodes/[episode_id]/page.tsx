@@ -96,30 +96,30 @@ const EditEpisodePage = async ({
     timeZone,
     t,
   ] = await Promise.all([
-      getEpisode(
-        {
-          publicId: episode_id,
-          seriesPublicId: series_id,
-          tenantId,
-        },
-        locale
-      ),
-      listEpisodeImages(
-        {
-          episodePublicId: episode_id,
-          tenantId,
-        },
-        locale
-      ),
-      // Only to name what the layout options that follow the series follow, so
-      // a read that failed leaves them unnamed rather than the form unusable.
-      getSeries({ publicId: series_id, tenantId }, locale),
-      listEpisodeCredits({ episodePublicId: episode_id, tenantId }, locale),
-      listAllCreators(tenantId, locale),
-      listCreatorRoles(tenantId, locale),
-      getTenantDisplayTimeZone(tenantId),
-      getMessagesFor(locale),
-    ]);
+    getEpisode(
+      {
+        publicId: episode_id,
+        seriesPublicId: series_id,
+        tenantId,
+      },
+      locale
+    ),
+    listEpisodeImages(
+      {
+        episodePublicId: episode_id,
+        tenantId,
+      },
+      locale
+    ),
+    // Only to name what the layout options that follow the series follow, so
+    // a read that failed leaves them unnamed rather than the form unusable.
+    getSeries({ publicId: series_id, tenantId }, locale),
+    listEpisodeCredits({ episodePublicId: episode_id, tenantId }, locale),
+    listAllCreators(tenantId, locale),
+    listCreatorRoles(tenantId, locale),
+    getTenantDisplayTimeZone(tenantId),
+    getMessagesFor(locale),
+  ]);
   if (!episodeResult.ok && episodeResult.notFound) {
     notFound();
   }
