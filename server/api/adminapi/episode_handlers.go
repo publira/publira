@@ -23,6 +23,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
@@ -315,9 +316,39 @@ func (s *adminServer) GetEpisode(
 		return nil, s.internalDBError(ctx, "failed to get episode", err, "tenant_id", tenant.ID.String())
 	}
 
+	episode := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row)
+	readingDirection, spreadStartIndex, err := episodeReadingLayout(episode, protomapper.StoredReadingLayout{
+		ReadingDirection:       row.ReadingDirection,
+		SpreadStartIndex:       row.SpreadStartIndex,
+		SeriesReadingDirection: row.SeriesReadingDirection,
+		SeriesSpreadStartIndex: row.SeriesSpreadStartIndex,
+	})
+	if err != nil {
+		return nil, s.internalError(ctx, "episode layout holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", row.PublicID)
+	}
+
 	return connect.NewResponse(&publiraadminv1.GetEpisodeResponse{
-		Episode: protomapper.EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row),
+		Episode:          episode,
+		ReadingDirection: readingDirection,
+		SpreadStartIndex: spreadStartIndex,
 	}), nil
+}
+
+// episodeReadingLayout puts the resolved layout onto the episode and answers
+// the episode's own overrides beside it, the pair every admin episode read
+// that carries a layout responds with.
+func episodeReadingLayout(
+	episode *publirattypesv1.Episode,
+	stored protomapper.StoredReadingLayout,
+) (publirattypesv1.ReadingDirection, *int32, error) {
+	if err := protomapper.SetResolvedReadingLayout(episode, stored); err != nil {
+		return publirattypesv1.ReadingDirection_READING_DIRECTION_UNSPECIFIED, nil, err
+	}
+	readingDirection, err := protomapper.ReadingDirectionOverrideFromStored(stored.ReadingDirection)
+	if err != nil {
+		return publirattypesv1.ReadingDirection_READING_DIRECTION_UNSPECIFIED, nil, err
+	}
+	return readingDirection, protomapper.SpreadStartIndexOverrideFromStored(stored.SpreadStartIndex), nil
 }
 
 func listEpisodePublicIDs(rows []dbmodels.ListEpisodesBySeriesForTenantRow) []string {
@@ -773,4 +804,95 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		}
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(ep)}), nil
+}
+
+func (s *adminServer) UpdateEpisodeLayout(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateEpisodeLayoutRequest],
+) (*connect.Response[publiraadminv1.UpdateEpisodeLayoutResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
+	if episodePublicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	}
+	storedReadingDirection, err := protomapper.ReadingDirectionOverrideToStored(req.Msg.ReadingDirection)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "reading_direction")
+	}
+	storedSpreadStartIndex := sql.NullInt32{}
+	if req.Msg.SpreadStartIndex != nil {
+		if *req.Msg.SpreadStartIndex < 0 {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, protomapper.ErrNegativeSpreadStartIndex, "spread_start_index")
+		}
+		storedSpreadStartIndex = sql.NullInt32{Int32: *req.Msg.SpreadStartIndex, Valid: true}
+	}
+
+	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to get episode for layout update", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+	}
+	// Pages are only ever added to an episode, so a count read outside a lock
+	// can fall short of the truth but never exceed it: a race refuses an index
+	// that has just become valid rather than storing one that is not.
+	if storedSpreadStartIndex.Valid {
+		pageCount, countErr := s.queriesFor(ctx).CountEpisodeImagesByEpisodeID(ctx, episode.ID)
+		if countErr != nil {
+			return nil, s.internalDBError(ctx, "failed to count episode pages for layout update", countErr, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		}
+		if storedSpreadStartIndex.Int32 >= pageCount {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("spread_start_index must name one of the episode's pages"), "spread_start_index")
+		}
+	}
+
+	if err := s.queriesFor(ctx).UpdateEpisodeLayoutByIDForTenant(ctx, dbmodels.UpdateEpisodeLayoutByIDForTenantParams{
+		TenantID:         tenant.ID,
+		ID:               episode.ID,
+		ReadingDirection: storedReadingDirection,
+		SpreadStartIndex: storedSpreadStartIndex,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to update episode layout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	updated, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get episode after layout update", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(updated)
+	readingDirection, spreadStartIndex, err := episodeReadingLayout(mapped, protomapper.StoredReadingLayout{
+		ReadingDirection:       updated.ReadingDirection,
+		SpreadStartIndex:       updated.SpreadStartIndex,
+		SeriesReadingDirection: updated.SeriesReadingDirection,
+		SeriesSpreadStartIndex: updated.SeriesSpreadStartIndex,
+	})
+	if err != nil {
+		return nil, s.internalError(ctx, "episode layout holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
+
+	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "episode_updated",
+			TargetType:  "episode",
+			TargetID:    updated.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		})
+	}
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after episode layout update", "tenant_public_id", tenant.PublicID, "episode_public_id", updated.PublicID, "error", err)
+		}
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateEpisodeLayoutResponse{
+		Episode:          mapped,
+		ReadingDirection: readingDirection,
+		SpreadStartIndex: spreadStartIndex,
+	}), nil
 }

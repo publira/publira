@@ -484,6 +484,8 @@ type seriesListingMetadata struct {
 	scheduleWeekdays []int32
 	ageRating        string
 	commentMode      sql.NullString
+	readingDirection string
+	spreadStartIndex int32
 }
 
 // normalizeSeriesListingMetadata validates the listing fields of a create or
@@ -496,6 +498,8 @@ func normalizeSeriesListingMetadata(
 	scheduleWeekdays []int32,
 	ageRating publirattypesv1.SeriesAgeRating,
 	commentMode publirattypesv1.CommentMode,
+	readingDirection publirattypesv1.ReadingDirection,
+	spreadStartIndex *int32,
 ) (seriesListingMetadata, error) {
 	storedStatus, err := protomapper.SeriesStatusToStored(status)
 	if err != nil {
@@ -513,11 +517,21 @@ func normalizeSeriesListingMetadata(
 	if err != nil {
 		return seriesListingMetadata{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "comment_mode")
 	}
+	storedReadingDirection, err := protomapper.SeriesReadingDirectionToStored(readingDirection)
+	if err != nil {
+		return seriesListingMetadata{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "reading_direction")
+	}
+	storedSpreadStartIndex, err := protomapper.SeriesSpreadStartIndexToStored(spreadStartIndex)
+	if err != nil {
+		return seriesListingMetadata{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "spread_start_index")
+	}
 	return seriesListingMetadata{
 		status:           storedStatus,
 		scheduleWeekdays: storedWeekdays,
 		ageRating:        storedAgeRating,
 		commentMode:      storedCommentMode,
+		readingDirection: storedReadingDirection,
+		spreadStartIndex: storedSpreadStartIndex,
 	}, nil
 }
 
@@ -551,7 +565,7 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, err
 	}
-	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating, req.Msg.CommentMode)
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating, req.Msg.CommentMode, req.Msg.ReadingDirection, req.Msg.SpreadStartIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -614,6 +628,8 @@ func (s *adminServer) CreateSeries(
 		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
 		AgeRating:          listingMetadata.ageRating,
 		CommentMode:        listingMetadata.commentMode,
+		ReadingDirection:   listingMetadata.readingDirection,
+		SpreadStartIndex:   listingMetadata.spreadStartIndex,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
@@ -691,7 +707,16 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
 	}
-	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: series, CommentMode: commentMode}), nil
+	readingDirection, spreadStartIndex, err := protomapper.SeriesReadingLayoutFromStored(created.ReadingDirection, created.SpreadStartIndex)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
+	}
+	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{
+		Series:           series,
+		CommentMode:      commentMode,
+		ReadingDirection: readingDirection,
+		SpreadStartIndex: spreadStartIndex,
+	}), nil
 }
 
 func (s *adminServer) UpdateSeries(
@@ -711,7 +736,7 @@ func (s *adminServer) UpdateSeries(
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating, req.Msg.CommentMode)
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating, req.Msg.CommentMode, req.Msg.ReadingDirection, req.Msg.SpreadStartIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -781,6 +806,8 @@ func (s *adminServer) UpdateSeries(
 		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
 		AgeRating:          listingMetadata.ageRating,
 		CommentMode:        listingMetadata.commentMode,
+		ReadingDirection:   listingMetadata.readingDirection,
+		SpreadStartIndex:   listingMetadata.spreadStartIndex,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
@@ -866,7 +893,16 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{Series: series, CommentMode: commentMode}), nil
+	readingDirection, spreadStartIndex, err := protomapper.SeriesReadingLayoutFromStored(updated.ReadingDirection, updated.SpreadStartIndex)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{
+		Series:           series,
+		CommentMode:      commentMode,
+		ReadingDirection: readingDirection,
+		SpreadStartIndex: spreadStartIndex,
+	}), nil
 }
 
 const (
@@ -1268,5 +1304,14 @@ func (s *adminServer) GetSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
 	}
-	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{Series: series, CommentMode: commentMode}), nil
+	readingDirection, spreadStartIndex, err := protomapper.SeriesReadingLayoutFromStored(row.ReadingDirection, row.SpreadStartIndex)
+	if err != nil {
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
+	}
+	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{
+		Series:           series,
+		CommentMode:      commentMode,
+		ReadingDirection: readingDirection,
+		SpreadStartIndex: spreadStartIndex,
+	}), nil
 }

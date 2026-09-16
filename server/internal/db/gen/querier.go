@@ -94,6 +94,8 @@ type Querier interface {
 	// Whether a role may still be deleted, counted over the episodes. The refusal
 	// is the handler's, and this is one half of what it is based on.
 	CountEpisodeCreatorsByRoleIDForTenant(ctx context.Context, arg CountEpisodeCreatorsByRoleIDForTenantParams) (int32, error)
+	// How many pages the body has, which bounds where its spreads may start.
+	CountEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	CountPendingEndUsers(ctx context.Context) (int32, error)
 	// The size of the approval queue, for the console navigation that carries it on
 	// every screen. Counting is a query of its own rather than the length of a
@@ -1738,6 +1740,9 @@ type Querier interface {
 	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
 	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error
 	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
+	// Both overrides are written together, and NULL returns a value to following
+	// the series.
+	UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateGenre(ctx context.Context, arg UpdateGenreParams) error

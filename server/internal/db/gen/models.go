@@ -157,13 +157,15 @@ type CreatorRole struct {
 }
 
 type Episode struct {
-	ID         uuid.UUID `json:"id"`
-	SeriesID   uuid.UUID `json:"series_id"`
-	PublicID   string    `json:"public_id"`
-	Title      string    `json:"title"`
-	OrderIndex int32     `json:"order_index"`
-	CreatedAt  time.Time `json:"created_at"`
-	TenantID   uuid.UUID `json:"tenant_id"`
+	ID               uuid.UUID      `json:"id"`
+	SeriesID         uuid.UUID      `json:"series_id"`
+	PublicID         string         `json:"public_id"`
+	Title            string         `json:"title"`
+	OrderIndex       int32          `json:"order_index"`
+	CreatedAt        time.Time      `json:"created_at"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	ReadingDirection sql.NullString `json:"reading_direction"`
+	SpreadStartIndex sql.NullInt32  `json:"spread_start_index"`
 }
 
 type EpisodeComment struct {
@@ -578,6 +580,8 @@ type SeriesListing struct {
 	AgeRating          string         `json:"age_rating"`
 	EpisodeRatingMode  sql.NullString `json:"episode_rating_mode"`
 	CommentMode        sql.NullString `json:"comment_mode"`
+	ReadingDirection   string         `json:"reading_direction"`
+	SpreadStartIndex   int32          `json:"spread_start_index"`
 }
 
 type SeriesRatingCount struct {

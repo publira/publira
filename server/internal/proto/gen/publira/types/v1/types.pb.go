@@ -135,6 +135,59 @@ func (SeriesAgeRating) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{1}
 }
 
+// Which way the pages of a work are turned. A series states it for every one
+// of its episodes, and an episode may state its own.
+type ReadingDirection int32
+
+const (
+	ReadingDirection_READING_DIRECTION_UNSPECIFIED ReadingDirection = 0
+	// The reader turns from right to left, the binding of most manga. It is what
+	// a series nobody has set is read in.
+	ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT ReadingDirection = 1
+	ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT ReadingDirection = 2
+)
+
+// Enum value maps for ReadingDirection.
+var (
+	ReadingDirection_name = map[int32]string{
+		0: "READING_DIRECTION_UNSPECIFIED",
+		1: "READING_DIRECTION_RIGHT_TO_LEFT",
+		2: "READING_DIRECTION_LEFT_TO_RIGHT",
+	}
+	ReadingDirection_value = map[string]int32{
+		"READING_DIRECTION_UNSPECIFIED":   0,
+		"READING_DIRECTION_RIGHT_TO_LEFT": 1,
+		"READING_DIRECTION_LEFT_TO_RIGHT": 2,
+	}
+)
+
+func (x ReadingDirection) Enum() *ReadingDirection {
+	p := new(ReadingDirection)
+	*p = x
+	return p
+}
+
+func (x ReadingDirection) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ReadingDirection) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[2].Descriptor()
+}
+
+func (ReadingDirection) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[2]
+}
+
+func (x ReadingDirection) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ReadingDirection.Descriptor instead.
+func (ReadingDirection) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{2}
+}
+
 // How comments a reader writes on an episode are published. The tenant states
 // it once (tenant_config.comment_mode) and one series may state its own
 // instead (series_listings.comment_mode), so a storefront deciding whether an
@@ -180,11 +233,11 @@ func (x CommentMode) String() string {
 }
 
 func (CommentMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[2].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[3].Descriptor()
 }
 
 func (CommentMode) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[2]
+	return &file_publira_types_v1_types_proto_enumTypes[3]
 }
 
 func (x CommentMode) Number() protoreflect.EnumNumber {
@@ -193,7 +246,7 @@ func (x CommentMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CommentMode.Descriptor instead.
 func (CommentMode) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{2}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{3}
 }
 
 // Which of a tenant's age ratings a reader has to prove an age for
@@ -242,11 +295,11 @@ func (x AgeVerification) String() string {
 }
 
 func (AgeVerification) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[3].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[4].Descriptor()
 }
 
 func (AgeVerification) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[3]
+	return &file_publira_types_v1_types_proto_enumTypes[4]
 }
 
 func (x AgeVerification) Number() protoreflect.EnumNumber {
@@ -255,7 +308,7 @@ func (x AgeVerification) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AgeVerification.Descriptor instead.
 func (AgeVerification) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{3}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{4}
 }
 
 // TenantContext identifies a tenant for internal RPC wiring.
@@ -1172,9 +1225,20 @@ type Episode struct {
 	// thing whichever press mode the tenant chose. It is the stored tally rather
 	// than a count taken at read time, so the episode read carries one more
 	// column instead of one more scan.
-	RatingCount   int64 `protobuf:"varint,10,opt,name=rating_count,json=ratingCount,proto3" json:"rating_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RatingCount int64 `protobuf:"varint,10,opt,name=rating_count,json=ratingCount,proto3" json:"rating_count,omitempty"`
+	// Which way the pages are turned, and the zero-based index of the page from
+	// which two pages share a screen: every page before it stands alone. Both are
+	// resolved — the episode's own value where it states one, and its series'
+	// where it does not — so a viewer lays the body out from these two fields
+	// alone. Set on the reads that carry `creators`; READING_DIRECTION_UNSPECIFIED
+	// and 0 in the lists that carry an episode as a link.
+	//
+	// The index may lie past the last page when the series states it for longer
+	// episodes than this one, and the episode is then laid out without a spread.
+	ReadingDirection ReadingDirection `protobuf:"varint,11,opt,name=reading_direction,json=readingDirection,proto3,enum=publira.types.v1.ReadingDirection" json:"reading_direction,omitempty"`
+	SpreadStartIndex int32            `protobuf:"varint,12,opt,name=spread_start_index,json=spreadStartIndex,proto3" json:"spread_start_index,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -1273,6 +1337,20 @@ func (x *Episode) GetCreators() []*Creator {
 func (x *Episode) GetRatingCount() int64 {
 	if x != nil {
 		return x.RatingCount
+	}
+	return 0
+}
+
+func (x *Episode) GetReadingDirection() ReadingDirection {
+	if x != nil {
+		return x.ReadingDirection
+	}
+	return ReadingDirection_READING_DIRECTION_UNSPECIFIED
+}
+
+func (x *Episode) GetSpreadStartIndex() int32 {
+	if x != nil {
+		return x.SpreadStartIndex
 	}
 	return 0
 }
@@ -2043,7 +2121,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x04tags\x18\x11 \x03(\v2\x15.publira.types.v1.TagR\x04tags\x12,\n" +
 	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCount\x12%\n" +
 	"\x0erating_average\x18\x13 \x01(\x01R\rratingAverage\x12!\n" +
-	"\frating_count\x18\x14 \x01(\x03R\vratingCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xdd\x02\n" +
+	"\frating_count\x18\x14 \x01(\x03R\vratingCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xdc\x03\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -2056,7 +2134,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\fpublished_at\x18\b \x01(\tR\vpublishedAt\x125\n" +
 	"\bcreators\x18\t \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x12!\n" +
 	"\frating_count\x18\n" +
-	" \x01(\x03R\vratingCount\"\xd9\x01\n" +
+	" \x01(\x03R\vratingCount\x12O\n" +
+	"\x11reading_direction\x18\v \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x12,\n" +
+	"\x12spread_start_index\x18\f \x01(\x05R\x10spreadStartIndex\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +
@@ -2144,7 +2224,11 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x1dSERIES_AGE_RATING_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15SERIES_AGE_RATING_ALL\x10\x01\x12\x19\n" +
 	"\x15SERIES_AGE_RATING_R15\x10\x02\x12\x19\n" +
-	"\x15SERIES_AGE_RATING_R18\x10\x03*\x86\x01\n" +
+	"\x15SERIES_AGE_RATING_R18\x10\x03*\x7f\n" +
+	"\x10ReadingDirection\x12!\n" +
+	"\x1dREADING_DIRECTION_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fREADING_DIRECTION_RIGHT_TO_LEFT\x10\x01\x12#\n" +
+	"\x1fREADING_DIRECTION_LEFT_TO_RIGHT\x10\x02*\x86\x01\n" +
 	"\vCommentMode\x12\x1c\n" +
 	"\x18COMMENT_MODE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15COMMENT_MODE_DISABLED\x10\x01\x12\x1a\n" +
@@ -2168,49 +2252,51 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(SeriesStatus)(0),             // 0: publira.types.v1.SeriesStatus
 	(SeriesAgeRating)(0),          // 1: publira.types.v1.SeriesAgeRating
-	(CommentMode)(0),              // 2: publira.types.v1.CommentMode
-	(AgeVerification)(0),          // 3: publira.types.v1.AgeVerification
-	(*TenantContext)(nil),         // 4: publira.types.v1.TenantContext
-	(*User)(nil),                  // 5: publira.types.v1.User
-	(*AccessToken)(nil),           // 6: publira.types.v1.AccessToken
-	(*CreatorRole)(nil),           // 7: publira.types.v1.CreatorRole
-	(*Creator)(nil),               // 8: publira.types.v1.Creator
-	(*Label)(nil),                 // 9: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 10: publira.types.v1.SeriesEyeCatchVariant
-	(*ImageCropRect)(nil),         // 11: publira.types.v1.ImageCropRect
-	(*Genre)(nil),                 // 12: publira.types.v1.Genre
-	(*Tag)(nil),                   // 13: publira.types.v1.Tag
-	(*Series)(nil),                // 14: publira.types.v1.Series
-	(*Episode)(nil),               // 15: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 16: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 17: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 18: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 19: publira.types.v1.Page
-	(*PageVersion)(nil),           // 20: publira.types.v1.PageVersion
+	(ReadingDirection)(0),         // 2: publira.types.v1.ReadingDirection
+	(CommentMode)(0),              // 3: publira.types.v1.CommentMode
+	(AgeVerification)(0),          // 4: publira.types.v1.AgeVerification
+	(*TenantContext)(nil),         // 5: publira.types.v1.TenantContext
+	(*User)(nil),                  // 6: publira.types.v1.User
+	(*AccessToken)(nil),           // 7: publira.types.v1.AccessToken
+	(*CreatorRole)(nil),           // 8: publira.types.v1.CreatorRole
+	(*Creator)(nil),               // 9: publira.types.v1.Creator
+	(*Label)(nil),                 // 10: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 11: publira.types.v1.SeriesEyeCatchVariant
+	(*ImageCropRect)(nil),         // 12: publira.types.v1.ImageCropRect
+	(*Genre)(nil),                 // 13: publira.types.v1.Genre
+	(*Tag)(nil),                   // 14: publira.types.v1.Tag
+	(*Series)(nil),                // 15: publira.types.v1.Series
+	(*Episode)(nil),               // 16: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 17: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 18: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 19: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 20: publira.types.v1.Page
+	(*PageVersion)(nil),           // 21: publira.types.v1.PageVersion
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	7,  // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
-	10, // 1: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	9,  // 2: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	8,  // 3: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	10, // 4: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	8,  // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
+	11, // 1: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	10, // 2: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	9,  // 3: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	11, // 4: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	0,  // 5: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
 	1,  // 6: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	12, // 7: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
-	13, // 8: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
-	8,  // 9: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
-	17, // 10: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	17, // 11: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	13, // 7: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	14, // 8: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	9,  // 9: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	2,  // 10: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	18, // 11: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	18, // 12: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -2223,7 +2309,7 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      5,
 			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
