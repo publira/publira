@@ -1121,14 +1121,6 @@
         "credits_list_failed": "Could not load the episode credits. Please try again later.",
         "credits_save_failed": "Could not save the episode credits. Please try again later.",
         "credits_error": "Could not display episode credits",
-        "credits": {
-          "title": "Authors",
-          "description": "Edit the authors credited on this episode. Rows marked Episode only are not changed by later range edits.",
-          "empty": "No authors are credited on this episode.",
-          "episode_only": "Episode only",
-          "save": "Save authors",
-          "saving": "Saving..."
-        },
         "create_failed": "Could not create the episode. Please try again later.",
         "list_failed": "Could not load the episodes. Please try again later.",
         "get_failed": "Could not load the episode. Please try again later.",
@@ -1218,6 +1210,12 @@
           "failed": "Could not update the page layout. Please try again later."
         },
         "credits": {
+          "title": "Authors",
+          "description": "Edit the authors credited on this episode. Rows marked Episode only are not changed by later range edits.",
+          "empty": "No authors are credited on this episode.",
+          "episode_only": "Episode only",
+          "save": "Save authors",
+          "saving": "Saving...",
           "dialog_title": "Edit credits on selected episodes",
           "dialog_description": "Choose an operation, who it applies to, and which existing episodes to change. Check any episodes in this series, including ones that are not on this page. Credits on the series form stay the template for new episodes.",
           "operation": "Operation",

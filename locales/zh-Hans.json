@@ -1121,14 +1121,6 @@
         "credits_list_failed": "无法加载本集作者，请稍后重试。",
         "credits_save_failed": "无法保存本集作者，请稍后重试。",
         "credits_error": "无法显示本集作者",
-        "credits": {
-          "title": "作者",
-          "description": "编辑本集署名作者。标为“仅本集”的行不会受到之后范围编辑的影响。",
-          "empty": "本集没有署名作者。",
-          "episode_only": "仅本集",
-          "save": "保存作者",
-          "saving": "保存中…"
-        },
         "create_failed": "无法创建该章节。请稍后再试。",
         "list_failed": "无法加载章节。请稍后再试。",
         "get_failed": "无法加载该章节。请稍后再试。",
@@ -1218,6 +1210,12 @@
           "failed": "无法更新页面布局。请稍后再试。"
         },
         "credits": {
+          "title": "作者",
+          "description": "编辑本集署名作者。标为“仅本集”的行不会受到之后范围编辑的影响。",
+          "empty": "本集没有署名作者。",
+          "episode_only": "仅本集",
+          "save": "保存作者",
+          "saving": "保存中…",
           "dialog_title": "编辑所选章节的署名",
           "dialog_description": "选择操作、适用的作者，以及要更改的现有章节。可勾选本系列中的任意章节，包括不在本页的章节。系列编辑页上的署名仍是新章节的模板。",
           "operation": "操作",
