@@ -445,6 +445,72 @@ WHERE u.tenant_id = sqlc.arg('tenant_id')
         WHERE tur.user_id = u.id
     );
 
+-- name: SuspendTenantReader :one
+-- Suspends a reader and invalidates the sessions they hold. A reader who is
+-- already suspended is no rows, like a staff account and another tenant's.
+UPDATE users
+SET status = 'suspended',
+    credentials_version = credentials_version + 1
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.public_id = sqlc.arg('public_id')
+    AND users.status <> 'suspended'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id,
+    users.public_id,
+    users.name,
+    users.email,
+    users.status,
+    users.created_at,
+    users.email_verified_at,
+    (users.birth_date IS NOT NULL)::boolean AS has_birth_date;
+
+-- name: UnsuspendTenantReader :one
+-- A reader who never confirmed their address goes back to inactive, the state
+-- VerifyUserEmail activates. A reader who is not suspended is no rows.
+UPDATE users
+SET status = CASE WHEN users.email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.public_id = sqlc.arg('public_id')
+    AND users.status = 'suspended'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id,
+    users.public_id,
+    users.name,
+    users.email,
+    users.status,
+    users.created_at,
+    users.email_verified_at,
+    (users.birth_date IS NOT NULL)::boolean AS has_birth_date;
+
+-- name: DeleteTenantReader :one
+-- Hard delete, as DeleteUserByID. A staff account and another tenant's are no
+-- rows.
+DELETE FROM users
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.public_id = sqlc.arg('public_id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id;
+
+-- name: ActivateInactiveUserByID :exec
+-- Only an account waiting for its address to be confirmed becomes active, so
+-- confirming the address never lifts a suspension.
+UPDATE users
+SET status = 'active'
+WHERE id = $1
+    AND status = 'inactive';
+
 -- name: DeleteTenantUserRolesByUserID :exec
 DELETE FROM tenant_user_roles
 WHERE user_id = $1;

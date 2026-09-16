@@ -13,6 +13,9 @@ import (
 )
 
 type Querier interface {
+	// Only an account waiting for its address to be confirmed becomes active, so
+	// confirming the address never lifts a suspension.
+	ActivateInactiveUserByID(ctx context.Context, id uuid.UUID) error
 	// Writes a held refund onto the purchase that has since been created, by the
 	// same rules RecordStripeRefundOnPurchase uses. Nothing matches when no refund
 	// is held for the payment intent, which is the ordinary case.
@@ -244,6 +247,9 @@ type Querier interface {
 	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
 	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
+	// Hard delete, as DeleteUserByID. A staff account and another tenant's are no
+	// rows.
+	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (uuid.UUID, error)
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
 	// An upload points its creator at the new icon and leaves the previous
 	// creator_images row behind, referenced by nothing. created_at guards the
@@ -1736,6 +1742,9 @@ type Querier interface {
 	// comes back as no rows, which the caller reports as a refusal rather than as
 	// a missing account.
 	SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDateByIDParams) (User, error)
+	// Suspends a reader and invalidates the sessions they hold. A reader who is
+	// already suspended is no rows, like a staff account and another tenant's.
+	SuspendTenantReader(ctx context.Context, arg SuspendTenantReaderParams) (SuspendTenantReaderRow, error)
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchLabelImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
@@ -1748,6 +1757,9 @@ type Querier interface {
 	// still in the list it was posted to. pinned_until keeps whatever it held, as
 	// the instant the operator had planned to stop at.
 	UnpinAnnouncement(ctx context.Context, arg UnpinAnnouncementParams) (uuid.UUID, error)
+	// A reader who never confirmed their address goes back to inactive, the state
+	// VerifyUserEmail activates. A reader who is not suspended is no rows.
+	UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenantReaderParams) (UnsuspendTenantReaderRow, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
 	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error

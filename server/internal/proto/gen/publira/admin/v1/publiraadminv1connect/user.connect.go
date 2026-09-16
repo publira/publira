@@ -42,6 +42,15 @@ const (
 	// AdminUserServiceGetReaderProcedure is the fully-qualified name of the AdminUserService's
 	// GetReader RPC.
 	AdminUserServiceGetReaderProcedure = "/publira.admin.v1.AdminUserService/GetReader"
+	// AdminUserServiceSuspendReaderProcedure is the fully-qualified name of the AdminUserService's
+	// SuspendReader RPC.
+	AdminUserServiceSuspendReaderProcedure = "/publira.admin.v1.AdminUserService/SuspendReader"
+	// AdminUserServiceUnsuspendReaderProcedure is the fully-qualified name of the AdminUserService's
+	// UnsuspendReader RPC.
+	AdminUserServiceUnsuspendReaderProcedure = "/publira.admin.v1.AdminUserService/UnsuspendReader"
+	// AdminUserServiceDeleteReaderProcedure is the fully-qualified name of the AdminUserService's
+	// DeleteReader RPC.
+	AdminUserServiceDeleteReaderProcedure = "/publira.admin.v1.AdminUserService/DeleteReader"
 )
 
 // AdminUserServiceClient is a client for the publira.admin.v1.AdminUserService service.
@@ -52,6 +61,17 @@ type AdminUserServiceClient interface {
 	// Reads one reader. not_found for a staff account and for an account of
 	// another tenant.
 	GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error)
+	// Suspends a reader and ends every session they hold. Suspending a reader
+	// who is already suspended changes nothing. not_found as GetReader.
+	SuspendReader(context.Context, *connect.Request[v1.SuspendReaderRequest]) (*connect.Response[v1.SuspendReaderResponse], error)
+	// Lifts a suspension. The reader returns to active, or to inactive when
+	// they have not confirmed their address yet. Sessions ended by the
+	// suspension stay ended. A reader who is not suspended is left as they are.
+	// not_found as GetReader.
+	UnsuspendReader(context.Context, *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error)
+	// Deletes a reader's account the way the reader's own DeleteMe does. not_found
+	// as GetReader.
+	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
 }
 
 // NewAdminUserServiceClient constructs a client for the publira.admin.v1.AdminUserService service.
@@ -83,6 +103,24 @@ func NewAdminUserServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminUserServiceMethods.ByName("GetReader")),
 			connect.WithClientOptions(opts...),
 		),
+		suspendReader: connect.NewClient[v1.SuspendReaderRequest, v1.SuspendReaderResponse](
+			httpClient,
+			baseURL+AdminUserServiceSuspendReaderProcedure,
+			connect.WithSchema(adminUserServiceMethods.ByName("SuspendReader")),
+			connect.WithClientOptions(opts...),
+		),
+		unsuspendReader: connect.NewClient[v1.UnsuspendReaderRequest, v1.UnsuspendReaderResponse](
+			httpClient,
+			baseURL+AdminUserServiceUnsuspendReaderProcedure,
+			connect.WithSchema(adminUserServiceMethods.ByName("UnsuspendReader")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteReader: connect.NewClient[v1.DeleteReaderRequest, v1.DeleteReaderResponse](
+			httpClient,
+			baseURL+AdminUserServiceDeleteReaderProcedure,
+			connect.WithSchema(adminUserServiceMethods.ByName("DeleteReader")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -91,6 +129,9 @@ type adminUserServiceClient struct {
 	listTenantUsers *connect.Client[v1.ListTenantUsersRequest, v1.ListTenantUsersResponse]
 	listReaders     *connect.Client[v1.ListReadersRequest, v1.ListReadersResponse]
 	getReader       *connect.Client[v1.GetReaderRequest, v1.GetReaderResponse]
+	suspendReader   *connect.Client[v1.SuspendReaderRequest, v1.SuspendReaderResponse]
+	unsuspendReader *connect.Client[v1.UnsuspendReaderRequest, v1.UnsuspendReaderResponse]
+	deleteReader    *connect.Client[v1.DeleteReaderRequest, v1.DeleteReaderResponse]
 }
 
 // ListTenantUsers calls publira.admin.v1.AdminUserService.ListTenantUsers.
@@ -108,6 +149,21 @@ func (c *adminUserServiceClient) GetReader(ctx context.Context, req *connect.Req
 	return c.getReader.CallUnary(ctx, req)
 }
 
+// SuspendReader calls publira.admin.v1.AdminUserService.SuspendReader.
+func (c *adminUserServiceClient) SuspendReader(ctx context.Context, req *connect.Request[v1.SuspendReaderRequest]) (*connect.Response[v1.SuspendReaderResponse], error) {
+	return c.suspendReader.CallUnary(ctx, req)
+}
+
+// UnsuspendReader calls publira.admin.v1.AdminUserService.UnsuspendReader.
+func (c *adminUserServiceClient) UnsuspendReader(ctx context.Context, req *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error) {
+	return c.unsuspendReader.CallUnary(ctx, req)
+}
+
+// DeleteReader calls publira.admin.v1.AdminUserService.DeleteReader.
+func (c *adminUserServiceClient) DeleteReader(ctx context.Context, req *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error) {
+	return c.deleteReader.CallUnary(ctx, req)
+}
+
 // AdminUserServiceHandler is an implementation of the publira.admin.v1.AdminUserService service.
 type AdminUserServiceHandler interface {
 	ListTenantUsers(context.Context, *connect.Request[v1.ListTenantUsersRequest]) (*connect.Response[v1.ListTenantUsersResponse], error)
@@ -116,6 +172,17 @@ type AdminUserServiceHandler interface {
 	// Reads one reader. not_found for a staff account and for an account of
 	// another tenant.
 	GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error)
+	// Suspends a reader and ends every session they hold. Suspending a reader
+	// who is already suspended changes nothing. not_found as GetReader.
+	SuspendReader(context.Context, *connect.Request[v1.SuspendReaderRequest]) (*connect.Response[v1.SuspendReaderResponse], error)
+	// Lifts a suspension. The reader returns to active, or to inactive when
+	// they have not confirmed their address yet. Sessions ended by the
+	// suspension stay ended. A reader who is not suspended is left as they are.
+	// not_found as GetReader.
+	UnsuspendReader(context.Context, *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error)
+	// Deletes a reader's account the way the reader's own DeleteMe does. not_found
+	// as GetReader.
+	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
 }
 
 // NewAdminUserServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -143,6 +210,24 @@ func NewAdminUserServiceHandler(svc AdminUserServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminUserServiceMethods.ByName("GetReader")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminUserServiceSuspendReaderHandler := connect.NewUnaryHandler(
+		AdminUserServiceSuspendReaderProcedure,
+		svc.SuspendReader,
+		connect.WithSchema(adminUserServiceMethods.ByName("SuspendReader")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminUserServiceUnsuspendReaderHandler := connect.NewUnaryHandler(
+		AdminUserServiceUnsuspendReaderProcedure,
+		svc.UnsuspendReader,
+		connect.WithSchema(adminUserServiceMethods.ByName("UnsuspendReader")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminUserServiceDeleteReaderHandler := connect.NewUnaryHandler(
+		AdminUserServiceDeleteReaderProcedure,
+		svc.DeleteReader,
+		connect.WithSchema(adminUserServiceMethods.ByName("DeleteReader")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminUserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminUserServiceListTenantUsersProcedure:
@@ -151,6 +236,12 @@ func NewAdminUserServiceHandler(svc AdminUserServiceHandler, opts ...connect.Han
 			adminUserServiceListReadersHandler.ServeHTTP(w, r)
 		case AdminUserServiceGetReaderProcedure:
 			adminUserServiceGetReaderHandler.ServeHTTP(w, r)
+		case AdminUserServiceSuspendReaderProcedure:
+			adminUserServiceSuspendReaderHandler.ServeHTTP(w, r)
+		case AdminUserServiceUnsuspendReaderProcedure:
+			adminUserServiceUnsuspendReaderHandler.ServeHTTP(w, r)
+		case AdminUserServiceDeleteReaderProcedure:
+			adminUserServiceDeleteReaderHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -170,4 +261,16 @@ func (UnimplementedAdminUserServiceHandler) ListReaders(context.Context, *connec
 
 func (UnimplementedAdminUserServiceHandler) GetReader(context.Context, *connect.Request[v1.GetReaderRequest]) (*connect.Response[v1.GetReaderResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.GetReader is not implemented"))
+}
+
+func (UnimplementedAdminUserServiceHandler) SuspendReader(context.Context, *connect.Request[v1.SuspendReaderRequest]) (*connect.Response[v1.SuspendReaderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.SuspendReader is not implemented"))
+}
+
+func (UnimplementedAdminUserServiceHandler) UnsuspendReader(context.Context, *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.UnsuspendReader is not implemented"))
+}
+
+func (UnimplementedAdminUserServiceHandler) DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.DeleteReader is not implemented"))
 }

@@ -75,6 +75,33 @@ message GetReaderResponse {
   AdminReader reader = 1;
 }
 
+message SuspendReaderRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message SuspendReaderResponse {
+  AdminReader reader = 1;
+}
+
+message UnsuspendReaderRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message UnsuspendReaderResponse {
+  AdminReader reader = 1;
+}
+
+message DeleteReaderRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message DeleteReaderResponse {
+  string public_id = 1;
+}
+
 service AdminUserService {
   rpc ListTenantUsers(ListTenantUsersRequest) returns (ListTenantUsersResponse) {}
   // Lists the tenant's readers, newest first. Staff accounts are never in it.
@@ -82,4 +109,15 @@ service AdminUserService {
   // Reads one reader. not_found for a staff account and for an account of
   // another tenant.
   rpc GetReader(GetReaderRequest) returns (GetReaderResponse) {}
+  // Suspends a reader and ends every session they hold. Suspending a reader
+  // who is already suspended changes nothing. not_found as GetReader.
+  rpc SuspendReader(SuspendReaderRequest) returns (SuspendReaderResponse) {}
+  // Lifts a suspension. The reader returns to active, or to inactive when
+  // they have not confirmed their address yet. Sessions ended by the
+  // suspension stay ended. A reader who is not suspended is left as they are.
+  // not_found as GetReader.
+  rpc UnsuspendReader(UnsuspendReaderRequest) returns (UnsuspendReaderResponse) {}
+  // Deletes a reader's account the way the reader's own DeleteMe does. not_found
+  // as GetReader.
+  rpc DeleteReader(DeleteReaderRequest) returns (DeleteReaderResponse) {}
 }
