@@ -138,6 +138,7 @@ export const EpisodeCreatorCreditsForm = ({
   creators,
   episodePublicId,
   initialCredits,
+  seriesPublicId,
 }: {
   action: (
     prevState: EpisodeEditActionState,
@@ -147,6 +148,7 @@ export const EpisodeCreatorCreditsForm = ({
   creators: CreatorOption[];
   episodePublicId: string;
   initialCredits: EpisodeCreatorCredit[];
+  seriesPublicId: string;
 }) => {
   const t = useAdminMessages();
   const tenantId = useTenantId();
@@ -209,6 +211,7 @@ export const EpisodeCreatorCreditsForm = ({
       </p>
       <form action={formAction} className="grid gap-3">
         <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="series_public_id" type="hidden" value={seriesPublicId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
         <input
           name="creator_credits"

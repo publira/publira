@@ -66,6 +66,7 @@ const renderForm = () =>
           source: CreatorCreditSource.EPISODE,
         },
       ]}
+      seriesPublicId="SERIES001"
     />,
     {
       wrapper: ({ children }) => (
@@ -85,6 +86,10 @@ describe("EpisodeCreatorCreditsForm", () => {
   it("marks credits added on this episode", () => {
     renderForm();
     expect(screen.getByText("Episode only")).toBeDefined();
+    expect(
+      document.querySelector<HTMLInputElement>('input[name="series_public_id"]')
+        ?.value
+    ).toBe("SERIES001");
   });
   it("adds a row without adding an incomplete credit to the replacement list", () => {
     renderForm();

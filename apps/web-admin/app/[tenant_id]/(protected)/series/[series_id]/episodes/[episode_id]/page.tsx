@@ -67,6 +67,9 @@ export const generateMetadata = async (): Promise<Metadata> => {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
 
+// This authenticated editor reads the session before its data can load.
+export const instant = false;
+
 const editEpisodeParamsSchema = z.object({
   episode_id: routeParamString(),
   series_id: routeParamString(),
@@ -227,6 +230,7 @@ const EditEpisodePage = async ({
               creators={creatorsResult.creators}
               episodePublicId={episode_id}
               initialCredits={creditsResult.credits}
+              seriesPublicId={series_id}
             />
           ) : (
             <SectionError>
