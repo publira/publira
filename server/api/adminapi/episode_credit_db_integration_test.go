@@ -324,4 +324,7 @@ func TestDBDeleteCreatorRoleRefusesARoleOnlyAnEpisodeStillNames(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteCreatorRole: err = %v, want failed_precondition because an episode still credits it", err)
 	}
+	if got := creatorRoleInUseCreditCount(t, err); got != 1 {
+		t.Fatalf("credit_count = %d, want 1 episode credit", got)
+	}
 }

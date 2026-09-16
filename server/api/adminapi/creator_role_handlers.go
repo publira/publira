@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -425,12 +426,16 @@ func (s *adminServer) DeleteCreatorRole(
 }
 
 // creatorRoleInUseError refuses to delete a role a credit still names.
-// Deleting it would take those credits with it, so the count is part of the
-// message: it tells the editor how much work re-crediting them is.
+// Deleting it would take those credits with it. The count is ErrorInfo
+// metadata so the console can name it without reading this English message.
 func creatorRoleInUseError(credited int32) error {
-	return connect.NewError(
+	return rpcerrors.NewErrorInfoErrorWithMetadata(
 		connect.CodeFailedPrecondition,
 		fmt.Errorf("creator role is used by %d credits and cannot be deleted", credited),
+		rpcerrors.ReasonCreatorRoleInUse,
+		map[string]string{
+			rpcerrors.MetadataCreditCount: strconv.FormatInt(int64(credited), 10),
+		},
 	)
 }
 

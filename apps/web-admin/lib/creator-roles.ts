@@ -1,7 +1,12 @@
 import type { CreatorRole } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { RpcErrorMessageOverrides } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  RPC_ERROR_METADATA,
+  RPC_ERROR_REASON,
+  rethrowUnclassifiedRpcError,
+  rpcErrorReasonMetadataNumber,
+} from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { Locale } from "@publira/i18n";
 import { cacheTag } from "next/cache";
@@ -318,9 +323,9 @@ export const reorderCreatorRoles = async (
  *
  * A role a series or an episode is still credited in comes back as a failed
  * precondition: the credits holding it would go with it, so the editor is told
- * to re-credit them first. How many those are is in the server's own message,
- * which is untranslated and therefore never rendered, so the refusal is worded
- * from the catalog instead.
+ * to re-credit them first. How many those are travels as ErrorInfo metadata,
+ * not in the server's English message, so the refusal is worded from the
+ * catalog with the count interpolated.
  */
 export const deleteCreatorRole = async (
   input: { tenantId: string; publicId: string },
@@ -347,13 +352,23 @@ export const deleteCreatorRole = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+    const creditCount = rpcErrorReasonMetadataNumber(
+      error,
+      RPC_ERROR_REASON.creatorRoleInUse,
+      RPC_ERROR_METADATA.creditCount
+    );
     return {
       message: await mapErrorToMessage(
         error,
         t("admin.creator_roles.delete_failed"),
         locale,
         {
-          precondition: t("admin.creator_roles.delete_in_use"),
+          precondition:
+            creditCount === null
+              ? t("admin.creator_roles.delete_in_use_unknown")
+              : t("admin.creator_roles.delete_in_use", {
+                  count: String(creditCount),
+                }),
         }
       ),
       ok: false,

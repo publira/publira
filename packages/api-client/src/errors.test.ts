@@ -15,7 +15,20 @@ import {
   rpcErrorDisposition,
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
+  rpcErrorReasonMetadataNumber,
 } from "./errors";
+
+const creatorRoleInUseError = (metadata: Record<string, string>) =>
+  new ConnectError("in use", Code.FailedPrecondition, undefined, [
+    {
+      desc: ErrorInfoSchema,
+      value: {
+        domain: "publira",
+        metadata,
+        reason: "CREATOR_ROLE_IN_USE",
+      },
+    },
+  ]);
 
 /**
  * Stands in for an error that crossed a `"use cache"` boundary: Next.js
@@ -191,5 +204,71 @@ describe("Connect error details", () => {
     expect(
       rpcErrorHasReason(new Error("canceled"), "INVITATION_CANCELED")
     ).toBe(false);
+    expect(
+      rpcErrorReasonMetadataNumber(
+        new Error("in use"),
+        "CREATOR_ROLE_IN_USE",
+        "credit_count"
+      )
+    ).toBeNull();
+  });
+
+  it("reads a decimal metadata integer from a Publira ErrorInfo", () => {
+    const error = new ConnectError(
+      "creator role is used by 3 credits and cannot be deleted",
+      Code.FailedPrecondition,
+      undefined,
+      [
+        {
+          desc: ErrorInfoSchema,
+          value: {
+            domain: "publira",
+            metadata: { credit_count: "3" },
+            reason: "CREATOR_ROLE_IN_USE",
+          },
+        },
+      ]
+    );
+
+    expect(
+      rpcErrorReasonMetadataNumber(error, "CREATOR_ROLE_IN_USE", "credit_count")
+    ).toBe(3);
+    expect(
+      rpcErrorReasonMetadataNumber(error, "CREATOR_ROLE_IN_USE", "other")
+    ).toBeNull();
+    expect(
+      rpcErrorReasonMetadataNumber(error, "INVITATION_CANCELED", "credit_count")
+    ).toBeNull();
+  });
+
+  it("rejects metadata that is not a whole decimal", () => {
+    expect(
+      rpcErrorReasonMetadataNumber(
+        creatorRoleInUseError({ credit_count: "3.2" }),
+        "CREATOR_ROLE_IN_USE",
+        "credit_count"
+      )
+    ).toBeNull();
+    expect(
+      rpcErrorReasonMetadataNumber(
+        creatorRoleInUseError({ credit_count: "1e2" }),
+        "CREATOR_ROLE_IN_USE",
+        "credit_count"
+      )
+    ).toBeNull();
+    expect(
+      rpcErrorReasonMetadataNumber(
+        creatorRoleInUseError({ credit_count: "-1" }),
+        "CREATOR_ROLE_IN_USE",
+        "credit_count"
+      )
+    ).toBeNull();
+    expect(
+      rpcErrorReasonMetadataNumber(
+        creatorRoleInUseError({ credit_count: "3 credits" }),
+        "CREATOR_ROLE_IN_USE",
+        "credit_count"
+      )
+    ).toBeNull();
   });
 });

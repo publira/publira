@@ -2,15 +2,19 @@ package adminapi
 
 import (
 	"context"
+	"errors"
 	"slices"
+	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/creatorroles"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 func creatorRolePublicIDs(roles []*publirattypesv1.CreatorRole) []string {
@@ -37,6 +41,42 @@ func defaultCreatorRoleNames() []string {
 		names = append(names, role.Name)
 	}
 	return names
+}
+
+// creatorRoleInUseCreditCount reads the credit count DeleteCreatorRole
+// attaches when a role is still named. The console words the refusal from
+// this metadata, not from the English message.
+func creatorRoleInUseCreditCount(t *testing.T, err error) int {
+	t.Helper()
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("error is not a connect error: %v", err)
+	}
+	for _, detail := range connectErr.Details() {
+		value, valueErr := detail.Value()
+		if valueErr != nil {
+			continue
+		}
+		info, ok := value.(*errdetails.ErrorInfo)
+		if !ok {
+			continue
+		}
+		if info.GetDomain() != rpcerrors.ErrorInfoDomain || info.GetReason() != rpcerrors.ReasonCreatorRoleInUse {
+			continue
+		}
+		raw, ok := info.GetMetadata()[rpcerrors.MetadataCreditCount]
+		if !ok {
+			t.Fatal("ErrorInfo missing credit_count")
+		}
+		count, parseErr := strconv.Atoi(raw)
+		if parseErr != nil {
+			t.Fatalf("credit_count = %q: %v", raw, parseErr)
+		}
+		return count
+	}
+	t.Fatal("missing CREATOR_ROLE_IN_USE ErrorInfo")
+	return 0
 }
 
 func createCreatorRole(
@@ -225,8 +265,46 @@ func TestDBDeleteCreatorRoleRefusesOneACreditNames(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteCreatorRole code = %v, want %v", connect.CodeOf(err), connect.CodeFailedPrecondition)
 	}
+	if got := creatorRoleInUseCreditCount(t, err); got != 1 {
+		t.Fatalf("credit_count = %d, want 1", got)
+	}
 	if got := creatorRoleNames(listCreatorRoles(t, roles, tenant)); !slices.Equal(got, defaultCreatorRoleNames()) {
 		t.Fatalf("creator roles after the refused delete = %v, want the role kept", got)
+	}
+}
+
+func TestDBDeleteCreatorRoleReportsHowManyCreditsNameIt(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	roles := env.creatorRoleClient()
+
+	creator, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+		Tenant: tenant.tenantContext(),
+		Name:   "Aoi Sakura",
+	}))
+	if err != nil {
+		t.Fatalf("CreateCreator: %v", err)
+	}
+	credits := env.creatorCredits(t, tenant, creator.Msg.Creator.PublicId)
+	for _, title := range []string{"First Credited Series", "Second Credited Series", "Third Credited Series"} {
+		if _, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+			Tenant:         tenant.tenantContext(),
+			Title:          title,
+			CreatorCredits: credits,
+		})); err != nil {
+			t.Fatalf("CreateSeries %q: %v", title, err)
+		}
+	}
+
+	_, err = roles.DeleteCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteCreatorRoleRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: credits[0].RolePublicId,
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("DeleteCreatorRole code = %v, want %v", connect.CodeOf(err), connect.CodeFailedPrecondition)
+	}
+	if got := creatorRoleInUseCreditCount(t, err); got != 3 {
+		t.Fatalf("credit_count = %d, want 3", got)
 	}
 }
 

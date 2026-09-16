@@ -43,6 +43,32 @@ func TestNewErrorInfoError(t *testing.T) {
 	if info.Domain != ErrorInfoDomain || info.Reason != ReasonInvitationCanceled {
 		t.Fatalf("ErrorInfo = %#v, want domain %q and reason %q", info, ErrorInfoDomain, ReasonInvitationCanceled)
 	}
+	if len(info.Metadata) != 0 {
+		t.Fatalf("metadata = %#v, want none", info.Metadata)
+	}
+}
+
+func TestNewErrorInfoErrorWithMetadata(t *testing.T) {
+	err := NewErrorInfoErrorWithMetadata(
+		connect.CodeFailedPrecondition,
+		errors.New("creator role is used by 3 credits and cannot be deleted"),
+		ReasonCreatorRoleInUse,
+		map[string]string{MetadataCreditCount: "3"},
+	)
+	detail, detailErr := err.Details()[0].Value()
+	if detailErr != nil {
+		t.Fatalf("detail Value(): %v", detailErr)
+	}
+	info, ok := detail.(*errdetails.ErrorInfo)
+	if !ok {
+		t.Fatalf("detail type = %T, want *errdetails.ErrorInfo", detail)
+	}
+	if info.Domain != ErrorInfoDomain || info.Reason != ReasonCreatorRoleInUse {
+		t.Fatalf("ErrorInfo = %#v, want domain %q and reason %q", info, ErrorInfoDomain, ReasonCreatorRoleInUse)
+	}
+	if got := info.Metadata[MetadataCreditCount]; got != "3" {
+		t.Fatalf("metadata[%q] = %q, want 3", MetadataCreditCount, got)
+	}
 }
 
 func TestNewRateLimitedErrorSaysHowLongToWait(t *testing.T) {

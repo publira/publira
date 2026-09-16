@@ -12,6 +12,7 @@ export const RPC_ERROR_REASON = {
   archiveInvalidEPUB: "ARCHIVE_INVALID_EPUB",
   archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",
+  creatorRoleInUse: "CREATOR_ROLE_IN_USE",
   invitationCanceled: "INVITATION_CANCELED",
   mfaInvalidCode: "MFA_INVALID_CODE",
   mfaLocked: "MFA_LOCKED",
@@ -22,6 +23,11 @@ export const RPC_ERROR_REASON = {
   smtpTestTLS: "SMTP_TEST_TLS",
   smtpTestTimeout: "SMTP_TEST_TIMEOUT",
   smtpTestUnknown: "SMTP_TEST_UNKNOWN",
+} as const;
+
+/** ErrorInfo metadata keys Publira APIs attach. Values are always strings. */
+export const RPC_ERROR_METADATA = {
+  creditCount: "credit_count",
 } as const;
 
 export type RpcErrorReason =
@@ -267,3 +273,41 @@ export const rpcErrorHasReason = (
       (detail) =>
         detail.domain === RPC_ERROR_INFO_DOMAIN && detail.reason === reason
     );
+
+/**
+ * The numeric value stored under `key` on a Publira-owned ErrorInfo whose
+ * reason matches, or `null` when the detail is absent, the key is missing, or
+ * the value is not a decimal integer.
+ *
+ * ErrorInfo metadata is stringly typed. This accepts only a whole decimal so a
+ * caller never treats `"3 credits"` or `"1e2"` as a count.
+ */
+export const rpcErrorReasonMetadataNumber = (
+  error: unknown,
+  reason: RpcErrorReason,
+  key: string
+): number | null => {
+  if (!(error instanceof ConnectError)) {
+    return null;
+  }
+
+  for (const detail of error.findDetails(ErrorInfoSchema)) {
+    if (detail.domain !== RPC_ERROR_INFO_DOMAIN || detail.reason !== reason) {
+      continue;
+    }
+    const raw = detail.metadata[key];
+    if (raw === undefined) {
+      return null;
+    }
+    if (!/^[0-9]+$/u.test(raw)) {
+      return null;
+    }
+    const value = Number(raw);
+    if (!Number.isSafeInteger(value)) {
+      return null;
+    }
+    return value;
+  }
+
+  return null;
+};
