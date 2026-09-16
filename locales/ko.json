@@ -2361,6 +2361,7 @@
       "copy_failed": "링크를 복사할 수 없습니다",
       "copy_link": "링크 복사",
       "line": "LINE에 공유",
+      "text": "{$title} ({$creators})",
       "x": "X에 공유"
     },
     "settings": {

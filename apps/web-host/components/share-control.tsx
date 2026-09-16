@@ -18,12 +18,18 @@ import { ShareMenu } from "./share-menu";
 export const ShareControl = async ({
   path,
   tenantId,
+  text,
   title,
 }: {
   /** App-internal path without the locale prefix, e.g. `/series/SR01`. */
   path: string;
   tenantId: string;
-  /** The work or episode being passed on, which the share text names. */
+  /**
+   * The message the share carries, worded by the caller — see `lib/share-text.ts`
+   * for the one every screen uses today.
+   */
+  text: string;
+  /** What this page is called: the trigger's accessible name, and nothing else. */
   title: string;
 }) => {
   const locale = await getLocale();
@@ -33,5 +39,5 @@ export const ShareControl = async ({
     return null;
   }
 
-  return <ShareMenu title={title} url={url} />;
+  return <ShareMenu text={text} title={title} url={url} />;
 };

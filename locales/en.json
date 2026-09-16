@@ -2361,6 +2361,7 @@
       "copy_failed": "Could not copy the link",
       "copy_link": "Copy link",
       "line": "Share on LINE",
+      "text": "{$title} by {$creators}",
       "x": "Share on X"
     },
     "settings": {

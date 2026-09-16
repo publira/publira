@@ -13,13 +13,13 @@ import { useState } from "react";
 
 import { useHostMessages } from "./client-message";
 
-/** The composer each service opens with the link and the work's title filled in. */
+/** The composer each service opens with the link and the message filled in. */
 const X_INTENT_URL = "https://x.com/intent/post";
 const LINE_SHARE_URL = "https://social-plugins.line.me/lineit/share";
 
-const withShareParams = (base: string, title: string, url: string): string => {
+const withShareParams = (base: string, text: string, url: string): string => {
   const target = new URL(base);
-  target.searchParams.set("text", title);
+  target.searchParams.set("text", text);
   target.searchParams.set("url", url);
 
   return target.toString();
@@ -58,15 +58,33 @@ export const ShareMenuSkeleton = () => (
  * `url` is the canonical address of the page rather than the one in the address
  * bar, so a link a reader sends carries no filter, cursor, or checkout
  * parameter they happened to arrive with.
+ *
+ * `title` and `text` are two different sentences and neither stands in for the
+ * other. `title` is what this page is called, and it is what the trigger is
+ * read out as — so it stays short however much the message beside it grows.
+ * `text` is the message the share carries, composed by the caller: the work and
+ * its credits today, and whatever else a screen decides to say tomorrow.
+ * Composing it here instead would put a decision about wording, and the list
+ * joining a reader's language asks for, inside a control that renders a button.
  */
-export const ShareMenu = ({ title, url }: { title: string; url: string }) => {
+export const ShareMenu = ({
+  text,
+  title,
+  url,
+}: {
+  /** The message a share carries, already worded for this reader. */
+  text: string;
+  /** What this page is called, and nothing else. */
+  title: string;
+  url: string;
+}) => {
   const t = useHostMessages();
   const [open, setOpen] = useState(false);
   const [copyOutcome, setCopyOutcome] = useState<CopyOutcome>(null);
 
   const openShareSheet = async () => {
     try {
-      await navigator.share({ title, url });
+      await navigator.share({ text, title, url });
     } catch (error) {
       // Dismissing the sheet rejects with `AbortError`. That is the reader
       // deciding not to share, not a failure, so nothing stands in for it.
@@ -124,7 +142,7 @@ export const ShareMenu = ({ title, url }: { title: string; url: string }) => {
         <div className="grid gap-0.5">
           <a
             className={SHARE_ROW}
-            href={withShareParams(X_INTENT_URL, title, url)}
+            href={withShareParams(X_INTENT_URL, text, url)}
             rel="noopener noreferrer"
             target="_blank"
           >
@@ -132,7 +150,7 @@ export const ShareMenu = ({ title, url }: { title: string; url: string }) => {
           </a>
           <a
             className={SHARE_ROW}
-            href={withShareParams(LINE_SHARE_URL, title, url)}
+            href={withShareParams(LINE_SHARE_URL, text, url)}
             rel="noopener noreferrer"
             target="_blank"
           >

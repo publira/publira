@@ -2361,6 +2361,7 @@
       "copy_failed": "リンクをコピーできませんでした",
       "copy_link": "リンクをコピー",
       "line": "LINE で共有",
+      "text": "{$title}（{$creators}）",
       "x": "X で共有"
     },
     "settings": {

@@ -27,6 +27,7 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
+import { shareText } from "#lib/share-text";
 import {
   getTenantPublicOrigin,
   getTenantSiteInfo,
@@ -220,6 +221,14 @@ const EpisodeContent = async (
     seriesResult.ok && seriesResult.value
       ? seriesResult.value.series.commentMode
       : "disabled";
+  // A share names the work, not the instalment — which one it is, is what the
+  // address and the card carry. `GetEpisodeDetail` answers with the work's id,
+  // title, and rating rather than its credits, so the names come from the
+  // series read beside it, and a read that failed leaves the title on its own.
+  const workCredits =
+    seriesResult.ok && seriesResult.value
+      ? seriesResult.value.series.credits
+      : [];
   // The site-info read resolves the tenant zone. The fallback only covers an
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
@@ -374,6 +383,7 @@ const EpisodeContent = async (
             nextEpisode={nextEpisode}
             previousEpisode={previousEpisode}
             series={series}
+            shareText={shareText(t, locale, series.title, workCredits)}
             shareTitle={episodeDisplayTitle(t, episode)}
             tenantId={tenantId}
           />

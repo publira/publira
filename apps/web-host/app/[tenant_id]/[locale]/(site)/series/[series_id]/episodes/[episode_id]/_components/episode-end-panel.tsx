@@ -125,6 +125,7 @@ export const EpisodeEndPanel = async ({
   nextEpisode,
   previousEpisode,
   series,
+  shareText,
   shareTitle,
   tenantId,
 }: {
@@ -141,10 +142,13 @@ export const EpisodeEndPanel = async ({
   previousEpisode?: EpisodeNeighborItem;
   series: EpisodeSeriesSummary;
   /**
-   * How the episode names itself in the share sheet — the same string its
-   * `<title>` holds. A sheet takes a title, not a node, so it is resolved by
-   * the page, which awaits the catalog for its own landmark label anyway.
+   * What a share of this episode says in words: the work and its credits.
+   * Neither is on this component's own reads, and a share sheet takes a string
+   * rather than a node, so both strings come from the page, which awaits the
+   * catalog for its own landmark label anyway.
    */
+  shareText: string;
+  /** How the episode names itself — the same string its `<title>` holds. */
   shareTitle: string;
   tenantId: string;
 }) => {
@@ -161,6 +165,7 @@ export const EpisodeEndPanel = async ({
           <ShareControl
             path={returnTo}
             tenantId={tenantId}
+            text={shareText}
             title={shareTitle}
           />
         </Suspense>

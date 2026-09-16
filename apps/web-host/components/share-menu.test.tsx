@@ -26,6 +26,7 @@ vi.mock("./client-message", () => {
 });
 
 const TITLE = "Published Series";
+const TEXT = "Published Series by Published Author";
 const URL_UNDER_TEST = "https://example.test/en/series/SR01";
 
 const setNavigator = (key: "clipboard" | "share", value: unknown) => {
@@ -55,20 +56,20 @@ afterEach(() => {
 });
 
 describe("ShareMenu", () => {
-  it("offers X, LINE, and the link itself where the browser has no share sheet", () => {
-    render(<ShareMenu title={TITLE} url={URL_UNDER_TEST} />);
+  it("hands X and LINE the message rather than the page's own name", () => {
+    render(<ShareMenu text={TEXT} title={TITLE} url={URL_UNDER_TEST} />);
 
     fireEvent.click(trigger());
 
     const x = screen.getByRole("link", { name: "Share on X" });
     expect(x.getAttribute("href")).toBe(
-      "https://x.com/intent/post?text=Published+Series&url=https%3A%2F%2Fexample.test%2Fen%2Fseries%2FSR01"
+      "https://x.com/intent/post?text=Published+Series+by+Published+Author&url=https%3A%2F%2Fexample.test%2Fen%2Fseries%2FSR01"
     );
     expect(x.getAttribute("rel")).toBe("noopener noreferrer");
 
     const line = screen.getByRole("link", { name: "Share on LINE" });
     expect(line.getAttribute("href")).toBe(
-      "https://social-plugins.line.me/lineit/share?text=Published+Series&url=https%3A%2F%2Fexample.test%2Fen%2Fseries%2FSR01"
+      "https://social-plugins.line.me/lineit/share?text=Published+Series+by+Published+Author&url=https%3A%2F%2Fexample.test%2Fen%2Fseries%2FSR01"
     );
 
     expect(screen.getByRole("button", { name: "Copy link" })).toBeDefined();
@@ -78,10 +79,11 @@ describe("ShareMenu", () => {
     const share = vi.fn(() => Promise.resolve());
     setNavigator("share", share);
 
-    render(<ShareMenu title={TITLE} url={URL_UNDER_TEST} />);
+    render(<ShareMenu text={TEXT} title={TITLE} url={URL_UNDER_TEST} />);
     fireEvent.click(trigger());
 
     expect(share).toHaveBeenCalledWith({
+      text: TEXT,
       title: TITLE,
       url: URL_UNDER_TEST,
     });
@@ -93,7 +95,7 @@ describe("ShareMenu", () => {
       Promise.reject(new DOMException("dismissed", "AbortError"))
     );
 
-    render(<ShareMenu title={TITLE} url={URL_UNDER_TEST} />);
+    render(<ShareMenu text={TEXT} title={TITLE} url={URL_UNDER_TEST} />);
     fireEvent.click(trigger());
     await Promise.resolve();
 
@@ -105,7 +107,7 @@ describe("ShareMenu", () => {
       Promise.reject(new DOMException("blocked", "NotAllowedError"))
     );
 
-    render(<ShareMenu title={TITLE} url={URL_UNDER_TEST} />);
+    render(<ShareMenu text={TEXT} title={TITLE} url={URL_UNDER_TEST} />);
     fireEvent.click(trigger());
     await vi.waitFor(() => {
       expect(screen.getByRole("link", { name: "Share on X" })).toBeDefined();
@@ -116,7 +118,7 @@ describe("ShareMenu", () => {
     const writeText = vi.fn(() => Promise.resolve());
     setNavigator("clipboard", { writeText });
 
-    render(<ShareMenu title={TITLE} url={URL_UNDER_TEST} />);
+    render(<ShareMenu text={TEXT} title={TITLE} url={URL_UNDER_TEST} />);
     fireEvent.click(trigger());
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
 
@@ -131,7 +133,7 @@ describe("ShareMenu", () => {
       writeText: () => Promise.reject(new Error("denied")),
     });
 
-    render(<ShareMenu title={TITLE} url={URL_UNDER_TEST} />);
+    render(<ShareMenu text={TEXT} title={TITLE} url={URL_UNDER_TEST} />);
     fireEvent.click(trigger());
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
 

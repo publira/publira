@@ -71,8 +71,16 @@ vi.mock("#components/follow-control", () => ({
 // `share-menu.test.tsx` and `tenant-locale-path.test.ts` cover between them;
 // what this file asserts is which page it is offered on and for what.
 vi.mock("#components/share-control", () => ({
-  ShareControl: ({ path, title }: { path: string; title: string }) => (
-    <button data-path={path} type="button">
+  ShareControl: ({
+    path,
+    text,
+    title,
+  }: {
+    path: string;
+    text: string;
+    title: string;
+  }) => (
+    <button data-path={path} data-text={text} type="button">
       {`Share ${title}`}
     </button>
   ),
@@ -130,6 +138,7 @@ const renderPanel = async ({
       nextEpisode: neighbor,
       previousEpisode: previousNeighbor,
       series,
+      shareText: "Long nights by Nightly Author",
       shareTitle: "Episode 2 Second light",
       tenantId: "TENANT_001",
     })
@@ -166,11 +175,17 @@ describe("EpisodeEndPanel", () => {
       previousNeighbor: previousEpisode,
     });
 
+    const share = screen.getByRole("button", {
+      name: "Share Episode 2 Second light",
+    });
     expect(
-      screen.getByRole("button", { name: "Share Episode 2 Second light" })
-        .dataset.path,
+      share.dataset.path,
       "the share control hands over this episode's own page"
     ).toBe("/series/SERIES_001/episodes/EPISODE_002");
+    expect(
+      share.dataset.text,
+      "and says in words which work the reader is passing on"
+    ).toBe("Long nights by Nightly Author");
   });
 
   it("marks the next episode alone, so the page keeps one Shu", async () => {

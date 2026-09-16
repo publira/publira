@@ -38,10 +38,12 @@ import { SeriesRating, MySeriesRating } from "#components/series-rating";
 import { ShareControl } from "#components/share-control";
 import { ShareMenuSkeleton } from "#components/share-menu";
 import { getSeriesDetail } from "#lib/catalog";
-import type { SeriesSerializationStatus } from "#lib/catalog";
+import type { SeriesDetail, SeriesSerializationStatus } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
+import { shareText } from "#lib/share-text";
 import {
   getTenantDisplayTimeZone,
   getTenantPublicOrigin,
@@ -200,6 +202,34 @@ const SERIES_STATUS_TONES = {
   hiatus: "warning",
   ongoing: "info",
 } as const satisfies Record<SeriesSerializationStatus, BadgeTone>;
+
+/**
+ * The share control, with the message it hands over already worded.
+ *
+ * A component of its own so that the catalog is awaited behind the boundary the
+ * control already sits in: a share sheet takes a string rather than a node, and
+ * resolving it in the page body would hold the cover, the episode list, and the
+ * shelf back on a sentence none of them depend on.
+ */
+const SeriesShareControl = async ({
+  series,
+  tenantId,
+}: {
+  series: SeriesDetail;
+  tenantId: string;
+}) => {
+  const locale = await getLocale();
+  const t = await getMessagesFor(locale);
+
+  return (
+    <ShareControl
+      path={`/series/${series.publicId}`}
+      tenantId={tenantId}
+      text={shareText(t, locale, series.title, series.credits)}
+      title={series.title}
+    />
+  );
+};
 
 const SeriesDetailContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]">
@@ -427,11 +457,7 @@ const SeriesDetailContent = async (
                 </Suspense>
               </SectionErrorBoundary>
               <Suspense fallback={<ShareMenuSkeleton />}>
-                <ShareControl
-                  path={`/series/${series.publicId}`}
-                  tenantId={tenantId}
-                  title={series.title}
-                />
+                <SeriesShareControl series={series} tenantId={tenantId} />
               </Suspense>
             </div>
           </div>

@@ -2361,6 +2361,7 @@
       "copy_failed": "無法複製連結",
       "copy_link": "複製連結",
       "line": "分享到 LINE",
+      "text": "{$title}（{$creators}）",
       "x": "分享到 X"
     },
     "settings": {
