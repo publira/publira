@@ -412,7 +412,10 @@ void main() {
   testWidgets('a guest is asked to sign in for an age-rated body', (
     tester,
   ) async {
-    catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
+    catalog.episodes = fixtureEpisodes(
+      access: EpisodeAccess.ageRestricted,
+      ageRating: SeriesAgeRating.r18,
+    );
     await pumpApp(tester);
     await pumpUntilFound(
       tester,
@@ -427,6 +430,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+    expect(find.byKey(const ValueKey('age-rating-gate')), findsNothing);
 
     await tester.tap(find.text('Sign in'));
     await pumpUntilFound(tester, find.text('Email address'));
@@ -435,7 +439,10 @@ void main() {
   testWidgets('a reader with no birth date on file is led to add one', (
     tester,
   ) async {
-    catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
+    catalog.episodes = fixtureEpisodes(
+      access: EpisodeAccess.ageRestricted,
+      ageRating: SeriesAgeRating.r18,
+    );
     await pumpApp(tester, session: fakeSession);
     await pumpUntilFound(
       tester,
@@ -449,6 +456,7 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('age-rating-gate')), findsNothing);
 
     await tester.tap(find.text('Add your date of birth'));
     await pumpUntilFound(
@@ -460,7 +468,10 @@ void main() {
   testWidgets('a reader whose date of birth is too recent is told so', (
     tester,
   ) async {
-    catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
+    catalog.episodes = fixtureEpisodes(
+      access: EpisodeAccess.ageRestricted,
+      ageRating: SeriesAgeRating.r18,
+    );
     await pumpApp(tester, session: fakeSession, birthDate: '2020-01-01');
     await pumpUntilFound(
       tester,
@@ -471,12 +482,33 @@ void main() {
       find.text('This work is not available for your age.'),
       findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('age-rating-gate')), findsNothing);
+  });
+
+  testWidgets('a reader the age rule opens for still meets the confirmation', (
+    tester,
+  ) async {
+    catalog.episodes = fixtureEpisodes(ageRating: SeriesAgeRating.r18);
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+    expect(find.byKey(const ValueKey('episode-age-restricted')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('episode-page-view')),
+    );
   });
 
   testWidgets('a session the API has dropped leads back to sign-in', (
     tester,
   ) async {
-    catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
+    catalog.episodes = fixtureEpisodes(
+      access: EpisodeAccess.ageRestricted,
+      ageRating: SeriesAgeRating.r18,
+    );
     await pumpApp(
       tester,
       session: fakeSession,

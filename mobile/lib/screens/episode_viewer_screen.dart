@@ -295,12 +295,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         return _shell(
           title: open.detail.episode.title,
           credits: open.detail.creators,
-          body: AgeRatingGate(
-            rating: open.detail.ageRating,
-            seriesTitle: open.detail.seriesTitle,
-            provenRating: open.provenRating,
-            child: _body(messages, open),
-          ),
+          // A reader the tenant's age rule stops is told so first: a rating
+          // they declared here would not open the pages for them.
+          body: open.detail.access == EpisodeAccess.ageRestricted
+              ? _ageRestricted(messages, open)
+              : AgeRatingGate(
+                  rating: open.detail.ageRating,
+                  seriesTitle: open.detail.seriesTitle,
+                  provenRating: open.provenRating,
+                  child: _body(messages, open),
+                ),
         );
       },
     );
@@ -308,9 +312,6 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   Widget _body(AppMessages messages, _OpenEpisode open) {
     final detail = open.detail;
-    if (detail.access == EpisodeAccess.ageRestricted) {
-      return _ageRestricted(messages, open);
-    }
     if (detail.access == EpisodeAccess.locked) {
       if (AuthScope.of(context).isSignedIn) {
         return _ViewerMessage(
