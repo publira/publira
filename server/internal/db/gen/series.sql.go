@@ -112,6 +112,8 @@ SELECT s.id,
     sl.schedule_weekdays,
     sl.age_rating,
     sl.comment_mode,
+    sl.reading_direction,
+    sl.spread_start_index,
     s.is_published,
     s.published_at,
     s.eye_catch_image_id,
@@ -150,6 +152,8 @@ type GetSeriesByPublicIDForTenantRow struct {
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
 	AgeRating                  sql.NullString `json:"age_rating"`
 	CommentMode                sql.NullString `json:"comment_mode"`
+	ReadingDirection           sql.NullString `json:"reading_direction"`
+	SpreadStartIndex           sql.NullInt32  `json:"spread_start_index"`
 	IsPublished                bool           `json:"is_published"`
 	PublishedAt                sql.NullTime   `json:"published_at"`
 	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
@@ -172,6 +176,8 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		pq.Array(&i.ScheduleWeekdays),
 		&i.AgeRating,
 		&i.CommentMode,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
 		&i.IsPublished,
 		&i.PublishedAt,
 		&i.EyeCatchImageID,
@@ -730,7 +736,9 @@ INSERT INTO series_listings (
         status,
         schedule_weekdays,
         age_rating,
-        comment_mode
+        comment_mode,
+        reading_direction,
+        spread_start_index
     )
 VALUES (
         $1,
@@ -740,7 +748,9 @@ VALUES (
         $5,
         $6,
         $7,
-        $8
+        $8,
+        $9,
+        $10
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
@@ -748,8 +758,10 @@ SET synopsis = EXCLUDED.synopsis,
     status = EXCLUDED.status,
     schedule_weekdays = EXCLUDED.schedule_weekdays,
     age_rating = EXCLUDED.age_rating,
-    comment_mode = EXCLUDED.comment_mode
-RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode
+    comment_mode = EXCLUDED.comment_mode,
+    reading_direction = EXCLUDED.reading_direction,
+    spread_start_index = EXCLUDED.spread_start_index
+RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
 `
 
 type UpsertSeriesListingParams struct {
@@ -761,6 +773,8 @@ type UpsertSeriesListingParams struct {
 	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
 	AgeRating          string         `json:"age_rating"`
 	CommentMode        sql.NullString `json:"comment_mode"`
+	ReadingDirection   string         `json:"reading_direction"`
+	SpreadStartIndex   int32          `json:"spread_start_index"`
 }
 
 // The whole listing row is written on every admin save, so a field the
@@ -776,6 +790,8 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		pq.Array(arg.ScheduleWeekdays),
 		arg.AgeRating,
 		arg.CommentMode,
+		arg.ReadingDirection,
+		arg.SpreadStartIndex,
 	)
 	var i SeriesListing
 	err := row.Scan(
@@ -790,6 +806,8 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		&i.AgeRating,
 		&i.EpisodeRatingMode,
 		&i.CommentMode,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
 	)
 	return i, err
 }

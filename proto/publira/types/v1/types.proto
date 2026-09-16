@@ -211,6 +211,27 @@ message Episode {
   // than a count taken at read time, so the episode read carries one more
   // column instead of one more scan.
   int64 rating_count = 10;
+  // Which way the pages are turned, and the zero-based index of the page from
+  // which two pages share a screen: every page before it stands alone. Both are
+  // resolved — the episode's own value where it states one, and its series'
+  // where it does not — so a viewer lays the body out from these two fields
+  // alone. Set on the reads that carry `creators`; READING_DIRECTION_UNSPECIFIED
+  // and 0 in the lists that carry an episode as a link.
+  //
+  // The index may lie past the last page when the series states it for longer
+  // episodes than this one, and the episode is then laid out without a spread.
+  ReadingDirection reading_direction = 11;
+  int32 spread_start_index = 12;
+}
+
+// Which way the pages of a work are turned. A series states it for every one
+// of its episodes, and an episode may state its own.
+enum ReadingDirection {
+  READING_DIRECTION_UNSPECIFIED = 0;
+  // The reader turns from right to left, the binding of most manga. It is what
+  // a series nobody has set is read in.
+  READING_DIRECTION_RIGHT_TO_LEFT = 1;
+  READING_DIRECTION_LEFT_TO_RIGHT = 2;
 }
 
 message EpisodeImage {

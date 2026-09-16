@@ -233,10 +233,18 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    -- The episode's own layout, NULL where it follows the series, beside the
+    -- series' values it follows. The console form tells the two apart, and the
+    -- resolved pair is derived from them in Go.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND e.public_id = $2
 LIMIT 1;
@@ -250,10 +258,16 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    -- The same layout columns GetEpisodeByPublicIDForTenant reads.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND s.public_id = $2
     AND e.public_id = $3
@@ -279,6 +293,13 @@ SELECT e.id,
     -- Posting resolves the two, and reads the episode either way, so the
     -- override travels with the episode rather than costing a query of its own.
     sl.comment_mode AS series_comment_mode,
+    -- How the body is laid out: the episode's own values where it states them,
+    -- and the series' where it does not. Both halves travel so the handler
+    -- resolves them the one way the console's reads do.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index,
     -- The end of the free window covering this instant, or NULL when none
     -- does. Windows on one episode cannot overlap, so at most one row answers.
     -- A priced episode inside one reads as free until this moment, which is
@@ -575,6 +596,15 @@ FROM episodes e
 WHERE el.episode_id = e.id
     AND s.tenant_id = $1
     AND e.public_id = $2;
+
+-- name: UpdateEpisodeLayoutByIDForTenant :exec
+-- Both overrides are written together, and NULL returns a value to following
+-- the series.
+UPDATE episodes
+SET reading_direction = sqlc.narg('reading_direction'),
+    spread_start_index = sqlc.narg('spread_start_index')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
 
 -- name: CountDraftEpisodesForTenant :one
 -- For the tenant dashboard.

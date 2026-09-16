@@ -58,7 +58,7 @@ INSERT INTO episodes (
         tenant_id
     )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, series_id, public_id, title, order_index, created_at, tenant_id
+RETURNING id, series_id, public_id, title, order_index, created_at, tenant_id, reading_direction, spread_start_index
 `
 
 type CreateEpisodeBaseParams struct {
@@ -88,6 +88,8 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 		&i.OrderIndex,
 		&i.CreatedAt,
 		&i.TenantID,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
 	)
 	return i, err
 }
@@ -101,10 +103,18 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    -- The episode's own layout, NULL where it follows the series, beside the
+    -- series' values it follows. The console form tells the two apart, and the
+    -- resolved pair is derived from them in Go.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND e.public_id = $2
 LIMIT 1
@@ -116,15 +126,19 @@ type GetEpisodeByPublicIDForTenantParams struct {
 }
 
 type GetEpisodeByPublicIDForTenantRow struct {
-	ID                 uuid.UUID     `json:"id"`
-	PublicID           string        `json:"public_id"`
-	Title              string        `json:"title"`
-	OrderIndex         int32         `json:"order_index"`
-	Price              int32         `json:"price"`
-	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
-	Status             string        `json:"status"`
-	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
-	PublishedAt        sql.NullTime  `json:"published_at"`
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Title                  string         `json:"title"`
+	OrderIndex             int32          `json:"order_index"`
+	Price                  int32          `json:"price"`
+	ReadingPeriodHours     sql.NullInt32  `json:"reading_period_hours"`
+	Status                 string         `json:"status"`
+	ScheduledAt            sql.NullTime   `json:"scheduled_at"`
+	PublishedAt            sql.NullTime   `json:"published_at"`
+	ReadingDirection       sql.NullString `json:"reading_direction"`
+	SpreadStartIndex       sql.NullInt32  `json:"spread_start_index"`
+	SeriesReadingDirection sql.NullString `json:"series_reading_direction"`
+	SeriesSpreadStartIndex sql.NullInt32  `json:"series_spread_start_index"`
 }
 
 func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error) {
@@ -140,6 +154,10 @@ func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpis
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
+		&i.SeriesReadingDirection,
+		&i.SeriesSpreadStartIndex,
 	)
 	return i, err
 }
@@ -153,10 +171,16 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    -- The same layout columns GetEpisodeByPublicIDForTenant reads.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND s.public_id = $2
     AND e.public_id = $3
@@ -170,15 +194,19 @@ type GetEpisodeByPublicIDForTenantAndSeriesParams struct {
 }
 
 type GetEpisodeByPublicIDForTenantAndSeriesRow struct {
-	ID                 uuid.UUID     `json:"id"`
-	PublicID           string        `json:"public_id"`
-	Title              string        `json:"title"`
-	OrderIndex         int32         `json:"order_index"`
-	Price              int32         `json:"price"`
-	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
-	Status             string        `json:"status"`
-	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
-	PublishedAt        sql.NullTime  `json:"published_at"`
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Title                  string         `json:"title"`
+	OrderIndex             int32          `json:"order_index"`
+	Price                  int32          `json:"price"`
+	ReadingPeriodHours     sql.NullInt32  `json:"reading_period_hours"`
+	Status                 string         `json:"status"`
+	ScheduledAt            sql.NullTime   `json:"scheduled_at"`
+	PublishedAt            sql.NullTime   `json:"published_at"`
+	ReadingDirection       sql.NullString `json:"reading_direction"`
+	SpreadStartIndex       sql.NullInt32  `json:"spread_start_index"`
+	SeriesReadingDirection sql.NullString `json:"series_reading_direction"`
+	SeriesSpreadStartIndex sql.NullInt32  `json:"series_spread_start_index"`
 }
 
 func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error) {
@@ -194,6 +222,10 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
+		&i.SeriesReadingDirection,
+		&i.SeriesSpreadStartIndex,
 	)
 	return i, err
 }
@@ -238,6 +270,13 @@ SELECT e.id,
     -- Posting resolves the two, and reads the episode either way, so the
     -- override travels with the episode rather than costing a query of its own.
     sl.comment_mode AS series_comment_mode,
+    -- How the body is laid out: the episode's own values where it states them,
+    -- and the series' where it does not. Both halves travel so the handler
+    -- resolves them the one way the console's reads do.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index,
     -- The end of the free window covering this instant, or NULL when none
     -- does. Windows on one episode cannot overlap, so at most one row answers.
     -- A priced episode inside one reads as free until this moment, which is
@@ -275,22 +314,26 @@ type GetPublishedEpisodeByPublicIDForTenantParams struct {
 }
 
 type GetPublishedEpisodeByPublicIDForTenantRow struct {
-	ID                 uuid.UUID      `json:"id"`
-	PublicID           string         `json:"public_id"`
-	Title              string         `json:"title"`
-	OrderIndex         int32          `json:"order_index"`
-	SeriesID           uuid.UUID      `json:"series_id"`
-	Price              int32          `json:"price"`
-	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
-	Status             string         `json:"status"`
-	ScheduledAt        sql.NullTime   `json:"scheduled_at"`
-	PublishedAt        sql.NullTime   `json:"published_at"`
-	SeriesPublicID     string         `json:"series_public_id"`
-	SeriesTitle        string         `json:"series_title"`
-	SeriesAgeRating    sql.NullString `json:"series_age_rating"`
-	SeriesCommentMode  sql.NullString `json:"series_comment_mode"`
-	FreeUntil          sql.NullTime   `json:"free_until"`
-	RatingCount        int64          `json:"rating_count"`
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Title                  string         `json:"title"`
+	OrderIndex             int32          `json:"order_index"`
+	SeriesID               uuid.UUID      `json:"series_id"`
+	Price                  int32          `json:"price"`
+	ReadingPeriodHours     sql.NullInt32  `json:"reading_period_hours"`
+	Status                 string         `json:"status"`
+	ScheduledAt            sql.NullTime   `json:"scheduled_at"`
+	PublishedAt            sql.NullTime   `json:"published_at"`
+	SeriesPublicID         string         `json:"series_public_id"`
+	SeriesTitle            string         `json:"series_title"`
+	SeriesAgeRating        sql.NullString `json:"series_age_rating"`
+	SeriesCommentMode      sql.NullString `json:"series_comment_mode"`
+	ReadingDirection       sql.NullString `json:"reading_direction"`
+	SpreadStartIndex       sql.NullInt32  `json:"spread_start_index"`
+	SeriesReadingDirection sql.NullString `json:"series_reading_direction"`
+	SeriesSpreadStartIndex sql.NullInt32  `json:"series_spread_start_index"`
+	FreeUntil              sql.NullTime   `json:"free_until"`
+	RatingCount            int64          `json:"rating_count"`
 }
 
 func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error) {
@@ -311,6 +354,10 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 		&i.SeriesTitle,
 		&i.SeriesAgeRating,
 		&i.SeriesCommentMode,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
+		&i.SeriesReadingDirection,
+		&i.SeriesSpreadStartIndex,
 		&i.FreeUntil,
 		&i.RatingCount,
 	)
@@ -1395,6 +1442,33 @@ func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublis
 		&i.ReadAt,
 	)
 	return i, err
+}
+
+const updateEpisodeLayoutByIDForTenant = `-- name: UpdateEpisodeLayoutByIDForTenant :exec
+UPDATE episodes
+SET reading_direction = $1,
+    spread_start_index = $2
+WHERE tenant_id = $3
+    AND id = $4
+`
+
+type UpdateEpisodeLayoutByIDForTenantParams struct {
+	ReadingDirection sql.NullString `json:"reading_direction"`
+	SpreadStartIndex sql.NullInt32  `json:"spread_start_index"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	ID               uuid.UUID      `json:"id"`
+}
+
+// Both overrides are written together, and NULL returns a value to following
+// the series.
+func (q *Queries) UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error {
+	_, err := q.db.ExecContext(ctx, updateEpisodeLayoutByIDForTenant,
+		arg.ReadingDirection,
+		arg.SpreadStartIndex,
+		arg.TenantID,
+		arg.ID,
+	)
+	return err
 }
 
 const updateEpisodeOrderIndexByPublicIDForTenantAndSeries = `-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec

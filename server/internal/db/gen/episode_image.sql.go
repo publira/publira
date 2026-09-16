@@ -13,6 +13,20 @@ import (
 	"github.com/google/uuid"
 )
 
+const countEpisodeImagesByEpisodeID = `-- name: CountEpisodeImagesByEpisodeID :one
+SELECT COUNT(*)::int4 AS page_count
+FROM episode_images
+WHERE episode_id = $1
+`
+
+// How many pages the body has, which bounds where its spreads may start.
+func (q *Queries) CountEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countEpisodeImagesByEpisodeID, episodeID)
+	var page_count int32
+	err := row.Scan(&page_count)
+	return page_count, err
+}
+
 const createEpisodeImage = `-- name: CreateEpisodeImage :one
 INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
 VALUES ($1, $2, $3, $4)

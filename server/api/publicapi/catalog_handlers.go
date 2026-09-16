@@ -1225,6 +1225,14 @@ func (s *apiServer) GetEpisodeDetail(
 
 	episode := protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row)
 	episode.Creators = creditsByEpisodeID[row.ID]
+	if err := protomapper.SetResolvedReadingLayout(episode, protomapper.StoredReadingLayout{
+		ReadingDirection:       row.ReadingDirection,
+		SpreadStartIndex:       row.SpreadStartIndex,
+		SeriesReadingDirection: row.SeriesReadingDirection,
+		SeriesSpreadStartIndex: row.SeriesSpreadStartIndex,
+	}); err != nil {
+		return nil, s.internalError(ctx, "episode layout holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+	}
 	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
 		Episode:         episode,
 		Series:          series,

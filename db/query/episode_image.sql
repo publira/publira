@@ -215,6 +215,12 @@ SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
 FROM episode_images
 WHERE episode_id = $1;
 
+-- name: CountEpisodeImagesByEpisodeID :one
+-- How many pages the body has, which bounds where its spreads may start.
+SELECT COUNT(*)::int4 AS page_count
+FROM episode_images
+WHERE episode_id = $1;
+
 -- name: UpdateEpisodeImageDisplayOrderByIDForEpisode :exec
 UPDATE episode_images
 SET display_order = $3

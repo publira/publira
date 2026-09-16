@@ -197,7 +197,9 @@ INSERT INTO series_listings (
         status,
         schedule_weekdays,
         age_rating,
-        comment_mode
+        comment_mode,
+        reading_direction,
+        spread_start_index
     )
 VALUES (
         sqlc.arg('tenant_id'),
@@ -207,7 +209,9 @@ VALUES (
         sqlc.arg('status'),
         sqlc.arg('schedule_weekdays'),
         sqlc.arg('age_rating'),
-        sqlc.narg('comment_mode')
+        sqlc.narg('comment_mode'),
+        sqlc.arg('reading_direction'),
+        sqlc.arg('spread_start_index')
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
@@ -215,7 +219,9 @@ SET synopsis = EXCLUDED.synopsis,
     status = EXCLUDED.status,
     schedule_weekdays = EXCLUDED.schedule_weekdays,
     age_rating = EXCLUDED.age_rating,
-    comment_mode = EXCLUDED.comment_mode
+    comment_mode = EXCLUDED.comment_mode,
+    reading_direction = EXCLUDED.reading_direction,
+    spread_start_index = EXCLUDED.spread_start_index
 RETURNING *;
 
 -- name: UpdateSeriesPublication :exec
@@ -360,6 +366,8 @@ SELECT s.id,
     sl.schedule_weekdays,
     sl.age_rating,
     sl.comment_mode,
+    sl.reading_direction,
+    sl.spread_start_index,
     s.is_published,
     s.published_at,
     s.eye_catch_image_id,

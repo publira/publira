@@ -52,6 +52,13 @@ message CreateSeriesRequest {
   // is what leaves it following the tenant setting — including afterwards,
   // when that setting changes.
   publira.types.v1.CommentMode comment_mode = 19;
+  // Which way this series' episodes are turned. READING_DIRECTION_UNSPECIFIED
+  // stores the default the column carries, right to left.
+  publira.types.v1.ReadingDirection reading_direction = 20;
+  // The zero-based page index from which this series' episodes pair their
+  // pages. Absent stores the default the column carries, 1: the cover stands
+  // alone. Negative is invalid_argument.
+  optional int32 spread_start_index = 21;
 }
 
 message CreateSeriesResponse {
@@ -60,6 +67,10 @@ message CreateSeriesResponse {
   // in it because Series is what the storefront reads too, and there the
   // answer a page needs is the tenant and the series resolved together.
   publira.types.v1.CommentMode comment_mode = 2;
+  // The layout the series' episodes follow, as it was stored. Unlike the
+  // comment mode it is always a value: a series has nothing above it to follow.
+  publira.types.v1.ReadingDirection reading_direction = 3;
+  int32 spread_start_index = 4;
 }
 
 message UpdateSeriesRequest {
@@ -99,12 +110,22 @@ message UpdateSeriesRequest {
   // is what leaves it following the tenant setting — including afterwards,
   // when that setting changes.
   publira.types.v1.CommentMode comment_mode = 19;
+  // Which way this series' episodes are turned. READING_DIRECTION_UNSPECIFIED
+  // stores the default the column carries, right to left.
+  publira.types.v1.ReadingDirection reading_direction = 20;
+  // The zero-based page index from which this series' episodes pair their
+  // pages. Absent stores the default the column carries, 1: the cover stands
+  // alone. Negative is invalid_argument.
+  optional int32 spread_start_index = 21;
 }
 
 message UpdateSeriesResponse {
   publira.types.v1.Series series = 1;
   // The series' own mode, as it was stored.
   publira.types.v1.CommentMode comment_mode = 2;
+  // The layout the series' episodes follow, as it was stored.
+  publira.types.v1.ReadingDirection reading_direction = 3;
+  int32 spread_start_index = 4;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -145,6 +166,9 @@ message GetSeriesResponse {
   // tenant's. The form offers the tenant setting as one of its options, so it
   // needs the two apart.
   publira.types.v1.CommentMode comment_mode = 2;
+  // The layout the series' episodes follow.
+  publira.types.v1.ReadingDirection reading_direction = 3;
+  int32 spread_start_index = 4;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -172,7 +196,35 @@ message GetEpisodeRequest {
 }
 
 message GetEpisodeResponse {
+  // Carries the resolved layout, which is what the episode is read in.
   publira.types.v1.Episode episode = 1;
+  // The episode's own overrides: READING_DIRECTION_UNSPECIFIED and an absent
+  // index where it follows its series. The form offers following the series
+  // as a choice of its own, so it needs these apart from the resolved pair.
+  publira.types.v1.ReadingDirection reading_direction = 2;
+  optional int32 spread_start_index = 3;
+}
+
+// Sets how one episode is laid out, overriding its series. Both overrides are
+// written on every call, so a field left empty returns that value to following
+// the series.
+message UpdateEpisodeLayoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  // READING_DIRECTION_UNSPECIFIED follows the series.
+  publira.types.v1.ReadingDirection reading_direction = 3;
+  // Absent follows the series. It must name one of the episode's pages: a
+  // negative index, or one at or past the page count, is invalid_argument, so
+  // an episode with no pages yet can only follow its series.
+  optional int32 spread_start_index = 4;
+}
+
+message UpdateEpisodeLayoutResponse {
+  // Carries the resolved layout, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+  // The overrides as they were stored, in GetEpisodeResponse's shape.
+  publira.types.v1.ReadingDirection reading_direction = 2;
+  optional int32 spread_start_index = 3;
 }
 
 message ReorderEpisodesRequest {
@@ -446,6 +498,7 @@ service AdminSeriesService {
   rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
+  rpc UpdateEpisodeLayout(UpdateEpisodeLayoutRequest) returns (UpdateEpisodeLayoutResponse) {}
   rpc ListEpisodeCredits(ListEpisodeCreditsRequest) returns (ListEpisodeCreditsResponse) {}
   rpc ReplaceEpisodeCredits(ReplaceEpisodeCreditsRequest) returns (ReplaceEpisodeCreditsResponse) {}
   rpc BulkEditEpisodeCredits(BulkEditEpisodeCreditsRequest) returns (BulkEditEpisodeCreditsResponse) {}

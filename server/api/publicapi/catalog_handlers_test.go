@@ -807,8 +807,8 @@ func TestCatalogGetEpisodeDetailReportsTheSeriesAgeRating(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 		WithArgs(tenantID, "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}).
-			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "r18", nil, nil, int64(0)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).
+			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "r18", nil, nil, nil, nil, nil, nil, int64(0)))
 	expectTenantAgeVerification(mock, tenantID, now, ageverification.None)
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	expectEpisodeCreditsLookup(mock)
@@ -846,8 +846,8 @@ func TestCatalogGetEpisodeDetailFailsOnAStoredRatingItDoesNotKnow(t *testing.T) 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 		WithArgs(tenantID, "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}).
-			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "r12", nil, nil, int64(0)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).
+			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "r12", nil, nil, nil, nil, nil, nil, int64(0)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -990,31 +990,31 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 			// Paid episode without session: metadata OK, body locked (no images).
 			name:     "normal-paid-locked",
 			publicID: "EPISODE001",
-			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}).
-				AddRow(normalEpisodeID, "EPISODE001", "Episode Title", int32(1), normalSeriesID, int32(100), int32(24), "published", nil, time.Now().UTC(), "SERIES001", "Series Title", "all", nil, nil, int64(0)),
+			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).
+				AddRow(normalEpisodeID, "EPISODE001", "Episode Title", int32(1), normalSeriesID, int32(100), int32(24), "published", nil, time.Now().UTC(), "SERIES001", "Series Title", "all", nil, nil, nil, nil, nil, nil, int64(0)),
 		},
 		{
 			name:     "unpublished",
 			publicID: "EPISODE_DRAFT",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}),
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name:     "scheduled-boundary-not-reached",
 			publicID: "EPISODE_SCHEDULED",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}),
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name:     "cross-tenant",
 			publicID: "EPISODE_OTHER_TENANT",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}),
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name:     "not-found",
 			publicID: "EPISODE_MISSING",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}),
 			wantCode: connect.CodeNotFound,
 		},
 	}
@@ -1182,8 +1182,8 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 				WithArgs(tenantID, "EPISODE001").
-				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}).
-					AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, tc.price, int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, int64(0)))
+				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).
+					AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, tc.price, int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, nil, nil, nil, nil, int64(0)))
 
 			if tc.authed {
 				// authenticateAccessToken looks up tenant again via tenantByContext
@@ -1293,8 +1293,8 @@ func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 		WithArgs(tenantID, "EPISODE002").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}).
-			AddRow(episodeID, "EPISODE002", "Chapter Two", int32(2), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, int64(0)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).
+			AddRow(episodeID, "EPISODE002", "Chapter Two", int32(2), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, nil, nil, nil, nil, int64(0)))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(2), episodeID,
 		episodeNeighbor{direction: -1, publicID: "EPISODE001", title: "Chapter One", orderIndex: 1, price: 0, isFree: true},
 		episodeNeighbor{direction: 1, publicID: "EPISODE003", title: "Chapter Three", orderIndex: 3, price: 500},
@@ -1343,8 +1343,8 @@ func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testi
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 		WithArgs(tenantID, "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}).
-			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, int64(0)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).
+			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, nil, nil, nil, nil, int64(0)))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
 		episodeNeighbor{direction: 1, publicID: "EPISODE002", title: "Chapter Two", orderIndex: 2, price: 500, isFree: true},
 	)
@@ -1382,8 +1382,8 @@ func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 		WithArgs(tenantID, "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "free_until", "rating_count"}).
-			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, int64(0)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).
+			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, nil, nil, nil, nil, int64(0)))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
 		episodeNeighbor{direction: 1, publicID: "EPISODE002", title: "Chapter Two", orderIndex: 2, price: 0, isFree: true},
 	)
