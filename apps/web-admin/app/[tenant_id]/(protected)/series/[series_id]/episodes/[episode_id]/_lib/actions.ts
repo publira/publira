@@ -16,6 +16,7 @@ import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   reorderEpisodeImages,
   updateEpisodeLayout,
+  replaceEpisodeCredits,
   updateEpisodePublishSchedule,
   uploadEpisodePages,
 } from "#lib/episode";
@@ -56,6 +57,34 @@ const scheduleFormSchema = async (locale: Locale) => {
 
   return base.extend({
     publishAt: optionalTrimmedString(),
+  });
+};
+const creditsFormSchema = async (locale: Locale) => {
+  const [base, t] = await Promise.all([
+    hiddenParamsSchema(locale),
+    getMessagesFor(locale),
+  ]);
+  const message = t("admin.series.episodes.validation.creator_credits_invalid");
+  return base.extend({
+    creatorCredits: z.preprocess(
+      (value) => {
+        if (typeof value !== "string" || value.trim() === "") {
+          return [];
+        }
+        try {
+          return JSON.parse(value);
+        } catch {
+          return null;
+        }
+      },
+      z.array(
+        z.object({
+          creatorPublicId: requiredTrimmedString(message),
+          rolePublicId: requiredTrimmedString(message),
+        }),
+        { error: message }
+      )
+    ),
   });
 };
 const uploadModeSchema = z.preprocess(
@@ -258,13 +287,46 @@ export const updateEpisodeLayoutAction = async (
       locale
     )
   );
-
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?layout_updated=1`
+  );
+};
+
+export const replaceEpisodeCreditsAction = async (
+  _prevState: EpisodeEditActionState,
+  formData: FormData
+): Promise<EpisodeEditActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await creditsFormSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      creatorCredits: { kind: "value", name: "creator_credits" },
+    })
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }), "credits");
+  }
+  const result = await withAdminSessionReauth(() =>
+    replaceEpisodeCredits(
+      {
+        creatorCredits: parsed.data.creatorCredits,
+        episodePublicId: parsed.data.episodePublicId,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return toFailure(result.message, "credits");
+  }
+  redirect(
+    `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?credits_updated=1`
   );
 };
 

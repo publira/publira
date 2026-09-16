@@ -30,13 +30,20 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getEpisode, listEpisodeImages } from "#lib/episode";
+import { listAllCreators } from "#lib/creator";
+import { listCreatorRoles } from "#lib/creator-roles";
+import {
+  getEpisode,
+  listEpisodeCredits,
+  listEpisodeImages,
+} from "#lib/episode";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits-form";
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
@@ -44,6 +51,7 @@ import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
 import {
   reorderEpisodeImagesAction,
   updateEpisodeLayoutAction,
+  replaceEpisodeCreditsAction,
   updateEpisodeScheduleAction,
   uploadEpisodePagesAction,
 } from "./_lib/actions";
@@ -75,8 +83,16 @@ const EditEpisodePage = async ({
   const { episode_id, series_id } = parsedParams;
 
   const locale = await getLocale(tenantId);
-  const [episodeResult, imagesResult, seriesResult, timeZone, t] =
-    await Promise.all([
+  const [
+    episodeResult,
+    imagesResult,
+    seriesResult,
+    creditsResult,
+    creatorsResult,
+    creatorRolesResult,
+    timeZone,
+    t,
+  ] = await Promise.all([
       getEpisode(
         {
           publicId: episode_id,
@@ -95,6 +111,9 @@ const EditEpisodePage = async ({
       // Only to name what the layout options that follow the series follow, so
       // a read that failed leaves them unnamed rather than the form unusable.
       getSeries({ publicId: series_id, tenantId }, locale),
+      listEpisodeCredits({ episodePublicId: episode_id, tenantId }, locale),
+      listAllCreators(tenantId, locale),
+      listCreatorRoles(tenantId, locale),
       getTenantDisplayTimeZone(tenantId),
       getMessagesFor(locale),
     ]);
@@ -105,7 +124,10 @@ const EditEpisodePage = async ({
   await redirectToLoginIfSessionRejected(
     episodeResult,
     imagesResult,
-    seriesResult
+    seriesResult,
+    creditsResult,
+    creatorsResult,
+    creatorRolesResult
   );
 
   return (
@@ -159,6 +181,10 @@ const EditEpisodePage = async ({
           title={t("admin.series.episodes.layout.updated")}
         />
         <FlashToast
+          keyName="credits_updated"
+          title={t("admin.series.episodes.credits_updated")}
+        />
+        <FlashToast
           keyName="pages_uploaded"
           title={t("admin.series.episodes.pages_uploaded")}
         />
@@ -190,6 +216,26 @@ const EditEpisodePage = async ({
                 </SectionErrorTitle>
                 <SectionErrorDescription>
                   {episodeResult.message}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
+          )}
+          {creditsResult.ok ? (
+            <EpisodeCreatorCreditsForm
+              action={replaceEpisodeCreditsAction}
+              creatorRoles={creatorRolesResult.creatorRoles}
+              creators={creatorsResult.creators}
+              episodePublicId={episode_id}
+              initialCredits={creditsResult.credits}
+            />
+          ) : (
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  <Message message="admin.series.episodes.credits_error" />
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {creditsResult.message}
                 </SectionErrorDescription>
               </SectionErrorHeading>
             </SectionError>

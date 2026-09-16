@@ -1117,6 +1117,18 @@
         "schedule_description": "更新預約發布的時間。送出空值即可清除預約。",
         "schedule_update": "更新 publish_at",
         "updating": "正在更新…",
+        "credits_updated": "已更新本集作者。",
+        "credits_list_failed": "無法載入本集作者，請稍後再試。",
+        "credits_save_failed": "無法儲存本集作者，請稍後再試。",
+        "credits_error": "無法顯示本集作者",
+        "credits": {
+          "title": "作者",
+          "description": "編輯本集署名作者。標為「僅本集」的列不會受到之後範圍編輯的影響。",
+          "empty": "本集沒有署名作者。",
+          "episode_only": "僅本集",
+          "save": "儲存作者",
+          "saving": "儲存中…"
+        },
         "create_failed": "無法建立該章節。請稍後再試。",
         "list_failed": "無法載入章節。請稍後再試。",
         "get_failed": "無法載入該章節。請稍後再試。",
@@ -1167,6 +1179,7 @@
           "publish_at_description": "留空則以草稿送出。設定後將依租戶時區（{$time_zone}）預約發布。"
         },
         "validation": {
+          "creator_credits_invalid": "每筆作者署名都需要作者和角色。",
           "episode_missing": "缺少章節 ID。",
           "price_invalid": "價格必須是非負整數。",
           "reading_period_invalid": "閱讀期限必須是非負整數。",
