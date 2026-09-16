@@ -1,3 +1,4 @@
+import { EpisodeCreditUnchangedReason } from "@publira/api-client/admin/series";
 import type { Episode, EpisodeImage } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
@@ -101,6 +102,35 @@ export type ReorderEpisodesResult =
 
 export type ReorderEpisodeImagesResult =
   | { ok: true; images: EpisodeImageItem[] }
+  | { ok: false; message: string };
+
+export interface EpisodeCreditPair {
+  creatorPublicId: string;
+  rolePublicId: string;
+}
+
+export type BulkEpisodeCreditOperation =
+  | { type: "add"; credit: EpisodeCreditPair }
+  | { type: "replace"; from: EpisodeCreditPair; to: EpisodeCreditPair }
+  | { type: "remove"; credit: EpisodeCreditPair };
+
+export type EpisodeCreditUnchangedReasonValue =
+  | "already_credited"
+  | "not_credited"
+  | "credited_on_the_episode"
+  | "unspecified";
+
+export interface UnchangedEpisodeCreditItem {
+  episodePublicId: string;
+  reason: EpisodeCreditUnchangedReasonValue;
+}
+
+export type BulkEditEpisodeCreditsResult =
+  | {
+      ok: true;
+      changedEpisodePublicIds: string[];
+      unchangedEpisodes: UnchangedEpisodeCreditItem[];
+    }
   | { ok: false; message: string };
 
 /**
@@ -996,6 +1026,109 @@ export const reorderEpisodeImages = async (
         t("admin.series.episodes.image_reorder_failed"),
         locale
       ),
+      ok: false,
+    };
+  }
+};
+
+const toUnchangedReason = (
+  reason: EpisodeCreditUnchangedReason
+): EpisodeCreditUnchangedReasonValue => {
+  if (reason === EpisodeCreditUnchangedReason.ALREADY_CREDITED) {
+    return "already_credited";
+  }
+  if (reason === EpisodeCreditUnchangedReason.NOT_CREDITED) {
+    return "not_credited";
+  }
+  if (reason === EpisodeCreditUnchangedReason.CREDITED_ON_THE_EPISODE) {
+    return "credited_on_the_episode";
+  }
+  return "unspecified";
+};
+
+const toBulkCreditOperation = (operation: BulkEpisodeCreditOperation) => {
+  if (operation.type === "add") {
+    return { case: "add" as const, value: { credit: operation.credit } };
+  }
+  if (operation.type === "replace") {
+    return {
+      case: "replace" as const,
+      value: { from: operation.from, to: operation.to },
+    };
+  }
+  return { case: "remove" as const, value: { credit: operation.credit } };
+};
+
+const mapBulkCreditErrorToMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(
+    error,
+    t("admin.series.episodes.credits.apply_failed"),
+    {
+      locale,
+      overrides: {
+        "invalid-argument": t("admin.series.episodes.credits.apply_failed"),
+        "not-found": t("admin.series.episodes.series_not_found"),
+        precondition: t("admin.series.episodes.credits.duplicate"),
+      },
+    }
+  );
+};
+
+/**
+ * One credit correction over a range of episodes. The range is the list of
+ * public ids the console's picker composed; the RPC does not take a span of
+ * order indexes, because a later reorder would make that span name a
+ * different set than the picker showed.
+ */
+export const bulkEditEpisodeCredits = async (
+  input: {
+    tenantId: string;
+    seriesPublicId: string;
+    episodePublicIds: string[];
+    operation: BulkEpisodeCreditOperation;
+  },
+  locale: Locale
+): Promise<BulkEditEpisodeCreditsResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.bulkEditEpisodeCredits(
+      {
+        episodePublicIds: input.episodePublicIds,
+        operation: toBulkCreditOperation(input.operation),
+        seriesPublicId: input.seriesPublicId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      changedEpisodePublicIds: response.changedEpisodePublicIds ?? [],
+      ok: true,
+      unchangedEpisodes: (response.unchangedEpisodes ?? []).map((episode) => ({
+        episodePublicId: episode.episodePublicId,
+        reason: toUnchangedReason(episode.reason),
+      })),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapBulkCreditErrorToMessage(error, locale),
       ok: false,
     };
   }

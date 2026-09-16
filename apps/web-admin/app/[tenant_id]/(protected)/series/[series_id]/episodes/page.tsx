@@ -41,6 +41,8 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { EpisodeCreditsRangeDialog } from "./_components/episode-credits-range-dialog";
+import { EpisodeCreditsSelectionProvider } from "./_components/episode-credits-selection";
 import { EpisodesSortableList } from "./_components/episodes-sortable-list";
 import { reorderEpisodesAction } from "./_lib/actions";
 
@@ -55,42 +57,82 @@ export const generateMetadata = async (): Promise<Metadata> => {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
 
-const SeriesEpisodesPageSkeleton = () => (
-  <AdminPage>
-    <AdminPageHeader>
+type SeriesEpisodesPageProps =
+  PageProps<"/[tenant_id]/series/[series_id]/episodes">;
+
+const SeriesEpisodesHeaderSkeleton = () => (
+  <>
+    <AdminPageHeading>
+      <AdminPageContext>
+        <SkeletonLine className="h-4 w-40" />
+      </AdminPageContext>
+      <AdminPageTitle>
+        <SkeletonLine className="h-7 w-48" />
+      </AdminPageTitle>
+      <AdminPageDescription>
+        <SkeletonLine className="h-4 w-72" />
+      </AdminPageDescription>
+    </AdminPageHeading>
+    <AdminPageActions>
+      <div className="flex gap-2">
+        <SkeletonLine className="h-10 w-28" />
+        <SkeletonLine className="h-10 w-28" />
+        <SkeletonLine className="h-10 w-28" />
+      </div>
+    </AdminPageActions>
+  </>
+);
+
+const SeriesEpisodesListSkeleton = () => (
+  <div className="grid gap-4">
+    <SkeletonLine className="h-6 w-48" />
+    <SkeletonLine className="h-4 w-72" />
+    <Skeleton className="h-16" />
+    <Skeleton className="h-16" />
+  </div>
+);
+
+const SeriesEpisodesChrome = async ({
+  params,
+}: Pick<SeriesEpisodesPageProps, "params">) => {
+  const { series_id } = await params;
+  guardPlaceholder(series_id);
+
+  return (
+    <>
       <AdminPageHeading>
-        <AdminPageContext>
-          <SkeletonLine className="h-4 w-40" />
-        </AdminPageContext>
+        <AdminPageContext>{`Series ${series_id}`}</AdminPageContext>
         <AdminPageTitle>
-          <SkeletonLine className="h-7 w-48" />
+          <Message message="admin.series.episodes.list_title" />
         </AdminPageTitle>
         <AdminPageDescription>
-          <SkeletonLine className="h-4 w-72" />
+          <Message message="admin.series.episodes.list_description" />
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
         <div className="flex gap-2">
-          <SkeletonLine className="h-10 w-28" />
-          <SkeletonLine className="h-10 w-28" />
+          <LinkButton
+            render={<Link href={`/series/${series_id}/episodes/new`} />}
+          >
+            <Message message="admin.series.episodes.new_action" />
+          </LinkButton>
+          <EpisodeCreditsRangeDialog seriesPublicId={series_id} />
+          <LinkButton
+            render={<Link href={`/series/${series_id}`} />}
+            variant="outline"
+          >
+            <Message message="admin.series.episodes.back_to_series" />
+          </LinkButton>
         </div>
       </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
-      <div className="grid gap-4">
-        <SkeletonLine className="h-6 w-48" />
-        <SkeletonLine className="h-4 w-72" />
-        <Skeleton className="h-16" />
-        <Skeleton className="h-16" />
-      </div>
-    </AdminPageContent>
-  </AdminPage>
-);
+    </>
+  );
+};
 
-const SeriesEpisodesPage = async ({
+const SeriesEpisodesData = async ({
   params,
   searchParams,
-}: PageProps<"/[tenant_id]/series/[series_id]/episodes">) => {
+}: SeriesEpisodesPageProps) => {
   const [{ series_id }, sp, tenantId] = await Promise.all([
     params,
     searchParams,
@@ -117,115 +159,109 @@ const SeriesEpisodesPage = async ({
   const pageHrefs = cursorPageHrefs(result);
   const hasPageLinks = hasCursorPageLinks(pageHrefs);
 
+  if (!result.ok) {
+    return (
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Message message="admin.series.episodes.list_error" />
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
+    );
+  }
+
+  if (result.episodes.length === 0) {
+    return (
+      <>
+        <CursorPageEmptyState
+          actions={
+            <LinkButton
+              render={<Link href={`/series/${series_id}/episodes/new`} />}
+            >
+              <Message message="admin.series.episodes.create_action" />
+            </LinkButton>
+          }
+          description={
+            <Message message="admin.series.episodes.empty_description" />
+          }
+          hasPageLinks={hasPageLinks}
+          itemLabel={t("admin.series.episodes.title")}
+          title={t("admin.series.episodes.empty_title")}
+        />
+        {hasPageLinks ? (
+          <PaginationFooter
+            {...pageHrefs}
+            ariaLabel={t("admin.series.episodes.pagination_aria")}
+            description={t("admin.series.episodes.pagination_description", {
+              count: DEFAULT_PAGE_SIZE,
+            })}
+          />
+        ) : null}
+      </>
+    );
+  }
+
   return (
-    <Suspense fallback={<SeriesEpisodesPageSkeleton />}>
-      <AdminPage>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageContext>{`Series ${series_id}`}</AdminPageContext>
-            <AdminPageTitle>
-              <Message message="admin.series.episodes.list_title" />
-            </AdminPageTitle>
-            <AdminPageDescription>
-              <Message message="admin.series.episodes.list_description" />
-            </AdminPageDescription>
-          </AdminPageHeading>
-          <AdminPageActions>
-            <div className="flex gap-2">
-              <LinkButton
-                render={<Link href={`/series/${series_id}/episodes/new`} />}
-              >
-                <Message message="admin.series.episodes.new_action" />
-              </LinkButton>
-              <LinkButton
-                render={<Link href={`/series/${series_id}`} />}
-                variant="outline"
-              >
-                <Message message="admin.series.episodes.back_to_series" />
-              </LinkButton>
-            </div>
-          </AdminPageActions>
-        </AdminPageHeader>
-        <AdminPageContent>
-          <FlashToast
-            keyName="reordered"
-            title={t("admin.series.episodes.reordered")}
-          />
-          <FlashToast
-            keyName="reorder_error"
-            title={t("admin.series.episodes.reorder_error")}
-          />
-
-          {/*
-            A failed read hands back an empty `episodes`, so the empty state
-            has to stay behind `result.ok`. Otherwise the screen says the list
-            could not be displayed and that nothing is registered at once, and
-            offers a create button for a list nobody managed to read.
-          */}
-          {result.ok ? (
-            <>
-              {result.episodes.length === 0 ? (
-                <CursorPageEmptyState
-                  actions={
-                    <LinkButton
-                      render={
-                        <Link href={`/series/${series_id}/episodes/new`} />
-                      }
-                    >
-                      <Message message="admin.series.episodes.create_action" />
-                    </LinkButton>
-                  }
-                  description={
-                    <Message message="admin.series.episodes.empty_description" />
-                  }
-                  hasPageLinks={hasPageLinks}
-                  itemLabel={t("admin.series.episodes.title")}
-                  title={t("admin.series.episodes.empty_title")}
-                />
-              ) : (
-                <div className="grid gap-3">
-                  <p className="text-xs text-muted-foreground">
-                    <Message message="admin.series.episodes.drag_description" />
-                    {hasPageLinks ? (
-                      <Message message="admin.series.episodes.drag_page_description" />
-                    ) : null}
-                  </p>
-                  <EpisodesSortableList
-                    episodes={result.episodes}
-                    reorderAction={reorderEpisodesAction}
-                    seriesPublicId={series_id}
-                    timeZone={timeZone}
-                  />
-                </div>
-              )}
-
-              {result.episodes.length > 0 || hasPageLinks ? (
-                <PaginationFooter
-                  {...pageHrefs}
-                  ariaLabel={t("admin.series.episodes.pagination_aria")}
-                  description={t(
-                    "admin.series.episodes.pagination_description",
-                    { count: DEFAULT_PAGE_SIZE }
-                  )}
-                />
-              ) : null}
-            </>
-          ) : (
-            <SectionError>
-              <SectionErrorHeading>
-                <SectionErrorTitle>
-                  <Message message="admin.series.episodes.list_error" />
-                </SectionErrorTitle>
-                <SectionErrorDescription>
-                  {result.message}
-                </SectionErrorDescription>
-              </SectionErrorHeading>
-            </SectionError>
-          )}
-        </AdminPageContent>
-      </AdminPage>
-    </Suspense>
+    <>
+      <div className="grid gap-3">
+        <p className="text-xs text-muted-foreground">
+          <Message message="admin.series.episodes.drag_description" />
+          {hasPageLinks ? (
+            <Message message="admin.series.episodes.drag_page_description" />
+          ) : null}
+        </p>
+        <EpisodesSortableList
+          episodes={result.episodes}
+          reorderAction={reorderEpisodesAction}
+          seriesPublicId={series_id}
+          timeZone={timeZone}
+        />
+      </div>
+      <PaginationFooter
+        {...pageHrefs}
+        ariaLabel={t("admin.series.episodes.pagination_aria")}
+        description={t("admin.series.episodes.pagination_description", {
+          count: DEFAULT_PAGE_SIZE,
+        })}
+      />
+    </>
   );
 };
+
+const SeriesEpisodesPage = ({
+  params,
+  searchParams,
+}: SeriesEpisodesPageProps) => (
+  <EpisodeCreditsSelectionProvider>
+    <AdminPage>
+      <AdminPageHeader>
+        <Suspense fallback={<SeriesEpisodesHeaderSkeleton />}>
+          <SeriesEpisodesChrome params={params} />
+        </Suspense>
+      </AdminPageHeader>
+      <AdminPageContent>
+        <FlashToast
+          keyName="reordered"
+          message="admin.series.episodes.reordered"
+        />
+        <FlashToast
+          keyName="reorder_error"
+          message="admin.series.episodes.reorder_error"
+        />
+        {/*
+          A failed read hands back an empty `episodes`, so the empty state
+          has to stay behind `result.ok`. Otherwise the screen says the list
+          could not be displayed and that nothing is registered at once, and
+          offers a create button for a list nobody managed to read.
+        */}
+        <Suspense fallback={<SeriesEpisodesListSkeleton />}>
+          <SeriesEpisodesData params={params} searchParams={searchParams} />
+        </Suspense>
+      </AdminPageContent>
+    </AdminPage>
+  </EpisodeCreditsSelectionProvider>
+);
 
 export default SeriesEpisodesPage;

@@ -2,11 +2,13 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockBulkEditEpisodeCredits,
   mockGetAccessToken,
   mockGetEpisode,
   mockListEpisodes,
   mockReorderEpisodes,
 } = vi.hoisted(() => ({
+  mockBulkEditEpisodeCredits: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockListEpisodes: vi.fn(),
@@ -20,6 +22,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     series: {
+      bulkEditEpisodeCredits: mockBulkEditEpisodeCredits,
       getEpisode: mockGetEpisode,
       listEpisodes: mockListEpisodes,
       reorderEpisodes: mockReorderEpisodes,
@@ -520,5 +523,82 @@ describe("reorderEpisodePage", () => {
 
     expect(result.ok).toBe(false);
     expect(mockReorderEpisodes).not.toHaveBeenCalled();
+  });
+});
+
+describe("bulkEditEpisodeCredits", () => {
+  it("sends the composed public ids and the replace operation", async () => {
+    mockBulkEditEpisodeCredits.mockResolvedValue({
+      changedEpisodePublicIds: ["EP01", "EP02"],
+      unchangedEpisodes: [{ episodePublicId: "EP03", reason: 3 }],
+    });
+
+    const { bulkEditEpisodeCredits } = await import("./episode");
+    const result = await bulkEditEpisodeCredits(
+      {
+        episodePublicIds: ["EP01", "EP02", "EP03"],
+        operation: {
+          from: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          to: { creatorPublicId: "CREATOR_C", rolePublicId: "ROLE_ARTIST" },
+          type: "replace",
+        },
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
+      {
+        episodePublicIds: ["EP01", "EP02", "EP03"],
+        operation: {
+          case: "replace",
+          value: {
+            from: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+            to: { creatorPublicId: "CREATOR_C", rolePublicId: "ROLE_ARTIST" },
+          },
+        },
+        seriesPublicId: "SERIES001",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      changedEpisodePublicIds: ["EP01", "EP02"],
+      ok: true,
+      unchangedEpisodes: [
+        {
+          episodePublicId: "EP03",
+          reason: "credited_on_the_episode",
+        },
+      ],
+    });
+  });
+
+  it("maps a duplicate-credit precondition to the selection-edit wording", async () => {
+    mockBulkEditEpisodeCredits.mockRejectedValue(
+      new ConnectError("already credited", Code.FailedPrecondition)
+    );
+
+    const { bulkEditEpisodeCredits } = await import("./episode");
+    const result = await bulkEditEpisodeCredits(
+      {
+        episodePublicIds: ["EP01"],
+        operation: {
+          from: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          to: { creatorPublicId: "CREATOR_C", rolePublicId: "ROLE_ARTIST" },
+          type: "replace",
+        },
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "Some of the selected episodes already credit the author this would become. Change the replacement or the selection.",
+      ok: false,
+    });
   });
 });

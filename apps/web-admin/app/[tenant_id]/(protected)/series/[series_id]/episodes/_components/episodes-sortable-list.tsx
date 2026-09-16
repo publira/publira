@@ -3,6 +3,7 @@
 import type { DragEndEvent } from "@dnd-kit/react";
 import { useToastManager } from "@publira/ui-components";
 import { LinkButton } from "@publira/ui-components/button";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
@@ -29,6 +30,11 @@ import {
 import type { EpisodeItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
+import {
+  selectionCheckboxProps,
+  useEpisodeCreditsSelection,
+} from "./episode-credits-selection";
+
 interface EpisodesSortableListProps {
   seriesPublicId: string;
   episodes: EpisodeItem[];
@@ -52,6 +58,7 @@ export const EpisodesSortableList = ({
   }
   const t = useAdminMessages();
   const tenantId = useTenantId();
+  const { selectedIds, selectMany, toggle } = useEpisodeCreditsSelection();
   const router = useRouter();
   const { add } = useToastManager();
   const [isPending, startTransition] = useTransition();
@@ -59,6 +66,13 @@ export const EpisodesSortableList = ({
     episodes,
     (_currentItems, nextItems: EpisodeItem[]) => nextItems
   );
+  const pageIds = optimisticItems.map(episodeId);
+  const selectedOnPage = pageIds.filter((publicId) =>
+    selectedIds.has(publicId)
+  );
+  const allOnPageSelected =
+    pageIds.length > 0 && selectedOnPage.length === pageIds.length;
+  const someOnPageSelected = selectedOnPage.length > 0 && !allOnPageSelected;
 
   const submitReorder = useCallback(
     async (currentItems: EpisodeItem[], nextItems: EpisodeItem[]) => {
@@ -132,76 +146,102 @@ export const EpisodesSortableList = ({
   );
 
   return (
-    <SortableList
-      aria-label={t("admin.series.episodes.list_title")}
-      className="grid gap-3"
-      onDragEnd={handleDragEnd}
-    >
-      {optimisticItems.map((episode, index) => (
-        <SortableItem
-          className="flex items-center justify-between gap-3 border border-border bg-background px-4 py-3"
-          disabled={isPending}
-          id={episode.publicId}
-          index={index}
-          key={episode.publicId}
+    <div className="grid gap-3">
+      <div className="flex items-center gap-2">
+        <Checkbox
+          {...selectionCheckboxProps(allOnPageSelected, someOnPageSelected)}
+          id="episode-credits-select-page"
+          onCheckedChange={(checked) => {
+            selectMany(pageIds, checked);
+          }}
+        />
+        <label
+          className="text-xs text-muted-foreground"
+          htmlFor="episode-credits-select-page"
         >
-          <SortableItemHandle>
-            <Suspense fallback={null}>
-              <ClientMessage
-                message="admin.series.episodes.reorder_action"
-                values={{ title: episode.title }}
-              />
-            </Suspense>
-          </SortableItemHandle>
-
-          <div className="grid flex-1 gap-1">
-            <p className="text-sm font-medium">
-              {episode.orderIndex}. {episode.title}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          {t("admin.series.episodes.credits.select_page")}
+        </label>
+      </div>
+      <SortableList
+        aria-label={t("admin.series.episodes.list_title")}
+        className="grid gap-3"
+        onDragEnd={handleDragEnd}
+      >
+        {optimisticItems.map((episode, index) => (
+          <SortableItem
+            className="flex items-center justify-between gap-3 border border-border bg-background px-4 py-3"
+            disabled={isPending}
+            id={episode.publicId}
+            index={index}
+            key={episode.publicId}
+          >
+            <Checkbox
+              aria-label={t("admin.series.episodes.credits.select_episode", {
+                title: episode.title,
+              })}
+              checked={selectedIds.has(episode.publicId)}
+              onCheckedChange={(checked) => {
+                toggle(episode.publicId, checked);
+              }}
+            />
+            <SortableItemHandle>
+              <Suspense fallback={null}>
                 <ClientMessage
-                  message="admin.series.episodes.status_price"
-                  values={{
-                    price: episode.price,
-                    status: episode.status,
-                  }}
+                  message="admin.series.episodes.reorder_action"
+                  values={{ title: episode.title }}
                 />
               </Suspense>
-            </p>
-            {episode.status === "scheduled" && episode.scheduledAt ? (
-              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+            </SortableItemHandle>
+
+            <div className="grid flex-1 gap-1">
+              <p className="text-sm font-medium">
+                {episode.orderIndex}. {episode.title}
+              </p>
+              <p className="text-xs text-muted-foreground">
                 <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
                   <ClientMessage
-                    message="admin.series.episodes.scheduled_at"
+                    message="admin.series.episodes.status_price"
                     values={{
-                      date: formatDateTime(episode.scheduledAt, {
-                        locale,
-                        timeZone,
-                      }),
+                      price: episode.price,
+                      status: episode.status,
                     }}
                   />
                 </Suspense>
               </p>
-            ) : null}
-          </div>
+              {episode.status === "scheduled" && episode.scheduledAt ? (
+                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                  <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                    <ClientMessage
+                      message="admin.series.episodes.scheduled_at"
+                      values={{
+                        date: formatDateTime(episode.scheduledAt, {
+                          locale,
+                          timeZone,
+                        }),
+                      }}
+                    />
+                  </Suspense>
+                </p>
+              ) : null}
+            </div>
 
-          <div className="flex items-center gap-2">
-            <LinkButton
-              render={
-                <Link
-                  href={`/series/${seriesPublicId}/episodes/${episode.publicId}`}
-                />
-              }
-              variant="outline"
-            >
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ClientMessage message="admin.series.episodes.edit_action" />
-              </Suspense>
-            </LinkButton>
-          </div>
-        </SortableItem>
-      ))}
-    </SortableList>
+            <div className="flex items-center gap-2">
+              <LinkButton
+                render={
+                  <Link
+                    href={`/series/${seriesPublicId}/episodes/${episode.publicId}`}
+                  />
+                }
+                variant="outline"
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <ClientMessage message="admin.series.episodes.edit_action" />
+                </Suspense>
+              </LinkButton>
+            </div>
+          </SortableItem>
+        ))}
+      </SortableList>
+    </div>
   );
 };

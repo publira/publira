@@ -9,10 +9,21 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
-import { withAdminSessionReauth } from "#lib/auth-session";
+import {
+  redirectToLoginIfSessionRejected,
+  withAdminSessionReauth,
+} from "#lib/auth-session";
+import { listAllCreators } from "#lib/creator";
+import { listCreatorRoles } from "#lib/creator-roles";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
-import { createEpisode, reorderEpisodePage } from "#lib/episode";
+import {
+  bulkEditEpisodeCredits,
+  createEpisode,
+  listAllEpisodes,
+  reorderEpisodePage,
+} from "#lib/episode";
+import type { BulkEpisodeCreditOperation } from "#lib/episode";
 import {
   jsonStringArrayFormSchema,
   nonNegativeIntFormSchema,
@@ -22,7 +33,15 @@ import {
 import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import type { EpisodeActionState } from "../episode-types";
+import type {
+  BulkEditEpisodeCreditsActionState,
+  EpisodeActionState,
+  ListEpisodeCreditRangeCatalogResult,
+} from "../episode-types";
+import {
+  MAX_BULK_EPISODE_CREDIT_EPISODES,
+  episodesSelectedInReadingOrder,
+} from "./credit-range";
 
 const createEpisodeSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -225,4 +244,283 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   return {
     ok: true,
   };
+};
+
+const BULK_CREDIT_OPERATIONS = ["add", "replace", "remove"] as const;
+
+type BulkCreditOperationType = (typeof BULK_CREDIT_OPERATIONS)[number];
+
+const isBulkCreditOperationType = (
+  value: string
+): value is BulkCreditOperationType =>
+  BULK_CREDIT_OPERATIONS.some((operation) => operation === value);
+
+const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
+    .object({
+      creatorPublicId: optionalTrimmedString(),
+      episodePublicIds: jsonStringArrayFormSchema,
+      fromCreatorPublicId: optionalTrimmedString(),
+      fromRolePublicId: optionalTrimmedString(),
+      operation: requiredTrimmedString(
+        t("admin.series.episodes.credits.validation.operation_required")
+      ),
+      rolePublicId: optionalTrimmedString(),
+      seriesPublicId: requiredTrimmedString(
+        t("admin.series.episodes.validation.series_missing")
+      ),
+      tenantId: requiredTrimmedString(
+        t("admin.series.episodes.validation.tenant_missing")
+      ),
+      toCreatorPublicId: optionalTrimmedString(),
+      toRolePublicId: optionalTrimmedString(),
+    })
+    .superRefine((value, ctx) => {
+      if (!isBulkCreditOperationType(value.operation)) {
+        ctx.addIssue({
+          code: "custom",
+          message: t(
+            "admin.series.episodes.credits.validation.operation_required"
+          ),
+          path: ["operation"],
+        });
+        return;
+      }
+
+      if (value.operation === "replace") {
+        if (
+          value.fromCreatorPublicId.length === 0 ||
+          value.fromRolePublicId.length === 0 ||
+          value.toCreatorPublicId.length === 0 ||
+          value.toRolePublicId.length === 0
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            message: t(
+              "admin.series.episodes.credits.validation.credit_required"
+            ),
+            path: ["fromCreatorPublicId"],
+          });
+        }
+        if (
+          value.fromCreatorPublicId === value.toCreatorPublicId &&
+          value.fromRolePublicId === value.toRolePublicId &&
+          value.fromCreatorPublicId.length > 0
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            message: t("admin.series.episodes.credits.validation.replace_same"),
+            path: ["toCreatorPublicId"],
+          });
+        }
+        return;
+      }
+
+      if (
+        value.creatorPublicId.length === 0 ||
+        value.rolePublicId.length === 0
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: t(
+            "admin.series.episodes.credits.validation.credit_required"
+          ),
+          path: ["creatorPublicId"],
+        });
+      }
+    });
+};
+
+const toBulkCreditOperation = (
+  parsed: z.output<Awaited<ReturnType<typeof bulkEditEpisodeCreditsSchema>>>
+): BulkEpisodeCreditOperation | undefined => {
+  if (!isBulkCreditOperationType(parsed.operation)) {
+    return undefined;
+  }
+  if (parsed.operation === "replace") {
+    return {
+      from: {
+        creatorPublicId: parsed.fromCreatorPublicId,
+        rolePublicId: parsed.fromRolePublicId,
+      },
+      to: {
+        creatorPublicId: parsed.toCreatorPublicId,
+        rolePublicId: parsed.toRolePublicId,
+      },
+      type: "replace",
+    };
+  }
+  if (parsed.creatorPublicId.length === 0 || parsed.rolePublicId.length === 0) {
+    return undefined;
+  }
+  return {
+    credit: {
+      creatorPublicId: parsed.creatorPublicId,
+      rolePublicId: parsed.rolePublicId,
+    },
+    type: parsed.operation,
+  };
+};
+
+const listEpisodeCreditRangeOptionsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    seriesPublicId: requiredTrimmedString(
+      t("admin.series.episodes.validation.series_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      t("admin.series.episodes.validation.tenant_missing")
+    ),
+  });
+};
+
+export const listEpisodeCreditRangeOptionsAction = async (
+  tenantId: string,
+  seriesPublicId: string,
+  locale: Locale
+): Promise<ListEpisodeCreditRangeCatalogResult> => {
+  const schema = await listEpisodeCreditRangeOptionsSchema(locale);
+  const parsed = schema.safeParse({
+    seriesPublicId,
+    tenantId,
+  });
+  if (!parsed.success) {
+    const message = toFormErrorMessage(parsed.error, { locale });
+    return {
+      creatorRoles: [],
+      creators: [],
+      episodes: [],
+      episodesErrorMessage: message,
+    };
+  }
+
+  const [episodesResult, creatorsResult, creatorRolesResult] =
+    await Promise.all([
+      listAllEpisodes(
+        {
+          seriesPublicId: parsed.data.seriesPublicId,
+          tenantId: parsed.data.tenantId,
+        },
+        locale
+      ),
+      listAllCreators(parsed.data.tenantId, locale),
+      listCreatorRoles(parsed.data.tenantId, locale),
+    ]);
+  await redirectToLoginIfSessionRejected(
+    episodesResult,
+    creatorsResult,
+    creatorRolesResult
+  );
+
+  return {
+    creatorRoles: creatorRolesResult.creatorRoles,
+    creatorRolesErrorMessage: creatorRolesResult.ok
+      ? undefined
+      : creatorRolesResult.message,
+    creators: creatorsResult.creators.map((creator) => ({
+      name: creator.name,
+      publicId: creator.publicId,
+    })),
+    creatorsErrorMessage: creatorsResult.ok
+      ? undefined
+      : creatorsResult.message,
+    episodes: episodesResult.ok
+      ? episodesResult.episodes.map((episode) => ({
+          publicId: episode.publicId,
+          title: episode.title,
+        }))
+      : [],
+    episodesErrorMessage: episodesResult.ok
+      ? undefined
+      : episodesResult.message,
+  };
+};
+
+export const bulkEditEpisodeCreditsAction = async (
+  _prevState: BulkEditEpisodeCreditsActionState,
+  formData: FormData
+): Promise<BulkEditEpisodeCreditsActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    bulkEditEpisodeCreditsSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      creatorPublicId: { kind: "value", name: "creator_public_id" },
+      episodePublicIds: { kind: "value", name: "episode_public_ids" },
+      fromCreatorPublicId: { kind: "value", name: "from_creator_public_id" },
+      fromRolePublicId: { kind: "value", name: "from_role_public_id" },
+      operation: "value",
+      rolePublicId: { kind: "value", name: "role_public_id" },
+      seriesPublicId: { kind: "value", name: "series_public_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+      toCreatorPublicId: { kind: "value", name: "to_creator_public_id" },
+      toRolePublicId: { kind: "value", name: "to_role_public_id" },
+    })
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const operation = toBulkCreditOperation(parsed.data);
+  if (!operation) {
+    return {
+      message: t("admin.series.episodes.credits.validation.credit_required"),
+      ok: false,
+    };
+  }
+
+  const listed = await listAllEpisodes(
+    {
+      seriesPublicId: parsed.data.seriesPublicId,
+      tenantId: parsed.data.tenantId,
+    },
+    locale
+  );
+  await redirectToLoginIfSessionRejected(listed);
+  if (!listed.ok) {
+    return {
+      message: listed.message,
+      ok: false,
+    };
+  }
+
+  const selected = episodesSelectedInReadingOrder(
+    listed.episodes,
+    parsed.data.episodePublicIds
+  );
+  if (selected.length === 0) {
+    return {
+      message: t("admin.series.episodes.credits.validation.selection_required"),
+      ok: false,
+    };
+  }
+  if (selected.length > MAX_BULK_EPISODE_CREDIT_EPISODES) {
+    return {
+      message: t("admin.series.episodes.credits.selection_too_many", {
+        count: String(MAX_BULK_EPISODE_CREDIT_EPISODES),
+      }),
+      ok: false,
+    };
+  }
+
+  return await withAdminSessionReauth(() =>
+    bulkEditEpisodeCredits(
+      {
+        episodePublicIds: selected.map((episode) => episode.publicId),
+        operation,
+        seriesPublicId: parsed.data.seriesPublicId,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
 };
