@@ -1,5 +1,9 @@
 -- Which way a work's pages are turned, and the page from which two of them
 -- share a screen.
+--
+-- The CHECK constraints are added NOT VALID so this file takes its ACCESS
+-- EXCLUSIVE locks without scanning either table; the next migration validates
+-- them under a lock that lets reads and writes continue.
 
 -- COLUMN: series_listings reading_direction, spread_start_index
 -- The values every episode of the series is laid out with. The defaults are
@@ -13,8 +17,8 @@
 ALTER TABLE ONLY series_listings
     ADD COLUMN reading_direction text DEFAULT 'rtl'::text NOT NULL,
     ADD COLUMN spread_start_index integer DEFAULT 1 NOT NULL,
-    ADD CONSTRAINT series_listings_reading_direction_check CHECK ((reading_direction = ANY (ARRAY['rtl'::text, 'ltr'::text]))),
-    ADD CONSTRAINT series_listings_spread_start_index_check CHECK ((spread_start_index >= 0));
+    ADD CONSTRAINT series_listings_reading_direction_check CHECK ((reading_direction = ANY (ARRAY['rtl'::text, 'ltr'::text]))) NOT VALID,
+    ADD CONSTRAINT series_listings_spread_start_index_check CHECK ((spread_start_index >= 0)) NOT VALID;
 
 -- COLUMN: episodes reading_direction, spread_start_index
 -- One episode's override of each, and NULL where it follows its series. It is
@@ -29,5 +33,5 @@ ALTER TABLE ONLY series_listings
 ALTER TABLE ONLY episodes
     ADD COLUMN reading_direction text,
     ADD COLUMN spread_start_index integer,
-    ADD CONSTRAINT episodes_reading_direction_check CHECK ((reading_direction = ANY (ARRAY['rtl'::text, 'ltr'::text]))),
-    ADD CONSTRAINT episodes_spread_start_index_check CHECK ((spread_start_index >= 0));
+    ADD CONSTRAINT episodes_reading_direction_check CHECK ((reading_direction = ANY (ARRAY['rtl'::text, 'ltr'::text]))) NOT VALID,
+    ADD CONSTRAINT episodes_spread_start_index_check CHECK ((spread_start_index >= 0)) NOT VALID;
