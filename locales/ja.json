@@ -2483,6 +2483,15 @@
   },
   "mobile": {
     "account": {
+      "birth_date": "生年月日",
+      "birth_date_confirm_description": "生年月日は一度登録すると変更できません。",
+      "birth_date_confirm_title": "生年月日を {$date} で登録しますか？",
+      "birth_date_help": "年齢制限のある作品を開くときに年齢を確認します。一度登録すると変更できません。",
+      "birth_date_invalid": "生年月日を過去の日付で入力してください。",
+      "birth_date_load_failed": "生年月日を読み込めませんでした。",
+      "birth_date_save": "登録する",
+      "birth_date_save_failed": "生年月日を登録できませんでした。もう一度お試しください。",
+      "birth_date_set_help": "生年月日は変更できません。誤りがある場合はサイト運営者へお問い合わせください。",
       "follows": "フォロー中",
       "follows_description": "フォローしているシリーズと著者",
       "name": "お名前",
@@ -2637,6 +2646,7 @@
     "viewer": {
       "back_to_series": "シリーズへ戻る",
       "age_restricted": {
+        "add_birth_date": "生年月日を登録する",
         "guest": "この作品を開くには年齢の確認が必要です。生年月日を登録したアカウントでサインインしてください。",
         "no_birth_date": "この作品を開くには年齢の確認が必要です。アカウントに生年月日が登録されていません。",
         "too_young": "この作品はお客様の年齢では閲覧できません。"

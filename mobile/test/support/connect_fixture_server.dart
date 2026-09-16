@@ -38,6 +38,8 @@ class ConnectFixtureServer {
     this.followStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
     this.memberBirthDate = '',
+    this.ageVerification = 'AGE_VERIFICATION_R18',
+    this.tenantTimeZone = 'Asia/Tokyo',
     this.encryptImages = true,
     this.listResponse,
     this.detailResponse,
@@ -416,6 +418,10 @@ class ConnectFixtureServer {
   /// the column is unset.
   String memberBirthDate;
 
+  /// The tenant's age rule and display zone, as `GetTenant` answers them.
+  String ageVerification;
+  String tenantTimeZone;
+
   /// Whether a page leaves as ciphertext. Set it to false to act out an
   /// image-server instance a rolling deploy has not replaced yet, which the
   /// reader still has to work against for the length of the rollout.
@@ -584,6 +590,11 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/UpdateMe')) {
+      await _writeUpdateMe(request, body);
+      return;
+    }
+
     if (path.endsWith('/GetSeriesDetail')) {
       if (detailStatus != HttpStatus.ok) {
         await _write(
@@ -653,6 +664,8 @@ class ConnectFixtureServer {
         if (tenantStatus == HttpStatus.ok) 'tenantPublicId': tenantId,
         if (tenantStatus == HttpStatus.ok) 'defaultLocale': defaultLocale,
         if (tenantStatus == HttpStatus.ok) 'commentMode': commentMode,
+        if (tenantStatus == HttpStatus.ok) 'ageVerification': ageVerification,
+        if (tenantStatus == HttpStatus.ok) 'timezone': tenantTimeZone,
         if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
         if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
       });
@@ -938,6 +951,54 @@ class ConnectFixtureServer {
     return decoded is Map
         ? decoded.map((key, value) => MapEntry(key.toString(), value))
         : const {};
+  }
+
+  /// `UpdateMe` as the API applies a birth date: once, and only as a
+  /// well-formed date.
+  Future<void> _writeUpdateMe(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    if (body['name'] != memberName) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'invalid_argument',
+        'message': 'name is required',
+      });
+      return;
+    }
+    final birthDate = body['birthDate'];
+    if (birthDate is String && birthDate.isNotEmpty) {
+      if (memberBirthDate.isNotEmpty) {
+        await _write(request, HttpStatus.badRequest, {
+          'code': 'failed_precondition',
+          'message': 'birth date is already set',
+        });
+        return;
+      }
+      if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(birthDate)) {
+        await _write(request, HttpStatus.badRequest, {
+          'code': 'invalid_argument',
+          'message': 'invalid birth date',
+        });
+        return;
+      }
+      memberBirthDate = birthDate;
+    }
+    await _write(request, HttpStatus.ok, {
+      'user': {
+        'publicId': memberPublicId,
+        'name': memberName,
+        'role': 'member',
+        if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
+      },
+    });
   }
 
   bool _isAuthorized(HttpRequest request) {

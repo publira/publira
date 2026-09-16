@@ -78,7 +78,7 @@ void main() {
     AuthSession? session,
     Size screen = portrait,
     FakeCommentRepository? comments,
-    bool birthDateOnFile = false,
+    String birthDate = '',
     AuthFailure? birthDateFailure,
   }) async {
     tester.view
@@ -91,7 +91,7 @@ void main() {
         catalog: catalog,
         auth: fakeAuthController(
           session: session,
-          birthDateOnFile: birthDateOnFile,
+          birthDate: birthDate,
           birthDateFailure: birthDateFailure,
         ),
         comments: comments,
@@ -334,7 +334,9 @@ void main() {
     await pumpUntilFound(tester, find.text('Email address'));
   });
 
-  testWidgets('a reader with no birth date on file is told so', (tester) async {
+  testWidgets('a reader with no birth date on file is led to add one', (
+    tester,
+  ) async {
     catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
     await pumpApp(tester, session: fakeSession);
     await pumpUntilFound(
@@ -349,14 +351,19 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byType(FilledButton), findsNothing);
+
+    await tester.tap(find.text('Add your date of birth'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('account-birth-date-add')),
+    );
   });
 
   testWidgets('a reader whose date of birth is too recent is told so', (
     tester,
   ) async {
     catalog.episodes = fixtureEpisodes(access: EpisodeAccess.ageRestricted);
-    await pumpApp(tester, session: fakeSession, birthDateOnFile: true);
+    await pumpApp(tester, session: fakeSession, birthDate: '2020-01-01');
     await pumpUntilFound(
       tester,
       find.byKey(const ValueKey('episode-age-restricted')),

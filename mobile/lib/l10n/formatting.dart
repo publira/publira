@@ -26,6 +26,12 @@ extension AppMessagesFormatting on AppMessages {
   String formatDateTime(DateTime value) =>
       DateFormat.yMMMd(intlLocale).add_jm().format(value.toLocal());
 
+  /// A calendar date with no instant behind it, such as a birth date, written
+  /// the way this locale writes one. [date] is read by its fields, so no zone
+  /// can move it onto the day before.
+  String formatCalendarDate(DateTime date) =>
+      DateFormat.yMMMd(intlLocale).format(date);
+
   /// One weekday, given as the number Postgres `EXTRACT(DOW)` uses: 0 is
   /// Sunday and 6 is Saturday.
   ///

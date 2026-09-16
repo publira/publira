@@ -170,6 +170,8 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.emailNotVerified => messages.signInEmailNotVerified,
       AuthFailureKind.network => messages.errorsRpcUnavailable,
       AuthFailureKind.sessionExpired ||
+      AuthFailureKind.birthDateInvalid ||
+      AuthFailureKind.birthDateAlreadySet ||
       AuthFailureKind.unexpected => messages.signInFailed,
     };
   }

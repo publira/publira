@@ -54,6 +54,7 @@ dependencies:
   intl: ^0.20.3
   # App-private directory the offline library writes saved episodes under.
   path_provider: ^2.1.6
+  timezone: ^0.11.1
 
 dev_dependencies:
   flutter_test:

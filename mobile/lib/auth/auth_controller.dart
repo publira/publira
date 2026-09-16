@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
 
 /// Holds the signed-in reader for the whole app and keeps [SessionStore] in
@@ -91,35 +92,45 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Whether the signed-in reader has a birth date on file, which is what
-  /// separates "give us yours" from "not available for your age" on the age
-  /// gate.
+  /// The signed-in reader's birth date and the tenant rule it is read
+  /// against, or `null` when nobody is signed in.
   ///
-  /// A signed-out reader and a read that fails both answer `false`. That gate
-  /// asks for the date either way, so a reader whose connection dropped is
-  /// pointed at the one thing they can still do rather than being told their
-  /// age is the problem.
-  ///
-  /// A token the API has stopped accepting is the exception: the answer it
-  /// refused is nobody's, and leaving the reader signed in would stand them in
-  /// front of a gate asking for a date on an account they are no longer
-  /// holding. They are signed out instead, which is what puts the way back in
-  /// on that gate. A reader who signed out or in while the read was in flight
-  /// has said something newer than the API has, so the late answer is dropped.
-  Future<bool> readerHasBirthDate() async {
+  /// Throws [AuthFailure]. A token the API has stopped accepting also signs
+  /// the reader out, so a screen asking for a date is not left standing on an
+  /// account they no longer hold.
+  Future<ReaderAge?> readReaderAge() async {
     final session = _session;
     if (session == null) {
-      return false;
+      return null;
     }
+    return _whileHeld(() => _repository.readReaderAge(session));
+  }
+
+  /// Records [birthDate] on the signed-in account and returns the date it
+  /// then holds.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<String> recordBirthDate(DateTime birthDate) async {
+    final session = _session;
+    if (session == null) {
+      throw const AuthFailure(AuthFailureKind.sessionExpired);
+    }
+    return _whileHeld(() => _repository.recordBirthDate(session, birthDate));
+  }
+
+  /// Runs [call], and signs out when the API rejects the token while that
+  /// session is still the one in hand.
+  Future<T> _whileHeld<T>(Future<T> Function() call) async {
     final revision = _revision;
     try {
-      return await _repository.hasBirthDate(session);
+      return await call();
     } on AuthFailure catch (failure) {
       if (failure.kind == AuthFailureKind.sessionExpired &&
           _revision == revision) {
         await _expire();
       }
-      return false;
+      rethrow;
     }
   }
 
