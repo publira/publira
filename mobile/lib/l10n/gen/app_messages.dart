@@ -136,6 +136,33 @@ abstract class AppMessages {
   /// `errors.validation`
   String get errorsValidation;
 
+  /// `mobile.account.birth_date`
+  String get accountBirthDate;
+
+  /// `mobile.account.birth_date_confirm_description`
+  String get accountBirthDateConfirmDescription;
+
+  /// `mobile.account.birth_date_confirm_title`
+  String accountBirthDateConfirmTitle({required String date});
+
+  /// `mobile.account.birth_date_help`
+  String get accountBirthDateHelp;
+
+  /// `mobile.account.birth_date_invalid`
+  String get accountBirthDateInvalid;
+
+  /// `mobile.account.birth_date_load_failed`
+  String get accountBirthDateLoadFailed;
+
+  /// `mobile.account.birth_date_save`
+  String get accountBirthDateSave;
+
+  /// `mobile.account.birth_date_save_failed`
+  String get accountBirthDateSaveFailed;
+
+  /// `mobile.account.birth_date_set_help`
+  String get accountBirthDateSetHelp;
+
   /// `mobile.account.follows`
   String get accountFollows;
 
@@ -520,6 +547,9 @@ abstract class AppMessages {
   /// `mobile.sign_in.website_note`
   String get signInWebsiteNote;
 
+  /// `mobile.viewer.age_restricted.add_birth_date`
+  String get viewerAgeRestrictedAddBirthDate;
+
   /// `mobile.viewer.age_restricted.guest`
   String get viewerAgeRestrictedGuest;
 
@@ -701,6 +731,51 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get errorsValidation {
     return '入力内容を確認してください。';
+  }
+
+  @override
+  String get accountBirthDate {
+    return '生年月日';
+  }
+
+  @override
+  String get accountBirthDateConfirmDescription {
+    return '生年月日は一度登録すると変更できません。';
+  }
+
+  @override
+  String accountBirthDateConfirmTitle({required String date}) {
+    return '生年月日を $date で登録しますか？';
+  }
+
+  @override
+  String get accountBirthDateHelp {
+    return '年齢制限のある作品を開くときに年齢を確認します。一度登録すると変更できません。';
+  }
+
+  @override
+  String get accountBirthDateInvalid {
+    return '生年月日を過去の日付で入力してください。';
+  }
+
+  @override
+  String get accountBirthDateLoadFailed {
+    return '生年月日を読み込めませんでした。';
+  }
+
+  @override
+  String get accountBirthDateSave {
+    return '登録する';
+  }
+
+  @override
+  String get accountBirthDateSaveFailed {
+    return '生年月日を登録できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get accountBirthDateSetHelp {
+    return '生年月日は変更できません。誤りがある場合はサイト運営者へお問い合わせください。';
   }
 
   @override
@@ -1344,6 +1419,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedAddBirthDate {
+    return '生年月日を登録する';
+  }
+
+  @override
   String get viewerAgeRestrictedGuest {
     return 'この作品を開くには年齢の確認が必要です。生年月日を登録したアカウントでサインインしてください。';
   }
@@ -1584,6 +1664,51 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get errorsValidation {
     return 'Please check the information you entered.';
+  }
+
+  @override
+  String get accountBirthDate {
+    return 'Date of birth';
+  }
+
+  @override
+  String get accountBirthDateConfirmDescription {
+    return 'Your date of birth cannot be changed once it is saved.';
+  }
+
+  @override
+  String accountBirthDateConfirmTitle({required String date}) {
+    return 'Save $date as your date of birth?';
+  }
+
+  @override
+  String get accountBirthDateHelp {
+    return 'Your age is checked before age-rated works open. It cannot be changed once given.';
+  }
+
+  @override
+  String get accountBirthDateInvalid {
+    return 'Enter your date of birth as a past calendar date.';
+  }
+
+  @override
+  String get accountBirthDateLoadFailed {
+    return 'Could not load your date of birth.';
+  }
+
+  @override
+  String get accountBirthDateSave {
+    return 'Save';
+  }
+
+  @override
+  String get accountBirthDateSaveFailed {
+    return 'Could not save your date of birth. Try again.';
+  }
+
+  @override
+  String get accountBirthDateSetHelp {
+    return 'Your date of birth cannot be changed. Contact this site if it is wrong.';
   }
 
   @override
@@ -2227,6 +2352,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedAddBirthDate {
+    return 'Add your date of birth';
+  }
+
+  @override
   String get viewerAgeRestrictedGuest {
     return 'Your age is checked before this work opens. Sign in with an account that has your date of birth.';
   }
@@ -2467,6 +2597,51 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get errorsValidation {
     return '입력한 내용을 확인해 주세요.';
+  }
+
+  @override
+  String get accountBirthDate {
+    return '생년월일';
+  }
+
+  @override
+  String get accountBirthDateConfirmDescription {
+    return '생년월일은 한 번 등록하면 변경할 수 없습니다.';
+  }
+
+  @override
+  String accountBirthDateConfirmTitle({required String date}) {
+    return '생년월일을 $date(으)로 등록할까요?';
+  }
+
+  @override
+  String get accountBirthDateHelp {
+    return '연령 제한이 있는 작품을 열 때 나이를 확인합니다. 한 번 등록하면 변경할 수 없습니다.';
+  }
+
+  @override
+  String get accountBirthDateInvalid {
+    return '생년월일을 과거 날짜로 입력해 주세요.';
+  }
+
+  @override
+  String get accountBirthDateLoadFailed {
+    return '생년월일을 불러오지 못했습니다.';
+  }
+
+  @override
+  String get accountBirthDateSave {
+    return '등록';
+  }
+
+  @override
+  String get accountBirthDateSaveFailed {
+    return '생년월일을 등록하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get accountBirthDateSetHelp {
+    return '생년월일은 변경할 수 없습니다. 잘못되었다면 사이트 운영자에게 문의해 주세요.';
   }
 
   @override
@@ -3110,6 +3285,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedAddBirthDate {
+    return '생년월일 등록하기';
+  }
+
+  @override
   String get viewerAgeRestrictedGuest {
     return '이 작품을 열려면 나이 확인이 필요합니다. 생년월일을 등록한 계정으로 로그인해 주세요.';
   }
@@ -3350,6 +3530,51 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get errorsValidation {
     return '请检查您输入的内容。';
+  }
+
+  @override
+  String get accountBirthDate {
+    return '出生日期';
+  }
+
+  @override
+  String get accountBirthDateConfirmDescription {
+    return '出生日期登记后无法更改。';
+  }
+
+  @override
+  String accountBirthDateConfirmTitle({required String date}) {
+    return '要将 $date 登记为您的出生日期吗？';
+  }
+
+  @override
+  String get accountBirthDateHelp {
+    return '打开有年龄限制的作品前会核对年龄。登记后无法更改。';
+  }
+
+  @override
+  String get accountBirthDateInvalid {
+    return '请以过去的日期填写出生日期。';
+  }
+
+  @override
+  String get accountBirthDateLoadFailed {
+    return '无法读取您的出生日期。';
+  }
+
+  @override
+  String get accountBirthDateSave {
+    return '登记';
+  }
+
+  @override
+  String get accountBirthDateSaveFailed {
+    return '无法登记出生日期。请重试。';
+  }
+
+  @override
+  String get accountBirthDateSetHelp {
+    return '出生日期无法更改。如有错误，请联系本站点。';
   }
 
   @override
@@ -3993,6 +4218,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get viewerAgeRestrictedAddBirthDate {
+    return '登记出生日期';
+  }
+
+  @override
   String get viewerAgeRestrictedGuest {
     return '打开本作品前需要核对年龄。请使用已登记出生日期的账户登录。';
   }
@@ -4233,6 +4463,51 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get errorsValidation {
     return '請檢查您輸入的內容。';
+  }
+
+  @override
+  String get accountBirthDate {
+    return '出生日期';
+  }
+
+  @override
+  String get accountBirthDateConfirmDescription {
+    return '出生日期登錄後無法變更。';
+  }
+
+  @override
+  String accountBirthDateConfirmTitle({required String date}) {
+    return '要將 $date 登錄為您的出生日期嗎？';
+  }
+
+  @override
+  String get accountBirthDateHelp {
+    return '開啟有年齡限制的作品前會核對年齡。登錄後無法變更。';
+  }
+
+  @override
+  String get accountBirthDateInvalid {
+    return '請以過去的日期填寫出生日期。';
+  }
+
+  @override
+  String get accountBirthDateLoadFailed {
+    return '無法讀取您的出生日期。';
+  }
+
+  @override
+  String get accountBirthDateSave {
+    return '登錄';
+  }
+
+  @override
+  String get accountBirthDateSaveFailed {
+    return '無法登錄出生日期。請重試。';
+  }
+
+  @override
+  String get accountBirthDateSetHelp {
+    return '出生日期無法變更。如有錯誤，請聯絡本網站。';
   }
 
   @override
@@ -4873,6 +5148,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get signInWebsiteNote {
     return '請在網站上建立帳戶或重設密碼。';
+  }
+
+  @override
+  String get viewerAgeRestrictedAddBirthDate {
+    return '登錄出生日期';
   }
 
   @override

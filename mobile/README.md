@@ -155,7 +155,7 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/` | Catalog list |
 | `/search` | Search results |
 | `/sign-in` | Sign-in form |
-| `/account` | Signed-in reader and sign-out |
+| `/account` | Signed-in reader, their date of birth, and sign-out |
 | `/account/follows` | The series and authors the reader follows |
 | `/series/:seriesId` | Series details |
 | `/series/:seriesId/episodes/:episodeId` | Episode viewer |

@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_controller.dart';
+import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/auth/reader_age.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
@@ -11,6 +13,7 @@ import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
@@ -25,16 +28,18 @@ class _OpenEpisode {
     required this.detail,
     required this.startPage,
     this.readerHasBirthDate = false,
+    this.provenRating,
   });
 
   final EpisodeDetail detail;
   final int startPage;
 
-  /// Whether the reader has a birth date on their account. Asked about only
-  /// where it decides what is shown, which is a body withheld over an age:
-  /// it is what tells "we hold no date for you" apart from "the date we hold
-  /// is too recent".
+  /// Whether the reader has a birth date on their account, which tells "we
+  /// hold no date for you" apart from "the date we hold is too recent".
   final bool readerHasBirthDate;
+
+  /// What that date proves, which opens the rating gate without asking.
+  final SeriesAgeRating? provenRating;
 }
 
 /// Episode reader. Loads the body of one published episode and hands its pages
@@ -199,13 +204,30 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     if (detail == null) {
       return null;
     }
+    // Asked only where the answer decides what is shown: a rating to gate, or
+    // a body withheld over an age.
+    final age =
+        detail.access == EpisodeAccess.ageRestricted ||
+            isRestrictedAgeRating(detail.ageRating)
+        ? await _readerAge(auth)
+        : null;
     return _OpenEpisode(
       detail: detail,
       startPage: resumePageIndex(saved, detail.images.length),
-      readerHasBirthDate:
-          detail.access == EpisodeAccess.ageRestricted &&
-          await auth.readerHasBirthDate(),
+      readerHasBirthDate: age?.hasBirthDate ?? false,
+      provenRating: age?.provenAgeRating(DateTime.now()),
     );
+  }
+
+  /// A read that fails answers as an account holding no date. The gate then
+  /// points at the one thing the reader can still do rather than telling them
+  /// their age is the problem.
+  Future<ReaderAge?> _readerAge(AuthController auth) async {
+    try {
+      return await auth.readReaderAge();
+    } on AuthFailure {
+      return null;
+    }
   }
 
   /// Where the reader stopped, or `null` when nothing says.
@@ -274,6 +296,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           body: AgeRatingGate(
             rating: open.detail.ageRating,
             seriesTitle: open.detail.seriesTitle,
+            provenRating: open.provenRating,
             child: _body(messages, open),
           ),
         );
@@ -341,12 +364,27 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         onAction: () => context.push(AppRoutes.signIn),
       );
     }
+    if (open.readerHasBirthDate) {
+      return _ViewerMessage(
+        key: const ValueKey('episode-age-restricted'),
+        message: messages.viewerAgeRestrictedTooYoung,
+      );
+    }
     return _ViewerMessage(
       key: const ValueKey('episode-age-restricted'),
-      message: open.readerHasBirthDate
-          ? messages.viewerAgeRestrictedTooYoung
-          : messages.viewerAgeRestrictedNoBirthDate,
+      message: messages.viewerAgeRestrictedNoBirthDate,
+      actionLabel: messages.viewerAgeRestrictedAddBirthDate,
+      onAction: () => unawaited(_addBirthDate()),
     );
+  }
+
+  /// Opens the account screen, where the date is recorded, and reads the
+  /// episode again once the reader comes back from it.
+  Future<void> _addBirthDate() async {
+    await context.push(AppRoutes.account);
+    if (mounted) {
+      _reload();
+    }
   }
 
   /// Opens what the other readers of this episode had to say about it, which

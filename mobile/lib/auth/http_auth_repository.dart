@@ -4,6 +4,7 @@ import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/reader_age.dart';
 import 'package:publira/config.dart';
 
 /// [AuthRepository] backed by `publira.v1.AuthService` on the public API.
@@ -30,6 +31,8 @@ class HttpAuthRepository implements AuthRepository {
 
   static const _loginProcedure = '/publira.v1.AuthService/Login';
   static const _getMeProcedure = '/publira.v1.AuthService/GetMe';
+  static const _updateMeProcedure = '/publira.v1.AuthService/UpdateMe';
+  static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
 
   final ConnectClient _client;
   final TenantResolver _tenants;
@@ -62,8 +65,72 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<bool> hasBirthDate(AuthSession session) async {
-    return _readString(await _getMe(session), 'birthDate').isNotEmpty;
+  Future<ReaderAge> readReaderAge(AuthSession session) async {
+    final tenantRead = _getTenant();
+    final Map<String, Object?> user;
+    try {
+      user = await _getMe(session);
+    } catch (_) {
+      tenantRead.ignore();
+      rethrow;
+    }
+    final tenant = await tenantRead;
+    return ReaderAge(
+      birthDate: _readString(user, 'birthDate'),
+      timeZone: _readString(tenant, 'timezone'),
+      verification: AgeVerification.fromWire(tenant['ageVerification']),
+    );
+  }
+
+  @override
+  Future<String> recordBirthDate(
+    AuthSession session,
+    DateTime birthDate,
+  ) async {
+    // UpdateMe also renames the account, so the name it holds now is sent back
+    // unchanged rather than the one this session remembered.
+    final current = await _getMe(session);
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _updateMeProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          'name': _readString(current, 'name'),
+          'birthDate': formatBirthDate(birthDate),
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+      return _readString(_expectMap(body['user'], 'user'), 'birthDate');
+    } on ConnectException catch (error) {
+      throw switch (error.code) {
+        'unauthenticated' => AuthFailure(
+          AuthFailureKind.sessionExpired,
+          message: error.message,
+        ),
+        'invalid_argument' => AuthFailure(
+          AuthFailureKind.birthDateInvalid,
+          message: error.message,
+        ),
+        'failed_precondition' => AuthFailure(
+          AuthFailureKind.birthDateAlreadySet,
+          message: error.message,
+        ),
+        _ => _toFailure(error),
+      };
+    }
+  }
+
+  Future<Map<String, Object?>> _getTenant() async {
+    try {
+      final tenantId = await _tenants.resolve();
+      return await _client.unary(_tenantProcedure, {
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
   }
 
   /// The `User` behind [session], as `GetMe` answers with it.

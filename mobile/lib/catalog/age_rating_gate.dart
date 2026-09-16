@@ -6,7 +6,7 @@ import 'package:publira/router.dart';
 import 'package:publira/settings/age_rating_confirmation.dart';
 
 /// Stands where a rated series or episode body would be until this install
-/// confirms the rating.
+/// confirms the rating, or the reader's birth date proves it.
 ///
 /// The body is not built until then, so a first-time visitor never sees the
 /// synopsis, the episode list, or the pages behind the confirmation.
@@ -16,6 +16,7 @@ class AgeRatingGate extends StatelessWidget {
     required this.rating,
     required this.seriesTitle,
     required this.child,
+    this.provenRating,
   });
 
   /// The rating of the series being opened. Unspecified and all-ages pass
@@ -23,13 +24,18 @@ class AgeRatingGate extends StatelessWidget {
   /// for confirmation.
   final SeriesAgeRating? rating;
 
+  /// What the reader's stored birth date proves, so a reader whose age the
+  /// tenant already holds is not asked to declare it on the device as well.
+  final SeriesAgeRating? provenRating;
+
   final String seriesTitle;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final confirmation = AgeRatingConfirmationScope.of(context);
-    if (confirmation.confirmed.covers(rating)) {
+    if (confirmation.confirmed.covers(rating) ||
+        AgeRatingConfirmation(named: provenRating).covers(rating)) {
       return child;
     }
     if (!confirmation.isRestored) {

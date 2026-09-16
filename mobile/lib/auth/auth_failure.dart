@@ -11,6 +11,12 @@ enum AuthFailureKind {
   /// signs in again.
   sessionExpired,
 
+  /// The API would not take the birth date as a past calendar date.
+  birthDateInvalid,
+
+  /// The account already holds a birth date, which is written only once.
+  birthDateAlreadySet,
+
   /// DNS, refused connection, timeout, or Connect `unavailable`.
   network,
 

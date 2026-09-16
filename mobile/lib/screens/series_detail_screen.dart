@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/auth_controller.dart';
+import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/catalog_failure.dart';
@@ -28,30 +30,69 @@ class SeriesDetailScreen extends StatefulWidget {
   State<SeriesDetailScreen> createState() => _SeriesDetailScreenState();
 }
 
-class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
-  late Future<SeriesDetail?> _future;
-  var _started = false;
+/// One series as this screen opens it, with the rating the reader's birth
+/// date already proves.
+class _OpenSeries {
+  const _OpenSeries({required this.detail, this.provenRating});
 
+  final SeriesDetail detail;
+  final SeriesAgeRating? provenRating;
+}
+
+class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
+  late Future<_OpenSeries?> _future;
+  var _started = false;
+  var _accessToken = '';
+
+  /// Reloads whenever the reader signs in or out, because the rating a birth
+  /// date proves belongs to the reader who was signed in when it was read.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) {
+    final auth = AuthScope.of(context);
+    if (_started && auth.accessToken == _accessToken) {
       return;
     }
     _started = true;
-    _future = CatalogScope.of(context).getSeries(widget.seriesId);
+    _accessToken = auth.accessToken;
+    _future = _load(CatalogScope.of(context), auth);
   }
 
   void _reload() {
     setState(() {
-      _future = CatalogScope.of(context).getSeries(widget.seriesId);
+      _future = _load(CatalogScope.of(context), AuthScope.of(context));
     });
+  }
+
+  /// The series, and what the reader's birth date proves when it carries a
+  /// rating to gate. A birth date that cannot be read proves nothing, which
+  /// leaves the confirmation standing rather than failing the screen.
+  Future<_OpenSeries?> _load(
+    CatalogRepository catalog,
+    AuthController auth,
+  ) async {
+    final detail = await catalog.getSeries(widget.seriesId);
+    if (detail == null) {
+      return null;
+    }
+    if (!isRestrictedAgeRating(detail.series.ageRating)) {
+      return _OpenSeries(detail: detail);
+    }
+    try {
+      final age = await auth.readReaderAge();
+      return _OpenSeries(
+        detail: detail,
+        provenRating: age?.provenAgeRating(DateTime.now()),
+      );
+    } on AuthFailure {
+      return _OpenSeries(detail: detail);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return FutureBuilder<SeriesDetail?>(
+    return FutureBuilder<_OpenSeries?>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -74,8 +115,8 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
             ),
           );
         }
-        final detail = snapshot.data;
-        if (detail == null) {
+        final open = snapshot.data;
+        if (open == null) {
           return Scaffold(
             appBar: AppBar(title: Text(messages.seriesTitle)),
             body: _DetailMessage(
@@ -86,11 +127,13 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
             ),
           );
         }
+        final detail = open.detail;
         return Scaffold(
           appBar: AppBar(title: Text(detail.series.title)),
           body: AgeRatingGate(
             rating: detail.series.ageRating,
             seriesTitle: detail.series.title,
+            provenRating: open.provenRating,
             child: _SeriesDetailBody(detail: detail),
           ),
         );

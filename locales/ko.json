@@ -2484,6 +2484,15 @@
   },
   "mobile": {
     "account": {
+      "birth_date": "생년월일",
+      "birth_date_confirm_description": "생년월일은 한 번 등록하면 변경할 수 없습니다.",
+      "birth_date_confirm_title": "생년월일을 {$date}(으)로 등록할까요?",
+      "birth_date_help": "연령 제한이 있는 작품을 열 때 나이를 확인합니다. 한 번 등록하면 변경할 수 없습니다.",
+      "birth_date_invalid": "생년월일을 과거 날짜로 입력해 주세요.",
+      "birth_date_load_failed": "생년월일을 불러오지 못했습니다.",
+      "birth_date_save": "등록",
+      "birth_date_save_failed": "생년월일을 등록하지 못했습니다. 다시 시도해 주세요.",
+      "birth_date_set_help": "생년월일은 변경할 수 없습니다. 잘못되었다면 사이트 운영자에게 문의해 주세요.",
       "follows": "팔로우 중",
       "follows_description": "팔로우 중인 시리즈와 작가",
       "name": "이름",
@@ -2638,6 +2647,7 @@
     "viewer": {
       "back_to_series": "시리즈로 돌아가기",
       "age_restricted": {
+        "add_birth_date": "생년월일 등록하기",
         "guest": "이 작품을 열려면 나이 확인이 필요합니다. 생년월일을 등록한 계정으로 로그인해 주세요.",
         "no_birth_date": "이 작품을 열려면 나이 확인이 필요합니다. 계정에 생년월일이 등록되어 있지 않습니다.",
         "too_young": "이 작품은 현재 나이로는 열람할 수 없습니다."

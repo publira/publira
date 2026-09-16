@@ -2484,6 +2484,15 @@
   },
   "mobile": {
     "account": {
+      "birth_date": "出生日期",
+      "birth_date_confirm_description": "出生日期登记后无法更改。",
+      "birth_date_confirm_title": "要将 {$date} 登记为您的出生日期吗？",
+      "birth_date_help": "打开有年龄限制的作品前会核对年龄。登记后无法更改。",
+      "birth_date_invalid": "请以过去的日期填写出生日期。",
+      "birth_date_load_failed": "无法读取您的出生日期。",
+      "birth_date_save": "登记",
+      "birth_date_save_failed": "无法登记出生日期。请重试。",
+      "birth_date_set_help": "出生日期无法更改。如有错误，请联系本站点。",
       "follows": "我的关注",
       "follows_description": "您关注的系列和作者",
       "name": "昵称",
@@ -2638,6 +2647,7 @@
     "viewer": {
       "back_to_series": "返回系列",
       "age_restricted": {
+        "add_birth_date": "登记出生日期",
         "guest": "打开本作品前需要核对年龄。请使用已登记出生日期的账户登录。",
         "no_birth_date": "打开本作品前需要核对年龄。您的账户尚未登记出生日期。",
         "too_young": "本作品不适用于您的年龄。"

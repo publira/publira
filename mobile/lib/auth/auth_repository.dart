@@ -1,5 +1,6 @@
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/reader_age.dart';
 
 /// Sign-in and session checks against the public API.
 abstract class AuthRepository {
@@ -15,12 +16,18 @@ abstract class AuthRepository {
   /// the API has rejected the token.
   Future<AuthSession> refresh(AuthSession session);
 
-  /// Whether the reader behind [session] has a birth date on file.
+  /// The birth date the reader behind [session] has given, with the tenant
+  /// rule and calendar it is read against.
   ///
-  /// Read when it is asked for rather than carried on the session: a reader
-  /// who records their date and comes back is answered on what the account
-  /// holds now, not on what it held when the app last started.
+  /// Read when it is asked for rather than carried on the session, so a date
+  /// recorded elsewhere is answered on what the account holds now.
   ///
   /// Throws [AuthFailure].
-  Future<bool> hasBirthDate(AuthSession session);
+  Future<ReaderAge> readReaderAge(AuthSession session);
+
+  /// Writes [birthDate] to the account behind [session] and returns the date
+  /// the account then holds, as `YYYY-MM-DD`.
+  ///
+  /// Throws [AuthFailure].
+  Future<String> recordBirthDate(AuthSession session, DateTime birthDate);
 }

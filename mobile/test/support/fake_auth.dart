@@ -4,6 +4,7 @@ import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
 
 /// [SessionStore] that keeps the session in memory.
@@ -42,8 +43,10 @@ class FakeAuthRepository implements AuthRepository {
     this.session = fakeSession,
     this.signInFailure,
     this.refreshFailure,
-    this.birthDateOnFile = false,
+    this.birthDate = '',
+    this.verification = AgeVerification.checked,
     this.birthDateFailure,
+    this.recordFailure,
   });
 
   /// What [signIn] returns, and what [refresh] echoes the user of.
@@ -51,12 +54,22 @@ class FakeAuthRepository implements AuthRepository {
   AuthFailure? signInFailure;
   AuthFailure? refreshFailure;
 
-  /// What [hasBirthDate] answers, which is what the age gate reads to tell a
-  /// reader who has given no date from one whose date is too recent.
-  bool birthDateOnFile;
+  /// The `YYYY-MM-DD` the account holds, empty while it holds none.
+  /// [recordBirthDate] writes it.
+  String birthDate;
 
-  /// Thrown by [hasBirthDate], standing in for an account that cannot be read.
+  AgeVerification verification;
+
+  /// Thrown by [readReaderAge], standing in for an account that cannot be
+  /// read.
   AuthFailure? birthDateFailure;
+
+  /// Thrown by [recordBirthDate], standing in for an API that refuses it.
+  AuthFailure? recordFailure;
+
+  /// The zone [readReaderAge] reports. Tokyo has no daylight saving, so a
+  /// test's arithmetic about its calendar day does not drift with the season.
+  static const timeZone = 'Asia/Tokyo';
 
   /// Held open by a test that needs to act while [refresh] is still in flight.
   Completer<void>? refreshGate;
@@ -94,12 +107,32 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<bool> hasBirthDate(AuthSession session) async {
+  Future<ReaderAge> readReaderAge(AuthSession session) async {
     final failure = birthDateFailure;
     if (failure != null) {
       throw failure;
     }
-    return birthDateOnFile;
+    return ReaderAge(
+      birthDate: birthDate,
+      timeZone: timeZone,
+      verification: verification,
+    );
+  }
+
+  @override
+  Future<String> recordBirthDate(
+    AuthSession session,
+    DateTime birthDate,
+  ) async {
+    final failure = recordFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (this.birthDate.isNotEmpty) {
+      throw const AuthFailure(AuthFailureKind.birthDateAlreadySet);
+    }
+    this.birthDate = formatBirthDate(birthDate);
+    return this.birthDate;
   }
 }
 
@@ -115,14 +148,14 @@ AuthController fakeAuthController({
   AuthSession? storedSession,
   FakeAuthRepository? repository,
   InMemorySessionStore? store,
-  bool birthDateOnFile = false,
+  String birthDate = '',
   AuthFailure? birthDateFailure,
 }) {
   return AuthController(
     repository:
         repository ??
         FakeAuthRepository(
-          birthDateOnFile: birthDateOnFile,
+          birthDate: birthDate,
           birthDateFailure: birthDateFailure,
         ),
     store: store ?? InMemorySessionStore(session: storedSession),

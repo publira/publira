@@ -145,58 +145,89 @@ void main() {
     expect(controller.expired, isFalse);
   });
 
-  test('readerHasBirthDate reports what the account holds', () async {
-    repository.birthDateOnFile = true;
+  test('readReaderAge reports what the account holds', () async {
+    repository.birthDate = '1990-04-02';
     final controller = controllerFor();
     await controller.signIn(
       email: 'member@example.com',
       password: 'memberpass',
     );
 
-    expect(await controller.readerHasBirthDate(), isTrue);
+    final age = await controller.readReaderAge();
+
+    expect(age?.birthDate, '1990-04-02');
+    expect(age?.hasBirthDate, isTrue);
   });
 
-  test('readerHasBirthDate answers no for a signed-out reader', () async {
-    repository.birthDateOnFile = true;
+  test('readReaderAge answers nothing for a signed-out reader', () async {
+    repository.birthDate = '1990-04-02';
     final controller = controllerFor();
 
-    expect(await controller.readerHasBirthDate(), isFalse);
+    expect(await controller.readReaderAge(), isNull);
+  });
+
+  test('readReaderAge signs out a reader the API no longer knows', () async {
+    repository.birthDateFailure = const AuthFailure(
+      AuthFailureKind.sessionExpired,
+    );
+    final controller = controllerFor();
+    await controller.signIn(
+      email: 'member@example.com',
+      password: 'memberpass',
+    );
+
+    await expectLater(controller.readReaderAge(), throwsA(isA<AuthFailure>()));
+    expect(controller.isSignedIn, isFalse);
+    expect(store.session, isNull);
+    expect(controller.acknowledgeExpiry(), isTrue);
   });
 
   test(
-    'readerHasBirthDate answers no when the account cannot be read',
+    'readReaderAge keeps a reader whose account could not be read',
     () async {
-      repository
-        ..birthDateOnFile = true
-        ..birthDateFailure = const AuthFailure(AuthFailureKind.network);
+      repository.birthDateFailure = const AuthFailure(AuthFailureKind.network);
       final controller = controllerFor();
       await controller.signIn(
         email: 'member@example.com',
         password: 'memberpass',
       );
 
-      expect(await controller.readerHasBirthDate(), isFalse);
-    },
-  );
-
-  test(
-    'readerHasBirthDate signs out a reader the API no longer knows',
-    () async {
-      repository
-        ..birthDateOnFile = true
-        ..birthDateFailure = const AuthFailure(AuthFailureKind.sessionExpired);
-      final controller = controllerFor();
-      await controller.signIn(
-        email: 'member@example.com',
-        password: 'memberpass',
+      await expectLater(
+        controller.readReaderAge(),
+        throwsA(isA<AuthFailure>()),
       );
-
-      expect(await controller.readerHasBirthDate(), isFalse);
-      expect(controller.isSignedIn, isFalse);
-      expect(store.session, isNull);
-      expect(controller.acknowledgeExpiry(), isTrue);
+      expect(controller.isSignedIn, isTrue);
     },
   );
+
+  test('recordBirthDate writes the date to the signed-in account', () async {
+    final controller = controllerFor();
+    await controller.signIn(
+      email: 'member@example.com',
+      password: 'memberpass',
+    );
+
+    final stored = await controller.recordBirthDate(DateTime.utc(2001, 2, 3));
+
+    expect(stored, '2001-02-03');
+    expect(repository.birthDate, '2001-02-03');
+  });
+
+  test('recordBirthDate refuses a signed-out reader', () async {
+    final controller = controllerFor();
+
+    await expectLater(
+      controller.recordBirthDate(DateTime.utc(2001, 2, 3)),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.sessionExpired,
+        ),
+      ),
+    );
+    expect(repository.birthDate, isEmpty);
+  });
 
   test('restore drops a token that has already expired', () async {
     final controller = controllerFor(
