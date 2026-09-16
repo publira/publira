@@ -457,6 +457,7 @@ List<RankedSeriesItem> fixtureRankedSeries() {
 Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodeAccess access = EpisodeAccess.free,
   int pageCount = 3,
+  SeriesAgeRating? ageRating,
 }) {
   final bodies = <String, EpisodeDetail>{};
   for (final item in fixtureSeries) {
@@ -486,6 +487,7 @@ Map<String, EpisodeDetail> fixtureEpisodes({
               height: 1200,
             ),
         ],
+        ageRating: ageRating,
       );
     }
   }

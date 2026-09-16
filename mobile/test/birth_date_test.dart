@@ -293,8 +293,6 @@ void main() {
       };
       router = createAppRouter(initialLocation: episodePath);
       await pumpApp(tester);
-      await pumpUntilFound(tester, gate);
-      await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
       await pumpUntilFound(
         tester,
         find.byKey(const ValueKey('episode-age-restricted')),
