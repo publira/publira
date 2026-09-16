@@ -140,14 +140,14 @@ class ConnectFixtureServer {
   }
 
   /// Credits of the seed series, in the shape `Creator` arrives in and in the
-  /// order the tenant put them in.
+  /// tenant's role priority order.
   static List<Map<String, Object?>> seedCreators() {
     return [
-      for (var index = 1; index <= 3; index++)
+      for (final (index, role) in [(1, 'Story'), (2, 'Art'), (3, 'Art')])
         {
           'publicId': 'SeedAUTHAAA$index',
           'name': 'Seed Author 00$index',
-          'role': 'creator',
+          'role': {'publicId': 'SeedROLEAAA$index', 'name': role},
           'profileText': 'Profile text for Seed Author 00$index',
         },
     ];
@@ -191,6 +191,7 @@ class ConnectFixtureServer {
           'title': seedEpisodeTitle,
           'orderIndex': 1,
           'price': 0,
+          'creators': seedCreators(),
         },
         'series': {'publicId': seedSeriesId, 'title': seedSeriesTitle},
         'access': 'EPISODE_ACCESS_FREE',

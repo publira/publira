@@ -1,22 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/series_cover.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
-
-/// Who a series is credited to, as one line, and empty for a series credited
-/// to nobody — which is what leaves the line off a card.
-String creditLine(AppMessages messages, SeriesItem series) {
-  if (series.creators.isEmpty) {
-    return '';
-  }
-  return messages.formatList([
-    for (final creator in series.creators) creator.name,
-  ]);
-}
 
 /// One row of a vertical list of series: the catalog itself, and the search
 /// results, which are the same catalog answered for a keyword.
@@ -28,7 +18,6 @@ class SeriesTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    final credits = creditLine(messages, series);
     final classification = _classification(messages, series);
     return ListTile(
       key: ValueKey('series-tile-${series.id}'),
@@ -45,7 +34,7 @@ class SeriesTile extends StatelessWidget {
       ),
       title: Text(series.title),
       subtitle:
-          credits.isEmpty &&
+          series.creators.isEmpty &&
               classification.isEmpty &&
               series.description.isEmpty
           ? null
@@ -53,8 +42,13 @@ class SeriesTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (credits.isNotEmpty)
-                  Text(credits, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (series.creators.isNotEmpty)
+                  CreatorCredits(
+                    key: ValueKey('series-tile-credits-${series.id}'),
+                    credits: series.creators,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 if (classification.isNotEmpty)
                   Text(
                     key: ValueKey('series-tile-classification-${series.id}'),

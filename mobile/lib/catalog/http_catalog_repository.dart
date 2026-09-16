@@ -542,9 +542,19 @@ class HttpCatalogRepository implements CatalogRepository {
     final creators = _expectList(raw, '$path.creators')
         .map((item) => _expectMap(item, creatorPath))
         .map((json) {
+          final rawRole = json['role'];
           return SeriesCreator(
             id: _readString(json, 'publicId', creatorPath),
             name: _readString(json, 'name', creatorPath),
+            // protojson omits an unset message, which is a credit written
+            // before the tenant curated any role.
+            roleName: rawRole == null
+                ? ''
+                : _readString(
+                    _expectMap(rawRole, '$creatorPath.role'),
+                    'name',
+                    '$creatorPath.role',
+                  ).trim(),
           );
         })
         // A nameless credit is nothing a reader can be shown, and the site
@@ -618,11 +628,9 @@ class HttpCatalogRepository implements CatalogRepository {
     if (seriesId != seriesPublicId) {
       return null;
     }
+    final rawEpisode = _expectMap(body['episode'], 'episode');
     return EpisodeDetail(
-      episode: _episodeFromJson(
-        _expectMap(body['episode'], 'episode'),
-        'episode',
-      ),
+      episode: _episodeFromJson(rawEpisode, 'episode'),
       seriesId: seriesId,
       seriesTitle: _readString(rawSeries, 'title', 'series'),
       access: _parseAccess(body['access']),
@@ -634,6 +642,7 @@ class HttpCatalogRepository implements CatalogRepository {
       nextEpisode: _neighborFromJson(body['nextEpisode'], 'nextEpisode'),
       imageRequestHeaders: config.imageRequestHeaders(_client.accessToken),
       ageRating: _parseAgeRating(rawSeries['ageRating']),
+      creators: _parseCreators(rawEpisode['creators'], 'episode'),
     );
   }
 

@@ -133,6 +133,104 @@ void main() {
     expect(find.text('${fixtureSeries.first.title} #1'), findsOneWidget);
   });
 
+  /// The fixture body of [episodeId] credited to [creators].
+  void creditEpisode(String episodeId, List<SeriesCreator> creators) {
+    final key = episodeKey(seriesId, episodeId);
+    final detail = catalog.episodes[key]!;
+    catalog.episodes[key] = EpisodeDetail(
+      episode: detail.episode,
+      seriesId: detail.seriesId,
+      seriesTitle: detail.seriesTitle,
+      access: detail.access,
+      images: detail.images,
+      previousEpisode: detail.previousEpisode,
+      nextEpisode: detail.nextEpisode,
+      imageRequestHeaders: detail.imageRequestHeaders,
+      creators: creators,
+    );
+  }
+
+  final episodeCredits = find.byKey(const ValueKey('episode-credits'));
+
+  group('episode credits', () {
+    testWidgets('an episode names its own credits with their roles', (
+      tester,
+    ) async {
+      creditEpisode(episodeId, const [
+        SeriesCreator(id: 'A1', name: 'Seed Author 001', roleName: 'Story'),
+        SeriesCreator(id: 'A2', name: 'Guest Artist', roleName: 'Art'),
+        SeriesCreator(id: 'A3', name: 'Seed Author 002', roleName: 'Art'),
+      ]);
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      expect(
+        find.descendant(
+          of: episodeCredits,
+          matching: find.text(
+            'Story Seed Author 001 / Art Guest Artist and Seed Author 002',
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a guest artist is not named on the neighbouring episodes', (
+      tester,
+    ) async {
+      final neighbourId = '$seriesId-ep-2';
+      creditEpisode(episodeId, const [
+        SeriesCreator(id: 'A1', name: 'Seed Author 001', roleName: 'Story'),
+        SeriesCreator(id: 'A2', name: 'Guest Artist', roleName: 'Art'),
+      ]);
+      creditEpisode(neighbourId, const [
+        SeriesCreator(id: 'A1', name: 'Seed Author 001', roleName: 'Story'),
+      ]);
+      openEpisode(neighbourId);
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      expect(
+        find.descendant(
+          of: episodeCredits,
+          matching: find.text('Story Seed Author 001'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Guest Artist'), findsNothing);
+    });
+
+    testWidgets('an episode credited to nobody names nobody, not the series', (
+      tester,
+    ) async {
+      // The fixture series is credited, so a fallback would put its names up.
+      expect(fixtureSeries.first.creators, isNotEmpty);
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      expect(episodeCredits, findsNothing);
+      for (final creator in fixtureSeries.first.creators) {
+        expect(find.textContaining(creator.name), findsNothing);
+      }
+    });
+
+    testWidgets('a credit with no role is the name on its own', (tester) async {
+      creditEpisode(episodeId, const [
+        SeriesCreator(id: 'A1', name: 'Seed Author 001'),
+      ]);
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pageView);
+
+      expect(
+        find.descendant(
+          of: episodeCredits,
+          matching: find.text('Seed Author 001'),
+        ),
+        findsOneWidget,
+      );
+    });
+  });
+
   testWidgets('a rated episode is not opened without the confirmation', (
     tester,
   ) async {

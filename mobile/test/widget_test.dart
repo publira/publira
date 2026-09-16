@@ -58,13 +58,18 @@ void main() {
     }
   });
 
-  testWidgets('a catalog tile names the creators of its series', (
-    tester,
-  ) async {
+  testWidgets('a catalog tile names the creators of its series with their '
+      'roles', (tester) async {
     await pumpApp(tester);
 
     expect(
-      find.text('Seed Author 001, Seed Author 002, and Seed Author 003'),
+      find.byKey(ValueKey('series-tile-credits-${fixtureSeries.first.id}')),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Story Seed Author 001 / Art Seed Author 002 and Seed Author 003',
+      ),
       findsOneWidget,
     );
   });
@@ -122,9 +127,64 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(
-      tester.widget<Text>(find.byKey(const ValueKey('series-creators'))).data,
-      'Seed Author 001, Seed Author 002, and Seed Author 003',
+      find.descendant(
+        of: find.byKey(const ValueKey('series-creators')),
+        matching: find.text(
+          'Story Seed Author 001 / Art Seed Author 002 and Seed Author 003',
+        ),
+      ),
+      findsOneWidget,
     );
+  });
+
+  testWidgets('the series detail screen keeps the credits in the order the '
+      'API sent', (tester) async {
+    // Art ahead of Story is the tenant's priority, and a role that comes back
+    // after another is written again rather than gathered into the first.
+    catalog.details = {
+      fixtureSeries.first.id: SeriesDetail(
+        series: SeriesItem(
+          id: fixtureSeries.first.id,
+          title: fixtureSeries.first.title,
+          description: fixtureSeries.first.description,
+          creators: const [
+            SeriesCreator(id: 'A1', name: 'Seed Author 002', roleName: 'Art'),
+            SeriesCreator(id: 'A2', name: 'Seed Author 001', roleName: 'Story'),
+            SeriesCreator(id: 'A3', name: 'Seed Author 003', roleName: 'Art'),
+          ],
+        ),
+        episodes: fixtureDetail(fixtureSeries.first).episodes,
+      ),
+    };
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(
+      find.text(
+        'Art Seed Author 002 / Story Seed Author 001 / Art Seed Author 003',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a credit with no role is the name on its own', (tester) async {
+    catalog.series = [
+      SeriesItem(
+        id: fixtureSeries.first.id,
+        title: fixtureSeries.first.title,
+        description: fixtureSeries.first.description,
+        creators: const [
+          SeriesCreator(id: 'A1', name: 'Seed Author 001'),
+          SeriesCreator(id: 'A2', name: 'Seed Author 002', roleName: 'Art'),
+        ],
+      ),
+    ];
+    await pumpApp(tester);
+
+    expect(find.text('Seed Author 001 / Art Seed Author 002'), findsOneWidget);
   });
 
   testWidgets('the series detail screen shows status, schedule, and genres', (

@@ -199,6 +199,7 @@ SeriesAgeRating? _ageRatingFromJson(Object? raw) {
 Map<String, Object?> _creatorToJson(SeriesCreator creator) => {
   'id': creator.id,
   'name': creator.name,
+  'roleName': creator.roleName,
 };
 
 SeriesCreator? _creatorFromJson(Object? decoded) {
@@ -210,7 +211,13 @@ SeriesCreator? _creatorFromJson(Object? decoded) {
   if (name.isEmpty) {
     return null;
   }
-  return SeriesCreator(id: _string(decoded['id']), name: name);
+  // A file written before roles were saved holds none, and reads as credits
+  // named without their roles.
+  return SeriesCreator(
+    id: _string(decoded['id']),
+    name: name,
+    roleName: _string(decoded['roleName']),
+  );
 }
 
 Map<String, Object?> _variantToJson(EyeCatchVariant variant) => {
@@ -347,6 +354,9 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
     'access': detail.access.name,
     if (detail.ageRating != null) 'ageRating': detail.ageRating!.name,
     'episode': _episodeToJson(detail.episode),
+    'creators': [
+      for (final creator in detail.creators) _creatorToJson(creator),
+    ],
     'images': [for (final image in detail.images) _imageToJson(image)],
     // The neighbours are saved with the body so the end of an episode read
     // without a network still offers the one after it, which is the same
@@ -378,6 +388,7 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
     return null;
   }
   final rawImages = decoded['images'];
+  final rawCreators = decoded['creators'];
   return SavedEpisode(
     ownerId: ownerId,
     checkedAt: checkedAt.toUtc(),
@@ -393,6 +404,10 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
       previousEpisode: _neighborFromJson(decoded['previousEpisode']),
       nextEpisode: _neighborFromJson(decoded['nextEpisode']),
       ageRating: _ageRatingFromJson(decoded['ageRating']),
+      creators: [
+        for (final item in rawCreators is List ? rawCreators : const [])
+          ?_creatorFromJson(item),
+      ],
     ),
   );
 }

@@ -89,6 +89,7 @@ class EpisodeDetail {
     this.nextEpisode,
     this.imageRequestHeaders = const {},
     this.ageRating,
+    this.creators = const [],
   });
 
   final EpisodeItem episode;
@@ -114,6 +115,11 @@ class EpisodeDetail {
   /// screen does, so a continue-reading card or a deep link cannot open the
   /// pages without the confirmation.
   final SeriesAgeRating? ageRating;
+
+  /// Who this episode is credited to, in the tenant's role priority order.
+  /// They are the episode's own rather than the series', so an artist who took
+  /// over part way through is named on the episodes they drew and no others.
+  final List<SeriesCreator> creators;
 }
 
 /// A member's reaction state for an episode, as `RatingService` reports it.
