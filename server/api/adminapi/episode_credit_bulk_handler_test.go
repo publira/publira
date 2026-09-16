@@ -159,3 +159,44 @@ func TestBulkEditEpisodeCreditsRefusesARepeatedEpisode(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+// Every episode the range names stays locked until the operation commits, so
+// the range is bounded. A longer one is refused before the credits are
+// resolved and before the transaction begins, which is why the expectations
+// below stop at the session lookup.
+func TestBulkEditEpisodeCreditsRefusesARangePastTheMaximum(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	const episodeCount = maxBulkEpisodeCreditEpisodes + 1
+	episodePublicIDs := make([]string, 0, episodeCount)
+	for index := range episodeCount {
+		episodePublicIDs = append(episodePublicIDs, fmt.Sprintf("EP%09d", index))
+	}
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId:   "SERIES000001",
+		EpisodePublicIds: episodePublicIDs,
+		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Remove{
+			Remove: &publiraadminv1.RemoveEpisodeCreditOperation{
+				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001"},
+			},
+		},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.BulkEditEpisodeCredits(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("BulkEditEpisodeCredits: err = %v, want invalid_argument", err)
+	}
+	assertExpectations(t, mock)
+}

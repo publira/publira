@@ -2299,7 +2299,8 @@ type BulkEditEpisodeCreditsRequest struct {
 	// The episodes to act on, by public_id, rather than a span of order indexes.
 	// Episodes are reordered through this API, so a span would name a different
 	// set of episodes after a reorder than it did when it was composed. The
-	// console resolves its range picker to this list.
+	// console resolves its range picker to this list. At most 1000 per call:
+	// every episode named is locked until the operation commits.
 	EpisodePublicIds []string `protobuf:"bytes,3,rep,name=episode_public_ids,json=episodePublicIds,proto3" json:"episode_public_ids,omitempty"`
 	// Exactly one operation per call. It is a oneof so that the share work can
 	// add a rate operation beside these three without changing what they mean.

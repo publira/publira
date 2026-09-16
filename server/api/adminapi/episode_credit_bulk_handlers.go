@@ -17,6 +17,13 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
+// maxBulkEpisodeCreditEpisodes bounds the range one call may name. Every
+// episode in it stays locked until the transaction commits, so the bound is
+// what keeps one correction from holding a whole series while it runs. It sits
+// above the roughly 800 episodes a weekly quarter-chapter series reaches, so a
+// correction still covers such a series in one call.
+const maxBulkEpisodeCreditEpisodes = 1000
+
 // bulkCreditOutcome is what one operation did, expressed the way the response
 // reports it: the episodes it wrote on, and the reason it gave the rest. Each
 // operation is one statement over the whole range, so the outcome is read back
@@ -49,6 +56,13 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	}
 	if err := validateDistinctPublicIDs(episodePublicIDs, "episode_public_ids", "episode"); err != nil {
 		return nil, err
+	}
+	if len(episodePublicIDs) > maxBulkEpisodeCreditEpisodes {
+		return nil, rpcerrors.NewFieldViolationError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("episode_public_ids must name at most %d episodes", maxBulkEpisodeCreditEpisodes),
+			"episode_public_ids",
+		)
 	}
 	// Both ends of every credit the operation names, resolved together: one
 	// read of the creators and one of the roles, whether the operation names
