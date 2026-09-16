@@ -2,6 +2,8 @@ import "./globals.css";
 import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import type { Metadata } from "next";
 
+import { PlatformMessagesProvider } from "#components/platform-messages-provider";
+
 export const metadata: Metadata = {
   title: {
     default: "Publira Platform Console",
@@ -32,7 +34,9 @@ const RootLayout = ({ children }: LayoutProps<"/">) => (
     <head>
       <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
     </head>
-    <body className="min-h-dvh font-sans antialiased">{children}</body>
+    <body className="min-h-dvh font-sans antialiased">
+      <PlatformMessagesProvider>{children}</PlatformMessagesProvider>
+    </body>
   </html>
 );
 

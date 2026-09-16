@@ -105,8 +105,7 @@ export default defineConfig({
        * be testing itself.
        */
       files: [
-        "apps/*/components/client-message.test.tsx",
-        "apps/web-admin/components/error-boundary-message.test.tsx",
+        "apps/*/components/error-boundary-message.test.tsx",
         "apps/web-host/lib/client-locale.test.ts",
       ],
       rules: {

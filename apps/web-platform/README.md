@@ -43,7 +43,8 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | The catalog | `loadPlatformMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md); this app's copy is the `platform.*` namespace |
 | One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one |
 | One string on the server | `<Message>` in `components/message.tsx`, and `SetupMessage` in `app/setup/_components/` for `/setup` |
-| One string in the browser | `<ClientMessage>` in `components/client-message.tsx`, for `app/error.tsx` |
+| One string in a Client Component | `<ClientMessage>` / `useClientMessages()` in `components/client-message.tsx`, over the catalog `PlatformMessagesProvider` (`components/platform-messages-provider.tsx`) carries from `app/layout.tsx` |
+| One string in a route-level `error.tsx` | `<ErrorBoundaryMessage>` in `components/error-boundary-message.tsx`, for `app/error.tsx` and `app/(protected)/error.tsx` |
 | `<html lang>` | The inline `<head>` script in `app/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`) |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 

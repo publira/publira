@@ -16,9 +16,8 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { listSupportedTimeZones } from "@publira/utils";
-import { Suspense, useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
@@ -100,9 +99,7 @@ export const PlatformTimezoneForm = ({
               />
               <ComboboxPopup>
                 <ComboboxEmpty>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <ClientMessage message="platform.settings.default_timezone_empty" />
-                  </Suspense>
+                  <ClientMessage message="platform.settings.default_timezone_empty" />
                 </ComboboxEmpty>
                 <ComboboxItems />
               </ComboboxPopup>
