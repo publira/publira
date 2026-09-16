@@ -94,9 +94,12 @@ export const SiteLayoutMobileNavigation = ({
 }) => (
   <BaseDrawer.Portal>
     <BaseDrawer.Backdrop className="fixed inset-0 z-30 bg-foreground/20 md:hidden" />
-    <BaseDrawer.Popup className="fixed inset-y-0 right-0 z-40 flex w-72 max-w-[86vw] flex-col gap-6 overflow-y-auto border-l border-border bg-surface px-4 py-4 shadow-floating md:hidden">
-      {children}
-    </BaseDrawer.Popup>
+    {/* Viewport is what Base UI binds swipe and touch scroll locking to. */}
+    <BaseDrawer.Viewport className="fixed inset-0 z-40 md:hidden">
+      <BaseDrawer.Popup className="fixed inset-y-0 right-0 z-40 flex w-72 max-w-[86vw] flex-col gap-6 overflow-y-auto border-l border-border bg-surface px-4 py-4 shadow-floating md:hidden">
+        {children}
+      </BaseDrawer.Popup>
+    </BaseDrawer.Viewport>
   </BaseDrawer.Portal>
 );
 
