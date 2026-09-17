@@ -64,6 +64,9 @@ Future<void> pumpUntilTrue(
 /// The route [finder] matches has to be the one on top, which is what a test
 /// about to interact with it wants: a widget on a route another one covers
 /// keeps a completed secondary animation and never settles.
+///
+/// A widget that leaves the tree while this waits keeps it waiting, since
+/// `every` holds for an empty match and would hand the caller nothing to tap.
 Future<void> pumpUntilRouteSettled(
   WidgetTester tester,
   Finder finder, {
@@ -72,7 +75,10 @@ Future<void> pumpUntilRouteSettled(
   await pumpUntilFound(tester, finder, timeout: timeout);
   await pumpUntilTrue(
     tester,
-    () => tester.elementList(finder).every(_isRouteSettled),
+    () {
+      final elements = tester.elementList(finder);
+      return elements.isNotEmpty && elements.every(_isRouteSettled);
+    },
     description: 'the route holding $finder to finish transitioning',
     timeout: timeout,
   );
