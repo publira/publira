@@ -120,8 +120,8 @@ type RawReaderDetail = RawReader &
 
 const mapReaderDetail = (item: RawReaderDetail): ReaderDetail => ({
   ...mapReader(item),
+  birthDate: item.birthDate ?? "",
   emailVerifiedAt: item.emailVerifiedAt ?? "",
-  hasBirthDate: Boolean(item.birthDate),
 });
 
 /** One reader's account. */
@@ -223,6 +223,55 @@ const readerModerationFailedMessage = async (
     default: {
       return t("admin.readers.delete_failed");
     }
+  }
+};
+
+export interface SetReaderBirthDateInput {
+  /** `YYYY-MM-DD`, or empty to clear the stored date. */
+  birthDate: string;
+  publicId: string;
+  tenantId: string;
+}
+
+/**
+ * Sets or clears one reader's birth date. A rejected session leaves as a throw
+ * so the Action can send the staff member to sign in again.
+ */
+export const setReaderBirthDate = async (
+  input: SetReaderBirthDateInput,
+  locale: Locale
+): Promise<ModerateReaderResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.users.setReaderBirthDate(
+      {
+        birthDate: input.birthDate,
+        publicId: input.publicId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(error, t("admin.readers.birth_date_failed"), {
+        locale,
+        // The date is the only field staff type, so a refusal is about it.
+        overrides: {
+          "invalid-argument": t("admin.readers.birth_date_invalid"),
+        },
+      }),
+      ok: false,
+    };
   }
 };
 

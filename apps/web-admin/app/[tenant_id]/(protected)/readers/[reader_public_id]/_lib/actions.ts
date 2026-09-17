@@ -10,9 +10,12 @@ import { z } from "zod";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import {
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
-import { moderateReader } from "#lib/reader";
+import { moderateReader, setReaderBirthDate } from "#lib/reader";
 import type { ReaderModerationAction } from "#lib/reader";
 
 const readerActionSchema = async (locale: Locale) => {
@@ -90,6 +93,42 @@ export const unsuspendReaderAction = async (
     return outcome.state;
   }
   redirect(`/readers/${encodeURIComponent(outcome.publicId)}?unsuspended=1`);
+};
+
+const birthDateFormFields = {
+  ...readerActionFormFields,
+  birthDate: { kind: "value", name: "birth_date" },
+} as const;
+
+/** An empty date clears the stored one; the API validates a present one. */
+export const setReaderBirthDateAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const readerSchema = await readerActionSchema(locale);
+  const schema = readerSchema.extend({ birthDate: optionalTrimmedString() });
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, birthDateFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    setReaderBirthDate(parsed.data, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  redirect(
+    `/readers/${encodeURIComponent(parsed.data.publicId)}?birth_date_updated=1`
+  );
 };
 
 export const deleteReaderAction = async (

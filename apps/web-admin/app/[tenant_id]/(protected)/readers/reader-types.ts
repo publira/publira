@@ -39,8 +39,8 @@ export type ListReadersResult = CursorPageTokens &
 export interface ReaderDetail extends ReaderItem {
   /** When the reader confirmed their address. Empty until they have. */
   emailVerifiedAt: string;
-  /** Whether a birth date is recorded; the date itself stays with the reader. */
-  hasBirthDate: boolean;
+  /** The recorded birth date as `YYYY-MM-DD`. Empty when none is recorded. */
+  birthDate: string;
 }
 
 /**

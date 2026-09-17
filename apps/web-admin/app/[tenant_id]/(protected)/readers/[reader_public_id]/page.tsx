@@ -210,6 +210,10 @@ const ReaderDetailPage = ({ params, searchParams }: ReaderDetailPageProps) => (
     <AdminPageContent>
       <FlashToast keyName="suspended" message="admin.readers.suspended" />
       <FlashToast keyName="unsuspended" message="admin.readers.unsuspended" />
+      <FlashToast
+        keyName="birth_date_updated"
+        message="admin.readers.birth_date_updated"
+      />
       <AdminSections>
         <SectionErrorBoundary
           title={

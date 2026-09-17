@@ -63,6 +63,17 @@ export const AGE_VERIFICATION_UNDECLARED = {
   publicId: "AverMMBRAAA3",
 } as const;
 
+/**
+ * Born as {@link AGE_VERIFICATION_MINOR} is, until staff correct the date from
+ * the console. Password hash is `memberpass`.
+ */
+export const AGE_VERIFICATION_CORRECTED = {
+  email: "age-corrected@example.com",
+  name: "Age E2E Corrected",
+  password: "memberpass",
+  publicId: "AverMMBRAAA4",
+} as const;
+
 export const AGE_VERIFICATION_SERIES_PATH = `/series/${AGE_VERIFICATION_EPISODE.seriesPublicId}`;
 
 export const AGE_VERIFICATION_EPISODE_PATH = `${AGE_VERIFICATION_SERIES_PATH}/episodes/${AGE_VERIFICATION_EPISODE.publicId}`;

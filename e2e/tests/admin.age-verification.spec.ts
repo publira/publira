@@ -12,6 +12,7 @@ import {
 } from "../src/revalidate";
 import {
   AGE_VERIFICATION_ADMIN,
+  AGE_VERIFICATION_CORRECTED,
   AGE_VERIFICATION_EPISODE,
   AGE_VERIFICATION_EPISODE_PATH,
   AGE_VERIFICATION_MINOR,
@@ -26,7 +27,8 @@ import {
 } from "../src/urls";
 
 /**
- * Choosing which ratings demand a proven age, from the tenant settings console.
+ * Choosing which ratings demand a proven age, from the tenant settings console,
+ * and correcting the birth date a reader is judged by, from their detail page.
  *
  * The whole round trip goes through the product: an administrator picks a rule
  * on `/settings`, and the result is read back off the public episode page by a
@@ -216,6 +218,68 @@ test.describe("web-admin age verification", () => {
         "aria-checked",
         "true"
       );
+    } finally {
+      await readerContext.close();
+    }
+  });
+
+  // A reader cannot rewrite their own date, so a wrong one is corrected here,
+  // and the correction is measured where the reader would meet it.
+  test("correcting a reader's birth date decides their next read on the new date", async ({
+    browser,
+    page,
+  }) => {
+    await signInAsAdmin(
+      page,
+      AGE_VERIFICATION_ADMIN,
+      `/readers/${AGE_VERIFICATION_CORRECTED.publicId}`,
+      WEB_ADMIN_AGE_VERIFICATION_BASE_URL
+    );
+
+    const readerContext = await browser.newContext();
+    const readerPage = await readerContext.newPage();
+    try {
+      await signInAsMember(
+        readerPage,
+        AGE_VERIFICATION_CORRECTED,
+        AGE_VERIFICATION_EPISODE_PATH,
+        WEB_HOST_AGE_VERIFICATION_BASE_URL
+      );
+      await expect(readerPage.getByText(AGE_GATE_MESSAGE)).toBeVisible();
+
+      await page.getByRole("button", { exact: true, name: "Change" }).click();
+      const dialog = page.getByRole("alertdialog");
+      await expect(dialog).toContainText(
+        `Change the birth date of ${AGE_VERIFICATION_CORRECTED.name}?`
+      );
+      await expect(dialog).toContainText(
+        "Their access to age-rated works follows the new date from their next read."
+      );
+      await dialog.getByLabel("Birth date").fill("1990-04-02");
+      await dialog.getByRole("button", { exact: true, name: "Save" }).click();
+
+      await expect(
+        page.getByText("The birth date has been updated.")
+      ).toBeVisible();
+      const account = page.getByRole("definition");
+      await expect(account.getByText("Apr 2, 1990")).toBeVisible();
+
+      await readerPage.goto(episodeUrl);
+      await expect(firstPage(readerPage)).toBeVisible();
+      await expect(readerPage.getByText(AGE_GATE_MESSAGE)).toHaveCount(0);
+
+      // Clearing leaves the reader with no date, which the gate answers by
+      // asking them for one.
+      await page.getByRole("button", { exact: true, name: "Change" }).click();
+      await dialog.getByLabel("Birth date").fill("");
+      await dialog.getByRole("button", { exact: true, name: "Save" }).click();
+      await expect(account.getByText("Not recorded")).toBeVisible();
+
+      await readerPage.goto(episodeUrl);
+      await expect(
+        readerPage.getByRole("link", { name: "Add your date of birth" })
+      ).toBeVisible();
+      await expect(firstPage(readerPage)).toHaveCount(0);
     } finally {
       await readerContext.close();
     }
