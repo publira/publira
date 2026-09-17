@@ -26,11 +26,10 @@ typedef OfflineRootResolver = Future<Directory> Function();
 /// cannot decrypt is treated as one the device does not have.
 class FileOfflineLibrary implements OfflineLibrary {
   FileOfflineLibrary({
-    DeviceKeyStore keys = const SecureDeviceKeyStore(),
-    OfflineRootResolver root = _applicationSupportRoot,
+    this._keys = const SecureDeviceKeyStore(),
+    this._root = _applicationSupportRoot,
     this.byteLimit = offlineByteLimit,
-  }) : _keys = keys,
-       _root = root;
+  });
 
   final DeviceKeyStore _keys;
   final OfflineRootResolver _root;

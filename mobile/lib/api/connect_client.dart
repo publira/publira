@@ -19,10 +19,9 @@ class ConnectClient {
   ConnectClient({
     required this.baseUrl,
     http.Client? httpClient,
-    AccessTokenReader? accessToken,
+    this._accessToken,
     this.timeout = const Duration(seconds: 10),
-  }) : _accessToken = accessToken,
-       _http = httpClient ?? http.Client();
+  }) : _http = httpClient ?? http.Client();
 
   final String baseUrl;
   final Duration timeout;

@@ -8,11 +8,7 @@ import 'package:publira/push/push_repository.dart';
 /// The client authorizes every call with whichever session the app holds, so a
 /// registration always names the reader who is signed in at that moment.
 class HttpPushRepository implements PushRepository {
-  const HttpPushRepository({
-    required ConnectClient client,
-    required TenantResolver tenants,
-  }) : _client = client,
-       _tenants = tenants;
+  const HttpPushRepository({required this._client, required this._tenants});
 
   static const _registerProcedure =
       '/publira.v1.NotificationService/RegisterPushDevice';

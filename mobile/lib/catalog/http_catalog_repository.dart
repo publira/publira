@@ -26,10 +26,9 @@ class HttpCatalogRepository implements CatalogRepository {
 
   HttpCatalogRepository._({
     required this.config,
-    required ConnectClient client,
-    required TenantResolver tenants,
-  }) : _client = client,
-       _tenants = tenants;
+    required this._client,
+    required this._tenants,
+  });
 
   static const _listProcedure =
       '/publira.v1.CatalogService/ListPublishedSeries';
