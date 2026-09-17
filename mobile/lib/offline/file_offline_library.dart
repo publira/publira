@@ -27,10 +27,16 @@ typedef OfflineRootResolver = Future<Directory> Function();
 /// cannot decrypt is treated as one the device does not have.
 class FileOfflineLibrary implements OfflineLibrary {
   FileOfflineLibrary({
+    required this.tenantHost,
     this._keys = const SecureDeviceKeyStore(),
     this._root = _applicationSupportRoot,
     this.byteLimit = offlineByteLimit,
   });
+
+  /// The tenant this build reads for. Every tenant's build shares one
+  /// application id, so an index written for another host can be on the
+  /// device, and is dropped rather than answered.
+  final String tenantHost;
 
   final DeviceKeyStore _keys;
   final OfflineRootResolver _root;
@@ -86,9 +92,9 @@ class FileOfflineLibrary implements OfflineLibrary {
   @override
   Future<void> writeTenantBrand(String tenantHost, TenantBrand brand) {
     return _write((home, index) {
-      index
-        ..tenantHost = tenantHost
-        ..tenant = brand;
+      if (index.tenantHost == tenantHost) {
+        index.tenant = brand;
+      }
     });
   }
 
@@ -249,7 +255,6 @@ class FileOfflineLibrary implements OfflineLibrary {
     return _write((home, index) async {
       await _wipe(home);
       index
-        ..tenantHost = ''
         ..tenant = null
         ..series = null
         ..details.clear()
@@ -436,12 +441,18 @@ class FileOfflineLibrary implements OfflineLibrary {
         index = null;
       }
     }
+    if (index != null && index.tenantHost != tenantHost) {
+      // Written by a build for another tenant, whose bodies and positions
+      // this one must not answer with.
+      index = null;
+    }
     if (present && index == null) {
-      // The device key is gone, or the file came from a build that wrote
-      // another shape. Either way nothing under it reads, pages included.
+      // The device key is gone, the file came from a build that wrote another
+      // shape, or it was written for another tenant. Nothing under it reads,
+      // pages included.
       await _wipe(home);
     }
-    return _index = index ?? OfflineIndex();
+    return _index = index ?? OfflineIndex(tenantHost: tenantHost);
   }
 
   Future<void> _writeIndex(_Home home, OfflineIndex index) async {

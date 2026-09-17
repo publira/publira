@@ -7,7 +7,7 @@ import 'package:publira/tenant/tenant_brand.dart';
 /// dropped rather than read, so a shape change costs the saved episodes and
 /// never a failed launch. It also covers the shape of the files themselves:
 /// the nonce every write carries arrived as one of these numbers.
-const offlineIndexVersion = 3;
+const offlineIndexVersion = 4;
 
 /// The whole of one device's saved metadata: the catalog snapshot, the series
 /// screens behind it, and the episodes whose pages are on disk.
@@ -28,7 +28,7 @@ class OfflineIndex {
        episodes = episodes ?? <String, SavedEpisode>{},
        positions = positions ?? <String, SavedReadingPosition>{};
 
-  /// The tenant host [tenant] was read for, empty when it never has been.
+  /// The tenant host everything here was saved for.
   String tenantHost;
 
   /// The tenant's brand as it last loaded, or `null` when it never has.
@@ -54,7 +54,8 @@ class OfflineIndex {
 
   Map<String, Object?> toJson() => {
     'version': offlineIndexVersion,
-    if (tenant != null) 'tenant': _tenantToJson(tenantHost, tenant!),
+    'tenantHost': tenantHost,
+    if (tenant != null) 'tenant': _tenantToJson(tenant!),
     if (series != null)
       'series': [for (final item in series!) _seriesToJson(item)],
     if (seriesNextToken.isNotEmpty) 'seriesNextToken': seriesNextToken,
@@ -83,7 +84,7 @@ class OfflineIndex {
     final rawEpisodes = decoded['episodes'];
     final rawPositions = decoded['positions'];
     return OfflineIndex(
-      tenantHost: _tenantHostFromJson(decoded['tenant']),
+      tenantHost: _string(decoded['tenantHost']),
       tenant: _tenantFromJson(decoded['tenant']),
       positions: rawPositions is! Map
           ? null
@@ -111,8 +112,7 @@ class OfflineIndex {
   }
 }
 
-Map<String, Object?> _tenantToJson(String host, TenantBrand brand) => {
-  'host': host,
+Map<String, Object?> _tenantToJson(TenantBrand brand) => {
   'name': brand.name,
   'theme': brand.palette.toWire(),
   if (brand.logo case final logo?)
@@ -123,12 +123,8 @@ Map<String, Object?> _tenantToJson(String host, TenantBrand brand) => {
     },
 };
 
-String _tenantHostFromJson(Object? decoded) =>
-    decoded is Map ? _string(decoded['host']) : '';
-
 TenantBrand? _tenantFromJson(Object? decoded) {
-  // A brand that names no tenant cannot be told apart from another tenant's.
-  if (decoded is! Map || _string(decoded['host']).isEmpty) {
+  if (decoded is! Map) {
     return null;
   }
   return TenantBrand(

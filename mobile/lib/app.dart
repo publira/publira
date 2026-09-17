@@ -98,7 +98,8 @@ class PubliraApp extends StatefulWidget {
     CheckoutLauncher? checkoutLauncher,
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
-    final library = offline ?? FileOfflineLibrary();
+    final library =
+        offline ?? FileOfflineLibrary(tenantHost: resolved.tenantHost);
     late final AuthController auth;
     final client = ConnectClient(
       baseUrl: resolved.apiBaseUrl,

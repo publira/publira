@@ -22,6 +22,8 @@ final _otherDeviceKey = Uint8List.fromList(
 
 const _seriesId = 'SeedSERSAAA1';
 
+const _tenantHost = 'harbor.test';
+
 /// A key the reader never fetched, so nothing but a sweep can remove it.
 final _orphanPageKey = episodePageKey(Uri.parse('http://images.test/orphan'));
 
@@ -97,10 +99,12 @@ void main() {
   });
 
   FileOfflineLibrary open({
+    String tenantHost = _tenantHost,
     Uint8List? deviceKey,
     int byteLimit = offlineByteLimit,
   }) {
     return FileOfflineLibrary(
+      tenantHost: tenantHost,
       keys: _FixedDeviceKey(deviceKey ?? _deviceKey),
       root: () async => root,
       byteLimit: byteLimit,
@@ -135,7 +139,7 @@ void main() {
 
   test('the tenant brand is read back by the next launch', () async {
     await open().writeTenantBrand(
-      'harbor.test',
+      _tenantHost,
       TenantBrand(
         name: 'Harbor Comics',
         palette: TenantPalette.fromWire(const {'primaryColor': '#0b6e4f'}),
@@ -147,7 +151,7 @@ void main() {
       ),
     );
 
-    final restored = await open().readTenantBrand('harbor.test');
+    final restored = await open().readTenantBrand(_tenantHost);
 
     expect(restored!.name, 'Harbor Comics');
     expect(restored.palette[TenantColor.primary], const Color(0xFF0B6E4F));
@@ -165,22 +169,93 @@ void main() {
   test('clearing the library forgets the tenant brand', () async {
     final library = open();
     await library.writeTenantBrand(
-      'harbor.test',
+      _tenantHost,
       const TenantBrand(name: 'Harbor Comics'),
     );
 
     await library.clear();
 
-    expect(await open().readTenantBrand('harbor.test'), isNull);
+    expect(await open().readTenantBrand(_tenantHost), isNull);
   });
 
   test('a brand saved for another tenant is not answered', () async {
     await open().writeTenantBrand(
-      'harbor.test',
+      _tenantHost,
       const TenantBrand(name: 'Harbor Comics'),
     );
 
-    expect(await open().readTenantBrand('ember.test'), isNull);
+    expect(
+      await open(tenantHost: 'ember.test').readTenantBrand('ember.test'),
+      isNull,
+    );
+  });
+
+  test('a library opened for another tenant answers nothing saved', () async {
+    final pageKey = episodePageKey(_pageUrl('EP1', 1));
+    final harbor = open();
+    await harbor.writeTenantBrand(
+      _tenantHost,
+      const TenantBrand(name: 'Harbor Comics'),
+    );
+    await harbor.writeSeriesList(
+      const SeriesPage(
+        series: [
+          SeriesItem(id: _seriesId, title: 'Seed Series 001', description: ''),
+        ],
+      ),
+    );
+    await harbor.writeSeriesDetail(
+      const SeriesDetail(
+        series: SeriesItem(
+          id: _seriesId,
+          title: 'Seed Series 001',
+          description: '',
+        ),
+        episodes: [],
+      ),
+    );
+    await harbor.writeEpisode(
+      _episode('EP1', ownerId: 'SeedMMBRAAA1', access: EpisodeAccess.entitled),
+    );
+    await harbor.writePage(pageKey, _bytes(64, 3));
+    await harbor.writeReadingPosition(
+      _seriesId,
+      'EP1',
+      readerId: 'SeedMMBRAAA1',
+      pageIndex: 11,
+    );
+
+    final ember = open(tenantHost: 'ember.test');
+
+    expect(await ember.readSeriesList(), isNull);
+    expect(await ember.readSeriesDetail(_seriesId), isNull);
+    expect(await ember.readEpisode(_seriesId, 'EP1'), isNull);
+    expect(
+      await ember.readableEpisodeIds(_seriesId, readerId: 'SeedMMBRAAA1'),
+      isEmpty,
+    );
+    expect(await ember.readPage(pageKey), isNull);
+    expect(
+      await ember.readReadingPosition(
+        _seriesId,
+        'EP1',
+        readerId: 'SeedMMBRAAA1',
+      ),
+      isNull,
+    );
+    // The pages go with the index rather than sitting on the device under a
+    // tenant this build will never read for.
+    expect(await Directory('${root.path}/pages').list().toList(), isEmpty);
+  });
+
+  test('what a build saves after a tenant switch stays its own', () async {
+    await open().writeEpisode(_episode('EP1'));
+    await open(tenantHost: 'ember.test').writeEpisode(_episode('EP2'));
+
+    final ember = open(tenantHost: 'ember.test');
+    expect(await ember.readEpisode(_seriesId, 'EP1'), isNull);
+    expect(await ember.readEpisode(_seriesId, 'EP2'), isNotNull);
+    expect(await open().readEpisode(_seriesId, 'EP2'), isNull);
   });
 
   test('a saved catalog that ended keeps no token', () async {
@@ -535,6 +610,7 @@ void main() {
 
   test('a device with nowhere to keep a key reads as empty', () async {
     final library = FileOfflineLibrary(
+      tenantHost: _tenantHost,
       keys: const _NoDeviceKey(),
       root: () async => root,
     );
@@ -548,6 +624,7 @@ void main() {
 
   test('a device with nowhere to write reads as empty', () async {
     final library = FileOfflineLibrary(
+      tenantHost: _tenantHost,
       keys: _FixedDeviceKey(_deviceKey),
       root: () async => throw const FileSystemException('no such directory'),
     );
