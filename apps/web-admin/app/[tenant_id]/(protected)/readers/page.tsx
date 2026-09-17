@@ -13,6 +13,7 @@ import {
   AdminPageTitle,
   AdminSections,
 } from "#components/admin-page";
+import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
@@ -121,6 +122,7 @@ const ReadersPage = ({ searchParams }: ReadersPageProps) => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
+      <FlashToast keyName="deleted" message="admin.readers.deleted" />
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

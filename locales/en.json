@@ -979,7 +979,29 @@
       "comments_error": "Could not display this reader's comments",
       "comments_empty_title": "This reader has not written any comments.",
       "comments_empty_description": "Their comments appear here once they post one.",
-      "comments_pagination_aria": "Reader's comments pagination"
+      "comments_pagination_aria": "Reader's comments pagination",
+      "suspend": "Suspend",
+      "suspending": "Suspending…",
+      "suspended": "The reader has been suspended.",
+      "suspend_confirm_title": "Suspend {$name}?",
+      "suspend_confirm_description": "They are signed out everywhere and cannot sign in until the suspension is lifted.",
+      "suspend_confirm_action": "Suspend",
+      "suspend_failed": "Could not suspend the reader. Please try again later.",
+      "unsuspend": "Lift suspension",
+      "unsuspending": "Lifting suspension…",
+      "unsuspended": "The suspension has been lifted.",
+      "unsuspend_failed": "Could not lift the suspension. Please try again later.",
+      "delete": "Delete",
+      "deleting": "Deleting…",
+      "deleted": "The reader has been deleted.",
+      "delete_confirm_title": "Delete {$name}?",
+      "delete_confirm_description": "Their account is deleted just as if they had closed it themselves. This cannot be undone.",
+      "delete_confirm_action": "Delete",
+      "delete_failed": "Could not delete the reader. Please try again later.",
+      "validation": {
+        "target_missing": "Could not tell which reader this applies to. Reload the page and try again.",
+        "tenant_missing": "Could not tell which tenant this applies to. Reload the page and try again."
+      }
     },
     "series": {
       "detail_error": "Could not display the series",

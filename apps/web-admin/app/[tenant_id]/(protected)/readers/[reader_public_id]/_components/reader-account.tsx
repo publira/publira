@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import {
   AdminSection,
+  AdminSectionActions,
   AdminSectionHeader,
   AdminSectionHeading,
   AdminSectionTitle,
@@ -18,7 +19,10 @@ import {
   readerStatusTone,
 } from "../../_components/reader-status-label";
 import type { ReaderDetail } from "../../reader-types";
+import { DeleteReaderButton } from "./delete-reader-button";
 import { Identifier, IdentifierCopy, IdentifierValue } from "./identifier";
+import { SuspendReaderButton } from "./suspend-reader-button";
+import { UnsuspendReaderButton } from "./unsuspend-reader-button";
 
 interface ReaderAccountProps {
   locale: Locale;
@@ -46,6 +50,20 @@ export const ReaderAccount = async ({
             </Suspense>
           </AdminSectionTitle>
         </AdminSectionHeading>
+        <AdminSectionActions>
+          {reader.status === "suspended" ? (
+            <UnsuspendReaderButton publicId={reader.publicId} />
+          ) : (
+            <SuspendReaderButton
+              name={reader.name || reader.email}
+              publicId={reader.publicId}
+            />
+          )}
+          <DeleteReaderButton
+            name={reader.name || reader.email}
+            publicId={reader.publicId}
+          />
+        </AdminSectionActions>
       </AdminSectionHeader>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
         <dt className={labelClassName}>

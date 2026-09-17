@@ -979,7 +979,29 @@
       "comments_error": "この読者のコメントを表示できませんでした",
       "comments_empty_title": "この読者が書いたコメントはありません。",
       "comments_empty_description": "コメントを投稿すると、ここに表示されます。",
-      "comments_pagination_aria": "読者のコメントのページ送り"
+      "comments_pagination_aria": "読者のコメントのページ送り",
+      "suspend": "停止",
+      "suspending": "停止しています…",
+      "suspended": "読者を停止しました。",
+      "suspend_confirm_title": "{$name} を停止しますか？",
+      "suspend_confirm_description": "すべての端末でサインアウトされ、停止を解除するまでサインインできなくなります。",
+      "suspend_confirm_action": "停止する",
+      "suspend_failed": "読者を停止できませんでした。時間をおいて再試行してください。",
+      "unsuspend": "停止を解除",
+      "unsuspending": "停止を解除しています…",
+      "unsuspended": "停止を解除しました。",
+      "unsuspend_failed": "停止を解除できませんでした。時間をおいて再試行してください。",
+      "delete": "削除",
+      "deleting": "削除しています…",
+      "deleted": "読者を削除しました。",
+      "delete_confirm_title": "{$name} を削除しますか？",
+      "delete_confirm_description": "読者が自分で退会したときと同じようにアカウントが削除されます。この操作は取り消せません。",
+      "delete_confirm_action": "削除する",
+      "delete_failed": "読者を削除できませんでした。時間をおいて再試行してください。",
+      "validation": {
+        "target_missing": "対象の読者を特定できませんでした。ページを再読み込みしてもう一度お試しください。",
+        "tenant_missing": "対象のテナントを特定できませんでした。ページを再読み込みしてもう一度お試しください。"
+      }
     },
     "series": {
       "detail_error": "シリーズを表示できませんでした",

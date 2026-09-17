@@ -1,13 +1,21 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockGetReader, mockListReaders } = vi.hoisted(
-  () => ({
-    mockGetAccessToken: vi.fn(),
-    mockGetReader: vi.fn(),
-    mockListReaders: vi.fn(),
-  })
-);
+const {
+  mockDeleteReader,
+  mockGetAccessToken,
+  mockGetReader,
+  mockListReaders,
+  mockSuspendReader,
+  mockUnsuspendReader,
+} = vi.hoisted(() => ({
+  mockDeleteReader: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockGetReader: vi.fn(),
+  mockListReaders: vi.fn(),
+  mockSuspendReader: vi.fn(),
+  mockUnsuspendReader: vi.fn(),
+}));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -16,8 +24,11 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     users: {
+      deleteReader: mockDeleteReader,
       getReader: mockGetReader,
       listReaders: mockListReaders,
+      suspendReader: mockSuspendReader,
+      unsuspendReader: mockUnsuspendReader,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -208,5 +219,67 @@ describe("reader lib", () => {
       ok: false,
       requiresSignIn: true,
     });
+  });
+
+  it.each([
+    ["suspend", mockSuspendReader],
+    ["unsuspend", mockUnsuspendReader],
+    ["delete", mockDeleteReader],
+  ] as const)("calls the RPC that %s names", async (action, rpc) => {
+    rpc.mockResolvedValue({});
+
+    const { moderateReader } = await import("./reader");
+    const result = await moderateReader(
+      { action, publicId: "READER00001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(rpc).toHaveBeenCalledWith(
+      { publicId: "READER00001", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("reports a refused action as a message", async () => {
+    mockSuspendReader.mockRejectedValue(
+      new ConnectError("missing", Code.NotFound)
+    );
+
+    const { moderateReader } = await import("./reader");
+    const result = await moderateReader(
+      { action: "suspend", publicId: "READER00001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+  });
+
+  it("rethrows a rejected session so the Action can send staff to sign in", async () => {
+    mockDeleteReader.mockRejectedValue(
+      new ConnectError("no session", Code.Unauthenticated)
+    );
+
+    const { moderateReader } = await import("./reader");
+
+    await expect(
+      moderateReader(
+        { action: "delete", publicId: "READER00001", tenantId: "TENANT001" },
+        "en"
+      )
+    ).rejects.toThrow();
+  });
+
+  it("does not call the API when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { moderateReader } = await import("./reader");
+    const result = await moderateReader(
+      { action: "delete", publicId: "READER00001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockDeleteReader).not.toHaveBeenCalled();
+    expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
   });
 });

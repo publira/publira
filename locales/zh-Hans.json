@@ -979,7 +979,29 @@
       "comments_error": "无法显示该读者的评论",
       "comments_empty_title": "该读者还没有写过评论。",
       "comments_empty_description": "发表评论后会显示在这里。",
-      "comments_pagination_aria": "读者评论分页"
+      "comments_pagination_aria": "读者评论分页",
+      "suspend": "暂停",
+      "suspending": "正在暂停…",
+      "suspended": "已暂停该读者。",
+      "suspend_confirm_title": "要暂停 {$name} 吗？",
+      "suspend_confirm_description": "该读者将在所有设备上退出登录，在解除暂停之前无法登录。",
+      "suspend_confirm_action": "暂停",
+      "suspend_failed": "无法暂停该读者。请稍后重试。",
+      "unsuspend": "解除暂停",
+      "unsuspending": "正在解除暂停…",
+      "unsuspended": "已解除暂停。",
+      "unsuspend_failed": "无法解除暂停。请稍后重试。",
+      "delete": "删除",
+      "deleting": "正在删除…",
+      "deleted": "已删除该读者。",
+      "delete_confirm_title": "要删除 {$name} 吗？",
+      "delete_confirm_description": "账号将以与读者自行注销相同的方式删除。此操作无法撤销。",
+      "delete_confirm_action": "删除",
+      "delete_failed": "无法删除该读者。请稍后重试。",
+      "validation": {
+        "target_missing": "无法确定要操作的读者。请刷新页面后重试。",
+        "tenant_missing": "无法确定要操作的租户。请刷新页面后重试。"
+      }
     },
     "series": {
       "detail_error": "无法显示该系列",
