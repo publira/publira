@@ -72,7 +72,6 @@ const tagSuggestions = ["seaside", "letterpress"];
 const series: SeriesListItem = {
   ageRating: "r15",
   creatorCredits: [{ creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" }],
-  creatorNames: ["Creator A"],
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],
   genrePublicIds: ["GENRE002"],

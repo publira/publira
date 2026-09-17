@@ -89,7 +89,6 @@ export interface SeriesItem {
   publishedAt: string;
   labelPublicId: string;
   labelName: string;
-  creatorNames: string[];
   /**
    * In role priority order, then the order the editor gave within a role —
    * the order the API reads them back in and the order a credit list is shown
@@ -340,10 +339,6 @@ const mapSeries = (series: RawSeries): SeriesItem => ({
     return creatorPublicId.length > 0
       ? [{ creatorPublicId, rolePublicId }]
       : [];
-  }),
-  creatorNames: (series.creators ?? []).flatMap((creator) => {
-    const name = creator.name.trim();
-    return name.length > 0 ? [name] : [];
   }),
   eyeCatchImageUpdatedAt: series.eyeCatchImageUpdatedAt ?? "",
   eyeCatchImageVariants: (series.eyeCatchImageVariants ?? []).flatMap(

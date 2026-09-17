@@ -24,7 +24,6 @@ export interface SeriesListItem {
   publishedAt: string;
   labelPublicId: string;
   labelName: string;
-  creatorNames: string[];
   /** In role priority order, then the order the editor gave within a role. */
   creatorCredits: SeriesCreatorCredit[];
   isPublished: boolean;
