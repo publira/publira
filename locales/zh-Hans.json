@@ -2217,7 +2217,6 @@
       },
       "images_empty": "本章的页面尚未发布。",
       "navigation": {
-        "label": "章节导航",
         "next": "下一章",
         "next_hint": "再次按下该键即可打开下一章。",
         "previous": "上一章",

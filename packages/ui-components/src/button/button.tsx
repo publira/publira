@@ -27,7 +27,7 @@ const HOVER_FILL_INK = cn(
 );
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-control text-sm font-medium whitespace-nowrap transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-control text-sm font-medium whitespace-nowrap transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50",
   {
     defaultVariants: {
       size: "md",

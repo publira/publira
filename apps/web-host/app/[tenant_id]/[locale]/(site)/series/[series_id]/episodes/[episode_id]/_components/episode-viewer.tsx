@@ -33,7 +33,7 @@ import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeComicViewer } from "./episode-comic-viewer";
 import { EpisodeComments, EpisodeCommentsSkeleton } from "./episode-comments";
 import { EpisodeNeighborKeyNavigation } from "./episode-neighbor-key-navigation";
-import { EpisodeNeighborLinks } from "./episode-neighbor-links";
+import { EpisodeNextEpisodeOffer } from "./episode-next-episode-offer";
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
 
@@ -48,10 +48,10 @@ import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recor
  * to once the reader is already looking at the first page. The viewer
  * preferences are read beside it, so a wide viewer is wide from its first paint.
  *
- * What a reader does once they have finished — react to the episode, read what
- * others said about it, say something themselves — is the page after the last
- * one. None of it is offered before the pages have been turned, because none of
- * it is a reader's to give or to read until then.
+ * What a reader does once they have finished — react to the episode, open the
+ * next one, read what others said about it, say something themselves — is the
+ * page after the last one. None of it is offered before the pages have been
+ * turned, because none of it is a reader's to give or to read until then.
  */
 export const EpisodeViewer = async ({
   commentMode,
@@ -136,6 +136,12 @@ export const EpisodeViewer = async ({
                 />
               </Suspense>
             </SectionErrorBoundary>
+            <EpisodeNextEpisodeOffer
+              episodePublicId={episode.publicId}
+              nextEpisode={nextEpisode}
+              series={series}
+              tenantId={tenantId}
+            />
             {commentMode === "disabled" ? null : (
               <SectionErrorBoundary
                 title={
@@ -178,7 +184,6 @@ export const EpisodeViewer = async ({
         {accessToken ? (
           <EpisodeReadingPositionRecorder episode={episode} series={series} />
         ) : null}
-        <EpisodeNeighborLinks nextHref={nextHref} previousHref={previousHref} />
         <EpisodeNeighborKeyNavigation
           nextHref={nextHref}
           previousHref={previousHref}

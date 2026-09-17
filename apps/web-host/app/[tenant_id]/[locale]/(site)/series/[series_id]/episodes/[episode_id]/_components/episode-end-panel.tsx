@@ -38,21 +38,18 @@ const RELATED_SERIES_COUNT = 3;
  *
  * Episodes carry no artwork of their own anywhere in the data model, so every
  * row shows the series' eye-catch; what tells the two rows apart is the label
- * above the title and, on the next one, the mark.
+ * above the title.
  */
 const EpisodeNeighborRow = ({
   directionLabel,
   episode,
   locale,
-  marked,
   series,
 }: {
   /** Which side of this episode the row leads to, in the reader's words. */
   directionLabel: ReactNode;
   episode: EpisodeNeighborItem;
   locale: Locale;
-  /** Whether this row carries the page's one Shu. */
-  marked: boolean;
   series: EpisodeSeriesSummary;
 }) => (
   <li>
@@ -60,12 +57,6 @@ const EpisodeNeighborRow = ({
       className="group flex items-center gap-3 py-3"
       href={episodePath(series.publicId, episode.publicId)}
     >
-      {/* The column is there on both rows, so neither moves when only one of
-          them is marked. The mark says what the label beside it already says
-          in words, so it is a drawing rather than something to read out. */}
-      <span aria-hidden="true" className="flex w-2 shrink-0 justify-center">
-        {marked && <span className="size-2 rounded-full bg-secondary" />}
-      </span>
       <EyeCatchFrame
         alt=""
         className="aspect-16/9 w-24 shrink-0 rounded-control"
@@ -121,7 +112,6 @@ const EpisodeNeighborRow = ({
  */
 export const EpisodeEndPanel = async ({
   episode,
-  marksNextEpisode,
   nextEpisode,
   previousEpisode,
   series,
@@ -130,12 +120,6 @@ export const EpisodeEndPanel = async ({
   tenantId,
 }: {
   episode: EpisodeDetail;
-  /**
-   * Whether the next episode is what this reader does next, which on a screen
-   * whose body is open it is. Where the body is gated the one Shu belongs to
-   * the action that opens it, and the row carries no mark.
-   */
-  marksNextEpisode: boolean;
   /** Absent on the last published episode of the series. */
   nextEpisode?: EpisodeNeighborItem;
   /** Absent on the first one. */
@@ -188,7 +172,6 @@ export const EpisodeEndPanel = async ({
                 }
                 episode={previousEpisode}
                 locale={locale}
-                marked={false}
                 series={series}
               />
             ) : null}
@@ -201,7 +184,6 @@ export const EpisodeEndPanel = async ({
                 }
                 episode={nextEpisode}
                 locale={locale}
-                marked={marksNextEpisode}
                 series={series}
               />
             ) : null}

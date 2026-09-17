@@ -24,9 +24,8 @@ const VIEWER_EPISODE_NO = 2;
 export const VIEWER_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episodes/${VIEWER_EPISODE_ID}`;
 
 /**
- * The published episode after it, which is what the end of the episode offers
- * and what the viewer's own chrome links to. Free, like every seeded episode
- * but `Seed Episode 001-10`.
+ * The published episode after it, which is what the end of the episode offers.
+ * Free, like every seeded episode but `Seed Episode 001-10`.
  */
 export const NEXT_EPISODE_ID = "SeedEPSDAAA3";
 export const NEXT_EPISODE_TITLE = "Seed Episode 001-03";
@@ -41,6 +40,16 @@ export const PENULTIMATE_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/
 
 /** The last published episode of the series, which nothing follows. */
 export const LAST_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.paidEpisodeId}`;
+
+/**
+ * The last published episode of a series whose last episode is free, so its
+ * pages open to a signed-out reader and the page after them can be reached:
+ * `Seed Episode 002-10`, seq_no 20 in `db/seeds/dev/010_catalog.sql`.
+ */
+export const FREE_LAST_EPISODE_SERIES_TITLE = "Seed Series 002";
+export const FREE_LAST_EPISODE_TITLE = "Seed Episode 002-10";
+export const FREE_LAST_EPISODE_PATH =
+  "/series/SeedSERSAAA2/episodes/SeedEPSDAA2A";
 
 /** What `Seed Episode 001-10` costs, as the seed prices it. */
 export const LAST_EPISODE_PRICE_LABEL = "¥500";

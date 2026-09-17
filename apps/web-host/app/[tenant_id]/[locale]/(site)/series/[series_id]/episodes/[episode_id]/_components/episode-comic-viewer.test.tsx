@@ -8,7 +8,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { EpisodeComicViewer } from "./episode-comic-viewer";
-import { EpisodeNeighborLinks } from "./episode-neighbor-links";
 
 vi.mock("#components/locale-provider", () => ({
   useLocale: () => "en",
@@ -42,7 +41,7 @@ const LayoutProbe = () => {
 };
 
 describe("EpisodeComicViewer", () => {
-  it("turns a left-to-right episode left to right, and points its neighbour links the same way", async () => {
+  it("turns a left-to-right episode left to right", async () => {
     await renderWithClientMessages(
       <EpisodeComicViewer
         pages={pages}
@@ -51,10 +50,6 @@ describe("EpisodeComicViewer", () => {
         wideViewerEnabled={false}
       >
         <LayoutProbe />
-        <EpisodeNeighborLinks
-          nextHref="/series/SERIES_001/episodes/EPISODE_003"
-          previousHref="/series/SERIES_001/episodes/EPISODE_001"
-        />
       </EpisodeComicViewer>
     );
 
@@ -62,12 +57,6 @@ describe("EpisodeComicViewer", () => {
     expect(
       screen.getByRole("button", { name: /Page 1/u }).dataset.readingDirection
     ).toBe("ltr");
-    expect(
-      screen.getByRole("link", { name: "Previous episode" }).className
-    ).toContain("left-3");
-    expect(
-      screen.getByRole("link", { name: "Next episode" }).className
-    ).toContain("right-3");
   });
 
   it("pairs from the first page when the episode says so", async () => {

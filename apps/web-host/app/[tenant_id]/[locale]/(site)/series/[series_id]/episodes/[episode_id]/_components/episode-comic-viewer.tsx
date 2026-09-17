@@ -35,7 +35,7 @@ import {
 import { Button, buttonVariants } from "@publira/ui-components/button";
 import { cn } from "@publira/utils";
 import { useCallback, useRef, useSyncExternalStore } from "react";
-import type { MouseEvent, ReactNode } from "react";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { HostClientMessageAccessor } from "#lib/messages";
@@ -90,6 +90,21 @@ const isFullscreenAvailable = () => document.fullscreenEnabled;
 
 /** Neither is knowable while rendering on the server. */
 const isFalseOnServer = () => false;
+
+/**
+ * The shape of the end page's sheet when the last page carries no stored
+ * dimensions: the B-series proportion print comics are made in.
+ */
+const FALLBACK_PAGE_ASPECT = 1 / Math.SQRT2;
+
+/** Width over height of the last page, which the end page's sheet takes. */
+const endPageAspect = (pages: readonly ViewerPage[]): number => {
+  const lastPage = pages.at(-1);
+
+  return lastPage?.width && lastPage.height
+    ? lastPage.width / lastPage.height
+    : FALLBACK_PAGE_ASPECT;
+};
 
 /** The wide viewer choice this tab has made, which wins over the stored one. */
 const WIDE_VIEWER_STORAGE_KEY = "publira.wide-viewer";
@@ -345,8 +360,9 @@ const ViewerPageNavigation = () => {
  * already resolved by the public read, so this viewer does not pick a default.
  *
  * `endPage` is turned to after the last page, which is where the comment form
- * lives. It is drawn on paper rather than on the mat, so the site's own
- * controls read there exactly as they do under the reader.
+ * lives. It is a page of the reader, so it is drawn as a paper sheet the shape
+ * of the last page, on the mat and against the gutter as the pages are, with
+ * its content centred on the sheet.
  *
  * `wideViewerEnabled` is the choice the server read; one made in this tab since
  * wins over it, so the reader never waits on `saveWideViewer`.
@@ -373,6 +389,7 @@ export const EpisodeComicViewer = ({
   spreadStartIndex: number;
   wideViewerEnabled: boolean;
 }) => {
+  const t = useClientMessages();
   const shellRef = useRef<HTMLDivElement>(null);
   const wideViewerChoice = useWebStorage("session", WIDE_VIEWER_STORAGE_KEY);
   const isWide =
@@ -425,14 +442,23 @@ export const EpisodeComicViewer = ({
                edge, and the same exception the viewport makes for a control
                applies to the text between them. */
           <EndPage
-            className="size-full min-w-0 overflow-y-auto overscroll-contain bg-background text-foreground"
+            className="[container-type:size] flex size-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start"
             onClick={stopClick}
           >
-            {/* The chrome the viewer draws over its top and bottom edges
-                  reaches this page too, so the content clears both. */}
-            <div className="mx-auto w-full max-w-(--measure-prose) px-6 pt-20 pb-24">
-              {endPage}
-            </div>
+            {/* Sized in container units, so the sheet fits the slot the way a
+                page canvas does: as large as the slot allows at the page's
+                own proportion. */}
+            <section
+              aria-label={t("host.episode.viewer.end_page")}
+              className="flex h-[min(100cqh,calc(100cqw/var(--end-page-aspect)))] w-[min(100cqw,calc(100cqh*var(--end-page-aspect)))] flex-col overflow-y-auto overscroll-contain bg-background text-foreground"
+              style={
+                { "--end-page-aspect": endPageAspect(pages) } as CSSProperties
+              }
+            >
+              <div className="m-auto w-full max-w-(--measure-prose) px-6 py-8">
+                {endPage}
+              </div>
+            </section>
           </EndPage>
         )}
         <ViewerToolbar
