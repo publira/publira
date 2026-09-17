@@ -821,6 +821,7 @@
       "labels_label": "Labels",
       "operations": "Operations",
       "pages_label": "Pages",
+      "readers_label": "Readers",
       "series_label": "Series",
       "settings_label": "Settings"
     },
@@ -928,6 +929,35 @@
           "actions": "Actions"
         },
         "version_option": "v{$version} · {$status}"
+      }
+    },
+    "readers": {
+      "title": "Readers",
+      "page_description": "Find the people who signed up to read this site, by name or email.",
+      "item_label": "readers",
+      "list_error": "Could not display the readers",
+      "list_failed": "Could not load the readers. Please try again later.",
+      "empty_title": "There are no readers to show.",
+      "empty_description": "Nobody has signed up to read this site yet.",
+      "empty_filtered_description": "Nobody matches these filters. Try another name or email, or reset the filters.",
+      "pagination_aria": "Readers pagination",
+      "pagination_description": "Shows up to {$count} readers per page, newest sign-up first.",
+      "status_active": "Active",
+      "status_suspended": "Suspended",
+      "status_inactive": "Inactive",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "status": "Status",
+        "created_at": "Signed up"
+      },
+      "filter": {
+        "query": "Name or email",
+        "query_placeholder": "e.g. reader@example.com",
+        "status": "Status",
+        "status_all": "Every status",
+        "apply": "Apply",
+        "reset": "Reset"
       }
     },
     "series": {

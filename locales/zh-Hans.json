@@ -821,6 +821,7 @@
       "labels_label": "品牌",
       "operations": "运营",
       "pages_label": "页面",
+      "readers_label": "读者",
       "series_label": "系列",
       "settings_label": "设置"
     },
@@ -928,6 +929,35 @@
           "actions": "操作"
         },
         "version_option": "v{$version} · {$status}"
+      }
+    },
+    "readers": {
+      "title": "读者",
+      "page_description": "按姓名或邮箱查找在本站注册的读者。",
+      "item_label": "读者",
+      "list_error": "无法显示读者",
+      "list_failed": "无法加载读者。请稍后再试。",
+      "empty_title": "没有可显示的读者。",
+      "empty_description": "还没有人在本站注册。",
+      "empty_filtered_description": "没有符合这些条件的读者。请换一个姓名或邮箱搜索，或重置筛选条件。",
+      "pagination_aria": "读者分页",
+      "pagination_description": "每页最多显示 {$count} 位读者，按注册时间从新到旧排列。",
+      "status_active": "启用",
+      "status_suspended": "已暂停",
+      "status_inactive": "未启用",
+      "columns": {
+        "name": "姓名",
+        "email": "邮箱",
+        "status": "状态",
+        "created_at": "注册时间"
+      },
+      "filter": {
+        "query": "姓名或邮箱",
+        "query_placeholder": "例如：reader@example.com",
+        "status": "状态",
+        "status_all": "全部状态",
+        "apply": "应用",
+        "reset": "重置"
       }
     },
     "series": {

@@ -4,6 +4,7 @@ import {
   CommentIcon,
   DashboardIcon,
   SettingsIcon,
+  UserIcon,
 } from "@publira/icons";
 import {
   ConsoleSidebarNavigation,
@@ -40,6 +41,7 @@ const hrefs = [
   "/announcements",
   "/access-tickets",
   "/comments",
+  "/readers",
   "/engagement",
   "/audit-logs",
   "/settings",
@@ -167,6 +169,18 @@ export const AdminNavigation = () => (
                 <PendingCommentBadge />
               </Suspense>
             </PendingCommentBadgeErrorCatch>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/readers">
+          <ConsoleSidebarNavigationItemIcon>
+            <UserIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.readers_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/engagement">

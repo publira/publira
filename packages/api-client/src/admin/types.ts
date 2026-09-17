@@ -13,4 +13,7 @@ export type { TenantEmailSettings } from "../gen/publira/admin/v1/email_pb.js";
 export type { EpisodeReadThrough } from "../gen/publira/admin/v1/engagement_pb.js";
 export type { AdminNotification } from "../gen/publira/admin/v1/notification_pb.js";
 export type { TenantPaymentSettings } from "../gen/publira/admin/v1/payment_pb.js";
-export type { AdminTenantUser } from "../gen/publira/admin/v1/user_pb.js";
+export type {
+  AdminReader,
+  AdminTenantUser,
+} from "../gen/publira/admin/v1/user_pb.js";
