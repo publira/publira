@@ -213,7 +213,7 @@ func EpisodeImageFromImageAndVariant(image dbmodels.EpisodeImage, variant dbmode
 // episode detail is read under. It carries the age rating so a client can
 // interpose its confirmation before the body is shown, and fails on a stored
 // rating this build does not know rather than reporting the episode as
-// unrestricted.
+// unrestricted. The eye-catch variants are the handler's to look up.
 func SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow) (*publirattypesv1.Series, error) {
 	series := &publirattypesv1.Series{
 		PublicId: row.SeriesPublicID,
@@ -225,6 +225,9 @@ func SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublish
 			return nil, err
 		}
 		series.AgeRating = ageRating
+	}
+	if row.SeriesEyeCatchImageUpdatedAt.Valid {
+		series.EyeCatchImageUpdatedAt = row.SeriesEyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 	}
 	return series, nil
 }

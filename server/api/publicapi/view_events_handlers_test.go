@@ -79,9 +79,9 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).AddRow(
+			"series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).AddRow(
 			fixture.episodeID, "EPISODE001", "Episode Title", int32(1), fixture.seriesID,
-			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, nil, nil, nil, nil, int64(0)))
+			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, nil, int64(0)))
 	return fixture
 }
 
@@ -415,9 +415,9 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).AddRow(
+			"series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "free_until", "rating_count"}).AddRow(
 			episodeID, "EPISODE001", "Episode Title", int32(1), seriesID,
-			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", "all", nil, nil, nil, nil, nil, nil, int64(0)))
+			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, nil, int64(0)))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	expectEpisodeCreditsLookup(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
