@@ -130,6 +130,10 @@ var publicDataTables = []struct {
 	// page through these rows, so they are as much the tenant's as the episode
 	// they decorate.
 	{name: "episode_image_variants", count: "SELECT count(*) FROM episode_image_variants"},
+	// What a reader wrote to the tenant through the contact form, which the
+	// storefront's connection is what stores. A missing policy here would put
+	// one tenant's messages, and the addresses on them, in another's inbox.
+	{name: "contact_messages", count: "SELECT count(*) FROM contact_messages"},
 }
 
 // The fail-closed direction: a connection that never set app.current_tenant_id
@@ -196,6 +200,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled) VALUES ($1, $2, false)", first.ID, member.ID); err != nil {
 		t.Fatalf("seed notification settings: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO contact_messages (id, tenant_id, public_id, reply_to_email, body) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "CONTACTRLS01", "reader@example.test", "A question for Tenant A."); err != nil {
+		t.Fatalf("seed contact message: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

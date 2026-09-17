@@ -523,6 +523,17 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		),
 	)
 	mux.Handle(commentPath, commentHandler)
+	contactPath, contactHandler := publiraadminv1connect.NewAdminContactServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(contactPath, contactHandler)
 	royaltyPath, royaltyHandler := publiraadminv1connect.NewAdminRoyaltyServiceHandler(
 		server,
 		traced,

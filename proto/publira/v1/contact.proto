@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+message SubmitContactMessageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Where the tenant's staff answer. Required, and a syntactically valid
+  // address of at most 254 characters; anything else is invalid_argument.
+  //
+  // A signed-in reader gives it too rather than having their account address
+  // taken: the address they can be reached at is not always the one they signed
+  // up with, and staff reply to whichever they named.
+  string reply_to_email = 2;
+  // Optional. At most 200 Unicode code points once trimmed; a blank subject is
+  // stored as no subject at all.
+  string subject = 3;
+  // Non-blank after trimming and at most 4000 Unicode code points. Anything
+  // else is invalid_argument.
+  string body = 4;
+}
+
+// Deliberately empty. The reader is told their message was accepted and nothing
+// else: the identifier it was stored under is what staff work from, and a
+// reader who is never answered through Publira has nothing to name it in.
+message SubmitContactMessageResponse {}
+
+service ContactService {
+  // Stores one message for the tenant's staff and queues the mail that tells
+  // them it arrived.
+  //
+  // A session is optional. A reader who is signed in has their account attached
+  // to the message, and a guest may send one as well, because a reader who
+  // cannot sign in is one of the people who needs to reach the tenant.
+  //
+  // resource_exhausted once the sender has spent the allowance held by their
+  // account or the one held by their client.
+  rpc SubmitContactMessage(SubmitContactMessageRequest) returns (SubmitContactMessageResponse) {}
+}

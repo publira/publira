@@ -143,6 +143,18 @@
       "preview": "有人使用您的邮箱地址注册。",
       "subject": "{$tenant_name} 账户注册尝试"
     },
+    "staff_contact_message_notice": {
+      "body_heading": "正文",
+      "footnote": "请从您自己的邮件客户端向上述回复地址回信。管理控制台无法直接回复。",
+      "heading": "收到新的咨询",
+      "intro": "有读者通过 {$tenant_name} 的咨询表单发送了消息。",
+      "preview": "{$tenant_name} 收到了读者的消息。",
+      "received": "接收时间：{$received_at}",
+      "reply_to": "回复地址：{$reply_to_email}",
+      "sender": "登录账号：{$sender_name}",
+      "subject": "{$tenant_name} 咨询",
+      "subject_line": "主题：{$subject}"
+    },
     "tenant_admin_invitation": {
       "action": "接受邀请",
       "body": "您被邀请成为 {$tenant_name} 的租户管理员。请打开下方按钮接受邀请。",

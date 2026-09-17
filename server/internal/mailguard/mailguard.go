@@ -24,14 +24,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"log/slog"
-	"net"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 
-	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/ratelimit"
+	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -116,21 +115,10 @@ func sourceSubject(source string) string {
 	return "mail.source:" + source
 }
 
-// source names where a request came from. The edge records the caller in
-// X-Forwarded-For; the peer is what is left for a request that reached a server
-// without passing one.
-//
-// The peer's port is dropped. It is a fresh number on every connection, so an
-// allowance keyed on it would be one nobody ever spends twice.
+// source names where a request came from, which is the same question the
+// reader-writable RPCs ask of a caller who is signed in to no account.
 func source(req connect.AnyRequest) string {
-	if ip := auditlog.ClientIPFromHeader(req.Header()); ip != "" {
-		return ip
-	}
-	addr := req.Peer().Addr
-	if host, _, err := net.SplitHostPort(addr); err == nil {
-		return host
-	}
-	return addr
+	return requestmeta.ClientSource(req.Header(), req.Peer().Addr)
 }
 
 // Rules pairs an hourly burst with a daily budget. The hour is what a person

@@ -41,6 +41,18 @@ const metaStyle: CSSProperties = {
   margin: "24px 0 0",
 };
 
+const quoteStyle: CSSProperties = {
+  backgroundColor: emailColors.background,
+  borderLeft: `3px solid ${emailColors.border}`,
+  color: emailColors.foreground,
+  fontSize: "15px",
+  lineHeight: "24px",
+  margin: "8px 0 24px",
+  padding: "12px 16px",
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+};
+
 const fallbackStyle: CSSProperties = {
   color: emailColors.muted,
   fontSize: "12px",
@@ -80,6 +92,15 @@ export const EmailDetail = ({ children }: EmailTextProps) => (
 /** A closing remark: an expiry, or what to do about an unexpected mail. */
 export const EmailMeta = ({ children }: EmailTextProps) => (
   <Text style={metaStyle}>{children}</Text>
+);
+
+/**
+ * Text somebody other than the sender wrote, shown as they typed it. The line
+ * breaks are theirs, so the block preserves them rather than reflowing the
+ * paragraphs into one.
+ */
+export const EmailQuote = ({ children }: EmailTextProps) => (
+  <Text style={quoteStyle}>{children}</Text>
 );
 
 export interface EmailFallbackLinkProps {

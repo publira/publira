@@ -405,6 +405,43 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "tenant_name"},
 			{Text: " アカウント登録の試行"},
 		},
+		"email.staff_contact_message_notice.body_heading": {
+			{Text: "本文"},
+		},
+		"email.staff_contact_message_notice.footnote": {
+			{Text: "返信は、ご自身のメールソフトから上記の返信先アドレス宛に送ってください。管理画面から返信することはできません。"},
+		},
+		"email.staff_contact_message_notice.heading": {
+			{Text: "お問い合わせが届きました"},
+		},
+		"email.staff_contact_message_notice.intro": {
+			{Variable: "tenant_name"},
+			{Text: " のお問い合わせフォームから、読者がメッセージを送信しました。"},
+		},
+		"email.staff_contact_message_notice.preview": {
+			{Variable: "tenant_name"},
+			{Text: " に読者からメッセージが届きました。"},
+		},
+		"email.staff_contact_message_notice.received": {
+			{Text: "受信日時: "},
+			{Variable: "received_at"},
+		},
+		"email.staff_contact_message_notice.reply_to": {
+			{Text: "返信先: "},
+			{Variable: "reply_to_email"},
+		},
+		"email.staff_contact_message_notice.sender": {
+			{Text: "サインイン中のアカウント: "},
+			{Variable: "sender_name"},
+		},
+		"email.staff_contact_message_notice.subject": {
+			{Variable: "tenant_name"},
+			{Text: " お問い合わせ"},
+		},
+		"email.staff_contact_message_notice.subject_line": {
+			{Text: "件名: "},
+			{Variable: "subject"},
+		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "招待を承諾する"},
 		},
@@ -833,6 +870,47 @@ var Messages = map[string]map[string][]Part{
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
 			{Text: " sign-up attempt"},
+		},
+		"email.staff_contact_message_notice.body_heading": {
+			{Text: "Message"},
+		},
+		"email.staff_contact_message_notice.footnote": {
+			{Text: "Answer the reader from your own mail client, at the reply-to address above. This message cannot be replied to from the console."},
+		},
+		"email.staff_contact_message_notice.heading": {
+			{Text: "New contact message"},
+		},
+		"email.staff_contact_message_notice.intro": {
+			{Text: "A reader sent "},
+			{Variable: "tenant_name"},
+			{Text: " a message through the contact form."},
+		},
+		"email.staff_contact_message_notice.preview": {
+			{Text: "A reader sent "},
+			{Variable: "tenant_name"},
+			{Text: " a message."},
+		},
+		"email.staff_contact_message_notice.received": {
+			{Text: "Received at "},
+			{Variable: "received_at"},
+			{Text: "."},
+		},
+		"email.staff_contact_message_notice.reply_to": {
+			{Text: "Reply to: "},
+			{Variable: "reply_to_email"},
+		},
+		"email.staff_contact_message_notice.sender": {
+			{Text: "Signed in as "},
+			{Variable: "sender_name"},
+			{Text: "."},
+		},
+		"email.staff_contact_message_notice.subject": {
+			{Variable: "tenant_name"},
+			{Text: " contact message"},
+		},
+		"email.staff_contact_message_notice.subject_line": {
+			{Text: "Subject: "},
+			{Variable: "subject"},
 		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "Accept invitation"},
@@ -1264,6 +1342,43 @@ var Messages = map[string]map[string][]Part{
 			{Variable: "tenant_name"},
 			{Text: " 회원가입 시도"},
 		},
+		"email.staff_contact_message_notice.body_heading": {
+			{Text: "본문"},
+		},
+		"email.staff_contact_message_notice.footnote": {
+			{Text: "답장은 위의 회신 주소로 사용 중인 메일 프로그램에서 직접 보내 주세요. 관리 콘솔에서는 답장할 수 없습니다."},
+		},
+		"email.staff_contact_message_notice.heading": {
+			{Text: "새 문의가 도착했습니다"},
+		},
+		"email.staff_contact_message_notice.intro": {
+			{Variable: "tenant_name"},
+			{Text: "의 문의 양식으로 독자가 메시지를 보냈습니다."},
+		},
+		"email.staff_contact_message_notice.preview": {
+			{Variable: "tenant_name"},
+			{Text: "에 독자의 메시지가 도착했습니다."},
+		},
+		"email.staff_contact_message_notice.received": {
+			{Text: "수신 일시: "},
+			{Variable: "received_at"},
+		},
+		"email.staff_contact_message_notice.reply_to": {
+			{Text: "회신 주소: "},
+			{Variable: "reply_to_email"},
+		},
+		"email.staff_contact_message_notice.sender": {
+			{Text: "로그인한 계정: "},
+			{Variable: "sender_name"},
+		},
+		"email.staff_contact_message_notice.subject": {
+			{Variable: "tenant_name"},
+			{Text: " 문의"},
+		},
+		"email.staff_contact_message_notice.subject_line": {
+			{Text: "제목: "},
+			{Variable: "subject"},
+		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "초대 수락하기"},
 		},
@@ -1692,6 +1807,44 @@ var Messages = map[string]map[string][]Part{
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
 			{Text: " 账户注册尝试"},
+		},
+		"email.staff_contact_message_notice.body_heading": {
+			{Text: "正文"},
+		},
+		"email.staff_contact_message_notice.footnote": {
+			{Text: "请从您自己的邮件客户端向上述回复地址回信。管理控制台无法直接回复。"},
+		},
+		"email.staff_contact_message_notice.heading": {
+			{Text: "收到新的咨询"},
+		},
+		"email.staff_contact_message_notice.intro": {
+			{Text: "有读者通过 "},
+			{Variable: "tenant_name"},
+			{Text: " 的咨询表单发送了消息。"},
+		},
+		"email.staff_contact_message_notice.preview": {
+			{Variable: "tenant_name"},
+			{Text: " 收到了读者的消息。"},
+		},
+		"email.staff_contact_message_notice.received": {
+			{Text: "接收时间："},
+			{Variable: "received_at"},
+		},
+		"email.staff_contact_message_notice.reply_to": {
+			{Text: "回复地址："},
+			{Variable: "reply_to_email"},
+		},
+		"email.staff_contact_message_notice.sender": {
+			{Text: "登录账号："},
+			{Variable: "sender_name"},
+		},
+		"email.staff_contact_message_notice.subject": {
+			{Variable: "tenant_name"},
+			{Text: " 咨询"},
+		},
+		"email.staff_contact_message_notice.subject_line": {
+			{Text: "主题："},
+			{Variable: "subject"},
 		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "接受邀请"},
@@ -2124,6 +2277,44 @@ var Messages = map[string]map[string][]Part{
 		"email.reader_signup_attempt_notice.subject": {
 			{Variable: "tenant_name"},
 			{Text: " 帳戶註冊嘗試"},
+		},
+		"email.staff_contact_message_notice.body_heading": {
+			{Text: "內文"},
+		},
+		"email.staff_contact_message_notice.footnote": {
+			{Text: "請從您自己的郵件軟體向上述回覆地址回信。管理主控台無法直接回覆。"},
+		},
+		"email.staff_contact_message_notice.heading": {
+			{Text: "收到新的諮詢"},
+		},
+		"email.staff_contact_message_notice.intro": {
+			{Text: "有讀者透過 "},
+			{Variable: "tenant_name"},
+			{Text: " 的諮詢表單傳送了訊息。"},
+		},
+		"email.staff_contact_message_notice.preview": {
+			{Variable: "tenant_name"},
+			{Text: " 收到了讀者的訊息。"},
+		},
+		"email.staff_contact_message_notice.received": {
+			{Text: "接收時間："},
+			{Variable: "received_at"},
+		},
+		"email.staff_contact_message_notice.reply_to": {
+			{Text: "回覆地址："},
+			{Variable: "reply_to_email"},
+		},
+		"email.staff_contact_message_notice.sender": {
+			{Text: "登入帳號："},
+			{Variable: "sender_name"},
+		},
+		"email.staff_contact_message_notice.subject": {
+			{Variable: "tenant_name"},
+			{Text: " 諮詢"},
+		},
+		"email.staff_contact_message_notice.subject_line": {
+			{Text: "主旨："},
+			{Variable: "subject"},
 		},
 		"email.tenant_admin_invitation.action": {
 			{Text: "接受邀請"},

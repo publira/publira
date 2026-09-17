@@ -100,6 +100,13 @@ func (c *emailComposer) line(key string, values map[string]string) {
 	c.lines = append(c.lines, c.message(key, values))
 }
 
+// text is a line nobody here worded: a reader's own message, quoted to the
+// staff it was addressed to. It reaches no catalog, because the mail shows what
+// was written rather than saying anything about it.
+func (c *emailComposer) text(value string) {
+	c.lines = append(c.lines, value)
+}
+
 // linkLine is a line the recipient is meant to open: the sentence, then the URL
 // it points at. The HTML shows the same pair as a button.
 func (c *emailComposer) linkLine(key string, values map[string]string, url string) {
@@ -122,7 +129,31 @@ var emailTemplates = map[string]func(*emailComposer){
 	"reader_password_changed_notice":             readerPasswordChangedNoticeCopy,
 	"reader_password_reset":                      readerPasswordResetCopy,
 	"reader_signup_attempt_notice":               readerSignupAttemptNoticeCopy,
+	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
 	"tenant_admin_invitation":                    tenantAdminInvitationCopy,
+}
+
+// staffContactMessageNoticeCopy words the mail that tells a tenant's staff a
+// reader wrote in. The sender and the subject are lines rather than fields: a
+// guest leaves the first empty and a reader who titled nothing leaves the
+// second, and a labelled blank would read as a value that went missing.
+func staffContactMessageNoticeCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	c.setSubject("email.staff_contact_message_notice.subject", map[string]string{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.staff_contact_message_notice.heading", nil)
+	c.line("email.staff_contact_message_notice.intro", map[string]string{"tenant_name": brand})
+	c.line("email.staff_contact_message_notice.reply_to", map[string]string{"reply_to_email": c.value("reply_to_email")})
+	if sender := c.value("sender_name"); sender != "" {
+		c.line("email.staff_contact_message_notice.sender", map[string]string{"sender_name": sender})
+	}
+	if subject := c.value("subject"); subject != "" {
+		c.line("email.staff_contact_message_notice.subject_line", map[string]string{"subject": subject})
+	}
+	c.line("email.staff_contact_message_notice.received", map[string]string{"received_at": c.instant("received_at")})
+	c.line("email.staff_contact_message_notice.body_heading", nil)
+	c.text(c.value("body"))
+	c.line("email.staff_contact_message_notice.footnote", nil)
 }
 
 func tenantAdminInvitationCopy(c *emailComposer) {

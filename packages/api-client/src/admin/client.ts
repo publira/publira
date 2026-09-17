@@ -9,6 +9,7 @@ import { AdminAnnouncementService } from "../gen/publira/admin/v1/announcement_p
 import { AdminAuditLogService } from "../gen/publira/admin/v1/audit_pb.js";
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
 import { AdminCommentService } from "../gen/publira/admin/v1/comment_pb.js";
+import { AdminContactService } from "../gen/publira/admin/v1/contact_pb.js";
 import { AdminCreatorService } from "../gen/publira/admin/v1/creator_pb.js";
 import { AdminCreatorRoleService } from "../gen/publira/admin/v1/creator_role_pb.js";
 import { AdminDashboardService } from "../gen/publira/admin/v1/dashboard_pb.js";
@@ -42,6 +43,7 @@ export interface AdminApiClient {
   audit: Client<typeof AdminAuditLogService>;
   auth: Client<typeof AdminAuthService>;
   comments: Client<typeof AdminCommentService>;
+  contact: Client<typeof AdminContactService>;
   creator: Client<typeof AdminCreatorService>;
   creatorRole: Client<typeof AdminCreatorRoleService>;
   dashboard: Client<typeof AdminDashboardService>;
@@ -98,6 +100,7 @@ export const createAdminApiClient = (
     audit: createClient(AdminAuditLogService, transportInstance),
     auth: createClient(AdminAuthService, transportInstance),
     comments: createClient(AdminCommentService, transportInstance),
+    contact: createClient(AdminContactService, transportInstance),
     creator: createClient(AdminCreatorService, transportInstance),
     creatorRole: createClient(AdminCreatorRoleService, transportInstance),
     dashboard: createClient(AdminDashboardService, transportInstance),

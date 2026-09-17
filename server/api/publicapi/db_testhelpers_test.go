@@ -91,6 +91,12 @@ func openReaderGuards() readerGuards {
 			// The cases that drive the viewer settings assert what was stored,
 			// not how often it may be stored.
 			actionUpdateViewerPreferences: {{Limit: 1000, Window: time.Minute}},
+			// Both halves of the contact form's flood control, so the cases that
+			// are about what a message stores never meet either allowance. Every
+			// case in this package shares one loopback address, which is what the
+			// client half is keyed on.
+			actionSubmitContactMessage:           {{Limit: 1000, Window: time.Minute}},
+			actionSubmitContactMessageFromClient: {{Limit: 1000, Window: time.Minute}},
 		},
 		duplicateCommentWindow: defaultDuplicateCommentWindow,
 	}
@@ -177,6 +183,10 @@ func (e *publicDBEnv) ratingClient() publirav1connect.RatingServiceClient {
 
 func (e *publicDBEnv) commentClient() publirav1connect.CommentServiceClient {
 	return publirav1connect.NewCommentServiceClient(e.Server.Client(), e.Server.URL)
+}
+
+func (e *publicDBEnv) contactClient() publirav1connect.ContactServiceClient {
+	return publirav1connect.NewContactServiceClient(e.Server.Client(), e.Server.URL)
 }
 
 func (e *publicDBEnv) purchaseClient() publirav1connect.PurchaseServiceClient {
