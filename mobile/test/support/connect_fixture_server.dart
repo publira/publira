@@ -37,6 +37,8 @@ class ConnectFixtureServer {
     this.pushDeviceStatus = HttpStatus.ok,
     this.commentStatus = HttpStatus.ok,
     this.followStatus = HttpStatus.ok,
+    this.acceptsPayments = false,
+    this.checkoutStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
     this.memberBirthDate = '',
     this.ageVerification = 'AGE_VERIFICATION_R18',
@@ -439,6 +441,17 @@ class ConnectFixtureServer {
   /// reader still has to work against for the length of the rollout.
   bool encryptImages;
 
+  /// What `GetTenant` answers for `accepts_payments`.
+  bool acceptsPayments;
+
+  /// The status `StartEpisodeCheckout` answers a checkout it would otherwise
+  /// start with, so a test can fail one.
+  int checkoutStatus;
+
+  /// The Stripe page `StartEpisodeCheckout` answers for [episodePublicId].
+  static Uri checkoutUrlFor(String episodePublicId) =>
+      Uri.parse('https://checkout.stripe.test/c/pay/$episodePublicId');
+
   /// Replace the whole body of the matching RPC, whichever status the RPC is
   /// answering with, so a test can send a shape the client is not expecting or
   /// an error code other than the default `unavailable`.
@@ -681,9 +694,22 @@ class ConnectFixtureServer {
         if (tenantStatus == HttpStatus.ok) 'commentMode': commentMode,
         if (tenantStatus == HttpStatus.ok) 'ageVerification': ageVerification,
         if (tenantStatus == HttpStatus.ok) 'timezone': tenantTimeZone,
+        // protojson omits a false.
+        if (tenantStatus == HttpStatus.ok && acceptsPayments)
+          'acceptsPayments': true,
         if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
         if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
       });
+      return;
+    }
+
+    if (path.endsWith('/GetSeriesEpisodeAccess')) {
+      await _writeSeriesEpisodeAccess(request, body);
+      return;
+    }
+
+    if (path.endsWith('/StartEpisodeCheckout')) {
+      await _writeCheckout(request, body);
       return;
     }
 
@@ -729,6 +755,78 @@ class ConnectFixtureServer {
 
     request.response.statusCode = HttpStatus.notFound;
     await request.response.close();
+  }
+
+  /// The access `GetEpisodeDetail` would answer for each episode the series
+  /// detail lists, for whoever the request is.
+  Future<void> _writeSeriesEpisodeAccess(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    final detail = details[body['seriesPublicId']];
+    if (detail == null) {
+      await _write(request, HttpStatus.notFound, {
+        'code': 'not_found',
+        'message': 'series not found',
+      });
+      return;
+    }
+    final authorized = _isAuthorized(request);
+    final listed = detail['episodes'];
+    await _write(request, HttpStatus.ok, {
+      'episodes': [
+        if (listed is List)
+          for (final episode in listed.whereType<Map<Object?, Object?>>())
+            if (episode['publicId'] case final String id)
+              {
+                'episodePublicId': id,
+                'access':
+                    (authorized ? entitledEpisodes[id] : null)?['access'] ??
+                    episodes[id]?['access'] ??
+                    'EPISODE_ACCESS_FREE',
+              },
+      ],
+    });
+  }
+
+  /// A checkout for the signed-in member, refused the way the API refuses
+  /// one for an episode they already hold.
+  Future<void> _writeCheckout(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    final episodeId = body['episodePublicId'];
+    if (episodeId is! String || episodes[episodeId] == null) {
+      await _write(request, HttpStatus.notFound, {
+        'code': 'not_found',
+        'message': 'episode not found',
+      });
+      return;
+    }
+    if (entitledEpisodes[episodeId]?['access'] == 'EPISODE_ACCESS_ENTITLED') {
+      await _write(request, HttpStatus.conflict, {
+        'code': 'already_exists',
+        'message': 'episode is already purchased',
+      });
+      return;
+    }
+    if (checkoutStatus != HttpStatus.ok) {
+      await _write(request, checkoutStatus, {
+        'code': 'unavailable',
+        'message': 'failed to start checkout',
+      });
+      return;
+    }
+    await _write(request, HttpStatus.ok, {
+      'checkoutUrl': checkoutUrlFor(episodeId).toString(),
+    });
   }
 
   /// The page of [series] the request's token asks for, with the token of the

@@ -2763,6 +2763,13 @@
       "message": "“{$uri}” does not exist.",
       "title": "Page not found"
     },
+    "purchase": {
+      "buy": "Buy for {$price}",
+      "cancelled": "The purchase was cancelled. You have not been charged.",
+      "check_again": "Check again",
+      "confirming": "We are confirming your payment. The episode opens once the purchase is applied.",
+      "start_failed": "Could not start the purchase. Try again later."
+    },
     "push": {
       "open": "Open"
     },

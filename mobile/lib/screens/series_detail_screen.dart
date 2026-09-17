@@ -16,10 +16,14 @@ import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/link_scope.dart';
+import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/purchase/buy_episode_button.dart';
+import 'package:publira/purchase/purchase_failure.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 
 /// Series detail. Loads the published series and its episodes from the API.
@@ -213,6 +217,15 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   var _readerId = '';
   var _started = false;
 
+  /// What this reader may do with each episode, keyed by public id. Empty
+  /// until the API has answered, and for good when it cannot, which leaves
+  /// every row offering no purchase rather than one the reader may not need.
+  var _access = const <String, EpisodeAccess>{};
+
+  /// Whether the tenant takes payments, which it has to before any row offers
+  /// one.
+  var _acceptsPayments = false;
+
   /// Which episodes are readable depends on who is signed in, so a sign-in or
   /// a sign-out asks the library again rather than keeping the last answer.
   @override
@@ -224,11 +237,38 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     }
     _started = true;
     _readerId = readerId;
+    final purchase = PurchaseScope.maybeOf(context)?.repository;
+    if (purchase != null) {
+      unawaited(_loadPurchase(purchase, readerId));
+    }
     final library = OfflineScope.maybeOf(context);
     if (library == null) {
       return;
     }
     unawaited(_loadSaved(library, readerId));
+  }
+
+  /// Which episodes this reader would have to buy, and whether the tenant
+  /// sells them. Both are asked again on a sign-in or a sign-out, because a
+  /// purchase belongs to the reader who holds it.
+  Future<void> _loadPurchase(
+    PurchaseRepository purchase,
+    String readerId,
+  ) async {
+    // Either read failing offers no purchase, not a failed screen.
+    final (access, acceptsPayments) = await (
+      purchase
+          .seriesEpisodeAccess(widget.detail.series.id)
+          .onError<PurchaseFailure>((_, _) => const {}),
+      purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
+    ).wait;
+    if (!mounted || readerId != _readerId) {
+      return;
+    }
+    setState(() {
+      _access = access;
+      _acceptsPayments = acceptsPayments;
+    });
   }
 
   Future<void> _loadSaved(OfflineLibrary library, String readerId) async {
@@ -419,6 +459,23 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               trailing: _EpisodeTrailing(
                 price: episode.price,
                 saved: _saved.contains(episode.id),
+                buy:
+                    _acceptsPayments &&
+                        episode.price > 0 &&
+                        _access[episode.id] == EpisodeAccess.locked
+                    ? BuyEpisodeButton(
+                        episodeId: episode.id,
+                        price: episode.price,
+                        compact: true,
+                        signInReturnTo: AppRoutes.episodeViewerPath(
+                          series.id,
+                          episode.id,
+                        ),
+                        onAlreadyPurchased: () => context.push(
+                          AppRoutes.episodeViewerPath(series.id, episode.id),
+                        ),
+                      )
+                    : null,
               ),
               onTap: () {
                 context.push(
@@ -436,13 +493,22 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
 /// The mark is what tells a reader, before they lose their connection, which
 /// episodes this device can still open once they have.
 class _EpisodeTrailing extends StatelessWidget {
-  const _EpisodeTrailing({required this.price, required this.saved});
+  const _EpisodeTrailing({
+    required this.price,
+    required this.saved,
+    required this.buy,
+  });
 
   final int price;
   final bool saved;
 
+  /// The purchase this reader is offered, which names the price itself and so
+  /// stands in place of it.
+  final Widget? buy;
+
   @override
   Widget build(BuildContext context) {
+    final buy = this.buy;
     if (!saved && price <= 0) {
       return const SizedBox.shrink();
     }
@@ -462,7 +528,10 @@ class _EpisodeTrailing extends StatelessWidget {
               semanticLabel: messages.seriesSavedOffline,
             ),
           ),
-        if (price > 0) Text('¥${messages.formatInteger(price)}'),
+        if (buy != null)
+          buy
+        else if (price > 0)
+          Text('¥${messages.formatInteger(price)}'),
       ],
     );
   }

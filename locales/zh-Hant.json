@@ -2763,6 +2763,13 @@
       "message": "「{$uri}」不存在。",
       "title": "找不到頁面"
     },
+    "purchase": {
+      "buy": "以{$price}購買",
+      "cancelled": "購買已取消，未產生任何扣款。",
+      "check_again": "再次確認",
+      "confirming": "我們正在確認您的付款。購買生效後即可開啟該章節。",
+      "start_failed": "無法開始購買。請稍後再試。"
+    },
     "push": {
       "open": "開啟"
     },

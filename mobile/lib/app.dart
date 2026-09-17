@@ -27,6 +27,9 @@ import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/purchase/checkout_launcher.dart';
+import 'package:publira/purchase/http_purchase_repository.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/push/http_push_repository.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_device_store.dart';
@@ -50,6 +53,8 @@ class PubliraApp extends StatefulWidget {
     required this.auth,
     this.comments,
     this.follows,
+    this.purchases,
+    this.checkoutLauncher,
     this.offline,
     this.push,
     this.ageRatingConfirmation,
@@ -72,6 +77,9 @@ class PubliraApp extends StatefulWidget {
   /// an on-device test replaces so it does not carry saved episodes from one
   /// test to the next.
   ///
+  /// [checkoutLauncher] opens a checkout page, which an on-device test
+  /// replaces so a purchase does not leave the app for a real browser.
+  ///
   /// [messaging] is the device's notification service, which `main` resolves
   /// before the first frame because initializing Firebase is asynchronous. It
   /// is `null` for a build carrying no Firebase project, and push is off then.
@@ -87,6 +95,7 @@ class PubliraApp extends StatefulWidget {
         const FileAgeRatingConfirmationStore(),
     IncomingLinks? incomingLinks,
     ShareSheet? share,
+    CheckoutLauncher? checkoutLauncher,
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
     final library = offline ?? FileOfflineLibrary();
@@ -123,6 +132,8 @@ class PubliraApp extends StatefulWidget {
       auth: auth,
       comments: HttpCommentRepository(client: client, tenants: tenants),
       follows: HttpFollowRepository(client: client, tenants: tenants),
+      purchases: HttpPurchaseRepository(client: client, tenants: tenants),
+      checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
       offline: library,
       push: PushController(
         messaging: messaging,
@@ -166,6 +177,14 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// follows at all, and no screen then offers to follow anything.
   final FollowRepository? follows;
+
+  /// Paid-episode checkout, and [checkoutLauncher] the page is opened with.
+  ///
+  /// [PubliraApp.fromConfig] always supplies both. They are nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// purchase at all, and a locked episode then offers none.
+  final PurchaseRepository? purchases;
+  final CheckoutLauncher? checkoutLauncher;
 
   /// What the device holds for reading without a network.
   ///
@@ -479,9 +498,13 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                 repository: widget.comments,
                 child: FollowScope(
                   repository: widget.follows,
-                  child: AgeRatingConfirmationScope(
-                    controller: _ageRating,
-                    child: app,
+                  child: PurchaseScope(
+                    repository: widget.purchases,
+                    launcher: widget.checkoutLauncher,
+                    child: AgeRatingConfirmationScope(
+                      controller: _ageRating,
+                      child: app,
+                    ),
                   ),
                 ),
               ),

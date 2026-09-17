@@ -10,7 +10,11 @@ import 'package:publira/router.dart';
 /// Creating an account and resetting a password stay on the website, so this
 /// screen only names them.
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({super.key, this.returnTo});
+
+  /// Where the reader lands once signed in, in place of this form. `null`
+  /// goes back to whatever sent them here.
+  final String? returnTo;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -76,6 +80,16 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() {
       _submitting = false;
     });
+    final returnTo = widget.returnTo;
+    if (returnTo != null) {
+      // In place of the form, so going back from there does not land on it.
+      if (context.canPop()) {
+        context.pushReplacement(returnTo);
+      } else {
+        context.go(returnTo);
+      }
+      return;
+    }
     // Back to whatever asked for a signed-in reader — a locked episode reloads
     // its body from here, and the catalog picks up the account entry point.
     if (context.canPop()) {

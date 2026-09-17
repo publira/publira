@@ -13,6 +13,8 @@ import 'package:publira/router.dart';
 
 import '../test/support/connect_fixture_server.dart';
 import '../test/support/fake_auth.dart';
+import '../test/support/fake_links.dart';
+import '../test/support/fake_purchase.dart';
 import '../test/support/pump_until.dart';
 import '../test/support/tap.dart';
 import 'support/artifacts.dart';
@@ -116,9 +118,13 @@ void main() {
       String? initialLocation,
       AppConfig? config,
       AuthSession? session,
+      FakeCheckoutLauncher? checkoutLauncher,
+      FakeIncomingLinks? incomingLinks,
     }) async {
       await tester.pumpWidget(
         PubliraApp.fromConfig(
+          checkoutLauncher: checkoutLauncher,
+          incomingLinks: incomingLinks,
           config:
               config ??
               AppConfig(
@@ -567,6 +573,58 @@ void main() {
           tester,
           find.byKey(const ValueKey('episode-locked')),
         );
+      });
+    });
+
+    testWidgets('a purchase made in the browser opens the episode', (
+      tester,
+    ) async {
+      server
+        ..acceptsPayments = true
+        ..entitledEpisodes = const {};
+      final links = FakeIncomingLinks();
+      addTearDown(links.close);
+      // The browser: the payment goes through, the webhook records it, and
+      // the success page hands the reader back through the app link.
+      final launcher = _BrowserThatPays(() {
+        server.entitledEpisodes =
+            ConnectFixtureServer.populatedEntitledEpisodes();
+        links.deliver(
+          Uri.parse(
+            'https://localhost/en/checkout/return'
+            '?episode=${ConnectFixtureServer.paidEpisodeId}&status=success',
+          ),
+        );
+      });
+      await withFailureScreenshot(tester, 'fixture-purchase', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+          session: memberSession(),
+          checkoutLauncher: launcher,
+          incomingLinks: links,
+        );
+        final buy = find.byKey(
+          const ValueKey('episode-buy-${ConnectFixtureServer.paidEpisodeId}'),
+        );
+        await pumpUntilRouteSettled(tester, buy);
+
+        await tester.tap(buy);
+        await pumpUntilPagesDrawn(tester);
+
+        expect(launcher.opened, [
+          ConnectFixtureServer.checkoutUrlFor(
+            ConnectFixtureServer.paidEpisodeId,
+          ),
+        ]);
+        expect(
+          server.requestsTo('StartEpisodeCheckout').single.body['client'],
+          'CLIENT_MOBILE',
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
 
@@ -1320,5 +1378,20 @@ void main() {
 Future<void> removeDirectory(Directory directory) async {
   if (await directory.exists()) {
     await directory.delete(recursive: true);
+  }
+}
+
+/// A browser that completes the payment it is handed, then runs [onPaid] the
+/// way a real one returns through the checkout's success URL.
+class _BrowserThatPays extends FakeCheckoutLauncher {
+  _BrowserThatPays(this.onPaid);
+
+  final void Function() onPaid;
+
+  @override
+  Future<bool> open(Uri url) async {
+    final opened = await super.open(url);
+    onPaid();
+    return opened;
   }
 }
