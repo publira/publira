@@ -446,13 +446,15 @@ class FileOfflineLibrary implements OfflineLibrary {
       // this one must not answer with.
       index = null;
     }
-    if (present && index == null) {
-      // The device key is gone, the file came from a build that wrote another
-      // shape, or it was written for another tenant. Nothing under it reads,
-      // pages included.
+    if (index == null) {
+      // The index is missing, unreadable, or another tenant's, so no page under
+      // it can be told apart from another tenant's. The fresh index is written
+      // at once, so a page saved from here on sits under one naming this host.
       await _wipe(home);
+      index = OfflineIndex(tenantHost: tenantHost);
+      await _writeIndex(home, index);
     }
-    return _index = index ?? OfflineIndex(tenantHost: tenantHost);
+    return _index = index;
   }
 
   Future<void> _writeIndex(_Home home, OfflineIndex index) async {

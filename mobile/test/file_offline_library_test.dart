@@ -248,6 +248,19 @@ void main() {
     expect(await Directory('${root.path}/pages').list().toList(), isEmpty);
   });
 
+  test('a page left on the disk without an index is not answered', () async {
+    final pageKey = episodePageKey(_pageUrl('EP1', 1));
+    await open().writePage(pageKey, _bytes(64, 3));
+    // A run that died before its index landed leaves the page behind alone.
+    final index = File('${root.path}/index.json');
+    if (await index.exists()) {
+      await index.delete();
+    }
+
+    expect(await open(tenantHost: 'ember.test').readPage(pageKey), isNull);
+    expect(await Directory('${root.path}/pages').list().toList(), isEmpty);
+  });
+
   test('what a build saves after a tenant switch stays its own', () async {
     await open().writeEpisode(_episode('EP1'));
     await open(tenantHost: 'ember.test').writeEpisode(_episode('EP2'));
