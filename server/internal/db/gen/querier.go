@@ -1732,6 +1732,10 @@ type Querier interface {
 	// recent activity without the reader having moved.
 	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
+	// Sets or clears a reader's birth date past the written-once guard of
+	// SetUserBirthDateByID. Writing the date already stored is no rows, like a
+	// staff account and another tenant's.
+	SetTenantReaderBirthDate(ctx context.Context, arg SetTenantReaderBirthDateParams) (SetTenantReaderBirthDateRow, error)
 	// The theme row is created on demand: a tenant can upload a icon before it
 	// has ever saved a color, and the colors then keep their column defaults.
 	SetTenantThemeIconImage(ctx context.Context, arg SetTenantThemeIconImageParams) (TenantTheme, error)

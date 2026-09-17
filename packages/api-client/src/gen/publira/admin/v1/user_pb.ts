@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/user.proto.
  */
 export const file_publira_admin_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3VzZXIucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiQAoPQWRtaW5UZW5hbnRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkidgoWTGlzdFRlbmFudFVzZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkidwoXTGlzdFRlbmFudFVzZXJzUmVzcG9uc2USMAoFdXNlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLkFkbWluVGVuYW50VXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpQBCgtBZG1pblJlYWRlchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVlbWFpbBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRIZChFlbWFpbF92ZXJpZmllZF9hdBgGIAEoCRIWCg5oYXNfYmlydGhfZGF0ZRgHIAEoCCKCAQoSTGlzdFJlYWRlcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVxdWVyeRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSDQoFbGltaXQYBCABKAUSDQoFdG9rZW4YBSABKAkicQoTTGlzdFJlYWRlcnNSZXNwb25zZRIuCgdyZWFkZXJzGAEgAygLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlYKEEdldFJlYWRlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJCChFHZXRSZWFkZXJSZXNwb25zZRItCgZyZWFkZXIYASABKAsyHS5wdWJsaXJhLmFkbWluLnYxLkFkbWluUmVhZGVyIloKFFN1c3BlbmRSZWFkZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiRgoVU3VzcGVuZFJlYWRlclJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIiXAoWVW5zdXNwZW5kUmVhZGVyUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIkgKF1Vuc3VzcGVuZFJlYWRlclJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIiWQoTRGVsZXRlUmVhZGVyUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIikKFERlbGV0ZVJlYWRlclJlc3BvbnNlEhEKCXB1YmxpY19pZBgBIAEoCTLhBAoQQWRtaW5Vc2VyU2VydmljZRJoCg9MaXN0VGVuYW50VXNlcnMSKC5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRVc2Vyc1JlcXVlc3QaKS5wdWJsaXJhLmFkbWluLnYxLkxpc3RUZW5hbnRVc2Vyc1Jlc3BvbnNlIgASXAoLTGlzdFJlYWRlcnMSJC5wdWJsaXJhLmFkbWluLnYxLkxpc3RSZWFkZXJzUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlcnNSZXNwb25zZSIAElYKCUdldFJlYWRlchIiLnB1YmxpcmEuYWRtaW4udjEuR2V0UmVhZGVyUmVxdWVzdBojLnB1YmxpcmEuYWRtaW4udjEuR2V0UmVhZGVyUmVzcG9uc2UiABJiCg1TdXNwZW5kUmVhZGVyEiYucHVibGlyYS5hZG1pbi52MS5TdXNwZW5kUmVhZGVyUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuU3VzcGVuZFJlYWRlclJlc3BvbnNlIgASaAoPVW5zdXNwZW5kUmVhZGVyEigucHVibGlyYS5hZG1pbi52MS5VbnN1c3BlbmRSZWFkZXJSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5VbnN1c3BlbmRSZWFkZXJSZXNwb25zZSIAEl8KDERlbGV0ZVJlYWRlchIlLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlUmVhZGVyUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlUmVhZGVyUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3VzZXIucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiQAoPQWRtaW5UZW5hbnRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkidgoWTGlzdFRlbmFudFVzZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkidwoXTGlzdFRlbmFudFVzZXJzUmVzcG9uc2USMAoFdXNlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLkFkbWluVGVuYW50VXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIqYBCgtBZG1pblJlYWRlchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVlbWFpbBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRIZChFlbWFpbF92ZXJpZmllZF9hdBgGIAEoCRISCgpiaXJ0aF9kYXRlGAggASgJSgQIBxAIUg5oYXNfYmlydGhfZGF0ZSKCAQoSTGlzdFJlYWRlcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVxdWVyeRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSDQoFbGltaXQYBCABKAUSDQoFdG9rZW4YBSABKAkicQoTTGlzdFJlYWRlcnNSZXNwb25zZRIuCgdyZWFkZXJzGAEgAygLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlYKEEdldFJlYWRlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJCChFHZXRSZWFkZXJSZXNwb25zZRItCgZyZWFkZXIYASABKAsyHS5wdWJsaXJhLmFkbWluLnYxLkFkbWluUmVhZGVyIloKFFN1c3BlbmRSZWFkZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiRgoVU3VzcGVuZFJlYWRlclJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIiXAoWVW5zdXNwZW5kUmVhZGVyUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIkgKF1Vuc3VzcGVuZFJlYWRlclJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIicwoZU2V0UmVhZGVyQmlydGhEYXRlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEhIKCmJpcnRoX2RhdGUYAyABKAkiSwoaU2V0UmVhZGVyQmlydGhEYXRlUmVzcG9uc2USLQoGcmVhZGVyGAEgASgLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlciJZChNEZWxldGVSZWFkZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiKQoURGVsZXRlUmVhZGVyUmVzcG9uc2USEQoJcHVibGljX2lkGAEgASgJMtQFChBBZG1pblVzZXJTZXJ2aWNlEmgKD0xpc3RUZW5hbnRVc2VycxIoLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVxdWVzdBopLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVzcG9uc2UiABJcCgtMaXN0UmVhZGVycxIkLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlcnNSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5MaXN0UmVhZGVyc1Jlc3BvbnNlIgASVgoJR2V0UmVhZGVyEiIucHVibGlyYS5hZG1pbi52MS5HZXRSZWFkZXJSZXF1ZXN0GiMucHVibGlyYS5hZG1pbi52MS5HZXRSZWFkZXJSZXNwb25zZSIAEmIKDVN1c3BlbmRSZWFkZXISJi5wdWJsaXJhLmFkbWluLnYxLlN1c3BlbmRSZWFkZXJSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5TdXNwZW5kUmVhZGVyUmVzcG9uc2UiABJoCg9VbnN1c3BlbmRSZWFkZXISKC5wdWJsaXJhLmFkbWluLnYxLlVuc3VzcGVuZFJlYWRlclJlcXVlc3QaKS5wdWJsaXJhLmFkbWluLnYxLlVuc3VzcGVuZFJlYWRlclJlc3BvbnNlIgAScQoSU2V0UmVhZGVyQmlydGhEYXRlEisucHVibGlyYS5hZG1pbi52MS5TZXRSZWFkZXJCaXJ0aERhdGVSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5TZXRSZWFkZXJCaXJ0aERhdGVSZXNwb25zZSIAEl8KDERlbGV0ZVJlYWRlchIlLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlUmVhZGVyUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlUmVhZGVyUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminTenantUser
@@ -142,12 +142,12 @@ export type AdminReader = Message<"publira.admin.v1.AdminReader"> & {
   emailVerifiedAt: string;
 
   /**
-   * Whether the reader has recorded a birth date. The date itself stays with
-   * the reader.
+   * The reader's birth date as YYYY-MM-DD. Empty when none is recorded. Staff
+   * read it to act on a reader who asks for it to be corrected.
    *
-   * @generated from field: bool has_birth_date = 7;
+   * @generated from field: string birth_date = 8;
    */
-  hasBirthDate: boolean;
+  birthDate: string;
 };
 
 /**
@@ -358,6 +358,54 @@ export const UnsuspendReaderResponseSchema: GenMessage<UnsuspendReaderResponse> 
   messageDesc(file_publira_admin_v1_user, 11);
 
 /**
+ * @generated from message publira.admin.v1.SetReaderBirthDateRequest
+ */
+export type SetReaderBirthDateRequest = Message<"publira.admin.v1.SetReaderBirthDateRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+
+  /**
+   * YYYY-MM-DD, validated as a reader's own date is: a calendar date the
+   * tenant's calendar has reached, and not an implausibly old one. Empty clears
+   * the stored date.
+   *
+   * @generated from field: string birth_date = 3;
+   */
+  birthDate: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.SetReaderBirthDateRequest.
+ * Use `create(SetReaderBirthDateRequestSchema)` to create a new message.
+ */
+export const SetReaderBirthDateRequestSchema: GenMessage<SetReaderBirthDateRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 12);
+
+/**
+ * @generated from message publira.admin.v1.SetReaderBirthDateResponse
+ */
+export type SetReaderBirthDateResponse = Message<"publira.admin.v1.SetReaderBirthDateResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.AdminReader reader = 1;
+   */
+  reader?: AdminReader | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.SetReaderBirthDateResponse.
+ * Use `create(SetReaderBirthDateResponseSchema)` to create a new message.
+ */
+export const SetReaderBirthDateResponseSchema: GenMessage<SetReaderBirthDateResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 13);
+
+/**
  * @generated from message publira.admin.v1.DeleteReaderRequest
  */
 export type DeleteReaderRequest = Message<"publira.admin.v1.DeleteReaderRequest"> & {
@@ -377,7 +425,7 @@ export type DeleteReaderRequest = Message<"publira.admin.v1.DeleteReaderRequest"
  * Use `create(DeleteReaderRequestSchema)` to create a new message.
  */
 export const DeleteReaderRequestSchema: GenMessage<DeleteReaderRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_user, 12);
+  messageDesc(file_publira_admin_v1_user, 14);
 
 /**
  * @generated from message publira.admin.v1.DeleteReaderResponse
@@ -394,7 +442,7 @@ export type DeleteReaderResponse = Message<"publira.admin.v1.DeleteReaderRespons
  * Use `create(DeleteReaderResponseSchema)` to create a new message.
  */
 export const DeleteReaderResponseSchema: GenMessage<DeleteReaderResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_user, 13);
+  messageDesc(file_publira_admin_v1_user, 15);
 
 /**
  * @generated from service publira.admin.v1.AdminUserService
@@ -452,6 +500,19 @@ export const AdminUserService: GenService<{
     methodKind: "unary";
     input: typeof UnsuspendReaderRequestSchema;
     output: typeof UnsuspendReaderResponseSchema;
+  },
+  /**
+   * Sets or clears a reader's birth date. A reader cannot rewrite their own
+   * once it is recorded, so this is how a wrong date gets corrected. The next
+   * age-gated read for the reader is decided on the new date. Writing the date
+   * already stored changes nothing. not_found as GetReader.
+   *
+   * @generated from rpc publira.admin.v1.AdminUserService.SetReaderBirthDate
+   */
+  setReaderBirthDate: {
+    methodKind: "unary";
+    input: typeof SetReaderBirthDateRequestSchema;
+    output: typeof SetReaderBirthDateResponseSchema;
   },
   /**
    * Deletes a reader's account the way the reader's own DeleteMe does. not_found

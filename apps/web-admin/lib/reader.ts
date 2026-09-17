@@ -116,12 +116,12 @@ export const listReaders = async (
 
 /** The generated `AdminReader` fields {@link mapReaderDetail} reads. */
 type RawReaderDetail = RawReader &
-  Pick<AdminReader, "emailVerifiedAt" | "hasBirthDate">;
+  Pick<AdminReader, "birthDate" | "emailVerifiedAt">;
 
 const mapReaderDetail = (item: RawReaderDetail): ReaderDetail => ({
   ...mapReader(item),
   emailVerifiedAt: item.emailVerifiedAt ?? "",
-  hasBirthDate: item.hasBirthDate ?? false,
+  hasBirthDate: Boolean(item.birthDate),
 });
 
 /** One reader's account. */

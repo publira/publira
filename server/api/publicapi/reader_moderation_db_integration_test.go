@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -214,5 +215,63 @@ func TestDBAdminDeleteReaderLeavesWhatDeleteMeLeaves(t *testing.T) {
 	}
 	if _, err := loginReader(client, tenant, buyer.Email); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login as the deleted reader = %v, want unauthenticated", err)
+	}
+}
+
+// A reader cannot rewrite their own birth date, so staff correct a wrong one.
+// The session the reader already holds is decided on the corrected date.
+func TestDBAdminBirthDateCorrectionDecidesTheNextAgeGatedRead(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:  "SERIESA00001",
+		Title:     "Rated Series",
+		Published: true,
+		AgeRating: ageverification.RatingR18,
+	})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEAGE01",
+		Title:    "Rated Episode",
+		Status:   testutil.EpisodeStatusPublished,
+	})
+	env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
+	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	setBirthDate(t, env, reader.ID, birthDateForAge(t, tenant, 16, false))
+	session := tokenFor(t, tenant, reader)
+	console := env.openAdminReaderConsole(t, tenant)
+
+	access := func(t *testing.T) publirav1.EpisodeAccess {
+		t.Helper()
+		resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
+			&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID},
+			session,
+		))
+		if err != nil {
+			t.Fatalf("GetEpisodeDetail: %v", err)
+		}
+		return resp.Msg.Access
+	}
+	setByStaff := func(t *testing.T, birthDate string) {
+		t.Helper()
+		if _, err := console.client.SetReaderBirthDate(context.Background(), adminReaderRequest(console, &publiraadminv1.SetReaderBirthDateRequest{
+			Tenant:    console.tenant,
+			PublicId:  reader.PublicID,
+			BirthDate: birthDate,
+		})); err != nil {
+			t.Fatalf("SetReaderBirthDate %q: %v", birthDate, err)
+		}
+	}
+
+	if got := access(t); got != publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED {
+		t.Fatalf("access on the date the reader gave = %v, want age restricted", got)
+	}
+	setByStaff(t, ageverification.FormatBirthDate(birthDateForAge(t, tenant, 30, false)))
+	if got := access(t); got != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("access after staff corrected the date = %v, want free", got)
+	}
+	setByStaff(t, "")
+	if got := access(t); got != publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED {
+		t.Fatalf("access after staff cleared the date = %v, want age restricted", got)
 	}
 }

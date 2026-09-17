@@ -160,8 +160,8 @@ func TestDBAdminGetReaderReadsOneReaderOfTheTenant(t *testing.T) {
 	if got.PublicId != reader.PublicID || got.Name != "Reader" || got.Email != "reader@reader-get.example.com" || got.Status != "active" {
 		t.Fatalf("reader = %+v, want the seeded active reader", got)
 	}
-	if got.CreatedAt == "" || got.EmailVerifiedAt == "" || !got.HasBirthDate {
-		t.Fatalf("reader = %+v, want created_at, email_verified_at and a recorded birth date", got)
+	if got.CreatedAt == "" || got.EmailVerifiedAt == "" || got.BirthDate != "2000-01-02" {
+		t.Fatalf("reader = %+v, want created_at, email_verified_at and the recorded birth date", got)
 	}
 
 	// A public id of another tenant and a staff account are both absent here.
@@ -212,6 +212,16 @@ func TestDBAdminReaderRPCsRequireTheAdminRole(t *testing.T) {
 		PublicId: reader.PublicID,
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeleteReader as an editor error = %v, want permission_denied", err)
+	}
+	if _, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.SetReaderBirthDateRequest{
+		Tenant:    asEditor.tenantContext(),
+		PublicId:  reader.PublicID,
+		BirthDate: "1990-01-01",
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("SetReaderBirthDate as an editor error = %v, want permission_denied", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND birth_date IS NULL", reader.ID); count != 1 {
+		t.Fatal("an editor's attempt stored a birth date")
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND status = 'active'", reader.ID); count != 1 {
 		t.Fatalf("active rows for the reader after an editor's attempts = %d, want 1", count)
@@ -316,6 +326,89 @@ func TestDBAdminDeleteReaderIsAudited(t *testing.T) {
 	assertReaderAuditLog(t, logs[0], "reader_deleted", admin, reader.PublicID)
 }
 
+func TestDBAdminSetReaderBirthDateCorrectsAWrittenOnceDate(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RBDTENANT001", "reader-birth.example.com", "Birth", "RBDADMIN0001", "admin@reader-birth.example.com")
+	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RBDREADER001", "reader@reader-birth.example.com", "Reader")
+	client := env.userClient()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	// The date the reader wrote themselves, which UpdateMe will not rewrite.
+	if _, err := dbmodels.New(env.PG.DB).SetUserBirthDateByID(ctx, dbmodels.SetUserBirthDateByIDParams{
+		ID:        reader.ID,
+		BirthDate: sql.NullTime{Time: time.Date(2015, time.March, 4, 0, 0, 0, 0, time.UTC), Valid: true},
+	}); err != nil {
+		t.Fatalf("SetUserBirthDateByID: %v", err)
+	}
+
+	set := func(birthDate string) *publiraadminv1.AdminReader {
+		t.Helper()
+		res, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
+			Tenant:    admin.tenantContext(),
+			PublicId:  reader.PublicID,
+			BirthDate: birthDate,
+		}))
+		if err != nil {
+			t.Fatalf("SetReaderBirthDate %q: %v", birthDate, err)
+		}
+		return res.Msg.Reader
+	}
+
+	if got := set("1995-03-04"); got.BirthDate != "1995-03-04" || got.PublicId != reader.PublicID {
+		t.Fatalf("corrected reader = %+v, want %s born 1995-03-04", got, reader.PublicID)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND birth_date = '1995-03-04'", reader.ID); count != 1 {
+		t.Fatal("stored birth_date was not corrected")
+	}
+	// The same date again changes nothing and records nothing.
+	if got := set(" 1995-03-04 "); got.BirthDate != "1995-03-04" {
+		t.Fatalf("rewriting the stored date birth_date = %q, want 1995-03-04", got.BirthDate)
+	}
+	if got := set(""); got.BirthDate != "" {
+		t.Fatalf("cleared reader birth_date = %q, want empty", got.BirthDate)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND birth_date IS NULL", reader.ID); count != 1 {
+		t.Fatal("stored birth_date was not cleared")
+	}
+	if got := set(""); got.BirthDate != "" {
+		t.Fatalf("clearing again birth_date = %q, want empty", got.BirthDate)
+	}
+
+	logs := env.readerAuditLogs(t, admin)
+	if len(logs) != 2 {
+		t.Fatalf("audit log count = %d, want 2 (%+v)", len(logs), logs)
+	}
+	// Newest first.
+	assertReaderAuditLog(t, logs[0], "reader_birth_date_cleared", admin, reader.PublicID)
+	assertReaderAuditLog(t, logs[1], "reader_birth_date_changed", admin, reader.PublicID)
+}
+
+func TestDBAdminSetReaderBirthDateRejectsWhatAReaderCouldNotStore(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RBVTENANT001", "reader-birth-invalid.example.com", "Birth", "RBVADMIN0001", "admin@reader-birth-invalid.example.com")
+	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RBVREADER001", "reader@reader-birth-invalid.example.com", "Reader")
+	client := env.userClient()
+
+	future := time.Now().UTC().AddDate(0, 0, 2).Format("2006-01-02")
+	for _, birthDate := range []string{"1995-3-4", "1995-02-30", "04/03/1995", future, "1800-01-01"} {
+		_, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
+			Tenant:    admin.tenantContext(),
+			PublicId:  reader.PublicID,
+			BirthDate: birthDate,
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("SetReaderBirthDate %q error = %v, want invalid_argument", birthDate, err)
+		}
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND birth_date IS NULL", reader.ID); count != 1 {
+		t.Fatal("a rejected date was stored")
+	}
+	if logs := env.readerAuditLogs(t, admin); len(logs) != 0 {
+		t.Fatalf("audit log count = %d, want 0 (%+v)", len(logs), logs)
+	}
+}
+
 // A staff account and a reader of another tenant are out of reach of every
 // action, as they are of GetReader.
 func TestDBAdminReaderActionsLeaveStaffAndOtherTenantsAlone(t *testing.T) {
@@ -345,8 +438,21 @@ func TestDBAdminReaderActionsLeaveStaffAndOtherTenantsAlone(t *testing.T) {
 		})); connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("DeleteReader %s error = %v, want not_found", publicID, err)
 		}
+		if _, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
+			Tenant:    admin.tenantContext(),
+			PublicId:  publicID,
+			BirthDate: "1990-01-01",
+		})); connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("SetReaderBirthDate %s error = %v, want not_found", publicID, err)
+		}
 	}
 
+	if count := env.countRows(t,
+		"SELECT count(*) FROM users WHERE id IN ($1, $2, $3) AND birth_date IS NULL",
+		editor.ID, outsider.ID, admin.User.ID,
+	); count != 3 {
+		t.Fatalf("accounts without a birth date = %d, want 3", count)
+	}
 	if count := env.countRows(t,
 		"SELECT count(*) FROM users WHERE id IN ($1, $2, $3) AND status = 'active'",
 		editor.ID, outsider.ID, admin.User.ID,
