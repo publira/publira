@@ -110,6 +110,21 @@ void main() {
     expect(find.text('Episodes'), findsOneWidget);
   });
 
+  testWidgets('a runtime link still opens after the initial lookup fails', (
+    tester,
+  ) async {
+    incoming.initialError = Exception('platform lookup failed');
+    await pumpApp(tester);
+
+    incoming.deliver(Uri.parse('https://localhost/series/$seriesId'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
+
+    expect(find.text(fixtureSeries.first.title), findsWidgets);
+  });
+
   testWidgets('a checkout return lands on the catalog', (tester) async {
     incoming.initialUri = Uri.parse(
       'https://localhost/checkout/return?episode=$episodeId&status=success',

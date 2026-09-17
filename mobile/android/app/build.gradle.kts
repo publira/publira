@@ -46,10 +46,6 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // Same host the Dart side reads as PUBLIRA_TENANT_HOST, so the App
-        // Links filter claims the tenant this binary is pinned to.
-        manifestPlaceholders["tenantHost"] =
-            dartDefines()["PUBLIRA_TENANT_HOST"] ?: "localhost"
     }
 
     flavorDimensions += "environment"
@@ -61,7 +57,24 @@ android {
         }
         create("production") {
             dimension = "environment"
+            // A store binary is pinned to one tenant. Unlike development,
+            // shipping a localhost App Links declaration would silently leave
+            // the real tenant links in the browser.
+            val tenantHost = dartDefines()["PUBLIRA_TENANT_HOST"]
+            val productionBuild = gradle.startParameter.taskNames.any {
+                it.contains("production", ignoreCase = true)
+            }
+            require(!productionBuild || !tenantHost.isNullOrBlank()) {
+                "Production builds require --dart-define=PUBLIRA_TENANT_HOST=<tenant host>"
+            }
+            manifestPlaceholders["tenantHost"] = tenantHost ?: "localhost"
         }
+    }
+
+    // The development flavor intentionally claims the seeded local tenant.
+    productFlavors.named("dev") {
+        manifestPlaceholders["tenantHost"] =
+            dartDefines()["PUBLIRA_TENANT_HOST"] ?: "localhost"
     }
 
     buildTypes {

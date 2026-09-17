@@ -5,10 +5,11 @@ import 'package:publira/links/share_sheet.dart';
 
 /// Incoming URLs a test writes, so routing can be driven without the OS.
 class FakeIncomingLinks implements IncomingLinks {
-  FakeIncomingLinks({this.initialUri});
+  FakeIncomingLinks({this.initialUri, this.initialError});
 
   /// The URL that opened a terminated app, which [initial] reports once.
   Uri? initialUri;
+  Object? initialError;
 
   final controller = StreamController<Uri>.broadcast();
 
@@ -17,7 +18,12 @@ class FakeIncomingLinks implements IncomingLinks {
   }
 
   @override
-  Future<Uri?> get initial async => initialUri;
+  Future<Uri?> get initial async {
+    if (initialError case final error?) {
+      throw error;
+    }
+    return initialUri;
+  }
 
   @override
   Stream<Uri> get changes => controller.stream;

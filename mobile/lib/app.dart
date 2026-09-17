@@ -266,14 +266,14 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     if (links == null) {
       return;
     }
+    _incomingLinks = links.changes.listen(_openLink, onError: (Object _) {});
     try {
       final initial = await links.initial;
-      if (initial != null) {
+      if (mounted && initial != null) {
         _openLink(initial);
       }
-      _incomingLinks = links.changes.listen(_openLink);
     } on Exception {
-      // The plugin is absent or the platform call failed. Nothing to open.
+      // The initial platform lookup failed. Runtime links can still arrive.
     }
   }
 

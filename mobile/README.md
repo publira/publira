@@ -72,8 +72,11 @@ Both icon sets still hold the same placeholder art, so today the two builds are 
 `default-flavor: dev` in `pubspec.yaml` makes every command without a `--flavor` build the development app, so `flutter run` and `flutter test integration_test` both target `com.publira.publira.dev`, and so does CI's `Test / Mobile E2E` through `task mobile:test-integration`. `Test / Mobile` builds no app at all — `dart format`, `flutter analyze`, and `flutter test` run on the host — so no flavor reaches it. A store build asks for the other one:
 
 ```bash
-flutter build appbundle --flavor production
-flutter build ipa --flavor production
+flutter build appbundle --flavor production \\
+  --dart-define=PUBLIRA_TENANT_HOST=tenant.example
+PUBLIRA_ASSOCIATED_DOMAIN=tenant.example \\
+  flutter build ipa --flavor production \\
+    --dart-define=PUBLIRA_TENANT_HOST=tenant.example
 ```
 
 A flavor decides identity — application ID, launcher name, icon, and the associated domain Universal Links claim. Where the app connects stays with `--dart-define` (see [Connecting to the public API](#connecting-to-the-public-api)), because the same development build points at a local `task dev` stack, an emulator loopback to the host, or an E2E stack depending on who runs it.
@@ -169,7 +172,7 @@ The catalog's app bar carries the account entry point, which opens `/sign-in` fo
 
 ### Tenant links and sharing
 
-A link to a series, an episode, or a checkout return on the tenant host opens the app when it is installed, rather than the browser. iOS claims the host through `com.apple.developer.associated-domains` (`PUBLIRA_ASSOCIATED_DOMAIN` on each flavor, `localhost` until a store build names the tenant). Android claims the same host as an App Link (`autoVerify`) for `/series…` and `/checkout/return`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
+A link to a series, an episode, or a checkout return on the tenant host opens the app when it is installed, rather than the browser. iOS claims the host through `com.apple.developer.associated-domains`; a production archive receives it as the `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same `PUBLIRA_TENANT_HOST` as an App Link (`autoVerify`) for `/series/…` and `/checkout/return`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
 
 `app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
 
@@ -320,7 +323,7 @@ Use `--dart-define` to switch the test API and tenant host.
 | `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent to image-server as `X-Forwarded-Host`. Android App Links claim this host at build time |
 | `PUBLIRA_LIVE_API` | Unset | Whether integration tests run their live group against the actual API |
 
-A store build also sets the iOS build setting `PUBLIRA_ASSOCIATED_DOMAIN` to the same host, so Universal Links claim the tenant the binary is pinned to. The Debug and Profile entitlements append `?mode=developer` so a locally hosted association file can be tried; Release does not.
+A store build passes the same host as the iOS `PUBLIRA_ASSOCIATED_DOMAIN` build setting, so Universal Links claim the tenant the binary is pinned to. The Debug and Profile entitlements append `?mode=developer` so a locally hosted association file can be tried; Release does not.
 
 The defaults are the shared default stack's ports. A worktree that has selected a development profile (`task dev-env:start`) does not listen on them: that profile holds a port block of its own, and `task mobile:run` reads the three values out of it.
 

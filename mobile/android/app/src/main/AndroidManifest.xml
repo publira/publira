@@ -47,18 +47,18 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/series"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/checkout/return"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ja/series"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ja/checkout/return"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/en/series"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/en/checkout/return"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ko/series"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ko/checkout/return"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hans/series"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hans/checkout/return"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hant/series"/>
-                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hant/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ja/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/en/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/en/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ko/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hans/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hant/series/"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/checkout/return"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
