@@ -1720,7 +1720,7 @@
         "description": "Left unset or disabled, mail is sent from the platform's own sender.",
         "override": "Use this tenant's own SMTP server",
         "override_checkbox": "Enable the override",
-        "override_description": "Left off, mail is sent with the platform's default SMTP settings.",
+        "override_description": "Left off, mail is sent with the platform's default SMTP settings, and the connection test is unavailable.",
         "host": "Host",
         "port": "Port",
         "username": "Username",

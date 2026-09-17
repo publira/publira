@@ -35,7 +35,6 @@ const (
 	listAuditLogsByTenantDescQuery                           = "-- name: ListAuditLogsByTenantDesc :many\n"
 	getUserByIDQuery                                         = "-- name: GetUserByID :one\n"
 	listTenantRolesByUserAndTenantQuery                      = "-- name: ListTenantUserRoles :many\n"
-	getPlatformSMTPConfigQuery                               = "-- name: GetPlatformSMTPConfig :one\n"
 	getPlatformConfigQuery                                   = "-- name: GetPlatformConfig :one\n"
 	getTenantSMTPConfigByTenantIDQuery                       = "-- name: GetTenantSMTPConfigByTenantID :one\n"
 	upsertTenantSMTPConfigQuery                              = "-- name: UpsertTenantSMTPConfig :one\n"

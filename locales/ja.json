@@ -1720,7 +1720,7 @@
         "description": "未設定または無効時はプラットフォームで設定された送信元で送信されます。",
         "override": "テナントSMTP上書きを有効にする",
         "override_checkbox": "上書きを有効化",
-        "override_description": "OFF の場合はプラットフォーム既定の SMTP 設定で送信されます。",
+        "override_description": "OFF の場合はプラットフォーム既定の SMTP 設定で送信され、接続テストは利用できません。",
         "host": "ホスト",
         "port": "ポート",
         "username": "ユーザー名",

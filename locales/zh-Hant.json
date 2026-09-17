@@ -1720,7 +1720,7 @@
         "description": "未設定或未啟用時，郵件會由平台自己的寄件人寄出。",
         "override": "使用該租戶自己的 SMTP 伺服器",
         "override_checkbox": "啟用覆寫設定",
-        "override_description": "關閉時，郵件會使用平台的預設 SMTP 設定寄出。",
+        "override_description": "關閉時，郵件會使用平台的預設 SMTP 設定寄出，且無法進行連線測試。",
         "host": "主機",
         "port": "連接埠",
         "username": "使用者名稱",
