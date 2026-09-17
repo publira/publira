@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/published_creator.dart';
+import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
 
 /// In-memory [CatalogRepository] for widget tests.
@@ -18,11 +20,22 @@ class FakeCatalogRepository implements CatalogRepository {
     this.recentSeries = const [],
     this.readingPositions = const {},
     this.searchResults = const [],
+    this.creatorSearchResults = const [],
+    this.labelSearchResults = const [],
     this.searchPageSize = 20,
+    this.publishedCreators = const {},
+    this.publishedLabels = const {},
+    this.detailSeries = const {},
+    this.detailSeriesPageSize = 20,
     this.listError,
     this.listMoreError,
     this.searchError,
     this.searchMoreError,
+    this.creatorSearchError,
+    this.labelSearchError,
+    this.creatorDetailError,
+    this.labelDetailError,
+    this.detailSeriesMoreError,
     this.newestSeriesError,
     this.rankedSeriesError,
     this.creators = const [],
@@ -45,8 +58,27 @@ class FakeCatalogRepository implements CatalogRepository {
   /// screen is about which rows arrive for a keyword, not about matching.
   List<SeriesItem> searchResults;
 
-  /// How many of [searchResults] one page of [searchSeries] holds.
+  /// What [searchCreators] pages over, whatever keyword it is asked for.
+  List<PublishedCreator> creatorSearchResults;
+
+  /// What [searchLabels] pages over, whatever keyword it is asked for.
+  List<PublishedLabel> labelSearchResults;
+
+  /// How many results one page of every search holds.
   int searchPageSize;
+
+  /// The authors [getCreatorDetail] answers for, keyed by public id.
+  Map<String, PublishedCreator> publishedCreators;
+
+  /// The labels [getLabelDetail] answers for, keyed by public id.
+  Map<String, PublishedLabel> publishedLabels;
+
+  /// The series an author's or a label's page lists, keyed by the public id
+  /// of the author or label. One absent is a page with no series.
+  Map<String, List<SeriesItem>> detailSeries;
+
+  /// How many of [detailSeries] one page of an author or a label holds.
+  int detailSeriesPageSize;
 
   /// What the new-arrivals shelf is answered with.
   List<SeriesItem> newestSeries;
@@ -80,6 +112,14 @@ class FakeCatalogRepository implements CatalogRepository {
   /// What a read of a page under the first one fails with, so a test can fail
   /// one page of the results without failing the screen.
   CatalogFailure? searchMoreError;
+  CatalogFailure? creatorSearchError;
+  CatalogFailure? labelSearchError;
+  CatalogFailure? creatorDetailError;
+  CatalogFailure? labelDetailError;
+
+  /// What a read of a page of an author's or a label's series under the first
+  /// one fails with.
+  CatalogFailure? detailSeriesMoreError;
   CatalogFailure? newestSeriesError;
   CatalogFailure? rankedSeriesError;
   CatalogFailure? detailError;
@@ -102,6 +142,19 @@ class FakeCatalogRepository implements CatalogRepository {
   /// it was asked for. The first page of a keyword is the empty token.
   final List<({String query, String token})> searchRequests =
       <({String query, String token})>[];
+
+  /// Keywords [searchCreators] was called with, in order, with their tokens.
+  final List<({String query, String token})> creatorSearchRequests =
+      <({String query, String token})>[];
+
+  /// Keywords [searchLabels] was called with, in order, with their tokens.
+  final List<({String query, String token})> labelSearchRequests =
+      <({String query, String token})>[];
+
+  /// Public ids [getCreatorDetail] and [getLabelDetail] were called with, in
+  /// order, with their tokens.
+  final List<({String id, String token})> detailRequests =
+      <({String id, String token})>[];
 
   /// Limits [listRecentSeries] was called with, in order.
   final List<int> recentSeriesLimits = <int>[];
@@ -148,6 +201,90 @@ class FakeCatalogRepository implements CatalogRepository {
     return SeriesPage(
       series: List<SeriesItem>.from(searchResults.sublist(start, end)),
       nextToken: end < searchResults.length ? '$end' : '',
+    );
+  }
+
+  @override
+  Future<CreatorPage> searchCreators({
+    required String query,
+    String token = '',
+  }) async {
+    creatorSearchRequests.add((query: query, token: token));
+    final error = creatorSearchError;
+    if (error != null) {
+      throw error;
+    }
+    final (page, nextToken) = _page(
+      creatorSearchResults,
+      token,
+      searchPageSize,
+    );
+    return CreatorPage(creators: page, nextToken: nextToken);
+  }
+
+  @override
+  Future<LabelPage> searchLabels({
+    required String query,
+    String token = '',
+  }) async {
+    labelSearchRequests.add((query: query, token: token));
+    final error = labelSearchError;
+    if (error != null) {
+      throw error;
+    }
+    final (page, nextToken) = _page(labelSearchResults, token, searchPageSize);
+    return LabelPage(labels: page, nextToken: nextToken);
+  }
+
+  @override
+  Future<CreatorDetail?> getCreatorDetail(
+    String publicId, {
+    String token = '',
+  }) async {
+    detailRequests.add((id: publicId, token: token));
+    final creator = publishedCreators[publicId];
+    final series = await _detailSeries(publicId, token, creatorDetailError);
+    return creator == null
+        ? null
+        : CreatorDetail(creator: creator, series: series);
+  }
+
+  @override
+  Future<LabelDetail?> getLabelDetail(
+    String publicId, {
+    String token = '',
+  }) async {
+    detailRequests.add((id: publicId, token: token));
+    final label = publishedLabels[publicId];
+    final series = await _detailSeries(publicId, token, labelDetailError);
+    return label == null ? null : LabelDetail(label: label, series: series);
+  }
+
+  Future<SeriesPage> _detailSeries(
+    String publicId,
+    String token,
+    CatalogFailure? error,
+  ) async {
+    final failure = token.isEmpty ? error : detailSeriesMoreError ?? error;
+    if (failure != null) {
+      throw failure;
+    }
+    final (page, nextToken) = _page(
+      detailSeries[publicId] ?? const <SeriesItem>[],
+      token,
+      detailSeriesPageSize,
+    );
+    return SeriesPage(series: page, nextToken: nextToken);
+  }
+
+  /// One page of [items], the token being the index of its first row written
+  /// out, the way [listSeries] pages.
+  (List<T>, String) _page<T>(List<T> items, String token, int size) {
+    final start = token.isEmpty ? 0 : int.parse(token);
+    final end = min(start + size, items.length);
+    return (
+      List<T>.from(items.sublist(start, end)),
+      end < items.length ? '$end' : '',
     );
   }
 
@@ -339,6 +476,23 @@ const fixtureCreators = <SeriesCreator>[
   SeriesCreator(id: 'SeedAUTHAAA3', name: 'Seed Author 003', roleName: 'Art'),
 ];
 
+/// The first author credited on [fixtureSeries]' first series, as the
+/// author's own page describes them.
+const fixturePublishedCreator = PublishedCreator(
+  id: 'SeedAUTHAAA1',
+  name: 'Seed Author 001',
+  profileText: 'Profile text for Seed Author 001',
+  seriesCount: 1,
+);
+
+/// The label of [fixtureSeries]' first series, as the label's own page
+/// describes it.
+const fixturePublishedLabel = PublishedLabel(
+  id: 'SeedLABLAAA1',
+  name: 'Seed Label 01',
+  seriesCount: 1,
+);
+
 /// The first genre of the development seed, which [fixtureSeries]' first
 /// series carries so a catalog tile has a genre to show.
 const fixtureGenres = <SeriesGenre>[
@@ -351,6 +505,7 @@ final fixtureSeries = <SeriesItem>[
     title: 'Seed Series 001',
     description: 'A published series of Seed Tenant.',
     episodeCount: 10,
+    labelId: 'SeedLABLAAA1',
     labelName: 'Seed Label 01',
     creators: fixtureCreators,
     eyeCatchVariants: fixtureEyeCatchVariants,

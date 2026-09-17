@@ -2701,7 +2701,9 @@
       "list_middle": "{$first}, {$rest}",
       "list_start": "{$first}, {$rest}",
       "list_two": "{$first} and {$rest}",
+      "more_series_failed": "Could not show more series. Try again.",
       "retry": "Retry",
+      "series_count": "{$count} published series",
       "sign_in": "Sign in"
     },
     "comments": {
@@ -2747,6 +2749,14 @@
       "submit": "Post comment",
       "title": "Comments"
     },
+    "creator": {
+      "load_failed": "Could not show the author. Try again.",
+      "not_found": "Author not found ({$id})",
+      "profile_empty": "No profile has been published yet.",
+      "series_empty": "No published series yet.",
+      "series_heading": "Related series",
+      "title": "Author"
+    },
     "follow": {
       "failed": "Could not change what you follow. Try again.",
       "follow": "Follow",
@@ -2766,6 +2776,13 @@
       "sign_in_prompt": "Sign in to see the series and authors you follow.",
       "title": "Follows"
     },
+    "label": {
+      "load_failed": "Could not show the label. Try again.",
+      "not_found": "Label not found ({$id})",
+      "series_empty": "No published series yet.",
+      "series_heading": "Series in this label",
+      "title": "Label"
+    },
     "not_found": {
       "message": "“{$uri}” does not exist.",
       "title": "Page not found"
@@ -2781,11 +2798,22 @@
       "open": "Open"
     },
     "search": {
+      "all": "All",
       "clear": "Clear the keyword",
-      "failed": "Could not show the search results. Try again.",
+      "creators_failed": "Could not show the author results. Try again.",
+      "creators_heading": "Authors",
+      "creators_no_results": "No authors match “{$query}”.",
+      "creators_show_all": "Show all authors",
       "label": "Search works",
-      "no_results": "No series match “{$query}”.",
-      "prompt": "Enter a keyword to search the published series."
+      "labels_failed": "Could not show the label results. Try again.",
+      "labels_heading": "Labels",
+      "labels_no_results": "No labels match “{$query}”.",
+      "labels_show_all": "Show all labels",
+      "prompt": "Enter a keyword to search the published series, authors, and labels.",
+      "series_failed": "Could not show the series results. Try again.",
+      "series_heading": "Series",
+      "series_no_results": "No series match “{$query}”.",
+      "series_show_all": "Show all series"
     },
     "share": {
       "action": "Share",

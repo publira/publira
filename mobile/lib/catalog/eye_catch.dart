@@ -4,6 +4,10 @@ import 'package:publira/models/series_item.dart';
 /// catalog tile reserves.
 const eyeCatchPortrait = 'portrait';
 
+/// Eye-catch renditions cut as wide as they are tall, which is the shape a
+/// label row reserves.
+const eyeCatchSquare = 'square';
+
 /// Eye-catch renditions cut wider than they are tall, which is the shape a
 /// detail screen banner reserves.
 const eyeCatchLandscape = 'landscape';

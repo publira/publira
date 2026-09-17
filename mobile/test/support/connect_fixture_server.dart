@@ -723,19 +723,50 @@ class ConnectFixtureServer {
       return;
     }
 
-    if (path.endsWith('/GetPublishedCreatorDetail')) {
+    if (path.endsWith('/SearchPublishedCreators') ||
+        path.endsWith('/SearchPublishedLabels')) {
+      final creators = path.endsWith('/SearchPublishedCreators');
+      await _write(request, searchStatus, {
+        if (searchStatus == HttpStatus.ok)
+          ..._namedPage(
+            creators ? 'creators' : 'labels',
+            creators
+                ? _publishedCreators().where(_hasPublishedSeries)
+                : _publishedLabels(),
+            body['query'],
+            body['token'],
+          ),
+        if (searchStatus != HttpStatus.ok) 'code': 'unavailable',
+        if (searchStatus != HttpStatus.ok) 'message': 'unavailable',
+      });
+      return;
+    }
+
+    if (path.endsWith('/GetPublishedCreatorDetail') ||
+        path.endsWith('/GetPublishedLabelDetail')) {
+      final creators = path.endsWith('/GetPublishedCreatorDetail');
       final publicId = _publicIdOf(body);
-      final creator = seedCreators().where((item) {
-        return item['publicId'] == publicId;
-      }).firstOrNull;
-      if (creator == null) {
+      final target = (creators ? _publishedCreators() : _publishedLabels())
+          .where((item) => item['publicId'] == publicId)
+          .firstOrNull;
+      if (target == null) {
         await _write(request, HttpStatus.notFound, {
           'code': 'not_found',
-          'message': 'creator not found',
+          'message': creators ? 'creator not found' : 'label not found',
         });
         return;
       }
-      await _write(request, HttpStatus.ok, {'creator': creator});
+      final credited = series.where((item) {
+        if (!creators) {
+          return (item['label'] as Map?)?['publicId'] == publicId;
+        }
+        final credits = item['creators'] as List? ?? const [];
+        return credits.any((credit) => (credit as Map)['publicId'] == publicId);
+      }).toList();
+      await _write(request, HttpStatus.ok, {
+        creators ? 'creator' : 'label': target,
+        ..._pageOf('series', credited, body['token']),
+      });
       return;
     }
 
@@ -842,6 +873,108 @@ class ConnectFixtureServer {
     return {
       'series': series.sublist(min(start, series.length), end),
       if (end < series.length) 'nextToken': '$end',
+    };
+  }
+
+  /// The creators credited on [series], once each, in the shape
+  /// `PublishedCreator` arrives in, followed by the rest of [seedCreators],
+  /// which a follow row can still name with nothing published.
+  List<Map<String, Object?>> _publishedCreators() {
+    final creators = <String, Map<String, Object?>>{};
+    final counted = <String>{};
+    for (final item in series) {
+      for (final credit in item['creators'] as List? ?? const []) {
+        final json = credit as Map;
+        final publicId = json['publicId'] as String;
+        final creator = creators.putIfAbsent(
+          publicId,
+          () => {
+            'publicId': publicId,
+            'name': json['name'],
+            if (json['profileText'] != null) 'profileText': json['profileText'],
+            if (json['iconImageUrl'] != null)
+              'iconImageUrl': json['iconImageUrl'],
+            'publishedSeriesCount': 0,
+          },
+        );
+        // Credited in two roles on one series is still one series.
+        if (counted.add('$publicId/${item['publicId']}')) {
+          creator['publishedSeriesCount'] =
+              (creator['publishedSeriesCount']! as int) + 1;
+        }
+      }
+    }
+    for (final credit in seedCreators()) {
+      creators.putIfAbsent(credit['publicId']! as String, () {
+        return {
+          'publicId': credit['publicId'],
+          'name': credit['name'],
+          'profileText': credit['profileText'],
+        };
+      });
+    }
+    return creators.values.toList();
+  }
+
+  /// The labels of [series], once each, in the shape `PublishedLabel` arrives
+  /// in. A label is known here only through a series that carries it, so
+  /// every one of them holds a published series.
+  List<Map<String, Object?>> _publishedLabels() {
+    final labels = <String, Map<String, Object?>>{};
+    for (final item in series) {
+      final json = item['label'] as Map?;
+      if (json == null) {
+        continue;
+      }
+      final label = labels.putIfAbsent(
+        json['publicId'] as String,
+        () => {...json.cast<String, Object?>(), 'publishedSeriesCount': 0},
+      );
+      label['publishedSeriesCount'] =
+          (label['publishedSeriesCount']! as int) + 1;
+    }
+    return labels.values.toList();
+  }
+
+  bool _hasPublishedSeries(Map<String, Object?> item) =>
+      ((item['publishedSeriesCount'] as int?) ?? 0) > 0;
+
+  /// One page of the [items] whose name contains [query], the
+  /// case-insensitive substring match the creator and label searches perform,
+  /// in the name order they answer in, under [field].
+  Map<String, Object?> _namedPage(
+    String field,
+    Iterable<Map<String, Object?>> items,
+    Object? query,
+    Object? token,
+  ) {
+    final keyword = query is String ? query.trim().toLowerCase() : '';
+    final matches =
+        items.where((item) {
+          return '${item['name'] ?? ''}'.toLowerCase().contains(keyword);
+        }).toList()..sort(
+          (left, right) =>
+              '${left['name'] ?? ''}'.compareTo('${right['name'] ?? ''}'),
+        );
+    return _pageOf(field, matches, token);
+  }
+
+  /// One page of [items] under [field], [seriesPageSize] at a time, with the
+  /// token the index of the page's first row written out.
+  Map<String, Object?> _pageOf(
+    String field,
+    List<Map<String, Object?>> items,
+    Object? token,
+  ) {
+    if (seriesPageSize <= 0) {
+      return {if (items.isNotEmpty) field: items};
+    }
+    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
+    final end = min(start + seriesPageSize, items.length);
+    final page = items.sublist(min(start, items.length), end);
+    return {
+      if (page.isNotEmpty) field: page,
+      if (end < items.length) 'nextToken': '$end',
     };
   }
 

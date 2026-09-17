@@ -149,6 +149,40 @@ void main() {
     expect(creators.map((creator) => creator.roleName), ['Story', '']);
   });
 
+  test('the label of a saved series survives the round trip', () {
+    final written = OfflineIndex(
+      series: const [
+        SeriesItem(
+          id: 'SeedSERSAAA1',
+          title: 'Seed Series 001',
+          description: 'synopsis',
+          labelId: 'SeedLABLAAA1',
+          labelName: 'Seed Label 01',
+        ),
+      ],
+    ).toJson();
+
+    final series = OfflineIndex.fromJson(written)!.series!.single;
+
+    expect(series.labelId, 'SeedLABLAAA1');
+    expect(series.labelName, 'Seed Label 01');
+  });
+
+  test('a label saved before its id was kept is named without one', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free'),
+        series: [
+          {..._series().single, 'labelName': 'Seed Label 01'},
+        ],
+      ),
+    );
+
+    final series = decoded!.series!.single;
+    expect(series.labelName, 'Seed Label 01');
+    expect(series.labelId, isEmpty);
+  });
+
   test('the credits of a saved episode survive the round trip', () {
     final written = OfflineIndex(
       episodes: {

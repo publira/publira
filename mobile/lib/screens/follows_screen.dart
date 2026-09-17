@@ -294,9 +294,11 @@ class _FollowRow extends StatelessWidget {
         // without asking for it once per row.
         following: true,
       ),
-      onTap: isSeries
-          ? () => context.push(AppRoutes.seriesDetailPath(follow.targetId))
-          : null,
+      onTap: () => context.push(
+        isSeries
+            ? AppRoutes.seriesDetailPath(follow.targetId)
+            : AppRoutes.creatorDetailPath(follow.targetId),
+      ),
     );
   }
 }

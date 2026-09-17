@@ -135,10 +135,10 @@ mobile/
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── links/                    # Tenant-site URL parsing, incoming App Links, and the share sheet
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
-│   ├── models/                   # Series / episode body / episode comment / follow
+│   ├── models/                   # Series / author / label / episode body / episode comment / follow
 │   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / series detail / viewer / comments / sign-in / account / follows
+│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / account / follows
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -163,6 +163,8 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/account` | Signed-in reader, their date of birth, and sign-out |
 | `/account/follows` | The series and authors the reader follows |
 | `/series/:seriesId` | Series details |
+| `/creators/:creatorId` | An author and the published series credited to them |
+| `/labels/:labelId` | A label and its published series |
 | `/series/:seriesId/episodes/:episodeId` | Episode viewer |
 | `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
 | `/checkout/return` | A checkout the browser hands back; it opens the episode it was started for |
@@ -196,11 +198,19 @@ Only the whole-catalog list is kept for reading without a network. The shelves a
 
 ### The search screen
 
-`/search` is a keyword and the published series `SearchPublishedSeries` matches it against, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. The field in the catalog's app bar cannot be typed into: it opens this screen, and the field here — the app bar's title — is the only place the keyword is held.
+`/search` is a keyword and the three groups the site's search answers it with: the published series `SearchPublishedSeries` matches, the authors `SearchPublishedCreators` matches, and the labels `SearchPublishedLabels` matches. The field in the catalog's app bar cannot be typed into: it opens this screen, and the field here — the app bar's title — is the only place the keyword is held.
 
-The field is searched for once it has stood still for a moment, so a word typed letter by letter costs one request, and it is limited to the 100 code points the API accepts. Emptying it puts the screen back to asking for a keyword rather than searching for nothing, and the catalog stands behind the screen, so a reader who cleared it leaves by going back. A keyword nothing matches says so, and a search the API could not answer offers a retry.
+The field is searched for once it has stood still for a moment, so a word typed letter by letter costs one request per group, and it is limited to the 100 code points the API accepts. Emptying it puts the screen back to asking for a keyword rather than searching for nothing, and the catalog stands behind the screen, so a reader who cleared it leaves by going back.
 
-Search is answered by the API alone. Matching a keyword against every published title and synopsis is a read of the whole catalog, and what the device keeps is one page of it.
+Each group is read, fails, and retries on its own, so a name that matches no title still brings back its author, and a keyword a group has nothing for says so in that group. The overview shows the first five rows of each and offers the rest of a group only when there is more of it. The chips under the field open one group on its own: its whole list, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. A series row opens its series, an author row the author, and a label row the label.
+
+Search is answered by the API alone. Matching a keyword against every published title, synopsis, and name is a read of the whole catalog, and what the device keeps is one page of it.
+
+### The author and label screens
+
+`/creators/:creatorId` reads `GetPublishedCreatorDetail`: the author's portrait, name, profile, and a follow control, above the published series credited to them. `/labels/:labelId` reads `GetPublishedLabelDetail`: the label's artwork and name above its published series. Both lists are in title order, one cursor page at a time, and both screens say so when what they belong to does not exist, offer a retry when the API could not answer, and are answered by the API alone.
+
+A reader reaches an author from the search screen, from a name in the credit line and an author row on the series screen, and from an author row of what they follow; a label, from the search screen and from the label on a row of the catalog list.
 
 ## Localization
 
@@ -250,10 +260,10 @@ The comments on an episode are offered at the end of it and nowhere else: what a
 
 A reader follows a series, and each author credited on it, from the series screen, and reads back what they follow from the account screen. A follow is what a new-episode notification is delivered by, and it is the same list the site writes: `FollowService` holds it, and nothing of it is written to the device.
 
-- The series screen carries one control for the series and one for each author credited on it. An author row leads nowhere — the app has no author screen — and is there to name the author and to be followed
+- The series screen carries one control for the series and one for each author credited on it, beside the row that opens the author. The author screen carries the same control
 - What a reader follows is theirs, and the API answers a request without a session `unauthenticated`, so a guest is offered the way to sign in rather than a control that cannot act
 - A state the API could not answer leaves the control offering to follow, which is the request the API takes the same way whether or not the follow is already there. A follow the reader asked for that did not happen says why
-- `/account/follows` lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own — one that leaves the device alone, because a reader who follows a series has not opened it — and a row whose name could not be read is named by its public id. A series row opens its series; every row unfollows without asking the API what it already knows
+- `/account/follows` lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own — one that leaves the device alone, because a reader who follows a series has not opened it — and a row whose name could not be read is named by its public id. A row opens its series or its author; every row unfollows without asking the API what it already knows
 - The API lists only targets that are still public, so a series taken down leaves the list rather than standing in it as a row nothing names
 
 ## Offline reading
@@ -357,7 +367,7 @@ It addresses that profile's `api-server` and `image-server` themselves rather th
 
 ## Screenshots
 
-A pull request that changes a screen carries a picture of it, and the picture is taken against the worktree's selected development profile so that the eye-catches on it are the seeded covers. The widget-test fixtures address `http://images.test/…`, a name reserved to resolve nowhere, so anything that renders those for a person draws `SeriesCover`'s placeholder in every row instead.
+A pull request that changes a screen carries a picture of it, and the picture is taken against the worktree's selected development profile so that the eye-catches on it are the seeded covers. The widget-test fixtures address `http://images.test/…`, a name reserved to resolve nowhere, so anything that renders those for a person draws `EyeCatchCover`'s placeholder in every row instead.
 
 ```bash
 task dev-env:start
@@ -382,6 +392,7 @@ The screens are taken on an attached device or emulator, which the app is built 
 - App launch and initial catalog display
 - The ranking and new-arrival shelves above the catalog list
 - List → detail → back
+- A keyword reaching a series, an author, and a label, and the series the author and the label list
 - Viewer display and paging for a free episode
 - Locked display for an unpurchased paid episode
 - Sign-in unlocking that paid episode, and sign-out locking it again

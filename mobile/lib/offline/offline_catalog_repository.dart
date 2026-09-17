@@ -2,6 +2,8 @@ import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/published_creator.dart';
+import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 
@@ -85,6 +87,20 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<SeriesPage> searchSeries({required String query, String token = ''}) =>
       _origin.searchSeries(query: query, token: token);
 
+  /// The authors a keyword names, which only the API can answer for the reason
+  /// [searchSeries] gives.
+  @override
+  Future<CreatorPage> searchCreators({
+    required String query,
+    String token = '',
+  }) => _origin.searchCreators(query: query, token: token);
+
+  /// The labels a keyword names, which only the API can answer for the reason
+  /// [searchSeries] gives.
+  @override
+  Future<LabelPage> searchLabels({required String query, String token = ''}) =>
+      _origin.searchLabels(query: query, token: token);
+
   /// The new-arrivals shelf, which only the API can answer.
   ///
   /// It is another order over the same series, and keeping it too would
@@ -143,6 +159,20 @@ class OfflineCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesCreator?> getCreator(String publicId) =>
       _origin.getCreator(publicId);
+
+  /// An author's page, which only the API can answer: the device keeps the
+  /// series a reader opened, not every series an author is credited on.
+  @override
+  Future<CreatorDetail?> getCreatorDetail(
+    String publicId, {
+    String token = '',
+  }) => _origin.getCreatorDetail(publicId, token: token);
+
+  /// A label's page, which only the API can answer for the reason
+  /// [getCreatorDetail] gives.
+  @override
+  Future<LabelDetail?> getLabelDetail(String publicId, {String token = ''}) =>
+      _origin.getLabelDetail(publicId, token: token);
 
   @override
   Future<EpisodeDetail?> getEpisode(

@@ -1,10 +1,12 @@
 import 'package:flutter/widgets.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/published_creator.dart';
+import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
 
-/// How long a search keyword may be, as `SearchPublishedSeries` measures it:
-/// Unicode code points rather than UTF-16 units.
+/// How long a search keyword may be, as every `SearchPublished*` RPC measures
+/// it: Unicode code points rather than UTF-16 units.
 const searchQueryMaxRunes = 100;
 
 /// Public catalog reads. Implementations talk to the Connect API or a fake.
@@ -32,6 +34,20 @@ abstract class CatalogRepository {
   ///
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesPage> searchSeries({required String query, String token});
+
+  /// One page of the creators whose name contains [query], by name, narrowed
+  /// to those credited on a published series.
+  ///
+  /// [query] and [token] follow [searchSeries].
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<CreatorPage> searchCreators({required String query, String token});
+
+  /// One page of the labels whose name contains [query], by name, narrowed to
+  /// those holding a published series.
+  ///
+  /// [query] and [token] follow [searchSeries].
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<LabelPage> searchLabels({required String query, String token});
 
   /// The newest published series, at most [limit] of them.
   ///
@@ -74,10 +90,26 @@ abstract class CatalogRepository {
   /// What the creator [publicId] is called, or `null` when they are missing,
   /// credited on nothing published, or not in this tenant.
   ///
-  /// The app has no author screen. This is the name a row shows for an author
-  /// the reader follows, read the way [getSeriesTitle] reads a series name.
+  /// This is the name a row shows for an author the reader follows, read the
+  /// way [getSeriesTitle] reads a series name.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesCreator?> getCreator(String publicId);
+
+  /// The creator [publicId] and one page of the published series credited to
+  /// them, by title, or `null` when they are missing or not in this tenant.
+  ///
+  /// [token] is empty for the first page, and otherwise the
+  /// [SeriesPage.nextToken] of the page above the one wanted.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<CreatorDetail?> getCreatorDetail(String publicId, {String token});
+
+  /// The label [publicId] and one page of its published series, by title, or
+  /// `null` when it is missing or not in this tenant.
+  ///
+  /// A label whose last series was taken down still answers, with no series,
+  /// so a link kept from before keeps opening it.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<LabelDetail?> getLabelDetail(String publicId, {String token});
 
   /// Body of [episodePublicId] for the reader. Returns `null` when the episode
   /// is missing, unpublished, not in this tenant, or belongs to a series other

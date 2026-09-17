@@ -10,7 +10,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
-import 'package:publira/catalog/series_cover.dart';
+import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/follow/follow_control.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
@@ -305,8 +305,11 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         // synopsis and the episodes off the first screen.
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 220),
-          child: SeriesCover(
-            series: series,
+          child: EyeCatchCover(
+            kind: 'series',
+            id: series.id,
+            variants: series.eyeCatchVariants,
+            requestHeaders: series.imageRequestHeaders,
             preferredTypes: const [eyeCatchLandscape, eyeCatchPortrait],
             aspectRatio: 16 / 9,
           ),
@@ -337,6 +340,8 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             key: const ValueKey('series-creators'),
             credits: series.creators,
             style: theme.textTheme.bodyMedium,
+            onCreatorTap: (creator) =>
+                context.push(AppRoutes.creatorDetailPath(creator.id)),
           ),
         ],
         const SizedBox(height: 8),
@@ -418,8 +423,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           const SizedBox(height: 16),
           Text(series.description, style: theme.textTheme.bodyLarge),
         ],
-        // Each author is followed on their own. The row leads nowhere: the app
-        // has no author screen, and the name is the whole of what it says.
+        // Each author is followed on their own, and the row opens the author.
         if (follows && series.creators.isNotEmpty) ...[
           const SizedBox(height: 24),
           Text(
@@ -440,6 +444,8 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                 targetId: creator.id,
                 targetName: creator.name,
               ),
+              onTap: () =>
+                  context.push(AppRoutes.creatorDetailPath(creator.id)),
             ),
         ],
         const SizedBox(height: 24),

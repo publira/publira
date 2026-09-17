@@ -8,7 +8,7 @@ import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
-import 'package:publira/catalog/series_cover.dart';
+import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -582,8 +582,11 @@ class _ShelfCard extends StatelessWidget {
           children: [
             Stack(
               children: [
-                SeriesCover(
-                  series: series,
+                EyeCatchCover(
+                  kind: 'series',
+                  id: series.id,
+                  variants: series.eyeCatchVariants,
+                  requestHeaders: series.imageRequestHeaders,
                   preferredTypes: const [eyeCatchPortrait],
                   aspectRatio: _shelfCardAspectRatio,
                 ),

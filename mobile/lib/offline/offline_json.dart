@@ -157,6 +157,7 @@ Map<String, Object?> _seriesToJson(SeriesItem series) => {
   'title': series.title,
   'description': series.description,
   'episodeCount': series.episodeCount,
+  'labelId': series.labelId,
   'labelName': series.labelName,
   'creators': [for (final creator in series.creators) _creatorToJson(creator)],
   'eyeCatchVariants': [
@@ -185,6 +186,7 @@ SeriesItem? _seriesFromJson(Object? decoded) {
     title: _string(decoded['title']),
     description: _string(decoded['description']),
     episodeCount: _int(decoded['episodeCount']),
+    labelId: _string(decoded['labelId']),
     labelName: _string(decoded['labelName']),
     // A file written before credits were saved holds none, and is read as a
     // series credited to nobody rather than dropped.
