@@ -349,6 +349,67 @@ void main() {
       });
     });
 
+    testWidgets('finds an author by name and opens their series', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-search-author', () async {
+        await pumpApp(tester, initialLocation: AppRoutes.search);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('search-field')),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('search-field')),
+          'Seed Author 001',
+        );
+        final author = find.byKey(const ValueKey('creator-tile-SeedAUTHAAA1'));
+        await pumpUntilRouteSettled(tester, author);
+        await tapVisible(tester, author);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('creator-body')),
+        );
+
+        expect(find.text('Profile text for Seed Author 001'), findsOneWidget);
+        expect(
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+          findsOneWidget,
+        );
+      });
+    });
+
+    testWidgets('finds a label by name and opens its series', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-search-label', () async {
+        await pumpApp(tester, initialLocation: AppRoutes.search);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('search-field')),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('search-field')),
+          'Seed Label',
+        );
+        final label = find.byKey(const ValueKey('label-tile-SeedLABLAAA1'));
+        await pumpUntilRouteSettled(tester, label);
+        await tapVisible(tester, label);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('label-body')),
+        );
+
+        expect(
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+          findsOneWidget,
+        );
+      });
+    });
+
     testWidgets('opens the reader on a free episode body', (tester) async {
       await withFailureScreenshot(tester, 'fixture-viewer', () async {
         await pumpApp(
@@ -880,7 +941,64 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
 
-        expect(find.byKey(const ValueKey('search-error')), findsNothing);
+        expect(find.byKey(const ValueKey('search-series-error')), findsNothing);
+      });
+    });
+
+    testWidgets('a name reaches the seed author and label on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-search-author-label', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.search);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('search-field')),
+          timeout: const Duration(seconds: 20),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('search-field')),
+          'Seed Author 001',
+        );
+        final author = find.byKey(const ValueKey('creator-tile-SeedAUTHAAA1'));
+        await pumpUntilRouteSettled(
+          tester,
+          author,
+          timeout: const Duration(seconds: 20),
+        );
+        await tapVisible(tester, author);
+        // The seed credits its first author on its first series.
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+          timeout: const Duration(seconds: 20),
+        );
+
+        await tester.pageBack();
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('search-field')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('search-field')),
+          'Seed Label 01',
+        );
+        final label = find.byKey(const ValueKey('label-tile-SeedLABLAAA1'));
+        await pumpUntilRouteSettled(
+          tester,
+          label,
+          timeout: const Duration(seconds: 20),
+        );
+        await tapVisible(tester, label);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('label-body')),
+          timeout: const Duration(seconds: 20),
+        );
+
+        expect(find.byKey(const ValueKey('label-error')), findsNothing);
       });
     });
 

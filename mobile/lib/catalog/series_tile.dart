@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
-import 'package:publira/catalog/series_cover.dart';
+import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
@@ -26,8 +26,11 @@ class SeriesTile extends StatelessWidget {
       // this width anyway.
       leading: SizedBox(
         width: 42,
-        child: SeriesCover(
-          series: series,
+        child: EyeCatchCover(
+          kind: 'series',
+          id: series.id,
+          variants: series.eyeCatchVariants,
+          requestHeaders: series.imageRequestHeaders,
           preferredTypes: const [eyeCatchPortrait],
           aspectRatio: 3 / 4,
         ),
@@ -64,8 +67,25 @@ class SeriesTile extends StatelessWidget {
                   ),
               ],
             ),
-      trailing: series.labelName.isEmpty ? null : Text(series.labelName),
+      trailing: _label(context),
       onTap: () => context.push(AppRoutes.seriesDetailPath(series.id)),
+    );
+  }
+
+  /// The label, as a way of its own out of the row to the label's other
+  /// series. A copy saved before the label's id was kept names it and leads
+  /// nowhere.
+  Widget? _label(BuildContext context) {
+    if (series.labelName.isEmpty) {
+      return null;
+    }
+    if (series.labelId.isEmpty) {
+      return Text(series.labelName);
+    }
+    return TextButton(
+      key: ValueKey('series-tile-label-${series.id}'),
+      onPressed: () => context.push(AppRoutes.labelDetailPath(series.labelId)),
+      child: Text(series.labelName),
     );
   }
 }

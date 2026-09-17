@@ -4,9 +4,11 @@ import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
 import 'package:publira/screens/checkout_return_screen.dart';
+import 'package:publira/screens/creator_screen.dart';
 import 'package:publira/screens/episode_comments_screen.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
 import 'package:publira/screens/follows_screen.dart';
+import 'package:publira/screens/label_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/search_screen.dart';
 import 'package:publira/screens/series_detail_screen.dart';
@@ -21,6 +23,8 @@ abstract final class AppRoutes {
   static const follows = 'follows';
   static const accountFollows = '$account/$follows';
   static const seriesDetail = '/series/:seriesId';
+  static const creatorDetail = '/creators/:creatorId';
+  static const labelDetail = '/labels/:labelId';
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
   static const checkoutReturn = '/checkout/return';
@@ -32,6 +36,10 @@ abstract final class AppRoutes {
       : Uri(path: signIn, queryParameters: {'return_to': returnTo}).toString();
 
   static String seriesDetailPath(String seriesId) => '/series/$seriesId';
+
+  static String creatorDetailPath(String creatorId) => '/creators/$creatorId';
+
+  static String labelDetailPath(String labelId) => '/labels/$labelId';
 
   /// The viewer, told how a checkout of the episode ended when the browser
   /// has just handed one back.
@@ -116,6 +124,18 @@ GoRouter createAppRouter({String? initialLocation}) {
             builder: (context, state) => const FollowsScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.creatorDetail,
+        name: 'creatorDetail',
+        builder: (context, state) =>
+            CreatorScreen(creatorId: state.pathParameters['creatorId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.labelDetail,
+        name: 'labelDetail',
+        builder: (context, state) =>
+            LabelScreen(labelId: state.pathParameters['labelId']!),
       ),
       GoRoute(
         path: AppRoutes.seriesDetail,

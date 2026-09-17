@@ -106,3 +106,44 @@ class RetryRow extends StatelessWidget {
     );
   }
 }
+
+/// The page under a paged list, at the bottom of it: a spinner while that page
+/// is being read, and what went wrong when it could not be.
+class PageFooter extends StatelessWidget {
+  const PageFooter({
+    super.key,
+    required this.sectionKey,
+    required this.message,
+    required this.onRetry,
+  });
+
+  /// Names the list on screen: the spinner is `<sectionKey>-loading`, and the
+  /// failure is a [RetryRow] of the same name.
+  final String sectionKey;
+
+  /// What went wrong reading the page, and `null` while it is still on its
+  /// way.
+  final String? message;
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final message = this.message;
+    if (message == null) {
+      return Padding(
+        key: ValueKey('$sectionKey-loading'),
+        padding: const EdgeInsets.all(16),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: RetryRow(
+        sectionKey: sectionKey,
+        message: message,
+        onRetry: onRetry,
+      ),
+    );
+  }
+}

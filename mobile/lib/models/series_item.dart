@@ -161,6 +161,7 @@ class SeriesItem {
     required this.title,
     required this.description,
     this.episodeCount = 0,
+    this.labelId = '',
     this.labelName = '',
     this.creators = const [],
     this.eyeCatchVariants = const [],
@@ -178,6 +179,11 @@ class SeriesItem {
   final String title;
   final String description;
   final int episodeCount;
+
+  /// Public id of the series' label, which addresses the label screen. Empty
+  /// for an unlabelled series, and on a copy saved before the id was kept,
+  /// which then names its label without leading to it.
+  final String labelId;
   final String labelName;
 
   /// Who is credited on the series, in the order the API returned them, which
@@ -235,6 +241,7 @@ class SeriesItem {
       title: title,
       description: description,
       episodeCount: episodeCount ?? this.episodeCount,
+      labelId: labelId,
       labelName: labelName,
       creators: creators,
       eyeCatchVariants: eyeCatchVariants,

@@ -5,6 +5,8 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/published_creator.dart';
+import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
 
 /// [CatalogRepository] backed by the public Connect API.
@@ -34,10 +36,16 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.CatalogService/ListPublishedSeries';
   static const _searchProcedure =
       '/publira.v1.CatalogService/SearchPublishedSeries';
+  static const _searchCreatorsProcedure =
+      '/publira.v1.CatalogService/SearchPublishedCreators';
+  static const _searchLabelsProcedure =
+      '/publira.v1.CatalogService/SearchPublishedLabels';
   static const _rankedProcedure = '/publira.v1.CatalogService/ListRankedSeries';
   static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
   static const _creatorProcedure =
       '/publira.v1.CatalogService/GetPublishedCreatorDetail';
+  static const _labelProcedure =
+      '/publira.v1.CatalogService/GetPublishedLabelDetail';
   static const _episodeProcedure =
       '/publira.v1.CatalogService/GetEpisodeDetail';
   static const _readingPositionProcedure =
@@ -65,8 +73,8 @@ class HttpCatalogRepository implements CatalogRepository {
     token: token,
   );
 
-  /// How many results one page of [searchSeries] holds, which is also the
-  /// API's own fallback for a request naming no limit.
+  /// How many results one page of every search holds, which is also the API's
+  /// own fallback for a request naming no limit.
   static const searchPageLimit = 20;
 
   @override
@@ -75,13 +83,7 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_searchProcedure, {
-        'limit': searchPageLimit,
-        'query': query,
-        if (token.isNotEmpty) 'token': token,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
+      final body = await _search(_searchProcedure, query, token);
       return SeriesPage(
         series: _parseSeriesList(body['series']),
         nextToken: _readString(body, 'nextToken', 'response'),
@@ -89,6 +91,68 @@ class HttpCatalogRepository implements CatalogRepository {
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<CreatorPage> searchCreators({
+    required String query,
+    String token = '',
+  }) async {
+    try {
+      final body = await _search(_searchCreatorsProcedure, query, token);
+      final raw = body['creators'];
+      return CreatorPage(
+        // protojson omits an empty repeated field, which is how a keyword
+        // nothing matches arrives.
+        creators: raw == null
+            ? const []
+            : _expectList(raw, 'creators')
+                  .map((item) => _publishedCreatorFromJson(item, 'creators[]'))
+                  .toList(growable: false),
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<LabelPage> searchLabels({
+    required String query,
+    String token = '',
+  }) async {
+    try {
+      final body = await _search(_searchLabelsProcedure, query, token);
+      final raw = body['labels'];
+      return LabelPage(
+        labels: raw == null
+            ? const []
+            : _expectList(raw, 'labels')
+                  .map(
+                    (item) => _labelFromJson(item, 'labels[]', counted: false),
+                  )
+                  .toList(growable: false),
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  /// One page of the search RPC [procedure] names, which every group of the
+  /// search screen asks in the same shape.
+  Future<Map<String, Object?>> _search(
+    String procedure,
+    String query,
+    String token,
+  ) async {
+    final tenantId = await _tenants.resolve();
+    return _client.unary(procedure, {
+      'limit': searchPageLimit,
+      'query': query,
+      if (token.isNotEmpty) 'token': token,
+      'tenant': {'tenantId': tenantId},
+    }, tenantId: tenantId);
   }
 
   @override
@@ -200,7 +264,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final tenantId = await _tenants.resolve();
       final body = await _client.unary(_creatorProcedure, {
         // The response carries a page of the creator's published series, which
-        // this app has no screen for; one is asked for because the API falls
+        // a follow row does not show; one is asked for because the API falls
         // back to twenty.
         'limit': 1,
         'publicId': publicId,
@@ -217,6 +281,106 @@ class HttpCatalogRepository implements CatalogRepository {
       }
       throw _toFailure(error);
     }
+  }
+
+  /// How many series one page of an author's or a label's list holds, which
+  /// is also the API's own fallback for a request naming no limit.
+  static const detailSeriesPageLimit = 20;
+
+  @override
+  Future<CreatorDetail?> getCreatorDetail(
+    String publicId, {
+    String token = '',
+  }) async {
+    try {
+      final body = await _detailPage(_creatorProcedure, publicId, token);
+      return CreatorDetail(
+        creator: _publishedCreatorFromJson(body['creator'], 'creator'),
+        series: SeriesPage(
+          series: _parseSeriesList(body['series']),
+          nextToken: _readString(body, 'nextToken', 'response'),
+        ),
+      );
+    } on ConnectException catch (error) {
+      if (error.isNotFound) {
+        return null;
+      }
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<LabelDetail?> getLabelDetail(
+    String publicId, {
+    String token = '',
+  }) async {
+    try {
+      final body = await _detailPage(_labelProcedure, publicId, token);
+      return LabelDetail(
+        label: _labelFromJson(body['label'], 'label', counted: true),
+        series: SeriesPage(
+          series: _parseSeriesList(body['series']),
+          nextToken: _readString(body, 'nextToken', 'response'),
+        ),
+      );
+    } on ConnectException catch (error) {
+      if (error.isNotFound) {
+        return null;
+      }
+      throw _toFailure(error);
+    }
+  }
+
+  /// One page of the detail RPC [procedure] names, which the author and the
+  /// label ask in the same shape.
+  Future<Map<String, Object?>> _detailPage(
+    String procedure,
+    String publicId,
+    String token,
+  ) async {
+    final tenantId = await _tenants.resolve();
+    return _client.unary(procedure, {
+      'limit': detailSeriesPageLimit,
+      'publicId': publicId,
+      if (token.isNotEmpty) 'token': token,
+      'tenant': {'tenantId': tenantId},
+    }, tenantId: tenantId);
+  }
+
+  PublishedCreator _publishedCreatorFromJson(Object? raw, String path) {
+    final json = _expectMap(raw, path);
+    final iconUrl = _readString(json, 'iconImageUrl', path);
+    return PublishedCreator(
+      id: _readString(json, 'publicId', path, requiredNonEmpty: true),
+      name: _readString(json, 'name', path),
+      profileText: _readString(json, 'profileText', path),
+      // protojson omits an empty string, which is a creator with no portrait.
+      iconUrl: iconUrl.isEmpty ? null : config.imageUri(iconUrl),
+      imageRequestHeaders: config.publicImageRequestHeaders,
+      seriesCount: _readCount(json, 'publishedSeriesCount', path),
+    );
+  }
+
+  /// A `Label`, or with [counted] a `PublishedLabel`, which is the same label
+  /// with the count of its published series.
+  PublishedLabel _labelFromJson(
+    Object? raw,
+    String path, {
+    required bool counted,
+  }) {
+    final json = _expectMap(raw, path);
+    return PublishedLabel(
+      id: _readString(json, 'publicId', path, requiredNonEmpty: true),
+      name: _readString(json, 'name', path),
+      eyeCatchVariants: _parseEyeCatchVariants(
+        json['eyeCatchImageVariants'],
+        path,
+      ),
+      imageRequestHeaders: config.publicImageRequestHeaders,
+      seriesCount: counted
+          ? _readCount(json, 'publishedSeriesCount', path)
+          : null,
+    );
   }
 
   @override
@@ -446,18 +610,15 @@ class HttpCatalogRepository implements CatalogRepository {
 
   SeriesItem _seriesFromJson(Map<String, Object?> json, String path) {
     final rawLabel = json['label'];
-    final labelName = rawLabel == null
-        ? ''
-        : _readString(
-            _expectMap(rawLabel, '$path.label'),
-            'name',
-            '$path.label',
-          );
+    final label = rawLabel == null ? null : _expectMap(rawLabel, '$path.label');
     return SeriesItem(
       id: _readString(json, 'publicId', path, requiredNonEmpty: true),
       title: _readString(json, 'title', path),
       description: _readString(json, 'synopsis', path),
-      labelName: labelName.trim(),
+      labelId: label == null
+          ? ''
+          : _readString(label, 'publicId', '$path.label'),
+      labelName: label == null ? '' : _readString(label, 'name', '$path.label'),
       creators: _parseCreators(json['creators'], path),
       eyeCatchVariants: _parseEyeCatchVariants(
         json['eyeCatchImageVariants'],

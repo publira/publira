@@ -2701,7 +2701,9 @@
       "list_middle": "{$first}、{$rest}",
       "list_start": "{$first}、{$rest}",
       "list_two": "{$first}、{$rest}",
+      "more_series_failed": "シリーズの続きを表示できませんでした。もう一度お試しください。",
       "retry": "再試行",
+      "series_count": "公開中シリーズ {$count} 件",
       "sign_in": "サインイン"
     },
     "comments": {
@@ -2747,6 +2749,14 @@
       "submit": "コメントを投稿",
       "title": "コメント"
     },
+    "creator": {
+      "load_failed": "著者を表示できませんでした。もう一度お試しください。",
+      "not_found": "著者が見つかりません ({$id})",
+      "profile_empty": "プロフィールはまだ公開されていません。",
+      "series_empty": "まだ公開中シリーズはありません。",
+      "series_heading": "関連シリーズ",
+      "title": "著者"
+    },
     "follow": {
       "failed": "フォローの状態を変更できませんでした。もう一度お試しください。",
       "follow": "フォローする",
@@ -2766,6 +2776,13 @@
       "sign_in_prompt": "サインインすると、フォロー中のシリーズと著者を確認できます。",
       "title": "フォロー中"
     },
+    "label": {
+      "load_failed": "レーベルを表示できませんでした。もう一度お試しください。",
+      "not_found": "レーベルが見つかりません ({$id})",
+      "series_empty": "まだ公開中シリーズはありません。",
+      "series_heading": "所属シリーズ",
+      "title": "レーベル"
+    },
     "not_found": {
       "message": "「{$uri}」は存在しません。",
       "title": "ページが見つかりません"
@@ -2781,11 +2798,22 @@
       "open": "開く"
     },
     "search": {
+      "all": "すべて",
       "clear": "キーワードを消去",
-      "failed": "検索結果を表示できませんでした。もう一度お試しください。",
+      "creators_failed": "著者の検索結果を表示できませんでした。もう一度お試しください。",
+      "creators_heading": "著者",
+      "creators_no_results": "「{$query}」に一致する著者はいません。",
+      "creators_show_all": "著者の検索結果をすべて見る",
       "label": "作品を検索",
-      "no_results": "「{$query}」に一致するシリーズはありません。",
-      "prompt": "キーワードを入力して公開中のシリーズを検索できます。"
+      "labels_failed": "レーベルの検索結果を表示できませんでした。もう一度お試しください。",
+      "labels_heading": "レーベル",
+      "labels_no_results": "「{$query}」に一致するレーベルはありません。",
+      "labels_show_all": "レーベルの検索結果をすべて見る",
+      "prompt": "キーワードを入力して公開中のシリーズ・著者・レーベルを検索できます。",
+      "series_failed": "シリーズの検索結果を表示できませんでした。もう一度お試しください。",
+      "series_heading": "シリーズ",
+      "series_no_results": "「{$query}」に一致するシリーズはありません。",
+      "series_show_all": "シリーズの検索結果をすべて見る"
     },
     "share": {
       "action": "共有",

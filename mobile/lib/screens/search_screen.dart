@@ -2,31 +2,46 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/catalog/catalog_pager.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
+import 'package:publira/catalog/creator_tile.dart';
+import 'package:publira/catalog/label_tile.dart';
+import 'package:publira/catalog/paged_series_sliver.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/models/published_creator.dart';
+import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
 
 /// How long the field stays still before the keyword in it is searched for.
 ///
 /// A reader types faster than this between two letters of one word, so a word
-/// costs one request rather than one per letter; a reader who has stopped
-/// waits about as long as one frame of a page transition.
+/// costs one request per group rather than one per letter; a reader who has
+/// stopped waits about as long as one frame of a page transition.
 const _debounce = Duration(milliseconds: 300);
 
-/// How many rows before the end of the results the page under them is asked
-/// for, the same read-ahead the catalog list uses.
-const _readAheadRows = 5;
+/// How many rows of each group the overview shows before offering the rest,
+/// the number the site's overview shows.
+const _overviewRows = 5;
 
-/// Search: a keyword, and the published series that match it.
+/// The groups one keyword answers with, each a list of its own.
+enum _SearchGroup { series, creators, labels }
+
+/// Search: a keyword, and the published series, authors, and labels that
+/// match it.
 ///
 /// The field is the app bar, and it is the whole of the screen's input: the
-/// results under it answer whatever is in it, one cursor page at a time, and
-/// emptying it takes them away rather than searching for nothing. The catalog
-/// stands behind this screen, so a reader who cleared the field and changed
-/// their mind leaves by going back.
+/// results under it answer whatever is in it, and emptying it takes them away
+/// rather than searching for nothing. The catalog stands behind this screen,
+/// so a reader who cleared the field and changed their mind leaves by going
+/// back.
+///
+/// Every group is read on its own, so an author a keyword names arrives
+/// whether or not a series matched, and one group the API could not answer
+/// offers its retry without taking the others down. The overview shows the
+/// first rows of all three; a group opened on its own is its whole list, one
+/// cursor page at a time, and keeps what the overview already read.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -42,34 +57,19 @@ class _SearchScreenState extends State<SearchScreen> {
   /// results.
   var _query = '';
 
+  /// The group shown on its own, and `null` for the overview of all three.
+  _SearchGroup? _group;
+
   Timer? _pending;
 
-  /// Every page read for [_query] as one list, and `null` while the first is
-  /// still in flight.
-  List<SeriesItem>? _series;
-
-  /// What the API calls the page under [_series]. Empty at the end of the
-  /// results, which is what takes the footer away.
-  var _nextToken = '';
-
-  /// The first page's failure, which is the whole screen, and a later page's,
-  /// which is the footer under the rows already on screen.
-  CatalogFailure? _failure;
-  CatalogFailure? _moreFailure;
-
-  /// Whether a page is in flight. The screen is not built from it — the footer
-  /// stands for as long as there is a page left to read — so it is set without
-  /// [setState], which is what lets the list ask for a page while it builds.
-  var _reading = false;
+  final _series = CatalogPager<SeriesItem, Null>(_nothingAsked);
+  final _creators = CatalogPager<PublishedCreator, Null>(_nothingAsked);
+  final _labels = CatalogPager<PublishedLabel, Null>(_nothingAsked);
 
   CatalogRepository? _catalog;
 
-  /// Counts the reads this screen has started, so an answer to a keyword the
-  /// reader has typed past cannot land on the screen under the current one.
-  var _reads = 0;
-
   /// Asks the keyword again whenever the repository changes, the way the
-  /// catalog list does: the rows on screen and the token under them were
+  /// catalog list does: the rows on screen and the tokens under them were
   /// answered by the repository that has just been replaced, so keeping them
   /// would show one catalog's results and then page them out of another.
   @override
@@ -82,7 +82,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final swapped = _catalog != null;
     _catalog = catalog;
     if (swapped && _query.isNotEmpty) {
-      _readFirstPage(_query);
+      _readFirstPages(_query);
     }
   }
 
@@ -90,6 +90,9 @@ class _SearchScreenState extends State<SearchScreen> {
   void dispose() {
     _pending?.cancel();
     _field.dispose();
+    _series.dispose();
+    _creators.dispose();
+    _labels.dispose();
     super.dispose();
   }
 
@@ -114,71 +117,44 @@ class _SearchScreenState extends State<SearchScreen> {
     if (query == _query) {
       return;
     }
-    _readFirstPage(query);
+    _readFirstPages(query);
   }
 
-  /// Reads the first page of [query], which is also what the retry does after
-  /// a failed one: the keyword has not changed, so [_search] would leave it
-  /// alone.
-  void _readFirstPage(String query) {
+  /// Reads the first page of every group for [query].
+  ///
+  /// A token belongs to the keyword it was built for, so each group's reader
+  /// holds the keyword it was started with rather than whatever the field says
+  /// by the time a later page is asked for.
+  void _readFirstPages(String query) {
     setState(() {
       _query = query;
-      _series = null;
-      _nextToken = '';
-      _failure = null;
-      _moreFailure = null;
-      _reading = query.isNotEmpty;
     });
     if (query.isEmpty) {
       // Nothing to ask the API for: the screen is back to its prompt, and an
       // answer to the keyword before this one must not arrive under it.
-      _reads++;
+      _series.clear();
+      _creators.clear();
+      _labels.clear();
       return;
     }
-    unawaited(_read(++_reads, _catalog!, query, ''));
+    final catalog = _catalog!;
+    _series.restart((token) async {
+      final page = await catalog.searchSeries(query: query, token: token);
+      return CatalogPageRead(items: page.series, nextToken: page.nextToken);
+    });
+    _creators.restart((token) async {
+      final page = await catalog.searchCreators(query: query, token: token);
+      return CatalogPageRead(items: page.creators, nextToken: page.nextToken);
+    });
+    _labels.restart((token) async {
+      final page = await catalog.searchLabels(query: query, token: token);
+      return CatalogPageRead(items: page.labels, nextToken: page.nextToken);
+    });
   }
 
-  /// Asks for the page under the last one, unless it is already on its way,
-  /// the results ended, or the last attempt at it failed and is waiting on the
-  /// footer's retry.
-  void _readMore() {
-    if (_reading || _nextToken.isEmpty || _moreFailure != null) {
-      return;
-    }
-    _reading = true;
-    unawaited(_read(++_reads, _catalog!, _query, _nextToken));
-  }
-
-  /// Reads the page [token] names and puts it under what is already there.
-  Future<void> _read(
-    int read,
-    CatalogRepository catalog,
-    String query,
-    String token,
-  ) async {
-    final isFirstPage = token.isEmpty;
-    SeriesPage? page;
-    CatalogFailure? failure;
-    try {
-      page = await catalog.searchSeries(query: query, token: token);
-    } on CatalogFailure catch (error) {
-      failure = error;
-    }
-    if (!mounted || read != _reads) {
-      return;
-    }
+  void _show(_SearchGroup? group) {
     setState(() {
-      _reading = false;
-      if (page == null) {
-        if (isFirstPage) {
-          _failure = failure;
-        } else {
-          _moreFailure = failure;
-        }
-        return;
-      }
-      _series = [if (!isFirstPage) ...?_series, ...page.series];
-      _nextToken = page.nextToken;
+      _group = group;
     });
   }
 
@@ -218,6 +194,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
           ),
         ],
+        bottom: _query.isEmpty
+            ? null
+            : _GroupChoice(group: _group, onSelected: _show),
       ),
       body: _results(messages),
     );
@@ -230,96 +209,292 @@ class _SearchScreenState extends State<SearchScreen> {
         message: messages.searchPrompt,
       );
     }
-    final failure = _failure;
-    if (failure != null) {
-      return CatalogMessage(
-        key: const ValueKey('search-error'),
-        message: catalogFailureCopy(messages, failure, messages.searchFailed),
-        actionKey: const ValueKey('search-retry'),
-        actionLabel: messages.commonRetry,
-        onAction: () {
-          _pending?.cancel();
-          _readFirstPage(_query);
-        },
-      );
-    }
-    final series = _series;
-    if (series == null) {
-      return const Padding(
-        key: ValueKey('search-loading'),
-        padding: EdgeInsets.all(24),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    // The footer is the page under the list: a spinner while there is one left
-    // to read, and what went wrong when the last attempt at it failed.
-    final hasFooter = _nextToken.isNotEmpty || _moreFailure != null;
-    if (series.isEmpty && !hasFooter) {
-      return CatalogMessage(
-        key: const ValueKey('search-empty'),
-        message: messages.searchNoResults(query: _query),
-      );
-    }
-    return ListView.separated(
-      key: const ValueKey('search-results'),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: series.length + (hasFooter ? 1 : 0),
-      separatorBuilder: (context, index) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        if (index >= series.length - _readAheadRows) {
-          _readMore();
-        }
-        if (index == series.length) {
-          return _SearchPageFooter(
-            message: _moreFailure == null
-                ? null
-                : catalogFailureCopy(
-                    messages,
-                    _moreFailure,
-                    messages.searchFailed,
+    return switch (_group) {
+      null => ListView(
+        key: const ValueKey('search-overview'),
+        padding: const EdgeInsets.only(bottom: 16),
+        children: [
+          _OverviewSection(
+            pager: _series,
+            name: 'series',
+            heading: messages.searchSeriesHeading,
+            emptyMessage: messages.searchSeriesNoResults(query: _query),
+            failedMessage: messages.searchSeriesFailed,
+            showAllLabel: messages.searchSeriesShowAll,
+            onShowAll: () => _show(_SearchGroup.series),
+            itemBuilder: (series) => SeriesTile(series: series),
+          ),
+          _OverviewSection(
+            pager: _creators,
+            name: 'creators',
+            heading: messages.searchCreatorsHeading,
+            emptyMessage: messages.searchCreatorsNoResults(query: _query),
+            failedMessage: messages.searchCreatorsFailed,
+            showAllLabel: messages.searchCreatorsShowAll,
+            onShowAll: () => _show(_SearchGroup.creators),
+            itemBuilder: (creator) => CreatorTile(creator: creator),
+          ),
+          _OverviewSection(
+            pager: _labels,
+            name: 'labels',
+            heading: messages.searchLabelsHeading,
+            emptyMessage: messages.searchLabelsNoResults(query: _query),
+            failedMessage: messages.searchLabelsFailed,
+            showAllLabel: messages.searchLabelsShowAll,
+            onShowAll: () => _show(_SearchGroup.labels),
+            itemBuilder: (label) => LabelTile(label: label),
+          ),
+        ],
+      ),
+      _SearchGroup.series => _GroupResults(
+        pager: _series,
+        name: 'series',
+        emptyMessage: messages.searchSeriesNoResults(query: _query),
+        failedMessage: messages.searchSeriesFailed,
+        itemBuilder: (series) => SeriesTile(series: series),
+      ),
+      _SearchGroup.creators => _GroupResults(
+        pager: _creators,
+        name: 'creators',
+        emptyMessage: messages.searchCreatorsNoResults(query: _query),
+        failedMessage: messages.searchCreatorsFailed,
+        itemBuilder: (creator) => CreatorTile(creator: creator),
+      ),
+      _SearchGroup.labels => _GroupResults(
+        pager: _labels,
+        name: 'labels',
+        emptyMessage: messages.searchLabelsNoResults(query: _query),
+        failedMessage: messages.searchLabelsFailed,
+        itemBuilder: (label) => LabelTile(label: label),
+      ),
+    };
+  }
+}
+
+/// The reader a group holds before any keyword has been typed, which is never
+/// called: a pager reads only once it is restarted with a keyword's reader.
+Future<CatalogPageRead<T, Null>?> _nothingAsked<T>(String token) async => null;
+
+/// Which of the groups the screen shows: all of them, or one on its own.
+class _GroupChoice extends StatelessWidget implements PreferredSizeWidget {
+  const _GroupChoice({required this.group, required this.onSelected});
+
+  final _SearchGroup? group;
+  final ValueChanged<_SearchGroup?> onSelected;
+
+  static const _height = 48.0;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(_height);
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    return SizedBox(
+      height: _height,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        children: [
+          ChoiceChip(
+            key: const ValueKey('search-show-overview'),
+            label: Text(messages.searchAll),
+            selected: group == null,
+            onSelected: (_) => onSelected(null),
+          ),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            key: const ValueKey('search-show-series'),
+            label: Text(messages.searchSeriesHeading),
+            selected: group == _SearchGroup.series,
+            onSelected: (_) => onSelected(_SearchGroup.series),
+          ),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            key: const ValueKey('search-show-creators'),
+            label: Text(messages.searchCreatorsHeading),
+            selected: group == _SearchGroup.creators,
+            onSelected: (_) => onSelected(_SearchGroup.creators),
+          ),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            key: const ValueKey('search-show-labels'),
+            label: Text(messages.searchLabelsHeading),
+            selected: group == _SearchGroup.labels,
+            onSelected: (_) => onSelected(_SearchGroup.labels),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One group in the overview: its heading, its first rows, and the way to the
+/// rest of it.
+///
+/// The offer of the rest is there only while there is more than the overview
+/// shows, because one leading to the rows already on screen is a dead end.
+class _OverviewSection<T> extends StatelessWidget {
+  const _OverviewSection({
+    required this.pager,
+    required this.name,
+    required this.heading,
+    required this.emptyMessage,
+    required this.failedMessage,
+    required this.showAllLabel,
+    required this.onShowAll,
+    required this.itemBuilder,
+  });
+
+  final CatalogPager<T, Null> pager;
+
+  /// Names the group on screen, as `search-<name>-…`.
+  final String name;
+
+  final String heading;
+  final String emptyMessage;
+
+  /// What the group calls a failure of its own.
+  final String failedMessage;
+
+  final String showAllLabel;
+  final VoidCallback onShowAll;
+  final Widget Function(T item) itemBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    final theme = Theme.of(context);
+    return ListenableBuilder(
+      listenable: pager,
+      builder: (context, child) {
+        final items = pager.items;
+        final failure = pager.failure;
+        return Column(
+          key: ValueKey('search-$name'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(heading, style: theme.textTheme.titleMedium),
+            ),
+            if (failure != null)
+              RetryRow(
+                sectionKey: 'search-$name',
+                message: catalogFailureCopy(messages, failure, failedMessage),
+                onRetry: pager.restart,
+              )
+            else if (items == null)
+              Padding(
+                key: ValueKey('search-$name-loading'),
+                padding: const EdgeInsets.all(16),
+                child: const Center(child: CircularProgressIndicator()),
+              )
+            else if (items.isEmpty && pager.nextToken.isEmpty)
+              Padding(
+                key: ValueKey('search-$name-empty'),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text(emptyMessage),
+              )
+            else ...[
+              for (final item in items.take(_overviewRows)) itemBuilder(item),
+              if (items.length > _overviewRows || pager.nextToken.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: TextButton(
+                    key: ValueKey('search-$name-show-all'),
+                    onPressed: onShowAll,
+                    child: Text(showAllLabel),
                   ),
-            onRetry: () {
-              setState(() {
-                _moreFailure = null;
-              });
-              _readMore();
-            },
-          );
-        }
-        return SeriesTile(series: series[index]);
+                ),
+            ],
+          ],
+        );
       },
     );
   }
 }
 
-/// The page under the results, at the bottom of them: a spinner while that
-/// page is being read, and what went wrong when it could not be.
-class _SearchPageFooter extends StatelessWidget {
-  const _SearchPageFooter({required this.message, required this.onRetry});
+/// One group on its own: every row read so far, and the page under them asked
+/// for as the reader nears the end.
+class _GroupResults<T> extends StatelessWidget {
+  const _GroupResults({
+    required this.pager,
+    required this.name,
+    required this.emptyMessage,
+    required this.failedMessage,
+    required this.itemBuilder,
+  });
 
-  /// What went wrong reading the page, and `null` while it is still on its
-  /// way.
-  final String? message;
+  final CatalogPager<T, Null> pager;
 
-  final VoidCallback onRetry;
+  /// Names the group on screen, as `search-<name>-…`.
+  final String name;
+
+  final String emptyMessage;
+
+  /// What the group calls a failure of its own.
+  final String failedMessage;
+
+  final Widget Function(T item) itemBuilder;
 
   @override
   Widget build(BuildContext context) {
-    final message = this.message;
-    if (message == null) {
-      return const Padding(
-        key: ValueKey('search-more-loading'),
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: RetryRow(
-        sectionKey: 'search-more',
-        message: message,
-        onRetry: onRetry,
-      ),
+    final messages = AppMessages.of(context);
+    return ListenableBuilder(
+      listenable: pager,
+      builder: (context, child) {
+        final failure = pager.failure;
+        if (failure != null) {
+          return CatalogMessage(
+            key: ValueKey('search-$name-error'),
+            message: catalogFailureCopy(messages, failure, failedMessage),
+            actionKey: ValueKey('search-$name-retry'),
+            actionLabel: messages.commonRetry,
+            onAction: pager.restart,
+          );
+        }
+        final items = pager.items;
+        if (items == null) {
+          return Padding(
+            key: ValueKey('search-$name-loading'),
+            padding: const EdgeInsets.all(24),
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        final hasFooter = pager.hasFooter;
+        if (items.isEmpty && !hasFooter) {
+          return CatalogMessage(
+            key: ValueKey('search-$name-empty'),
+            message: emptyMessage,
+          );
+        }
+        return ListView.separated(
+          key: ValueKey('search-$name-results'),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: items.length + (hasFooter ? 1 : 0),
+          separatorBuilder: (context, index) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            if (index >= items.length - readAheadRows) {
+              pager.readMore();
+            }
+            if (index == items.length) {
+              return PageFooter(
+                sectionKey: 'search-$name-more',
+                message: pager.moreFailure == null
+                    ? null
+                    : catalogFailureCopy(
+                        messages,
+                        pager.moreFailure,
+                        failedMessage,
+                      ),
+                onRetry: pager.retryMore,
+              );
+            }
+            return itemBuilder(items[index]);
+          },
+        );
+      },
     );
   }
 }
@@ -328,9 +503,9 @@ class _SearchPageFooter extends StatelessWidget {
 ///
 /// [TextField.maxLength] counts grapheme clusters, of which one can be several
 /// code points — 👍🏽 is one character and two — so a field limited by it still
-/// holds keywords `SearchPublishedSeries` refuses. Text over the limit is cut
-/// rather than refused, so pasting a long line leaves the reader with the part
-/// that fits instead of with nothing.
+/// holds keywords the search RPCs refuse. Text over the limit is cut rather
+/// than refused, so pasting a long line leaves the reader with the part that
+/// fits instead of with nothing.
 class _RuneLimitingFormatter extends TextInputFormatter {
   const _RuneLimitingFormatter(this.maxRunes);
 

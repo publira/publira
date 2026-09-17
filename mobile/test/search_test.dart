@@ -30,6 +30,14 @@ void main() {
       newestSeries: fixtureSeries,
       details: fixtureDetails(),
       searchResults: fixtureSeries,
+      creatorSearchResults: const [fixturePublishedCreator],
+      labelSearchResults: const [fixturePublishedLabel],
+      publishedCreators: const {'SeedAUTHAAA1': fixturePublishedCreator},
+      publishedLabels: const {'SeedLABLAAA1': fixturePublishedLabel},
+      detailSeries: {
+        'SeedAUTHAAA1': [fixtureSeries.first],
+        'SeedLABLAAA1': [fixtureSeries.first],
+      },
     );
     offline = InMemoryOfflineLibrary();
   });
@@ -63,6 +71,23 @@ void main() {
 
   Finder tileOf(String seriesId) =>
       find.byKey(ValueKey('series-tile-$seriesId'));
+
+  /// Drags [list] until [finder] is on screen, the way a reader scrolls a
+  /// phone-sized list to a row further down it.
+  Future<void> dragUntilFound(
+    WidgetTester tester,
+    Finder list,
+    Finder finder,
+  ) async {
+    for (var drags = 0; drags < 40; drags++) {
+      if (finder.evaluate().isNotEmpty) {
+        break;
+      }
+      await tester.drag(list, const Offset(0, -400));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
 
   testWidgets('the catalog app bar opens the search screen', (tester) async {
     await pumpApp(tester, location: AppRoutes.catalog);
@@ -155,14 +180,137 @@ void main() {
     expect(find.byKey(const ValueKey('search-field')), findsNothing);
   });
 
-  testWidgets('a keyword nothing matches says so', (tester) async {
+  testWidgets('a keyword asks every group for it once', (tester) async {
+    await pumpApp(tester);
+
+    await type(tester, 'Seed');
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('label-tile-SeedLABLAAA1')),
+    );
+
+    expect(catalog.searchRequests.single.query, 'Seed');
+    expect(catalog.creatorSearchRequests.single.query, 'Seed');
+    expect(catalog.labelSearchRequests.single.query, 'Seed');
+  });
+
+  testWidgets('a keyword that names an author opens their series', (
+    tester,
+  ) async {
     catalog.searchResults = const [];
     await pumpApp(tester);
 
+    await type(tester, 'Seed Author');
+    final author = find.byKey(const ValueKey('creator-tile-SeedAUTHAAA1'));
+    await pumpUntilFound(tester, author);
+
+    // A name matches no title, and the author still arrives: the groups
+    // answer on their own.
+    expect(find.byKey(const ValueKey('search-series-empty')), findsOneWidget);
+
+    await tester.tap(author);
+    await pumpUntilRouteSettled(
+      tester,
+      find.byKey(const ValueKey('creator-body')),
+    );
+
+    expect(find.text('Profile text for Seed Author 001'), findsOneWidget);
+    expect(tileOf(fixtureSeries.first.id), findsOneWidget);
+  });
+
+  testWidgets('a keyword that names a label opens its series', (tester) async {
+    catalog.searchResults = const [];
+    await pumpApp(tester);
+
+    await type(tester, 'Seed Label');
+    final label = find.byKey(const ValueKey('label-tile-SeedLABLAAA1'));
+    await pumpUntilFound(tester, label);
+
+    await tester.tap(label);
+    await pumpUntilRouteSettled(
+      tester,
+      find.byKey(const ValueKey('label-body')),
+    );
+
+    expect(tileOf(fixtureSeries.first.id), findsOneWidget);
+  });
+
+  testWidgets('a keyword nothing matches says so for every group', (
+    tester,
+  ) async {
+    catalog.searchResults = const [];
+    catalog.creatorSearchResults = const [];
+    catalog.labelSearchResults = const [];
+    await pumpApp(tester);
+
     await type(tester, 'nothing here');
-    await pumpUntilFound(tester, find.byKey(const ValueKey('search-empty')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('search-labels-empty')),
+    );
 
     expect(find.text('No series match “nothing here”.'), findsOneWidget);
+    expect(find.text('No authors match “nothing here”.'), findsOneWidget);
+    expect(find.text('No labels match “nothing here”.'), findsOneWidget);
+  });
+
+  testWidgets('a group the API could not answer leaves the others alone', (
+    tester,
+  ) async {
+    catalog.creatorSearchError = const CatalogFailure(
+      CatalogFailureKind.network,
+    );
+    await pumpApp(tester);
+
+    await type(tester, 'Seed');
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('search-creators-retry')),
+    );
+
+    expect(tileOf(fixtureSeries.first.id), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('label-tile-SeedLABLAAA1')),
+      findsOneWidget,
+    );
+
+    catalog.creatorSearchError = null;
+    await tester.tap(find.byKey(const ValueKey('search-creators-retry')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('creator-tile-SeedAUTHAAA1')),
+    );
+
+    expect(catalog.creatorSearchRequests, hasLength(2));
+    // Retrying one group asks nothing of the groups that answered.
+    expect(catalog.searchRequests, hasLength(1));
+  });
+
+  testWidgets('the overview offers the rest of a group only when there is '
+      'more of it', (tester) async {
+    catalog.searchResults = fixtureCatalog(6);
+    await pumpApp(tester);
+
+    await type(tester, 'Catalog');
+    await pumpUntilFound(tester, tileOf('catalog-series-5'));
+
+    expect(tileOf('catalog-series-6'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('search-creators-show-all')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('search-series-show-all')));
+    await pumpUntilFound(tester, tileOf('catalog-series-6'));
+
+    // The group opened on its own keeps what the overview read.
+    expect(catalog.searchRequests, hasLength(1));
+    expect(find.byKey(const ValueKey('search-series-results')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('search-show-overview')));
+    await pumpUntilFound(tester, find.byKey(const ValueKey('search-overview')));
+
+    expect(tileOf('catalog-series-6'), findsNothing);
   });
 
   testWidgets('a search the API could not answer offers a retry', (
@@ -172,17 +320,20 @@ void main() {
     await pumpApp(tester);
 
     await type(tester, 'Kitchen');
-    await pumpUntilFound(tester, find.byKey(const ValueKey('search-retry')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('search-series-retry')),
+    );
 
     catalog.searchError = null;
-    await tester.tap(find.byKey(const ValueKey('search-retry')));
+    await tester.tap(find.byKey(const ValueKey('search-series-retry')));
     await pumpUntilFound(tester, tileOf('series-kitchen'));
 
     expect(catalog.searchRequests, hasLength(2));
     expect(catalog.searchRequests.last.query, 'Kitchen');
   });
 
-  testWidgets('the results page as the reader reaches the end of them', (
+  testWidgets('a group pages as the reader reaches the end of it', (
     tester,
   ) async {
     catalog.searchResults = fixtureCatalog(40);
@@ -191,18 +342,17 @@ void main() {
 
     await type(tester, 'Catalog');
     await pumpUntilFound(tester, tileOf('catalog-series-1'));
+    await tester.tap(find.byKey(const ValueKey('search-show-series')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('search-series-results')),
+    );
 
-    for (var drags = 0; drags < 40; drags++) {
-      if (tileOf('catalog-series-12').evaluate().isNotEmpty) {
-        break;
-      }
-      await tester.drag(
-        find.byKey(const ValueKey('search-results')),
-        const Offset(0, -400),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
-    }
+    await dragUntilFound(
+      tester,
+      find.byKey(const ValueKey('search-series-results')),
+      tileOf('catalog-series-12'),
+    );
 
     expect(tileOf('catalog-series-12'), findsOneWidget);
     expect(
@@ -227,24 +377,24 @@ void main() {
 
     await type(tester, 'Catalog');
     await pumpUntilFound(tester, tileOf('catalog-series-1'));
+    await tester.tap(find.byKey(const ValueKey('search-show-series')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('search-series-results')),
+    );
 
-    for (var drags = 0; drags < 40; drags++) {
-      if (find
-          .byKey(const ValueKey('search-more-error'))
-          .evaluate()
-          .isNotEmpty) {
-        break;
-      }
-      await tester.drag(
-        find.byKey(const ValueKey('search-results')),
-        const Offset(0, -400),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
-    }
+    await dragUntilFound(
+      tester,
+      find.byKey(const ValueKey('search-series-results')),
+      find.byKey(const ValueKey('search-series-more-error')),
+    );
 
-    expect(find.byKey(const ValueKey('search-more-error')), findsOneWidget);
-    expect(tileOf('catalog-series-1'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('search-series-more-error')),
+      findsOneWidget,
+    );
+    // The last row of the page that did arrive stands right above the footer.
+    expect(tileOf('catalog-series-10'), findsOneWidget);
   });
 
   testWidgets('the keyword the reader typed past does not answer the screen', (
@@ -254,13 +404,16 @@ void main() {
     await pumpApp(tester);
 
     await type(tester, 'Kitchen');
-    await pumpUntilFound(tester, find.byKey(const ValueKey('search-empty')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('search-series-empty')),
+    );
 
     catalog.searchResults = fixtureSeries;
     await type(tester, 'Seed');
     await pumpUntilFound(tester, tileOf(fixtureSeries.first.id));
 
-    expect(find.byKey(const ValueKey('search-empty')), findsNothing);
+    expect(find.byKey(const ValueKey('search-series-empty')), findsNothing);
     expect(catalog.searchRequests.last.query, 'Seed');
   });
 

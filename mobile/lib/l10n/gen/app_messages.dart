@@ -370,11 +370,35 @@ abstract class AppMessages {
   /// `mobile.common.list_two`
   String commonListTwo({required String first, required String rest});
 
+  /// `mobile.common.more_series_failed`
+  String get commonMoreSeriesFailed;
+
   /// `mobile.common.retry`
   String get commonRetry;
 
+  /// `mobile.common.series_count`
+  String commonSeriesCount({required String count});
+
   /// `mobile.common.sign_in`
   String get commonSignIn;
+
+  /// `mobile.creator.load_failed`
+  String get creatorLoadFailed;
+
+  /// `mobile.creator.not_found`
+  String creatorNotFound({required String id});
+
+  /// `mobile.creator.profile_empty`
+  String get creatorProfileEmpty;
+
+  /// `mobile.creator.series_empty`
+  String get creatorSeriesEmpty;
+
+  /// `mobile.creator.series_heading`
+  String get creatorSeriesHeading;
+
+  /// `mobile.creator.title`
+  String get creatorTitle;
 
   /// `mobile.follow.failed`
   String get followFailed;
@@ -421,6 +445,21 @@ abstract class AppMessages {
   /// `mobile.follows.title`
   String get followsTitle;
 
+  /// `mobile.label.load_failed`
+  String get labelLoadFailed;
+
+  /// `mobile.label.not_found`
+  String labelNotFound({required String id});
+
+  /// `mobile.label.series_empty`
+  String get labelSeriesEmpty;
+
+  /// `mobile.label.series_heading`
+  String get labelSeriesHeading;
+
+  /// `mobile.label.title`
+  String get labelTitle;
+
   /// `mobile.not_found.message`
   String notFoundMessage({required String uri});
 
@@ -445,20 +484,53 @@ abstract class AppMessages {
   /// `mobile.push.open`
   String get pushOpen;
 
+  /// `mobile.search.all`
+  String get searchAll;
+
   /// `mobile.search.clear`
   String get searchClear;
 
-  /// `mobile.search.failed`
-  String get searchFailed;
+  /// `mobile.search.creators_failed`
+  String get searchCreatorsFailed;
+
+  /// `mobile.search.creators_heading`
+  String get searchCreatorsHeading;
+
+  /// `mobile.search.creators_no_results`
+  String searchCreatorsNoResults({required String query});
+
+  /// `mobile.search.creators_show_all`
+  String get searchCreatorsShowAll;
 
   /// `mobile.search.label`
   String get searchLabel;
 
-  /// `mobile.search.no_results`
-  String searchNoResults({required String query});
+  /// `mobile.search.labels_failed`
+  String get searchLabelsFailed;
+
+  /// `mobile.search.labels_heading`
+  String get searchLabelsHeading;
+
+  /// `mobile.search.labels_no_results`
+  String searchLabelsNoResults({required String query});
+
+  /// `mobile.search.labels_show_all`
+  String get searchLabelsShowAll;
 
   /// `mobile.search.prompt`
   String get searchPrompt;
+
+  /// `mobile.search.series_failed`
+  String get searchSeriesFailed;
+
+  /// `mobile.search.series_heading`
+  String get searchSeriesHeading;
+
+  /// `mobile.search.series_no_results`
+  String searchSeriesNoResults({required String query});
+
+  /// `mobile.search.series_show_all`
+  String get searchSeriesShowAll;
 
   /// `mobile.series.age_gate.confirm_r15`
   String get seriesAgeGateConfirmR15;
@@ -1148,13 +1220,53 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get commonMoreSeriesFailed {
+    return 'シリーズの続きを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
   String get commonRetry {
     return '再試行';
   }
 
   @override
+  String commonSeriesCount({required String count}) {
+    return '公開中シリーズ $count 件';
+  }
+
+  @override
   String get commonSignIn {
     return 'サインイン';
+  }
+
+  @override
+  String get creatorLoadFailed {
+    return '著者を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String creatorNotFound({required String id}) {
+    return '著者が見つかりません ($id)';
+  }
+
+  @override
+  String get creatorProfileEmpty {
+    return 'プロフィールはまだ公開されていません。';
+  }
+
+  @override
+  String get creatorSeriesEmpty {
+    return 'まだ公開中シリーズはありません。';
+  }
+
+  @override
+  String get creatorSeriesHeading {
+    return '関連シリーズ';
+  }
+
+  @override
+  String get creatorTitle {
+    return '著者';
   }
 
   @override
@@ -1233,6 +1345,31 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get labelLoadFailed {
+    return 'レーベルを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String labelNotFound({required String id}) {
+    return 'レーベルが見つかりません ($id)';
+  }
+
+  @override
+  String get labelSeriesEmpty {
+    return 'まだ公開中シリーズはありません。';
+  }
+
+  @override
+  String get labelSeriesHeading {
+    return '所属シリーズ';
+  }
+
+  @override
+  String get labelTitle {
+    return 'レーベル';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '「$uri」は存在しません。';
   }
@@ -1273,13 +1410,33 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get searchAll {
+    return 'すべて';
+  }
+
+  @override
   String get searchClear {
     return 'キーワードを消去';
   }
 
   @override
-  String get searchFailed {
-    return '検索結果を表示できませんでした。もう一度お試しください。';
+  String get searchCreatorsFailed {
+    return '著者の検索結果を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get searchCreatorsHeading {
+    return '著者';
+  }
+
+  @override
+  String searchCreatorsNoResults({required String query}) {
+    return '「$query」に一致する著者はいません。';
+  }
+
+  @override
+  String get searchCreatorsShowAll {
+    return '著者の検索結果をすべて見る';
   }
 
   @override
@@ -1288,13 +1445,48 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
-  String searchNoResults({required String query}) {
-    return '「$query」に一致するシリーズはありません。';
+  String get searchLabelsFailed {
+    return 'レーベルの検索結果を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get searchLabelsHeading {
+    return 'レーベル';
+  }
+
+  @override
+  String searchLabelsNoResults({required String query}) {
+    return '「$query」に一致するレーベルはありません。';
+  }
+
+  @override
+  String get searchLabelsShowAll {
+    return 'レーベルの検索結果をすべて見る';
   }
 
   @override
   String get searchPrompt {
-    return 'キーワードを入力して公開中のシリーズを検索できます。';
+    return 'キーワードを入力して公開中のシリーズ・著者・レーベルを検索できます。';
+  }
+
+  @override
+  String get searchSeriesFailed {
+    return 'シリーズの検索結果を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get searchSeriesHeading {
+    return 'シリーズ';
+  }
+
+  @override
+  String searchSeriesNoResults({required String query}) {
+    return '「$query」に一致するシリーズはありません。';
+  }
+
+  @override
+  String get searchSeriesShowAll {
+    return 'シリーズの検索結果をすべて見る';
   }
 
   @override
@@ -2121,13 +2313,53 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get commonMoreSeriesFailed {
+    return 'Could not show more series. Try again.';
+  }
+
+  @override
   String get commonRetry {
     return 'Retry';
   }
 
   @override
+  String commonSeriesCount({required String count}) {
+    return '$count published series';
+  }
+
+  @override
   String get commonSignIn {
     return 'Sign in';
+  }
+
+  @override
+  String get creatorLoadFailed {
+    return 'Could not show the author. Try again.';
+  }
+
+  @override
+  String creatorNotFound({required String id}) {
+    return 'Author not found ($id)';
+  }
+
+  @override
+  String get creatorProfileEmpty {
+    return 'No profile has been published yet.';
+  }
+
+  @override
+  String get creatorSeriesEmpty {
+    return 'No published series yet.';
+  }
+
+  @override
+  String get creatorSeriesHeading {
+    return 'Related series';
+  }
+
+  @override
+  String get creatorTitle {
+    return 'Author';
   }
 
   @override
@@ -2206,6 +2438,31 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get labelLoadFailed {
+    return 'Could not show the label. Try again.';
+  }
+
+  @override
+  String labelNotFound({required String id}) {
+    return 'Label not found ($id)';
+  }
+
+  @override
+  String get labelSeriesEmpty {
+    return 'No published series yet.';
+  }
+
+  @override
+  String get labelSeriesHeading {
+    return 'Series in this label';
+  }
+
+  @override
+  String get labelTitle {
+    return 'Label';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri” does not exist.';
   }
@@ -2246,13 +2503,33 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get searchAll {
+    return 'All';
+  }
+
+  @override
   String get searchClear {
     return 'Clear the keyword';
   }
 
   @override
-  String get searchFailed {
-    return 'Could not show the search results. Try again.';
+  String get searchCreatorsFailed {
+    return 'Could not show the author results. Try again.';
+  }
+
+  @override
+  String get searchCreatorsHeading {
+    return 'Authors';
+  }
+
+  @override
+  String searchCreatorsNoResults({required String query}) {
+    return 'No authors match “$query”.';
+  }
+
+  @override
+  String get searchCreatorsShowAll {
+    return 'Show all authors';
   }
 
   @override
@@ -2261,13 +2538,48 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
-  String searchNoResults({required String query}) {
-    return 'No series match “$query”.';
+  String get searchLabelsFailed {
+    return 'Could not show the label results. Try again.';
+  }
+
+  @override
+  String get searchLabelsHeading {
+    return 'Labels';
+  }
+
+  @override
+  String searchLabelsNoResults({required String query}) {
+    return 'No labels match “$query”.';
+  }
+
+  @override
+  String get searchLabelsShowAll {
+    return 'Show all labels';
   }
 
   @override
   String get searchPrompt {
-    return 'Enter a keyword to search the published series.';
+    return 'Enter a keyword to search the published series, authors, and labels.';
+  }
+
+  @override
+  String get searchSeriesFailed {
+    return 'Could not show the series results. Try again.';
+  }
+
+  @override
+  String get searchSeriesHeading {
+    return 'Series';
+  }
+
+  @override
+  String searchSeriesNoResults({required String query}) {
+    return 'No series match “$query”.';
+  }
+
+  @override
+  String get searchSeriesShowAll {
+    return 'Show all series';
   }
 
   @override
@@ -3094,13 +3406,53 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get commonMoreSeriesFailed {
+    return '시리즈를 더 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
   String get commonRetry {
     return '다시 시도';
   }
 
   @override
+  String commonSeriesCount({required String count}) {
+    return '공개 중인 시리즈 $count건';
+  }
+
+  @override
   String get commonSignIn {
     return '로그인';
+  }
+
+  @override
+  String get creatorLoadFailed {
+    return '작가를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String creatorNotFound({required String id}) {
+    return '작가를 찾을 수 없습니다 ($id)';
+  }
+
+  @override
+  String get creatorProfileEmpty {
+    return '프로필이 아직 공개되지 않았습니다.';
+  }
+
+  @override
+  String get creatorSeriesEmpty {
+    return '아직 공개 중인 시리즈가 없습니다.';
+  }
+
+  @override
+  String get creatorSeriesHeading {
+    return '관련 시리즈';
+  }
+
+  @override
+  String get creatorTitle {
+    return '작가';
   }
 
   @override
@@ -3179,6 +3531,31 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get labelLoadFailed {
+    return '레이블을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String labelNotFound({required String id}) {
+    return '레이블을 찾을 수 없습니다 ($id)';
+  }
+
+  @override
+  String get labelSeriesEmpty {
+    return '아직 공개 중인 시리즈가 없습니다.';
+  }
+
+  @override
+  String get labelSeriesHeading {
+    return '이 레이블의 시리즈';
+  }
+
+  @override
+  String get labelTitle {
+    return '레이블';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri”은(는) 존재하지 않습니다.';
   }
@@ -3219,13 +3596,33 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get searchAll {
+    return '전체';
+  }
+
+  @override
   String get searchClear {
     return '키워드 지우기';
   }
 
   @override
-  String get searchFailed {
-    return '검색 결과를 표시할 수 없습니다. 다시 시도해 주세요.';
+  String get searchCreatorsFailed {
+    return '작가 검색 결과를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get searchCreatorsHeading {
+    return '작가';
+  }
+
+  @override
+  String searchCreatorsNoResults({required String query}) {
+    return '“$query”과(와) 일치하는 작가가 없습니다.';
+  }
+
+  @override
+  String get searchCreatorsShowAll {
+    return '작가 검색 결과 모두 보기';
   }
 
   @override
@@ -3234,13 +3631,48 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
-  String searchNoResults({required String query}) {
-    return '“$query”과(와) 일치하는 시리즈가 없습니다.';
+  String get searchLabelsFailed {
+    return '레이블 검색 결과를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get searchLabelsHeading {
+    return '레이블';
+  }
+
+  @override
+  String searchLabelsNoResults({required String query}) {
+    return '“$query”과(와) 일치하는 레이블이 없습니다.';
+  }
+
+  @override
+  String get searchLabelsShowAll {
+    return '레이블 검색 결과 모두 보기';
   }
 
   @override
   String get searchPrompt {
-    return '키워드를 입력해 공개 중인 시리즈를 검색해 보세요.';
+    return '키워드를 입력해 공개 중인 시리즈·작가·레이블을 검색해 보세요.';
+  }
+
+  @override
+  String get searchSeriesFailed {
+    return '시리즈 검색 결과를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get searchSeriesHeading {
+    return '시리즈';
+  }
+
+  @override
+  String searchSeriesNoResults({required String query}) {
+    return '“$query”과(와) 일치하는 시리즈가 없습니다.';
+  }
+
+  @override
+  String get searchSeriesShowAll {
+    return '시리즈 검색 결과 모두 보기';
   }
 
   @override
@@ -4067,13 +4499,53 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get commonMoreSeriesFailed {
+    return '无法显示更多系列。请重试。';
+  }
+
+  @override
   String get commonRetry {
     return '重试';
   }
 
   @override
+  String commonSeriesCount({required String count}) {
+    return '已发布 $count 部系列';
+  }
+
+  @override
   String get commonSignIn {
     return '登录';
+  }
+
+  @override
+  String get creatorLoadFailed {
+    return '无法显示该作者。请重试。';
+  }
+
+  @override
+  String creatorNotFound({required String id}) {
+    return '找不到作者（$id）';
+  }
+
+  @override
+  String get creatorProfileEmpty {
+    return '尚未发布简介。';
+  }
+
+  @override
+  String get creatorSeriesEmpty {
+    return '暂无已发布的系列。';
+  }
+
+  @override
+  String get creatorSeriesHeading {
+    return '相关系列';
+  }
+
+  @override
+  String get creatorTitle {
+    return '作者';
   }
 
   @override
@@ -4152,6 +4624,31 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get labelLoadFailed {
+    return '无法显示该品牌。请重试。';
+  }
+
+  @override
+  String labelNotFound({required String id}) {
+    return '找不到品牌（$id）';
+  }
+
+  @override
+  String get labelSeriesEmpty {
+    return '暂无已发布的系列。';
+  }
+
+  @override
+  String get labelSeriesHeading {
+    return '该品牌的系列';
+  }
+
+  @override
+  String get labelTitle {
+    return '品牌';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri”不存在。';
   }
@@ -4192,13 +4689,33 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get searchAll {
+    return '全部';
+  }
+
+  @override
   String get searchClear {
     return '清除关键词';
   }
 
   @override
-  String get searchFailed {
-    return '无法显示搜索结果。请重试。';
+  String get searchCreatorsFailed {
+    return '无法显示作者搜索结果。请重试。';
+  }
+
+  @override
+  String get searchCreatorsHeading {
+    return '作者';
+  }
+
+  @override
+  String searchCreatorsNoResults({required String query}) {
+    return '没有与“$query”匹配的作者。';
+  }
+
+  @override
+  String get searchCreatorsShowAll {
+    return '查看全部作者结果';
   }
 
   @override
@@ -4207,13 +4724,48 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
-  String searchNoResults({required String query}) {
-    return '没有与“$query”匹配的系列。';
+  String get searchLabelsFailed {
+    return '无法显示品牌搜索结果。请重试。';
+  }
+
+  @override
+  String get searchLabelsHeading {
+    return '品牌';
+  }
+
+  @override
+  String searchLabelsNoResults({required String query}) {
+    return '没有与“$query”匹配的品牌。';
+  }
+
+  @override
+  String get searchLabelsShowAll {
+    return '查看全部品牌结果';
   }
 
   @override
   String get searchPrompt {
-    return '请输入关键词搜索已发布的系列。';
+    return '请输入关键词搜索已发布的系列、作者和品牌。';
+  }
+
+  @override
+  String get searchSeriesFailed {
+    return '无法显示系列搜索结果。请重试。';
+  }
+
+  @override
+  String get searchSeriesHeading {
+    return '系列';
+  }
+
+  @override
+  String searchSeriesNoResults({required String query}) {
+    return '没有与“$query”匹配的系列。';
+  }
+
+  @override
+  String get searchSeriesShowAll {
+    return '查看全部系列结果';
   }
 
   @override
@@ -5040,13 +5592,53 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get commonMoreSeriesFailed {
+    return '無法顯示更多系列。請重試。';
+  }
+
+  @override
   String get commonRetry {
     return '重試';
   }
 
   @override
+  String commonSeriesCount({required String count}) {
+    return '已發布 $count 部系列';
+  }
+
+  @override
   String get commonSignIn {
     return '登入';
+  }
+
+  @override
+  String get creatorLoadFailed {
+    return '無法顯示該作者。請重試。';
+  }
+
+  @override
+  String creatorNotFound({required String id}) {
+    return '找不到作者（$id）';
+  }
+
+  @override
+  String get creatorProfileEmpty {
+    return '尚未發布簡介。';
+  }
+
+  @override
+  String get creatorSeriesEmpty {
+    return '目前沒有已發布的系列。';
+  }
+
+  @override
+  String get creatorSeriesHeading {
+    return '相關系列';
+  }
+
+  @override
+  String get creatorTitle {
+    return '作者';
   }
 
   @override
@@ -5125,6 +5717,31 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get labelLoadFailed {
+    return '無法顯示該品牌。請重試。';
+  }
+
+  @override
+  String labelNotFound({required String id}) {
+    return '找不到品牌（$id）';
+  }
+
+  @override
+  String get labelSeriesEmpty {
+    return '目前沒有已發布的系列。';
+  }
+
+  @override
+  String get labelSeriesHeading {
+    return '該品牌的系列';
+  }
+
+  @override
+  String get labelTitle {
+    return '品牌';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '「$uri」不存在。';
   }
@@ -5165,13 +5782,33 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get searchAll {
+    return '全部';
+  }
+
+  @override
   String get searchClear {
     return '清除關鍵字';
   }
 
   @override
-  String get searchFailed {
-    return '無法顯示搜尋結果。請重試。';
+  String get searchCreatorsFailed {
+    return '無法顯示作者搜尋結果。請重試。';
+  }
+
+  @override
+  String get searchCreatorsHeading {
+    return '作者';
+  }
+
+  @override
+  String searchCreatorsNoResults({required String query}) {
+    return '沒有與「$query」相符的作者。';
+  }
+
+  @override
+  String get searchCreatorsShowAll {
+    return '查看全部作者結果';
   }
 
   @override
@@ -5180,13 +5817,48 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
-  String searchNoResults({required String query}) {
-    return '沒有與「$query」相符的系列。';
+  String get searchLabelsFailed {
+    return '無法顯示品牌搜尋結果。請重試。';
+  }
+
+  @override
+  String get searchLabelsHeading {
+    return '品牌';
+  }
+
+  @override
+  String searchLabelsNoResults({required String query}) {
+    return '沒有與「$query」相符的品牌。';
+  }
+
+  @override
+  String get searchLabelsShowAll {
+    return '查看全部品牌結果';
   }
 
   @override
   String get searchPrompt {
-    return '請輸入關鍵字搜尋已發布的系列。';
+    return '請輸入關鍵字搜尋已發布的系列、作者與品牌。';
+  }
+
+  @override
+  String get searchSeriesFailed {
+    return '無法顯示系列搜尋結果。請重試。';
+  }
+
+  @override
+  String get searchSeriesHeading {
+    return '系列';
+  }
+
+  @override
+  String searchSeriesNoResults({required String query}) {
+    return '沒有與「$query」相符的系列。';
+  }
+
+  @override
+  String get searchSeriesShowAll {
+    return '查看全部系列結果';
   }
 
   @override

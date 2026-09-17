@@ -339,6 +339,23 @@ void main() {
       expect(router.state.uri.path, AppRoutes.seriesDetailPath(series.id));
     });
 
+    testWidgets('opens the author a row stands for', (tester) async {
+      catalog.publishedCreators = {creator.id: fixturePublishedCreator};
+      follows.pages = [
+        [MyFollow(kind: FollowTargetKind.creator, targetId: creator.id)],
+      ];
+      await openFollows(tester);
+      await pumpUntilRouteSettled(tester, find.text(creator.name));
+
+      await tester.tap(find.byKey(ValueKey('follow-row-${creator.id}')));
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('creator-body')),
+      );
+
+      expect(router.state.uri.path, AppRoutes.creatorDetailPath(creator.id));
+    });
+
     testWidgets('offers to unfollow without asking for the state', (
       tester,
     ) async {

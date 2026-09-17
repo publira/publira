@@ -562,6 +562,182 @@ void main() {
     expect(await catalog.getCreator('ZZZZZZZZZZZZ'), isNull);
   });
 
+  test(
+    'searchCreators maps the matching authors onto PublishedCreator',
+    () async {
+      final page = await catalog.searchCreators(query: 'author 002');
+
+      final creator = page.creators.single;
+      expect(creator.id, 'SeedAUTHAAA2');
+      expect(creator.name, 'Seed Author 002');
+      expect(creator.profileText, 'Profile text for Seed Author 002');
+      expect(creator.seriesCount, 1);
+      expect(page.nextToken, isEmpty);
+
+      final request = server.requestsTo('SearchPublishedCreators').single;
+      expect(request.body['query'], 'author 002');
+      expect(request.body['limit'], 20);
+      expect(request.body.containsKey('token'), isFalse);
+    },
+  );
+
+  test('searchCreators asks for the page its token names', () async {
+    server.seriesPageSize = 2;
+
+    final first = await catalog.searchCreators(query: 'Seed Author');
+
+    expect(first.creators.map((creator) => creator.id), [
+      'SeedAUTHAAA1',
+      'SeedAUTHAAA2',
+    ]);
+
+    final second = await catalog.searchCreators(
+      query: 'Seed Author',
+      token: first.nextToken,
+    );
+
+    expect(second.creators.single.id, 'SeedAUTHAAA3');
+    expect(second.nextToken, isEmpty);
+    final request = server.requestsTo('SearchPublishedCreators').last;
+    expect(request.body['token'], first.nextToken);
+    expect(request.body['query'], 'Seed Author');
+  });
+
+  test('searchCreators resolves a portrait against the image base', () async {
+    server.series = [
+      {
+        'publicId': 'series-portrait',
+        'title': 'Portrait',
+        'creators': [
+          {
+            'publicId': 'author-portrait',
+            'name': 'Portrait Author',
+            'iconImageUrl': '/images/creators/portrait',
+          },
+        ],
+      },
+    ];
+    final page = await catalog.searchCreators(query: 'Portrait');
+
+    final creator = page.creators.single;
+    expect(
+      creator.iconUrl.toString(),
+      '$imageBaseUrl/images/creators/portrait',
+    );
+    // A portrait is served to every reader alike, so only the tenant travels.
+    expect(creator.imageRequestHeaders.containsKey('authorization'), isFalse);
+  });
+
+  test('searchCreators reads a keyword nothing matches as empty', () async {
+    final page = await catalog.searchCreators(query: 'nothing here');
+
+    expect(page.creators, isEmpty);
+    expect(page.nextToken, isEmpty);
+  });
+
+  test('searchLabels maps the matching labels onto PublishedLabel', () async {
+    final page = await catalog.searchLabels(query: 'label 01');
+
+    final label = page.labels.single;
+    expect(label.id, 'SeedLABLAAA1');
+    expect(label.name, 'Seed Label 01');
+    // `Label` answers without a count, which is not a count of zero.
+    expect(label.seriesCount, isNull);
+    expect(
+      server.requestsTo('SearchPublishedLabels').single.body['query'],
+      'label 01',
+    );
+  });
+
+  test('a creator or label search the API could not answer is a network '
+      'failure', () async {
+    server.searchStatus = HttpStatus.serviceUnavailable;
+    final isNetwork = throwsA(
+      isA<CatalogFailure>().having(
+        (error) => error.kind,
+        'kind',
+        CatalogFailureKind.network,
+      ),
+    );
+
+    expect(() => catalog.searchCreators(query: 'Seed'), isNetwork);
+    expect(() => catalog.searchLabels(query: 'Seed'), isNetwork);
+  });
+
+  test('getCreatorDetail carries the author and their series', () async {
+    final detail = await catalog.getCreatorDetail('SeedAUTHAAA1');
+
+    expect(detail, isNotNull);
+    expect(detail!.creator.name, 'Seed Author 001');
+    expect(detail.creator.seriesCount, 1);
+    expect(detail.series.series.single.id, ConnectFixtureServer.seedSeriesId);
+    expect(detail.series.nextToken, isEmpty);
+
+    final request = server.requestsTo('GetPublishedCreatorDetail').single;
+    expect(request.body['publicId'], 'SeedAUTHAAA1');
+    expect(request.body['limit'], 20);
+    expect(request.body.containsKey('token'), isFalse);
+  });
+
+  test('getCreatorDetail asks for the page its token names', () async {
+    server.seriesPageSize = 1;
+    server.series = [
+      ...ConnectFixtureServer.populatedSeries(),
+      {
+        'publicId': 'series-second',
+        'title': 'Second Series',
+        'creators': ConnectFixtureServer.seedCreators(),
+      },
+    ];
+
+    final first = await catalog.getCreatorDetail('SeedAUTHAAA1');
+    final second = await catalog.getCreatorDetail(
+      'SeedAUTHAAA1',
+      token: first!.series.nextToken,
+    );
+
+    expect(first.series.nextToken, isNotEmpty);
+    expect(second!.series.series.single.id, 'series-second');
+    expect(
+      server.requestsTo('GetPublishedCreatorDetail').last.body['token'],
+      first.series.nextToken,
+    );
+  });
+
+  test(
+    'getCreatorDetail returns null for an author the API does not know',
+    () async {
+      expect(await catalog.getCreatorDetail('ZZZZZZZZZZZZ'), isNull);
+    },
+  );
+
+  test('getLabelDetail carries the label and its series', () async {
+    final detail = await catalog.getLabelDetail('SeedLABLAAA1');
+
+    expect(detail, isNotNull);
+    expect(detail!.label.name, 'Seed Label 01');
+    expect(detail.label.seriesCount, 1);
+    expect(detail.series.series.single.id, ConnectFixtureServer.seedSeriesId);
+    expect(
+      server.requestsTo('GetPublishedLabelDetail').single.body['publicId'],
+      'SeedLABLAAA1',
+    );
+  });
+
+  test(
+    'getLabelDetail returns null for a label the API does not know',
+    () async {
+      expect(await catalog.getLabelDetail('ZZZZZZZZZZZZ'), isNull);
+    },
+  );
+
+  test('listSeries carries the public id of the label', () async {
+    final page = await catalog.listSeries();
+
+    expect(page.series.first.labelId, 'SeedLABLAAA1');
+    expect(page.series.first.labelName, 'Seed Label 01');
+  });
+
   test('listSeries maps transport failure to CatalogFailure.network', () async {
     server.listStatus = HttpStatus.serviceUnavailable;
     expect(
