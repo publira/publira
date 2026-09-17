@@ -9,7 +9,9 @@
 --
 -- Three members, because the gate has three answers and the reader's own row is
 -- what picks one: an adult opens the body, a minor is told their age, and a
--- reader with no date on file is sent to the settings screen to give one.
+-- reader with no date on file is sent to the settings screen to give one. A
+-- fourth, born as the minor is, is the reader whose date the console suite
+-- corrects, so no other suite's reader changes under it.
 -- Password hashes match the dev seed (`memberpass`).
 --
 -- Birth dates are intervals from `NOW()` rather than literals: a date written
@@ -25,6 +27,7 @@
 --   series   AverSERSAAA1 (rated r18)
 --   episode  AverEPSDAAA1 (free, published)
 --   members  AverMMBRAAA1 (adult) / AverMMBRAAA2 (minor) / AverMMBRAAA3 (no date)
+--            AverMMBRAAA4 (minor until the console corrects the date)
 --   admin    AverADMNAAA1 (age-admin@example.com)
 
 WITH tenant_seed AS (
@@ -286,6 +289,13 @@ WITH member_seed (id, public_id, email, name, birth_date) AS (
             'age-undeclared@example.com',
             'Age E2E Undeclared',
             NULL::date
+        ),
+        (
+            '018f0fa7-0004-7000-8000-000000000004'::uuid,
+            'AverMMBRAAA4',
+            'age-corrected@example.com',
+            'Age E2E Corrected',
+            (NOW() - INTERVAL '16 years')::date
         )
 )
 INSERT INTO users (

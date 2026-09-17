@@ -6,6 +6,7 @@ const {
   mockGetAccessToken,
   mockGetReader,
   mockListReaders,
+  mockSetReaderBirthDate,
   mockSuspendReader,
   mockUnsuspendReader,
 } = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockGetReader: vi.fn(),
   mockListReaders: vi.fn(),
+  mockSetReaderBirthDate: vi.fn(),
   mockSuspendReader: vi.fn(),
   mockUnsuspendReader: vi.fn(),
 }));
@@ -27,6 +29,7 @@ vi.mock("./api", () => ({
       deleteReader: mockDeleteReader,
       getReader: mockGetReader,
       listReaders: mockListReaders,
+      setReaderBirthDate: mockSetReaderBirthDate,
       suspendReader: mockSuspendReader,
       unsuspendReader: mockUnsuspendReader,
     },
@@ -37,7 +40,7 @@ vi.mock("./api", () => ({
 }));
 
 const adminReader = {
-  birthDate: "",
+  birthDate: "1990-04-02",
   createdAt: "2026-06-01T00:00:00Z",
   email: "reader@example.com",
   emailVerifiedAt: "2026-06-01T00:05:00Z",
@@ -167,10 +170,10 @@ describe("reader lib", () => {
     expect(result).toEqual({
       ok: true,
       reader: {
+        birthDate: "1990-04-02",
         createdAt: "2026-06-01T00:00:00Z",
         email: "reader@example.com",
         emailVerifiedAt: "2026-06-01T00:05:00Z",
-        hasBirthDate: false,
         name: "Reader One",
         publicId: "READER00001",
         status: "suspended",
@@ -281,5 +284,64 @@ describe("reader lib", () => {
 
     expect(mockDeleteReader).not.toHaveBeenCalled();
     expect(result).toEqual({ message: expect.stringMatching(/./u), ok: false });
+  });
+
+  it.each(["1995-03-04", ""])(
+    "sends the birth date %j as staff entered it",
+    async (birthDate) => {
+      mockSetReaderBirthDate.mockResolvedValue({});
+
+      const { setReaderBirthDate } = await import("./reader");
+      const result = await setReaderBirthDate(
+        { birthDate, publicId: "READER00001", tenantId: "TENANT001" },
+        "en"
+      );
+
+      expect(mockSetReaderBirthDate).toHaveBeenCalledWith(
+        {
+          birthDate,
+          publicId: "READER00001",
+          tenant: { tenantId: "TENANT001" },
+        },
+        { headers: { Authorization: "Bearer session-token" } }
+      );
+      expect(result).toEqual({ ok: true });
+    }
+  );
+
+  it("words a refused date as a problem with the date", async () => {
+    mockSetReaderBirthDate.mockRejectedValue(
+      new ConnectError("invalid", Code.InvalidArgument)
+    );
+
+    const { setReaderBirthDate } = await import("./reader");
+    const result = await setReaderBirthDate(
+      {
+        birthDate: "2999-01-01",
+        publicId: "READER00001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message: "Enter the birth date as a past calendar date.",
+      ok: false,
+    });
+  });
+
+  it("rethrows a rejected session when setting a birth date", async () => {
+    mockSetReaderBirthDate.mockRejectedValue(
+      new ConnectError("no session", Code.Unauthenticated)
+    );
+
+    const { setReaderBirthDate } = await import("./reader");
+
+    await expect(
+      setReaderBirthDate(
+        { birthDate: "", publicId: "READER00001", tenantId: "TENANT001" },
+        "en"
+      )
+    ).rejects.toThrow();
   });
 });
