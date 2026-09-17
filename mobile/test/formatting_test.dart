@@ -17,6 +17,15 @@ void main() {
     expect(AppMessages.forLocale(const Locale('en'))!.formatInteger(0), '0');
   });
 
+  test('a byte count takes the largest unit that keeps it whole', () {
+    final en = AppMessages.forLocale(const Locale('en'))!;
+    expect(en.formatByteSize(0), '0 B');
+    expect(en.formatByteSize(1536), '2 KB');
+    expect(en.formatByteSize(12897485), '12.3 MB');
+    expect(en.formatByteSize(512 * 1024 * 1024), '512 MB');
+    expect(en.formatByteSize(3 * 1024 * 1024 * 1024 ~/ 2), '1.5 GB');
+  });
+
   test('a list of names is joined the way the locale writes one', () {
     final en = AppMessages.forLocale(const Locale('en'))!;
     expect(en.formatList(const []), '');

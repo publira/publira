@@ -138,7 +138,7 @@ mobile/
 │   ├── models/                   # Series / author / label / episode body / episode comment / follow
 │   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / account / follows
+│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / account / follows / downloads
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -162,6 +162,7 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/sign-in` | Sign-in form |
 | `/account` | Signed-in reader, their date of birth, and sign-out |
 | `/account/follows` | The series and authors the reader follows |
+| `/account/downloads` | What the device keeps for reading offline |
 | `/series/:seriesId` | Series details |
 | `/creators/:creatorId` | An author and the published series credited to them |
 | `/labels/:labelId` | A label and its published series |
@@ -268,7 +269,7 @@ A reader follows a series, and each author credited on it, from the series scree
 
 ## Offline reading
 
-Everything the reader opens is kept on the device, so the same screens open again without a network. Nothing is downloaded ahead of time and there is no save button: an episode is on the device because it was read.
+Everything the reader opens is kept on the device, so the same screens open again without a network. An episode is on the device because it was read, or because the reader saved it from its row on the series screen, which fetches every page at once.
 
 - The catalog list, the series screens behind it, and every episode body that loaded are saved as they load. A body page is saved once it has been turned into displayable bytes, which is also what the viewer draws
 - The API decides. Every read goes to it first, and only its answer refreshes what the device holds; the saved copy is reached only when the API cannot be. A body that comes back locked, or that the API no longer has, is taken off the device along with its pages, and a series the API no longer publishes takes every episode saved under it
@@ -276,6 +277,7 @@ Everything the reader opens is kept on the device, so the same screens open agai
 - Saved episodes are marked on the series screen and on the offer that ends an episode, so a reader can tell before they lose their connection what they will still be able to open
 - The page the reader stopped on is kept beside the episode, against the member it belongs to, so an episode read without a network opens where they left it. The API wins over it wherever it holds a position of its own, which is what carries a page saved on the website into the app
 - The device keeps up to **512 MB** of pages. Over that, the least recently confirmed episodes are dropped whole, and page files no episode claims any more go with them
+- The downloads screen, reached from the account screen, shows the bytes used against that cap and the saved episodes by series, with when each was saved and, for a body that needed an entitlement, until when it opens offline. It deletes one episode or everything. An episode saved for another account counts towards the bytes and goes with "Clear all", but is not listed
 
 Everything is written under the app-private directory `path_provider` resolves (`getApplicationSupportDirectory()`), encrypted with a random 32-byte key this install mints on first use and keeps in the OS keychain / Keystore. The stream is the one `lib/api/image_cipher.dart` speaks, under its own domain separator and a per-file key. Like the delivery stream, it protects the files on the device rather than the reader's own access: whoever may open the episode necessarily holds the key that recovers it.
 

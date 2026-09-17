@@ -163,6 +163,12 @@ abstract class AppMessages {
   /// `mobile.account.birth_date_set_help`
   String get accountBirthDateSetHelp;
 
+  /// `mobile.account.downloads`
+  String get accountDownloads;
+
+  /// `mobile.account.downloads_description`
+  String get accountDownloadsDescription;
+
   /// `mobile.account.follows`
   String get accountFollows;
 
@@ -400,6 +406,48 @@ abstract class AppMessages {
   /// `mobile.creator.title`
   String get creatorTitle;
 
+  /// `mobile.downloads.clear`
+  String get downloadsClear;
+
+  /// `mobile.downloads.clear_confirm`
+  String get downloadsClearConfirm;
+
+  /// `mobile.downloads.clear_confirm_description`
+  String get downloadsClearConfirmDescription;
+
+  /// `mobile.downloads.clear_confirm_title`
+  String get downloadsClearConfirmTitle;
+
+  /// `mobile.downloads.cleared`
+  String get downloadsCleared;
+
+  /// `mobile.downloads.delete`
+  String get downloadsDelete;
+
+  /// `mobile.downloads.delete_aria`
+  String downloadsDeleteAria({required String title});
+
+  /// `mobile.downloads.deleted`
+  String downloadsDeleted({required String title});
+
+  /// `mobile.downloads.empty`
+  String get downloadsEmpty;
+
+  /// `mobile.downloads.expired`
+  String downloadsExpired({required String date});
+
+  /// `mobile.downloads.readable_until`
+  String downloadsReadableUntil({required String date});
+
+  /// `mobile.downloads.saved_at`
+  String downloadsSavedAt({required String date, required String size});
+
+  /// `mobile.downloads.title`
+  String get downloadsTitle;
+
+  /// `mobile.downloads.usage`
+  String downloadsUsage({required String limit, required String used});
+
   /// `mobile.follow.failed`
   String get followFailed;
 
@@ -592,8 +640,29 @@ abstract class AppMessages {
   /// `mobile.series.rating_single`
   String seriesRatingSingle({required String average, required String count});
 
+  /// `mobile.series.save_offline`
+  String get seriesSaveOffline;
+
+  /// `mobile.series.save_offline_aria`
+  String seriesSaveOfflineAria({required String title});
+
+  /// `mobile.series.save_offline_failed`
+  String seriesSaveOfflineFailed({required String title});
+
+  /// `mobile.series.save_offline_no_storage`
+  String seriesSaveOfflineNoStorage({required String title});
+
+  /// `mobile.series.save_offline_not_readable`
+  String seriesSaveOfflineNotReadable({required String title});
+
+  /// `mobile.series.save_offline_saved`
+  String seriesSaveOfflineSaved({required String title});
+
   /// `mobile.series.saved_offline`
   String get seriesSavedOffline;
+
+  /// `mobile.series.saving_offline`
+  String seriesSavingOffline({required String title});
 
   /// `mobile.series.schedule`
   String seriesSchedule({required String weekdays});
@@ -872,6 +941,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountBirthDateSetHelp {
     return '生年月日は変更できません。誤りがある場合はサイト運営者へお問い合わせください。';
+  }
+
+  @override
+  String get accountDownloads {
+    return 'ダウンロード';
+  }
+
+  @override
+  String get accountDownloadsDescription {
+    return 'オフラインで読むためにこの端末に保存したエピソード';
   }
 
   @override
@@ -1270,6 +1349,76 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get downloadsClear {
+    return 'すべて削除';
+  }
+
+  @override
+  String get downloadsClearConfirm {
+    return 'すべて削除';
+  }
+
+  @override
+  String get downloadsClearConfirmDescription {
+    return 'ほかのアカウントでサインインしていたときに保存したものも含め、この端末に保存したエピソードをすべて削除します。オンラインのときに改めて保存できます。';
+  }
+
+  @override
+  String get downloadsClearConfirmTitle {
+    return 'ダウンロードをすべて削除しますか?';
+  }
+
+  @override
+  String get downloadsCleared {
+    return 'ダウンロードをすべて削除しました。';
+  }
+
+  @override
+  String get downloadsDelete {
+    return '削除';
+  }
+
+  @override
+  String downloadsDeleteAria({required String title}) {
+    return '「$title」をこの端末から削除';
+  }
+
+  @override
+  String downloadsDeleted({required String title}) {
+    return '「$title」をこの端末から削除しました。';
+  }
+
+  @override
+  String get downloadsEmpty {
+    return 'この端末にはまだ何も保存されていません。シリーズのページからエピソードを保存すると、ここに表示されます。';
+  }
+
+  @override
+  String downloadsExpired({required String date}) {
+    return '$date にオフラインで読める期間が終わりました。オンラインで開くと再び読めます。';
+  }
+
+  @override
+  String downloadsReadableUntil({required String date}) {
+    return '$date までオフラインで読めます';
+  }
+
+  @override
+  String downloadsSavedAt({required String date, required String size}) {
+    return '$date に保存 · $size';
+  }
+
+  @override
+  String get downloadsTitle {
+    return 'ダウンロード';
+  }
+
+  @override
+  String downloadsUsage({required String limit, required String used}) {
+    return '$limit 中 $used を使用';
+  }
+
+  @override
   String get followFailed {
     return 'フォローの状態を変更できませんでした。もう一度お試しください。';
   }
@@ -1590,8 +1739,43 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get seriesSaveOffline {
+    return 'オフライン用に保存';
+  }
+
+  @override
+  String seriesSaveOfflineAria({required String title}) {
+    return '「$title」をオフラインで読めるように保存';
+  }
+
+  @override
+  String seriesSaveOfflineFailed({required String title}) {
+    return '「$title」を保存できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return '「$title」をこの端末に保存できませんでした。空き容量を確保してもう一度お試しください。';
+  }
+
+  @override
+  String seriesSaveOfflineNotReadable({required String title}) {
+    return '「$title」はこの端末に保存できません。';
+  }
+
+  @override
+  String seriesSaveOfflineSaved({required String title}) {
+    return '「$title」をこの端末に保存しました。';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '保存済み';
+  }
+
+  @override
+  String seriesSavingOffline({required String title}) {
+    return '「$title」を保存中';
   }
 
   @override
@@ -1965,6 +2149,16 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get accountBirthDateSetHelp {
     return 'Your date of birth cannot be changed. Contact this site if it is wrong.';
+  }
+
+  @override
+  String get accountDownloads {
+    return 'Downloads';
+  }
+
+  @override
+  String get accountDownloadsDescription {
+    return 'Episodes saved on this device for reading offline.';
   }
 
   @override
@@ -2363,6 +2557,76 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get downloadsClear {
+    return 'Clear all';
+  }
+
+  @override
+  String get downloadsClearConfirm {
+    return 'Clear all';
+  }
+
+  @override
+  String get downloadsClearConfirmDescription {
+    return 'Every episode saved on this device is deleted, including those saved while another account was signed in. You can save them again while online.';
+  }
+
+  @override
+  String get downloadsClearConfirmTitle {
+    return 'Clear all downloads?';
+  }
+
+  @override
+  String get downloadsCleared {
+    return 'All downloads were deleted.';
+  }
+
+  @override
+  String get downloadsDelete {
+    return 'Delete';
+  }
+
+  @override
+  String downloadsDeleteAria({required String title}) {
+    return 'Delete “$title” from this device';
+  }
+
+  @override
+  String downloadsDeleted({required String title}) {
+    return '“$title” was deleted from this device.';
+  }
+
+  @override
+  String get downloadsEmpty {
+    return 'Nothing is saved on this device yet. Save an episode from its series page, and it appears here.';
+  }
+
+  @override
+  String downloadsExpired({required String date}) {
+    return 'Offline reading ended $date. Open it online to read it again.';
+  }
+
+  @override
+  String downloadsReadableUntil({required String date}) {
+    return 'Readable offline until $date';
+  }
+
+  @override
+  String downloadsSavedAt({required String date, required String size}) {
+    return 'Saved $date · $size';
+  }
+
+  @override
+  String get downloadsTitle {
+    return 'Downloads';
+  }
+
+  @override
+  String downloadsUsage({required String limit, required String used}) {
+    return '$used of $limit used';
+  }
+
+  @override
   String get followFailed {
     return 'Could not change what you follow. Try again.';
   }
@@ -2683,8 +2947,43 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get seriesSaveOffline {
+    return 'Save for offline';
+  }
+
+  @override
+  String seriesSaveOfflineAria({required String title}) {
+    return 'Save “$title” for offline reading';
+  }
+
+  @override
+  String seriesSaveOfflineFailed({required String title}) {
+    return 'Could not save “$title”. Try again.';
+  }
+
+  @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return 'Could not keep “$title” on this device. Free up space and try again.';
+  }
+
+  @override
+  String seriesSaveOfflineNotReadable({required String title}) {
+    return '“$title” cannot be saved on this device.';
+  }
+
+  @override
+  String seriesSaveOfflineSaved({required String title}) {
+    return '“$title” is saved on this device.';
+  }
+
+  @override
   String get seriesSavedOffline {
     return 'Saved on this device';
+  }
+
+  @override
+  String seriesSavingOffline({required String title}) {
+    return 'Saving “$title”';
   }
 
   @override
@@ -3058,6 +3357,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountBirthDateSetHelp {
     return '생년월일은 변경할 수 없습니다. 잘못되었다면 사이트 운영자에게 문의해 주세요.';
+  }
+
+  @override
+  String get accountDownloads {
+    return '다운로드';
+  }
+
+  @override
+  String get accountDownloadsDescription {
+    return '오프라인으로 읽기 위해 이 기기에 저장한 에피소드';
   }
 
   @override
@@ -3456,6 +3765,76 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get downloadsClear {
+    return '모두 삭제';
+  }
+
+  @override
+  String get downloadsClearConfirm {
+    return '모두 삭제';
+  }
+
+  @override
+  String get downloadsClearConfirmDescription {
+    return '다른 계정으로 로그인했을 때 저장한 것을 포함해 이 기기에 저장된 에피소드를 모두 삭제합니다. 온라인 상태에서 다시 저장할 수 있습니다.';
+  }
+
+  @override
+  String get downloadsClearConfirmTitle {
+    return '다운로드를 모두 삭제할까요?';
+  }
+
+  @override
+  String get downloadsCleared {
+    return '다운로드를 모두 삭제했습니다.';
+  }
+
+  @override
+  String get downloadsDelete {
+    return '삭제';
+  }
+
+  @override
+  String downloadsDeleteAria({required String title}) {
+    return '이 기기에서 “$title” 삭제';
+  }
+
+  @override
+  String downloadsDeleted({required String title}) {
+    return '이 기기에서 “$title”을(를) 삭제했습니다.';
+  }
+
+  @override
+  String get downloadsEmpty {
+    return '아직 이 기기에 저장된 것이 없습니다. 시리즈 페이지에서 에피소드를 저장하면 여기에 표시됩니다.';
+  }
+
+  @override
+  String downloadsExpired({required String date}) {
+    return '$date에 오프라인 읽기 기간이 끝났습니다. 온라인에서 열면 다시 읽을 수 있습니다.';
+  }
+
+  @override
+  String downloadsReadableUntil({required String date}) {
+    return '$date까지 오프라인으로 읽을 수 있음';
+  }
+
+  @override
+  String downloadsSavedAt({required String date, required String size}) {
+    return '$date에 저장 · $size';
+  }
+
+  @override
+  String get downloadsTitle {
+    return '다운로드';
+  }
+
+  @override
+  String downloadsUsage({required String limit, required String used}) {
+    return '$limit 중 $used 사용';
+  }
+
+  @override
   String get followFailed {
     return '팔로우 상태를 변경하지 못했습니다. 다시 시도해 주세요.';
   }
@@ -3776,8 +4155,43 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get seriesSaveOffline {
+    return '오프라인용으로 저장';
+  }
+
+  @override
+  String seriesSaveOfflineAria({required String title}) {
+    return '“$title”을(를) 오프라인으로 읽을 수 있도록 저장';
+  }
+
+  @override
+  String seriesSaveOfflineFailed({required String title}) {
+    return '“$title”을(를) 저장하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return '“$title”을(를) 이 기기에 저장하지 못했습니다. 저장 공간을 확보한 뒤 다시 시도해 주세요.';
+  }
+
+  @override
+  String seriesSaveOfflineNotReadable({required String title}) {
+    return '“$title”은(는) 이 기기에 저장할 수 없습니다.';
+  }
+
+  @override
+  String seriesSaveOfflineSaved({required String title}) {
+    return '“$title”을(를) 이 기기에 저장했습니다.';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '이 기기에 저장됨';
+  }
+
+  @override
+  String seriesSavingOffline({required String title}) {
+    return '“$title” 저장 중';
   }
 
   @override
@@ -4151,6 +4565,16 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get accountBirthDateSetHelp {
     return '出生日期无法更改。如有错误，请联系本站点。';
+  }
+
+  @override
+  String get accountDownloads {
+    return '下载';
+  }
+
+  @override
+  String get accountDownloadsDescription {
+    return '为离线阅读而保存到此设备的剧集';
   }
 
   @override
@@ -4549,6 +4973,76 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get downloadsClear {
+    return '全部删除';
+  }
+
+  @override
+  String get downloadsClearConfirm {
+    return '全部删除';
+  }
+
+  @override
+  String get downloadsClearConfirmDescription {
+    return '将删除此设备上保存的所有剧集，包括其他账户登录时保存的内容。联网时可以重新保存。';
+  }
+
+  @override
+  String get downloadsClearConfirmTitle {
+    return '要删除所有下载吗？';
+  }
+
+  @override
+  String get downloadsCleared {
+    return '已删除所有下载。';
+  }
+
+  @override
+  String get downloadsDelete {
+    return '删除';
+  }
+
+  @override
+  String downloadsDeleteAria({required String title}) {
+    return '从此设备删除“$title”';
+  }
+
+  @override
+  String downloadsDeleted({required String title}) {
+    return '已从此设备删除“$title”。';
+  }
+
+  @override
+  String get downloadsEmpty {
+    return '此设备上尚未保存任何内容。在系列页面保存剧集后，它会显示在这里。';
+  }
+
+  @override
+  String downloadsExpired({required String date}) {
+    return '离线阅读已于 $date 结束。联网打开即可再次阅读。';
+  }
+
+  @override
+  String downloadsReadableUntil({required String date}) {
+    return '可离线阅读至 $date';
+  }
+
+  @override
+  String downloadsSavedAt({required String date, required String size}) {
+    return '$date 保存 · $size';
+  }
+
+  @override
+  String get downloadsTitle {
+    return '下载';
+  }
+
+  @override
+  String downloadsUsage({required String limit, required String used}) {
+    return '已使用 $used，共 $limit';
+  }
+
+  @override
   String get followFailed {
     return '无法更改关注状态。请重试。';
   }
@@ -4869,8 +5363,43 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get seriesSaveOffline {
+    return '保存以供离线阅读';
+  }
+
+  @override
+  String seriesSaveOfflineAria({required String title}) {
+    return '保存“$title”以供离线阅读';
+  }
+
+  @override
+  String seriesSaveOfflineFailed({required String title}) {
+    return '无法保存“$title”。请重试。';
+  }
+
+  @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return '无法将“$title”保存到此设备。请释放存储空间后重试。';
+  }
+
+  @override
+  String seriesSaveOfflineNotReadable({required String title}) {
+    return '“$title”无法保存到此设备。';
+  }
+
+  @override
+  String seriesSaveOfflineSaved({required String title}) {
+    return '“$title”已保存到此设备。';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '已保存到此设备';
+  }
+
+  @override
+  String seriesSavingOffline({required String title}) {
+    return '正在保存“$title”';
   }
 
   @override
@@ -5244,6 +5773,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get accountBirthDateSetHelp {
     return '出生日期無法變更。如有錯誤，請聯絡本網站。';
+  }
+
+  @override
+  String get accountDownloads {
+    return '下載';
+  }
+
+  @override
+  String get accountDownloadsDescription {
+    return '為離線閱讀而儲存到此裝置的集數';
   }
 
   @override
@@ -5642,6 +6181,76 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get downloadsClear {
+    return '全部刪除';
+  }
+
+  @override
+  String get downloadsClearConfirm {
+    return '全部刪除';
+  }
+
+  @override
+  String get downloadsClearConfirmDescription {
+    return '將刪除此裝置上儲存的所有集數，包括其他帳戶登入時儲存的內容。連線時可以重新儲存。';
+  }
+
+  @override
+  String get downloadsClearConfirmTitle {
+    return '要刪除所有下載嗎？';
+  }
+
+  @override
+  String get downloadsCleared {
+    return '已刪除所有下載。';
+  }
+
+  @override
+  String get downloadsDelete {
+    return '刪除';
+  }
+
+  @override
+  String downloadsDeleteAria({required String title}) {
+    return '從此裝置刪除「$title」';
+  }
+
+  @override
+  String downloadsDeleted({required String title}) {
+    return '已從此裝置刪除「$title」。';
+  }
+
+  @override
+  String get downloadsEmpty {
+    return '此裝置上尚未儲存任何內容。在系列頁面儲存集數後，它會顯示在這裡。';
+  }
+
+  @override
+  String downloadsExpired({required String date}) {
+    return '離線閱讀已於 $date 結束。連線開啟即可再次閱讀。';
+  }
+
+  @override
+  String downloadsReadableUntil({required String date}) {
+    return '可離線閱讀至 $date';
+  }
+
+  @override
+  String downloadsSavedAt({required String date, required String size}) {
+    return '$date 儲存 · $size';
+  }
+
+  @override
+  String get downloadsTitle {
+    return '下載';
+  }
+
+  @override
+  String downloadsUsage({required String limit, required String used}) {
+    return '已使用 $used，共 $limit';
+  }
+
+  @override
   String get followFailed {
     return '無法變更追蹤狀態。請重試。';
   }
@@ -5962,8 +6571,43 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get seriesSaveOffline {
+    return '儲存以供離線閱讀';
+  }
+
+  @override
+  String seriesSaveOfflineAria({required String title}) {
+    return '儲存「$title」以供離線閱讀';
+  }
+
+  @override
+  String seriesSaveOfflineFailed({required String title}) {
+    return '無法儲存「$title」。請重試。';
+  }
+
+  @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return '無法將「$title」儲存到此裝置。請釋放儲存空間後重試。';
+  }
+
+  @override
+  String seriesSaveOfflineNotReadable({required String title}) {
+    return '「$title」無法儲存到此裝置。';
+  }
+
+  @override
+  String seriesSaveOfflineSaved({required String title}) {
+    return '「$title」已儲存到此裝置。';
+  }
+
+  @override
   String get seriesSavedOffline {
     return '已儲存到此裝置';
+  }
+
+  @override
+  String seriesSavingOffline({required String title}) {
+    return '正在儲存「$title」';
   }
 
   @override

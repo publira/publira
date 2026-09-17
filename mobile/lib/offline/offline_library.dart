@@ -46,6 +46,48 @@ class SavedEpisode {
   ];
 }
 
+/// The last moment [episode] opens without the API confirming the grant again,
+/// or `null` for a free body, which has no such moment.
+DateTime? offlineReadableUntil(
+  SavedEpisode episode, {
+  Duration grace = offlineGracePeriod,
+}) => episode.ownerId.isEmpty ? null : episode.checkedAt.add(grace);
+
+/// One saved episode and the bytes its pages hold on the device.
+class StoredEpisode {
+  const StoredEpisode({required this.episode, required this.bytes});
+
+  final SavedEpisode episode;
+
+  /// Size of the page files on the device, which is less than the whole
+  /// episode when the reader only turned through part of it.
+  final int bytes;
+}
+
+/// What the device spends on saved pages, and the episodes they belong to.
+class OfflineStorage {
+  const OfflineStorage({
+    required this.bytes,
+    required this.byteLimit,
+    required this.episodes,
+  });
+
+  static const empty = OfflineStorage(
+    bytes: 0,
+    byteLimit: offlineByteLimit,
+    episodes: [],
+  );
+
+  /// Every page file on the device, counted the way the byte limit counts
+  /// them: pages no episode claims any more included.
+  final int bytes;
+
+  final int byteLimit;
+
+  /// Saved episodes, most recently confirmed first.
+  final List<StoredEpisode> episodes;
+}
+
 /// Where one reader stopped inside one episode.
 ///
 /// It is the device's copy of what the API keeps, so it names the reader it
@@ -102,6 +144,14 @@ bool isReadableOffline(
 /// degrades to an online-only app instead of failing the screen. Every write
 /// is best effort for the same reason.
 abstract class OfflineLibrary implements EpisodePageStore {
+  /// Fires after the set of saved episodes changes: one saved, removed,
+  /// evicted, or everything cleared.
+  ///
+  /// A screen marking episodes as saved listens here, because the change it
+  /// has to show may come from another screen, such as a deletion on the
+  /// downloads screen while the series screen waits under it.
+  Stream<void> get changes;
+
   /// The saved catalog snapshot, or `null` when the device has none.
   ///
   /// It is the first page as the API last answered it, token and all, so a
@@ -166,6 +216,13 @@ abstract class OfflineLibrary implements EpisodePageStore {
     required String readerId,
     DateTime? now,
   });
+
+  /// What the saved pages spend on the device, for the downloads screen.
+  ///
+  /// It answers [OfflineStorage.empty] rather than `null` on a device that
+  /// cannot read its library, which holds nothing as far as the reader can
+  /// tell.
+  Future<OfflineStorage> readStorage();
 
   /// Drops everything, pages included.
   Future<void> clear();

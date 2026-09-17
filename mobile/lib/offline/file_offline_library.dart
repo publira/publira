@@ -61,6 +61,11 @@ class FileOfflineLibrary implements OfflineLibrary {
   /// a read of the index with the write of another.
   Future<void> _queue = Future<void>.value();
 
+  final _changes = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get changes => _changes.stream;
+
   @override
   Future<SeriesPage?> readSeriesList() {
     return _read<SeriesPage>((home, index) {
@@ -131,7 +136,7 @@ class FileOfflineLibrary implements OfflineLibrary {
       if (dropped.isNotEmpty) {
         _pageBytes = null;
       }
-    });
+    }, notify: true);
   }
 
   @override
@@ -149,7 +154,7 @@ class FileOfflineLibrary implements OfflineLibrary {
   Future<void> writeEpisode(SavedEpisode episode) {
     return _write((home, index) {
       index.episodes[episode.key] = episode;
-    });
+    }, notify: true);
   }
 
   @override
@@ -165,7 +170,7 @@ class FileOfflineLibrary implements OfflineLibrary {
         await _deletePage(home, key);
       }
       _pageBytes = null;
-    });
+    }, notify: true);
   }
 
   @override
@@ -244,10 +249,40 @@ class FileOfflineLibrary implements OfflineLibrary {
           ? await _measurePages(home)
           : known + sealed.length;
       if (_pageBytes! > byteLimit) {
+        final before = index.episodes.length;
         await _evict(home, index);
         await _writeIndex(home, index);
+        if (index.episodes.length != before) {
+          _changes.add(null);
+        }
       }
     }, persist: false);
+  }
+
+  @override
+  Future<OfflineStorage> readStorage() async {
+    final storage = await _read<OfflineStorage>((home, index) async {
+      final sizes = await _measurePageSizes(home);
+      final episodes = [
+        for (final episode in index.episodes.values)
+          StoredEpisode(
+            episode: episode,
+            bytes: {
+              for (final key in episode.pageKeys) key,
+            }.fold<int>(0, (sum, key) => sum + (sizes[key] ?? 0)),
+          ),
+      ]..sort((a, b) => b.episode.checkedAt.compareTo(a.episode.checkedAt));
+      final bytes = sizes.values.fold<int>(0, (sum, size) => sum + size);
+      // Measured from disk anyway, so the running count starts true again.
+      _pageBytes = bytes;
+      return OfflineStorage(
+        bytes: bytes,
+        byteLimit: byteLimit,
+        episodes: List.unmodifiable(episodes),
+      );
+    });
+    return storage ??
+        OfflineStorage(bytes: 0, byteLimit: byteLimit, episodes: const []);
   }
 
   @override
@@ -261,7 +296,7 @@ class FileOfflineLibrary implements OfflineLibrary {
         ..episodes.clear()
         ..positions.clear();
       _pageBytes = 0;
-    });
+    }, notify: true);
   }
 
   /// Drops what no episode claims any more, then the least recently confirmed
@@ -355,6 +390,7 @@ class FileOfflineLibrary implements OfflineLibrary {
   Future<void> _write(
     FutureOr<void> Function(_Home home, OfflineIndex index) action, {
     bool persist = true,
+    bool notify = false,
   }) {
     return _serialize<void>(() async {
       final home = await _open();
@@ -366,6 +402,9 @@ class FileOfflineLibrary implements OfflineLibrary {
         await action(home, index);
         if (persist) {
           await _writeIndex(home, index);
+        }
+        if (notify) {
+          _changes.add(null);
         }
       } catch (_) {
         // Saving is best effort too: a full or unwritable device still reads.
