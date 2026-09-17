@@ -61,7 +61,7 @@ export const EpisodeNeighborLinks = ({
   return (
     <nav
       aria-label={copy.label}
-      className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 transition-transform duration-state ease-state group-has-[[data-wide-viewer=revealed]]/document:translate-y-14"
+      className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 transition-transform duration-state ease-state group-has-data-[wide-viewer=revealed]/document:translate-y-14"
     >
       {previousHref === undefined ? null : (
         <LinkButton

@@ -114,10 +114,7 @@ export const EpisodeViewer = async ({
   return (
     // A wide viewer fills the window, and the header gives way to it.
     <div
-      className={cn(
-        VIEWER_HEIGHT_CLASS,
-        "w-full has-[[data-wide-viewer]]:h-svh"
-      )}
+      className={cn(VIEWER_HEIGHT_CLASS, "w-full has-data-wide-viewer:h-svh")}
     >
       <EpisodeComicViewer
         copy={{

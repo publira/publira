@@ -44,12 +44,9 @@ import {
 } from "react";
 import type { MouseEvent, ReactNode } from "react";
 
+import { useWebStorage, writeWebStorage } from "#lib/web-storage";
+
 import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
-import {
-  readWideViewerChoice,
-  storeWideViewerChoice,
-  subscribeToWideViewerChoice,
-} from "../_lib/wide-viewer-storage";
 
 /**
  * Every string this reader shows, resolved on the server and handed down as
@@ -131,8 +128,8 @@ const isFullscreenAvailable = () => document.fullscreenEnabled;
 /** Neither is knowable while rendering on the server. */
 const isFalseOnServer = () => false;
 
-/** The server rendered what it read, so no choice made in this tab yet. */
-const noChoiceOnServer = () => null;
+/** The wide viewer choice this tab has made, which wins over the stored one. */
+const WIDE_VIEWER_STORAGE_KEY = "publira.wide-viewer";
 
 /**
  * The rail the reader turns pages on: three viewports wide, holding the
@@ -407,16 +404,13 @@ export const EpisodeComicViewer = ({
   wideViewerEnabled: boolean;
 }) => {
   const shellRef = useRef<HTMLDivElement>(null);
-  const wideViewerChoice = useSyncExternalStore(
-    subscribeToWideViewerChoice,
-    readWideViewerChoice,
-    noChoiceOnServer
-  );
-  const isWide = wideViewerChoice ?? wideViewerEnabled;
+  const wideViewerChoice = useWebStorage("session", WIDE_VIEWER_STORAGE_KEY);
+  const isWide =
+    wideViewerChoice === null ? wideViewerEnabled : wideViewerChoice === "true";
 
   const toggleWide = async () => {
     const next = !isWide;
-    storeWideViewerChoice(next);
+    writeWebStorage("session", WIDE_VIEWER_STORAGE_KEY, String(next));
     try {
       await saveWideViewer?.(next);
     } catch {
