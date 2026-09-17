@@ -129,6 +129,7 @@ SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours,
     tenant_id = EXCLUDED.tenant_id;
 
+\set seed_tenant CmntTNNTAAA1
 \ir ../creator_roles.sql
 
 INSERT INTO series_creators (series_id, creator_id, role_id, display_order, tenant_id)

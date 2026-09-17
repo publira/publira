@@ -1,11 +1,13 @@
--- The creator-role vocabulary every tenant starts with, for the tenants a seed
+-- The creator-role vocabulary every tenant starts with, for the tenant a seed
 -- created. Tenant creation gives a new tenant these four; a seeded tenant is
 -- written straight into the table and never goes through it, so it gets them
 -- here. A credit names a role and the column is NOT NULL, so a tenant without
 -- them cannot credit anybody.
 --
 -- Included with `\ir` from every seed that inserts a tenant, rather than copied
--- into each, so the list has one place to be read and changed.
+-- into each, so the list has one place to be read and changed. The including
+-- seed names its tenant with `\set seed_tenant <public_id>`, so re-applying it
+-- never reads a tenant another spec is deleting.
 --
 -- The id and public_id are derived from the tenant and the role name rather
 -- than drawn at random, which is what makes re-running a seed find the rows it
@@ -27,4 +29,5 @@ CROSS JOIN (
         ('Writer', 3),
         ('Supervisor', 4)
 ) AS r(name, display_priority)
+WHERE t.public_id = :'seed_tenant'
 ON CONFLICT (tenant_id, lower(name)) DO NOTHING;

@@ -138,6 +138,7 @@ SET synopsis = EXCLUDED.synopsis,
     age_rating = EXCLUDED.age_rating,
     tenant_id = EXCLUDED.tenant_id;
 
+\set seed_tenant AverTNNTAAA1
 \ir ../creator_roles.sql
 
 INSERT INTO series_creators (series_id, creator_id, role_id, display_order, tenant_id)

@@ -46,7 +46,9 @@ UPDATE episode_listings el
 SET published_at = s.published_at + (e.order_index * INTERVAL '6 hours')
 FROM episodes e
     JOIN series s ON s.id = e.series_id
+    JOIN tenants t ON t.id = s.tenant_id
 WHERE el.episode_id = e.id
+    AND t.domain = 'localhost'
     AND s.title LIKE 'Seed Series %'
     AND el.published_at IS NOT NULL;
 

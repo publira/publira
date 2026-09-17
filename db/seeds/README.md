@@ -26,7 +26,8 @@ The files themselves are rendered from the vector sources under [`assets/`](../.
 - `prod.sql`: **Production** entry point — database users, roles, and object ownership only
 - `dev.sql`: **Development** entry point — `prod.sql` plus development sample data
 - `baseline/`: Minimal files shared between environments (referenced by both prod and dev)
-- `creator_roles.sql`: The creator-role vocabulary a tenant starts with, for the tenants a seed created (included with `\ir` from every seed that inserts a tenant)
+- `creator_roles.sql`: The creator-role vocabulary a tenant starts with, for the tenant a seed created (included with `\ir` from every seed that inserts a tenant, after `\set seed_tenant <public_id>`)
+- `episode_creators.sql`: The credits of the episodes a seed wrote, copied from their series (included the same way from every seed that inserts an episode)
 - `dev/`: Data used only in development (referenced only by dev.sql)
   - `001_tenant_users.sql`: Tenants, users, and roles
   - `010_catalog.sql`: Labels, creators, series, episodes, genres, and tags

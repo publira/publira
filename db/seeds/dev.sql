@@ -5,6 +5,7 @@
 
 BEGIN;
 \ir dev/001_tenant_users.sql
+\set seed_tenant SeedTNNTAAA1
 \ir creator_roles.sql
 \ir dev/010_catalog.sql
 \ir episode_creators.sql
