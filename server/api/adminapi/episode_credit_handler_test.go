@@ -49,7 +49,7 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 		WithArgs(episodeID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(regexp.QuoteMeta(createEpisodeCreatorQuery)).
-		WithArgs(tenantID, episodeID, creatorID, roleID, int32(0), "episode").
+		WithArgs(tenantID, episodeID, creatorID, roleID, int32(0), "episode", int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeCreatorsByEpisodeIDsQuery)).
 		WillReturnRows(episodeCreditRows(episodeCreditRow{
@@ -84,6 +84,35 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 	assertExpectations(t, mock)
 }
 
+func TestReplaceEpisodeCreditsRefusesCreditSharesAboveOneWholeEpisode(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.ReplaceEpisodeCreditsRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodePublicId: "EP001",
+		CreatorCredits: []*publiraadminv1.EpisodeCreatorCredit{
+			{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001", ShareBps: 6000},
+			{CreatorPublicId: "CREATOR002", RolePublicId: "ROLE00000001", ShareBps: 5000},
+		},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.ReplaceEpisodeCredits(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ReplaceEpisodeCredits code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
+}
+
 // episodeCreditRow is one row of the credit read, named the way the response
 // shows it.
 type episodeCreditRow struct {
@@ -93,12 +122,13 @@ type episodeCreditRow struct {
 	rolePublicID string
 	roleName     string
 	source       string
+	shareBps     int32
 }
 
 func episodeCreditRows(credits ...episodeCreditRow) *sqlmock.Rows {
-	rows := sqlmock.NewRows([]string{"episode_id", "public_id", "name", "profile_text", "icon_image_id", "icon_image_updated_at", "role_public_id", "role_name", "display_order", "source"})
+	rows := sqlmock.NewRows([]string{"episode_id", "public_id", "name", "profile_text", "icon_image_id", "icon_image_updated_at", "role_public_id", "role_name", "display_order", "source", "share_bps"})
 	for index, credit := range credits {
-		rows.AddRow(credit.episodeID, credit.publicID, credit.name, nil, nil, nil, credit.rolePublicID, credit.roleName, int32(index), credit.source)
+		rows.AddRow(credit.episodeID, credit.publicID, credit.name, nil, nil, nil, credit.rolePublicID, credit.roleName, int32(index), credit.source, credit.shareBps)
 	}
 	return rows
 }

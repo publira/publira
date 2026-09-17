@@ -217,6 +217,7 @@ func (s *adminServer) syncSeriesCredits(
 			CreatorID:    credit.creator.ID,
 			RoleID:       credit.role.ID,
 			DisplayOrder: int32(index),
+			ShareBps:     credit.shareBps,
 		})
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", credit.creator.ID.String())
@@ -587,10 +588,18 @@ func (s *adminServer) CreateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
+	shares := make([]int32, len(req.Msg.CreatorCredits))
+	for index, credit := range req.Msg.CreatorCredits {
+		shares[index] = credit.GetShareBps()
+	}
+	if err := validateCreditShares(shares, "creator_credits"); err != nil {
+		return nil, err
+	}
 	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}
+	setCreatorCreditShares(creditsToLink, shares)
 	genresToLink, err := s.resolveGenresByPublicIDs(ctx, tenant.ID, req.Msg.GenrePublicIds)
 	if err != nil {
 		return nil, err
@@ -773,10 +782,18 @@ func (s *adminServer) UpdateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
+	shares := make([]int32, len(req.Msg.CreatorCredits))
+	for index, credit := range req.Msg.CreatorCredits {
+		shares[index] = credit.GetShareBps()
+	}
+	if err := validateCreditShares(shares, "creator_credits"); err != nil {
+		return nil, err
+	}
 	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}
+	setCreatorCreditShares(creditsToLink, shares)
 	genresToLink, err := s.resolveGenresByPublicIDs(ctx, tenant.ID, req.Msg.GenrePublicIds)
 	if err != nil {
 		return nil, err

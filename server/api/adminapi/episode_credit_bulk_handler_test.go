@@ -126,6 +126,57 @@ func TestBulkEditEpisodeCreditsRefusesARequestWithNoOperation(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestBulkEditEpisodeCreditsRefusesAShareThatWouldExceedAnEpisodeTotal(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	creatorID := uuid.Must(uuid.NewV7())
+	roleID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByPublicIDsForTenantQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
+			AddRow(creatorID, tenantID, "CREATOR001", "Ren Takahashi", nil, now))
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorRolesByPublicIDsForTenantQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
+			AddRow(roleID, "ROLE00000001", "Artist", int32(2)))
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "SERIES000001").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
+	mock.ExpectQuery(regexp.QuoteMeta(lockEpisodesByPublicIDsForTenantAndSeriesQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(episodeID, "EP000000001"))
+	mock.ExpectQuery("ListEpisodesExceedingShareAfterBulkSet").
+		WithArgs(tenantID, sqlmock.AnyArg(), creatorID, roleID, int32(6000)).
+		WillReturnRows(sqlmock.NewRows([]string{"episode_id"}).AddRow(episodeID))
+	mock.ExpectRollback()
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId:   "SERIES000001",
+		EpisodePublicIds: []string{"EP000000001"},
+		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_SetShare{
+			SetShare: &publiraadminv1.SetEpisodeCreditShareOperation{
+				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001", ShareBps: 6000},
+			},
+		},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.BulkEditEpisodeCredits(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("BulkEditEpisodeCredits code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
+}
+
 // The range is a set of episodes, each named once. A repeated public_id is
 // refused before the transaction, because the response would otherwise report
 // the same episode twice for one row the statement wrote.

@@ -80,6 +80,7 @@ type Querier interface {
 	// what keeps a guest credited on one episode of the range where they were: the
 	// range edit moves the standing team and nothing else.
 	BulkReplaceEpisodeCreator(ctx context.Context, arg BulkReplaceEpisodeCreatorParams) ([]uuid.UUID, error)
+	BulkSetEpisodeCreatorShare(ctx context.Context, arg BulkSetEpisodeCreatorShareParams) ([]uuid.UUID, error)
 	BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error)
 	CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error)
@@ -888,6 +889,7 @@ type Querier interface {
 	// and this is what lets the response say so instead of reporting them beside
 	// the episodes that never held the credit at all.
 	ListEpisodesCreditedOnTheEpisodeItself(ctx context.Context, arg ListEpisodesCreditedOnTheEpisodeItselfParams) ([]uuid.UUID, error)
+	ListEpisodesExceedingShareAfterBulkSet(ctx context.Context, arg ListEpisodesExceedingShareAfterBulkSetParams) ([]uuid.UUID, error)
 	// The episodes a replace would leave crediting the same person twice in the
 	// same role: they carry the credit being replaced as the series', and already
 	// carry the one it would become. The unique constraint would refuse the whole

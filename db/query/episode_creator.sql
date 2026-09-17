@@ -16,7 +16,8 @@ SELECT ec.episode_id,
     cr.public_id AS role_public_id,
     cr.name AS role_name,
     ec.display_order,
-    ec.source
+    ec.source,
+    ec.share_bps
 FROM episode_creators ec
     JOIN creators c ON c.id = ec.creator_id
     LEFT JOIN creator_roles cr ON cr.id = ec.role_id
@@ -37,7 +38,8 @@ INSERT INTO episode_creators (
         creator_id,
         role_id,
         display_order,
-        source
+        source,
+        share_bps
     )
 VALUES (
         sqlc.arg('tenant_id'),
@@ -45,7 +47,8 @@ VALUES (
         sqlc.arg('creator_id'),
         sqlc.arg('role_id')::uuid,
         sqlc.arg('display_order'),
-        sqlc.arg('source')
+        sqlc.arg('source'),
+        sqlc.arg('share_bps')
     );
 
 -- name: DeleteEpisodeCreatorsByEpisodeID :exec
@@ -67,14 +70,16 @@ INSERT INTO episode_creators (
         creator_id,
         role_id,
         display_order,
-        source
+        source,
+        share_bps
     )
 SELECT sc.tenant_id,
     sqlc.arg('episode_id'),
     sc.creator_id,
     sc.role_id,
     sc.display_order,
-    'series'
+    'series',
+    sc.share_bps
 FROM series_creators sc
 WHERE sc.tenant_id = sqlc.arg('tenant_id')
     AND sc.series_id = sqlc.arg('series_id');
@@ -106,7 +111,8 @@ INSERT INTO episode_creators (
         creator_id,
         role_id,
         display_order,
-        source
+        source,
+        share_bps
     )
 SELECT sqlc.arg('tenant_id'),
     target.episode_id,
@@ -120,9 +126,35 @@ SELECT sqlc.arg('tenant_id'),
         ),
         0
     ),
-    'series'
+    'series',
+    0
 FROM unnest(sqlc.arg('episode_ids')::uuid[]) AS target(episode_id)
 ON CONFLICT (episode_id, creator_id, role_id) DO NOTHING
+RETURNING episode_id;
+
+-- name: ListEpisodesExceedingShareAfterBulkSet :many
+SELECT ec.episode_id
+FROM episode_creators ec
+WHERE ec.tenant_id = sqlc.arg('tenant_id')
+    AND ec.episode_id = ANY(sqlc.arg('episode_ids')::uuid[])
+GROUP BY ec.episode_id
+HAVING SUM(
+    CASE
+        WHEN ec.creator_id = sqlc.arg('creator_id')::uuid
+            AND ec.role_id = sqlc.arg('role_id')::uuid
+            AND ec.source = 'series' THEN sqlc.arg('share_bps')::integer
+        ELSE ec.share_bps
+    END
+) > 10000;
+
+-- name: BulkSetEpisodeCreatorShare :many
+UPDATE episode_creators
+SET share_bps = sqlc.arg('share_bps')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = ANY(sqlc.arg('episode_ids')::uuid[])
+    AND creator_id = sqlc.arg('creator_id')::uuid
+    AND role_id = sqlc.arg('role_id')::uuid
+    AND source = 'series'
 RETURNING episode_id;
 
 -- name: BulkReplaceEpisodeCreator :many

@@ -15,7 +15,6 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
@@ -37,13 +36,27 @@ func (s *adminServer) ListEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
-	credits, err := s.episodeCreditsByEpisodeIDs(ctx, []uuid.UUID{episode.ID})
+	rows, err := s.queriesFor(ctx).ListEpisodeCreatorsByEpisodeIDs(ctx, []uuid.UUID{episode.ID})
 	if err != nil {
-		return nil, err
+		return nil, s.internalDBError(ctx, "failed to list episode credits", err, "episode_id", episode.ID.String())
 	}
+	credits := protomapper.EpisodeCreditsByEpisodeID(rows)
 	return connect.NewResponse(&publiraadminv1.ListEpisodeCreditsResponse{
-		Creators: credits[episode.ID],
+		Creators:       credits[episode.ID],
+		CreatorCredits: episodeCreatorCredits(rows),
 	}), nil
+}
+
+func episodeCreatorCredits(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) []*publiraadminv1.EpisodeCreatorCredit {
+	credits := make([]*publiraadminv1.EpisodeCreatorCredit, 0, len(rows))
+	for _, row := range rows {
+		credits = append(credits, &publiraadminv1.EpisodeCreatorCredit{
+			CreatorPublicId: row.PublicID,
+			RolePublicId:    row.RolePublicID.String,
+			ShareBps:        row.ShareBps,
+		})
+	}
+	return credits
 }
 
 func (s *adminServer) ReplaceEpisodeCredits(
@@ -54,10 +67,18 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
+	shares := make([]int32, len(req.Msg.CreatorCredits))
+	for index, credit := range req.Msg.CreatorCredits {
+		shares[index] = credit.GetShareBps()
+	}
+	if err := validateCreditShares(shares, "creator_credits"); err != nil {
+		return nil, err
+	}
 	credits, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}
+	setCreatorCreditShares(credits, shares)
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -115,6 +136,7 @@ func (s *adminServer) ReplaceEpisodeCredits(
 			RoleID:       credit.role.ID,
 			DisplayOrder: int32(index),
 			Source:       source,
+			ShareBps:     credit.shareBps,
 		})
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to create episode credit", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "creator_id", credit.creator.ID.String())
@@ -170,18 +192,4 @@ func (s *adminServer) episodeForCreditsByPublicID(
 		return dbmodels.GetEpisodeByPublicIDForTenantRow{}, s.internalDBError(ctx, "failed to get episode", err, "tenant_id", tenantID.String(), "episode_public_id", publicID)
 	}
 	return row, nil
-}
-
-func (s *adminServer) episodeCreditsByEpisodeIDs(
-	ctx context.Context,
-	episodeIDs []uuid.UUID,
-) (map[uuid.UUID][]*publirattypesv1.Creator, error) {
-	if len(episodeIDs) == 0 {
-		return map[uuid.UUID][]*publirattypesv1.Creator{}, nil
-	}
-	rows, err := s.queriesFor(ctx).ListEpisodeCreatorsByEpisodeIDs(ctx, episodeIDs)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list episode credits", err)
-	}
-	return protomapper.EpisodeCreditsByEpisodeID(rows), nil
 }

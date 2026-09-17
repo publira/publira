@@ -185,6 +185,8 @@ func bulkCreditPairs(msg *publiraadminv1.BulkEditEpisodeCreditsRequest) ([][2]st
 		}), "replace"
 	case *publiraadminv1.BulkEditEpisodeCreditsRequest_Remove:
 		return creatorCreditPairs([]*publiraadminv1.EpisodeCreatorCredit{operation.Remove.GetCredit()}), "remove"
+	case *publiraadminv1.BulkEditEpisodeCreditsRequest_SetShare:
+		return creatorCreditPairs([]*publiraadminv1.EpisodeCreatorCredit{operation.SetShare.GetCredit()}), "set_share"
 	default:
 		return nil, ""
 	}
@@ -258,6 +260,31 @@ func (s *adminServer) applyBulkCreditOperation(
 			changed:        episodeIDSet(written),
 			unchangedCause: publiraadminv1.EpisodeCreditUnchangedReason_EPISODE_CREDIT_UNCHANGED_REASON_NOT_CREDITED,
 			guests:         guests,
+		}, nil
+
+	case *publiraadminv1.BulkEditEpisodeCreditsRequest_SetShare:
+		share := msg.GetSetShare().GetCredit().GetShareBps()
+		if err := validateCreditShares([]int32{share}, "set_share"); err != nil {
+			return bulkCreditOutcome{}, err
+		}
+		exceeding, err := s.queriesFor(ctx).ListEpisodesExceedingShareAfterBulkSet(ctx, dbmodels.ListEpisodesExceedingShareAfterBulkSetParams{
+			TenantID: tenantID, EpisodeIds: episodeIDs, CreatorID: credits[0].creator.ID, RoleID: credits[0].role.ID, ShareBps: share,
+		})
+		if err != nil {
+			return bulkCreditOutcome{}, s.internalDBError(ctx, "failed to check episode credit shares", err, "tenant_id", tenantID.String())
+		}
+		if len(exceeding) > 0 {
+			return bulkCreditOutcome{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the share_bps total would exceed 10000 on %d episode(s)", len(exceeding)))
+		}
+		written, err := s.queriesFor(ctx).BulkSetEpisodeCreatorShare(ctx, dbmodels.BulkSetEpisodeCreatorShareParams{
+			TenantID: tenantID, EpisodeIds: episodeIDs, CreatorID: credits[0].creator.ID, RoleID: credits[0].role.ID, ShareBps: share,
+		})
+		if err != nil {
+			return bulkCreditOutcome{}, s.internalDBError(ctx, "failed to set episode credit shares in bulk", err, "tenant_id", tenantID.String())
+		}
+		return bulkCreditOutcome{
+			changed:        episodeIDSet(written),
+			unchangedCause: publiraadminv1.EpisodeCreditUnchangedReason_EPISODE_CREDIT_UNCHANGED_REASON_NOT_CREDITED,
 		}, nil
 
 	default:

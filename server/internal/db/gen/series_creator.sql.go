@@ -19,14 +19,16 @@ INSERT INTO series_creators (
         series_id,
         creator_id,
         role_id,
-        display_order
+        display_order,
+        share_bps
     )
 VALUES (
         $1,
         $2,
         $3,
         $4::uuid,
-        $5
+        $5,
+        $6
     )
 `
 
@@ -36,6 +38,7 @@ type CreateSeriesCreatorParams struct {
 	CreatorID    uuid.UUID `json:"creator_id"`
 	RoleID       uuid.UUID `json:"role_id"`
 	DisplayOrder int32     `json:"display_order"`
+	ShareBps     int32     `json:"share_bps"`
 }
 
 // role_id is cast to a plain uuid rather than left nullable like the column:
@@ -48,6 +51,7 @@ func (q *Queries) CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreat
 		arg.CreatorID,
 		arg.RoleID,
 		arg.DisplayOrder,
+		arg.ShareBps,
 	)
 	return err
 }
@@ -68,7 +72,8 @@ SELECT sc.series_id,
     c.name,
     cr.public_id AS role_public_id,
     cr.name AS role_name,
-    sc.display_order
+    sc.display_order,
+    sc.share_bps
 FROM series_creators sc
     JOIN creators c ON c.id = sc.creator_id
     LEFT JOIN creator_roles cr ON cr.id = sc.role_id
@@ -86,6 +91,7 @@ type ListSeriesCreatorsBySeriesIDsRow struct {
 	RolePublicID sql.NullString `json:"role_public_id"`
 	RoleName     sql.NullString `json:"role_name"`
 	DisplayOrder int32          `json:"display_order"`
+	ShareBps     int32          `json:"share_bps"`
 }
 
 // Credits are presented in role priority first, so the leading role opens the
@@ -112,6 +118,7 @@ func (q *Queries) ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds [
 			&i.RolePublicID,
 			&i.RoleName,
 			&i.DisplayOrder,
+			&i.ShareBps,
 		); err != nil {
 			return nil, err
 		}
