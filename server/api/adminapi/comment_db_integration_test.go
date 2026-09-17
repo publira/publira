@@ -65,10 +65,10 @@ func newCommentModerationFixture(t *testing.T, env *adminDBEnv, prefix, domain s
 	}
 }
 
-// seedComment inserts one comment on the given episode in the state the test
-// needs to act on. The superuser connection writes it, because no admin RPC
-// creates a comment: only a reader does, through the public API.
-func (f commentModerationFixture) seedCommentOn(t *testing.T, episodeID uuid.UUID, publicID, status string) dbmodels.EpisodeComment {
+// seedCommentBy inserts one comment by the given author on the given episode in
+// the state the test needs to act on. The superuser connection writes it,
+// because no admin RPC creates a comment: only the public API does.
+func (f commentModerationFixture) seedCommentBy(t *testing.T, authorID, episodeID uuid.UUID, publicID, status string) dbmodels.EpisodeComment {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -83,7 +83,7 @@ func (f commentModerationFixture) seedCommentOn(t *testing.T, episodeID uuid.UUI
 		TenantID:    f.admin.Tenant.ID,
 		PublicID:    publicID,
 		EpisodeID:   episodeID,
-		UserID:      f.reader,
+		UserID:      authorID,
 		Body:        "A comment stored as " + status + ".",
 		Status:      status,
 		PublishedAt: publishedAt,
@@ -92,6 +92,11 @@ func (f commentModerationFixture) seedCommentOn(t *testing.T, episodeID uuid.UUI
 		t.Fatalf("create %s comment %s: %v", status, publicID, err)
 	}
 	return comment
+}
+
+func (f commentModerationFixture) seedCommentOn(t *testing.T, episodeID uuid.UUID, publicID, status string) dbmodels.EpisodeComment {
+	t.Helper()
+	return f.seedCommentBy(t, f.reader, episodeID, publicID, status)
 }
 
 func (f commentModerationFixture) seedComment(t *testing.T, publicID, status string) dbmodels.EpisodeComment {
@@ -613,6 +618,37 @@ func TestDBAdminListCommentsFiltersAndPages(t *testing.T) {
 	back := fixture.list(t, &publiraadminv1.ListCommentsRequest{Limit: 1, Token: next.PreviousToken})
 	if got := adminCommentPublicIDs(back.Comments); !slices.Equal(got, []string{elsewhere.PublicID}) {
 		t.Fatalf("page back = %v, want %s", got, elsewhere.PublicID)
+	}
+}
+
+func TestDBAdminListCommentsSaysWhetherTheAuthorIsStaff(t *testing.T) {
+	env := newAdminDBEnv(t)
+	fixture := newCommentModerationFixture(t, env, "AUS", "author-staff.example.com")
+	readerComment := fixture.seedComment(t, "AUSREADER001", "published")
+	staffComment := fixture.seedCommentBy(t, fixture.admin.User.ID, fixture.episode.ID, "AUSSTAFF0001", "published")
+
+	// Only a reader has a reader page, so the console needs to know which
+	// commenter it can link there.
+	want := map[string]bool{readerComment.PublicID: false, staffComment.PublicID: true}
+	listed := fixture.list(t, &publiraadminv1.ListCommentsRequest{})
+	if got := len(listed.Comments); got != len(want) {
+		t.Fatalf("listed %d comments, want %d", got, len(want))
+	}
+	for _, comment := range listed.Comments {
+		if comment.AuthorIsStaff != want[comment.PublicId] {
+			t.Fatalf("comment %s author_is_staff = %t, want %t", comment.PublicId, comment.AuthorIsStaff, want[comment.PublicId])
+		}
+	}
+
+	hidden, err := env.commentClient().HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+		Tenant:   fixture.admin.tenantContext(),
+		PublicId: staffComment.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("HideComment: %v", err)
+	}
+	if !hidden.Msg.Comment.AuthorIsStaff {
+		t.Fatal("hidden staff comment author_is_staff = false, want true")
 	}
 }
 

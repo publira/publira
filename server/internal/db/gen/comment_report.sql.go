@@ -157,6 +157,11 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
@@ -202,6 +207,7 @@ type GetEpisodeCommentReportForModerationByIDForTenantRow struct {
 	OpenReportCount  int32          `json:"open_report_count"`
 	AuthorPublicID   string         `json:"author_public_id"`
 	AuthorName       string         `json:"author_name"`
+	AuthorIsStaff    bool           `json:"author_is_staff"`
 	EpisodePublicID  string         `json:"episode_public_id"`
 	EpisodeTitle     string         `json:"episode_title"`
 	SeriesPublicID   string         `json:"series_public_id"`
@@ -235,6 +241,7 @@ func (q *Queries) GetEpisodeCommentReportForModerationByIDForTenant(ctx context.
 		&i.OpenReportCount,
 		&i.AuthorPublicID,
 		&i.AuthorName,
+		&i.AuthorIsStaff,
 		&i.EpisodePublicID,
 		&i.EpisodeTitle,
 		&i.SeriesPublicID,
@@ -363,6 +370,11 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
@@ -432,6 +444,7 @@ type ListEpisodeCommentReportsForModerationByCreatedAtAscRow struct {
 	OpenReportCount  int32          `json:"open_report_count"`
 	AuthorPublicID   string         `json:"author_public_id"`
 	AuthorName       string         `json:"author_name"`
+	AuthorIsStaff    bool           `json:"author_is_staff"`
 	EpisodePublicID  string         `json:"episode_public_id"`
 	EpisodeTitle     string         `json:"episode_title"`
 	SeriesPublicID   string         `json:"series_public_id"`
@@ -477,6 +490,7 @@ func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtAsc(ctx conte
 			&i.OpenReportCount,
 			&i.AuthorPublicID,
 			&i.AuthorName,
+			&i.AuthorIsStaff,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
 			&i.SeriesPublicID,
@@ -516,6 +530,11 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
@@ -585,6 +604,7 @@ type ListEpisodeCommentReportsForModerationByCreatedAtDescRow struct {
 	OpenReportCount  int32          `json:"open_report_count"`
 	AuthorPublicID   string         `json:"author_public_id"`
 	AuthorName       string         `json:"author_name"`
+	AuthorIsStaff    bool           `json:"author_is_staff"`
 	EpisodePublicID  string         `json:"episode_public_id"`
 	EpisodeTitle     string         `json:"episode_title"`
 	SeriesPublicID   string         `json:"series_public_id"`
@@ -637,6 +657,7 @@ func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx cont
 			&i.OpenReportCount,
 			&i.AuthorPublicID,
 			&i.AuthorName,
+			&i.AuthorIsStaff,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
 			&i.SeriesPublicID,

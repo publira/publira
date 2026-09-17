@@ -211,6 +211,11 @@ LIMIT sqlc.arg('limit');
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
@@ -253,6 +258,11 @@ LIMIT sqlc.arg('limit');
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
@@ -307,6 +317,11 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,

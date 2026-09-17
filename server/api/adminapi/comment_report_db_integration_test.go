@@ -149,6 +149,9 @@ func TestDBAdminCommentReportQueueCarriesTheCommentItIsAbout(t *testing.T) {
 	if queued.Comment.GetAuthorPublicId() != fixture.readerPublicID {
 		t.Fatalf("comment author = %q, want %q", queued.Comment.GetAuthorPublicId(), fixture.readerPublicID)
 	}
+	if queued.Comment.GetAuthorIsStaff() {
+		t.Fatal("reported comment author_is_staff = true, want false for a reader's comment")
+	}
 	if queued.Comment.GetEpisodePublicId() != fixture.episode.PublicID || queued.Comment.GetSeriesPublicId() != fixture.series.PublicID {
 		t.Fatalf("comment episode/series = %q/%q, want %q/%q",
 			queued.Comment.GetEpisodePublicId(), queued.Comment.GetSeriesPublicId(), fixture.episode.PublicID, fixture.series.PublicID)
@@ -160,6 +163,26 @@ func TestDBAdminCommentReportQueueCarriesTheCommentItIsAbout(t *testing.T) {
 	// leaving staff to assume the threshold got there first.
 	if queued.Comment.GetHiddenReason() != "" {
 		t.Fatalf("hidden reason = %q, want empty on a comment nothing removed", queued.Comment.GetHiddenReason())
+	}
+}
+
+func TestDBAdminCommentReportSaysTheCommentAuthorIsStaff(t *testing.T) {
+	env := newAdminDBEnv(t)
+	fixture := newCommentModerationFixture(t, env, "RAS", "report-author-staff.example.com")
+	comment := fixture.seedCommentBy(t, fixture.admin.User.ID, fixture.episode.ID, "RASSTAFF0001", "published")
+	reportID := fixture.seedReport(t, comment.ID, fixture.reader, "abuse", "")
+
+	queue := fixture.listReports(t, &publiraadminv1.ListCommentReportsRequest{Status: "open"})
+	if got := commentReportIDs(queue.Reports); !slices.Equal(got, []string{reportID.String()}) {
+		t.Fatalf("open report queue = %v, want %s", got, reportID)
+	}
+	if !queue.Reports[0].Comment.GetAuthorIsStaff() {
+		t.Fatal("queued report comment author_is_staff = false, want true for a staff account's comment")
+	}
+
+	resolved := fixture.resolveReport(t, reportID, "rejected", "")
+	if !resolved.Comment.GetAuthorIsStaff() {
+		t.Fatal("resolved report comment author_is_staff = false, want true for a staff account's comment")
 	}
 }
 

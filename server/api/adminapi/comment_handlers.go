@@ -262,6 +262,7 @@ type commentProjection struct {
 	openReportCount int32
 	authorPublicID  string
 	authorName      string
+	authorIsStaff   bool
 	episodePublicID string
 	episodeTitle    string
 	seriesPublicID  string
@@ -281,6 +282,7 @@ func commentProjectionOf(row moderationCommentRow) commentProjection {
 		openReportCount: row.OpenReportCount,
 		authorPublicID:  row.AuthorPublicID,
 		authorName:      row.AuthorName,
+		authorIsStaff:   row.AuthorIsStaff,
 		episodePublicID: row.EpisodePublicID,
 		episodeTitle:    row.EpisodeTitle,
 		seriesPublicID:  row.SeriesPublicID,
@@ -301,6 +303,7 @@ func commentProjectionOfReport(row commentReportRow) commentProjection {
 		openReportCount: row.OpenReportCount,
 		authorPublicID:  row.AuthorPublicID,
 		authorName:      row.AuthorName,
+		authorIsStaff:   row.AuthorIsStaff,
 		episodePublicID: row.EpisodePublicID,
 		episodeTitle:    row.EpisodeTitle,
 		seriesPublicID:  row.SeriesPublicID,
@@ -325,6 +328,7 @@ func (s *adminServer) adminComment(row commentProjection) *publiraadminv1.AdminC
 		WithdrawnAt:     formatOptionalTime(row.withdrawnAt),
 		AuthorPublicId:  row.authorPublicID,
 		AuthorName:      row.authorName,
+		AuthorIsStaff:   row.authorIsStaff,
 		EpisodePublicId: row.episodePublicID,
 		EpisodeTitle:    row.episodeTitle,
 		SeriesPublicId:  row.seriesPublicID,

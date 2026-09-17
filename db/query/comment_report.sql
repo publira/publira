@@ -190,6 +190,11 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
@@ -251,6 +256,11 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,
@@ -313,6 +323,11 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     s.public_id AS series_public_id,

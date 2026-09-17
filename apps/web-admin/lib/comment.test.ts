@@ -46,6 +46,7 @@ vi.mock("./api", () => ({
 }));
 
 const adminComment = {
+  authorIsStaff: false,
   authorName: "Reader",
   authorPublicId: "USER001",
   body: "A comment on the first episode.",
@@ -77,6 +78,7 @@ const commentReport = {
 };
 
 const mappedComment = {
+  authorIsStaff: false,
   authorName: "Reader",
   authorPublicId: "USER001",
   body: "A comment on the first episode.",
