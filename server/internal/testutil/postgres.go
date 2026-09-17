@@ -54,6 +54,17 @@ const (
 	// what the tests opening this connection are there to exercise.
 	tickerDBUser     = "publira_ticker"
 	tickerDBPassword = "tickerpass"
+
+	// The outbox worker's own login. It carries the blanket grant like the API
+	// roles, minus the platform console's tables, of which the seed grants back
+	// by name the five the mail paths read.
+	outboxDBUser     = "publira_outbox"
+	outboxDBPassword = "outboxpass"
+
+	// The nightly batches' login. It reads and writes the catalog across every
+	// tenant and has no business with the platform console's tables at all.
+	contentStatsDBUser     = "publira_content_stats"
+	contentStatsDBPassword = "contentstatspass"
 )
 
 // SeededPassword is the plaintext behind the password hash of every user seeded
@@ -74,6 +85,10 @@ type PostgresEnv struct {
 	PublicURL string
 	// Ticker job DSN using publira_ticker, the BYPASSRLS login with per-table grants.
 	TickerURL string
+	// Outbox worker DSN using publira_outbox.
+	OutboxURL string
+	// Batch job DSN using publira_content_stats.
+	ContentStatsURL string
 
 	// Superuser pool used for setup and seeding.
 	DB *sql.DB
@@ -211,15 +226,29 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 		_ = testcontainers.TerminateContainer(container)
 		return nil, err
 	}
+	outboxURL, err := appConnectionString(connURL, outboxDBUser, outboxDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	contentStatsURL, err := appConnectionString(connURL, contentStatsDBUser, contentStatsDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
 
 	return &PostgresEnv{
-		Container:   container,
-		URL:         connURL,
-		PlatformURL: platformURL,
-		AdminURL:    adminURL,
-		PublicURL:   publicURL,
-		TickerURL:   tickerURL,
-		DB:          db,
+		Container:       container,
+		URL:             connURL,
+		PlatformURL:     platformURL,
+		AdminURL:        adminURL,
+		PublicURL:       publicURL,
+		TickerURL:       tickerURL,
+		OutboxURL:       outboxURL,
+		ContentStatsURL: contentStatsURL,
+		DB:              db,
 	}, nil
 }
 
@@ -288,6 +317,22 @@ func (e *PostgresEnv) OpenPublicDB(t *testing.T) *sql.DB {
 func (e *PostgresEnv) OpenTickerDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return e.openAppDB(t, e.TickerURL, tickerDBUser)
+}
+
+// OpenOutboxDB opens a connection as publira_outbox, the login the outbox
+// worker runs as. It bypasses RLS and owns River's schema, and the platform
+// console's tables reach it only through the reads the seed names. The
+// connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenOutboxDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.OutboxURL, outboxDBUser)
+}
+
+// OpenContentStatsDB opens a connection as publira_content_stats, the login the
+// nightly batches run as. The connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenContentStatsDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.ContentStatsURL, contentStatsDBUser)
 }
 
 func (e *PostgresEnv) openAppDB(t *testing.T, dsn, role string) *sql.DB {

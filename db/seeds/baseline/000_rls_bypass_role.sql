@@ -128,6 +128,55 @@ GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_content_stats, pub
 -- is publira/publira#2010.
 REVOKE INSERT, UPDATE, DELETE ON episode_rating_counts, series_rating_counts FROM publira_admin, publira_public;
 
+-- The platform console's tables carry no policy, and correctly so: the console
+-- spans tenants, publira_platform holds BYPASSRLS, and a tenant isolation
+-- policy would have nothing to isolate on. The blanket grants above are
+-- therefore the only thing standing in front of the operators' password hashes
+-- and the platform SMTP credentials, and they hand both to every app role — a
+-- connection serving a storefront request could read them, and insert itself a
+-- platform_users row besides. So the tenant-scoped and worker roles give the
+-- whole platform_ prefix back.
+--
+-- The revoke matches on the prefix rather than naming today's tables, because
+-- the ALTER DEFAULT PRIVILEGES above re-grants whatever a later migration adds:
+-- a hand-maintained list would leave the next platform_ table exposed the day it
+-- lands. Like the revoke for the rating tallies, this runs after the migrations,
+-- so the tables exist by the time the loop finds them.
+DO $$
+DECLARE
+    platform_table text;
+BEGIN
+    FOR platform_table IN
+        SELECT c.relname
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+            AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+            AND c.relname LIKE 'platform\_%'
+        ORDER BY c.relname
+    LOOP
+        EXECUTE format(
+            'REVOKE ALL ON %I FROM publira_public, publira_admin, publira_content_stats, publira_outbox',
+            platform_table
+        );
+    END LOOP;
+END
+$$;
+
+-- outbox-worker composes the platform console's own mail — a password reset, an
+-- email change confirmation, the notice that follows one — and every mail it
+-- sends goes through the platform relay unless the tenant overrides it. So the
+-- five tables those paths read are granted back one by one, the way the ticker
+-- role's are: reads only, and a platform_ table added later reaches this role
+-- only when someone puts it in this list.
+GRANT SELECT ON
+    platform_config,
+    platform_smtp_config,
+    platform_users,
+    platform_user_email_change_tokens,
+    platform_user_password_reset_tokens
+TO publira_outbox;
+
 -- River versions its own schema (river_job and the rest) and outbox-worker
 -- applies it with rivermigrate at startup, so that role needs to create tables,
 -- types, indexes, and functions in the schema. No other app role does.
