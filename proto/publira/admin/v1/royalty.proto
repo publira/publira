@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// The figures of one month: its own sales, and what its lines pay out.
+// Amounts are whole yen.
+message RoyaltyStatementTotals {
+  // What the month sold, each sale counted once however many creators it is
+  // credited to. A fully refunded sale is not a sale.
+  int64 gross = 1;
+  // Partial refunds of the sales in gross.
+  int64 refunded = 2;
+  // The sum of the lines' payouts. The rest of gross net of refunds is the
+  // tenant's own.
+  int64 payout = 3;
+}
+
+// A closed month.
+message RoyaltyStatement {
+  // The month, as YYYY-MM.
+  string period = 1;
+  // The IANA zone the month was cut in: the tenant's zone at close.
+  string time_zone = 2;
+  string closed_at = 3;
+  // The account that closed the month. Both empty for a close no user started
+  // and once the account is deleted.
+  string closed_by_user_public_id = 4;
+  string closed_by_user_name = 5;
+  RoyaltyStatementTotals totals = 6;
+}
+
+// One creator's credit on one episode for one role, with that episode's sales
+// in the month. Names are as they stood at close; a public ID is empty once the
+// row it named has been deleted.
+message RoyaltyStatementLine {
+  // Position in the statement, from 1.
+  int32 line_number = 1;
+  string creator_public_id = 2;
+  string creator_name = 3;
+  string series_public_id = 4;
+  string series_title = 5;
+  string episode_public_id = 6;
+  string episode_title = 7;
+  // Both empty for a credit that states no role.
+  string role_public_id = 8;
+  string role_name = 9;
+  int32 sale_count = 10;
+  int64 gross_amount = 11;
+  int64 refunded_amount = 12;
+  // The credit's share in basis points (10000 is all of it), as applied.
+  int32 share_bps = 13;
+  // (gross_amount - refunded_amount) * share_bps / 10000, floored to whole yen.
+  int64 payout_amount = 14;
+}
+
+message PreviewRoyaltyStatementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // YYYY-MM. The current month and months already over are both accepted.
+  string period = 2;
+}
+
+message PreviewRoyaltyStatementResponse {
+  string period = 1;
+  string time_zone = 2;
+  RoyaltyStatementTotals totals = 3;
+  repeated RoyaltyStatementLine lines = 4;
+}
+
+message CloseRoyaltyStatementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // YYYY-MM of a month that is already over in the tenant's zone.
+  string period = 2;
+}
+
+message CloseRoyaltyStatementResponse {
+  RoyaltyStatement statement = 1;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListRoyaltyStatementsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListRoyaltyStatementsResponse {
+  repeated RoyaltyStatement statements = 1;
+  string previous_token = 2;
+  string next_token = 3;
+}
+
+// Cursor pagination over the lines. Field shape and token rules:
+// proto/README.md.
+message GetRoyaltyStatementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // YYYY-MM.
+  string period = 2;
+  // Max lines in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // issued for another period is invalid_argument.
+  string token = 4;
+}
+
+message GetRoyaltyStatementResponse {
+  RoyaltyStatement statement = 1;
+  repeated RoyaltyStatementLine lines = 2;
+  string previous_token = 3;
+  string next_token = 4;
+}
+
+// Creator royalties. Every RPC here is limited to the tenant admin role.
+service AdminRoyaltyService {
+  // Computes a month that is not closed, exactly as closing it now would.
+  // failed_precondition for a month already closed, and for a month that has
+  // not started yet.
+  rpc PreviewRoyaltyStatement(PreviewRoyaltyStatementRequest) returns (PreviewRoyaltyStatementResponse) {}
+  // Closes a month into a statement that never changes afterwards: a later
+  // edit of a share, a creator or a catalog row, and a refund recorded after
+  // the close, all leave it as it was closed. A closed month is never reopened;
+  // a correction is a manual process outside Publira. already_exists for a
+  // month that is already closed, failed_precondition for a month that is not
+  // over yet.
+  rpc CloseRoyaltyStatement(CloseRoyaltyStatementRequest) returns (CloseRoyaltyStatementResponse) {}
+  // Lists the closed months, newest first.
+  rpc ListRoyaltyStatements(ListRoyaltyStatementsRequest) returns (ListRoyaltyStatementsResponse) {}
+  // Reads a closed month and a page of its lines. not_found for a month that
+  // is not closed.
+  rpc GetRoyaltyStatement(GetRoyaltyStatementRequest) returns (GetRoyaltyStatementResponse) {}
+}

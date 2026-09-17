@@ -511,6 +511,37 @@ type Purchase struct {
 	RefundedAt              sql.NullTime   `json:"refunded_at"`
 }
 
+type RoyaltyStatement struct {
+	ID             uuid.UUID     `json:"id"`
+	TenantID       uuid.UUID     `json:"tenant_id"`
+	Period         time.Time     `json:"period"`
+	TimeZone       string        `json:"time_zone"`
+	ClosedAt       time.Time     `json:"closed_at"`
+	ClosedByUserID uuid.NullUUID `json:"closed_by_user_id"`
+	TotalGross     int64         `json:"total_gross"`
+	TotalRefunded  int64         `json:"total_refunded"`
+	TotalPayout    int64         `json:"total_payout"`
+}
+
+type RoyaltyStatementLine struct {
+	TenantID       uuid.UUID      `json:"tenant_id"`
+	StatementID    uuid.UUID      `json:"statement_id"`
+	LineNumber     int32          `json:"line_number"`
+	CreatorID      uuid.NullUUID  `json:"creator_id"`
+	CreatorName    string         `json:"creator_name"`
+	SeriesID       uuid.NullUUID  `json:"series_id"`
+	SeriesTitle    string         `json:"series_title"`
+	EpisodeID      uuid.NullUUID  `json:"episode_id"`
+	EpisodeTitle   string         `json:"episode_title"`
+	RoleID         uuid.NullUUID  `json:"role_id"`
+	RoleName       sql.NullString `json:"role_name"`
+	SaleCount      int32          `json:"sale_count"`
+	GrossAmount    int64          `json:"gross_amount"`
+	RefundedAmount int64          `json:"refunded_amount"`
+	ShareBps       int32          `json:"share_bps"`
+	PayoutAmount   int64          `json:"payout_amount"`
+}
+
 type Series struct {
 	ID              uuid.UUID     `json:"id"`
 	TenantID        uuid.UUID     `json:"tenant_id"`

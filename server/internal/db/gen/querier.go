@@ -474,6 +474,11 @@ type Querier interface {
 	// staff notification the report raises names what the queue is about, and
 	// reading it here keeps the report one round trip.
 	GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error)
+	// Totals the month's sales once each, however many creators a sale is
+	// credited to. The month and the refund rule are those of
+	// ListRoyaltyLinesForPeriod.
+	GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error)
+	GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
@@ -672,6 +677,12 @@ type Querier interface {
 	// reading the latest event per actor: the current score is a row, not a
 	// reduction over the log.
 	InsertRatingEvent(ctx context.Context, arg InsertRatingEventParams) (ContentEvent, error)
+	// A second close of the same month fails on royalty_statements_tenant_id_period_key.
+	InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyStatementParams) (RoyaltyStatement, error)
+	// Writes every line of a statement in one statement. The lines travel as one
+	// JSON array because several of their columns are nullable, which a typed
+	// array parameter per column cannot carry.
+	InsertRoyaltyStatementLines(ctx context.Context, arg InsertRoyaltyStatementLinesParams) error
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so idx_access_tickets_tenant_created_at can be
@@ -1333,6 +1344,25 @@ type Querier interface {
 	// ListRelatedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
 	ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRelatedSeriesIDsReversedParams) ([]ListRelatedSeriesIDsReversedRow, error)
+	// Computes the lines of one tenant month: every credit on an episode sold in
+	// the month, with the month's sales of that episode. It is what a close
+	// writes and what a preview shows, so the two cannot disagree.
+	//
+	// The month runs from the first day's midnight to the next month's in the
+	// given zone. A fully refunded sale is not a sale; a partial refund stays a
+	// sale and is carried as refunded_amount. The payout is floored per line over
+	// the month's sum, which keeps the rounding loss to one yen per line.
+	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
+	// The lines of a statement in the order they were closed in, with the public
+	// IDs of the catalog rows that still exist.
+	ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoyaltyStatementLinesAscParams) ([]ListRoyaltyStatementLinesAscRow, error)
+	// ListRoyaltyStatementLinesAsc walked backwards, for a previous-page token.
+	ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoyaltyStatementLinesDescParams) ([]ListRoyaltyStatementLinesDescRow, error)
+	// ListRoyaltyStatementsDesc walked backwards, for a previous-page token.
+	ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyStatementsAscParams) ([]ListRoyaltyStatementsAscRow, error)
+	// Newest month first. The period is unique per tenant, so it alone is the
+	// keyset.
+	ListRoyaltyStatementsDesc(ctx context.Context, arg ListRoyaltyStatementsDescParams) ([]ListRoyaltyStatementsDescRow, error)
 	ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error)
 	// Admin ListSeries is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so idx_series_tenant_created_at can be scanned in
