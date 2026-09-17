@@ -45,6 +45,8 @@ export default function Example() {
 
 `ConfirmDialogAction` closes the dialog and runs `onClick`; its `variant` defaults to `destructive`. `ConfirmDialogCancel` only closes it.
 
+To confirm a Server Action, pass `form` instead of `onClick`: the action becomes a submit button for the form with that id (`ActionForm` takes an `id`). The popup is portaled out of any surrounding `<form>`, so the id is what connects the two, and the form and its copy can stay in a Server Component.
+
 ## Subpath import
 
 ```tsx

@@ -1,6 +1,3 @@
-"use client";
-
-import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -13,89 +10,80 @@ import {
   ConfirmDialogTitle,
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState, useRef } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+} from "#components/action-form";
+import { Message } from "#components/message";
 
-import type { ReaderActionState } from "../../reader-types";
 import { suspendReaderAction } from "../_lib/actions";
 
 interface SuspendReaderButtonProps {
   /** The name the confirmation calls the reader by. */
   name: string;
   publicId: string;
+  tenantId: string;
 }
 
 /** Suspends the reader once staff confirm it, since it signs them out too. */
 export const SuspendReaderButton = ({
   name,
   publicId,
+  tenantId,
 }: SuspendReaderButtonProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const { add } = useToastManager();
-  const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction, isPending] = useActionState(
-    async (
-      previousState: ReaderActionState,
-      formData: FormData
-    ): Promise<ReaderActionState> => {
-      const nextState = await suspendReaderAction(previousState, formData);
-      if (nextState?.ok) {
-        add({ title: t("admin.readers.suspended"), type: "success" });
-      }
-      return nextState;
-    },
-    null
-  );
+  const formId = `suspend-reader-${publicId}`;
 
   return (
-    <div className="grid gap-1">
-      <form action={formAction} className="hidden" ref={formRef}>
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="public_id" type="hidden" value={publicId} />
-      </form>
+    <ActionForm action={suspendReaderAction} className="grid gap-1" id={formId}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="public_id" type="hidden" value={publicId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
-          render={
-            <Button disabled={isPending} type="button" variant="outline">
-              {isPending
-                ? t("admin.readers.suspending")
-                : t("admin.readers.suspend")}
-            </Button>
-          }
-        />
+          render={<Button type="button" variant="outline" />}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <ActionFormIdle>
+              <Message message="admin.readers.suspend" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Message message="admin.readers.suspending" />
+            </ActionFormPending>
+          </Suspense>
+        </ConfirmDialogTrigger>
         <ConfirmDialogContent>
           <ConfirmDialogHeader>
             <ConfirmDialogTitle>
-              <ClientMessage
-                message="admin.readers.suspend_confirm_title"
-                values={{ name }}
-              />
+              <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+                <Message
+                  message="admin.readers.suspend_confirm_title"
+                  values={{ name }}
+                />
+              </Suspense>
             </ConfirmDialogTitle>
             <ConfirmDialogDescription>
-              <ClientMessage message="admin.readers.suspend_confirm_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="admin.readers.suspend_confirm_description" />
+              </Suspense>
             </ConfirmDialogDescription>
           </ConfirmDialogHeader>
           <ConfirmDialogFooter>
             <ConfirmDialogCancel>
-              <ClientMessage message="admin.common.cancel" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="admin.common.cancel" />
+              </Suspense>
             </ConfirmDialogCancel>
-            <ConfirmDialogAction
-              onClick={() => {
-                formRef.current?.requestSubmit();
-              }}
-            >
-              <ClientMessage message="admin.readers.suspend_confirm_action" />
+            <ConfirmDialogAction form={formId}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.readers.suspend_confirm_action" />
+              </Suspense>
             </ConfirmDialogAction>
           </ConfirmDialogFooter>
         </ConfirmDialogContent>
       </ConfirmDialog>
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </div>
+    </ActionForm>
   );
 };

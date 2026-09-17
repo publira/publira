@@ -1,18 +1,19 @@
-"use client";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { useToastManager } from "@publira/ui-components";
-import { Button } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState } from "react";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "#components/action-form";
+import { Message } from "#components/message";
 
-import { useClientMessages } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
-
-import type { ReaderActionState } from "../../reader-types";
 import { unsuspendReaderAction } from "../_lib/actions";
 
 interface UnsuspendReaderButtonProps {
   publicId: string;
+  tenantId: string;
 }
 
 /**
@@ -21,36 +22,20 @@ interface UnsuspendReaderButtonProps {
  */
 export const UnsuspendReaderButton = ({
   publicId,
-}: UnsuspendReaderButtonProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const { add } = useToastManager();
-  const [state, formAction, isPending] = useActionState(
-    async (
-      previousState: ReaderActionState,
-      formData: FormData
-    ): Promise<ReaderActionState> => {
-      const nextState = await unsuspendReaderAction(previousState, formData);
-      if (nextState?.ok) {
-        add({ title: t("admin.readers.unsuspended"), type: "success" });
-      }
-      return nextState;
-    },
-    null
-  );
-
-  return (
-    <form action={formAction} className="grid gap-1">
-      <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={publicId} />
-      <Button disabled={isPending} type="submit" variant="outline">
-        {isPending
-          ? t("admin.readers.unsuspending")
-          : t("admin.readers.unsuspend")}
-      </Button>
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
-  );
-};
+  tenantId,
+}: UnsuspendReaderButtonProps) => (
+  <ActionForm action={unsuspendReaderAction} className="grid gap-1">
+    <input name="tenant_id" type="hidden" value={tenantId} />
+    <input name="public_id" type="hidden" value={publicId} />
+    <ActionFormSubmit variant="outline">
+      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+        <ActionFormIdle>
+          <Message message="admin.readers.unsuspend" />
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Message message="admin.readers.unsuspending" />
+        </ActionFormPending>
+      </Suspense>
+    </ActionFormSubmit>
+  </ActionForm>
+);

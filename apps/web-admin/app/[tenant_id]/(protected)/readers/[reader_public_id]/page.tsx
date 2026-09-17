@@ -30,6 +30,7 @@ import {
   AdminSection,
   AdminSections,
 } from "#components/admin-page";
+import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
@@ -126,7 +127,12 @@ const ReaderAccountContent = async ({
   }
 
   return (
-    <ReaderAccount locale={locale} reader={result.reader} timeZone={timeZone} />
+    <ReaderAccount
+      locale={locale}
+      reader={result.reader}
+      tenantId={tenantId}
+      timeZone={timeZone}
+    />
   );
 };
 
@@ -202,6 +208,8 @@ const ReaderDetailPage = ({ params, searchParams }: ReaderDetailPageProps) => (
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
+      <FlashToast keyName="suspended" message="admin.readers.suspended" />
+      <FlashToast keyName="unsuspended" message="admin.readers.unsuspended" />
       <AdminSections>
         <SectionErrorBoundary
           title={

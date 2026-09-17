@@ -84,19 +84,27 @@ export const ConfirmDialogCancel = ({ children }: { children: ReactNode }) => (
   </AlertDialog.Close>
 );
 
-/** Dismisses the dialog and runs the thing it asked about. */
+/**
+ * Dismisses the dialog and runs the thing it asked about: `onClick`, or the
+ * submission of the form whose id `form` names. The popup is portaled out of
+ * any surrounding form, so `form` is how it reaches one.
+ */
 export const ConfirmDialogAction = ({
   children,
+  form,
   onClick,
   variant = "destructiveFilled",
 }: {
   children: ReactNode;
+  form?: string;
   onClick?: () => void;
   variant?: NonNullable<ButtonProps["variant"]>;
 }) => (
   <AlertDialog.Close
     className={cn(buttonVariants({ variant }))}
+    form={form}
     onClick={onClick}
+    type={form ? "submit" : "button"}
   >
     {children}
   </AlertDialog.Close>

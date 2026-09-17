@@ -27,6 +27,7 @@ import { UnsuspendReaderButton } from "./unsuspend-reader-button";
 interface ReaderAccountProps {
   locale: Locale;
   reader: ReaderDetail;
+  tenantId: string;
   timeZone: string;
 }
 
@@ -36,6 +37,7 @@ const valueClassName = cn("min-w-0 text-sm");
 export const ReaderAccount = async ({
   locale,
   reader,
+  tenantId,
   timeZone,
 }: ReaderAccountProps) => {
   const t = await getMessagesFor(locale);
@@ -52,16 +54,21 @@ export const ReaderAccount = async ({
         </AdminSectionHeading>
         <AdminSectionActions>
           {reader.status === "suspended" ? (
-            <UnsuspendReaderButton publicId={reader.publicId} />
+            <UnsuspendReaderButton
+              publicId={reader.publicId}
+              tenantId={tenantId}
+            />
           ) : (
             <SuspendReaderButton
               name={reader.name || reader.email}
               publicId={reader.publicId}
+              tenantId={tenantId}
             />
           )}
           <DeleteReaderButton
             name={reader.name || reader.email}
             publicId={reader.publicId}
+            tenantId={tenantId}
           />
         </AdminSectionActions>
       </AdminSectionHeader>

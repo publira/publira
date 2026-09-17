@@ -1,9 +1,9 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -14,8 +14,6 @@ import { requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import { moderateReader } from "#lib/reader";
 import type { ReaderModerationAction } from "#lib/reader";
-
-import type { ReaderActionState } from "../../reader-types";
 
 const readerActionSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -35,10 +33,15 @@ const readerActionFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
+/**
+ * Runs one moderation action and answers where to go next: the returned state
+ * is a failure to show beside the button, and success is the reader's public
+ * id, for the caller to redirect with.
+ */
 const moderate = async (
   action: ReaderModerationAction,
   formData: FormData
-): Promise<{ message: string; ok: boolean }> => {
+): Promise<{ publicId: string } | { state: FormActionState }> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await readerActionSchema(locale);
@@ -46,51 +49,57 @@ const moderate = async (
     toFormDataInput(formData, readerActionFormFields)
   );
   if (!parsed.success) {
-    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+    return {
+      state: {
+        message: toFormErrorMessage(parsed.error, { locale }),
+        ok: false,
+      },
+    };
   }
 
   const result = await withAdminSessionReauth(() =>
     moderateReader({ action, ...parsed.data }, locale)
   );
   if (!result.ok) {
-    return { message: result.message, ok: false };
+    return { state: { message: result.message, ok: false } };
   }
 
-  return { message: "", ok: true };
+  return { publicId: parsed.data.publicId };
 };
 
+// Suspend and unsuspend redirect back to the page rather than refreshing it:
+// the flash flag is what raises the toast, since the button that was pressed
+// is replaced by the other one once the status changes.
 export const suspendReaderAction = async (
-  _prevState: ReaderActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<ReaderActionState> => {
-  const state = await moderate("suspend", formData);
-  if (state.ok) {
-    // Reader reads are uncached, so re-rendering the route is what brings the
-    // new status onto the page.
-    refresh();
+): Promise<FormActionState> => {
+  const outcome = await moderate("suspend", formData);
+  if ("state" in outcome) {
+    return outcome.state;
   }
-  return state;
+  redirect(`/readers/${encodeURIComponent(outcome.publicId)}?suspended=1`);
 };
 
 export const unsuspendReaderAction = async (
-  _prevState: ReaderActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<ReaderActionState> => {
-  const state = await moderate("unsuspend", formData);
-  if (state.ok) {
-    refresh();
+): Promise<FormActionState> => {
+  const outcome = await moderate("unsuspend", formData);
+  if ("state" in outcome) {
+    return outcome.state;
   }
-  return state;
+  redirect(`/readers/${encodeURIComponent(outcome.publicId)}?unsuspended=1`);
 };
 
 export const deleteReaderAction = async (
-  _prevState: ReaderActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<ReaderActionState> => {
-  const state = await moderate("delete", formData);
-  if (state.ok) {
-    // The detail page is gone with the account, so the list confirms it.
-    redirect("/readers?deleted=1");
+): Promise<FormActionState> => {
+  const outcome = await moderate("delete", formData);
+  if ("state" in outcome) {
+    return outcome.state;
   }
-  return state;
+  // The detail page is gone with the account, so the list confirms it.
+  redirect("/readers?deleted=1");
 };

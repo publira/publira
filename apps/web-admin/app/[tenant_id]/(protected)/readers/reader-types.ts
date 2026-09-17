@@ -57,9 +57,3 @@ export type GetReaderResult =
       /** The API rejected the session — the page raises the login redirect. */
       requiresSignIn: boolean;
     };
-
-/**
- * What a suspend, unsuspend or delete reports back to its button. The detail
- * page shows one reader, so unlike a list row the state needs no id.
- */
-export type ReaderActionState = { message: string; ok: boolean } | null;

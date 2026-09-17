@@ -96,5 +96,6 @@ import type { FormActionState } from "@publira/ui-components/action-form";
 | `children` | `ReactNode \| (props) => ReactNode` | Required | Form content. Passing a function switches to render function mode |
 | `showSuccess` | `boolean` | `true` | Show a success message when the state is `{ ok: true }`. Pass `false` to suppress it |
 | `className` | `string` | — | className of the `<form>` |
+| `id` | `string` | — | id of the `<form>`, for a submit control outside it to name with `form` (such as `ConfirmDialogAction`) |
 
 `ActionFormSubmit` takes the submit button's own `children`, `className`, `variant`, and `disabled`.
