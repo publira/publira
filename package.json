@@ -26,7 +26,7 @@
     "oxlint-plugin-react-doctor": "0.9.14",
     "sharp": "0.35.4",
     "temporal-polyfill": "catalog:",
-    "turbo": "2.10.12",
+    "turbo": "2.10.13",
     "typescript": "catalog:",
     "ultracite": "7.11.1",
     "vitest": "catalog:"
