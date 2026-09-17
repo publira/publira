@@ -52,6 +52,9 @@ const (
 	// CatalogServiceGetSeriesDetailProcedure is the fully-qualified name of the CatalogService's
 	// GetSeriesDetail RPC.
 	CatalogServiceGetSeriesDetailProcedure = "/publira.v1.CatalogService/GetSeriesDetail"
+	// CatalogServiceGetSeriesEpisodeAccessProcedure is the fully-qualified name of the CatalogService's
+	// GetSeriesEpisodeAccess RPC.
+	CatalogServiceGetSeriesEpisodeAccessProcedure = "/publira.v1.CatalogService/GetSeriesEpisodeAccess"
 	// CatalogServiceGetEpisodeDetailProcedure is the fully-qualified name of the CatalogService's
 	// GetEpisodeDetail RPC.
 	CatalogServiceGetEpisodeDetailProcedure = "/publira.v1.CatalogService/GetEpisodeDetail"
@@ -147,6 +150,12 @@ type CatalogServiceClient interface {
 	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
 	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
 	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
+	// The access state GetEpisodeDetail would answer for each published episode
+	// of one series, for the caller. It is separate from GetSeriesDetail so that
+	// read stays the same for every reader. Optional authentication: a guest and
+	// a bearer this server cannot verify are answered as a guest. Unpublished,
+	// cross-tenant, and missing series are all surfaced as NotFound.
+	GetSeriesEpisodeAccess(context.Context, *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error)
 	// Returns only currently published episodes in the requested tenant.
 	// Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
 	// to prevent content existence leakage.
@@ -239,6 +248,12 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("GetSeriesDetail")),
 			connect.WithClientOptions(opts...),
 		),
+		getSeriesEpisodeAccess: connect.NewClient[v1.GetSeriesEpisodeAccessRequest, v1.GetSeriesEpisodeAccessResponse](
+			httpClient,
+			baseURL+CatalogServiceGetSeriesEpisodeAccessProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("GetSeriesEpisodeAccess")),
+			connect.WithClientOptions(opts...),
+		),
 		getEpisodeDetail: connect.NewClient[v1.GetEpisodeDetailRequest, v1.GetEpisodeDetailResponse](
 			httpClient,
 			baseURL+CatalogServiceGetEpisodeDetailProcedure,
@@ -319,6 +334,7 @@ type catalogServiceClient struct {
 	listPublishedLabels       *connect.Client[v1.ListPublishedLabelsRequest, v1.ListPublishedLabelsResponse]
 	listPublishedSeries       *connect.Client[v1.ListPublishedSeriesRequest, v1.ListPublishedSeriesResponse]
 	getSeriesDetail           *connect.Client[v1.GetSeriesDetailRequest, v1.GetSeriesDetailResponse]
+	getSeriesEpisodeAccess    *connect.Client[v1.GetSeriesEpisodeAccessRequest, v1.GetSeriesEpisodeAccessResponse]
 	getEpisodeDetail          *connect.Client[v1.GetEpisodeDetailRequest, v1.GetEpisodeDetailResponse]
 	listPublishedCreators     *connect.Client[v1.ListPublishedCreatorsRequest, v1.ListPublishedCreatorsResponse]
 	getPublishedCreatorDetail *connect.Client[v1.GetPublishedCreatorDetailRequest, v1.GetPublishedCreatorDetailResponse]
@@ -346,6 +362,11 @@ func (c *catalogServiceClient) ListPublishedSeries(ctx context.Context, req *con
 // GetSeriesDetail calls publira.v1.CatalogService.GetSeriesDetail.
 func (c *catalogServiceClient) GetSeriesDetail(ctx context.Context, req *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error) {
 	return c.getSeriesDetail.CallUnary(ctx, req)
+}
+
+// GetSeriesEpisodeAccess calls publira.v1.CatalogService.GetSeriesEpisodeAccess.
+func (c *catalogServiceClient) GetSeriesEpisodeAccess(ctx context.Context, req *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error) {
+	return c.getSeriesEpisodeAccess.CallUnary(ctx, req)
 }
 
 // GetEpisodeDetail calls publira.v1.CatalogService.GetEpisodeDetail.
@@ -413,6 +434,12 @@ type CatalogServiceHandler interface {
 	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
 	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
 	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
+	// The access state GetEpisodeDetail would answer for each published episode
+	// of one series, for the caller. It is separate from GetSeriesDetail so that
+	// read stays the same for every reader. Optional authentication: a guest and
+	// a bearer this server cannot verify are answered as a guest. Unpublished,
+	// cross-tenant, and missing series are all surfaced as NotFound.
+	GetSeriesEpisodeAccess(context.Context, *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error)
 	// Returns only currently published episodes in the requested tenant.
 	// Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
 	// to prevent content existence leakage.
@@ -501,6 +528,12 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("GetSeriesDetail")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceGetSeriesEpisodeAccessHandler := connect.NewUnaryHandler(
+		CatalogServiceGetSeriesEpisodeAccessProcedure,
+		svc.GetSeriesEpisodeAccess,
+		connect.WithSchema(catalogServiceMethods.ByName("GetSeriesEpisodeAccess")),
+		connect.WithHandlerOptions(opts...),
+	)
 	catalogServiceGetEpisodeDetailHandler := connect.NewUnaryHandler(
 		CatalogServiceGetEpisodeDetailProcedure,
 		svc.GetEpisodeDetail,
@@ -581,6 +614,8 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceListPublishedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceGetSeriesDetailProcedure:
 			catalogServiceGetSeriesDetailHandler.ServeHTTP(w, r)
+		case CatalogServiceGetSeriesEpisodeAccessProcedure:
+			catalogServiceGetSeriesEpisodeAccessHandler.ServeHTTP(w, r)
 		case CatalogServiceGetEpisodeDetailProcedure:
 			catalogServiceGetEpisodeDetailHandler.ServeHTTP(w, r)
 		case CatalogServiceListPublishedCreatorsProcedure:
@@ -624,6 +659,10 @@ func (UnimplementedCatalogServiceHandler) ListPublishedSeries(context.Context, *
 
 func (UnimplementedCatalogServiceHandler) GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetSeriesDetail is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) GetSeriesEpisodeAccess(context.Context, *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetSeriesEpisodeAccess is not implemented"))
 }
 
 func (UnimplementedCatalogServiceHandler) GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error) {

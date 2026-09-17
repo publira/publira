@@ -126,6 +126,24 @@ message GetSeriesDetailResponse {
   publira.types.v1.CommentMode comment_mode = 4;
 }
 
+message GetSeriesEpisodeAccessRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+}
+
+// What the caller may do with one published episode's body.
+message SeriesEpisodeAccess {
+  string episode_public_id = 1;
+  // Never EPISODE_ACCESS_UNSPECIFIED.
+  EpisodeAccess access = 2;
+}
+
+message GetSeriesEpisodeAccessResponse {
+  // Every published episode of the series, in the order GetSeriesDetail lists
+  // them.
+  repeated SeriesEpisodeAccess episodes = 1;
+}
+
 message GetEpisodeDetailRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
@@ -568,6 +586,12 @@ service CatalogService {
   rpc ListPublishedLabels(ListPublishedLabelsRequest) returns (ListPublishedLabelsResponse) {}
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
   rpc GetSeriesDetail(GetSeriesDetailRequest) returns (GetSeriesDetailResponse) {}
+  // The access state GetEpisodeDetail would answer for each published episode
+  // of one series, for the caller. It is separate from GetSeriesDetail so that
+  // read stays the same for every reader. Optional authentication: a guest and
+  // a bearer this server cannot verify are answered as a guest. Unpublished,
+  // cross-tenant, and missing series are all surfaced as NotFound.
+  rpc GetSeriesEpisodeAccess(GetSeriesEpisodeAccessRequest) returns (GetSeriesEpisodeAccessResponse) {}
   // Returns only currently published episodes in the requested tenant.
   // Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
   // to prevent content existence leakage.
