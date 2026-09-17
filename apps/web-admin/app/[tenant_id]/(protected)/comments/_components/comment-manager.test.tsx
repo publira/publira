@@ -69,6 +69,7 @@ const comment = (
   status: CommentStatus,
   overrides: Partial<CommentItem> = {}
 ): CommentItem => ({
+  authorIsStaff: false,
   authorName: "Reader",
   authorPublicId: "USER001",
   body: "A comment on the first episode.",
@@ -243,5 +244,25 @@ describe("CommentManager", () => {
     expect(
       screen.getByRole("link", { name: "Reader" }).getAttribute("href")
     ).toBe("/readers/USER001");
+  });
+
+  it("shows a staff commenter without a link, since staff have no reader page", async () => {
+    render(
+      await CommentManager({
+        comments: [
+          comment("published", {
+            authorIsStaff: true,
+            authorName: "Editor",
+            authorPublicId: "STAFF001",
+          }),
+        ],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
+    );
+
+    expect(screen.getByText("Editor")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Editor" })).toBeNull();
   });
 });

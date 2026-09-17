@@ -96,6 +96,7 @@ const toHiddenReason = (raw: string): CommentHiddenReason => {
 /** The generated `AdminComment` fields {@link mapComment} reads (see `series.ts`). */
 type RawComment = Pick<
   AdminComment,
+  | "authorIsStaff"
   | "authorName"
   | "authorPublicId"
   | "body"
@@ -154,6 +155,7 @@ const toCommentReportReason = (raw: string): CommentReportReason => {
 };
 
 const mapComment = (item: RawComment): CommentItem => ({
+  authorIsStaff: item.authorIsStaff ?? false,
   authorName: item.authorName ?? "",
   authorPublicId: item.authorPublicId ?? "",
   body: item.body ?? "",
@@ -181,6 +183,7 @@ const mapComment = (item: RawComment): CommentItem => ({
  * missing rather than the whole queue.
  */
 const missingReportedComment: CommentItem = {
+  authorIsStaff: false,
   authorName: "",
   authorPublicId: "",
   body: "",

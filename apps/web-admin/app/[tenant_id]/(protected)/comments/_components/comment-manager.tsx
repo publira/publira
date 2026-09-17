@@ -319,12 +319,18 @@ const CommentListBody = ({
             </TableCell>
             <TableCell>
               <div className="grid gap-0.5">
-                <Link
-                  className="font-medium underline-offset-4 hover:underline"
-                  href={`/readers/${comment.authorPublicId}`}
-                >
-                  {comment.authorName || comment.authorPublicId}
-                </Link>
+                {comment.authorIsStaff ? (
+                  <span className="font-medium">
+                    {comment.authorName || comment.authorPublicId}
+                  </span>
+                ) : (
+                  <Link
+                    className="font-medium underline-offset-4 hover:underline"
+                    href={`/readers/${comment.authorPublicId}`}
+                  >
+                    {comment.authorName || comment.authorPublicId}
+                  </Link>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {comment.authorPublicId}
                 </span>

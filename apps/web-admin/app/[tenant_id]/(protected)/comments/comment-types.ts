@@ -61,6 +61,8 @@ export type CommentReportReason =
   | "unknown";
 
 export interface CommentItem {
+  /** A staff account has no reader page, so its name is not linked there. */
+  authorIsStaff: boolean;
   authorName: string;
   authorPublicId: string;
   body: string;

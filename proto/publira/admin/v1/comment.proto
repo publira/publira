@@ -48,6 +48,10 @@ message AdminComment {
   // automatic removal threshold reads. It is the count of undecided reports
   // rather than of reports ever made, so deciding on one lowers it.
   int32 open_report_count = 16;
+  // Whether the author holds a staff role on this tenant. A staff account can
+  // post from the storefront too, but it is not a reader, so GetReader does not
+  // answer for it.
+  bool author_is_staff = 17;
 }
 
 // One reader's report on one comment, as the report queue reads it.

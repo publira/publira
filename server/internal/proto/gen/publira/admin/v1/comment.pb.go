@@ -65,8 +65,12 @@ type AdminComment struct {
 	// automatic removal threshold reads. It is the count of undecided reports
 	// rather than of reports ever made, so deciding on one lowers it.
 	OpenReportCount int32 `protobuf:"varint,16,opt,name=open_report_count,json=openReportCount,proto3" json:"open_report_count,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Whether the author holds a staff role on this tenant. A staff account can
+	// post from the storefront too, but it is not a reader, so GetReader does not
+	// answer for it.
+	AuthorIsStaff bool `protobuf:"varint,17,opt,name=author_is_staff,json=authorIsStaff,proto3" json:"author_is_staff,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminComment) Reset() {
@@ -209,6 +213,13 @@ func (x *AdminComment) GetOpenReportCount() int32 {
 		return x.OpenReportCount
 	}
 	return 0
+}
+
+func (x *AdminComment) GetAuthorIsStaff() bool {
+	if x != nil {
+		return x.AuthorIsStaff
+	}
+	return false
 }
 
 // One reader's report on one comment, as the report queue reads it.
@@ -1269,7 +1280,7 @@ var File_publira_admin_v1_comment_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/admin/v1/comment.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xb5\x04\n" +
+	"\x1epublira/admin/v1/comment.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xdd\x04\n" +
 	"\fAdminComment\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x16\n" +
@@ -1290,7 +1301,8 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\repisode_title\x18\r \x01(\tR\fepisodeTitle\x12(\n" +
 	"\x10series_public_id\x18\x0e \x01(\tR\x0eseriesPublicId\x12!\n" +
 	"\fseries_title\x18\x0f \x01(\tR\vseriesTitle\x12*\n" +
-	"\x11open_report_count\x18\x10 \x01(\x05R\x0fopenReportCount\"\xbd\x02\n" +
+	"\x11open_report_count\x18\x10 \x01(\x05R\x0fopenReportCount\x12&\n" +
+	"\x0fauthor_is_staff\x18\x11 \x01(\bR\rauthorIsStaff\"\xbd\x02\n" +
 	"\rCommentReport\x12\x1b\n" +
 	"\treport_id\x18\x01 \x01(\tR\breportId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x12\n" +
