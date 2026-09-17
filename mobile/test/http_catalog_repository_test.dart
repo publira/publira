@@ -730,6 +730,84 @@ void main() {
     expect(detail.nextEpisode, isNull);
   });
 
+  test(
+    'getEpisode hands the viewer the episode\'s resolved reading direction and spread start',
+    () async {
+      server.episodeResponse = {
+        'episode': {
+          'publicId': 'EP',
+          'title': 'Left to right',
+          'readingDirection': 'READING_DIRECTION_LEFT_TO_RIGHT',
+          'spreadStartIndex': 0,
+        },
+        'series': {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+        },
+        'access': 'EPISODE_ACCESS_FREE',
+      };
+
+      final detail = await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      );
+
+      expect(detail!.readingDirection, ReadingDirection.ltr);
+      expect(detail.spreadStartIndex, 0);
+    },
+  );
+
+  test(
+    'getEpisode reads an omitted direction as right to left and an omitted spread start as pairing from the first page',
+    () async {
+      server.episodeResponse = {
+        'episode': {'publicId': 'EP', 'title': 'Omitted layout'},
+        'series': {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+        },
+        'access': 'EPISODE_ACCESS_FREE',
+      };
+
+      final detail = await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      );
+
+      // protojson omits unspecified and zero. Unspecified is the series
+      // default of right to left; zero is pairing from the first page.
+      expect(detail!.readingDirection, ReadingDirection.rtl);
+      expect(detail.spreadStartIndex, 0);
+    },
+  );
+
+  test(
+    'getEpisode reads a never-edited series as right to left from the cover',
+    () async {
+      server.episodeResponse = {
+        'episode': {
+          'publicId': 'EP',
+          'title': 'Never edited',
+          'readingDirection': 'READING_DIRECTION_RIGHT_TO_LEFT',
+          'spreadStartIndex': 1,
+        },
+        'series': {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+        },
+        'access': 'EPISODE_ACCESS_FREE',
+      };
+
+      final detail = await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      );
+
+      expect(detail!.readingDirection, ReadingDirection.rtl);
+      expect(detail.spreadStartIndex, 1);
+    },
+  );
+
   test('getEpisode carries the credits of the episode itself', () async {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,

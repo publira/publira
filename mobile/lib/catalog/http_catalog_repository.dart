@@ -643,6 +643,10 @@ class HttpCatalogRepository implements CatalogRepository {
       imageRequestHeaders: config.imageRequestHeaders(_client.accessToken),
       ageRating: _parseAgeRating(rawSeries['ageRating']),
       creators: _parseCreators(rawEpisode['creators'], 'episode'),
+      readingDirection: _parseReadingDirection(rawEpisode['readingDirection']),
+      // protojson omits a zero, which is pairing from the first page. A
+      // never-edited series answers 1, so the field is present then.
+      spreadStartIndex: _readCount(rawEpisode, 'spreadStartIndex', 'episode'),
     );
   }
 
@@ -676,6 +680,17 @@ class HttpCatalogRepository implements CatalogRepository {
       ratingCount: _readCount(json, 'ratingCount', path),
       allowsMultiplePresses: json['mode'] == 'EPISODE_RATING_MODE_MULTIPLE',
     );
+  }
+
+  /// protojson writes an enum as its name and omits the zero value, which is
+  /// unspecified and is read as right-to-left, the way a series nobody has
+  /// set is laid out. A name this build does not know is read the same way
+  /// rather than flipping the work.
+  ReadingDirection _parseReadingDirection(Object? raw) {
+    return switch (raw) {
+      'READING_DIRECTION_LEFT_TO_RIGHT' => ReadingDirection.ltr,
+      _ => ReadingDirection.rtl,
+    };
   }
 
   EpisodeAccess _parseAccess(Object? raw) {

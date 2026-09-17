@@ -27,10 +27,10 @@ const _maxScale = 4.0;
 
 /// Paged body reader.
 ///
-/// Pages turn right to left, the way web-host's reader and a printed Japanese
-/// volume do: the first page sits on the right and a swipe or a tap on the
-/// left half advances. A page fills the viewport whole, and a reader who wants
-/// a closer look at small lettering pinches or double taps into it.
+/// Pages turn the way the episode is bound: right to left unless it says
+/// otherwise, with pairing from [spreadStartIndex]. A page fills the viewport
+/// whole, and a reader who wants a closer look at small lettering pinches or
+/// double taps into it.
 class EpisodeReader extends StatefulWidget {
   const EpisodeReader({
     super.key,
@@ -43,6 +43,8 @@ class EpisodeReader extends StatefulWidget {
     this.onPreviousEpisode,
     this.imageClient,
     this.pageStore,
+    this.readingDirection = ReadingDirection.rtl,
+    this.spreadStartIndex = 1,
   });
 
   final List<EpisodeImageItem> images;
@@ -76,6 +78,13 @@ class EpisodeReader extends StatefulWidget {
   /// again without a network. Ignored when [imageClient] is given, which
   /// brings its own.
   final EpisodePageStore? pageStore;
+
+  /// Which way the pages are turned, taken from the episode read.
+  final ReadingDirection readingDirection;
+
+  /// The page from which two pages share a screen, taken from the episode
+  /// read. Every page before it stands alone.
+  final int spreadStartIndex;
 
   @override
   State<EpisodeReader> createState() => _EpisodeReaderState();
@@ -193,6 +202,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
         final spreads = PageSpreads(
           pageCount: widget.images.length,
           paired: _pairsPages(viewport),
+          spreadStartIndex: widget.spreadStartIndex,
         );
         final screen = _screenOf(spreads);
         final pages = spreads.pagesAt(spreads.spreadOf(_index));
@@ -202,7 +212,11 @@ class _EpisodeReaderState extends State<EpisodeReader> {
               // Turning the device rebuilds the pager rather than reusing it:
               // its controller counts screens, and pairing moves every page
               // but the cover onto a different screen.
-              key: ValueKey(spreads.paired),
+              key: ValueKey((
+                spreads.paired,
+                spreads.spreadStartIndex,
+                widget.readingDirection,
+              )),
               spreads: spreads,
               images: widget.images,
               headers: widget.imageHeaders,
@@ -211,6 +225,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
               screen: screen,
               screenCount: _screenCount(spreads),
               endScreen: widget.endScreen,
+              readingDirection: widget.readingDirection,
               onScreenChanged: (screen) => _showScreen(spreads, screen),
               onTurn: (delta) => _turn(spreads, delta),
             ),
@@ -222,6 +237,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
                 firstPage: pages.first + 1,
                 lastPage: pages.last + 1,
                 pageCount: widget.images.length,
+                readingDirection: widget.readingDirection,
                 onNext: screen < _screenCount(spreads) - 1
                     ? () => _turn(spreads, 1)
                     : null,
@@ -250,6 +266,7 @@ class _ReaderPager extends StatefulWidget {
     required this.screen,
     required this.screenCount,
     required this.endScreen,
+    required this.readingDirection,
     required this.onScreenChanged,
     required this.onTurn,
   });
@@ -270,6 +287,8 @@ class _ReaderPager extends StatefulWidget {
   /// Drawn on the screen after the last page, or null when the body ends
   /// there.
   final Widget? endScreen;
+
+  final ReadingDirection readingDirection;
 
   final ValueChanged<int> onScreenChanged;
   final ValueChanged<int> onTurn;
@@ -335,8 +354,9 @@ class _ReaderPagerState extends State<_ReaderPager> {
     });
   }
 
-  /// Reading order runs right to left, so the left half of the screen is where
-  /// the next page comes from.
+  /// The next page comes from the side reading runs toward: the left half
+  /// when the episode is right to left, the right half when it is left to
+  /// right.
   ///
   /// A tap while zoomed is part of looking around the page rather than a page
   /// turn; the double tap that zoomed in is what gets the reader back out.
@@ -344,7 +364,9 @@ class _ReaderPagerState extends State<_ReaderPager> {
     if (_zoomed || widget.viewport.width <= 0) {
       return;
     }
-    widget.onTurn(dx < widget.viewport.width / 2 ? 1 : -1);
+    final nextOnLeft = widget.readingDirection == ReadingDirection.rtl;
+    final onLeft = dx < widget.viewport.width / 2;
+    widget.onTurn(onLeft == nextOnLeft ? 1 : -1);
   }
 
   void _handleDoubleTap() {
@@ -382,9 +404,11 @@ class _ReaderPagerState extends State<_ReaderPager> {
       return _page(pages.single, viewport);
     }
     return Row(
-      // The pages of a spread are in reading order, so the first of them is
-      // the one on the right.
-      textDirection: TextDirection.rtl,
+      // The pages of a spread are in reading order, so the first of them sits
+      // on the side reading starts from.
+      textDirection: widget.readingDirection == ReadingDirection.rtl
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       children: [
         for (final page in pages) Expanded(child: _page(page, viewport)),
       ],
@@ -401,8 +425,7 @@ class _ReaderPagerState extends State<_ReaderPager> {
       child: PageView.builder(
         key: const ValueKey('episode-page-view'),
         controller: _controller,
-        // Right to left, matching the reading direction.
-        reverse: true,
+        reverse: widget.readingDirection == ReadingDirection.rtl,
         // A zoomed page is panned, not swiped: dropping the scroll physics
         // hands the drag to the viewer underneath instead of leaving the two
         // to fight over it.
@@ -431,6 +454,7 @@ class _ReaderControls extends StatelessWidget {
     required this.firstPage,
     required this.lastPage,
     required this.pageCount,
+    required this.readingDirection,
     required this.onNext,
     required this.onPrevious,
     required this.onNextEpisode,
@@ -442,6 +466,7 @@ class _ReaderControls extends StatelessWidget {
   final int lastPage;
 
   final int pageCount;
+  final ReadingDirection readingDirection;
   final VoidCallback? onNext;
   final VoidCallback? onPrevious;
 
@@ -468,6 +493,54 @@ class _ReaderControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
+    final rtl = readingDirection == ReadingDirection.rtl;
+    // Icons point the way the pages move. They are not placed through
+    // Directionality: Material's chevrons match text direction and would
+    // flip under it, pointing the wrong way.
+    final nextPageIcon = rtl ? Icons.chevron_left : Icons.chevron_right;
+    final previousPageIcon = rtl ? Icons.chevron_right : Icons.chevron_left;
+    final nextEpisodeIcon = rtl
+        ? Icons.keyboard_double_arrow_left
+        : Icons.keyboard_double_arrow_right;
+    final previousEpisodeIcon = rtl
+        ? Icons.keyboard_double_arrow_right
+        : Icons.keyboard_double_arrow_left;
+    final nextButtons = [
+      IconButton(
+        key: const ValueKey('episode-next-episode'),
+        tooltip: messages.viewerNextEpisode,
+        color: Colors.white,
+        disabledColor: Colors.white30,
+        onPressed: onNextEpisode,
+        icon: Icon(nextEpisodeIcon),
+      ),
+      IconButton(
+        key: const ValueKey('episode-next-page'),
+        tooltip: messages.viewerNextPage,
+        color: Colors.white,
+        disabledColor: Colors.white30,
+        onPressed: onNext,
+        icon: Icon(nextPageIcon),
+      ),
+    ];
+    final previousButtons = [
+      IconButton(
+        key: const ValueKey('episode-previous-page'),
+        tooltip: messages.viewerPreviousPage,
+        color: Colors.white,
+        disabledColor: Colors.white30,
+        onPressed: onPrevious,
+        icon: Icon(previousPageIcon),
+      ),
+      IconButton(
+        key: const ValueKey('episode-previous-episode'),
+        tooltip: messages.viewerPreviousEpisode,
+        color: Colors.white,
+        disabledColor: Colors.white30,
+        onPressed: onPreviousEpisode,
+        icon: Icon(previousEpisodeIcon),
+      ),
+    ];
     return Container(
       color: Colors.black54,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -476,30 +549,13 @@ class _ReaderControls extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Everything points the way the pages move, so on a right-to-left
-            // reader "next" sits on the left and points left. The doubled
-            // chevron is the longer move of the two: a whole episode rather
-            // than a page.
+            // Next sits on the side the next page comes from, so a
+            // right-to-left reader finds it on the left. The doubled chevron
+            // is the longer move of the two: a whole episode rather than a
+            // page.
             Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  key: const ValueKey('episode-next-episode'),
-                  tooltip: messages.viewerNextEpisode,
-                  color: Colors.white,
-                  disabledColor: Colors.white30,
-                  onPressed: onNextEpisode,
-                  icon: const Icon(Icons.keyboard_double_arrow_left),
-                ),
-                IconButton(
-                  key: const ValueKey('episode-next-page'),
-                  tooltip: messages.viewerNextPage,
-                  color: Colors.white,
-                  disabledColor: Colors.white30,
-                  onPressed: onNext,
-                  icon: const Icon(Icons.chevron_left),
-                ),
-              ],
+              children: rtl ? nextButtons : previousButtons.reversed.toList(),
             ),
             Text(
               key: const ValueKey('episode-page-status'),
@@ -508,24 +564,7 @@ class _ReaderControls extends StatelessWidget {
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  key: const ValueKey('episode-previous-page'),
-                  tooltip: messages.viewerPreviousPage,
-                  color: Colors.white,
-                  disabledColor: Colors.white30,
-                  onPressed: onPrevious,
-                  icon: const Icon(Icons.chevron_right),
-                ),
-                IconButton(
-                  key: const ValueKey('episode-previous-episode'),
-                  tooltip: messages.viewerPreviousEpisode,
-                  color: Colors.white,
-                  disabledColor: Colors.white30,
-                  onPressed: onPreviousEpisode,
-                  icon: const Icon(Icons.keyboard_double_arrow_right),
-                ),
-              ],
+              children: rtl ? previousButtons : nextButtons.reversed.toList(),
             ),
           ],
         ),
