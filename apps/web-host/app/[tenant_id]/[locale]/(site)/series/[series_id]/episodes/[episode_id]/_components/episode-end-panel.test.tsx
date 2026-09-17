@@ -125,18 +125,15 @@ const previousEpisode: EpisodeNeighborItem = {
 };
 
 const renderPanel = async ({
-  marksNextEpisode = true,
   neighbor,
   previousNeighbor,
 }: {
-  marksNextEpisode?: boolean;
   neighbor?: EpisodeNeighborItem;
   previousNeighbor?: EpisodeNeighborItem;
 } = {}) =>
   render(
     await EpisodeEndPanel({
       episode,
-      marksNextEpisode,
       nextEpisode: neighbor,
       previousEpisode: previousNeighbor,
       series,
@@ -145,10 +142,6 @@ const renderPanel = async ({
       tenantId: "TENANT_001",
     })
   );
-
-/** The Shu dot, which is a drawing rather than something to read out. */
-const readingMarks = (container: HTMLElement) =>
-  container.querySelectorAll(".bg-secondary");
 
 describe("EpisodeEndPanel", () => {
   it("lists the episodes either side of this one as rows", async () => {
@@ -188,31 +181,6 @@ describe("EpisodeEndPanel", () => {
       share.dataset.text,
       "and says in words which work the reader is passing on"
     ).toBe("Long nights by Nightly Author");
-  });
-
-  it("marks the next episode alone, so the page keeps one Shu", async () => {
-    const { container } = await renderPanel({
-      neighbor: nextEpisode,
-      previousNeighbor: previousEpisode,
-    });
-
-    const marks = readingMarks(container);
-    expect(marks).toHaveLength(1);
-    expect(
-      marks[0]?.closest("a")?.getAttribute("href"),
-      "the mark sits on the row that opens the next episode"
-    ).toBe("/series/SERIES_001/episodes/EPISODE_003");
-  });
-
-  // A gated episode spends its Shu on the action that opens the body, so the
-  // row below carries none.
-  it("leaves the next episode unmarked where the body is not open", async () => {
-    const { container } = await renderPanel({
-      marksNextEpisode: false,
-      neighbor: nextEpisode,
-    });
-
-    expect(readingMarks(container)).toHaveLength(0);
   });
 
   it("names the price of a paid next episode rather than calling it free", async () => {

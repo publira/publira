@@ -2217,7 +2217,6 @@
       },
       "images_empty": "The pages of this episode have not been published yet.",
       "navigation": {
-        "label": "Episode navigation",
         "next": "Next episode",
         "next_hint": "Press the key again to open the next episode.",
         "previous": "Previous episode",

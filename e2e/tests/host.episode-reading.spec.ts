@@ -12,6 +12,9 @@ import { SEED_TENANT_ID } from "../src/scenarios/auth";
 import { SEED_MEMBER } from "../src/scenarios/member-announcements";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
+  FREE_LAST_EPISODE_PATH,
+  FREE_LAST_EPISODE_SERIES_TITLE,
+  FREE_LAST_EPISODE_TITLE,
   LAST_EPISODE_PATH,
   LAST_EPISODE_PRICE_LABEL,
   NEXT_EPISODE_PATH,
@@ -22,6 +25,7 @@ import {
   VIEWER_EPISODE_TITLE,
   VIEWER_PAGE_COUNT,
   VIEWER_PROGRESS_LABEL,
+  episodePageLabel,
   viewerPageImageId,
   viewerPageLabel,
 } from "../src/scenarios/viewer-pages";
@@ -184,15 +188,14 @@ const pollEndPageControl = (
 const readingProgress = (page: Page) => page.getByLabel(VIEWER_PROGRESS_LABEL);
 
 /**
- * The viewer's own chrome, which links to the episodes either side of this one
- * from over the top of the pages.
+ * The page after the last one, inside the viewer.
  *
- * Named as a landmark because the rows below the reader link to the same two
- * episodes and label themselves the same way, so "Next episode" alone matches
+ * Named as a landmark because the rows below the reader link to the same
+ * episode and label themselves the same way, so "Next episode" alone matches
  * both.
  */
-const viewerNavigation = (page: Page) =>
-  page.getByRole("navigation", { name: "Episode navigation" });
+const endPage = (page: Page) =>
+  page.getByRole("region", { exact: true, name: "The end" });
 
 /** The reading history section of `/my`, which names itself as a landmark. */
 const readingHistory = (page: Page) =>
@@ -534,16 +537,22 @@ test.describe("web-host episode reading", () => {
     await expectFirstPageDrawn(page);
 
     await expect(
-      viewerNavigation(page).getByRole("link", { name: "Next episode" }),
-      "the viewer's own chrome links to the episode that follows"
-    ).toHaveAttribute("href", hostPath(NEXT_EPISODE_PATH));
-    await expect(
-      viewerNavigation(page).getByRole("link", { name: "Previous episode" }),
-      "and to the one before it"
-    ).toBeVisible();
+      page.getByRole("link", { name: NEXT_EPISODE_TITLE }),
+      "nothing over the pages links out of the episode; only the row under the reader does"
+    ).toHaveCount(1);
 
-    await turnToLastPage(page);
-    await page.getByRole("link", { name: NEXT_EPISODE_TITLE }).click();
+    const nextEpisode = endPage(page).getByRole("link", {
+      name: NEXT_EPISODE_TITLE,
+    });
+    expect(
+      await turnToEndPage(page, nextEpisode),
+      "the page after the last one offers the next episode"
+    ).toBe(true);
+    await expect(nextEpisode).toHaveAttribute(
+      "href",
+      hostPath(NEXT_EPISODE_PATH)
+    );
+    await nextEpisode.click();
 
     await expect(page).toHaveURL(new RegExp(`${NEXT_EPISODE_PATH}$`, "u"));
     await expect(
@@ -589,8 +598,38 @@ test.describe("web-host episode reading", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Next episode" }),
-      "there is no episode after the last one to offer, in the rows or over the pages"
+      "there is no episode after the last one to offer in the rows"
     ).toHaveCount(0);
+
+    // The paid last episode is gated, so its pages are read on a free one.
+    await page.goto(edgeUrl(FREE_LAST_EPISODE_PATH));
+    await expect(
+      page.locator(
+        `canvas[aria-label="${episodePageLabel(FREE_LAST_EPISODE_TITLE, 1)}"]`
+      )
+    ).toHaveAttribute("data-page-status", "loaded");
+
+    await expect(
+      page.getByRole("link", { name: "Next episode" }),
+      "nor over the pages"
+    ).toHaveCount(0);
+
+    const nextEpisode = endPage(page).getByRole("button", {
+      name: "Next episode",
+    });
+    expect(
+      await turnToEndPage(page, nextEpisode),
+      "the page after the last one keeps the control"
+    ).toBe(true);
+    await expect(nextEpisode, "with nothing to open").toBeDisabled();
+    await expect(
+      endPage(page).getByRole("heading", { name: "You are up to date" })
+    ).toBeVisible();
+    await expect(
+      endPage(page).getByRole("link", {
+        name: `Sign in to follow ${FREE_LAST_EPISODE_SERIES_TITLE}`,
+      })
+    ).toBeVisible();
   });
 
   test("only the end of a series suggests other works to read", async ({

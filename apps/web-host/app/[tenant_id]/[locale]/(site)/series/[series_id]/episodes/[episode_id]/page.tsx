@@ -17,11 +17,7 @@ import { CreatorCredits } from "#components/creator-credits";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import {
-  getEpisodeDetail,
-  getSeriesDetail,
-  isPublicEpisodeBody,
-} from "#lib/catalog";
+import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
@@ -376,7 +372,6 @@ const EpisodeContent = async (
             when a reader decides whether to keep going. */}
           <EpisodeEndPanel
             episode={episode}
-            marksNextEpisode={isPublicEpisodeBody(access)}
             nextEpisode={nextEpisode}
             previousEpisode={previousEpisode}
             series={series}
