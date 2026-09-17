@@ -28,7 +28,7 @@ func TestSeedsNameSupportedDefaultLocales(t *testing.T) {
 	defer cancel()
 
 	for _, path := range seedSQLFiles(t) {
-		if _, err := pg.DB.ExecContext(ctx, readSeedSQL(t, path)); err != nil {
+		if _, err := pg.DB.ExecContext(ctx, readSeedSQL(t, path, map[string]string{})); err != nil {
 			t.Fatalf("apply %s: %v", path, err)
 		}
 	}
@@ -58,11 +58,11 @@ func seedSQLFiles(t *testing.T) []string {
 	return paths
 }
 
-// readSeedSQL reads one seed file with its `\ir` includes expanded. psql
-// resolves those itself, relative to the including file's directory; the driver
-// these statements are sent through does not know the directive at all, so a
-// seed that shares a block with its siblings would fail to parse here.
-func readSeedSQL(t *testing.T, path string) string {
+// readSeedSQL reads one seed file the way psql would: `\ir` includes are expanded
+// relative to the including file, and `\set` variables are substituted where an
+// included block reads them as `:'name'`. The driver these statements are sent
+// through knows neither directive, so without this a shared block fails to parse.
+func readSeedSQL(t *testing.T, path string, vars map[string]string) string {
 	t.Helper()
 
 	statements, err := os.ReadFile(path)
@@ -72,11 +72,21 @@ func readSeedSQL(t *testing.T, path string) string {
 
 	lines := strings.Split(string(statements), "\n")
 	for index, line := range lines {
-		included, ok := strings.CutPrefix(strings.TrimSpace(line), `\ir `)
-		if !ok {
+		trimmed := strings.TrimSpace(line)
+		if assignment, ok := strings.CutPrefix(trimmed, `\set `); ok {
+			name, value, _ := strings.Cut(strings.TrimSpace(assignment), " ")
+			vars[name] = strings.TrimSpace(value)
+			lines[index] = ""
 			continue
 		}
-		lines[index] = readSeedSQL(t, filepath.Join(filepath.Dir(path), strings.TrimSpace(included)))
+		if included, ok := strings.CutPrefix(trimmed, `\ir `); ok {
+			lines[index] = readSeedSQL(t, filepath.Join(filepath.Dir(path), strings.TrimSpace(included)), vars)
+			continue
+		}
+		for name, value := range vars {
+			line = strings.ReplaceAll(line, ":'"+name+"'", "'"+strings.ReplaceAll(value, "'", "''")+"'")
+		}
+		lines[index] = line
 	}
 	return strings.Join(lines, "\n")
 }

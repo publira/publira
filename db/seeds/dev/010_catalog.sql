@@ -303,11 +303,14 @@ SET price = EXCLUDED.price,
     published_at = EXCLUDED.published_at,
     tenant_id = EXCLUDED.tenant_id;
 
-UPDATE series
-SET is_published = (published_at IS NOT NULL),
+UPDATE series s
+SET is_published = (s.published_at IS NOT NULL),
         updated_at = NOW()
-WHERE title LIKE 'Seed Series %'
-    AND is_published IS DISTINCT FROM (published_at IS NOT NULL);
+FROM tenants t
+WHERE t.id = s.tenant_id
+    AND t.domain = 'localhost'
+    AND s.title LIKE 'Seed Series %'
+    AND s.is_published IS DISTINCT FROM (s.published_at IS NOT NULL);
 
 -- Paid episode for access-ticket / purchase testing (Seed Episode 001-10).
 UPDATE episode_listings el

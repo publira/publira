@@ -42,6 +42,7 @@ SET domain = EXCLUDED.domain,
     status = EXCLUDED.status,
     default_locale = EXCLUDED.default_locale;
 
+\set seed_tenant AsetTNNTAAA1
 \ir ../creator_roles.sql
 
 WITH admin_user_seed AS (
