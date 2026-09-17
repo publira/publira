@@ -4,16 +4,22 @@ import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import { emailFormSchema } from "#lib/auth-input";
 import { withPlatformSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { platformDashboardCacheTag } from "#lib/dashboard";
 import { requiredTrimmedString } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { createPlatformOperator } from "#lib/operators";
+import {
+  createPlatformOperator,
+  platformOperatorsCacheTag,
+} from "#lib/operators";
 
 const createOperatorFormSchema = async (locale: Locale) => {
   const [t, email] = await Promise.all([
@@ -62,5 +68,8 @@ export const createOperatorAction = async (
     return { message: result.message, ok: false };
   }
 
+  updateTag(platformOperatorsCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
   redirect("/operators");
 };

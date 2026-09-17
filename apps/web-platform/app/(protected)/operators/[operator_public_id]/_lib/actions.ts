@@ -4,10 +4,11 @@ import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { revalidatePath } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import type { PlatformCurrentOperator } from "#lib/auth";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import {
@@ -15,11 +16,13 @@ import {
   withPlatformSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { platformDashboardCacheTag } from "#lib/dashboard";
 import { requiredTrimmedString } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
   deactivatePlatformOperator,
+  platformOperatorsCacheTag,
   suspendPlatformOperator,
   unsuspendPlatformOperator,
   updatePlatformOperatorRole,
@@ -112,8 +115,9 @@ export const updateOperatorRoleAction = async (
       role,
     })
   );
-  revalidatePath(`/operators/${publicId}`);
-  revalidatePath("/operators");
+  updateTag(platformOperatorsCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -140,8 +144,8 @@ export const suspendOperatorAction = async (
     return;
   }
   await withPlatformSessionReauth(() => suspendPlatformOperator(parsed.data));
-  revalidatePath(`/operators/${parsed.data}`);
-  revalidatePath("/operators");
+  updateTag(platformOperatorsCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 };
 
 export const unsuspendOperatorAction = async (
@@ -160,8 +164,8 @@ export const unsuspendOperatorAction = async (
     return;
   }
   await withPlatformSessionReauth(() => unsuspendPlatformOperator(parsed.data));
-  revalidatePath(`/operators/${parsed.data}`);
-  revalidatePath("/operators");
+  updateTag(platformOperatorsCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 };
 
 export const deactivateOperatorAction = async (
@@ -182,6 +186,8 @@ export const deactivateOperatorAction = async (
   await withPlatformSessionReauth(() =>
     deactivatePlatformOperator(parsed.data)
   );
-  revalidatePath("/operators");
+  updateTag(platformOperatorsCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
   redirect("/operators");
 };

@@ -1,21 +1,32 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { platformTenantsCacheTag } from "./tenants";
 import {
+  getPlatformEndUser,
   listPlatformEndUsers,
+  platformEndUsersCacheTag,
   searchPlatformTenantFilterOptions,
 } from "./users";
 
 const {
+  mockCacheTag,
+  mockGetEndUser,
   mockGetTenant,
   mockListEndUsers,
   mockListTenants,
   mockResolveSessionId,
 } = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
+  mockGetEndUser: vi.fn(),
   mockGetTenant: vi.fn(),
   mockListEndUsers: vi.fn(),
   mockListTenants: vi.fn(),
   mockResolveSessionId: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api-client", () => ({
@@ -25,6 +36,7 @@ vi.mock("./api-client", () => ({
       listTenants: mockListTenants,
     },
     users: {
+      getEndUser: mockGetEndUser,
       listEndUsers: mockListEndUsers,
     },
   },
@@ -384,5 +396,33 @@ describe("searchPlatformTenantFilterOptions", () => {
     await expect(
       searchPlatformTenantFilterOptions("abcdefghijkl", "en")
     ).rejects.toMatchObject({ code: Code.Internal });
+  });
+});
+
+describe("end-user cache tags", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockResolveSessionId.mockResolvedValue("sess_abc");
+  });
+
+  it("files the end-user list and an end user's detail under the end-users tag", async () => {
+    mockListEndUsers.mockResolvedValueOnce({ users: [] });
+    mockGetEndUser.mockResolvedValueOnce({ user: undefined });
+
+    await listPlatformEndUsers({ locale: "en" });
+    await getPlatformEndUser("USER00000001", "en");
+
+    expect(platformEndUsersCacheTag).toBe("platform:users");
+    expect(mockCacheTag).toHaveBeenCalledTimes(2);
+    expect(mockCacheTag).toHaveBeenNthCalledWith(1, platformEndUsersCacheTag);
+    expect(mockCacheTag).toHaveBeenNthCalledWith(2, platformEndUsersCacheTag);
+  });
+
+  it("files the tenant filter candidates under the tenants tag, since they are tenant names", async () => {
+    mockListTenants.mockResolvedValueOnce({ nextToken: "", tenants: [] });
+
+    await searchPlatformTenantFilterOptions("Maple", "en");
+
+    expect(mockCacheTag).toHaveBeenCalledWith(platformTenantsCacheTag);
   });
 });

@@ -1,8 +1,15 @@
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 
 import { apiClient } from "./api-client";
+
+/**
+ * The tag both `CheckSetupStatus` reads carry, cleared by the setup Action and
+ * by a save of the default locale, which that RPC also reports.
+ */
+export const platformSetupStatusCacheTag = "platform:setup-status";
 
 /**
  * The saved platform default locale, or `null` when the platform API reported
@@ -19,6 +26,7 @@ import { apiClient } from "./api-client";
  */
 export const readSetupDefaultLocale = async (): Promise<Locale | null> => {
   "use cache: private";
+  cacheTag(platformSetupStatusCacheTag);
 
   try {
     const response = await apiClient.setup.checkSetupStatus({});

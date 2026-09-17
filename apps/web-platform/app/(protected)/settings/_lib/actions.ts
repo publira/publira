@@ -5,14 +5,16 @@ import type { Locale } from "@publira/i18n";
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { z } from "zod";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import { emailFormSchema, passwordFormSchema } from "#lib/auth-input";
 import { withPlatformSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { requestPlatformEmailChange } from "#lib/email-change";
 import {
+  platformEmailSettingsCacheTag,
   sendPlatformSmtpTestEmail,
   updatePlatformEmailSettings,
 } from "#lib/email-settings";
@@ -31,6 +33,7 @@ import {
   updatePlatformDefaultLocale,
   updatePlatformDefaultTimezone,
 } from "#lib/platform-settings";
+import { platformSetupStatusCacheTag } from "#lib/setup-status";
 
 export type PlatformEmailSettingsFormState =
   | { message: string; ok: false }
@@ -197,7 +200,8 @@ export const updatePlatformEmailSettingsAction = async (
     return { message: result.message, ok: false };
   }
 
-  revalidatePath("/settings/email");
+  updateTag(platformEmailSettingsCacheTag);
+  updateTag(platformAuditLogsCacheTag);
   return {
     message: t("platform.settings.smtp_saved"),
     ok: true,
@@ -234,6 +238,7 @@ export const updatePlatformDefaultTimezoneAction = async (
   // private cache, so without this the operator would keep seeing the previous
   // zone in the same session.
   updateTag(platformSettingsCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 
   return {
     defaultTimezone: result.defaultTimezone,
@@ -271,6 +276,8 @@ export const updatePlatformDefaultLocaleAction = async (
   // setting through a private cache, so without this the operator would keep
   // seeing the previous language in the same session.
   updateTag(platformSettingsCacheTag);
+  updateTag(platformSetupStatusCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 
   return {
     defaultLocale: result.defaultLocale,
@@ -307,6 +314,9 @@ export const sendPlatformSmtpTestEmailAction = async (
       username: parsed.data.username,
     })
   );
+
+  // The API records a failed send as well as a delivered one.
+  updateTag(platformAuditLogsCacheTag);
 
   if (!result.ok) {
     return { message: result.message, ok: false };

@@ -6,6 +6,7 @@ import {
 import type { EndUser, Tenant } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 
 import {
   apiClient,
@@ -17,6 +18,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
 import { getMessagesFor } from "./messages";
+import { platformTenantsCacheTag } from "./tenants";
 
 export interface PlatformEndUserSummary {
   createdAt: string;
@@ -143,10 +145,17 @@ const mergeTenantFilterOptions = (
   return options;
 };
 
+/**
+ * The tag every end-user read is filed under. A tenant write that renames a
+ * tenant or changes who holds a tenant role clears it too.
+ */
+export const platformEndUsersCacheTag = "platform:users";
+
 export const listPlatformEndUsers = async (
   input: ListPlatformEndUsersInput
 ): Promise<ListPlatformEndUsersResult> => {
   "use cache: private";
+  cacheTag(platformEndUsersCacheTag);
 
   const sid = await resolveAccessToken();
   if (!sid) {
@@ -222,6 +231,7 @@ export const searchPlatformTenantFilterOptions = async (
   locale: Locale
 ): Promise<SearchPlatformTenantFilterOptionsResult> => {
   "use cache: private";
+  cacheTag(platformTenantsCacheTag);
 
   const normalized = query.trim();
   if (!normalized) {
@@ -319,6 +329,7 @@ export const getPlatformEndUser = async (
   locale: Locale
 ): Promise<GetPlatformEndUserResult> => {
   "use cache: private";
+  cacheTag(platformEndUsersCacheTag);
 
   const normalizedPublicId = normalizePublicId(publicId);
   if (!normalizedPublicId) {

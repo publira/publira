@@ -6,6 +6,7 @@ const {
   mockGetPlatformLocale,
   mockRedirect,
   mockResolveAccessToken,
+  mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreatePlatformTenant: vi.fn(),
@@ -14,7 +15,10 @@ const {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
   mockResolveAccessToken: vi.fn(),
+  mockUpdateTag: vi.fn(),
 }));
+
+vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
@@ -26,6 +30,17 @@ vi.mock("#lib/api-client", () => ({
 
 vi.mock("#lib/tenants", () => ({
   createPlatformTenant: mockCreatePlatformTenant,
+  platformTenantsCacheTag: "platform:tenants",
+}));
+
+vi.mock("#lib/users", () => ({ platformEndUsersCacheTag: "platform:users" }));
+
+vi.mock("#lib/dashboard", () => ({
+  platformDashboardCacheTag: "platform:dashboard",
+}));
+
+vi.mock("#lib/audit-logs", () => ({
+  platformAuditLogsCacheTag: "platform:audit-logs",
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
@@ -120,5 +135,31 @@ describe("createTenantAction", () => {
       ok: false,
     });
     expect(mockRedirect).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("createTenantAction cache tags", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockResolveAccessToken.mockResolvedValue("session-token");
+    mockGetPlatformLocale.mockResolvedValue("en");
+  });
+
+  it("clears every read the new tenant appears in before redirecting", async () => {
+    mockCreatePlatformTenant.mockResolvedValueOnce({ ok: true, publicId: "" });
+
+    const { createTenantAction } = await import("./actions");
+
+    await expect(createTenantAction(null, tenantFormData())).rejects.toThrow(
+      "NEXT_REDIRECT:/tenants"
+    );
+    expect(mockUpdateTag.mock.calls.map(([tag]) => tag)).toEqual([
+      "platform:tenants",
+      "platform:users",
+      "platform:dashboard",
+      "platform:audit-logs",
+    ]);
   });
 });

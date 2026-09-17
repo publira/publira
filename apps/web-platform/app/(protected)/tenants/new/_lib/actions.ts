@@ -5,11 +5,14 @@ import { getLocales } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import { withPlatformSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { platformDashboardCacheTag } from "#lib/dashboard";
 import {
   commaOrNewlineStringListFormSchema,
   optionalTrimmedString,
@@ -17,7 +20,8 @@ import {
 } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { createPlatformTenant } from "#lib/tenants";
+import { createPlatformTenant, platformTenantsCacheTag } from "#lib/tenants";
+import { platformEndUsersCacheTag } from "#lib/users";
 
 /**
  * The new tenant's locale is checked against the supported list here as well as
@@ -68,6 +72,12 @@ export const createTenantAction = async (
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
+
+  // The initial admins take a tenant role, which moves them off the end-user list.
+  updateTag(platformTenantsCacheTag);
+  updateTag(platformEndUsersCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 
   if (result.publicId?.trim()) {
     redirect(`/tenants/${result.publicId}`);

@@ -5,6 +5,7 @@ const {
   mockCreateInitialUser,
   mockGetInitialLocaleCandidate,
   mockRedirect,
+  mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreateInitialUser: vi.fn(),
@@ -12,13 +13,20 @@ const {
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
+  mockUpdateTag: vi.fn(),
 }));
+
+vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/setup", () => ({ createInitialUser: mockCreateInitialUser }));
+
+vi.mock("#lib/setup-status", () => ({
+  platformSetupStatusCacheTag: "platform:setup-status",
+}));
 
 vi.mock("#lib/initial-locale", () => ({
   getInitialLocaleCandidate: mockGetInitialLocaleCandidate,
@@ -59,6 +67,7 @@ describe("setupAction", () => {
     await expect(setupAction(null, setupFormData())).rejects.toThrow(
       "NEXT_REDIRECT:/login?setup=done"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:setup-status");
     expect(mockCreateInitialUser).toHaveBeenCalledWith({
       defaultLocale: "en",
       email: "admin@example.com",
@@ -132,5 +141,6 @@ describe("setupAction", () => {
     await expect(setupAction(null, setupFormData())).rejects.toThrow(
       "NEXT_REDIRECT:/login"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:setup-status");
   });
 });

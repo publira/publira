@@ -6,15 +6,20 @@ import {
   loginPlatform,
   logoutPlatform,
 } from "./auth";
+import { PLATFORM_SESSION_CACHE_TAG } from "./auth-shared";
 
-const { mockLogin, mockLogout, mockGetMe, mockResolveSessionId } = vi.hoisted(
-  () => ({
+const { mockCacheTag, mockGetMe, mockLogin, mockLogout, mockResolveSessionId } =
+  vi.hoisted(() => ({
+    mockCacheTag: vi.fn(),
     mockGetMe: vi.fn(),
     mockLogin: vi.fn(),
     mockLogout: vi.fn(),
     mockResolveSessionId: vi.fn(),
-  })
-);
+  }));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
+}));
 
 vi.mock("./api-client", () => ({
   apiClient: {
@@ -119,6 +124,8 @@ describe("getPlatformCurrentOperator", () => {
       {},
       { headers: { Authorization: "Bearer tok_abc" } }
     );
+    // Filed under the session, so signing out drops the operator read with it.
+    expect(mockCacheTag).toHaveBeenCalledWith(PLATFORM_SESSION_CACHE_TAG);
   });
 
   it("returns role from the API unchanged", async () => {

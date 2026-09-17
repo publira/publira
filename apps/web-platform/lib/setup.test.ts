@@ -2,15 +2,22 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createInitialUser, isSetupCompleted } from "./setup";
+import { platformSetupStatusCacheTag } from "./setup-status";
 
 const {
+  mockCacheTag,
   mockCheckSetupStatus,
   mockCreateInitialUser,
   mockDropFailedCacheEntry,
 } = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
   mockCheckSetupStatus: vi.fn(),
   mockCreateInitialUser: vi.fn(),
   mockDropFailedCacheEntry: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("@publira/api-client/platform/client", () => ({
@@ -42,6 +49,8 @@ describe("isSetupCompleted", () => {
       available: true,
       completed: true,
     });
+    expect(platformSetupStatusCacheTag).toBe("platform:setup-status");
+    expect(mockCacheTag).toHaveBeenCalledWith(platformSetupStatusCacheTag);
   });
 
   it("returns false when the API returns setup_completed=false", async () => {

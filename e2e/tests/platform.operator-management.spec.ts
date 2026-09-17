@@ -13,6 +13,7 @@ import {
   signInAsPlatformOperator,
   signInAsSeedPlatformSuperAdmin,
   signOutPlatform,
+  submitOperatorForm,
 } from "../src/platform";
 import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import { SEED_MEMBER_PUBLIC_ID } from "../src/scenarios/auth";
@@ -161,6 +162,32 @@ test.describe("platform operator management", () => {
     ).toBeVisible();
     await expect(onlyVisible(page.getByText(email))).toBeVisible();
     await expect(currentRoleValue(page)).toHaveText("Operator");
+  });
+
+  test("an operator added from the list is in the list the console returns to", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const email = trackOperator(`linked-${suffix}@example.com`);
+
+    // Loaded once before the operator exists; the rest are client navigations.
+    await page.goto(platformUrl("/operators"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Operators" })
+    ).toBeVisible();
+    await expect(listRow(page, email)).toHaveCount(0);
+
+    await page
+      .getByRole("main")
+      .getByRole("link", { name: "Add operator" })
+      .click();
+    await submitOperatorForm(page, {
+      email,
+      name: `E2E Linked Operator ${suffix}`,
+      roleLabel: "Auditor",
+    });
+
+    await expect(onlyVisible(listRow(page, email))).toBeVisible();
   });
 
   test("changes a role, and the new permissions take effect on the next sign-in", async ({

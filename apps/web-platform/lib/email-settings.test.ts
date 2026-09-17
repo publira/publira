@@ -9,20 +9,27 @@ import {
   SECRET_UPDATE_MODE_REPLACE,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
   getPlatformEmailSettings,
+  platformEmailSettingsCacheTag,
   sendPlatformSmtpTestEmail,
   updatePlatformEmailSettings,
 } from "./email-settings";
 
 const {
+  mockCacheTag,
   mockGetPlatformEmailSettings,
   mockResolveSessionId,
   mockSendPlatformSmtpTestEmail,
   mockUpdatePlatformEmailSettings,
 } = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
   mockGetPlatformEmailSettings: vi.fn(),
   mockResolveSessionId: vi.fn(),
   mockSendPlatformSmtpTestEmail: vi.fn(),
   mockUpdatePlatformEmailSettings: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api-client", () => ({
@@ -222,5 +229,16 @@ describe("sendPlatformSmtpTestEmail", () => {
         "SMTP 認証に失敗しました。SMTP の設定を確認して再試行してください。",
       ok: false,
     });
+  });
+});
+
+describe("email settings cache tag", () => {
+  it("files the SMTP settings under the email-settings tag", async () => {
+    mockGetPlatformEmailSettings.mockResolvedValueOnce({ settings: undefined });
+
+    await getPlatformEmailSettings("en");
+
+    expect(platformEmailSettingsCacheTag).toBe("platform:email-settings");
+    expect(mockCacheTag).toHaveBeenCalledWith(platformEmailSettingsCacheTag);
   });
 });
