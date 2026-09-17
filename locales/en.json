@@ -2220,9 +2220,11 @@
       "scheduled_at": "Scheduled",
       "to_series_detail": "Open the series",
       "viewer": {
+        "collapse_viewer": "Restore the page width",
         "end_page": "The end",
         "enter_fullscreen": "Enter full screen",
         "exit_fullscreen": "Exit full screen",
+        "expand_viewer": "Widen to the window",
         "loading": "Loading…",
         "navigation": "Page navigation",
         "no_pages": "No pages",

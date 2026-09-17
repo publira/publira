@@ -2220,9 +2220,11 @@
       "scheduled_at": "공개 예정",
       "to_series_detail": "시리즈 상세로 이동",
       "viewer": {
+        "collapse_viewer": "페이지 너비 되돌리기",
         "end_page": "끝",
         "enter_fullscreen": "전체 화면으로 보기",
         "exit_fullscreen": "전체 화면 종료",
+        "expand_viewer": "창 너비로 넓히기",
         "loading": "불러오는 중…",
         "navigation": "페이지 이동",
         "no_pages": "페이지가 없습니다",

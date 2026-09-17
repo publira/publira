@@ -28,8 +28,10 @@ import { formatMessage } from "@publira/i18n";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  FoldHorizontalIcon,
   MaximizeIcon,
   MinimizeIcon,
+  UnfoldHorizontalIcon,
 } from "@publira/icons";
 import { Button, buttonVariants } from "@publira/ui-components/button";
 import { cn } from "@publira/utils";
@@ -42,6 +44,8 @@ import {
 } from "react";
 import type { MouseEvent, ReactNode } from "react";
 
+import { useWebStorage, writeWebStorage } from "#lib/web-storage";
+
 import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
 
 /**
@@ -51,10 +55,12 @@ import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
  * status format both need plain strings.
  */
 export interface EpisodeComicViewerCopy {
+  collapseViewer: string;
   /** Where the reader is while the page after the last one is on screen. */
   endPageStatus: string;
   enterFullscreen: string;
   exitFullscreen: string;
+  expandViewer: string;
   loading: string;
   navigation: string;
   nextPage: string;
@@ -121,6 +127,9 @@ const isFullscreenAvailable = () => document.fullscreenEnabled;
 
 /** Neither is knowable while rendering on the server. */
 const isFalseOnServer = () => false;
+
+/** The wide viewer choice this tab has made, which wins over the stored one. */
+const WIDE_VIEWER_STORAGE_KEY = "publira.wide-viewer";
 
 /**
  * The rail the reader turns pages on: three viewports wide, holding the
@@ -209,11 +218,8 @@ const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
   }
 
   return (
-    /* Placed against the physical right edge rather than laid out in the
-       toolbar's flow, which runs right to left with the reading direction. */
     <Button
       aria-label={isFullscreen ? copy.exitFullscreen : copy.enterFullscreen}
-      className="absolute right-3 bottom-3"
       onClick={onToggle}
       size="icon"
       variant="outline"
@@ -227,11 +233,56 @@ const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
   );
 };
 
+const WideViewerButton = ({
+  isWide,
+  onToggle,
+}: {
+  isWide: boolean;
+  onToggle: () => void;
+}) => {
+  const copy = useCopy();
+
+  return (
+    <Button
+      aria-label={isWide ? copy.collapseViewer : copy.expandViewer}
+      aria-pressed={isWide}
+      onClick={onToggle}
+      size="icon"
+      variant="outline"
+    >
+      {isWide ? (
+        <FoldHorizontalIcon aria-hidden="true" className="size-5" />
+      ) : (
+        <UnfoldHorizontalIcon aria-hidden="true" className="size-5" />
+      )}
+    </Button>
+  );
+};
+
+/**
+ * The element the site header matches with `group-has-*` to give way to a wide
+ * viewer, retracting whenever the viewer's own controls hide.
+ */
+const WideViewerMarker = () => {
+  const { areControlsVisible } = useViewerContext();
+
+  return (
+    <div
+      data-wide-viewer={areControlsVisible ? "revealed" : "retracted"}
+      hidden
+    />
+  );
+};
+
 /** A band of the same ink as the mat, told apart from it by a hairline. */
 const ViewerToolbar = ({
+  isWide,
   onToggleFullscreen,
+  onToggleWide,
 }: {
+  isWide: boolean;
   onToggleFullscreen: () => void;
+  onToggleWide: () => void;
 }) => {
   const copy = useCopy();
 
@@ -249,7 +300,12 @@ const ViewerToolbar = ({
           format={buildPageStatusFormatter(copy)}
         />
       </PageProgress>
-      <FullscreenButton onToggle={onToggleFullscreen} />
+      {/* Placed against the physical right edge rather than laid out in the
+          toolbar's flow, which runs right to left with the reading direction. */}
+      <div className="absolute right-3 bottom-3 flex gap-2">
+        <WideViewerButton isWide={isWide} onToggle={onToggleWide} />
+        <FullscreenButton onToggle={onToggleFullscreen} />
+      </div>
     </Toolbar>
   );
 };
@@ -319,6 +375,9 @@ const ViewerPageNavigation = () => {
  * `endPage` is turned to after the last page, which is where the comment form
  * lives. It is drawn on paper rather than on the mat, so the site's own
  * controls read there exactly as they do under the reader.
+ *
+ * `wideViewerEnabled` is the choice the server read; one made in this tab since
+ * wins over it, so the reader never waits on `saveWideViewer`.
  */
 export const EpisodeComicViewer = ({
   children,
@@ -327,7 +386,9 @@ export const EpisodeComicViewer = ({
   initialPageIndex = 0,
   pages,
   readingDirection,
+  saveWideViewer,
   spreadStartIndex,
+  wideViewerEnabled,
 }: {
   children?: ReactNode;
   copy: EpisodeComicViewerCopy;
@@ -337,9 +398,25 @@ export const EpisodeComicViewer = ({
   initialPageIndex?: number;
   pages: ViewerPage[];
   readingDirection: ReadingDirection;
+  /** Absent for a reader with no session. */
+  saveWideViewer?: (enabled: boolean) => Promise<void>;
   spreadStartIndex: number;
+  wideViewerEnabled: boolean;
 }) => {
   const shellRef = useRef<HTMLDivElement>(null);
+  const wideViewerChoice = useWebStorage("session", WIDE_VIEWER_STORAGE_KEY);
+  const isWide =
+    wideViewerChoice === null ? wideViewerEnabled : wideViewerChoice === "true";
+
+  const toggleWide = async () => {
+    const next = !isWide;
+    writeWebStorage("session", WIDE_VIEWER_STORAGE_KEY, String(next));
+    try {
+      await saveWideViewer?.(next);
+    } catch {
+      // The choice already holds in this tab, and the next press writes again.
+    }
+  };
 
   const toggleFullscreen = useCallback(async () => {
     const shell = shellRef.current;
@@ -389,8 +466,13 @@ export const EpisodeComicViewer = ({
               </div>
             </EndPage>
           )}
-          <ViewerToolbar onToggleFullscreen={toggleFullscreen} />
+          <ViewerToolbar
+            isWide={isWide}
+            onToggleFullscreen={toggleFullscreen}
+            onToggleWide={toggleWide}
+          />
           <ViewerPageNavigation />
+          {isWide ? <WideViewerMarker /> : null}
           {children}
         </ComicViewerRoot>
       </div>

@@ -631,7 +631,11 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
     <Suspense fallback={null}>
       <PinnedAnnouncementBanner />
     </Suspense>
-    <SiteLayoutHeader>
+    {/*
+      Over a wide episode viewer the header leaves the flow and lies across its
+      top, sliding away while the viewer marks its controls hidden.
+    */}
+    <SiteLayoutHeader className="transition-[translate,visibility] duration-state ease-state group-has-data-wide-viewer/document:absolute group-has-data-wide-viewer/document:inset-x-0 group-has-data-wide-viewer/document:top-0 group-has-data-wide-viewer/document:z-30 group-has-data-[wide-viewer=retracted]/document:invisible group-has-data-[wide-viewer=retracted]/document:-translate-y-full">
       <Suspense fallback={<SiteLayoutBrandSkeleton />}>
         <TenantBrandLink />
       </Suspense>

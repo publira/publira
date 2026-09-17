@@ -61,6 +61,18 @@ describe("SiteLayout slots", () => {
     expect(screen.getByText("Body")).toBeTruthy();
   });
 
+  it("adds the caller's classes to the header band without dropping its own", () => {
+    render(
+      <SiteLayoutHeader className="absolute top-0">
+        <SiteLayoutBrand href="/">Aoto Press</SiteLayoutBrand>
+      </SiteLayoutHeader>
+    );
+
+    const header = screen.getByRole("banner");
+    expect(header.className).toContain("border-b");
+    expect(header.className).toContain("absolute top-0");
+  });
+
   it("renders each footer area from its own child slot", () => {
     render(
       <SiteLayoutFooter>

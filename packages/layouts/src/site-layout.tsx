@@ -1,4 +1,5 @@
 import { Skeleton } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -72,9 +73,18 @@ export const SiteLayoutBannerActions = ({
  * A 56px band a half step above the page, closed by one hairline. The band is
  * what separates the header from the paper; nothing is layered over the content
  * scrolling beneath it, so it needs neither a translucent fill nor a blur.
+ *
+ * `className` joins the band's own classes on `<header>`, for a caller that
+ * moves the band rather than restyles it.
  */
-export const SiteLayoutHeader = ({ children }: { children: ReactNode }) => (
-  <header className="border-b border-border bg-surface">
+export const SiteLayoutHeader = ({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) => (
+  <header className={cn("border-b border-border bg-surface", className)}>
     <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-6">
       {children}
     </div>
