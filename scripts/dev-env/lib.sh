@@ -120,6 +120,21 @@ dev_env_profile_in_use() {
   done < <(git -C "${REPO_ROOT}" worktree list --porcelain | awk '/^worktree / {print $2}')
 }
 
+# Holds an exclusive lock on the profile table until dev_env_unlock_profiles or
+# until this shell exits, however it exits. Python stands in for flock(1), which
+# macOS lacks, and descriptor 9 is fixed because macOS's bash 3.2 cannot allocate one.
+dev_env_lock_profiles() {
+  local lock_path="${DEV_ENV_HOME}/profiles.lock"
+  dev_env_require_commands python3
+  exec 9>>"${lock_path}"
+  python3 -c 'import fcntl, sys; fcntl.flock(int(sys.argv[1]), fcntl.LOCK_EX)' 9 ||
+    dev_env_die "cannot lock ${lock_path}"
+}
+
+dev_env_unlock_profiles() {
+  exec 9>&-
+}
+
 # Prints the lowest slot no profile holds. Prints nothing and fails when every
 # one is held, rather than dying: a die here would end only the command
 # substitution that called it, and the caller would go on to write a profile

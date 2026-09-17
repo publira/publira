@@ -134,6 +134,96 @@ fi
   fail "the profiles to destroy were not named: ${create_output}"
 pass "creating a profile with every slot held fails, writes nothing, and says what holds them"
 
+# A create that succeeds selects its profile in the checkout the script runs
+# from, so these run from a copy of the scripts rather than from this worktree.
+create_root="${test_dir}/create-root"
+mkdir -p "${create_root}/scripts/dev-env"
+cp "${REPO_ROOT}/scripts/dev-env.sh" "${create_root}/scripts/dev-env.sh"
+cp "${SCRIPT_DIR}/lib.sh" "${create_root}/scripts/dev-env/lib.sh"
+concurrent_creates=8
+
+start_create() {
+  local home="$1" name="$2" output="$3"
+  PUBLIRA_DEV_ENV_HOME="${home}" bash "${create_root}/scripts/dev-env.sh" create "${name}" >"${output}" 2>&1 &
+}
+
+distinct_home="${test_dir}/distinct-home"
+create_pids=()
+for i in $(seq "${concurrent_creates}"); do
+  start_create "${distinct_home}" "parallel-${i}" "${test_dir}/distinct-${i}.log"
+  create_pids+=("$!")
+done
+for i in "${!create_pids[@]}"; do
+  wait "${create_pids[${i}]}" || fail "a concurrent create failed: $(<"${test_dir}/distinct-$((i + 1)).log")"
+done
+distinct_slots="$(
+  for i in $(seq "${concurrent_creates}"); do
+    dev_env_profile_value "${distinct_home}/profiles/parallel-${i}.env" DEV_ENV_SLOT
+  done | sort -n | uniq | tr '\n' ' '
+)"
+[[ "${distinct_slots}" == "$(seq -s ' ' "${concurrent_creates}") " ]] ||
+  fail "concurrent creates did not take one slot each: ${distinct_slots}"
+pass "concurrent creates with distinct names each take a slot of their own"
+
+same_home="${test_dir}/same-home"
+create_pids=()
+for i in $(seq "${concurrent_creates}"); do
+  start_create "${same_home}" shared "${test_dir}/same-${i}.log"
+  create_pids+=("$!")
+done
+same_created=0
+for i in "${!create_pids[@]}"; do
+  if wait "${create_pids[${i}]}"; then
+    same_created=$((same_created + 1))
+  else
+    [[ "$(<"${test_dir}/same-$((i + 1)).log")" == *"profile already exists: shared"* ]] ||
+      fail "a losing concurrent create did not report the existing profile: $(<"${test_dir}/same-$((i + 1)).log")"
+  fi
+done
+((same_created == 1)) || fail "${same_created} concurrent creates with one name succeeded"
+same_profiles=("${same_home}"/profiles/*)
+[[ "${#same_profiles[@]}" == 1 && "${same_profiles[0]}" == */shared.env ]] ||
+  fail "concurrent creates with one name left ${same_profiles[*]}"
+pass "concurrent creates with one name leave one profile and report it to the others"
+
+# A holder killed while it has the lock stands for a create interrupted inside
+# it. The create waiting behind it has to go on once the holder is gone.
+interrupted_home="${test_dir}/interrupted-home"
+mkdir -p "${interrupted_home}/profiles"
+set -m
+PUBLIRA_DEV_ENV_HOME="${interrupted_home}" bash -c '
+  source "$1"
+  dev_env_lock_profiles
+  : >"$2"
+  sleep 300 9>&-
+' _ "${SCRIPT_DIR}/lib.sh" "${test_dir}/holder-ready" &
+holder_pgid="$!"
+set +m
+started_groups+=("${holder_pgid}")
+for _ in $(seq 100); do
+  [[ -e "${test_dir}/holder-ready" ]] && break
+  sleep 0.1
+done
+[[ -e "${test_dir}/holder-ready" ]] || fail "the lock holder never took the lock"
+start_create "${interrupted_home}" waiting "${test_dir}/waiting.log"
+waiting_pid="$!"
+sleep 1
+kill -0 "${waiting_pid}" 2>/dev/null || fail "a create did not wait for the lock: $(<"${test_dir}/waiting.log")"
+[[ ! -e "${interrupted_home}/profiles/waiting.env" ]] || fail "a create wrote its profile while the lock was held"
+kill -s KILL -- "-${holder_pgid}"
+wait "${holder_pgid}" 2>/dev/null || true
+for _ in $(seq 100); do
+  kill -0 "${waiting_pid}" 2>/dev/null || break
+  sleep 0.1
+done
+if kill -0 "${waiting_pid}" 2>/dev/null; then
+  kill -s KILL "${waiting_pid}"
+  fail "a create stayed blocked after the lock holder was killed"
+fi
+wait "${waiting_pid}" || fail "the create behind a killed lock holder failed: $(<"${test_dir}/waiting.log")"
+[[ -e "${interrupted_home}/profiles/waiting.env" ]] || fail "the create behind a killed lock holder wrote no profile"
+pass "a create waits for the lock and goes on once a holder killed inside it is gone"
+
 if dev_env_identifier_is_valid "UPPER"; then
   fail "invalid identifier was accepted"
 fi
