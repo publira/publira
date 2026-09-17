@@ -135,6 +135,7 @@ void main() {
 
   test('the tenant brand is read back by the next launch', () async {
     await open().writeTenantBrand(
+      'harbor.test',
       TenantBrand(
         name: 'Harbor Comics',
         palette: TenantPalette.fromWire(const {'primaryColor': '#0b6e4f'}),
@@ -146,7 +147,7 @@ void main() {
       ),
     );
 
-    final restored = await open().readTenantBrand();
+    final restored = await open().readTenantBrand('harbor.test');
 
     expect(restored!.name, 'Harbor Comics');
     expect(restored.palette[TenantColor.primary], const Color(0xFF0B6E4F));
@@ -163,11 +164,23 @@ void main() {
 
   test('clearing the library forgets the tenant brand', () async {
     final library = open();
-    await library.writeTenantBrand(const TenantBrand(name: 'Harbor Comics'));
+    await library.writeTenantBrand(
+      'harbor.test',
+      const TenantBrand(name: 'Harbor Comics'),
+    );
 
     await library.clear();
 
-    expect(await open().readTenantBrand(), isNull);
+    expect(await open().readTenantBrand('harbor.test'), isNull);
+  });
+
+  test('a brand saved for another tenant is not answered', () async {
+    await open().writeTenantBrand(
+      'harbor.test',
+      const TenantBrand(name: 'Harbor Comics'),
+    );
+
+    expect(await open().readTenantBrand('ember.test'), isNull);
   });
 
   test('a saved catalog that ended keeps no token', () async {

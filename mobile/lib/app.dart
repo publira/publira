@@ -142,6 +142,7 @@ class PubliraApp extends StatefulWidget {
           client: client,
           tenants: tenants,
         ),
+        tenantHost: resolved.tenantHost,
         library: library,
         logoRequestHeaders: resolved.publicImageRequestHeaders,
       ),
@@ -324,6 +325,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     if (widget.tenantBrand != oldWidget.tenantBrand) {
       oldWidget.tenantBrand?.removeListener(_onTenantBrandChanged);
       widget.tenantBrand?.addListener(_onTenantBrandChanged);
+      unawaited(widget.tenantBrand?.start());
     }
   }
 

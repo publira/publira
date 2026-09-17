@@ -111,11 +111,14 @@ abstract class OfflineLibrary implements EpisodePageStore {
 
   Future<void> writeSeriesList(SeriesPage page);
 
-  /// The tenant's brand as the API last answered it, or `null` when the device
-  /// has none.
-  Future<TenantBrand?> readTenantBrand();
+  /// The brand of the tenant at [tenantHost] as the API last answered it, or
+  /// `null` when the device holds none for that tenant.
+  ///
+  /// A build pointed at another tenant can be installed over this one under
+  /// the same application id, and must not open in the previous tenant's brand.
+  Future<TenantBrand?> readTenantBrand(String tenantHost);
 
-  Future<void> writeTenantBrand(TenantBrand brand);
+  Future<void> writeTenantBrand(String tenantHost, TenantBrand brand);
 
   Future<SeriesDetail?> readSeriesDetail(String seriesPublicId);
 

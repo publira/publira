@@ -10,6 +10,7 @@ import 'package:publira/tenant/tenant_brand.dart';
 /// and a test asserting what the app saved wants to read it back without
 /// going through the encrypted files.
 class InMemoryOfflineLibrary implements OfflineLibrary {
+  String tenantHost = '';
   TenantBrand? tenant;
   SeriesPage? series;
   final Map<String, SeriesDetail> details = {};
@@ -29,10 +30,12 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   }
 
   @override
-  Future<TenantBrand?> readTenantBrand() async => tenant;
+  Future<TenantBrand?> readTenantBrand(String tenantHost) async =>
+      this.tenantHost == tenantHost ? tenant : null;
 
   @override
-  Future<void> writeTenantBrand(TenantBrand brand) async {
+  Future<void> writeTenantBrand(String tenantHost, TenantBrand brand) async {
+    this.tenantHost = tenantHost;
     tenant = brand;
   }
 
@@ -133,6 +136,7 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
 
   @override
   Future<void> clear() async {
+    tenantHost = '';
     tenant = null;
     series = null;
     details.clear();

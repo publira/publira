@@ -8,11 +8,15 @@ import 'package:publira/tenant/tenant_brand_repository.dart';
 class TenantBrandController extends ChangeNotifier {
   TenantBrandController({
     required this._repository,
+    required this.tenantHost,
     this.library,
     this.logoRequestHeaders = const {},
   });
 
   final TenantBrandRepository _repository;
+
+  /// The tenant this build points at, which the saved brand has to match.
+  final String tenantHost;
 
   /// Where the last answer is kept, so a launch without a network is branded.
   final OfflineLibrary? library;
@@ -28,7 +32,7 @@ class TenantBrandController extends ChangeNotifier {
   TenantBrand? get brand => _brand;
 
   Future<void> start() async {
-    final saved = await library?.readTenantBrand();
+    final saved = await library?.readTenantBrand(tenantHost);
     if (saved != null) {
       _set(saved);
     }
@@ -37,7 +41,7 @@ class TenantBrandController extends ChangeNotifier {
       return;
     }
     _set(fresh);
-    await library?.writeTenantBrand(fresh);
+    await library?.writeTenantBrand(tenantHost, fresh);
   }
 
   void _set(TenantBrand brand) {

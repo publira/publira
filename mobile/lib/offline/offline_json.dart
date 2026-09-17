@@ -17,6 +17,7 @@ const offlineIndexVersion = 3;
 /// once to decide which to drop.
 class OfflineIndex {
   OfflineIndex({
+    this.tenantHost = '',
     this.tenant,
     this.series,
     this.seriesNextToken = '',
@@ -26,6 +27,9 @@ class OfflineIndex {
   }) : details = details ?? <String, SeriesDetail>{},
        episodes = episodes ?? <String, SavedEpisode>{},
        positions = positions ?? <String, SavedReadingPosition>{};
+
+  /// The tenant host [tenant] was read for, empty when it never has been.
+  String tenantHost;
 
   /// The tenant's brand as it last loaded, or `null` when it never has.
   TenantBrand? tenant;
@@ -50,7 +54,7 @@ class OfflineIndex {
 
   Map<String, Object?> toJson() => {
     'version': offlineIndexVersion,
-    if (tenant != null) 'tenant': _tenantToJson(tenant!),
+    if (tenant != null) 'tenant': _tenantToJson(tenantHost, tenant!),
     if (series != null)
       'series': [for (final item in series!) _seriesToJson(item)],
     if (seriesNextToken.isNotEmpty) 'seriesNextToken': seriesNextToken,
@@ -79,6 +83,7 @@ class OfflineIndex {
     final rawEpisodes = decoded['episodes'];
     final rawPositions = decoded['positions'];
     return OfflineIndex(
+      tenantHost: _tenantHostFromJson(decoded['tenant']),
       tenant: _tenantFromJson(decoded['tenant']),
       positions: rawPositions is! Map
           ? null
@@ -106,7 +111,8 @@ class OfflineIndex {
   }
 }
 
-Map<String, Object?> _tenantToJson(TenantBrand brand) => {
+Map<String, Object?> _tenantToJson(String host, TenantBrand brand) => {
+  'host': host,
   'name': brand.name,
   'theme': brand.palette.toWire(),
   if (brand.logo case final logo?)
@@ -117,8 +123,12 @@ Map<String, Object?> _tenantToJson(TenantBrand brand) => {
     },
 };
 
+String _tenantHostFromJson(Object? decoded) =>
+    decoded is Map ? _string(decoded['host']) : '';
+
 TenantBrand? _tenantFromJson(Object? decoded) {
-  if (decoded is! Map) {
+  // A brand that names no tenant cannot be told apart from another tenant's.
+  if (decoded is! Map || _string(decoded['host']).isEmpty) {
     return null;
   }
   return TenantBrand(

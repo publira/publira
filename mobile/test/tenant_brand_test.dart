@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
 import 'package:publira/router.dart';
 import 'package:publira/tenant/tenant_brand.dart';
@@ -12,6 +13,8 @@ import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_offline_library.dart';
 import 'support/fake_tenant_brand.dart';
+
+const _tenantHost = 'localhost';
 
 final _harborPalette = TenantPalette.fromWire(const {
   'primaryColor': '#0b6e4f',
@@ -107,13 +110,16 @@ void main() {
     test(
       'answers with the saved brand first, then keeps the fresh one',
       () async {
-        final library = InMemoryOfflineLibrary()..tenant = _ember;
+        final library = (InMemoryOfflineLibrary()
+          ..tenantHost = _tenantHost
+          ..tenant = _ember);
         final gate = Completer<void>();
         final repository = FakeTenantBrandRepository(
           brand: _harbor,
           gate: gate,
         );
         final controller = TenantBrandController(
+          tenantHost: _tenantHost,
           repository: repository,
           library: library,
         );
@@ -129,9 +135,27 @@ void main() {
       },
     );
 
-    test('an API that cannot answer leaves the saved brand in place', () async {
-      final library = InMemoryOfflineLibrary()..tenant = _ember;
+    test('a brand saved for another tenant is not shown', () async {
+      final library = InMemoryOfflineLibrary()
+        ..tenantHost = 'ember.test'
+        ..tenant = _ember;
       final controller = TenantBrandController(
+        tenantHost: _tenantHost,
+        repository: FakeTenantBrandRepository(brand: null),
+        library: library,
+      );
+
+      await controller.start();
+
+      expect(controller.brand, isNull);
+    });
+
+    test('an API that cannot answer leaves the saved brand in place', () async {
+      final library = (InMemoryOfflineLibrary()
+        ..tenantHost = _tenantHost
+        ..tenant = _ember);
+      final controller = TenantBrandController(
+        tenantHost: _tenantHost,
         repository: FakeTenantBrandRepository(brand: null),
         library: library,
       );
@@ -147,12 +171,14 @@ void main() {
     Future<void> pumpApp(
       WidgetTester tester, {
       required TenantBrandController tenantBrand,
+      Key? key,
+      GoRouter? router,
     }) async {
       await tester.pumpWidget(
         PubliraApp(
           // A second tenant is a second launch, not the first app rebuilt.
-          key: ObjectKey(tenantBrand),
-          router: createAppRouter(),
+          key: key ?? ObjectKey(tenantBrand),
+          router: router ?? createAppRouter(),
           catalog: FakeCatalogRepository(series: fixtureSeries),
           auth: fakeAuthController(),
           offline: InMemoryOfflineLibrary(),
@@ -180,6 +206,7 @@ void main() {
       await pumpApp(
         tester,
         tenantBrand: TenantBrandController(
+          tenantHost: _tenantHost,
           repository: FakeTenantBrandRepository(brand: _harbor),
         ),
       );
@@ -189,6 +216,7 @@ void main() {
       await pumpApp(
         tester,
         tenantBrand: TenantBrandController(
+          tenantHost: _tenantHost,
           repository: FakeTenantBrandRepository(brand: _ember),
         ),
       );
@@ -205,6 +233,7 @@ void main() {
       await pumpApp(
         tester,
         tenantBrand: TenantBrandController(
+          tenantHost: _tenantHost,
           repository: FakeTenantBrandRepository(brand: _ember),
           logoRequestHeaders: const {'x-forwarded-host': 'ember.test'},
         ),
@@ -224,6 +253,7 @@ void main() {
       await pumpApp(
         tester,
         tenantBrand: TenantBrandController(
+          tenantHost: _tenantHost,
           repository: FakeTenantBrandRepository(),
         ),
       );
@@ -238,14 +268,47 @@ void main() {
       );
     });
 
+    testWidgets('a brand controller handed to a running app is started', (
+      tester,
+    ) async {
+      const key = ValueKey('app');
+      final router = createAppRouter();
+      await pumpApp(
+        tester,
+        key: key,
+        router: router,
+        tenantBrand: TenantBrandController(
+          tenantHost: _tenantHost,
+          repository: FakeTenantBrandRepository(brand: _harbor),
+        ),
+      );
+
+      final replacement = FakeTenantBrandRepository(brand: _ember);
+      await pumpApp(
+        tester,
+        key: key,
+        router: router,
+        tenantBrand: TenantBrandController(
+          tenantHost: _tenantHost,
+          repository: replacement,
+        ),
+      );
+
+      expect(replacement.reads, 1);
+      expect(catalogColors(tester).primary, const Color(0xFF9C2A00));
+    });
+
     testWidgets('a launch without a network is in the saved tenant colours', (
       tester,
     ) async {
       await pumpApp(
         tester,
         tenantBrand: TenantBrandController(
+          tenantHost: _tenantHost,
           repository: FakeTenantBrandRepository(brand: null),
-          library: InMemoryOfflineLibrary()..tenant = _ember,
+          library: (InMemoryOfflineLibrary()
+            ..tenantHost = _tenantHost
+            ..tenant = _ember),
         ),
       );
 

@@ -77,14 +77,18 @@ class FileOfflineLibrary implements OfflineLibrary {
   }
 
   @override
-  Future<TenantBrand?> readTenantBrand() {
-    return _read<TenantBrand>((home, index) => index.tenant);
+  Future<TenantBrand?> readTenantBrand(String tenantHost) {
+    return _read<TenantBrand>(
+      (home, index) => index.tenantHost == tenantHost ? index.tenant : null,
+    );
   }
 
   @override
-  Future<void> writeTenantBrand(TenantBrand brand) {
+  Future<void> writeTenantBrand(String tenantHost, TenantBrand brand) {
     return _write((home, index) {
-      index.tenant = brand;
+      index
+        ..tenantHost = tenantHost
+        ..tenant = brand;
     });
   }
 
@@ -245,6 +249,7 @@ class FileOfflineLibrary implements OfflineLibrary {
     return _write((home, index) async {
       await _wipe(home);
       index
+        ..tenantHost = ''
         ..tenant = null
         ..series = null
         ..details.clear()

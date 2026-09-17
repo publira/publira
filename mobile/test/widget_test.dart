@@ -44,6 +44,7 @@ void main() {
         offline: offline,
         ageRatingConfirmation: ageRatingConfirmation,
         tenantBrand: TenantBrandController(
+          tenantHost: 'localhost',
           repository: FakeTenantBrandRepository(),
         ),
       ),
