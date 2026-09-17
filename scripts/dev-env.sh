@@ -39,6 +39,9 @@ create_profile() {
   local name="$1" slot
   dev_env_validate_name "${name}"
   dev_env_ensure_home
+  # A name or slot is taken only once its profile is written, so both checks and
+  # the write run under one lock.
+  dev_env_lock_profiles
   [[ ! -f "$(dev_env_profile_path "${name}")" ]] || dev_env_die "profile already exists: ${name}"
   if ! slot="$(dev_env_next_slot)"; then
     dev_env_error "no Valkey logical database is available (slots ${DEV_ENV_SLOT_MIN}-${DEV_ENV_SLOT_MAX})"
@@ -47,6 +50,7 @@ create_profile() {
     exit 1
   fi
   dev_env_write_profile "${name}" "${slot}"
+  dev_env_unlock_profiles
   dev_env_select "${name}"
   printf 'created and selected profile %q (run task dev-env:init)\n' "${name}"
 }
