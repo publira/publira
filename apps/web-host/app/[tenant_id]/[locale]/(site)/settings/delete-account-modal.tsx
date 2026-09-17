@@ -2,29 +2,15 @@
 
 import { useCallback, useState } from "react";
 
+import { ClientMessage } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 import { useTenantId } from "#lib/use-tenant-id";
 
-/**
- * Resolved strings rather than nodes: the dialog is mounted from a click
- * handler, so nothing in it can stream in from the server.
- */
-interface DeleteAccountModalCopy {
-  cancel: string;
-  confirmDescription: string;
-  confirmTitle: string;
-  open: string;
-  passwordLabel: string;
-  submit: string;
-}
-
 interface DeleteAccountModalProps {
-  copy: DeleteAccountModalCopy;
   deleteAction: (formData: FormData) => Promise<void>;
 }
 
 export const DeleteAccountModal = ({
-  copy,
   deleteAction,
 }: DeleteAccountModalProps) => {
   const tenantId = useTenantId();
@@ -39,7 +25,7 @@ export const DeleteAccountModal = ({
         onClick={openModal}
         type="button"
       >
-        {copy.open}
+        <ClientMessage message="host.settings.delete_open" />
       </button>
 
       {open ? (
@@ -53,10 +39,10 @@ export const DeleteAccountModal = ({
               className="text-lg font-semibold text-destructive"
               id="delete-account-modal-title"
             >
-              {copy.confirmTitle}
+              <ClientMessage message="host.settings.delete_confirm_title" />
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              {copy.confirmDescription}
+              <ClientMessage message="host.settings.delete_confirm_description" />
             </p>
 
             <form action={deleteAction} className="mt-5 space-y-4">
@@ -65,7 +51,7 @@ export const DeleteAccountModal = ({
 
               <div className="space-y-2">
                 <label htmlFor="deletePassword" className="text-sm font-medium">
-                  {copy.passwordLabel}
+                  <ClientMessage message="host.settings.current_password_label" />
                 </label>
                 <input
                   autoComplete="current-password"
@@ -84,13 +70,13 @@ export const DeleteAccountModal = ({
                   onClick={closeModal}
                   type="button"
                 >
-                  {copy.cancel}
+                  <ClientMessage message="host.settings.cancel" />
                 </button>
                 <button
                   className="inline-flex rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:opacity-90"
                   type="submit"
                 >
-                  {copy.submit}
+                  <ClientMessage message="host.settings.delete_submit" />
                 </button>
               </div>
             </form>

@@ -4,6 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { renderWithClientMessages } from "#lib/render-with-client-messages";
+
 import {
   FollowButton,
   FollowControlSkeleton,
@@ -29,25 +31,16 @@ vi.mock("#lib/follow-actions", () => ({
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-const copy = (targetName: string) => ({
-  follow: "Follow",
-  followAriaLabel: `Follow ${targetName}`,
-  pending: "Updating…",
-  unfollow: "Unfollow",
-  unfollowAriaLabel: `Unfollow ${targetName}`,
-});
-
 afterEach(() => {
   cleanup();
 });
 
 describe("FollowLoginLink", () => {
-  it("Return to current details page Guide to login with returnTo", () => {
-    render(
+  it("Return to current details page Guide to login with returnTo", async () => {
+    await renderWithClientMessages(
       <FollowLoginLink
-        ariaLabel="Sign in to follow Published Series"
         href="/login?returnTo=%2Fseries%2FSERIES01"
-        label="Follow"
+        targetName="Published Series"
       />
     );
 
@@ -57,36 +50,38 @@ describe("FollowLoginLink", () => {
     expect(link.getAttribute("href")).toBe(
       "/login?returnTo=%2Fseries%2FSERIES01"
     );
+    expect(link.textContent).toBe("Follow");
   });
 });
 
 describe("FollowButton", () => {
-  it("If you are not following, issue a follow operation.", () => {
-    render(
+  it("If you are not following, issue a follow operation.", async () => {
+    await renderWithClientMessages(
       <FollowButton
-        copy={copy("Published Series")}
         isFollowing={false}
         publicId="SERIES01"
         returnTo="/series/SERIES01"
         targetKind="series"
+        targetName="Published Series"
         tenantId={tenantId}
       />
     );
 
-    expect(
-      screen.getByRole("button", { name: "Follow Published Series" })
-    ).toBeDefined();
+    const button = screen.getByRole("button", {
+      name: "Follow Published Series",
+    });
+    expect(button.textContent).toBe("Follow");
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("If you are following, issue an unsubscribe operation", () => {
-    render(
+  it("If you are following, issue an unsubscribe operation", async () => {
+    await renderWithClientMessages(
       <FollowButton
-        copy={copy("Published Creator")}
         isFollowing
         publicId="CREATOR01"
         returnTo="/creators/CREATOR01"
         targetKind="creator"
+        targetName="Published Creator"
         tenantId={tenantId}
       />
     );
@@ -95,6 +90,7 @@ describe("FollowButton", () => {
       name: "Unfollow Published Creator",
     });
     expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(button.textContent).toBe("Unfollow");
   });
 });
 

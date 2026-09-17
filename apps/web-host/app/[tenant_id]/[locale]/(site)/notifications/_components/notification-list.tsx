@@ -128,13 +128,7 @@ export const NotificationList = async ({
           {t("host.notifications.list_heading")}
         </h2>
         {hasUnread && !listErrorMessage ? (
-          <MarkAllNotificationsAsReadButton
-            copy={{
-              pending: t("host.common.updating"),
-              submit: t("host.common.mark_all_read"),
-            }}
-            tenantId={tenantId}
-          />
+          <MarkAllNotificationsAsReadButton tenantId={tenantId} />
         ) : null}
       </div>
 
@@ -189,14 +183,8 @@ export const NotificationList = async ({
               {item.isRead ? null : (
                 <div className="mt-3">
                   <MarkNotificationAsReadButton
-                    copy={{
-                      ariaLabel: t("host.notifications.mark_read_aria", {
-                        title: item.title,
-                      }),
-                      pending: t("host.common.updating"),
-                      submit: t("host.common.mark_read"),
-                    }}
                     notificationId={item.id}
+                    notificationTitle={item.title}
                     tenantId={tenantId}
                   />
                 </div>

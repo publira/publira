@@ -3,6 +3,7 @@
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 
 import {
@@ -13,25 +14,17 @@ import {
 const actionButtonClassName =
   "inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60";
 
-/**
- * Resolved strings rather than nodes: the label swaps while the Action is in
- * flight, and the `aria-label` names the notification it belongs to.
- */
-interface MarkNotificationAsReadCopy {
-  ariaLabel: string;
-  pending: string;
-  submit: string;
-}
-
 export const MarkNotificationAsReadButton = ({
-  copy,
   notificationId,
+  notificationTitle,
   tenantId,
 }: {
-  copy: MarkNotificationAsReadCopy;
   notificationId: string;
+  /** Named in the accessible label, so each row's control is told apart. */
+  notificationTitle: string;
   tenantId: string;
 }) => {
+  const t = useClientMessages();
   const [state, formAction, isPending] = useActionState(
     markNotificationAsReadAction,
     null
@@ -43,12 +36,18 @@ export const MarkNotificationAsReadButton = ({
       <input name="tenantId" type="hidden" value={tenantId} />
       <input name="notificationId" type="hidden" value={notificationId} />
       <button
-        aria-label={copy.ariaLabel}
+        aria-label={t("host.notifications.mark_read_aria", {
+          title: notificationTitle,
+        })}
         className={actionButtonClassName}
         disabled={isPending}
         type="submit"
       >
-        {isPending ? copy.pending : copy.submit}
+        {isPending ? (
+          <ClientMessage message="host.common.updating" />
+        ) : (
+          <ClientMessage message="host.common.mark_read" />
+        )}
       </button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
@@ -58,10 +57,8 @@ export const MarkNotificationAsReadButton = ({
 };
 
 export const MarkAllNotificationsAsReadButton = ({
-  copy,
   tenantId,
 }: {
-  copy: { pending: string; submit: string };
   tenantId: string;
 }) => {
   const [state, formAction, isPending] = useActionState(
@@ -78,7 +75,11 @@ export const MarkAllNotificationsAsReadButton = ({
         disabled={isPending}
         type="submit"
       >
-        {isPending ? copy.pending : copy.submit}
+        {isPending ? (
+          <ClientMessage message="host.common.updating" />
+        ) : (
+          <ClientMessage message="host.common.mark_all_read" />
+        )}
       </button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

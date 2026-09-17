@@ -2,8 +2,10 @@
 
 import { NextPageButton, ViewerProvider } from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { EpisodeNeighborKeyNavigation } from "./episode-neighbor-key-navigation";
 
@@ -20,10 +22,7 @@ vi.mock("#components/locale-provider", () => ({
   useTenantDefaultLocale: () => "ja",
 }));
 
-const copy = {
-  nextHint: "Press the key again to open the next episode.",
-  previousHint: "Press the key again to open the previous episode.",
-};
+const NEXT_HINT = "Press the key again to open the next episode.";
 
 const NEXT_HREF = "/series/SERIES_001/episodes/EPISODE_003";
 const PREVIOUS_HREF = "/series/SERIES_001/episodes/EPISODE_001";
@@ -40,7 +39,7 @@ const renderViewer = (
   pageCount: number,
   readingDirection: "ltr" | "rtl" = "rtl"
 ) =>
-  render(
+  renderWithClientMessages(
     <ViewerProvider
       initialReadingDirection={readingDirection}
       initialViewMode="single"
@@ -48,7 +47,6 @@ const renderViewer = (
     >
       <NextPageButton>Next</NextPageButton>
       <EpisodeNeighborKeyNavigation
-        copy={copy}
         nextHref={NEXT_HREF}
         previousHref={PREVIOUS_HREF}
       />
@@ -80,32 +78,32 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("EpisodeNeighborKeyNavigation", () => {
-  it("says what a second press will do rather than moving on the first", () => {
-    renderViewer(1);
+  it("says what a second press will do rather than moving on the first", async () => {
+    await renderViewer(1);
     pressForward();
 
     expect(mockPush).not.toHaveBeenCalled();
-    expect(screen.getByRole("status").textContent).toBe(copy.nextHint);
+    expect(screen.getByRole("status").textContent).toBe(NEXT_HINT);
   });
 
-  it("opens the next episode on the second press", () => {
-    renderViewer(1);
+  it("opens the next episode on the second press", async () => {
+    await renderViewer(1);
     pressForward();
     pressForward();
 
     expect(mockPush).toHaveBeenCalledExactlyOnceWith(`/en${NEXT_HREF}`);
   });
 
-  it("opens the next episode with the forward key of a left-to-right episode", () => {
-    renderViewer(1, "ltr");
+  it("opens the next episode with the forward key of a left-to-right episode", async () => {
+    await renderViewer(1, "ltr");
     fireEvent.keyDown(window, { key: "ArrowRight" });
     fireEvent.keyDown(window, { key: "ArrowRight" });
 
     expect(mockPush).toHaveBeenCalledExactlyOnceWith(`/en${NEXT_HREF}`);
   });
 
-  it("does not count a held key's own repeat as the second press", () => {
-    renderViewer(1);
+  it("does not count a held key's own repeat as the second press", async () => {
+    await renderViewer(1);
     pressForward();
     holdForward();
     holdForward();
@@ -114,23 +112,23 @@ describe("EpisodeNeighborKeyNavigation", () => {
     expect(
       screen.getByRole("status").textContent,
       "the reader is still being asked to press it again"
-    ).toBe(copy.nextHint);
+    ).toBe(NEXT_HINT);
 
     pressForward();
 
     expect(mockPush).toHaveBeenCalledExactlyOnceWith(`/en${NEXT_HREF}`);
   });
 
-  it("opens the previous episode from the first page", () => {
-    renderViewer(2);
+  it("opens the previous episode from the first page", async () => {
+    await renderViewer(2);
     pressBack();
     pressBack();
 
     expect(mockPush).toHaveBeenCalledExactlyOnceWith(`/en${PREVIOUS_HREF}`);
   });
 
-  it("leaves the episode alone while pages are still left to turn", () => {
-    renderViewer(3);
+  it("leaves the episode alone while pages are still left to turn", async () => {
+    await renderViewer(3);
     turnPage();
 
     pressForward();
@@ -140,19 +138,19 @@ describe("EpisodeNeighborKeyNavigation", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("drops an armed key press once the reader turns a page", () => {
-    renderViewer(2);
+  it("drops an armed key press once the reader turns a page", async () => {
+    await renderViewer(2);
     // The first page is an end of its own: the previous episode is armed here.
     pressBack();
     turnPage();
     pressForward();
 
     expect(mockPush).not.toHaveBeenCalled();
-    expect(screen.getByRole("status").textContent).toBe(copy.nextHint);
+    expect(screen.getByRole("status").textContent).toBe(NEXT_HINT);
   });
 
-  it("ignores an arrow key typed into a control", () => {
-    renderViewer(1);
+  it("ignores an arrow key typed into a control", async () => {
+    await renderViewer(1);
     const textarea = document.createElement("textarea");
     document.body.append(textarea);
 

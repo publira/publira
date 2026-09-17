@@ -4,34 +4,27 @@ import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 import type { FollowTargetKind } from "#lib/follow";
 import type { FollowActionState } from "#lib/follow-actions";
 import { toggleFollowAction } from "#lib/follow-actions";
 
-/**
- * Resolved strings rather than nodes: the label swaps while the Action is in
- * flight, and the `aria-label` names the target it belongs to.
- */
-interface UnfollowButtonCopy {
-  ariaLabel: string;
-  pending: string;
-  submit: string;
-}
-
 export const UnfollowButton = ({
-  copy,
   publicId,
   returnTo,
   targetKind,
+  targetName,
   tenantId,
 }: {
-  copy: UnfollowButtonCopy;
   publicId: string;
   returnTo: string;
   targetKind: FollowTargetKind;
+  /** The series or creator being unfollowed, named in the accessible label. */
+  targetName: string;
   tenantId: string;
 }) => {
+  const t = useClientMessages();
   const [state, formAction, isPending] = useActionState(
     toggleFollowAction,
     null as FollowActionState
@@ -49,13 +42,17 @@ export const UnfollowButton = ({
       {removed ? null : (
         <Button
           aria-busy={isPending}
-          aria-label={copy.ariaLabel}
+          aria-label={t("host.follow.unfollow_aria", { name: targetName })}
           disabled={isPending}
           size="sm"
           type="submit"
           variant="outline"
         >
-          {isPending ? copy.pending : copy.submit}
+          {isPending ? (
+            <ClientMessage message="host.follow.pending" />
+          ) : (
+            <ClientMessage message="host.follow.unfollow" />
+          )}
         </Button>
       )}
       {state ? (

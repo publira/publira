@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
 import { useViewerContext } from "@publira/comic-viewer";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { renderWithClientMessages } from "#lib/render-with-client-messages";
+
 import { EpisodeComicViewer } from "./episode-comic-viewer";
-import type { EpisodeComicViewerCopy } from "./episode-comic-viewer";
 import { EpisodeNeighborLinks } from "./episode-neighbor-links";
 
 vi.mock("#components/locale-provider", () => ({
@@ -27,24 +28,6 @@ afterEach(() => {
   window.sessionStorage.clear();
 });
 
-const copy: EpisodeComicViewerCopy = {
-  collapseViewer: "Restore the page width",
-  endPageStatus: "End of episode",
-  enterFullscreen: "Enter full screen",
-  exitFullscreen: "Exit full screen",
-  expandViewer: "Widen to the window",
-  loading: "Loading page",
-  navigation: "Page navigation",
-  nextPage: "Next page",
-  noPages: "No pages",
-  pageError: "Could not load this page",
-  pageStatus: "{first} / {total}",
-  pageStatusRange: "{first}–{last} / {total}",
-  previousPage: "Previous page",
-  progress: "Reading progress",
-  reload: "Reload",
-};
-
 const pages = [
   { id: "page-1", src: "https://example.test/1.avif", title: "Page 1" },
   { id: "page-2", src: "https://example.test/2.avif", title: "Page 2" },
@@ -58,17 +41,10 @@ const LayoutProbe = () => {
   return <p>{`${readingDirection}:${spreadStartIndex}`}</p>;
 };
 
-const neighborCopy = {
-  label: "Episode navigation",
-  next: "Next episode",
-  previous: "Previous episode",
-};
-
 describe("EpisodeComicViewer", () => {
-  it("turns a left-to-right episode left to right, and points its neighbour links the same way", () => {
-    render(
+  it("turns a left-to-right episode left to right, and points its neighbour links the same way", async () => {
+    await renderWithClientMessages(
       <EpisodeComicViewer
-        copy={copy}
         pages={pages}
         readingDirection="ltr"
         spreadStartIndex={1}
@@ -76,7 +52,6 @@ describe("EpisodeComicViewer", () => {
       >
         <LayoutProbe />
         <EpisodeNeighborLinks
-          copy={neighborCopy}
           nextHref="/series/SERIES_001/episodes/EPISODE_003"
           previousHref="/series/SERIES_001/episodes/EPISODE_001"
         />
@@ -95,10 +70,9 @@ describe("EpisodeComicViewer", () => {
     ).toContain("right-3");
   });
 
-  it("pairs from the first page when the episode says so", () => {
-    render(
+  it("pairs from the first page when the episode says so", async () => {
+    await renderWithClientMessages(
       <EpisodeComicViewer
-        copy={copy}
         pages={pages}
         readingDirection="rtl"
         spreadStartIndex={0}
@@ -123,11 +97,10 @@ const pressViewer = () => {
 };
 
 describe("EpisodeComicViewer wide viewer", () => {
-  it("widens on the control, marks itself, and hands the choice to the server", () => {
+  it("widens on the control, marks itself, and hands the choice to the server", async () => {
     const saveWideViewer = vi.fn(() => Promise.resolve());
-    const { container } = render(
+    const { container } = await renderWithClientMessages(
       <EpisodeComicViewer
-        copy={copy}
         pages={pages}
         readingDirection="rtl"
         saveWideViewer={saveWideViewer}
@@ -154,10 +127,9 @@ describe("EpisodeComicViewer wide viewer", () => {
     expect(saveWideViewer).toHaveBeenCalledWith(true);
   });
 
-  it("brings the header back with the reader controls when the viewer is pressed", () => {
-    const { container } = render(
+  it("brings the header back with the reader controls when the viewer is pressed", async () => {
+    const { container } = await renderWithClientMessages(
       <EpisodeComicViewer
-        copy={copy}
         pages={pages}
         readingDirection="rtl"
         spreadStartIndex={1}
@@ -175,10 +147,9 @@ describe("EpisodeComicViewer wide viewer", () => {
     expect(wideViewerMarker(container)?.dataset.wideViewer).toBe("retracted");
   });
 
-  it("restores the width, and keeps a guest's choice in the browser alone", () => {
-    const { container } = render(
+  it("restores the width, and keeps a guest's choice in the browser alone", async () => {
+    const { container } = await renderWithClientMessages(
       <EpisodeComicViewer
-        copy={copy}
         pages={pages}
         readingDirection="rtl"
         spreadStartIndex={1}
@@ -195,12 +166,11 @@ describe("EpisodeComicViewer wide viewer", () => {
     expect(window.sessionStorage.getItem("publira.wide-viewer")).toBe("false");
   });
 
-  it("follows a choice this tab already made over the value the server read", () => {
+  it("follows a choice this tab already made over the value the server read", async () => {
     window.sessionStorage.setItem("publira.wide-viewer", "true");
 
-    const { container } = render(
+    const { container } = await renderWithClientMessages(
       <EpisodeComicViewer
-        copy={copy}
         pages={pages}
         readingDirection="rtl"
         spreadStartIndex={1}

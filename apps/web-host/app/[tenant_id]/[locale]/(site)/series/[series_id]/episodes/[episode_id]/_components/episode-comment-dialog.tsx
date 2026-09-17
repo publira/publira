@@ -19,25 +19,10 @@ import { useActionState, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
 import type { FormActionState } from "#components/action-form";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 
 import { postEpisodeCommentAction } from "../_lib/comment-actions";
-
-/**
- * Resolved strings rather than nodes: the dialog is drawn in the browser, and
- * every one of these lands in a button label, a field label, a `placeholder`,
- * or the dialog's own title — none of which can carry its own boundary inside
- * a popup that is not on screen yet.
- */
-export interface EpisodeCommentDialogCopy {
-  bodyLabel: string;
-  bodyPlaceholder: string;
-  close: string;
-  pending: string;
-  submit: string;
-  /** The control that opens the comments, and the dialog's own title. */
-  title: string;
-}
 
 const subscribeToFullscreen = (onStoreChange: () => void) => {
   document.addEventListener("fullscreenchange", onStoreChange);
@@ -72,7 +57,6 @@ const getNullOnServer = () => null;
  */
 export const EpisodeCommentDialog = ({
   children,
-  copy,
   episodePublicId,
   /**
    * Whether the URL asks for the comments — a page of them followed from the
@@ -84,7 +68,6 @@ export const EpisodeCommentDialog = ({
   tenantId,
 }: {
   children: ReactNode;
-  copy: EpisodeCommentDialogCopy;
   episodePublicId: string;
   initialOpen?: boolean;
   /** Shown in place of the box where the reader has no session. */
@@ -93,6 +76,7 @@ export const EpisodeCommentDialog = ({
   returnTo: string;
   tenantId: string;
 }) => {
+  const t = useClientMessages();
   const [open, setOpen] = useState(initialOpen);
   const [body, setBody] = useState("");
   const fullscreenContainer = useSyncExternalStore(
@@ -120,7 +104,7 @@ export const EpisodeCommentDialog = ({
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger render={<Button type="button" variant="outline" />}>
-        {copy.title}
+        <ClientMessage message="host.episode.comments.title" />
       </DialogTrigger>
       {/* `undefined` rather than `null`, which the portal reads as a container
           it is still waiting for and renders nothing into. */}
@@ -130,7 +114,7 @@ export const EpisodeCommentDialog = ({
           <DialogPopup className="flex max-h-[min(85svh,48rem)] flex-col gap-4 text-left">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">
-                {copy.title}
+                <ClientMessage message="host.episode.comments.title" />
               </DialogTitle>
             </DialogHeader>
 
@@ -145,7 +129,9 @@ export const EpisodeCommentDialog = ({
                 <input name="returnTo" type="hidden" value={returnTo} />
                 <input name="tenantId" type="hidden" value={tenantId} />
                 <Field>
-                  <FieldLabel>{copy.bodyLabel}</FieldLabel>
+                  <FieldLabel>
+                    <ClientMessage message="host.episode.comments.body_label" />
+                  </FieldLabel>
                   <FieldContent>
                     {/* No `maxLength`: it counts UTF-16 code units, while the
                         API counts Unicode code points, so it would cut an
@@ -157,7 +143,7 @@ export const EpisodeCommentDialog = ({
                       onChange={(event) => {
                         setBody(event.target.value);
                       }}
-                      placeholder={copy.bodyPlaceholder}
+                      placeholder={t("host.episode.comments.body_placeholder")}
                       rows={3}
                       value={body}
                     />
@@ -169,7 +155,11 @@ export const EpisodeCommentDialog = ({
                     disabled={isPending}
                     type="submit"
                   >
-                    {isPending ? copy.pending : copy.submit}
+                    {isPending ? (
+                      <ClientMessage message="host.episode.comments.posting" />
+                    ) : (
+                      <ClientMessage message="host.episode.comments.submit" />
+                    )}
                   </Button>
                   {state ? (
                     <FormMessage variant={state.ok ? "success" : "destructive"}>
@@ -190,7 +180,7 @@ export const EpisodeCommentDialog = ({
               className="justify-self-end"
               render={<Button type="button" variant="outline" />}
             >
-              {copy.close}
+              <ClientMessage message="host.common.close" />
             </DialogClose>
           </DialogPopup>
         </DialogViewport>

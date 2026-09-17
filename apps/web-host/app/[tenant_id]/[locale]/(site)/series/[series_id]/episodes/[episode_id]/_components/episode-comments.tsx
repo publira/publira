@@ -35,7 +35,6 @@ import { episodeLoginHref } from "../_lib/access-gate";
 import { episodeCommentsHref } from "../_lib/comment-search-params";
 import { CommentDeleteButton } from "./comment-delete-button";
 import { CommentReportButton } from "./comment-report-button";
-import type { CommentReportButtonCopy } from "./comment-report-button";
 import { EpisodeCommentDialog } from "./episode-comment-dialog";
 
 /** The control that opens the comments, at the size it takes. */
@@ -142,37 +141,8 @@ export const EpisodeComments = async ({
       timeZone,
     });
 
-  // The report dialog says the same thing on every row, so it is resolved once
-  // here rather than per comment. Each reason is looked up by its own key so
-  // the catalog checks it, which a key built from the reason would not be.
-  const reportCopy: CommentReportButtonCopy = {
-    cancel: t("host.common.cancel"),
-    confirm: t("host.episode.comments.report_confirm"),
-    description: t("host.episode.comments.report_description"),
-    noteLabel: t("host.episode.comments.report_note_label"),
-    notePlaceholder: t("host.episode.comments.report_note_placeholder"),
-    pending: t("host.episode.comments.reporting"),
-    reasonLabel: t("host.episode.comments.report_reason_label"),
-    reasons: {
-      abuse: t("host.episode.comments.report_reason_abuse"),
-      other: t("host.episode.comments.report_reason_other"),
-      spam: t("host.episode.comments.report_reason_spam"),
-      spoiler: t("host.episode.comments.report_reason_spoiler"),
-    },
-    submit: t("host.episode.comments.report"),
-    title: t("host.episode.comments.report_title"),
-  };
-
   return (
     <EpisodeCommentDialog
-      copy={{
-        bodyLabel: t("host.episode.comments.body_label"),
-        bodyPlaceholder: t("host.episode.comments.body_placeholder"),
-        close: t("host.common.close"),
-        pending: t("host.episode.comments.posting"),
-        submit: t("host.episode.comments.submit"),
-        title: t("host.episode.comments.title"),
-      }}
       episodePublicId={episodePublicId}
       initialOpen={Boolean(token)}
       prompt={
@@ -277,14 +247,8 @@ export const EpisodeComments = async ({
                 </div>
                 {viewer && comment.authorPublicId === viewer.publicId ? (
                   <CommentDeleteButton
+                    commentedAt={commentedAt(comment)}
                     commentPublicId={comment.publicId}
-                    copy={{
-                      ariaLabel: t("host.episode.comments.delete_aria", {
-                        date: commentedAt(comment),
-                      }),
-                      pending: t("host.episode.comments.deleting"),
-                      submit: t("host.episode.comments.delete"),
-                    }}
                     episodePublicId={episodePublicId}
                     returnTo={episodePath}
                     tenantId={tenantId}
@@ -295,12 +259,9 @@ export const EpisodeComments = async ({
                     delete it instead. */}
                 {viewer && comment.authorPublicId !== viewer.publicId ? (
                   <CommentReportButton
-                    ariaLabel={t("host.episode.comments.report_aria", {
-                      author: comment.authorName,
-                      date: commentedAt(comment),
-                    })}
+                    authorName={comment.authorName}
+                    commentedAt={commentedAt(comment)}
                     commentPublicId={comment.publicId}
-                    copy={reportCopy}
                     returnTo={episodePath}
                     tenantId={tenantId}
                   />

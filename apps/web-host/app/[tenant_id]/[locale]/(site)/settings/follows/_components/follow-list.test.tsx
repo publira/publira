@@ -55,12 +55,12 @@ vi.mock("#lib/locale", () => ({
 
 vi.mock("./unfollow-button", () => ({
   UnfollowButton: ({
-    copy,
     publicId,
+    targetName,
   }: {
-    copy: { ariaLabel: string };
     publicId: string;
-  }) => <button type="button">{`${copy.ariaLabel} ${publicId}`}</button>,
+    targetName: string;
+  }) => <button type="button">{`Unfollow ${targetName} ${publicId}`}</button>,
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
