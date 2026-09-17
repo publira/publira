@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -240,6 +242,40 @@ void main() {
         findsOneWidget,
       );
       expect(confirming, findsNothing);
+    });
+
+    testWidgets('a second return link opens its own episode', (tester) async {
+      final otherSeriesId = fixtureSeries.last.id;
+      final otherEpisodeId =
+          '$otherSeriesId-ep-${fixtureSeries.last.episodeCount}';
+      purchases.seriesByEpisode = {
+        paidEpisodeId: seriesId,
+        otherEpisodeId: otherSeriesId,
+      };
+      final gate = Completer<void>();
+      purchases.seriesGate = gate;
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, locked);
+
+      incoming.deliver(returnLink('cancelled'));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('checkout-return-loading')),
+      );
+      incoming.deliver(returnLink('cancelled', episodeId: otherEpisodeId));
+      await tester.pump();
+      gate.complete();
+
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('episode-buy-$otherEpisodeId')),
+      );
+      expect(
+        find.text(
+          '${fixtureSeries.last.title} #${fixtureSeries.last.episodeCount}',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('an episode that is not public any more says so', (

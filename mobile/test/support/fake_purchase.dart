@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/purchase_failure.dart';
@@ -24,6 +26,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// Thrown by [seriesOfEpisode], standing in for an API that cannot answer.
   PurchaseFailure? seriesFailure;
 
+  /// Held open by a test that needs a lookup of [seriesOfEpisode] in flight.
+  Completer<void>? seriesGate;
+
   /// Thrown by [startEpisodeCheckout].
   PurchaseFailure? checkoutFailure;
 
@@ -40,6 +45,7 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   @override
   Future<String?> seriesOfEpisode(String episodePublicId) async {
+    await seriesGate?.future;
     final failure = seriesFailure;
     if (failure != null) {
       throw failure;

@@ -41,6 +41,17 @@ class _CheckoutReturnScreenState extends State<CheckoutReturnScreen> {
     _resolve();
   }
 
+  /// A second return link differs only in its query, which go_router answers
+  /// with this same state, so the new episode is looked up in place of the old.
+  @override
+  void didUpdateWidget(CheckoutReturnScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.episodeId != oldWidget.episodeId ||
+        widget.outcome != oldWidget.outcome) {
+      _resolve();
+    }
+  }
+
   void _resolve() {
     final repository = PurchaseScope.maybeOf(context)?.repository;
     if (repository == null) {
