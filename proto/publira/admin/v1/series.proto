@@ -14,6 +14,9 @@ message SeriesCreatorCredit {
   // A role of this tenant, by public_id. Credits carry no order of their own
   // across roles: the role's priority is what puts the leading one first.
   string role_public_id = 2;
+  // The creator's share of an episode's sales, in basis points. 10000 is
+  // 100%; a zero share records a credit without compensation.
+  int32 share_bps = 3;
 }
 
 message CreateSeriesRequest {
@@ -318,6 +321,7 @@ message EpisodeCreatorCredit {
   // A role of this tenant, by public_id. Credits carry no order of their own
   // across roles: the role's priority is what puts the leading one first.
   string role_public_id = 2;
+  int32 share_bps = 3;
 }
 
 message ListEpisodeCreditsRequest {
@@ -328,6 +332,8 @@ message ListEpisodeCreditsRequest {
 message ListEpisodeCreditsResponse {
   // In role priority order, the order the storefront shows them in.
   repeated publira.types.v1.Creator creators = 1;
+  // The editable credit records, including the sales share on each one.
+  repeated EpisodeCreatorCredit creator_credits = 2;
 }
 
 // The whole credit list of one episode: what this request holds is what the
@@ -365,6 +371,11 @@ message RemoveEpisodeCreditOperation {
   EpisodeCreatorCredit credit = 1;
 }
 
+// Changes the standing credit's share on every episode of the range.
+message SetEpisodeCreditShareOperation {
+  EpisodeCreatorCredit credit = 1;
+}
+
 // One credit correction over a range of episodes, which is what a team change
 // that has to reach episodes already out amounts to. The operations are
 // row-level rather than "replace the set on every episode whose set equals
@@ -385,6 +396,7 @@ message BulkEditEpisodeCreditsRequest {
     AddEpisodeCreditOperation add = 4;
     ReplaceEpisodeCreditOperation replace = 5;
     RemoveEpisodeCreditOperation remove = 6;
+    SetEpisodeCreditShareOperation set_share = 7;
   }
 }
 

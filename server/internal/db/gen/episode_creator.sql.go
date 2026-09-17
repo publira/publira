@@ -20,14 +20,16 @@ INSERT INTO episode_creators (
         creator_id,
         role_id,
         display_order,
-        source
+        source,
+        share_bps
     )
 SELECT sc.tenant_id,
     $1,
     sc.creator_id,
     sc.role_id,
     sc.display_order,
-    'series'
+    'series',
+    sc.share_bps
 FROM series_creators sc
 WHERE sc.tenant_id = $2
     AND sc.series_id = $3
@@ -59,7 +61,8 @@ INSERT INTO episode_creators (
         creator_id,
         role_id,
         display_order,
-        source
+        source,
+        share_bps
     )
 SELECT $1,
     target.episode_id,
@@ -73,7 +76,8 @@ SELECT $1,
         ),
         0
     ),
-    'series'
+    'series',
+    0
 FROM unnest($4::uuid[]) AS target(episode_id)
 ON CONFLICT (episode_id, creator_id, role_id) DO NOTHING
 RETURNING episode_id
@@ -225,6 +229,54 @@ func (q *Queries) BulkReplaceEpisodeCreator(ctx context.Context, arg BulkReplace
 	return items, nil
 }
 
+const bulkSetEpisodeCreatorShare = `-- name: BulkSetEpisodeCreatorShare :many
+UPDATE episode_creators
+SET share_bps = $1
+WHERE tenant_id = $2
+    AND episode_id = ANY($3::uuid[])
+    AND creator_id = $4::uuid
+    AND role_id = $5::uuid
+    AND source = 'series'
+RETURNING episode_id
+`
+
+type BulkSetEpisodeCreatorShareParams struct {
+	ShareBps   int32       `json:"share_bps"`
+	TenantID   uuid.UUID   `json:"tenant_id"`
+	EpisodeIds []uuid.UUID `json:"episode_ids"`
+	CreatorID  uuid.UUID   `json:"creator_id"`
+	RoleID     uuid.UUID   `json:"role_id"`
+}
+
+func (q *Queries) BulkSetEpisodeCreatorShare(ctx context.Context, arg BulkSetEpisodeCreatorShareParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, bulkSetEpisodeCreatorShare,
+		arg.ShareBps,
+		arg.TenantID,
+		pq.Array(arg.EpisodeIds),
+		arg.CreatorID,
+		arg.RoleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var episode_id uuid.UUID
+		if err := rows.Scan(&episode_id); err != nil {
+			return nil, err
+		}
+		items = append(items, episode_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countEpisodeCreatorsByRoleIDForTenant = `-- name: CountEpisodeCreatorsByRoleIDForTenant :one
 SELECT COUNT(*)::int4 AS credit_count
 FROM episode_creators
@@ -253,7 +305,8 @@ INSERT INTO episode_creators (
         creator_id,
         role_id,
         display_order,
-        source
+        source,
+        share_bps
     )
 VALUES (
         $1,
@@ -261,7 +314,8 @@ VALUES (
         $3,
         $4::uuid,
         $5,
-        $6
+        $6,
+        $7
     )
 `
 
@@ -272,6 +326,7 @@ type CreateEpisodeCreatorParams struct {
 	RoleID       uuid.UUID `json:"role_id"`
 	DisplayOrder int32     `json:"display_order"`
 	Source       string    `json:"source"`
+	ShareBps     int32     `json:"share_bps"`
 }
 
 // role_id is cast to a plain uuid rather than left nullable like the column:
@@ -285,6 +340,7 @@ func (q *Queries) CreateEpisodeCreator(ctx context.Context, arg CreateEpisodeCre
 		arg.RoleID,
 		arg.DisplayOrder,
 		arg.Source,
+		arg.ShareBps,
 	)
 	return err
 }
@@ -309,7 +365,8 @@ SELECT ec.episode_id,
     cr.public_id AS role_public_id,
     cr.name AS role_name,
     ec.display_order,
-    ec.source
+    ec.source,
+    ec.share_bps
 FROM episode_creators ec
     JOIN creators c ON c.id = ec.creator_id
     LEFT JOIN creator_roles cr ON cr.id = ec.role_id
@@ -332,6 +389,7 @@ type ListEpisodeCreatorsByEpisodeIDsRow struct {
 	RoleName           sql.NullString `json:"role_name"`
 	DisplayOrder       int32          `json:"display_order"`
 	Source             string         `json:"source"`
+	ShareBps           int32          `json:"share_bps"`
 }
 
 // Credits are presented in role priority first, so the leading role opens the
@@ -362,6 +420,7 @@ func (q *Queries) ListEpisodeCreatorsByEpisodeIDs(ctx context.Context, episodeId
 			&i.RoleName,
 			&i.DisplayOrder,
 			&i.Source,
+			&i.ShareBps,
 		); err != nil {
 			return nil, err
 		}
@@ -403,6 +462,59 @@ func (q *Queries) ListEpisodesCreditedOnTheEpisodeItself(ctx context.Context, ar
 		pq.Array(arg.EpisodeIds),
 		arg.CreatorID,
 		arg.RoleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var episode_id uuid.UUID
+		if err := rows.Scan(&episode_id); err != nil {
+			return nil, err
+		}
+		items = append(items, episode_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodesExceedingShareAfterBulkSet = `-- name: ListEpisodesExceedingShareAfterBulkSet :many
+SELECT ec.episode_id
+FROM episode_creators ec
+WHERE ec.tenant_id = $1
+    AND ec.episode_id = ANY($2::uuid[])
+GROUP BY ec.episode_id
+HAVING SUM(
+    CASE
+        WHEN ec.creator_id = $3::uuid
+            AND ec.role_id = $4::uuid
+            AND ec.source = 'series' THEN $5::integer
+        ELSE ec.share_bps
+    END
+) > 10000
+`
+
+type ListEpisodesExceedingShareAfterBulkSetParams struct {
+	TenantID   uuid.UUID   `json:"tenant_id"`
+	EpisodeIds []uuid.UUID `json:"episode_ids"`
+	CreatorID  uuid.UUID   `json:"creator_id"`
+	RoleID     uuid.UUID   `json:"role_id"`
+	ShareBps   int32       `json:"share_bps"`
+}
+
+func (q *Queries) ListEpisodesExceedingShareAfterBulkSet(ctx context.Context, arg ListEpisodesExceedingShareAfterBulkSetParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodesExceedingShareAfterBulkSet,
+		arg.TenantID,
+		pq.Array(arg.EpisodeIds),
+		arg.CreatorID,
+		arg.RoleID,
+		arg.ShareBps,
 	)
 	if err != nil {
 		return nil, err

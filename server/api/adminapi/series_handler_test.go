@@ -947,10 +947,10 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectExec("INSERT INTO series_creators").
-		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0)).
+		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("INSERT INTO series_creators").
-		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1)).
+		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
@@ -1028,10 +1028,10 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
 	mock.ExpectExec("INSERT INTO series_creators").
-		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0)).
+		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("INSERT INTO series_creators").
-		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1)).
+		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectSeriesClassificationReplace(mock, tenantID, seriesID)
 	mock.ExpectCommit()
@@ -1094,6 +1094,35 @@ func TestCreateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 	}
 	if err == nil || err.Error() != "invalid_argument: creator not found" {
 		t.Fatalf("CreateSeries error = %v, want invalid_argument creator not found", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateSeriesRefusesCreditSharesAboveOneWholeEpisode(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:  "New Series",
+		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
+			{CreatorPublicId: "CREATOR001", RolePublicId: testCreatorRolePublicID, ShareBps: 6000},
+			{CreatorPublicId: "CREATOR002", RolePublicId: testCreatorRolePublicID, ShareBps: 5000},
+		},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreateSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 	assertExpectations(t, mock)
 }

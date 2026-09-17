@@ -16,8 +16,9 @@ import (
 // creatorCredit is one credit a save asked for, with both ends resolved: the
 // person, and the role of this tenant they are credited in.
 type creatorCredit struct {
-	creator dbmodels.ListCreatorsByPublicIDsForTenantRow
-	role    dbmodels.ListCreatorRolesByPublicIDsForTenantRow
+	creator  dbmodels.ListCreatorsByPublicIDsForTenantRow
+	role     dbmodels.ListCreatorRolesByPublicIDsForTenantRow
+	shareBps int32
 }
 
 // creatorCreditMessage is what a series credit and an episode credit have in
@@ -37,6 +38,26 @@ func creatorCreditPairs[Credit creatorCreditMessage](credits []Credit) [][2]stri
 		pairs = append(pairs, [2]string{credit.GetCreatorPublicId(), credit.GetRolePublicId()})
 	}
 	return pairs
+}
+
+func validateCreditShares(shares []int32, field string) error {
+	var total int64
+	for _, share := range shares {
+		if share < 0 || share > 10000 {
+			return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("share_bps must be between 0 and 10000"), field)
+		}
+		total += int64(share)
+	}
+	if total > 10000 {
+		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the total share_bps must not exceed 10000"), field)
+	}
+	return nil
+}
+
+func setCreatorCreditShares(credits []creatorCredit, shares []int32) {
+	for index := range credits {
+		credits[index].shareBps = shares[index]
+	}
 }
 
 // resolveCreatorCredits reads the credits a save asked for, keeping the order

@@ -208,6 +208,7 @@ type EpisodeCreator struct {
 	DisplayOrder int32         `json:"display_order"`
 	Source       string        `json:"source"`
 	CreatedAt    time.Time     `json:"created_at"`
+	ShareBps     int32         `json:"share_bps"`
 }
 
 type EpisodeFollow struct {
@@ -529,6 +530,7 @@ type SeriesCreator struct {
 	DisplayOrder int32         `json:"display_order"`
 	TenantID     uuid.UUID     `json:"tenant_id"`
 	RoleID       uuid.NullUUID `json:"role_id"`
+	ShareBps     int32         `json:"share_bps"`
 }
 
 type SeriesFollow struct {

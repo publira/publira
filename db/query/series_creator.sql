@@ -12,7 +12,8 @@ SELECT sc.series_id,
     c.name,
     cr.public_id AS role_public_id,
     cr.name AS role_name,
-    sc.display_order
+    sc.display_order,
+    sc.share_bps
 FROM series_creators sc
     JOIN creators c ON c.id = sc.creator_id
     LEFT JOIN creator_roles cr ON cr.id = sc.role_id
@@ -31,14 +32,16 @@ INSERT INTO series_creators (
         series_id,
         creator_id,
         role_id,
-        display_order
+        display_order,
+        share_bps
     )
 VALUES (
         sqlc.arg('tenant_id'),
         sqlc.arg('series_id'),
         sqlc.arg('creator_id'),
         sqlc.arg('role_id')::uuid,
-        sqlc.arg('display_order')
+        sqlc.arg('display_order'),
+        sqlc.arg('share_bps')
     );
 
 -- name: DeleteSeriesCreatorsBySeriesID :exec
