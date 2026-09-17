@@ -138,7 +138,10 @@ void main() {
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
           store: InMemorySessionStore(session: session),
-          offline: FileOfflineLibrary(root: () async => offlineRoot),
+          offline: FileOfflineLibrary(
+            tenantHost: 'localhost',
+            root: () async => offlineRoot,
+          ),
         ),
       );
       await tester.pump();
@@ -803,7 +806,10 @@ void main() {
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
           store: InMemorySessionStore(),
-          offline: FileOfflineLibrary(root: () async => offlineRoot),
+          offline: FileOfflineLibrary(
+            tenantHost: liveTenantHost,
+            root: () async => offlineRoot,
+          ),
         ),
       );
       await tester.pump();
@@ -1057,7 +1063,10 @@ void main() {
 
     setUp(() async {
       offlineRoot = await Directory.systemTemp.createTemp('publira-offline-');
-      offline = FileOfflineLibrary(root: () async => offlineRoot);
+      offline = FileOfflineLibrary(
+        tenantHost: 'localhost',
+        root: () async => offlineRoot,
+      );
       launch = 0;
       server = ConnectFixtureServer(
         series: ConnectFixtureServer.populatedSeries(),
