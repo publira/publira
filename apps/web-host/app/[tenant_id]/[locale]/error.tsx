@@ -1,12 +1,7 @@
 "use client";
 
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
-
 import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
-import { LocaleProvider } from "#components/locale-provider";
-import { readClientLocale } from "#lib/client-locale";
 
 /**
  * Error boundary for the locale segment itself. It catches what the `(site)` /
@@ -21,13 +16,9 @@ import { readClientLocale } from "#lib/client-locale";
  *
  * A failure in `app/[tenant_id]/[locale]/layout.tsx` (the root layout) is above
  * this boundary; catching it would need a `global-error.tsx`, which this app
- * does not have.
- *
- * That position is also why every string below sits behind its own
- * `<Suspense>`: nothing above this boundary can absorb a suspend, and
- * `<ClientMessage>` suspends while it loads the catalog. Without a fallback to
- * flush, React cuts the response short after the 200 is already committed and
- * the reader gets the browser's own network-error page instead of this screen.
+ * does not have. That layout is also what places `<HostMessagesProvider>`, so
+ * the copy here comes from the same catalog as every other screen, whichever
+ * group layout failed.
  *
  * A public API outage is not what brings this up: every read those group
  * layouts make reports failure as a value — `getTenantSiteInfo()` answers
@@ -40,11 +31,6 @@ import { readClientLocale } from "#lib/client-locale";
  * while one raised in the first synchronous pass aborts the response as a bare
  * `500 Internal Server Error` that no boundary — and no `global-error.tsx` —
  * can catch. See `e2e/tests/catalog.error-boundary.spec.ts`.
- *
- * The `<LocaleProvider>` is its own because the layouts that seed the one
- * every other screen reads are the layouts this boundary stands in for.
- * `readClientLocale()` resolves it from what the browser already holds, which
- * is the same pair of sources `<html lang>` was written from.
  */
 const TenantError = ({
   error,
@@ -53,36 +39,18 @@ const TenantError = ({
   error: Error & { digest?: string };
   retry: () => void;
 }) => (
-  <LocaleProvider locale={readClientLocale()}>
-    {/* The failing layout is what would normally supply the landmark, so this
-        boundary owns the `<main>` element itself. */}
-    <main>
-      <ErrorScreen
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <ClientMessage message="host.errors.site_description" />
-          </Suspense>
-        }
-        digest={error.digest}
-        digestLabel={
-          <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-            <ClientMessage message="host.common.error_id" />
-          </Suspense>
-        }
-        retry={retry}
-        retryLabel={
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <ClientMessage message="host.common.retry" />
-          </Suspense>
-        }
-        title={
-          <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
-            <ClientMessage message="host.errors.site_title" />
-          </Suspense>
-        }
-      />
-    </main>
-  </LocaleProvider>
+  // The failing layout is what would normally supply the landmark, so this
+  // boundary owns the `<main>` element itself.
+  <main>
+    <ErrorScreen
+      description={<ClientMessage message="host.errors.site_description" />}
+      digest={error.digest}
+      digestLabel={<ClientMessage message="host.common.error_id" />}
+      retry={retry}
+      retryLabel={<ClientMessage message="host.common.retry" />}
+      title={<ClientMessage message="host.errors.site_title" />}
+    />
+  </main>
 );
 
 export default TenantError;

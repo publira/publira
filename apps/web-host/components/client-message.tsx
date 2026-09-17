@@ -1,72 +1,45 @@
 "use client";
 
 import { bindMessages } from "@publira/i18n";
-import type { Locale, MessageValues } from "@publira/i18n";
+import type { MessageValues } from "@publira/i18n";
 import { use } from "react";
 
-import { loadHostMessages } from "#lib/messages";
 import type {
-  HostMessageAccessor,
-  HostMessageKey,
-  HostMessages,
+  HostClientMessageAccessor,
+  HostClientMessageKey,
 } from "#lib/messages";
 
-import { useLocale } from "./locale-provider";
-
-/**
- * One promise per locale, so `use()` sees the same promise on every render.
- * `loadHostMessages` is `async`, so calling it during render would hand `use()`
- * a new promise each time and React would suspend again on every retry.
- */
-const catalogs = new Map<Locale, Promise<HostMessages>>();
-
-const hostCatalog = (locale: Locale): Promise<HostMessages> => {
-  const loaded = catalogs.get(locale);
-  if (loaded) {
-    return loaded;
-  }
-
-  const pending = loadHostMessages(locale);
-  catalogs.set(locale, pending);
-
-  return pending;
-};
+import { HostMessagesContext } from "./host-messages-context";
 
 /**
  * The accessor, for a client-only control whose DOM API needs a plain string —
  * an `aria-label` or a `title` that cannot take a node.
  *
- * The locale comes from the route tree through `<LocaleProvider>`, so it is the
- * same value the server rendered with. Keep the hook local to the control that
- * needs it: an accessor handed across a component boundary makes the key an
- * implicit attribute of whatever the caller happened to bind.
+ * The catalog comes from `<HostMessagesProvider>`. On the server this waits on
+ * that read; it has settled in the payload by the time the browser hydrates,
+ * so the copy is there on the first client render and a caller needs no
+ * `<Suspense>`. Keep the hook local to the control that needs it: an accessor
+ * handed across a component boundary makes the key an implicit attribute of
+ * whatever the caller happened to bind.
  */
-export const useHostMessages = (): HostMessageAccessor => {
-  const locale = useLocale();
-  const messages = use(hostCatalog(locale));
+export const useClientMessages = (): HostClientMessageAccessor => {
+  const messages = use(HostMessagesContext);
+  if (messages === null) {
+    throw new Error("HostMessagesProvider is required.");
+  }
 
-  return bindMessages(messages);
+  return bindMessages(use(messages));
 };
 
-/**
- * One catalog string for a Client Component that cannot render `<Message>`.
- *
- * Route-level `error.tsx` files must be client components, so their copy
- * resolves in the browser rather than on the server.
- *
- * **Wrap it in a `<Suspense>` at the call site**, the same as `<Message>`. An
- * error boundary directly under the root layout has no boundary of its own
- * above it, so a suspend with nothing to fall back to leaves React unable to
- * flush the error screen at all.
- */
+/** One catalog string rendered by a Client Component. */
 export const ClientMessage = ({
   message,
   values,
 }: {
-  message: HostMessageKey;
+  message: HostClientMessageKey;
   values?: MessageValues;
 }) => {
-  const t = useHostMessages();
+  const t = useClientMessages();
 
   return t(message, values);
 };

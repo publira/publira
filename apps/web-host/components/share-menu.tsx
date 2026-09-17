@@ -11,7 +11,7 @@ import {
 import { cn } from "@publira/utils";
 import { useState } from "react";
 
-import { useHostMessages } from "./client-message";
+import { useClientMessages } from "./client-message";
 
 /** The composer each service opens with the link and the message filled in. */
 const X_INTENT_URL = "https://x.com/intent/post";
@@ -78,7 +78,7 @@ export const ShareMenu = ({
   title: string;
   url: string;
 }) => {
-  const t = useHostMessages();
+  const t = useClientMessages();
   const [open, setOpen] = useState(false);
   const [copyOutcome, setCopyOutcome] = useState<CopyOutcome>(null);
 

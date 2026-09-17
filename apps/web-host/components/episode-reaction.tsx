@@ -30,9 +30,9 @@ import {
   MAX_EPISODE_REACTION_SCORE,
   reactionFillRatio,
 } from "#lib/episode-rating-state";
-import type { HostMessageKey } from "#lib/messages";
+import type { HostClientMessageKey } from "#lib/messages";
 
-import { useHostMessages } from "./client-message";
+import { useClientMessages } from "./client-message";
 import { LocaleField } from "./locale-field";
 import { useLocale } from "./locale-provider";
 
@@ -357,9 +357,9 @@ export const EpisodeReactionNameIdle = ({
 export const EpisodeReactionNameProgress = ({
   message,
 }: {
-  message: HostMessageKey;
+  message: HostClientMessageKey;
 }) => {
-  const t = useHostMessages();
+  const t = useClientMessages();
   const { mode, score } = useEpisodeReactionFace();
   if (
     mode !== "multiple" ||
@@ -390,10 +390,10 @@ export const EpisodeReactionNameDone = ({
 export const EpisodeReactionNameReaders = ({
   message,
 }: {
-  message: HostMessageKey;
+  message: HostClientMessageKey;
 }) => {
   const locale = useLocale();
-  const t = useHostMessages();
+  const t = useClientMessages();
   const { ratingCount } = useEpisodeReactionFace();
   const count = ratingCount.toLocaleString(toIntlLocale(locale));
 

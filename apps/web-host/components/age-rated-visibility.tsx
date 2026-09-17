@@ -1,8 +1,6 @@
 "use client";
 
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { ageRatingSatisfiedBy } from "#lib/age-rating";
@@ -57,9 +55,7 @@ export const AgeRatedHiddenNotice = ({
 
   return (
     <p className="text-sm text-muted-foreground">
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <ClientMessage message="host.search.age_rated_hidden" />
-      </Suspense>
+      <ClientMessage message="host.search.age_rated_hidden" />
     </p>
   );
 };

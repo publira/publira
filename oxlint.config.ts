@@ -99,15 +99,11 @@ export default defineConfig({
       /**
        * A client error boundary resolves its locale from `document.cookie` —
        * the API holding the setting is unreachable by the time it renders, so
-       * there is nothing else left to read. `web-host` reads the same cookie
-       * behind the path, through `lib/client-locale.ts`. Each test has to put
-       * the cookies there the way a browser would; a cookie library would only
-       * be testing itself.
+       * there is nothing else left to read. Each test has to put the cookies
+       * there the way a browser would; a cookie library would only be testing
+       * itself.
        */
-      files: [
-        "apps/*/components/error-boundary-message.test.tsx",
-        "apps/web-host/lib/client-locale.test.ts",
-      ],
+      files: ["apps/*/components/error-boundary-message.test.tsx"],
       rules: {
         "unicorn/no-document-cookie": "off",
       },
