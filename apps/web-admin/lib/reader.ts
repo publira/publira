@@ -14,7 +14,10 @@ import type {
   ReaderItem,
   ReaderStatus,
 } from "../app/[tenant_id]/(protected)/readers/reader-types";
-import { isUnauthenticatedError } from "./admin-auth-shared";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions } from "./cursor-page";
 import {
@@ -164,6 +167,94 @@ export const getReader = async (
       }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+export type ReaderModerationAction = "delete" | "suspend" | "unsuspend";
+
+export interface ModerateReaderInput {
+  action: ReaderModerationAction;
+  publicId: string;
+  tenantId: string;
+}
+
+export type ModerateReaderResult =
+  | { message: string; ok: false }
+  | { ok: true };
+
+const callReaderModeration = async (
+  input: ModerateReaderInput,
+  sessionId: string
+): Promise<void> => {
+  const request = {
+    publicId: input.publicId,
+    tenant: { tenantId: input.tenantId },
+  };
+  const headers = withSessionHeaders(sessionId);
+
+  switch (input.action) {
+    case "suspend": {
+      await apiClient.users.suspendReader(request, headers);
+      return;
+    }
+    case "unsuspend": {
+      await apiClient.users.unsuspendReader(request, headers);
+      return;
+    }
+    default: {
+      await apiClient.users.deleteReader(request, headers);
+    }
+  }
+};
+
+const readerModerationFailedMessage = async (
+  action: ReaderModerationAction,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+  switch (action) {
+    case "suspend": {
+      return t("admin.readers.suspend_failed");
+    }
+    case "unsuspend": {
+      return t("admin.readers.unsuspend_failed");
+    }
+    default: {
+      return t("admin.readers.delete_failed");
+    }
+  }
+};
+
+/**
+ * Suspend, unsuspend or delete one reader. A rejected session leaves as a throw
+ * so the Action can send the staff member to sign in again.
+ */
+export const moderateReader = async (
+  input: ModerateReaderInput,
+  locale: Locale
+): Promise<ModerateReaderResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await callReaderModeration(input, sessionId);
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        await readerModerationFailedMessage(input.action, locale),
+        { locale }
+      ),
+      ok: false,
     };
   }
 };

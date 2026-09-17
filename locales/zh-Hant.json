@@ -979,7 +979,29 @@
       "comments_error": "無法顯示此讀者的留言",
       "comments_empty_title": "此讀者尚未寫過留言。",
       "comments_empty_description": "發表留言後會顯示在這裡。",
-      "comments_pagination_aria": "讀者留言分頁"
+      "comments_pagination_aria": "讀者留言分頁",
+      "suspend": "暫停",
+      "suspending": "正在暫停…",
+      "suspended": "已暫停此讀者。",
+      "suspend_confirm_title": "要暫停 {$name} 嗎？",
+      "suspend_confirm_description": "此讀者將在所有裝置上登出，在解除暫停之前無法登入。",
+      "suspend_confirm_action": "暫停",
+      "suspend_failed": "無法暫停此讀者。請稍後再試。",
+      "unsuspend": "解除暫停",
+      "unsuspending": "正在解除暫停…",
+      "unsuspended": "已解除暫停。",
+      "unsuspend_failed": "無法解除暫停。請稍後再試。",
+      "delete": "刪除",
+      "deleting": "正在刪除…",
+      "deleted": "已刪除此讀者。",
+      "delete_confirm_title": "要刪除 {$name} 嗎？",
+      "delete_confirm_description": "帳號將以與讀者自行註銷相同的方式刪除。此操作無法復原。",
+      "delete_confirm_action": "刪除",
+      "delete_failed": "無法刪除此讀者。請稍後再試。",
+      "validation": {
+        "target_missing": "無法確定要操作的讀者。請重新整理頁面後再試。",
+        "tenant_missing": "無法確定要操作的租戶。請重新整理頁面後再試。"
+      }
     },
     "series": {
       "detail_error": "無法顯示該系列",

@@ -124,6 +124,11 @@ export interface ActionFormProps {
   children: ReactNode | ((props: ActionFormRenderProps) => ReactNode);
   className?: string;
   /**
+   * The `<form>`'s id, for a submit control outside it to name with `form` —
+   * the confirm button of a dialog, which portals out of the form.
+   */
+  id?: string;
+  /**
    * Show the message when the Action returns `{ ok: true }`. Defaults to true:
    * a returned success message is meant to be shown. Callers that redirect
    * never produce this state; pass `false` to suppress one.
@@ -135,20 +140,21 @@ export const ActionForm = ({
   action,
   children,
   className,
+  id,
   showSuccess = true,
 }: ActionFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
 
   if (typeof children === "function") {
     return (
-      <form action={formAction} className={className}>
+      <form action={formAction} className={className} id={id}>
         {children({ isPending, state })}
       </form>
     );
   }
 
   return (
-    <form action={formAction} className={className}>
+    <form action={formAction} className={className} id={id}>
       {children}
 
       {state && (showSuccess || !state.ok) ? (

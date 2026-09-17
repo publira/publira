@@ -32,6 +32,25 @@ const fail = (): Promise<FormActionState> =>
   });
 
 describe("ActionForm", () => {
+  it("runs the Action for a submit control outside the form that names its id", async () => {
+    render(
+      <>
+        <ActionForm action={fail} id="outside-form">
+          <input name="role" />
+        </ActionForm>
+        <button form="outside-form" type="submit">
+          Confirm
+        </button>
+      </>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Could not save.")).toBeTruthy();
+    });
+  });
+
   it("shows the success message a Server Action returns", async () => {
     render(
       <ActionForm action={succeed}>

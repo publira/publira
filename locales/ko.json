@@ -979,7 +979,29 @@
       "comments_error": "이 독자의 댓글을 표시할 수 없습니다",
       "comments_empty_title": "이 독자가 작성한 댓글이 없습니다.",
       "comments_empty_description": "댓글을 작성하면 여기에 표시됩니다.",
-      "comments_pagination_aria": "독자 댓글 페이지 이동"
+      "comments_pagination_aria": "독자 댓글 페이지 이동",
+      "suspend": "정지",
+      "suspending": "정지하는 중…",
+      "suspended": "독자를 정지했습니다.",
+      "suspend_confirm_title": "{$name} 님을 정지할까요?",
+      "suspend_confirm_description": "모든 기기에서 로그아웃되며, 정지가 해제될 때까지 로그인할 수 없습니다.",
+      "suspend_confirm_action": "정지",
+      "suspend_failed": "독자를 정지하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "unsuspend": "정지 해제",
+      "unsuspending": "정지를 해제하는 중…",
+      "unsuspended": "정지를 해제했습니다.",
+      "unsuspend_failed": "정지를 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "delete": "삭제",
+      "deleting": "삭제하는 중…",
+      "deleted": "독자를 삭제했습니다.",
+      "delete_confirm_title": "{$name} 님을 삭제할까요?",
+      "delete_confirm_description": "독자가 직접 탈퇴할 때와 같은 방식으로 계정이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+      "delete_confirm_action": "삭제",
+      "delete_failed": "독자를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "validation": {
+        "target_missing": "대상 독자를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
+        "tenant_missing": "대상 테넌트를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요."
+      }
     },
     "series": {
       "detail_error": "시리즈를 표시할 수 없습니다",

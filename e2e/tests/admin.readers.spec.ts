@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 import { signInAsSeedAdmin } from "../src/admin";
+import { applyScenarioSql } from "../src/db";
+import {
+  READER_MODERATION_DELETE,
+  READER_MODERATION_SCENARIO,
+  READER_MODERATION_SUSPEND,
+} from "../src/scenarios/reader-moderation";
 
 const SEED_READER = {
   email: "member@example.com",
@@ -94,5 +100,81 @@ test.describe("web-admin readers", () => {
     await expect(
       page.getByRole("heading", { exact: true, level: 2, name: "Comments" })
     ).toBeVisible();
+  });
+
+  test.describe("moderation", () => {
+    test.describe.configure({ mode: "serial" });
+
+    test.beforeAll(() => {
+      applyScenarioSql(READER_MODERATION_SCENARIO);
+    });
+
+    test.afterAll(() => {
+      applyScenarioSql(READER_MODERATION_SCENARIO);
+    });
+
+    test("staff suspend a reader and lift the suspension from the detail page", async ({
+      page,
+    }) => {
+      await signInAsSeedAdmin(
+        page,
+        `/readers/${READER_MODERATION_SUSPEND.publicId}`
+      );
+      const account = page.getByRole("definition");
+      await expect(account.getByText("Active")).toBeVisible();
+
+      await page.getByRole("button", { exact: true, name: "Suspend" }).click();
+      const dialog = page.getByRole("alertdialog");
+      await expect(dialog).toContainText(
+        `Suspend ${READER_MODERATION_SUSPEND.name}?`
+      );
+      await dialog
+        .getByRole("button", { exact: true, name: "Suspend" })
+        .click();
+
+      await expect(account.getByText("Suspended")).toBeVisible();
+      await expect(
+        page.getByRole("button", { exact: true, name: "Suspend" })
+      ).toHaveCount(0);
+
+      await page
+        .getByRole("button", { exact: true, name: "Lift suspension" })
+        .click();
+
+      await expect(account.getByText("Active")).toBeVisible();
+      await expect(
+        page.getByRole("button", { exact: true, name: "Suspend" })
+      ).toBeVisible();
+    });
+
+    test("staff delete a reader after a confirmation that names them", async ({
+      page,
+    }) => {
+      await signInAsSeedAdmin(
+        page,
+        `/readers/${READER_MODERATION_DELETE.publicId}`
+      );
+
+      await page.getByRole("button", { exact: true, name: "Delete" }).click();
+      const dialog = page.getByRole("alertdialog");
+      await expect(dialog).toContainText(
+        `Delete ${READER_MODERATION_DELETE.name}?`
+      );
+      await dialog.getByRole("button", { exact: true, name: "Delete" }).click();
+
+      await expect(page).toHaveURL(/\/readers$/u);
+      await expect(
+        page.getByText("The reader has been deleted.")
+      ).toBeVisible();
+
+      await page
+        .getByRole("searchbox", { name: "Name or email" })
+        .fill(READER_MODERATION_DELETE.email);
+      await page.getByRole("button", { name: "Apply" }).click();
+      await expect(page).toHaveURL(/[?&]q=/u);
+      await expect(
+        page.getByText("There are no readers to show.")
+      ).toBeVisible();
+    });
   });
 });
