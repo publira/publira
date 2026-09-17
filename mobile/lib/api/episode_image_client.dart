@@ -77,21 +77,44 @@ class EpisodeImageClient {
     Uri url, {
     Map<String, String> headers = const {},
   }) async {
+    final (bytes, saving) = await _load(url, headers);
+    // Saving is not what the reader is waiting for, and a device that cannot
+    // save still has the page in hand.
+    unawaited(saving);
+    return bytes;
+  }
+
+  /// Loads [url] the way [fetch] does, and finishes once the page is on the
+  /// device rather than once it is in hand.
+  ///
+  /// This is what saving an episode ahead of time waits on: the reader is
+  /// told the episode is saved, so the pages have to be there when they are.
+  Future<void> keep(Uri url, {Map<String, String> headers = const {}}) async {
+    final (_, saving) = await _load(url, headers);
+    await saving;
+  }
+
+  /// The page's bytes, and the save of them to [pages] when they came off the
+  /// network.
+  Future<(Uint8List, Future<void>)> _load(
+    Uri url,
+    Map<String, String> headers,
+  ) async {
     late final http.Response response;
     try {
       response = await _http
           .get(url, headers: {...headers, 'accept': imageAccept})
           .timeout(timeout);
     } on TimeoutException {
-      return _saved(url, 'image request timed out');
+      return (await _saved(url, 'image request timed out'), _nothing);
     } on IOException catch (error) {
       // Every `dart:io` failure of the request itself lands here, not only a
       // refused socket: `IOClient` re-throws a TLS `HandshakeException` as it
       // is, and a page the request never reached is a page to read off the
       // device.
-      return _saved(url, '$error');
+      return (await _saved(url, '$error'), _nothing);
     } on http.ClientException catch (error) {
-      return _saved(url, error.message);
+      return (await _saved(url, error.message), _nothing);
     }
 
     if (response.statusCode != HttpStatus.ok) {
@@ -102,20 +125,20 @@ class EpisodeImageClient {
     }
     final bytes = _decrypt(url, headers, response);
     final store = pages;
-    if (store != null) {
-      // Saving is not what the reader is waiting for, and a device that
-      // cannot save still has the page in hand.
-      unawaited(_save(store, episodePageKey(url), bytes));
-    }
-    return bytes;
+    return (
+      bytes,
+      store == null ? _nothing : _save(store, episodePageKey(url), bytes),
+    );
   }
+
+  static final Future<void> _nothing = Future<void>.value();
 
   /// Hands [bytes] to [store] without letting a refusal reach the zone.
   ///
-  /// Nothing awaits this, so an escaping error would surface as a crash for a
-  /// save the reader is not waiting on — and the store is an interface any
-  /// implementation may satisfy, so the guarantee belongs here rather than in
-  /// each of them.
+  /// [fetch] does not await this, so an escaping error would surface as a
+  /// crash for a save the reader is not waiting on — and the store is an
+  /// interface any implementation may satisfy, so the guarantee belongs here
+  /// rather than in each of them.
   Future<void> _save(
     EpisodePageStore store,
     String key,

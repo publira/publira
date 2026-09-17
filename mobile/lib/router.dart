@@ -5,6 +5,7 @@ import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
 import 'package:publira/screens/checkout_return_screen.dart';
 import 'package:publira/screens/creator_screen.dart';
+import 'package:publira/screens/downloads_screen.dart';
 import 'package:publira/screens/episode_comments_screen.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
 import 'package:publira/screens/follows_screen.dart';
@@ -22,6 +23,8 @@ abstract final class AppRoutes {
   static const account = '/account';
   static const follows = 'follows';
   static const accountFollows = '$account/$follows';
+  static const downloads = 'downloads';
+  static const accountDownloads = '$account/$downloads';
   static const seriesDetail = '/series/:seriesId';
   static const creatorDetail = '/creators/:creatorId';
   static const labelDetail = '/labels/:labelId';
@@ -122,6 +125,11 @@ GoRouter createAppRouter({String? initialLocation}) {
             path: AppRoutes.follows,
             name: 'follows',
             builder: (context, state) => const FollowsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.downloads,
+            name: 'downloads',
+            builder: (context, state) => const DownloadsScreen(),
           ),
         ],
       ),

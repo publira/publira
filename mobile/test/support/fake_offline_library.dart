@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:publira/models/series_item.dart';
@@ -17,6 +18,11 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   final Map<String, SavedEpisode> episodes = {};
   final Map<String, SavedReadingPosition> positions = {};
   final Map<String, Uint8List> pages = {};
+
+  final _changes = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get changes => _changes.stream;
 
   @override
   Future<SeriesPage?> readSeriesList() async => series;
@@ -63,6 +69,7 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
         pages.remove(key);
       }
     }
+    _changes.add(null);
   }
 
   @override
@@ -74,6 +81,7 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   @override
   Future<void> writeEpisode(SavedEpisode episode) async {
     episodes[episode.key] = episode;
+    _changes.add(null);
   }
 
   @override
@@ -88,6 +96,7 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
     for (final key in removed?.pageKeys ?? const <String>[]) {
       pages.remove(key);
     }
+    _changes.add(null);
   }
 
   @override
@@ -135,6 +144,24 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   }
 
   @override
+  Future<OfflineStorage> readStorage() async {
+    final stored = [
+      for (final episode in episodes.values)
+        StoredEpisode(
+          episode: episode,
+          bytes: {
+            for (final key in episode.pageKeys) key,
+          }.fold(0, (sum, key) => sum + (pages[key]?.length ?? 0)),
+        ),
+    ]..sort((a, b) => b.episode.checkedAt.compareTo(a.episode.checkedAt));
+    return OfflineStorage(
+      bytes: pages.values.fold(0, (sum, page) => sum + page.length),
+      byteLimit: offlineByteLimit,
+      episodes: stored,
+    );
+  }
+
+  @override
   Future<void> clear() async {
     tenantHost = '';
     tenant = null;
@@ -143,5 +170,6 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
     episodes.clear();
     positions.clear();
     pages.clear();
+    _changes.add(null);
   }
 }

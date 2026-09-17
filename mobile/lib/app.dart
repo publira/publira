@@ -23,6 +23,7 @@ import 'package:publira/links/app_link.dart';
 import 'package:publira/links/incoming_links.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/links/share_sheet.dart';
+import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -56,6 +57,7 @@ class PubliraApp extends StatefulWidget {
     this.purchases,
     this.checkoutLauncher,
     this.offline,
+    this.downloader,
     this.push,
     this.ageRatingConfirmation,
     this.tenantDefaultLocale,
@@ -117,25 +119,27 @@ class PubliraApp extends StatefulWidget {
       ),
       store: store,
     );
+    final catalog = OfflineCatalogRepository(
+      origin: HttpCatalogRepository(
+        config: resolved,
+        client: client,
+        tenants: tenants,
+      ),
+      library: library,
+      readerId: () => auth.session?.userPublicId ?? '',
+      imageRequestHeaders: resolved.publicImageRequestHeaders,
+    );
     return PubliraApp(
       key: key,
       router: router ?? createAppRouter(),
-      catalog: OfflineCatalogRepository(
-        origin: HttpCatalogRepository(
-          config: resolved,
-          client: client,
-          tenants: tenants,
-        ),
-        library: library,
-        readerId: () => auth.session?.userPublicId ?? '',
-        imageRequestHeaders: resolved.publicImageRequestHeaders,
-      ),
+      catalog: catalog,
       auth: auth,
       comments: HttpCommentRepository(client: client, tenants: tenants),
       follows: HttpFollowRepository(client: client, tenants: tenants),
       purchases: HttpPurchaseRepository(client: client, tenants: tenants),
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
       offline: library,
+      downloader: EpisodeDownloader(catalog: catalog, library: library),
       push: PushController(
         messaging: messaging,
         repository: HttpPushRepository(client: client, tenants: tenants),
@@ -194,6 +198,13 @@ class PubliraApp extends StatefulWidget {
   /// for the direct constructor, which a widget test uses to build the app
   /// with no offline behaviour at all.
   final OfflineLibrary? offline;
+
+  /// Saves a whole episode for offline reading when the reader asks.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one over [offline]. It is
+  /// nullable for the direct constructor, and no episode row then offers to
+  /// save one.
+  final EpisodeDownloader? downloader;
 
   /// The new-episode notifications the reader can turn on.
   ///
@@ -493,6 +504,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
           controller: widget.push,
           child: OfflineScope(
             library: widget.offline,
+            downloader: widget.downloader,
             child: CatalogScope(
               repository: widget.catalog,
               child: CommentScope(

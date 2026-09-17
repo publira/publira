@@ -12,6 +12,27 @@ extension AppMessagesFormatting on AppMessages {
   String formatInteger(int value) =>
       NumberFormat.decimalPattern(intlLocale).format(value);
 
+  /// [bytes] in the largest binary unit that keeps the number at one or more,
+  /// with one decimal place from a megabyte up — `12.3 MB` under `en-US`.
+  ///
+  /// Binary units are what the offline byte limit is stated in, so it reads
+  /// back as a round `512 MB`.
+  String formatByteSize(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    var value = bytes.toDouble();
+    var unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    final digits = unit < 2 || value == value.roundToDouble() ? 0 : 1;
+    final number = NumberFormat.decimalPatternDigits(
+      locale: intlLocale,
+      decimalDigits: digits,
+    ).format(value);
+    return '$number ${units[unit]}';
+  }
+
   /// [value] as the date and time this locale writes them, in the zone the
   /// device is set to.
   ///

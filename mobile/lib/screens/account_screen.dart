@@ -8,6 +8,7 @@ import 'package:publira/auth/reader_age.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
@@ -25,22 +26,27 @@ class AccountScreen extends StatelessWidget {
       appBar: AppBar(title: Text(messages.accountTitle)),
       body: SafeArea(
         child: session == null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(messages.accountSignedOut),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        key: const ValueKey('account-sign-in'),
-                        onPressed: () => context.push(AppRoutes.signIn),
-                        child: Text(messages.commonSignIn),
-                      ),
-                    ],
+            // Free episodes stay saved without an account, so the way to
+            // them does too.
+            ? ListView(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        Text(messages.accountSignedOut),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          key: const ValueKey('account-sign-in'),
+                          onPressed: () => context.push(AppRoutes.signIn),
+                          child: Text(messages.commonSignIn),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const Divider(height: 1),
+                  const _DownloadsEntry(),
+                ],
               )
             : ListView(
                 children: [
@@ -58,6 +64,7 @@ class AccountScreen extends StatelessWidget {
                   // its own date rather than showing the last one's.
                   _BirthDateRow(key: ValueKey(session.userPublicId)),
                   const _FollowsEntry(),
+                  const _DownloadsEntry(),
                   const _NotificationSwitch(),
                   Padding(
                     padding: const EdgeInsets.all(24),
@@ -107,6 +114,34 @@ class _FollowsEntry extends StatelessWidget {
           subtitle: Text(messages.accountFollowsDescription),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push(AppRoutes.accountFollows),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+/// The way to what this device keeps for reading offline.
+///
+/// A run with no offline library keeps nothing, so the row is left out.
+class _DownloadsEntry extends StatelessWidget {
+  const _DownloadsEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    if (OfflineScope.maybeOf(context) == null) {
+      return const SizedBox.shrink();
+    }
+    final messages = AppMessages.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: const ValueKey('account-downloads'),
+          title: Text(messages.accountDownloads),
+          subtitle: Text(messages.accountDownloadsDescription),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push(AppRoutes.accountDownloads),
         ),
         const Divider(height: 1),
       ],

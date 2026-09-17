@@ -19,6 +19,7 @@ import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
@@ -226,6 +227,19 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// one.
   var _acceptsPayments = false;
 
+  OfflineLibrary? _library;
+
+  /// Saved episodes change under this screen too — a save it started that
+  /// finishes, or a deletion on the downloads screen — so the marks follow the
+  /// library rather than the moment the screen opened.
+  StreamSubscription<void>? _libraryChanges;
+
+  @override
+  void dispose() {
+    unawaited(_libraryChanges?.cancel());
+    super.dispose();
+  }
+
   /// Which episodes are readable depends on who is signed in, so a sign-in or
   /// a sign-out asks the library again rather than keeping the last answer.
   @override
@@ -242,6 +256,13 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       unawaited(_loadPurchase(purchase, readerId));
     }
     final library = OfflineScope.maybeOf(context);
+    if (library != _library) {
+      unawaited(_libraryChanges?.cancel());
+      _library = library;
+      _libraryChanges = library?.changes.listen(
+        (_) => unawaited(_loadSaved(library, _readerId)),
+      );
+    }
     if (library == null) {
       return;
     }
@@ -271,6 +292,44 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     });
   }
 
+  /// Saves [episode] with every page, and tells the reader how that ended.
+  Future<void> _saveOffline(
+    EpisodeDownloader downloader,
+    EpisodeItem episode,
+  ) async {
+    final messages = AppMessages.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    String copy;
+    try {
+      await downloader.save(widget.detail.series.id, episode.id);
+      copy = messages.seriesSaveOfflineSaved(title: episode.title);
+    } on EpisodeDownloadFailure catch (failure) {
+      copy = switch (failure.kind) {
+        EpisodeDownloadFailureKind.network => messages.seriesSaveOfflineFailed(
+          title: episode.title,
+        ),
+        EpisodeDownloadFailureKind.notReadable =>
+          messages.seriesSaveOfflineNotReadable(title: episode.title),
+      };
+    }
+    // The save outlives the screen, and so does the messenger it reports to.
+    messenger.showSnackBar(SnackBar(content: Text(copy)));
+  }
+
+  /// Whether [episode] is one this reader could keep, which is what a row
+  /// offers to save.
+  ///
+  /// The access the API answered decides where there is one. Without it — a
+  /// build with no purchases, or an answer that failed — only a free episode is
+  /// offered, since a paid one would most likely be refused.
+  bool _canSave(EpisodeItem episode) {
+    return switch (_access[episode.id]) {
+      EpisodeAccess.free || EpisodeAccess.entitled => true,
+      null => episode.price <= 0,
+      _ => false,
+    };
+  }
+
   Future<void> _loadSaved(OfflineLibrary library, String readerId) async {
     final saved = await library.readableEpisodeIds(
       widget.detail.series.id,
@@ -294,6 +353,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     // A build with no follow repository offers none of this, so neither the
     // control nor the author rows it would sit in are put on the screen.
     final follows = FollowScope.maybeOf(context) != null;
+    final downloader = OfflineScope.downloaderOf(context);
 
     return ListView(
       key: const ValueKey('series-detail-body'),
@@ -465,6 +525,16 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               trailing: _EpisodeTrailing(
                 price: episode.price,
                 saved: _saved.contains(episode.id),
+                download: downloader == null || !_canSave(episode)
+                    ? null
+                    : _SaveOfflineButton(
+                        downloader: downloader,
+                        seriesId: series.id,
+                        episode: episode,
+                        saved: _saved.contains(episode.id),
+                        onSave: () =>
+                            unawaited(_saveOffline(downloader, episode)),
+                      ),
                 buy:
                     _acceptsPayments &&
                         episode.price > 0 &&
@@ -502,11 +572,16 @@ class _EpisodeTrailing extends StatelessWidget {
   const _EpisodeTrailing({
     required this.price,
     required this.saved,
+    required this.download,
     required this.buy,
   });
 
   final int price;
   final bool saved;
+
+  /// The way to save the episode, which stands in for the mark where there is
+  /// one.
+  final Widget? download;
 
   /// The purchase this reader is offered, which names the price itself and so
   /// stands in place of it.
@@ -515,30 +590,101 @@ class _EpisodeTrailing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final buy = this.buy;
-    if (!saved && price <= 0) {
+    final download = this.download;
+    if (!saved && download == null && price <= 0) {
       return const SizedBox.shrink();
     }
     final messages = AppMessages.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (saved)
-          Padding(
-            key: const ValueKey('episode-saved-offline'),
-            padding: const EdgeInsets.only(right: 8),
-            child: Icon(
-              Icons.offline_pin_outlined,
-              size: 20,
-              // The mark is the only thing that says this episode still opens
-              // without a network, so it has to reach a screen reader too.
-              semanticLabel: messages.seriesSavedOffline,
-            ),
-          ),
+        if (download != null)
+          download
+        else if (saved)
+          const _SavedOfflineMark(),
         if (buy != null)
           buy
         else if (price > 0)
           Text('¥${messages.formatInteger(price)}'),
       ],
+    );
+  }
+}
+
+/// The mark on an episode this device can open without a network.
+class _SavedOfflineMark extends StatelessWidget {
+  const _SavedOfflineMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      key: const ValueKey('episode-saved-offline'),
+      padding: const EdgeInsets.only(right: 8),
+      child: Icon(
+        Icons.offline_pin_outlined,
+        size: 20,
+        // The mark is the only thing that says this episode still opens
+        // without a network, so it has to reach a screen reader too.
+        semanticLabel: AppMessages.of(context).seriesSavedOffline,
+      ),
+    );
+  }
+}
+
+/// Saves one episode for offline reading, shows how far that has come while
+/// it runs, and gives way to the saved mark once it is done.
+class _SaveOfflineButton extends StatelessWidget {
+  const _SaveOfflineButton({
+    required this.downloader,
+    required this.seriesId,
+    required this.episode,
+    required this.saved,
+    required this.onSave,
+  });
+
+  final EpisodeDownloader downloader;
+  final String seriesId;
+  final EpisodeItem episode;
+  final bool saved;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    return ListenableBuilder(
+      listenable: downloader,
+      builder: (context, _) {
+        final progress = downloader.progressOf(seriesId, episode.id);
+        // The body is filed before its pages arrive, so a save still running
+        // keeps its progress up over the mark.
+        if (progress != null) {
+          return Padding(
+            key: ValueKey('episode-saving-offline-${episode.id}'),
+            padding: const EdgeInsets.all(12),
+            child: SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(
+                // Nothing is known until the episode has been read and its
+                // pages counted.
+                value: progress == 0 ? null : progress,
+                strokeWidth: 2,
+                semanticsLabel: messages.seriesSavingOffline(
+                  title: episode.title,
+                ),
+              ),
+            ),
+          );
+        }
+        if (saved) {
+          return const _SavedOfflineMark();
+        }
+        return IconButton(
+          key: ValueKey('episode-save-offline-${episode.id}'),
+          icon: const Icon(Icons.download_outlined),
+          tooltip: messages.seriesSaveOfflineAria(title: episode.title),
+          onPressed: onSave,
+        );
+      },
     );
   }
 }

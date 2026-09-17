@@ -461,6 +461,102 @@ void main() {
     expect(await library.readPage(pageKey), isNull);
   });
 
+  test('storage counts the pages each saved episode holds', () async {
+    final library = open(byteLimit: 4096);
+    await library.writeEpisode(
+      _episode('OLD', pages: 2, checkedAt: DateTime.utc(2026, 8)),
+    );
+    await library.writePage(episodePageKey(_pageUrl('OLD', 1)), _bytes(64, 1));
+    await library.writePage(episodePageKey(_pageUrl('OLD', 2)), _bytes(64, 2));
+    await library.writeEpisode(
+      _episode('NEW', checkedAt: DateTime.utc(2026, 9)),
+    );
+    await library.writePage(episodePageKey(_pageUrl('NEW', 1)), _bytes(64, 3));
+    await library.writePage(_orphanPageKey, _bytes(64, 4));
+
+    final storage = await library.readStorage();
+
+    expect(storage.byteLimit, 4096);
+    expect(
+      [for (final stored in storage.episodes) stored.episode.detail.episode.id],
+      ['NEW', 'OLD'],
+    );
+    final newBytes = storage.episodes.first.bytes;
+    final oldBytes = storage.episodes.last.bytes;
+    // Every page is sealed the same way, so two pages weigh twice one.
+    expect(newBytes, greaterThan(64));
+    expect(oldBytes, newBytes * 2);
+    // A page no episode claims still takes room under the limit.
+    expect(storage.bytes, newBytes * 4);
+  });
+
+  test('removing an episode frees the bytes storage reports', () async {
+    final library = open();
+    await library.writeEpisode(_episode('EP1'));
+    await library.writePage(episodePageKey(_pageUrl('EP1', 1)), _bytes(64, 1));
+    await library.writeEpisode(_episode('EP2'));
+    await library.writePage(episodePageKey(_pageUrl('EP2', 1)), _bytes(64, 2));
+    final before = await library.readStorage();
+
+    await library.removeEpisode(_seriesId, 'EP1');
+
+    final after = await library.readStorage();
+    expect(after.bytes, before.bytes - before.episodes.first.bytes);
+    expect(after.episodes.single.episode.detail.episode.id, 'EP2');
+  });
+
+  test('storage on a device with nowhere to write is empty', () async {
+    final library = FileOfflineLibrary(
+      tenantHost: _tenantHost,
+      keys: const _NoDeviceKey(),
+      root: () async => root,
+    );
+
+    final storage = await library.readStorage();
+
+    expect(storage.bytes, 0);
+    expect(storage.episodes, isEmpty);
+  });
+
+  test('a change to the saved episodes is announced', () async {
+    final library = open(byteLimit: 100);
+    var changes = 0;
+    final subscription = library.changes.listen((_) => changes++);
+    addTearDown(subscription.cancel);
+
+    Future<int> countAfter(Future<void> Function() action) async {
+      final before = changes;
+      await action();
+      // A broadcast stream delivers on a later microtask.
+      await Future<void>.delayed(Duration.zero);
+      return changes - before;
+    }
+
+    expect(await countAfter(() => library.writeEpisode(_episode('OLD'))), 1);
+    expect(
+      await countAfter(
+        () => library.writePage(
+          episodePageKey(_pageUrl('OLD', 1)),
+          _bytes(80, 1),
+        ),
+      ),
+      0,
+    );
+    expect(await countAfter(() => library.writeEpisode(_episode('NEW'))), 1);
+    // Over the limit, so the first episode is evicted.
+    expect(
+      await countAfter(
+        () => library.writePage(
+          episodePageKey(_pageUrl('NEW', 1)),
+          _bytes(80, 2),
+        ),
+      ),
+      1,
+    );
+    expect(await countAfter(() => library.removeEpisode(_seriesId, 'NEW')), 1);
+    expect(await countAfter(library.clear), 1);
+  });
+
   test('the byte limit drops the least recently confirmed episode', () async {
     final library = open(byteLimit: 100);
     await library.writeEpisode(
