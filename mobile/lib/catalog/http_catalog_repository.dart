@@ -224,13 +224,22 @@ class HttpCatalogRepository implements CatalogRepository {
     String seriesPublicId,
     String episodePublicId,
   ) async {
+    // Read before the first await, as the reads of the reader's own history
+    // are: what a body grants belongs to the session that asked for it, and
+    // the caller files it under the reader it read at this same instant.
+    final accessToken = _client.accessToken;
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_episodeProcedure, {
-        'publicId': episodePublicId,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      return _parseEpisodeDetail(body, seriesPublicId);
+      final body = await _client.unary(
+        _episodeProcedure,
+        {
+          'publicId': episodePublicId,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      return _parseEpisodeDetail(body, seriesPublicId, accessToken);
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         return null;
@@ -613,9 +622,13 @@ class HttpCatalogRepository implements CatalogRepository {
   /// The series is checked here rather than trusted from the route: an episode
   /// public id addresses the episode alone, so a mismatched pair would
   /// otherwise render one series' body under another series' URL.
+  ///
+  /// Its pages are requested with [accessToken], the session the body was
+  /// granted to.
   EpisodeDetail? _parseEpisodeDetail(
     Map<String, Object?> body,
     String seriesPublicId,
+    String accessToken,
   ) {
     final rawSeries = _expectMap(body['series'], 'series');
     final seriesId = _readString(
@@ -639,7 +652,7 @@ class HttpCatalogRepository implements CatalogRepository {
         'previousEpisode',
       ),
       nextEpisode: _neighborFromJson(body['nextEpisode'], 'nextEpisode'),
-      imageRequestHeaders: config.imageRequestHeaders(_client.accessToken),
+      imageRequestHeaders: config.imageRequestHeaders(accessToken),
       ageRating: _parseAgeRating(rawSeries['ageRating']),
       creators: _parseCreators(rawEpisode['creators'], 'episode'),
       readingDirection: _parseReadingDirection(rawEpisode['readingDirection']),
