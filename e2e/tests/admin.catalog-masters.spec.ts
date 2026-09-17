@@ -449,6 +449,54 @@ test.describe("admin catalog masters", () => {
     ).toBe(renamed);
   });
 
+  test("renaming a label shows the new name on the console's series list", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Label ${suffix}`;
+    const title = `E2E Labelled Series ${suffix}`;
+    const labelId = trackLabel(await createLabelViaUi(page, name));
+    trackSeries(
+      await createSeriesViaUi(page, {
+        labelName: name,
+        synopsis: `Labelled synopsis ${suffix}`,
+        title,
+      })
+    );
+
+    // Every step below is a sidebar or in-page link, never `page.goto`: the
+    // list is a `"use cache: private"` read held in the browser, and a reload
+    // would read it fresh whatever the rename cleared.
+    const seriesLink = page.getByRole("link", { exact: true, name: "Series" });
+    await seriesLink.click();
+    await page.waitForURL((url) => url.pathname === "/series");
+    const seriesRow = page.locator("tr", { hasText: title });
+    await expect(
+      seriesRow.getByRole("cell", { exact: true, name })
+    ).toBeVisible();
+
+    await page.getByRole("link", { exact: true, name: "Labels" }).click();
+    await page.waitForURL((url) => url.pathname === "/labels");
+    await page
+      .locator("tr", { hasText: name })
+      .getByRole("link", { name: "Edit" })
+      .click();
+    await page.waitForURL((url) => url.pathname === `/labels/${labelId}`);
+
+    const renamed = `${name} (renamed)`;
+    const fields = labelFormFields(page);
+    await expect(fields.name).toHaveValue(name);
+    await fillField(fields.name, renamed);
+    await page.getByRole("button", { name: "Update label" }).click();
+    await expect(formMessage(page)).toContainText("Label updated.");
+
+    await seriesLink.click();
+    await page.waitForURL((url) => url.pathname === "/series");
+    await expect(
+      seriesRow.getByRole("cell", { exact: true, name: renamed })
+    ).toBeVisible();
+  });
+
   test("registers genres at the end of the list and moves one up", async ({
     page,
   }) => {

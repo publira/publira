@@ -25,6 +25,7 @@ import {
   uploadLabelEyeCatchAspectImage,
 } from "#lib/label";
 import { getMessagesFor } from "#lib/messages";
+import { seriesListCacheTag } from "#lib/series";
 
 import type { LabelActionState, LabelMutationMode } from "../label-types";
 
@@ -193,6 +194,8 @@ export const updateLabelAction = async (
 
   updateTag(`labels-${tenantId}`);
   updateTag(`label-${tenantId}-${publicId}`);
+  // `/series` names each row's label, so a rename has to reach that list too.
+  updateTag(seriesListCacheTag(tenantId));
 
   return {
     label: result.label,

@@ -72,7 +72,6 @@ describe("series actions", () => {
       ok: true,
       series: {
         creatorCredits: [],
-        creatorNames: [],
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
@@ -137,7 +136,6 @@ describe("series actions", () => {
       ok: true,
       series: {
         creatorCredits: [],
-        creatorNames: [],
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
@@ -179,7 +177,6 @@ describe("series actions", () => {
       ok: true,
       series: {
         creatorCredits: [],
-        creatorNames: [],
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
@@ -283,7 +280,6 @@ describe("series actions", () => {
       ok: true,
       series: {
         creatorCredits: [],
-        creatorNames: [],
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: false,
