@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
@@ -25,6 +26,12 @@ class DownloadsScreen extends StatefulWidget {
 class _DownloadsScreenState extends State<DownloadsScreen> {
   OfflineLibrary? _library;
   StreamSubscription<void>? _changes;
+
+  /// The saves running when this screen last looked. A save that finishes
+  /// while the screen is open has grown the bytes it shows, and the library
+  /// announces the episode rather than the pages under it.
+  EpisodeDownloader? _downloader;
+  var _saving = false;
   OfflineStorage? _storage;
   var _readerId = '';
 
@@ -36,6 +43,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final library = OfflineScope.maybeOf(context);
+    final downloader = OfflineScope.downloaderOf(context);
+    if (downloader != _downloader) {
+      _downloader?.removeListener(_onDownloaderChanged);
+      _downloader = downloader;
+      downloader?.addListener(_onDownloaderChanged);
+    }
     final readerId = AuthScope.of(context).session?.userPublicId ?? '';
     if (library == _library && readerId == _readerId && _storage != null) {
       return;
@@ -51,8 +64,20 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   @override
   void dispose() {
+    _downloader?.removeListener(_onDownloaderChanged);
     unawaited(_changes?.cancel());
     super.dispose();
+  }
+
+  /// Reads the bytes again once the saves that were running have finished,
+  /// rather than on every page they fetch, which would measure the directory
+  /// once per page.
+  void _onDownloaderChanged() {
+    final saving = _downloader?.isSaving ?? false;
+    if (_saving && !saving) {
+      _read();
+    }
+    _saving = saving;
   }
 
   void _read() {

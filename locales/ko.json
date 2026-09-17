@@ -2866,6 +2866,7 @@
       "save_offline_aria": "“{$title}”을(를) 오프라인으로 읽을 수 있도록 저장",
       "save_offline_failed": "“{$title}”을(를) 저장하지 못했습니다. 다시 시도해 주세요.",
       "save_offline_not_readable": "“{$title}”은(는) 이 기기에 저장할 수 없습니다.",
+      "save_offline_no_storage": "“{$title}”을(를) 이 기기에 저장하지 못했습니다. 저장 공간을 확보한 뒤 다시 시도해 주세요.",
       "save_offline_saved": "“{$title}”을(를) 이 기기에 저장했습니다.",
       "saving_offline": "“{$title}” 저장 중",
       "schedule": "{$weekdays}에 업데이트",

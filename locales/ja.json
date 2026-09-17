@@ -2866,6 +2866,7 @@
       "save_offline_aria": "「{$title}」をオフラインで読めるように保存",
       "save_offline_failed": "「{$title}」を保存できませんでした。もう一度お試しください。",
       "save_offline_not_readable": "「{$title}」はこの端末に保存できません。",
+      "save_offline_no_storage": "「{$title}」をこの端末に保存できませんでした。空き容量を確保してもう一度お試しください。",
       "save_offline_saved": "「{$title}」をこの端末に保存しました。",
       "saving_offline": "「{$title}」を保存中",
       "schedule": "{$weekdays}に更新",

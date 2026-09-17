@@ -649,6 +649,9 @@ abstract class AppMessages {
   /// `mobile.series.save_offline_failed`
   String seriesSaveOfflineFailed({required String title});
 
+  /// `mobile.series.save_offline_no_storage`
+  String seriesSaveOfflineNoStorage({required String title});
+
   /// `mobile.series.save_offline_not_readable`
   String seriesSaveOfflineNotReadable({required String title});
 
@@ -1748,6 +1751,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String seriesSaveOfflineFailed({required String title}) {
     return '「$title」を保存できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return '「$title」をこの端末に保存できませんでした。空き容量を確保してもう一度お試しください。';
   }
 
   @override
@@ -2954,6 +2962,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return 'Could not keep “$title” on this device. Free up space and try again.';
+  }
+
+  @override
   String seriesSaveOfflineNotReadable({required String title}) {
     return '“$title” cannot be saved on this device.';
   }
@@ -4154,6 +4167,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String seriesSaveOfflineFailed({required String title}) {
     return '“$title”을(를) 저장하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return '“$title”을(를) 이 기기에 저장하지 못했습니다. 저장 공간을 확보한 뒤 다시 시도해 주세요.';
   }
 
   @override
@@ -5360,6 +5378,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return '无法将“$title”保存到此设备。请释放存储空间后重试。';
+  }
+
+  @override
   String seriesSaveOfflineNotReadable({required String title}) {
     return '“$title”无法保存到此设备。';
   }
@@ -6560,6 +6583,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String seriesSaveOfflineFailed({required String title}) {
     return '無法儲存「$title」。請重試。';
+  }
+
+  @override
+  String seriesSaveOfflineNoStorage({required String title}) {
+    return '無法將「$title」儲存到此裝置。請釋放儲存空間後重試。';
   }
 
   @override

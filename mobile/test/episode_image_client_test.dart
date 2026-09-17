@@ -365,6 +365,30 @@ void main() {
     expect(pages.pages[episodePageKey(Uri.parse(_pageUrl))], _plaintext);
   });
 
+  test('keep reports a device that did not keep the page', () async {
+    final client = clientAnswering(
+      (_) async => http.Response.bytes(
+        _plaintext,
+        200,
+        headers: const {'content-type': 'image/webp'},
+      ),
+      pages: _RefusingPageStore(),
+    );
+
+    // A store swallows what it could not write, so the page is read back
+    // rather than reported as saved on the store's word.
+    await expectLater(
+      client.keep(Uri.parse(_pageUrl)),
+      throwsA(
+        isA<EpisodeImageException>().having(
+          (error) => error.kind,
+          'kind',
+          EpisodeImageFailureKind.storage,
+        ),
+      ),
+    );
+  });
+
   test('keep reports a page it could not fetch or find', () async {
     final pages = InMemoryOfflineLibrary();
     final client = clientAnswering((_) async {

@@ -2866,6 +2866,7 @@
       "save_offline_aria": "Save “{$title}” for offline reading",
       "save_offline_failed": "Could not save “{$title}”. Try again.",
       "save_offline_not_readable": "“{$title}” cannot be saved on this device.",
+      "save_offline_no_storage": "Could not keep “{$title}” on this device. Free up space and try again.",
       "save_offline_saved": "“{$title}” is saved on this device.",
       "saving_offline": "Saving “{$title}”",
       "schedule": "Updates on {$weekdays}",

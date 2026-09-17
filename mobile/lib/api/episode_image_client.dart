@@ -16,6 +16,10 @@ enum EpisodeImageFailureKind {
 
   /// The response was encrypted and this reader could not reverse it.
   decryption,
+
+  /// The page arrived and the device did not keep it, which only a save the
+  /// reader asked for waits to hear.
+  storage,
 }
 
 /// A body page that did not arrive as displayable bytes.
@@ -89,9 +93,26 @@ class EpisodeImageClient {
   ///
   /// This is what saving an episode ahead of time waits on: the reader is
   /// told the episode is saved, so the pages have to be there when they are.
+  /// A store is best effort and swallows what it could not write, so the page
+  /// is read back rather than taken on the store's word; a device that has
+  /// nowhere to keep it reports the failure the reader is waiting on.
   Future<void> keep(Uri url, {Map<String, String> headers = const {}}) async {
+    final store = pages;
     final (_, saving) = await _load(url, headers);
     await saving;
+    final key = episodePageKey(url);
+    Uint8List? kept;
+    try {
+      kept = store == null ? null : await store.readPage(key);
+    } catch (_) {
+      kept = null;
+    }
+    if (kept == null || kept.isEmpty) {
+      throw EpisodeImageException(
+        EpisodeImageFailureKind.storage,
+        'the device did not keep the page at $url',
+      );
+    }
   }
 
   /// The page's bytes, and the save of them to [pages] when they came off the

@@ -2866,6 +2866,7 @@
       "save_offline_aria": "保存“{$title}”以供离线阅读",
       "save_offline_failed": "无法保存“{$title}”。请重试。",
       "save_offline_not_readable": "“{$title}”无法保存到此设备。",
+      "save_offline_no_storage": "无法将“{$title}”保存到此设备。请释放存储空间后重试。",
       "save_offline_saved": "“{$title}”已保存到此设备。",
       "saving_offline": "正在保存“{$title}”",
       "schedule": "{$weekdays}更新",

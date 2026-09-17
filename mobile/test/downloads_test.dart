@@ -92,6 +92,25 @@ void main() {
     fail('Timed out waiting for $finder to be ${present ? '' : 'not '}found');
   }
 
+  /// [pumpUntilFound] for what only the rendered copy reveals.
+  Future<void> pumpUntilTrue(
+    WidgetTester tester,
+    bool Function() condition, {
+    String description = 'condition',
+  }) async {
+    final end = DateTime.now().add(const Duration(seconds: 10));
+    while (DateTime.now().isBefore(end)) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      if (condition()) {
+        return;
+      }
+    }
+    fail('Timed out waiting for $description');
+  }
+
   /// Puts [episode] on the device the way reading it would have: the body
   /// filed under [ownerId], and every page it names.
   Future<void> seed(
@@ -342,6 +361,45 @@ void main() {
       ]),
     );
     expect(pages, everyElement(isNotNull));
+  });
+
+  testWidgets('a save that finishes under the screen grows the bytes shown', (
+    tester,
+  ) async {
+    imageGate = Completer<void>();
+    await pumpApp(
+      tester,
+      initialLocation: AppRoutes.seriesDetailPath(_series.id),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+    );
+    await tester.tap(
+      find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('episode-saving-offline-${_freeEpisode.id}')),
+    );
+
+    unawaited(router.push(AppRoutes.accountDownloads));
+    await pumpUntilFound(tester, find.byKey(const ValueKey('downloads-usage')));
+    expect(usage(tester), '0 B of 512 MB used');
+
+    imageGate!.complete();
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('downloads-episode-${_freeEpisode.id}')),
+    );
+    // The episode is listed as soon as its body is filed; the bytes follow
+    // the pages, which is what the screen reads again once the save is done.
+    await pumpUntilTrue(tester, () => !usage(tester).startsWith('0 B'));
+
+    expect(
+      find.text('“${_freeEpisode.title}” is saved on this device.'),
+      findsOne,
+    );
   });
 
   testWidgets('a paid episode with no known access offers no save', (

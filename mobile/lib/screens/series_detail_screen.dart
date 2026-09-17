@@ -246,7 +246,21 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final readerId = AuthScope.of(context).session?.userPublicId ?? '';
+    final library = OfflineScope.maybeOf(context);
+    // A library swapped under the screen is listened to and read again the
+    // way a new reader is, so the marks never come from the library before it.
+    final changedLibrary = library != _library;
+    if (changedLibrary) {
+      unawaited(_libraryChanges?.cancel());
+      _library = library;
+      _libraryChanges = library?.changes.listen(
+        (_) => unawaited(_loadSaved(library, _readerId)),
+      );
+    }
     if (_started && readerId == _readerId) {
+      if (changedLibrary && library != null) {
+        unawaited(_loadSaved(library, readerId));
+      }
       return;
     }
     _started = true;
@@ -254,14 +268,6 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final purchase = PurchaseScope.maybeOf(context)?.repository;
     if (purchase != null) {
       unawaited(_loadPurchase(purchase, readerId));
-    }
-    final library = OfflineScope.maybeOf(context);
-    if (library != _library) {
-      unawaited(_libraryChanges?.cancel());
-      _library = library;
-      _libraryChanges = library?.changes.listen(
-        (_) => unawaited(_loadSaved(library, _readerId)),
-      );
     }
     if (library == null) {
       return;
@@ -310,6 +316,8 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         ),
         EpisodeDownloadFailureKind.notReadable =>
           messages.seriesSaveOfflineNotReadable(title: episode.title),
+        EpisodeDownloadFailureKind.storage =>
+          messages.seriesSaveOfflineNoStorage(title: episode.title),
       };
     }
     // The save outlives the screen, and so does the messenger it reports to.

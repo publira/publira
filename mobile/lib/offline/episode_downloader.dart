@@ -16,6 +16,10 @@ enum EpisodeDownloadFailureKind {
   /// The API answered, but not with a body this reader may keep: the episode
   /// is locked, withheld for an age, or gone.
   notReadable,
+
+  /// The pages arrived and the device did not keep them: it is full, or this
+  /// platform has nowhere to write.
+  storage,
 }
 
 class EpisodeDownloadFailure implements Exception {
@@ -55,6 +59,9 @@ class EpisodeDownloader extends ChangeNotifier {
   /// Share of pages fetched so far, keyed by [savedEpisodeKey].
   final _progress = <String, double>{};
   final _running = <String, Future<void>>{};
+
+  /// Whether any episode is being saved right now.
+  bool get isSaving => _progress.isNotEmpty;
 
   /// How far the save of this episode has come, from 0 to 1, or `null` when
   /// none is running.
@@ -107,7 +114,9 @@ class EpisodeDownloader extends ChangeNotifier {
           );
         } on EpisodeImageException catch (error) {
           throw EpisodeDownloadFailure(
-            EpisodeDownloadFailureKind.network,
+            error.kind == EpisodeImageFailureKind.storage
+                ? EpisodeDownloadFailureKind.storage
+                : EpisodeDownloadFailureKind.network,
             message: '$error',
           );
         }
