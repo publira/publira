@@ -66,4 +66,33 @@ test.describe("web-admin readers", () => {
       page.getByRole("searchbox", { name: "Name or email" })
     ).toHaveValue("");
   });
+
+  test("staff open a reader from the list and see the account", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, `/readers?q=${SEED_READER.email}`);
+
+    await page
+      .getByRole("row")
+      .filter({
+        has: page.getByRole("cell", { exact: true, name: SEED_READER.email }),
+      })
+      .getByRole("link", { name: SEED_READER.name })
+      .click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/readers/${SEED_READER.publicId}$`, "u")
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Reader" })
+    ).toBeVisible();
+    const account = page.getByRole("definition");
+    await expect(account.getByText(SEED_READER.name)).toBeVisible();
+    await expect(account.getByText(SEED_READER.email)).toBeVisible();
+    await expect(account.getByText(SEED_READER.publicId)).toBeVisible();
+    await expect(account.getByText("Active")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, level: 2, name: "Comments" })
+    ).toBeVisible();
+  });
 });

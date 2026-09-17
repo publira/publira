@@ -229,4 +229,19 @@ describe("CommentManager", () => {
       screen.getByRole("link", { name: "Episode 1" }).getAttribute("href")
     ).toBe("/series/SERIES001/episodes/EPISODE001");
   });
+
+  it("links the commenter to their reader page", async () => {
+    render(
+      await CommentManager({
+        comments: [comment("published")],
+        locale: "en",
+        pageSize: 20,
+        timeZone: "Asia/Tokyo",
+      })
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Reader" }).getAttribute("href")
+    ).toBe("/readers/USER001");
+  });
 });

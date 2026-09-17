@@ -1,10 +1,13 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockListReaders } = vi.hoisted(() => ({
-  mockGetAccessToken: vi.fn(),
-  mockListReaders: vi.fn(),
-}));
+const { mockGetAccessToken, mockGetReader, mockListReaders } = vi.hoisted(
+  () => ({
+    mockGetAccessToken: vi.fn(),
+    mockGetReader: vi.fn(),
+    mockListReaders: vi.fn(),
+  })
+);
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -13,6 +16,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     users: {
+      getReader: mockGetReader,
       listReaders: mockListReaders,
     },
   },
@@ -137,5 +141,72 @@ describe("reader lib", () => {
     expect(result.ok === false && result.requiresSignIn).toBe(false);
     expect(result.ok === false && result.message).not.toBe("");
     expect(result.readers).toEqual([]);
+  });
+
+  it("reads one reader's account with the fields only the detail page shows", async () => {
+    mockGetReader.mockResolvedValue({ reader: adminReader });
+
+    const { getReader } = await import("./reader");
+    const result = await getReader("TENANT001", "en", "READER00001");
+
+    expect(mockGetReader).toHaveBeenCalledWith(
+      { publicId: "READER00001", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      ok: true,
+      reader: {
+        createdAt: "2026-06-01T00:00:00Z",
+        email: "reader@example.com",
+        emailVerifiedAt: "2026-06-01T00:05:00Z",
+        hasBirthDate: false,
+        name: "Reader One",
+        publicId: "READER00001",
+        status: "suspended",
+      },
+    });
+  });
+
+  it.each([Code.NotFound, Code.PermissionDenied])(
+    "reads a reader the API will not show (%s) as not found",
+    async (code) => {
+      mockGetReader.mockRejectedValue(new ConnectError("missing", code));
+
+      const { getReader } = await import("./reader");
+
+      expect(await getReader("TENANT001", "en", "OTHER000001")).toEqual({
+        notFound: true,
+        ok: false,
+      });
+    }
+  );
+
+  it("reports a failed read as a message, not as a missing reader", async () => {
+    mockGetReader.mockRejectedValue(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    const { getReader } = await import("./reader");
+    const result = await getReader("TENANT001", "en", "READER00001");
+
+    expect(result).toEqual({
+      message: expect.stringMatching(/./u),
+      ok: false,
+      requiresSignIn: false,
+    });
+  });
+
+  it("asks for sign-in without reading the reader when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { getReader } = await import("./reader");
+    const result = await getReader("TENANT001", "en", "READER00001");
+
+    expect(mockGetReader).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      message: expect.stringMatching(/./u),
+      ok: false,
+      requiresSignIn: true,
+    });
   });
 });

@@ -467,6 +467,63 @@ test.describe("web-admin comment moderation", () => {
     }
   });
 
+  test("the commenter opens onto their reader page, and another tenant's reader is not found", async ({
+    browser,
+    page,
+  }) => {
+    const body = uniqueCommentBody(
+      "A comment the moderators will read beside its author's account."
+    );
+    await signInAsMember(
+      page,
+      COMMENT_MODERATION_MEMBER,
+      COMMENT_MODERATION_PATH,
+      WEB_HOST_COMMENT_MODERATION_BASE_URL
+    );
+    await postComment(page, body);
+
+    const consoleContext = await browser.newContext();
+    const consolePage = await consoleContext.newPage();
+    try {
+      await signInAsAdmin(
+        consolePage,
+        COMMENT_MODERATION_ADMIN,
+        "/comments",
+        WEB_ADMIN_COMMENT_MODERATION_BASE_URL
+      );
+      await commentListRow(consolePage, body)
+        .getByRole("link", { name: COMMENT_MODERATION_MEMBER.name })
+        .click();
+
+      await expect(consolePage).toHaveURL(
+        new RegExp(`/readers/${COMMENT_MODERATION_MEMBER.publicId}$`, "u")
+      );
+      await expect(
+        consolePage
+          .getByRole("definition")
+          .getByText(COMMENT_MODERATION_MEMBER.email)
+      ).toBeVisible();
+      const row = consoleRow(consolePage, body);
+      await expect(row.getByText("Awaiting approval")).toBeVisible();
+      await expect(
+        row.getByRole("link", { name: COMMENT_MODERATION_EPISODE.title })
+      ).toHaveAttribute(
+        "href",
+        `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes/${COMMENT_MODERATION_EPISODE.publicId}`
+      );
+
+      // The dev seed's member belongs to the `localhost` tenant, so this
+      // console has no reader by that id.
+      await consolePage.goto(
+        `${WEB_ADMIN_COMMENT_MODERATION_BASE_URL}/readers/SeedMMBRAAA1`
+      );
+      await expect(consolePage.getByText("Page not found")).toBeVisible();
+      await expect(consolePage.getByText("member@example.com")).toHaveCount(0);
+    } finally {
+      await consoleContext.close();
+    }
+  });
+
   // The setting is the one thing that decides whether the storefront offers
   // commenting at all, so it is measured where a reader would see it rather
   // than by reading the console back.
