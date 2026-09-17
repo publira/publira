@@ -193,6 +193,59 @@ void main() {
     expect(find.text('Seed Author 001 / Art Seed Author 002'), findsOneWidget);
   });
 
+  testWidgets('the series detail screen names the label of its series', (
+    tester,
+  ) async {
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('series-classification')),
+        matching: find.text('Seed Label 01'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the series detail screen of an unlabelled series shows no '
+      'label', (tester) async {
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.last.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    expect(find.byKey(const ValueKey('series-label')), findsNothing);
+  });
+
+  testWidgets('a series saved before the label id was kept names its label '
+      'and leads nowhere', (tester) async {
+    const series = SeriesItem(
+      id: 'series-saved-label',
+      title: 'Saved Before the Label Id',
+      description: 'A copy read from this device.',
+      episodeCount: 1,
+      labelName: 'Seed Label 01',
+    );
+    catalog.details = {series.id: fixtureDetail(series)};
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(series.id),
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, find.text('Episodes'));
+
+    // The name stands as text: what would open the label screen is the id
+    // this copy does not carry.
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('series-label'))).data,
+      'Seed Label 01',
+    );
+  });
+
   testWidgets('the series detail screen shows status, schedule, and genres', (
     tester,
   ) async {

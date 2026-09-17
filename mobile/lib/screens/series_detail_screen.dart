@@ -421,7 +421,8 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             color: theme.colorScheme.primary,
           ),
         ),
-        if (series.status != null ||
+        if (series.labelName.isNotEmpty ||
+            series.status != null ||
             series.scheduleWeekdays.isNotEmpty ||
             messages.seriesAgeRatingLabel(series.ageRating) != null) ...[
           const SizedBox(height: 8),
@@ -431,6 +432,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              if (series.labelName.isNotEmpty) _SeriesLabel(series: series),
               if (series.status != null)
                 Text(
                   key: const ValueKey('series-status'),
@@ -568,6 +570,37 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               },
             ),
       ],
+    );
+  }
+}
+
+/// The label a series is published under, which leads to the label's other
+/// series. A copy saved on this device before the label's public id was kept
+/// names it and leads nowhere, since the screen is addressed by that id.
+class _SeriesLabel extends StatelessWidget {
+  const _SeriesLabel({required this.series});
+
+  final SeriesItem series;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (series.labelId.isEmpty) {
+      return Text(
+        key: const ValueKey('series-label'),
+        series.labelName,
+        style: theme.textTheme.labelLarge,
+      );
+    }
+    return TextButton(
+      key: const ValueKey('series-label'),
+      style: TextButton.styleFrom(
+        padding: EdgeInsets.zero,
+        textStyle: theme.textTheme.labelLarge,
+        visualDensity: VisualDensity.compact,
+      ),
+      onPressed: () => context.push(AppRoutes.labelDetailPath(series.labelId)),
+      child: Text(series.labelName),
     );
   }
 }
