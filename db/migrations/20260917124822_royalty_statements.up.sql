@@ -119,3 +119,36 @@ ALTER TABLE royalty_statement_lines ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: royalty_statement_lines royalty_statement_lines_tenant_isolation
 CREATE POLICY royalty_statement_lines_tenant_isolation ON royalty_statement_lines USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- FUNCTION: royalty_statements_refuse_changes
+-- A closed statement is what a publisher pays from, so no role may rewrite or
+-- remove one, the platform role that bypasses RLS included. The one change let
+-- through is a referential action — a deleted creator nulling its reference, a
+-- deleted tenant taking its statements along — which runs inside the foreign
+-- key's own trigger and so arrives nested one level deeper.
+CREATE FUNCTION royalty_statements_refuse_changes() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF pg_trigger_depth() > 1 THEN
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        END IF;
+        RETURN NEW;
+    END IF;
+    RAISE EXCEPTION 'a closed royalty statement cannot be changed'
+        USING ERRCODE = 'restrict_violation';
+END;
+$$;
+
+-- TRIGGER: royalty_statements royalty_statements_immutable
+CREATE TRIGGER royalty_statements_immutable
+    BEFORE UPDATE OR DELETE ON royalty_statements
+    FOR EACH ROW
+    EXECUTE FUNCTION royalty_statements_refuse_changes();
+
+-- TRIGGER: royalty_statement_lines royalty_statement_lines_immutable
+CREATE TRIGGER royalty_statement_lines_immutable
+    BEFORE UPDATE OR DELETE ON royalty_statement_lines
+    FOR EACH ROW
+    EXECUTE FUNCTION royalty_statements_refuse_changes();

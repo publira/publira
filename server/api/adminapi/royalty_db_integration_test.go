@@ -471,3 +471,47 @@ func TestDBAdminRoyaltyStatementsPage(t *testing.T) {
 		t.Fatalf("line token of another period error = %v, want invalid_argument", err)
 	}
 }
+
+func TestDBRoyaltyStatementCannotBeRewrittenButGoesWithItsTenant(t *testing.T) {
+	env := newAdminDBEnv(t)
+	f := env.seedRoyaltyFixture(t, "RYI")
+	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYICREATOR01", Name: "Creator"})
+	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, creator.ID, "Artist", "series", 5000)
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inTokyo(2026, time.July, 3, 9, 0, 0)})
+	env.closeRoyalties(t, f.admin, "2026-07")
+
+	rewrites := []string{
+		"UPDATE royalty_statements SET total_payout = 0 WHERE tenant_id = $1",
+		"UPDATE royalty_statement_lines SET payout_amount = 0, share_bps = 0 WHERE tenant_id = $1",
+		"DELETE FROM royalty_statement_lines WHERE tenant_id = $1",
+		"DELETE FROM royalty_statements WHERE tenant_id = $1",
+	}
+	// Neither the console's own role nor one that bypasses RLS may rewrite a
+	// closed month.
+	env.withTenantConn(t, f.admin.Tenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		for _, statement := range rewrites {
+			if _, err := conn.ExecContext(ctx, statement, f.admin.Tenant.ID); err == nil {
+				t.Fatalf("%q as publira_admin succeeded, want it refused", statement)
+			}
+		}
+	})
+	for _, statement := range rewrites {
+		if _, err := env.PG.DB.ExecContext(context.Background(), statement, f.admin.Tenant.ID); err == nil {
+			t.Fatalf("%q as the superuser succeeded, want it refused", statement)
+		}
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM royalty_statement_lines WHERE tenant_id = $1 AND payout_amount = 250", f.admin.Tenant.ID); count != 1 {
+		t.Fatalf("closed lines after refused rewrites = %d, want the one line as closed", count)
+	}
+
+	// A referential action still reaches a statement. A tenant with a catalog
+	// cannot be deleted at all, so this one closed a month it sold nothing in.
+	empty := env.seedTenantWithAdmin(t, "RYITENANT02", "ryi-empty.example.com", "Empty", "RYIADMIN002", "admin@ryi-empty.example.com")
+	env.closeRoyalties(t, empty, "2026-07")
+	if _, err := env.PG.DB.ExecContext(context.Background(), "DELETE FROM tenants WHERE id = $1", empty.Tenant.ID); err != nil {
+		t.Fatalf("delete tenant with a closed statement: %v", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM royalty_statements WHERE tenant_id = $1", empty.Tenant.ID); count != 0 {
+		t.Fatalf("statements after deleting the tenant = %d, want 0", count)
+	}
+}
