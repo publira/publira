@@ -36,6 +36,30 @@
                 <action android:name="FLUTTER_NOTIFICATION_CLICK"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
+            <!-- Flutter's own deep linking would hand the raw https URL to
+                 go_router, which matches none of the in-app paths. app_links
+                 parses it first. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+            <!-- App Links for the tenant host this build is pinned to. The
+                 host is PUBLIRA_TENANT_HOST at build time; path prefixes
+                 cover the public site, including a locale segment. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/series"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ja/series"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ja/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/en/series"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/en/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ko/series"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ko/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hans/series"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hans/checkout/return"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hant/series"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hant/checkout/return"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
@@ -51,6 +75,10 @@
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>

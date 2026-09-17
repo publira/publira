@@ -2699,6 +2699,11 @@
       "no_results": "沒有與「{$query}」相符的系列。",
       "prompt": "請輸入關鍵字搜尋已發布的系列。"
     },
+    "share": {
+      "action": "分享",
+      "aria": "分享「{$title}」",
+      "text": "{$title}（{$creators}）"
+    },
     "series": {
       "age_gate": {
         "confirm_r15": "我已滿 15 歲",

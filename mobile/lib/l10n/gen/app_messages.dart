@@ -523,6 +523,15 @@ abstract class AppMessages {
   /// `mobile.series.title`
   String get seriesTitle;
 
+  /// `mobile.share.action`
+  String get shareAction;
+
+  /// `mobile.share.aria`
+  String shareAria({required String title});
+
+  /// `mobile.share.text`
+  String shareText({required String creators, required String title});
+
   /// `mobile.sign_in.email_label`
   String get signInEmailLabel;
 
@@ -1376,6 +1385,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get seriesTitle {
     return 'シリーズ';
+  }
+
+  @override
+  String get shareAction {
+    return '共有';
+  }
+
+  @override
+  String shareAria({required String title}) {
+    return '「$title」を共有';
+  }
+
+  @override
+  String shareText({required String creators, required String title}) {
+    return '$title（$creators）';
   }
 
   @override
@@ -2312,6 +2336,21 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get shareAction {
+    return 'Share';
+  }
+
+  @override
+  String shareAria({required String title}) {
+    return 'Share “$title”';
+  }
+
+  @override
+  String shareText({required String creators, required String title}) {
+    return '$title by $creators';
+  }
+
+  @override
   String get signInEmailLabel {
     return 'Email address';
   }
@@ -3242,6 +3281,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get seriesTitle {
     return '시리즈';
+  }
+
+  @override
+  String get shareAction {
+    return '공유';
+  }
+
+  @override
+  String shareAria({required String title}) {
+    return '“$title” 공유';
+  }
+
+  @override
+  String shareText({required String creators, required String title}) {
+    return '$title ($creators)';
   }
 
   @override
@@ -4178,6 +4232,21 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get shareAction {
+    return '分享';
+  }
+
+  @override
+  String shareAria({required String title}) {
+    return '分享“$title”';
+  }
+
+  @override
+  String shareText({required String creators, required String title}) {
+    return '$title（$creators）';
+  }
+
+  @override
   String get signInEmailLabel {
     return '邮箱地址';
   }
@@ -5108,6 +5177,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get seriesTitle {
     return '系列';
+  }
+
+  @override
+  String get shareAction {
+    return '分享';
+  }
+
+  @override
+  String shareAria({required String title}) {
+    return '分享「$title」';
+  }
+
+  @override
+  String shareText({required String creators, required String title}) {
+    return '$title（$creators）';
   }
 
   @override

@@ -54,6 +54,10 @@ dependencies:
   intl: ^0.20.3
   # App-private directory the offline library writes saved episodes under.
   path_provider: ^2.1.6
+  # Universal Links / App Links into the tenant site.
+  app_links: ^7.2.1
+  # The platform share sheet a series or an episode is handed to.
+  share_plus: ^13.3.0
   timezone: ^0.11.1
 
 dev_dependencies:

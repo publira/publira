@@ -2699,6 +2699,11 @@
       "no_results": "「{$query}」に一致するシリーズはありません。",
       "prompt": "キーワードを入力して公開中のシリーズを検索できます。"
     },
+    "share": {
+      "action": "共有",
+      "aria": "「{$title}」を共有",
+      "text": "{$title}（{$creators}）"
+    },
     "series": {
       "age_gate": {
         "confirm_r15": "15歳以上です",

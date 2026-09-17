@@ -19,6 +19,10 @@ import 'package:publira/follow/http_follow_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/l10n/localizations.dart';
+import 'package:publira/links/app_link.dart';
+import 'package:publira/links/incoming_links.dart';
+import 'package:publira/links/link_scope.dart';
+import 'package:publira/links/share_sheet.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -46,6 +50,9 @@ class PubliraApp extends StatefulWidget {
     this.push,
     this.ageRatingConfirmation,
     this.tenantDefaultLocale,
+    this.site,
+    this.incomingLinks,
+    this.share,
   });
 
   /// Wires the app to the public API described by [config].
@@ -73,6 +80,8 @@ class PubliraApp extends StatefulWidget {
     PushDeviceStore pushDevices = const SecurePushDeviceStore(),
     AgeRatingConfirmationStore ageRatingConfirmation =
         const FileAgeRatingConfirmationStore(),
+    IncomingLinks? incomingLinks,
+    ShareSheet? share,
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
     final library = offline ?? FileOfflineLibrary();
@@ -119,6 +128,9 @@ class PubliraApp extends StatefulWidget {
         store: ageRatingConfirmation,
       ),
       tenantDefaultLocale: tenants.defaultLocale,
+      site: PublicSite(host: resolved.tenantHost),
+      incomingLinks: incomingLinks ?? PluginIncomingLinks(),
+      share: share ?? const PluginShareSheet(),
     );
   }
 
@@ -171,6 +183,27 @@ class PubliraApp extends StatefulWidget {
   /// in which case only the device's own languages decide the locale.
   final ValueListenable<String?>? tenantDefaultLocale;
 
+  /// The tenant site a share names and an incoming link is accepted from.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses when it is not exercising
+  /// links or sharing.
+  final PublicSite? site;
+
+  /// Tenant URLs the OS hands the app.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// incoming links, or to inject a stream it writes itself.
+  final IncomingLinks? incomingLinks;
+
+  /// The platform share sheet a series or an episode is handed to.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// share action, or to inject a sheet it can assert against.
+  final ShareSheet? share;
+
   @override
   State<PubliraApp> createState() => _PubliraAppState();
 }
@@ -187,6 +220,8 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// widget test that does not care about ratings still has a store.
   AgeRatingConfirmationController? _ownedAgeRating;
   late AgeRatingConfirmationController _ageRating;
+
+  StreamSubscription<Uri>? _incomingLinks;
 
   @override
   void initState() {
@@ -216,7 +251,42 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// the two orders the same.
   Future<void> _restore() async {
     await widget.push?.start();
+    await _listenForLinks();
     await Future.wait([widget.auth.restore(), _ageRating.restore()]);
+  }
+
+  /// Opens the tenant URL that launched the app, then listens for ones that
+  /// arrive while it is already running.
+  ///
+  /// A platform that cannot hand links over is not a failure of the rest of
+  /// the launch: sharing and in-app navigation still work, and only arriving
+  /// from a tenant URL does not.
+  Future<void> _listenForLinks() async {
+    final links = widget.incomingLinks;
+    if (links == null) {
+      return;
+    }
+    try {
+      final initial = await links.initial;
+      if (initial != null) {
+        _openLink(initial);
+      }
+      _incomingLinks = links.changes.listen(_openLink);
+    } on Exception {
+      // The plugin is absent or the platform call failed. Nothing to open.
+    }
+  }
+
+  void _openLink(Uri uri) {
+    final host = widget.site?.host;
+    if (host == null) {
+      return;
+    }
+    final location = appLocationFor(uri, tenantHost: host);
+    if (location == null) {
+      return;
+    }
+    widget.router.go(location);
   }
 
   @override
@@ -236,6 +306,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.push?.removeListener(_onPushChanged);
     widget.auth.removeListener(_onAuthChanged);
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_incomingLinks?.cancel());
     _ownedAgeRating?.dispose();
     super.dispose();
   }
@@ -337,6 +408,29 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final site = widget.site;
+    Widget app = MaterialApp.router(
+      title: 'Publira',
+      scaffoldMessengerKey: _messengerKey,
+      locale: _locale,
+      supportedLocales: AppMessages.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        useMaterial3: true,
+      ),
+      routerConfig: widget.router,
+    );
+    if (site != null) {
+      app = LinkScope(
+        site: PublicSite(
+          host: site.host,
+          defaultLocale: widget.tenantDefaultLocale?.value,
+        ),
+        share: widget.share,
+        child: app,
+      );
+    }
     return AuthScope(
       controller: widget.auth,
       child: PushScope(
@@ -351,20 +445,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                 repository: widget.follows,
                 child: AgeRatingConfirmationScope(
                   controller: _ageRating,
-                  child: MaterialApp.router(
-                    title: 'Publira',
-                    scaffoldMessengerKey: _messengerKey,
-                    locale: _locale,
-                    supportedLocales: AppMessages.supportedLocales,
-                    localizationsDelegates: appLocalizationsDelegates,
-                    theme: ThemeData(
-                      colorScheme: ColorScheme.fromSeed(
-                        seedColor: Colors.indigo,
-                      ),
-                      useMaterial3: true,
-                    ),
-                    routerConfig: widget.router,
-                  ),
+                  child: app,
                 ),
               ),
             ),

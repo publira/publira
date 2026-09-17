@@ -76,9 +76,9 @@ flutter build appbundle --flavor production
 flutter build ipa --flavor production
 ```
 
-A flavor decides identity only — application ID, launcher name, and icon. Where the app connects stays with `--dart-define` (see [Connecting to the public API](#connecting-to-the-public-api)), because the same development build points at a local `task dev` stack, an emulator loopback to the host, or an E2E stack depending on who runs it.
+A flavor decides identity — application ID, launcher name, icon, and the associated domain Universal Links claim. Where the app connects stays with `--dart-define` (see [Connecting to the public API](#connecting-to-the-public-api)), because the same development build points at a local `task dev` stack, an emulator loopback to the host, or an E2E stack depending on who runs it.
 
-Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`, and `dev` overrides from `android/app/src/dev/res/` whatever it wants to differ; what `android/app/src/main/res/` holds is the production identity. iOS takes it from the `dev` and `production` Xcode schemes, whose `Debug-`, `Release-`, and `Profile-` configurations carry `PRODUCT_BUNDLE_IDENTIFIER`, `APP_DISPLAY_NAME` (which `Info.plist` reads as `CFBundleDisplayName`), and `ASSETCATALOG_COMPILER_APPICON_NAME`. A new flavor has to appear on both platforms under one name, because `default-flavor` and `--flavor` name a single flavor for whichever platform is being built.
+Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`, and `dev` overrides from `android/app/src/dev/res/` whatever it wants to differ; what `android/app/src/main/res/` holds is the production identity. iOS takes it from the `dev` and `production` Xcode schemes, whose `Debug-`, `Release-`, and `Profile-` configurations carry `PRODUCT_BUNDLE_IDENTIFIER`, `APP_DISPLAY_NAME` (which `Info.plist` reads as `CFBundleDisplayName`), `ASSETCATALOG_COMPILER_APPICON_NAME`, and `PUBLIRA_ASSOCIATED_DOMAIN`. A new flavor has to appear on both platforms under one name, because `default-flavor` and `--flavor` name a single flavor for whichever platform is being built.
 
 ## Quality gates (format / analyze / test)
 
@@ -130,6 +130,7 @@ mobile/
 │   ├── crypto/                   # HMAC-SHA256 keystream shared by delivery and storage
 │   ├── follow/                   # FollowRepository and the control a series or an author is followed with
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
+│   ├── links/                    # Tenant-site URL parsing, incoming App Links, and the share sheet
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
 │   ├── models/                   # Series / episode body / episode comment / follow
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
@@ -160,10 +161,19 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/series/:seriesId` | Series details |
 | `/series/:seriesId/episodes/:episodeId` | Episode viewer |
 | `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
+| `/checkout/return` | A checkout the browser hands back; it currently opens the catalog |
 
 Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
 The catalog's app bar carries the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one, and under the title a search field, which opens `/search`.
+
+### Tenant links and sharing
+
+A link to a series, an episode, or a checkout return on the tenant host opens the app when it is installed, rather than the browser. iOS claims the host through `com.apple.developer.associated-domains` (`PUBLIRA_ASSOCIATED_DOMAIN` on each flavor, `localhost` until a store build names the tenant). Android claims the same host as an App Link (`autoVerify`) for `/series…` and `/checkout/return`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
+
+`app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
+
+The series screen and the viewer carry a share action. It hands the platform share sheet the canonical site URL of that page — `https://` and the tenant host, with a locale prefix only when the reader's language is not the tenant's default — and the wording the catalog uses for the work and who is credited on it.
 
 ### The catalog screen
 
@@ -307,8 +317,10 @@ Use `--dart-define` to switch the test API and tenant host.
 | --- | --- | --- |
 | `PUBLIRA_API_BASE_URL` | `http://127.0.0.1:8000` | Public API Connect HTTP (`api-server` port 8000, not gRPC port 8100) |
 | `PUBLIRA_IMAGE_BASE_URL` | `http://127.0.0.1:8200` | `image-server`, which returns episode-body images |
-| `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent to image-server as `X-Forwarded-Host` |
+| `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent to image-server as `X-Forwarded-Host`. Android App Links claim this host at build time |
 | `PUBLIRA_LIVE_API` | Unset | Whether integration tests run their live group against the actual API |
+
+A store build also sets the iOS build setting `PUBLIRA_ASSOCIATED_DOMAIN` to the same host, so Universal Links claim the tenant the binary is pinned to. The Debug and Profile entitlements append `?mode=developer` so a locally hosted association file can be tried; Release does not.
 
 The defaults are the shared default stack's ports. A worktree that has selected a development profile (`task dev-env:start`) does not listen on them: that profile holds a port block of its own, and `task mobile:run` reads the three values out of it.
 

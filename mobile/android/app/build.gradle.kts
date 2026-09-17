@@ -1,7 +1,29 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+/** `KEY=VALUE` pairs Flutter passed as `--dart-define`, keyed by name. */
+fun dartDefines(): Map<String, String> {
+    val encoded = project.findProperty("dart-defines") as String? ?: return emptyMap()
+    if (encoded.isBlank()) {
+        return emptyMap()
+    }
+    return encoded.split(",").mapNotNull { item ->
+        val decoded =
+            runCatching {
+                String(Base64.getDecoder().decode(item), Charsets.UTF_8)
+            }.getOrNull() ?: return@mapNotNull null
+        val separator = decoded.indexOf('=')
+        if (separator <= 0) {
+            null
+        } else {
+            decoded.substring(0, separator) to decoded.substring(separator + 1)
+        }
+    }.toMap()
 }
 
 android {
@@ -24,6 +46,10 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Same host the Dart side reads as PUBLIRA_TENANT_HOST, so the App
+        // Links filter claims the tenant this binary is pinned to.
+        manifestPlaceholders["tenantHost"] =
+            dartDefines()["PUBLIRA_TENANT_HOST"] ?: "localhost"
     }
 
     flavorDimensions += "environment"
