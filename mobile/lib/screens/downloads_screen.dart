@@ -47,6 +47,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     if (downloader != _downloader) {
       _downloader?.removeListener(_onDownloaderChanged);
       _downloader = downloader;
+      // A listener is not told what it missed, and the screen is opened from
+      // the row that started the save, so what is running now is read here.
+      _saving = downloader?.isSaving ?? false;
       downloader?.addListener(_onDownloaderChanged);
     }
     final readerId = AuthScope.of(context).session?.userPublicId ?? '';
