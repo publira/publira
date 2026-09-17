@@ -1204,6 +1204,14 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 	}
+	if row.SeriesEyeCatchImageID.Valid {
+		// The artwork only decorates the neighbour links; the helper has logged
+		// a failed lookup, and the episode is answered without it.
+		variants, variantsErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.SeriesEyeCatchImageID.UUID})
+		if variantsErr == nil {
+			series.EyeCatchImageVariants = variants[row.SeriesEyeCatchImageID.UUID]
+		}
+	}
 	neighborRows, err := s.publishedEpisodeNeighborRows(ctx, tenant.ID, row)
 	if err != nil {
 		return nil, err

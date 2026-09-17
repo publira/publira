@@ -263,6 +263,9 @@ SELECT e.id,
     el.published_at,
     s.public_id AS series_public_id,
     s.title AS series_title,
+    -- The work's artwork, which the links to the neighbouring episodes show.
+    s.eye_catch_image_id AS series_eye_catch_image_id,
+    si.updated_at AS series_eye_catch_image_updated_at,
     -- The rating a client interposes its confirmation on. Reading it here
     -- keeps the episode detail one round trip.
     sl.age_rating AS series_age_rating,
@@ -290,6 +293,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
     -- At most one window can cover an instant of an episode, so this join
     -- cannot multiply the row.
     LEFT JOIN episode_free_windows fw ON fw.episode_id = e.id
@@ -314,26 +318,28 @@ type GetPublishedEpisodeByPublicIDForTenantParams struct {
 }
 
 type GetPublishedEpisodeByPublicIDForTenantRow struct {
-	ID                     uuid.UUID      `json:"id"`
-	PublicID               string         `json:"public_id"`
-	Title                  string         `json:"title"`
-	OrderIndex             int32          `json:"order_index"`
-	SeriesID               uuid.UUID      `json:"series_id"`
-	Price                  int32          `json:"price"`
-	ReadingPeriodHours     sql.NullInt32  `json:"reading_period_hours"`
-	Status                 string         `json:"status"`
-	ScheduledAt            sql.NullTime   `json:"scheduled_at"`
-	PublishedAt            sql.NullTime   `json:"published_at"`
-	SeriesPublicID         string         `json:"series_public_id"`
-	SeriesTitle            string         `json:"series_title"`
-	SeriesAgeRating        sql.NullString `json:"series_age_rating"`
-	SeriesCommentMode      sql.NullString `json:"series_comment_mode"`
-	ReadingDirection       sql.NullString `json:"reading_direction"`
-	SpreadStartIndex       sql.NullInt32  `json:"spread_start_index"`
-	SeriesReadingDirection sql.NullString `json:"series_reading_direction"`
-	SeriesSpreadStartIndex sql.NullInt32  `json:"series_spread_start_index"`
-	FreeUntil              sql.NullTime   `json:"free_until"`
-	RatingCount            int64          `json:"rating_count"`
+	ID                           uuid.UUID      `json:"id"`
+	PublicID                     string         `json:"public_id"`
+	Title                        string         `json:"title"`
+	OrderIndex                   int32          `json:"order_index"`
+	SeriesID                     uuid.UUID      `json:"series_id"`
+	Price                        int32          `json:"price"`
+	ReadingPeriodHours           sql.NullInt32  `json:"reading_period_hours"`
+	Status                       string         `json:"status"`
+	ScheduledAt                  sql.NullTime   `json:"scheduled_at"`
+	PublishedAt                  sql.NullTime   `json:"published_at"`
+	SeriesPublicID               string         `json:"series_public_id"`
+	SeriesTitle                  string         `json:"series_title"`
+	SeriesEyeCatchImageID        uuid.NullUUID  `json:"series_eye_catch_image_id"`
+	SeriesEyeCatchImageUpdatedAt sql.NullTime   `json:"series_eye_catch_image_updated_at"`
+	SeriesAgeRating              sql.NullString `json:"series_age_rating"`
+	SeriesCommentMode            sql.NullString `json:"series_comment_mode"`
+	ReadingDirection             sql.NullString `json:"reading_direction"`
+	SpreadStartIndex             sql.NullInt32  `json:"spread_start_index"`
+	SeriesReadingDirection       sql.NullString `json:"series_reading_direction"`
+	SeriesSpreadStartIndex       sql.NullInt32  `json:"series_spread_start_index"`
+	FreeUntil                    sql.NullTime   `json:"free_until"`
+	RatingCount                  int64          `json:"rating_count"`
 }
 
 func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error) {
@@ -352,6 +358,8 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 		&i.PublishedAt,
 		&i.SeriesPublicID,
 		&i.SeriesTitle,
+		&i.SeriesEyeCatchImageID,
+		&i.SeriesEyeCatchImageUpdatedAt,
 		&i.SeriesAgeRating,
 		&i.SeriesCommentMode,
 		&i.ReadingDirection,

@@ -286,6 +286,9 @@ SELECT e.id,
     el.published_at,
     s.public_id AS series_public_id,
     s.title AS series_title,
+    -- The work's artwork, which the links to the neighbouring episodes show.
+    s.eye_catch_image_id AS series_eye_catch_image_id,
+    si.updated_at AS series_eye_catch_image_updated_at,
     -- The rating a client interposes its confirmation on. Reading it here
     -- keeps the episode detail one round trip.
     sl.age_rating AS series_age_rating,
@@ -313,6 +316,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
     -- At most one window can cover an instant of an episode, so this join
     -- cannot multiply the row.
     LEFT JOIN episode_free_windows fw ON fw.episode_id = e.id
