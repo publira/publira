@@ -10,72 +10,67 @@ import type { FollowTargetKind } from "#lib/follow";
 import type { FollowActionState } from "#lib/follow-actions";
 import { toggleFollowAction } from "#lib/follow-actions";
 
+import { useClientMessages } from "./client-message";
 import { LocaleField } from "./locale-field";
-
-/**
- * The control's copy, resolved on the server. Every string here lands in a
- * button label or an `aria-label`, neither of which can take a node, so this
- * arrives as plain strings rather than as `ReactNode`.
- */
-export interface FollowButtonCopy {
-  follow: string;
-  followAriaLabel: string;
-  pending: string;
-  unfollow: string;
-  unfollowAriaLabel: string;
-}
 
 const followButtonClassName = "shrink-0";
 
 export const FollowControlSkeleton = () => <Skeleton className="h-10 w-28" />;
 
 export const FollowLoginLink = ({
-  ariaLabel,
   href,
-  label,
+  targetName,
 }: {
-  ariaLabel: string;
   href: string;
-  label: string;
-}) => (
-  <LinkButton
-    aria-label={ariaLabel}
-    className={followButtonClassName}
-    render={<Link href={href} />}
-    size="lg"
-    variant="outline"
-  >
-    {label}
-  </LinkButton>
-);
+  /** The series or creator being followed, named in the accessible label. */
+  targetName: string;
+}) => {
+  const t = useClientMessages();
+
+  return (
+    <LinkButton
+      aria-label={t("host.follow.login_aria", { name: targetName })}
+      className={followButtonClassName}
+      render={<Link href={href} />}
+      size="lg"
+      variant="outline"
+    >
+      {t("host.follow.follow")}
+    </LinkButton>
+  );
+};
 
 export const FollowButton = ({
-  copy,
   isFollowing,
   publicId,
   returnTo,
   targetKind,
+  targetName,
   tenantId,
 }: {
-  copy: FollowButtonCopy;
   isFollowing: boolean;
   publicId: string;
   returnTo: string;
   targetKind: FollowTargetKind;
+  /** The series or creator being followed, named in the accessible label. */
+  targetName: string;
   tenantId: string;
 }) => {
+  const t = useClientMessages();
   const [state, formAction, isPending] = useActionState(
     toggleFollowAction,
     null as FollowActionState
   );
   const following = state?.ok ? state.isFollowing : isFollowing;
   const intent = following ? "unfollow" : "follow";
-  const label = following ? copy.unfollowAriaLabel : copy.followAriaLabel;
-  let buttonLabel = copy.follow;
+  const label = following
+    ? t("host.follow.unfollow_aria", { name: targetName })
+    : t("host.follow.follow_aria", { name: targetName });
+  let buttonLabel = t("host.follow.follow");
   if (isPending) {
-    buttonLabel = copy.pending;
+    buttonLabel = t("host.follow.pending");
   } else if (following) {
-    buttonLabel = copy.unfollow;
+    buttonLabel = t("host.follow.unfollow");
   }
 
   return (

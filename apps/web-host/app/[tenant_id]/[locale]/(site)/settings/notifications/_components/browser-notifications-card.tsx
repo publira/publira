@@ -10,6 +10,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Switch } from "@publira/ui-components/switch";
 import { useEffect, useState, useTransition } from "react";
 
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
   isBrowserPushSupported,
   readPushSubscription,
@@ -22,21 +23,6 @@ import {
 } from "#lib/push-actions";
 
 /**
- * The strings this control reveals after the reader acts on it. They are
- * resolved on the server and arrive as plain strings, the way `FollowButton`'s
- * copy does: which one is shown is decided in the browser, after the catalog
- * is long out of reach.
- */
-export interface BrowserNotificationsCopy {
-  denied: string;
-  description: string;
-  heading: string;
-  label: string;
-  turnOffFailed: string;
-  turnOnFailed: string;
-}
-
-/**
  * `unavailable` covers both a browser with no Push API and one whose service
  * worker registration was refused — private browsing, a blocked worker. Neither
  * can be subscribed, and the reader can do nothing about either from here, so
@@ -45,16 +31,15 @@ export interface BrowserNotificationsCopy {
 type SubscriptionState = "checking" | "off" | "on" | "unavailable";
 
 export const BrowserNotificationsCard = ({
-  copy,
   locale,
   tenantId,
   vapidPublicKey,
 }: {
-  copy: BrowserNotificationsCopy;
   locale: Locale;
   tenantId: string;
   vapidPublicKey: string;
 }) => {
+  const t = useClientMessages();
   const [state, setState] = useState<SubscriptionState>("checking");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -91,14 +76,14 @@ export const BrowserNotificationsCard = ({
   const turnOn = async (): Promise<void> => {
     const subscription = await subscribeToPush(vapidPublicKey);
     if (subscription === "denied") {
-      setErrorMessage(copy.denied);
+      setErrorMessage(t("host.settings.browser_notifications_denied"));
       return;
     }
     if (subscription === "dismissed") {
       // Pointing at the browser's settings here would name a switch that is not
       // there: closing the prompt stores no decision. "Try again" is what the
       // reader can actually do, and pressing it asks them once more.
-      setErrorMessage(copy.turnOnFailed);
+      setErrorMessage(t("host.settings.browser_notifications_failed"));
       return;
     }
 
@@ -108,7 +93,7 @@ export const BrowserNotificationsCard = ({
     const keys = toWebPushSubscriptionKeys(subscription);
     if (!keys) {
       await subscription.unsubscribe();
-      setErrorMessage(copy.turnOnFailed);
+      setErrorMessage(t("host.settings.browser_notifications_failed"));
       return;
     }
 
@@ -165,14 +150,20 @@ export const BrowserNotificationsCard = ({
         // active, or a failure the Action could not word. None of them leaves
         // the reader anything to read off the switch, so they are told the one
         // thing they can act on: it did not move, and they can try again.
-        setErrorMessage(checked ? copy.turnOnFailed : copy.turnOffFailed);
+        setErrorMessage(
+          checked
+            ? t("host.settings.browser_notifications_failed")
+            : t("host.settings.browser_notifications_off_failed")
+        );
       }
     });
   };
 
   return (
     <section className="border border-border bg-card p-6">
-      <h2 className="mb-4 text-lg font-semibold">{copy.heading}</h2>
+      <h2 className="mb-4 text-lg font-semibold">
+        <ClientMessage message="host.settings.browser_notifications_heading" />
+      </h2>
       <Field className="grid-cols-[auto_1fr] items-start gap-x-3">
         <Switch
           checked={state === "on"}
@@ -180,9 +171,11 @@ export const BrowserNotificationsCard = ({
           disabled={isPending || state === "checking"}
           onCheckedChange={onCheckedChange}
         />
-        <FieldLabel className="text-sm">{copy.label}</FieldLabel>
+        <FieldLabel className="text-sm">
+          <ClientMessage message="host.settings.browser_notifications_label" />
+        </FieldLabel>
         <FieldDescription className="col-start-2">
-          {copy.description}
+          <ClientMessage message="host.settings.browser_notifications_help" />
         </FieldDescription>
       </Field>
       {errorMessage ? (

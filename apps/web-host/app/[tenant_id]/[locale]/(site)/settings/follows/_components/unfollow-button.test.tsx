@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { UnfollowButton } from "./unfollow-button";
 
@@ -21,17 +23,13 @@ afterEach(() => {
 });
 
 describe("UnfollowButton", () => {
-  it("Displays only the release operation from the list", () => {
-    render(
+  it("Displays only the release operation from the list", async () => {
+    await renderWithClientMessages(
       <UnfollowButton
-        copy={{
-          ariaLabel: "Unfollow Published Series",
-          pending: "Updating…",
-          submit: "Unfollow",
-        }}
         publicId="SERIES01"
         returnTo="/settings/follows"
         targetKind="series"
+        targetName="Published Series"
         tenantId={tenantId}
       />
     );

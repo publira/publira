@@ -173,16 +173,10 @@ export const FollowList = async ({
                 </div>
                 {item.unavailable ? null : (
                   <UnfollowButton
-                    copy={{
-                      ariaLabel: t("host.follow.unfollow_aria", {
-                        name: item.title,
-                      }),
-                      pending: t("host.follow.pending"),
-                      submit: t("host.follow.unfollow"),
-                    }}
                     publicId={item.publicId}
                     returnTo={returnTo}
                     targetKind={item.targetKind}
+                    targetName={item.title}
                     tenantId={tenantId}
                   />
                 )}

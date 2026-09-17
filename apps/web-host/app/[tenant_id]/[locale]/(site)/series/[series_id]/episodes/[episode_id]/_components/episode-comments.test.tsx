@@ -70,18 +70,15 @@ vi.mock("#lib/comments", async (importOriginal) => {
 });
 
 // A client component with `useActionState`, which the server render below
-// cannot mount. The copy it was handed is rendered so the wording the reader
-// meets can still be asserted on.
+// cannot mount. What it was handed is exposed so the tests can assert on it.
 vi.mock("./episode-comment-dialog", () => ({
   EpisodeCommentDialog: ({
     children,
-    copy,
     initialOpen,
     prompt,
     returnTo,
   }: {
     children: React.ReactNode;
-    copy: { title: string };
     initialOpen?: boolean;
     prompt?: React.ReactNode;
     returnTo: string;
@@ -92,7 +89,7 @@ vi.mock("./episode-comment-dialog", () => ({
         data-return-to={returnTo}
         type="button"
       >
-        {copy.title}
+        Comments
       </button>
       {prompt ?? <textarea aria-label="Your comment" />}
       {children}
@@ -106,15 +103,25 @@ vi.mock("./comment-delete-button", () => ({
   ),
 }));
 
+// The control names the comment from what the section hands it, so the mock
+// words that name through the real catalog.
 vi.mock("./comment-report-button", () => ({
   CommentReportButton: ({
-    ariaLabel,
+    authorName,
+    commentedAt,
     commentPublicId,
   }: {
-    ariaLabel: string;
+    authorName: string;
+    commentedAt: string;
     commentPublicId: string;
   }) => (
-    <button aria-label={ariaLabel} type="button">
+    <button
+      aria-label={bindMessages(sharedCatalog("en"))(
+        "host.episode.comments.report_aria",
+        { author: authorName, date: commentedAt }
+      )}
+      type="button"
+    >
       Report {commentPublicId}
     </button>
   ),

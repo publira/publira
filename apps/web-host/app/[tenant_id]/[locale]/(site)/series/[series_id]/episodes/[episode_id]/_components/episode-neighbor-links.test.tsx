@@ -2,9 +2,11 @@
 
 import { ViewerProvider } from "@publira/comic-viewer";
 import type { ReadingDirection } from "@publira/comic-viewer";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { EpisodeNeighborLinks } from "./episode-neighbor-links";
 
@@ -23,12 +25,6 @@ vi.mock("next/link", () => ({
 
 afterEach(cleanup);
 
-const copy = {
-  label: "Episode navigation",
-  next: "Next episode",
-  previous: "Previous episode",
-};
-
 const renderLinks = ({
   nextHref,
   previousHref,
@@ -38,22 +34,18 @@ const renderLinks = ({
   previousHref?: string;
   readingDirection?: ReadingDirection;
 }) =>
-  render(
+  renderWithClientMessages(
     <ViewerProvider
       initialReadingDirection={readingDirection}
       pages={[{ id: "page-1", src: "https://example.test/1.avif", title: "1" }]}
     >
-      <EpisodeNeighborLinks
-        copy={copy}
-        nextHref={nextHref}
-        previousHref={previousHref}
-      />
+      <EpisodeNeighborLinks nextHref={nextHref} previousHref={previousHref} />
     </ViewerProvider>
   );
 
 describe("EpisodeNeighborLinks", () => {
-  it("links to the episode on each side", () => {
-    renderLinks({
+  it("links to the episode on each side", async () => {
+    await renderLinks({
       nextHref: "/series/SERIES_001/episodes/EPISODE_003",
       previousHref: "/series/SERIES_001/episodes/EPISODE_001",
     });
@@ -66,24 +58,26 @@ describe("EpisodeNeighborLinks", () => {
     expect(
       screen.getByRole("link", { name: "Next episode" }).getAttribute("href")
     ).toBe("/series/SERIES_001/episodes/EPISODE_003");
-    expect(screen.getByRole("navigation", { name: copy.label })).toBeDefined();
+    expect(
+      screen.getByRole("navigation", { name: "Episode navigation" })
+    ).toBeDefined();
   });
 
-  it("leaves out the side the series has no episode on", () => {
-    renderLinks({ nextHref: "/series/SERIES_001/episodes/EPISODE_002" });
+  it("leaves out the side the series has no episode on", async () => {
+    await renderLinks({ nextHref: "/series/SERIES_001/episodes/EPISODE_002" });
 
     expect(screen.queryByRole("link", { name: "Previous episode" })).toBeNull();
     expect(screen.getByRole("link", { name: "Next episode" })).toBeDefined();
   });
 
-  it("draws nothing at all for a series of one episode", () => {
-    renderLinks({});
+  it("draws nothing at all for a series of one episode", async () => {
+    await renderLinks({});
 
     expect(screen.queryByRole("navigation")).toBeNull();
   });
 
-  it("puts each link on the side the page turn for the same direction is on", () => {
-    renderLinks({
+  it("puts each link on the side the page turn for the same direction is on", async () => {
+    await renderLinks({
       nextHref: "/series/SERIES_001/episodes/EPISODE_003",
       previousHref: "/series/SERIES_001/episodes/EPISODE_001",
       readingDirection: "rtl",
@@ -98,7 +92,7 @@ describe("EpisodeNeighborLinks", () => {
     ).toContain("left-3");
 
     cleanup();
-    renderLinks({
+    await renderLinks({
       nextHref: "/series/SERIES_001/episodes/EPISODE_003",
       previousHref: "/series/SERIES_001/episodes/EPISODE_001",
       readingDirection: "ltr",

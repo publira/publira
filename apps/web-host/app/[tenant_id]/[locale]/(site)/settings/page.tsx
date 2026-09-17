@@ -14,7 +14,6 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
@@ -211,24 +210,6 @@ const ProfileSectionFallback = () => (
   </section>
 );
 
-const DeleteSectionCopy = async () => {
-  const t = await getMessages();
-
-  return (
-    <DeleteAccountModal
-      copy={{
-        cancel: t("host.settings.cancel"),
-        confirmDescription: t("host.settings.delete_confirm_description"),
-        confirmTitle: t("host.settings.delete_confirm_title"),
-        open: t("host.settings.delete_open"),
-        passwordLabel: t("host.settings.current_password_label"),
-        submit: t("host.settings.delete_submit"),
-      }}
-      deleteAction={deleteAccountAction}
-    />
-  );
-};
-
 const DeleteSection = () => (
   <section className="border border-destructive/40 bg-destructive/5 p-6">
     <h2 className="mb-2 text-lg font-semibold text-destructive">
@@ -243,7 +224,7 @@ const DeleteSection = () => (
     </p>
     <div className="flex justify-end">
       <Suspense fallback={<SkeletonLine className="h-9 w-36" />}>
-        <DeleteSectionCopy />
+        <DeleteAccountModal deleteAction={deleteAccountAction} />
       </Suspense>
     </div>
   </section>

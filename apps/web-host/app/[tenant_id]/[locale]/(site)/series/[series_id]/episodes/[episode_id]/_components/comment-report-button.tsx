@@ -21,6 +21,7 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useState } from "react";
 
 import type { FormActionState } from "#components/action-form";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 import {
   EPISODE_COMMENT_REPORT_REASONS,
@@ -29,28 +30,6 @@ import {
 import type { EpisodeCommentReportReason } from "#lib/comment-report-reason";
 
 import { reportEpisodeCommentAction } from "../_lib/comment-actions";
-
-/**
- * Resolved strings rather than nodes: every one of these lands in a button
- * label, an `aria-label`, a `placeholder`, or a radio option, none of which can
- * take a node.
- *
- * `reasons` is keyed by the stored reason so the chooser cannot offer an option
- * the Action would reject, and so a reason added to the list is a type error
- * here rather than an option with no wording.
- */
-export interface CommentReportButtonCopy {
-  cancel: string;
-  confirm: string;
-  description: string;
-  noteLabel: string;
-  notePlaceholder: string;
-  pending: string;
-  reasonLabel: string;
-  reasons: Record<EpisodeCommentReportReason, string>;
-  submit: string;
-  title: string;
-}
 
 /**
  * Flags one other reader's comment as breaking the rules.
@@ -67,18 +46,29 @@ export interface CommentReportButtonCopy {
  * comment the removal was meant to be silent about.
  */
 export const CommentReportButton = ({
-  ariaLabel,
+  authorName,
+  commentedAt,
   commentPublicId,
-  copy,
   returnTo,
   tenantId,
 }: {
-  ariaLabel: string;
+  /** Who wrote the comment, named in the control's accessible label. */
+  authorName: string;
+  /** When it was posted, already formatted in the tenant's time zone. */
+  commentedAt: string;
   commentPublicId: string;
-  copy: CommentReportButtonCopy;
   returnTo: string;
   tenantId: string;
 }) => {
+  const t = useClientMessages();
+  // Keyed by the stored reason, so a reason added to the list is a type error
+  // here rather than an option with no wording.
+  const reasonLabels: Record<EpisodeCommentReportReason, string> = {
+    abuse: t("host.episode.comments.report_reason_abuse"),
+    other: t("host.episode.comments.report_reason_other"),
+    spam: t("host.episode.comments.report_reason_spam"),
+    spoiler: t("host.episode.comments.report_reason_spoiler"),
+  };
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<EpisodeCommentReportReason>(
     EPISODE_COMMENT_REPORT_REASONS[0]
@@ -111,13 +101,20 @@ export const CommentReportButton = ({
           <DialogTrigger
             render={
               <Button
-                aria-label={ariaLabel}
+                aria-label={t("host.episode.comments.report_aria", {
+                  author: authorName,
+                  date: commentedAt,
+                })}
                 disabled={isPending}
                 size="sm"
                 type="button"
                 variant="ghost"
               >
-                {isPending ? copy.pending : copy.submit}
+                {isPending ? (
+                  <ClientMessage message="host.episode.comments.reporting" />
+                ) : (
+                  <ClientMessage message="host.episode.comments.report" />
+                )}
               </Button>
             }
           />
@@ -138,19 +135,21 @@ export const CommentReportButton = ({
 
                   <DialogHeader>
                     <DialogTitle className="text-lg font-semibold">
-                      {copy.title}
+                      <ClientMessage message="host.episode.comments.report_title" />
                     </DialogTitle>
                     <DialogDescription className="text-sm text-muted-foreground">
-                      {copy.description}
+                      <ClientMessage message="host.episode.comments.report_description" />
                     </DialogDescription>
                   </DialogHeader>
 
                   <Field>
-                    <FieldLabel required>{copy.reasonLabel}</FieldLabel>
+                    <FieldLabel required>
+                      <ClientMessage message="host.episode.comments.report_reason_label" />
+                    </FieldLabel>
                     <FieldContent>
                       <RadioGroup
                         items={EPISODE_COMMENT_REPORT_REASONS.map((value) => ({
-                          label: copy.reasons[value],
+                          label: reasonLabels[value],
                           value,
                         }))}
                         onValueChange={(value) => {
@@ -164,11 +163,15 @@ export const CommentReportButton = ({
                   </Field>
 
                   <Field>
-                    <FieldLabel>{copy.noteLabel}</FieldLabel>
+                    <FieldLabel>
+                      <ClientMessage message="host.episode.comments.report_note_label" />
+                    </FieldLabel>
                     <FieldContent>
                       <Textarea
                         name="note"
-                        placeholder={copy.notePlaceholder}
+                        placeholder={t(
+                          "host.episode.comments.report_note_placeholder"
+                        )}
                         rows={3}
                       />
                     </FieldContent>
@@ -178,7 +181,7 @@ export const CommentReportButton = ({
                     <DialogClose
                       render={
                         <Button type="button" variant="outline">
-                          {copy.cancel}
+                          <ClientMessage message="host.common.cancel" />
                         </Button>
                       }
                     />
@@ -187,7 +190,11 @@ export const CommentReportButton = ({
                       disabled={isPending}
                       type="submit"
                     >
-                      {isPending ? copy.pending : copy.confirm}
+                      {isPending ? (
+                        <ClientMessage message="host.episode.comments.reporting" />
+                      ) : (
+                        <ClientMessage message="host.episode.comments.report_confirm" />
+                      )}
                     </Button>
                   </DialogFooter>
                 </form>

@@ -4,19 +4,10 @@ import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 
 import { withdrawEpisodeCommentAction } from "../_lib/comment-actions";
-
-/**
- * Resolved strings rather than nodes: the label swaps while the Action is in
- * flight, and the `aria-label` names the comment the control belongs to.
- */
-interface CommentDeleteButtonCopy {
-  ariaLabel: string;
-  pending: string;
-  submit: string;
-}
 
 /**
  * Deletes one of the reader's own comments.
@@ -26,18 +17,20 @@ interface CommentDeleteButtonCopy {
  * behind would invite a second submission the API would answer `not found`.
  */
 export const CommentDeleteButton = ({
+  commentedAt,
   commentPublicId,
-  copy,
   episodePublicId,
   returnTo,
   tenantId,
 }: {
+  /** When it was posted, already formatted in the tenant's time zone. */
+  commentedAt: string;
   commentPublicId: string;
-  copy: CommentDeleteButtonCopy;
   episodePublicId: string;
   returnTo: string;
   tenantId: string;
 }) => {
+  const t = useClientMessages();
   const [state, formAction, isPending] = useActionState(
     withdrawEpisodeCommentAction,
     null
@@ -54,13 +47,19 @@ export const CommentDeleteButton = ({
       {deleted ? null : (
         <Button
           aria-busy={isPending}
-          aria-label={copy.ariaLabel}
+          aria-label={t("host.episode.comments.delete_aria", {
+            date: commentedAt,
+          })}
           disabled={isPending}
           size="sm"
           type="submit"
           variant="outline"
         >
-          {isPending ? copy.pending : copy.submit}
+          {isPending ? (
+            <ClientMessage message="host.episode.comments.deleting" />
+          ) : (
+            <ClientMessage message="host.episode.comments.delete" />
+          )}
         </Button>
       )}
       {state ? (

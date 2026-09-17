@@ -117,23 +117,6 @@ export const EpisodeViewer = async ({
       className={cn(VIEWER_HEIGHT_CLASS, "w-full has-data-wide-viewer:h-svh")}
     >
       <EpisodeComicViewer
-        copy={{
-          collapseViewer: t("host.episode.viewer.collapse_viewer"),
-          endPageStatus: t("host.episode.viewer.end_page"),
-          enterFullscreen: t("host.episode.viewer.enter_fullscreen"),
-          exitFullscreen: t("host.episode.viewer.exit_fullscreen"),
-          expandViewer: t("host.episode.viewer.expand_viewer"),
-          loading: t("host.episode.viewer.loading"),
-          navigation: t("host.episode.viewer.navigation"),
-          nextPage: t("host.common.next_page"),
-          noPages: t("host.episode.viewer.no_pages"),
-          pageError: t("host.episode.viewer.page_error"),
-          pageStatus: t("host.episode.viewer.page_status"),
-          pageStatusRange: t("host.episode.viewer.page_status_range"),
-          previousPage: t("host.common.previous_page"),
-          progress: t("host.episode.viewer.progress"),
-          reload: t("host.episode.viewer.reload"),
-        }}
         endPage={
           <div className="grid justify-items-center gap-6">
             <SectionErrorBoundary
@@ -195,20 +178,8 @@ export const EpisodeViewer = async ({
         {accessToken ? (
           <EpisodeReadingPositionRecorder episode={episode} series={series} />
         ) : null}
-        <EpisodeNeighborLinks
-          copy={{
-            label: t("host.episode.navigation.label"),
-            next: t("host.episode.navigation.next"),
-            previous: t("host.episode.navigation.previous"),
-          }}
-          nextHref={nextHref}
-          previousHref={previousHref}
-        />
+        <EpisodeNeighborLinks nextHref={nextHref} previousHref={previousHref} />
         <EpisodeNeighborKeyNavigation
-          copy={{
-            nextHint: t("host.episode.navigation.next_hint"),
-            previousHint: t("host.episode.navigation.previous_hint"),
-          }}
           nextHref={nextHref}
           previousHref={previousHref}
         />

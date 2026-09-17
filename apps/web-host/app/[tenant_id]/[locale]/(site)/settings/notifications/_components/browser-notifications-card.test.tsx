@@ -4,11 +4,12 @@ import {
   act,
   cleanup,
   fireEvent,
-  render,
   screen,
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { BrowserNotificationsCard } from "./browser-notifications-card";
 
@@ -44,9 +45,10 @@ const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const ENDPOINT = "https://push.test/subscriptions/abc";
 const KEYS = { auth: "auth-key", endpoint: ENDPOINT, p256dh: "p256dh-key" };
 
+/** What the English catalog words each state as. */
 const copy = {
-  denied: "Notifications are turned off for this site.",
-  description: "Be told in this browser when a new episode is published.",
+  denied:
+    "Notifications are turned off for this site. Turn them on in your browser settings.",
   heading: "Browser notifications",
   label: "New episode notifications",
   turnOffFailed: "Could not turn notifications off. Try again.",
@@ -54,9 +56,8 @@ const copy = {
 };
 
 const renderCard = () =>
-  render(
+  renderWithClientMessages(
     <BrowserNotificationsCard
-      copy={copy}
       locale="en"
       tenantId={TENANT_ID}
       vapidPublicKey="AAECAwQFBgcICQoLDA0ODw"
@@ -90,7 +91,7 @@ describe("BrowserNotificationsCard", () => {
   it("leaves the card out entirely where the browser has no Push API", async () => {
     mockIsSupported.mockReturnValue(false);
 
-    renderCard();
+    await renderCard();
 
     await waitFor(() => {
       expect(screen.queryByText(copy.heading)).toBeNull();
@@ -100,7 +101,7 @@ describe("BrowserNotificationsCard", () => {
   it("starts on for a browser that already holds a subscription", async () => {
     mockReadSubscription.mockResolvedValue({ endpoint: ENDPOINT });
 
-    renderCard();
+    await renderCard();
 
     expect(await findSwitch(true)).toBeTruthy();
   });
@@ -110,7 +111,7 @@ describe("BrowserNotificationsCard", () => {
     mockSubscribe.mockResolvedValue(subscription);
     mockRegisterAction.mockResolvedValue({ ok: true });
 
-    renderCard();
+    await renderCard();
     await toggle(false);
 
     expect(await findSwitch(true)).toBeTruthy();
@@ -125,7 +126,7 @@ describe("BrowserNotificationsCard", () => {
   it("settles back to off and points at browser settings when permission is refused", async () => {
     mockSubscribe.mockResolvedValue("denied");
 
-    renderCard();
+    await renderCard();
     await toggle(false);
 
     expect(await screen.findByText(copy.denied)).toBeTruthy();
@@ -138,7 +139,7 @@ describe("BrowserNotificationsCard", () => {
     // browser's settings for the denied copy to point the reader at.
     mockSubscribe.mockResolvedValue("dismissed");
 
-    renderCard();
+    await renderCard();
     await toggle(false);
 
     expect(await screen.findByText(copy.turnOnFailed)).toBeTruthy();
@@ -155,7 +156,7 @@ describe("BrowserNotificationsCard", () => {
       ok: false,
     });
 
-    renderCard();
+    await renderCard();
     await toggle(false);
 
     expect(await screen.findByText("Sign in to continue.")).toBeTruthy();
@@ -168,7 +169,7 @@ describe("BrowserNotificationsCard", () => {
     mockSubscribe.mockResolvedValue(subscription);
     mockRegisterAction.mockRejectedValue(new Error("the API is unreachable"));
 
-    renderCard();
+    await renderCard();
     await toggle(false);
 
     expect(await screen.findByText(copy.turnOnFailed)).toBeTruthy();
@@ -180,7 +181,7 @@ describe("BrowserNotificationsCard", () => {
     mockReadSubscription.mockResolvedValueOnce({ endpoint: ENDPOINT });
     mockReadSubscription.mockRejectedValue(new Error("the worker is gone"));
 
-    renderCard();
+    await renderCard();
     await toggle(true);
 
     expect(await screen.findByText(copy.turnOffFailed)).toBeTruthy();
@@ -192,7 +193,7 @@ describe("BrowserNotificationsCard", () => {
     mockReadSubscription.mockResolvedValue(subscription);
     mockUnregisterAction.mockResolvedValue({ ok: true });
 
-    renderCard();
+    await renderCard();
     await toggle(true);
 
     expect(await findSwitch(false)).toBeTruthy();
@@ -212,7 +213,7 @@ describe("BrowserNotificationsCard", () => {
       ok: false,
     });
 
-    renderCard();
+    await renderCard();
     await toggle(true);
 
     expect(await screen.findByText(copy.turnOffFailed)).toBeTruthy();

@@ -12,7 +12,6 @@ import { buildLoginPath } from "#lib/auth-shared";
 import type { FollowTargetKind } from "#lib/follow";
 import { getMyFollowStatus } from "#lib/follow";
 import { getLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
 import { getTenantDefaultLocale } from "#lib/tenant";
 
 import { FollowButton, FollowLoginLink } from "./follow-button";
@@ -36,10 +35,9 @@ export const FollowControl = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
-  const [defaultLocale, result, t] = await Promise.all([
+  const [defaultLocale, result] = await Promise.all([
     getTenantDefaultLocale(tenantId),
     getMyFollowStatus(tenantId, targetKind, publicId, locale),
-    getMessagesFor(locale),
   ]);
 
   if (!result.ok) {
@@ -60,32 +58,19 @@ export const FollowControl = async ({
   if (!result.signedIn) {
     return (
       <FollowLoginLink
-        ariaLabel={t("host.follow.login_aria", {
-          name: targetName,
-        })}
         href={buildLoginPath(locale, defaultLocale, returnTo)}
-        label={t("host.follow.follow")}
+        targetName={targetName}
       />
     );
   }
 
   return (
     <FollowButton
-      copy={{
-        follow: t("host.follow.follow"),
-        followAriaLabel: t("host.follow.follow_aria", {
-          name: targetName,
-        }),
-        pending: t("host.follow.pending"),
-        unfollow: t("host.follow.unfollow"),
-        unfollowAriaLabel: t("host.follow.unfollow_aria", {
-          name: targetName,
-        }),
-      }}
       isFollowing={result.isFollowing}
       publicId={publicId}
       returnTo={returnTo}
       targetKind={targetKind}
+      targetName={targetName}
       tenantId={tenantId}
     />
   );

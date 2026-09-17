@@ -5,18 +5,8 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@publira/icons";
 import { LinkButton } from "@publira/ui-components/button";
 import { cn } from "@publira/utils";
 
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleLink } from "#components/locale-link";
-
-/**
- * The three strings this chrome shows, resolved on the server. The label
- * names the landmark and cannot be a node; the other two sit next to an icon
- * inside a link the component places itself.
- */
-export interface EpisodeNeighborLinksCopy {
-  label: string;
-  next: string;
-  previous: string;
-}
 
 /**
  * Links to the episodes either side of this one, drawn over the top of the
@@ -40,16 +30,15 @@ export interface EpisodeNeighborLinksCopy {
  * shown, so the bar steps down beneath it.
  */
 export const EpisodeNeighborLinks = ({
-  copy,
   nextHref,
   previousHref,
 }: {
-  copy: EpisodeNeighborLinksCopy;
   /** Absent at the end of the series, where there is nothing to link to. */
   nextHref?: string;
   /** Absent on the first episode, for the same reason. */
   previousHref?: string;
 }) => {
+  const t = useClientMessages();
   const { readingDirection } = useViewerContext();
 
   if (nextHref === undefined && previousHref === undefined) {
@@ -60,7 +49,7 @@ export const EpisodeNeighborLinks = ({
 
   return (
     <nav
-      aria-label={copy.label}
+      aria-label={t("host.episode.navigation.label")}
       className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 transition-transform duration-state ease-state group-has-data-[wide-viewer=revealed]/document:translate-y-14"
     >
       {previousHref === undefined ? null : (
@@ -78,7 +67,7 @@ export const EpisodeNeighborLinks = ({
           ) : (
             <ChevronLeftIcon aria-hidden="true" className="size-4" />
           )}
-          {copy.previous}
+          <ClientMessage message="host.episode.navigation.previous" />
         </LinkButton>
       )}
       {nextHref === undefined ? null : (
@@ -91,7 +80,7 @@ export const EpisodeNeighborLinks = ({
           size="sm"
           variant="outline"
         >
-          {copy.next}
+          <ClientMessage message="host.episode.navigation.next" />
           {isRightToLeft ? (
             <ChevronLeftIcon aria-hidden="true" className="size-4" />
           ) : (

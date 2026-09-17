@@ -24,7 +24,6 @@ import type {
   ReadingDirection,
   ViewerPage,
 } from "@publira/comic-viewer";
-import { formatMessage } from "@publira/i18n";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -35,55 +34,14 @@ import {
 } from "@publira/icons";
 import { Button, buttonVariants } from "@publira/ui-components/button";
 import { cn } from "@publira/utils";
-import {
-  createContext,
-  use,
-  useCallback,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 import type { MouseEvent, ReactNode } from "react";
 
+import { ClientMessage, useClientMessages } from "#components/client-message";
+import type { HostClientMessageAccessor } from "#lib/messages";
 import { useWebStorage, writeWebStorage } from "#lib/web-storage";
 
 import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
-
-/**
- * Every string this reader shows, resolved on the server and handed down as
- * one object. The viewer's own hooks decide where each one appears, so the
- * copy cannot travel as `ReactNode` children — `aria-label` and the page
- * status format both need plain strings.
- */
-export interface EpisodeComicViewerCopy {
-  collapseViewer: string;
-  /** Where the reader is while the page after the last one is on screen. */
-  endPageStatus: string;
-  enterFullscreen: string;
-  exitFullscreen: string;
-  expandViewer: string;
-  loading: string;
-  navigation: string;
-  nextPage: string;
-  noPages: string;
-  pageError: string;
-  /** `{first}` / `{total}` — one page on screen. */
-  pageStatus: string;
-  /** `{first}` / `{last}` / `{total}` — a spread on screen. */
-  pageStatusRange: string;
-  previousPage: string;
-  progress: string;
-  reload: string;
-}
-
-const CopyContext = createContext<EpisodeComicViewerCopy | null>(null);
-
-const useCopy = (): EpisodeComicViewerCopy => {
-  const copy = use(CopyContext);
-  if (!copy) {
-    throw new Error("EpisodeComicViewer copy is missing");
-  }
-  return copy;
-};
 
 const VIEWER_PLUGINS = [acceptNegotiatedImages];
 
@@ -92,21 +50,26 @@ const stopClick = (event: MouseEvent) => {
 };
 
 const buildPageStatusFormatter =
-  (copy: EpisodeComicViewerCopy): NonNullable<PageStatusProps["format"]> =>
+  (t: HostClientMessageAccessor): NonNullable<PageStatusProps["format"]> =>
   ({ firstPage, lastPage, pageCount, slot }) => {
     if (pageCount === 0) {
-      return copy.noPages;
+      return t("host.episode.viewer.no_pages");
     }
 
     // An extra page is counted in neither the numbers nor the total, so a
     // screen holding nothing else has no page number to report.
     if (firstPage === 0) {
-      return slot === "end" ? copy.endPageStatus : copy.noPages;
+      return slot === "end"
+        ? t("host.episode.viewer.end_page")
+        : t("host.episode.viewer.no_pages");
     }
 
     return firstPage === lastPage
-      ? formatMessage(copy.pageStatus, { first: firstPage, total: pageCount })
-      : formatMessage(copy.pageStatusRange, {
+      ? t("host.episode.viewer.page_status", {
+          first: firstPage,
+          total: pageCount,
+        })
+      : t("host.episode.viewer.page_status_range", {
           first: firstPage,
           last: lastPage,
           total: pageCount,
@@ -159,7 +122,6 @@ const ViewerRail = ({ children }: { children: ReactNode }) => (
  * decode failed and needs the reader to ask for another attempt.
  */
 const ViewerPageTemplate = () => {
-  const copy = useCopy();
   const { retry, status } = usePageLoadState();
 
   return (
@@ -168,7 +130,7 @@ const ViewerPageTemplate = () => {
       <PageCanvas className="block h-full max-h-full w-auto max-w-full bg-foreground object-contain group-data-[page-fit-mode=actual]:size-auto group-data-[page-fit-mode=actual]:max-h-none group-data-[page-fit-mode=actual]:max-w-none group-data-[page-fit-mode=width]:h-auto group-data-[page-fit-mode=width]:max-h-none group-data-[page-fit-mode=width]:w-full group-data-[page-fit-mode=width]:max-w-none data-[placeholder]:opacity-70" />
       {status === "loading" ? (
         <p className="absolute inset-0 flex items-center justify-center text-sm text-background">
-          {copy.loading}
+          <ClientMessage message="host.episode.viewer.loading" />
         </p>
       ) : null}
       {status === "error" ? (
@@ -176,7 +138,9 @@ const ViewerPageTemplate = () => {
           className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-foreground/90 px-6 text-center"
           role="alert"
         >
-          <p className="text-sm text-background">{copy.pageError}</p>
+          <p className="text-sm text-background">
+            <ClientMessage message="host.episode.viewer.page_error" />
+          </p>
           {/* The click stops here. A click near the edge of the viewport turns
               the page, and an unpaired page keeps the half of the spread its
               own parity gives it — so this control is drawn inside that zone
@@ -192,7 +156,7 @@ const ViewerPageTemplate = () => {
             size="sm"
             variant="outline"
           >
-            {copy.reload}
+            <ClientMessage message="host.episode.viewer.reload" />
           </Button>
         </div>
       ) : null}
@@ -201,7 +165,7 @@ const ViewerPageTemplate = () => {
 };
 
 const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
-  const copy = useCopy();
+  const t = useClientMessages();
   const isFullscreen = useSyncExternalStore(
     subscribeToFullscreen,
     isFullscreenOpen,
@@ -219,7 +183,11 @@ const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
 
   return (
     <Button
-      aria-label={isFullscreen ? copy.exitFullscreen : copy.enterFullscreen}
+      aria-label={
+        isFullscreen
+          ? t("host.episode.viewer.exit_fullscreen")
+          : t("host.episode.viewer.enter_fullscreen")
+      }
       onClick={onToggle}
       size="icon"
       variant="outline"
@@ -240,11 +208,15 @@ const WideViewerButton = ({
   isWide: boolean;
   onToggle: () => void;
 }) => {
-  const copy = useCopy();
+  const t = useClientMessages();
 
   return (
     <Button
-      aria-label={isWide ? copy.collapseViewer : copy.expandViewer}
+      aria-label={
+        isWide
+          ? t("host.episode.viewer.collapse_viewer")
+          : t("host.episode.viewer.expand_viewer")
+      }
       aria-pressed={isWide}
       onClick={onToggle}
       size="icon"
@@ -284,12 +256,12 @@ const ViewerToolbar = ({
   onToggleFullscreen: () => void;
   onToggleWide: () => void;
 }) => {
-  const copy = useCopy();
+  const t = useClientMessages();
 
   return (
     <Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-muted-foreground bg-foreground p-3 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0">
       <PageProgress
-        aria-label={copy.progress}
+        aria-label={t("host.episode.viewer.progress")}
         className="mx-auto min-w-0 shrink basis-3/5"
       >
         <PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-control border-0 bg-muted-foreground [&::-moz-progress-bar]:bg-background [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-background" />
@@ -297,7 +269,7 @@ const ViewerToolbar = ({
             status text still reads left to right. */}
         <PageStatus
           className="mt-1.5 block text-center text-sm text-background tabular-nums [direction:ltr]"
-          format={buildPageStatusFormatter(copy)}
+          format={buildPageStatusFormatter(t)}
         />
       </PageProgress>
       {/* Placed against the physical right edge rather than laid out in the
@@ -312,7 +284,7 @@ const ViewerToolbar = ({
 
 /** The page-turn pair, as the outline buttons the rest of the site uses. */
 const ViewerPageNavigation = () => {
-  const copy = useCopy();
+  const t = useClientMessages();
   const { readingDirection } = useViewerContext();
   const buttonClassName = cn(
     buttonVariants({ size: "icon", variant: "outline" }),
@@ -321,11 +293,11 @@ const ViewerPageNavigation = () => {
 
   return (
     <PageNavigation
-      aria-label={copy.navigation}
+      aria-label={t("host.episode.viewer.navigation")}
       className="pointer-events-none absolute inset-0 z-10 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0"
     >
       <PreviousPageButton
-        aria-label={copy.previousPage}
+        aria-label={t("host.common.previous_page")}
         className={cn(buttonClassName, "start-3")}
       >
         {readingDirection === "rtl" ? (
@@ -335,7 +307,7 @@ const ViewerPageNavigation = () => {
         )}
       </PreviousPageButton>
       <NextPageButton
-        aria-label={copy.nextPage}
+        aria-label={t("host.common.next_page")}
         className={cn(buttonClassName, "end-3")}
       >
         {readingDirection === "rtl" ? (
@@ -381,7 +353,6 @@ const ViewerPageNavigation = () => {
  */
 export const EpisodeComicViewer = ({
   children,
-  copy,
   endPage,
   initialPageIndex = 0,
   pages,
@@ -391,7 +362,6 @@ export const EpisodeComicViewer = ({
   wideViewerEnabled,
 }: {
   children?: ReactNode;
-  copy: EpisodeComicViewerCopy;
   /** Absent where the episode ends on its last page. */
   endPage?: ReactNode;
   /** Zero-based page the reader opens at. */
@@ -437,45 +407,43 @@ export const EpisodeComicViewer = ({
   }, []);
 
   return (
-    <CopyContext value={copy}>
-      <div className="size-full bg-foreground" ref={shellRef}>
-        <ComicViewerRoot
-          className="relative flex size-full min-h-0 min-w-0 touch-pan-y overflow-hidden bg-foreground text-background"
-          initialIndex={initialPageIndex}
-          initialReadingDirection={readingDirection}
-          pages={pages}
-          plugins={VIEWER_PLUGINS}
-          spreadStartIndex={spreadStartIndex}
-        >
-          <ViewerRail>
-            <ViewerPageTemplate />
-          </ViewerRail>
-          {endPage === undefined ? null : (
-            /* A click here reads and scrolls rather than turns: the reader
+    <div className="size-full bg-foreground" ref={shellRef}>
+      <ComicViewerRoot
+        className="relative flex size-full min-h-0 min-w-0 touch-pan-y overflow-hidden bg-foreground text-background"
+        initialIndex={initialPageIndex}
+        initialReadingDirection={readingDirection}
+        pages={pages}
+        plugins={VIEWER_PLUGINS}
+        spreadStartIndex={spreadStartIndex}
+      >
+        <ViewerRail>
+          <ViewerPageTemplate />
+        </ViewerRail>
+        {endPage === undefined ? null : (
+          /* A click here reads and scrolls rather than turns: the reader
                leaves this page with the page-turn controls, not by tapping its
                edge, and the same exception the viewport makes for a control
                applies to the text between them. */
-            <EndPage
-              className="size-full min-w-0 overflow-y-auto overscroll-contain bg-background text-foreground"
-              onClick={stopClick}
-            >
-              {/* The chrome the viewer draws over its top and bottom edges
+          <EndPage
+            className="size-full min-w-0 overflow-y-auto overscroll-contain bg-background text-foreground"
+            onClick={stopClick}
+          >
+            {/* The chrome the viewer draws over its top and bottom edges
                   reaches this page too, so the content clears both. */}
-              <div className="mx-auto w-full max-w-(--measure-prose) px-6 pt-20 pb-24">
-                {endPage}
-              </div>
-            </EndPage>
-          )}
-          <ViewerToolbar
-            isWide={isWide}
-            onToggleFullscreen={toggleFullscreen}
-            onToggleWide={toggleWide}
-          />
-          <ViewerPageNavigation />
-          {isWide ? <WideViewerMarker /> : null}
-          {children}
-        </ComicViewerRoot>
-      </div>
-    </CopyContext>
+            <div className="mx-auto w-full max-w-(--measure-prose) px-6 pt-20 pb-24">
+              {endPage}
+            </div>
+          </EndPage>
+        )}
+        <ViewerToolbar
+          isWide={isWide}
+          onToggleFullscreen={toggleFullscreen}
+          onToggleWide={toggleWide}
+        />
+        <ViewerPageNavigation />
+        {isWide ? <WideViewerMarker /> : null}
+        {children}
+      </ComicViewerRoot>
+    </div>
   );
 };

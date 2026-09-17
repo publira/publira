@@ -4,6 +4,7 @@ import { useViewerContext } from "@publira/comic-viewer";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ClientMessage } from "#components/client-message";
 import { useLocale, useTenantDefaultLocale } from "#components/locale-provider";
 import { withLocalePrefix } from "#lib/locale-path";
 
@@ -13,12 +14,6 @@ import {
   resolveNeighborSide,
 } from "../_lib/neighbor-navigation";
 import { isLastPageVisible } from "../_lib/viewer-progress";
-
-/** The two sentences the first press shows, resolved on the server. */
-export interface EpisodeNeighborKeyNavigationCopy {
-  nextHint: string;
-  previousHint: string;
-}
 
 /**
  * Watches for the arrow key that has run out of pages and, on a second press
@@ -37,11 +32,9 @@ export interface EpisodeNeighborKeyNavigationCopy {
  * exception the viewer does and leaves a key press aimed at a control alone.
  */
 const NeighborKeyListener = ({
-  copy,
   nextHref,
   previousHref,
 }: {
-  copy: EpisodeNeighborKeyNavigationCopy;
   nextHref?: string;
   previousHref?: string;
 }) => {
@@ -102,7 +95,11 @@ const NeighborKeyListener = ({
       {/* A floating layer over the pages, so it takes the radius and the one
           shadow those get rather than the reader's own control radius. */}
       <span className="inline-block rounded-surface border border-border bg-popover px-4 py-2 text-sm text-popover-foreground shadow-floating">
-        {armedSide === "next" ? copy.nextHint : copy.previousHint}
+        {armedSide === "next" ? (
+          <ClientMessage message="host.episode.navigation.next_hint" />
+        ) : (
+          <ClientMessage message="host.episode.navigation.previous_hint" />
+        )}
       </span>
     </output>
   );
@@ -123,11 +120,9 @@ const NeighborKeyListener = ({
  * whose page state it reads.
  */
 export const EpisodeNeighborKeyNavigation = ({
-  copy,
   nextHref,
   previousHref,
 }: {
-  copy: EpisodeNeighborKeyNavigationCopy;
   /** Absent at the end of the series, where there is nothing to open. */
   nextHref?: string;
   /** Absent on the first episode, for the same reason. */
@@ -144,7 +139,6 @@ export const EpisodeNeighborKeyNavigation = ({
 
   return (
     <NeighborKeyListener
-      copy={copy}
       key={currentIndex}
       nextHref={atLastPage ? nextHref : undefined}
       previousHref={currentIndex <= minIndex ? previousHref : undefined}
