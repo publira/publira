@@ -18,6 +18,9 @@ import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/purchase/buy_episode_button.dart';
+import 'package:publira/purchase/purchase_failure.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/viewer/episode_end_panel.dart';
 import 'package:publira/viewer/episode_reader.dart';
@@ -44,6 +47,12 @@ class _OpenEpisode {
   final SeriesAgeRating? provenRating;
 }
 
+/// How long the viewer waits before each re-read of an episode the browser
+/// reported paid for and the API still reports locked. The webhook that
+/// records the purchase races the browser's return, so the first read after it
+/// can be too early.
+const checkoutConfirmationDelays = [Duration(seconds: 2), Duration(seconds: 4)];
+
 /// Episode reader. Loads the body of one published episode and hands its pages
 /// to [EpisodeReader].
 ///
@@ -55,10 +64,15 @@ class EpisodeViewerScreen extends StatefulWidget {
     super.key,
     required this.seriesId,
     required this.episodeId,
+    this.checkout,
   });
 
   final String seriesId;
   final String episodeId;
+
+  /// How a checkout of this episode ended, when the browser has just handed
+  /// one back.
+  final CheckoutOutcome? checkout;
 
   @override
   State<EpisodeViewerScreen> createState() => _EpisodeViewerScreenState();
@@ -85,6 +99,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// connection dropped is told that on the comments screen rather than
   /// quietly losing the way to it.
   var _commentsOffered = false;
+
+  /// Whether a locked body offers a purchase. It starts off and is turned on
+  /// only by the tenant saying it takes payments, so a lookup that fails
+  /// offers nothing it could not complete.
+  var _acceptsPayments = false;
 
   /// Records the page the reader rests on, for the session that is signed in
   /// now. It holds the repository rather than the context, because the last
@@ -126,7 +145,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         pageIndex,
       ),
     );
-    _future = _load(catalog, AuthScope.of(context));
+    _future = _load(
+      catalog,
+      AuthScope.of(context),
+      confirmPurchase: widget.checkout == CheckoutOutcome.success,
+    );
+    final purchase = PurchaseScope.maybeOf(context)?.repository;
+    if (purchase != null) {
+      unawaited(_loadAcceptsPayments(purchase));
+    }
     final comments = CommentScope.maybeOf(context);
     if (comments != null) {
       unawaited(_loadCommentMode(comments));
@@ -175,6 +202,21 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     });
   }
 
+  Future<void> _loadAcceptsPayments(PurchaseRepository purchase) async {
+    bool accepts;
+    try {
+      accepts = await purchase.acceptsPayments();
+    } on PurchaseFailure {
+      accepts = false;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _acceptsPayments = accepts;
+    });
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -196,12 +238,29 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// Both reads are started before either is awaited: the position does not
   /// depend on the body, and a reader made to wait out two round trips in a
   /// row would see the first page later for it.
+  ///
+  /// [confirmPurchase] reads a body that is still locked again after each of
+  /// [checkoutConfirmationDelays], for a reader the browser has just sent
+  /// back from paying.
   Future<_OpenEpisode?> _load(
     CatalogRepository catalog,
-    AuthController auth,
-  ) async {
+    AuthController auth, {
+    bool confirmPurchase = false,
+  }) async {
     final position = _savedPageIndex(catalog);
-    final detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+    var detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+    if (confirmPurchase) {
+      for (final delay in checkoutConfirmationDelays) {
+        if (detail?.access != EpisodeAccess.locked) {
+          break;
+        }
+        await Future<void>.delayed(delay);
+        if (!mounted) {
+          break;
+        }
+        detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+      }
+    }
     final saved = await position;
     if (detail == null) {
       return null;
@@ -275,8 +334,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             body: _ViewerMessage(
               key: const ValueKey('episode-viewer-error'),
               message: _errorCopy(messages, snapshot.error),
-              actionLabel: messages.commonRetry,
-              onAction: _reload,
+              action: FilledButton(
+                onPressed: _reload,
+                child: Text(messages.commonRetry),
+              ),
             ),
           );
         }
@@ -287,9 +348,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             body: _ViewerMessage(
               key: const ValueKey('episode-not-found'),
               message: messages.viewerNotFound(id: widget.episodeId),
-              actionLabel: messages.viewerBackToSeries,
-              onAction: () =>
-                  context.go(AppRoutes.seriesDetailPath(widget.seriesId)),
+              action: FilledButton(
+                onPressed: () =>
+                    context.go(AppRoutes.seriesDetailPath(widget.seriesId)),
+                child: Text(messages.viewerBackToSeries),
+              ),
             ),
           );
         }
@@ -326,18 +389,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   Widget _body(AppMessages messages, _OpenEpisode open) {
     final detail = open.detail;
     if (detail.access == EpisodeAccess.locked) {
-      if (AuthScope.of(context).isSignedIn) {
-        return _ViewerMessage(
-          key: const ValueKey('episode-locked'),
-          message: messages.viewerLocked,
-        );
-      }
-      return _ViewerMessage(
-        key: const ValueKey('episode-locked'),
-        message: messages.viewerLockedSignedOut,
-        actionLabel: messages.commonSignIn,
-        onAction: () => context.push(AppRoutes.signIn),
-      );
+      return _locked(messages, detail);
     }
     if (detail.images.isEmpty) {
       return _ViewerMessage(
@@ -368,6 +420,58 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     );
   }
 
+  /// What stands where the pages would be while the episode is not the
+  /// reader's: why, and the purchase that opens it where the tenant takes one.
+  Widget _locked(AppMessages messages, EpisodeDetail detail) {
+    final signedIn = AuthScope.of(context).isSignedIn;
+    // The browser reported the payment and the API has not recorded it yet.
+    if (signedIn && widget.checkout == CheckoutOutcome.success) {
+      return _ViewerMessage(
+        key: const ValueKey('episode-purchase-confirming'),
+        message: messages.purchaseConfirming,
+        action: OutlinedButton(
+          key: const ValueKey('episode-purchase-check-again'),
+          style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+          onPressed: _reload,
+          child: Text(messages.purchaseCheckAgain),
+        ),
+      );
+    }
+    final buy =
+        _acceptsPayments &&
+            detail.episode.price > 0 &&
+            PurchaseScope.maybeOf(context) != null
+        ? BuyEpisodeButton(
+            episodeId: widget.episodeId,
+            price: detail.episode.price,
+            onAlreadyPurchased: _reload,
+          )
+        : null;
+    final String message;
+    if (widget.checkout == CheckoutOutcome.cancelled) {
+      message = messages.purchaseCancelled;
+    } else if (signedIn) {
+      message = messages.viewerLocked;
+    } else {
+      message = messages.viewerLockedSignedOut;
+    }
+    if (buy == null && !signedIn) {
+      return _ViewerMessage(
+        key: const ValueKey('episode-locked'),
+        message: message,
+        action: FilledButton(
+          onPressed: () => context.push(AppRoutes.signIn),
+          child: Text(messages.commonSignIn),
+        ),
+      );
+    }
+    return _ViewerMessage(
+      key: const ValueKey('episode-locked'),
+      message: message,
+      action: buy,
+    );
+  }
+
   /// What stands where the pages would be when the tenant makes a reader
   /// prove an age for this series and they have not.
   ///
@@ -378,8 +482,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       return _ViewerMessage(
         key: const ValueKey('episode-age-restricted'),
         message: messages.viewerAgeRestrictedGuest,
-        actionLabel: messages.commonSignIn,
-        onAction: () => context.push(AppRoutes.signIn),
+        action: FilledButton(
+          onPressed: () => context.push(AppRoutes.signIn),
+          child: Text(messages.commonSignIn),
+        ),
       );
     }
     if (open.readerHasBirthDate) {
@@ -391,8 +497,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     return _ViewerMessage(
       key: const ValueKey('episode-age-restricted'),
       message: messages.viewerAgeRestrictedNoBirthDate,
-      actionLabel: messages.viewerAgeRestrictedAddBirthDate,
-      onAction: () => unawaited(_addBirthDate()),
+      action: FilledButton(
+        onPressed: () => unawaited(_addBirthDate()),
+        child: Text(messages.viewerAgeRestrictedAddBirthDate),
+      ),
     );
   }
 
@@ -479,16 +587,12 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 }
 
 class _ViewerMessage extends StatelessWidget {
-  const _ViewerMessage({
-    super.key,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
+  const _ViewerMessage({super.key, required this.message, this.action});
 
   final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
+
+  /// The one thing the reader can do about [message], if there is one.
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -503,9 +607,9 @@ class _ViewerMessage extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white),
             ),
-            if (actionLabel != null && onAction != null) ...[
+            if (action case final action?) ...[
               const SizedBox(height: 16),
-              FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+              action,
             ],
           ],
         ),

@@ -25,7 +25,19 @@ enum EpisodeAccess {
   ageRestricted,
 
   /// The server named an access state this build does not know.
-  unknown,
+  unknown;
+
+  /// Reads `publira.v1.EpisodeAccess` as protojson writes it: by name, and
+  /// omitted entirely when it is the zero value.
+  static EpisodeAccess fromWire(Object? raw) {
+    return switch (raw) {
+      'EPISODE_ACCESS_FREE' => EpisodeAccess.free,
+      'EPISODE_ACCESS_LOCKED' => EpisodeAccess.locked,
+      'EPISODE_ACCESS_ENTITLED' => EpisodeAccess.entitled,
+      'EPISODE_ACCESS_AGE_RESTRICTED' => EpisodeAccess.ageRestricted,
+      _ => EpisodeAccess.unknown,
+    };
+  }
 }
 
 /// One body image of an episode, in reading order.

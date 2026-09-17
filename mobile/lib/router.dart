@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
+import 'package:publira/screens/checkout_return_screen.dart';
 import 'package:publira/screens/episode_comments_screen.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
 import 'package:publira/screens/follows_screen.dart';
@@ -22,10 +24,29 @@ abstract final class AppRoutes {
   static const episodeComments = 'comments';
   static const checkoutReturn = '/checkout/return';
 
+  /// The sign-in form, landing on [returnTo] once the reader is in rather
+  /// than on the screen that sent them.
+  static String signInPath({String? returnTo}) => returnTo == null
+      ? signIn
+      : Uri(path: signIn, queryParameters: {'return_to': returnTo}).toString();
+
   static String seriesDetailPath(String seriesId) => '/series/$seriesId';
 
-  static String episodeViewerPath(String seriesId, String episodeId) =>
-      '/series/$seriesId/episodes/$episodeId';
+  /// The viewer, told how a checkout of the episode ended when the browser
+  /// has just handed one back.
+  static String episodeViewerPath(
+    String seriesId,
+    String episodeId, {
+    CheckoutOutcome? checkout,
+  }) {
+    final path = '/series/$seriesId/episodes/$episodeId';
+    return checkout == null
+        ? path
+        : Uri(
+            path: path,
+            queryParameters: {'checkout': checkout.wireName},
+          ).toString();
+  }
 
   static String episodeCommentsPath(String seriesId, String episodeId) =>
       '${episodeViewerPath(seriesId, episodeId)}/comments';
@@ -54,15 +75,25 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.catalog}) {
       GoRoute(
         path: AppRoutes.signIn,
         name: 'signIn',
-        builder: (context, state) => const SignInScreen(),
+        builder: (context, state) => SignInScreen(
+          returnTo: inAppLocation(state.uri.queryParameters['return_to']),
+        ),
       ),
       GoRoute(
         path: AppRoutes.checkoutReturn,
         name: 'checkoutReturn',
-        // A checkout the browser hands back lands here. Confirming the
-        // purchase by re-reading the episode is a later screen; until then
-        // the catalog is where the reader already knows how to find it.
-        redirect: (_, _) => AppRoutes.catalog,
+        // The return URL names the episode alone, so a link without one has
+        // nothing to open.
+        redirect: (_, state) =>
+            (state.uri.queryParameters['episode'] ?? '').isEmpty
+            ? AppRoutes.catalog
+            : null,
+        builder: (context, state) => CheckoutReturnScreen(
+          episodeId: state.uri.queryParameters['episode']!,
+          outcome: CheckoutOutcome.fromWire(
+            state.uri.queryParameters['status'],
+          ),
+        ),
       ),
       GoRoute(
         path: AppRoutes.account,
@@ -94,6 +125,9 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.catalog}) {
             builder: (context, state) => EpisodeViewerScreen(
               seriesId: state.pathParameters['seriesId']!,
               episodeId: state.pathParameters['episodeId']!,
+              checkout: CheckoutOutcome.fromWire(
+                state.uri.queryParameters['checkout'],
+              ),
             ),
             // Nested for the same reason the viewer is nested under its
             // series: the comments are read once the episode has been, and
@@ -114,4 +148,15 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.catalog}) {
     ],
     errorBuilder: (context, state) => NotFoundScreen(uri: state.uri),
   );
+}
+
+/// [location] when it is a path inside this app, and `null` otherwise, so a
+/// query parameter cannot send the reader to another origin.
+String? inAppLocation(String? location) {
+  if (location == null ||
+      !location.startsWith('/') ||
+      location.startsWith('//')) {
+    return null;
+  }
+  return location;
 }

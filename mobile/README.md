@@ -136,6 +136,7 @@ mobile/
 │   ├── links/                    # Tenant-site URL parsing, incoming App Links, and the share sheet
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
 │   ├── models/                   # Series / episode body / episode comment / follow
+│   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / series detail / viewer / comments / sign-in / account / follows
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
@@ -164,7 +165,7 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/series/:seriesId` | Series details |
 | `/series/:seriesId/episodes/:episodeId` | Episode viewer |
 | `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
-| `/checkout/return` | A checkout the browser hands back; it currently opens the catalog |
+| `/checkout/return` | A checkout the browser hands back; it opens the episode it was started for |
 
 Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
@@ -274,6 +275,15 @@ The pages image-server delivers cannot be saved as they arrive: their content ke
 
 Nothing here fails a screen. A platform with no app-private directory, or with no credential store to hold the key, reads online only; a file this build cannot decrypt is treated as one the device does not have.
 
+## Purchases
+
+A paid episode is bought through the public site's Stripe Checkout in the system browser, never in an in-app web view, and the app takes no store in-app purchase.
+
+- A locked episode, in the viewer and on its row of the series screen, offers "Buy for ¥N" when `GetTenant` answers `accepts_payments`. A row offers it only where `GetSeriesEpisodeAccess` answers the episode locked for the reader, so an episode they bought, hold a ticket for, or can read inside a free window is offered nothing
+- A guest who takes the offer signs in first and lands on the episode
+- The button calls `StartEpisodeCheckout` with `client: CLIENT_MOBILE` and opens the page it answers with `url_launcher` in external application mode. A reader who already holds the episode is shown it instead
+- Checkout returns to `/{locale}/checkout/return?episode=…&status=success|cancelled` on the tenant host, which the app claims as a link. The app finds the episode's series and opens the viewer, which reads `GetEpisodeDetail` again. A body still locked after a success is read twice more, each after a longer wait, and then the viewer says the purchase is being confirmed and offers to check again
+
 ## Sign-in
 
 A reader signs in with an email address and a password, which `AuthService/Login` answers with a public-audience JWT (24-hour TTL, revoked by `credentials_version`). Every API and image-server request carries that token, so a purchased or ticketed paid episode reads on the device the same way it does in `web-host`.
@@ -376,6 +386,7 @@ The screens are taken on an attached device or emulator, which the app is built 
 - Locked display for an unpurchased paid episode
 - Sign-in unlocking that paid episode, and sign-out locking it again
 - Rejected credentials staying on the sign-in form
+- A purchase completed in the browser, with a stubbed launcher, opening the paid episode
 - A session written to and read back from the platform keychain
 - A series that does not exist
 - An empty catalog

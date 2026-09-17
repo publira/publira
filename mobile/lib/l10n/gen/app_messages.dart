@@ -427,6 +427,21 @@ abstract class AppMessages {
   /// `mobile.not_found.title`
   String get notFoundTitle;
 
+  /// `mobile.purchase.buy`
+  String purchaseBuy({required String price});
+
+  /// `mobile.purchase.cancelled`
+  String get purchaseCancelled;
+
+  /// `mobile.purchase.check_again`
+  String get purchaseCheckAgain;
+
+  /// `mobile.purchase.confirming`
+  String get purchaseConfirming;
+
+  /// `mobile.purchase.start_failed`
+  String get purchaseStartFailed;
+
   /// `mobile.push.open`
   String get pushOpen;
 
@@ -1225,6 +1240,31 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get notFoundTitle {
     return 'ページが見つかりません';
+  }
+
+  @override
+  String purchaseBuy({required String price}) {
+    return '$priceで購入';
+  }
+
+  @override
+  String get purchaseCancelled {
+    return '購入手続きをキャンセルしました。料金は発生していません。';
+  }
+
+  @override
+  String get purchaseCheckAgain {
+    return 'もう一度確認';
+  }
+
+  @override
+  String get purchaseConfirming {
+    return '決済を確認しています。購入が反映されると本文を表示します。';
+  }
+
+  @override
+  String get purchaseStartFailed {
+    return '購入手続きを開始できませんでした。時間をおいて再試行してください。';
   }
 
   @override
@@ -2176,6 +2216,31 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String purchaseBuy({required String price}) {
+    return 'Buy for $price';
+  }
+
+  @override
+  String get purchaseCancelled {
+    return 'The purchase was cancelled. You have not been charged.';
+  }
+
+  @override
+  String get purchaseCheckAgain {
+    return 'Check again';
+  }
+
+  @override
+  String get purchaseConfirming {
+    return 'We are confirming your payment. The episode opens once the purchase is applied.';
+  }
+
+  @override
+  String get purchaseStartFailed {
+    return 'Could not start the purchase. Try again later.';
+  }
+
+  @override
   String get pushOpen {
     return 'Open';
   }
@@ -3121,6 +3186,31 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get notFoundTitle {
     return '페이지를 찾을 수 없습니다';
+  }
+
+  @override
+  String purchaseBuy({required String price}) {
+    return '$price에 구매';
+  }
+
+  @override
+  String get purchaseCancelled {
+    return '구매를 취소했습니다. 요금은 청구되지 않았습니다.';
+  }
+
+  @override
+  String get purchaseCheckAgain {
+    return '다시 확인';
+  }
+
+  @override
+  String get purchaseConfirming {
+    return '결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.';
+  }
+
+  @override
+  String get purchaseStartFailed {
+    return '구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.';
   }
 
   @override
@@ -4072,6 +4162,31 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String purchaseBuy({required String price}) {
+    return '以$price购买';
+  }
+
+  @override
+  String get purchaseCancelled {
+    return '购买已取消，未产生任何扣款。';
+  }
+
+  @override
+  String get purchaseCheckAgain {
+    return '再次确认';
+  }
+
+  @override
+  String get purchaseConfirming {
+    return '我们正在确认您的付款。购买生效后即可打开该章节。';
+  }
+
+  @override
+  String get purchaseStartFailed {
+    return '无法开始购买。请稍后再试。';
+  }
+
+  @override
   String get pushOpen {
     return '打开';
   }
@@ -5017,6 +5132,31 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get notFoundTitle {
     return '找不到頁面';
+  }
+
+  @override
+  String purchaseBuy({required String price}) {
+    return '以$price購買';
+  }
+
+  @override
+  String get purchaseCancelled {
+    return '購買已取消，未產生任何扣款。';
+  }
+
+  @override
+  String get purchaseCheckAgain {
+    return '再次確認';
+  }
+
+  @override
+  String get purchaseConfirming {
+    return '我們正在確認您的付款。購買生效後即可開啟該章節。';
+  }
+
+  @override
+  String get purchaseStartFailed {
+    return '無法開始購買。請稍後再試。';
   }
 
   @override

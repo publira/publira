@@ -632,7 +632,7 @@ class HttpCatalogRepository implements CatalogRepository {
       episode: _episodeFromJson(rawEpisode, 'episode'),
       seriesId: seriesId,
       seriesTitle: _readString(rawSeries, 'title', 'series'),
-      access: _parseAccess(body['access']),
+      access: EpisodeAccess.fromWire(body['access']),
       images: _parseEpisodeImages(body['images']),
       previousEpisode: _neighborFromJson(
         body['previousEpisode'],
@@ -689,18 +689,6 @@ class HttpCatalogRepository implements CatalogRepository {
     return switch (raw) {
       'READING_DIRECTION_LEFT_TO_RIGHT' => ReadingDirection.ltr,
       _ => ReadingDirection.rtl,
-    };
-  }
-
-  EpisodeAccess _parseAccess(Object? raw) {
-    // protojson writes an enum as its name, and omits it entirely when it is
-    // the zero value.
-    return switch (raw) {
-      'EPISODE_ACCESS_FREE' => EpisodeAccess.free,
-      'EPISODE_ACCESS_LOCKED' => EpisodeAccess.locked,
-      'EPISODE_ACCESS_ENTITLED' => EpisodeAccess.entitled,
-      'EPISODE_ACCESS_AGE_RESTRICTED' => EpisodeAccess.ageRestricted,
-      _ => EpisodeAccess.unknown,
     };
   }
 

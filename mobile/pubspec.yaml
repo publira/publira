@@ -59,6 +59,8 @@ dependencies:
   # The platform share sheet a series or an episode is handed to.
   share_plus: ^13.3.0
   timezone: ^0.11.1
+  # The system browser a paid episode's web checkout is opened in.
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
