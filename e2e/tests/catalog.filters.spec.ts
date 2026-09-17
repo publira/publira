@@ -75,7 +75,7 @@ const SCHEDULED_SERIES = {
 /** `Seed Series 009`, of the round the seed gives two days a week. */
 const TWICE_WEEKLY_SERIES = {
   publicId: "SeedSERSAAA9",
-  schedule: "Updates on Monday and Thursday",
+  schedule: "Updates on Friday and Saturday",
 } as const;
 
 /**

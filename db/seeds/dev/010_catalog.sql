@@ -117,11 +117,12 @@ SET tenant_id = EXCLUDED.tenant_id,
 --
 -- The eight running rounds carry a schedule: seven of them take one weekday
 -- each, and the round ending in nine expects two episodes a week, so the
--- storefront's weekday module answers with a full shelf on every day of the
--- week and the series page has both a one-day and a two-day schedule to word.
--- The two rounds that have ended or are paused keep none: they are expecting
--- nothing. A pair is written in ascending order, which the column's CHECK
--- cannot enforce.
+-- series page has both a one-day and a two-day schedule to word. That round
+-- takes Friday and Saturday, the two days the rated rounds below also take,
+-- so every day of the week still holds a cover for a reader who has confirmed
+-- no rating. The two rounds that have ended or are paused keep none: they are
+-- expecting nothing. A pair is written in ascending order, which the column's
+-- CHECK cannot enforce.
 --
 -- The round ending in six is rated r15 and the round ending in seven is rated
 -- r18, so the storefront has both ratings to confirm and the remaining rounds
@@ -167,7 +168,7 @@ SELECT
         WHEN 6 THEN ARRAY[5]
         WHEN 7 THEN ARRAY[6]
         WHEN 8 THEN ARRAY[0]
-        WHEN 9 THEN ARRAY[1, 4]
+        WHEN 9 THEN ARRAY[5, 6]
         ELSE ARRAY[]::int[]
     END::smallint[],
     CASE ss.series_no % 10

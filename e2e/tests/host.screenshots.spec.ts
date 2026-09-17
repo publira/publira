@@ -66,10 +66,14 @@ const SCREENSHOT_WEEKDAY = "Sun";
  * Every one of them has a `Suspense` boundary of its own and they resolve in
  * whatever order their reads return, so the shot waits for each of them by
  * name. Waiting for the last one on the page would only say that one arrived.
+ *
+ * The weekday module is not one of them: which shelf it shows is the day it is
+ * where the tenant publishes, and a day whose series are all rated holds no
+ * cover a reader who has confirmed nothing can see. It is waited for below, on
+ * the day the shot opens it on.
  */
 const TOP_PAGE_SECTIONS = [
   { href: "/genres/", name: "Browse by genre" },
-  { href: "/series/", name: SCREENSHOT_WEEKDAY_SECTION },
   { href: "/series/", name: "New episodes" },
   { href: "/series/", name: "Top 10 this week" },
   { href: "/series/", name: "Recently updated" },
@@ -122,6 +126,12 @@ test.describe("web-host screenshots", () => {
         await expect(
           schedule.getByRole("tab", { name: SCREENSHOT_WEEKDAY })
         ).toHaveAttribute("aria-selected", "true");
+        await expect(
+          schedule
+            .getByRole("tabpanel")
+            .locator(`a[href^="${hostPath("/series/")}"]`)
+            .first()
+        ).toBeVisible();
 
         await expectScreenshot(page, viewport, "top-page");
       });
