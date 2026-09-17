@@ -41,6 +41,8 @@ class ConnectFixtureServer {
     this.memberBirthDate = '',
     this.ageVerification = 'AGE_VERIFICATION_R18',
     this.tenantTimeZone = 'Asia/Tokyo',
+    this.tenantName = seedTenantName,
+    this.tenantTheme,
     this.encryptImages = true,
     this.listResponse,
     this.detailResponse,
@@ -53,6 +55,9 @@ class ConnectFixtureServer {
   /// What the development seed (`db/seeds/dev/001_tenant_users.sql`) stores
   /// as the tenant's default locale.
   static const defaultTenantLocale = 'en';
+
+  /// What the development seed stores as the tenant's name.
+  static const seedTenantName = 'Seed Tenant';
   static const seedSeriesId = 'SeedSERSAAA1';
   static const seedSeriesTitle = 'Seed Series 001';
   static const seedSeriesSynopsis = 'Seed series synopsis for Seed Series 001';
@@ -424,6 +429,11 @@ class ConnectFixtureServer {
   String ageVerification;
   String tenantTimeZone;
 
+  /// The tenant's name and `TenantTheme`, as `GetTenant` answers them. A
+  /// `null` theme is a tenant that has stored none, which the API omits.
+  String tenantName;
+  Map<String, Object?>? tenantTheme;
+
   /// Whether a page leaves as ciphertext. Set it to false to act out an
   /// image-server instance a rolling deploy has not replaced yet, which the
   /// reader still has to work against for the length of the rollout.
@@ -664,6 +674,9 @@ class ConnectFixtureServer {
     if (path.endsWith('/GetTenant')) {
       await _write(request, tenantStatus, {
         if (tenantStatus == HttpStatus.ok) 'tenantPublicId': tenantId,
+        if (tenantStatus == HttpStatus.ok) 'tenantName': tenantName,
+        if (tenantStatus == HttpStatus.ok && tenantTheme != null)
+          'theme': tenantTheme,
         if (tenantStatus == HttpStatus.ok) 'defaultLocale': defaultLocale,
         if (tenantStatus == HttpStatus.ok) 'commentMode': commentMode,
         if (tenantStatus == HttpStatus.ok) 'ageVerification': ageVerification,

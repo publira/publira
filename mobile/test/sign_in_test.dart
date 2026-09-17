@@ -75,7 +75,7 @@ void main() {
     await pumpApp(tester, initialLocation: AppRoutes.signIn);
 
     await submitCredentials(tester);
-    await pumpUntilFound(tester, find.text('Publira'));
+    await pumpUntilFound(tester, find.byKey(const ValueKey('catalog-account')));
 
     expect(auth.isSignedIn, isTrue);
     expect(repository.lastEmail, 'member@example.com');

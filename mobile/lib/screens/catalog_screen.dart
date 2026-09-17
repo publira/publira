@@ -14,6 +14,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
+import 'package:publira/tenant/tenant_brand_controller.dart';
 
 /// Home / catalog screen: shelves of the tenant's catalog above the whole of
 /// it.
@@ -66,7 +67,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final signedIn = AuthScope.of(context).isSignedIn;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Publira'),
+        title: const _CatalogTitle(),
         actions: [
           IconButton(
             key: const ValueKey('catalog-account'),
@@ -94,6 +95,39 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The tenant's logo, or its name while it has no logo or the logo cannot be
+/// drawn.
+class _CatalogTitle extends StatelessWidget {
+  const _CatalogTitle();
+
+  static const _logoHeight = 32.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final tenant = TenantBrandScope.maybeOf(context);
+    final brand = tenant?.brand;
+    final name = Text(brand?.name ?? '');
+    final logo = brand?.logo;
+    if (logo == null) {
+      return name;
+    }
+    return Image.network(
+      logo.url.toString(),
+      key: const ValueKey('catalog-logo'),
+      headers: tenant?.logoRequestHeaders,
+      height: _logoHeight,
+      fit: BoxFit.contain,
+      alignment: AlignmentDirectional.centerStart,
+      semanticLabel: brand?.name,
+      // The name stands in until the logo arrives, and for good when it
+      // cannot, which is the case on a launch without a network.
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) =>
+          frame == null ? name : child,
+      errorBuilder: (context, error, stackTrace) => name,
     );
   }
 }

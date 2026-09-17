@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
+import 'package:publira/tenant/tenant_brand.dart';
 
 /// [OfflineLibrary] that keeps everything in memory.
 ///
@@ -9,6 +10,7 @@ import 'package:publira/offline/offline_library.dart';
 /// and a test asserting what the app saved wants to read it back without
 /// going through the encrypted files.
 class InMemoryOfflineLibrary implements OfflineLibrary {
+  TenantBrand? tenant;
   SeriesPage? series;
   final Map<String, SeriesDetail> details = {};
   final Map<String, SavedEpisode> episodes = {};
@@ -24,6 +26,14 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
       series: List<SeriesItem>.unmodifiable(page.series),
       nextToken: page.nextToken,
     );
+  }
+
+  @override
+  Future<TenantBrand?> readTenantBrand() async => tenant;
+
+  @override
+  Future<void> writeTenantBrand(TenantBrand brand) async {
+    tenant = brand;
   }
 
   @override
@@ -123,6 +133,7 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
 
   @override
   Future<void> clear() async {
+    tenant = null;
     series = null;
     details.clear();
     episodes.clear();

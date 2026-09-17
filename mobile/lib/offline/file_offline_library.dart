@@ -9,6 +9,7 @@ import 'package:publira/offline/device_key.dart';
 import 'package:publira/offline/offline_cipher.dart';
 import 'package:publira/offline/offline_json.dart';
 import 'package:publira/offline/offline_library.dart';
+import 'package:publira/tenant/tenant_brand.dart';
 
 /// Resolves the directory the library writes under. Injected so a test can
 /// point one at a temporary directory instead of the app's own.
@@ -72,6 +73,18 @@ class FileOfflineLibrary implements OfflineLibrary {
     return _write((home, index) {
       index.series = List<SeriesItem>.unmodifiable(page.series);
       index.seriesNextToken = page.nextToken;
+    });
+  }
+
+  @override
+  Future<TenantBrand?> readTenantBrand() {
+    return _read<TenantBrand>((home, index) => index.tenant);
+  }
+
+  @override
+  Future<void> writeTenantBrand(TenantBrand brand) {
+    return _write((home, index) {
+      index.tenant = brand;
     });
   }
 
@@ -232,6 +245,7 @@ class FileOfflineLibrary implements OfflineLibrary {
     return _write((home, index) async {
       await _wipe(home);
       index
+        ..tenant = null
         ..series = null
         ..details.clear()
         ..episodes.clear()
