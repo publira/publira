@@ -229,6 +229,26 @@ void main() {
       await pumpUntilFound(tester, find.byKey(const ValueKey('label-body')));
     });
 
+    testWidgets('is reached from the label on the series screen', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        location: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
+      );
+      final labelButton = find.byKey(const ValueKey('series-label'));
+      await pumpUntilRouteSettled(tester, labelButton);
+
+      await tester.ensureVisible(labelButton);
+      await tester.tap(labelButton);
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('label-body')),
+      );
+
+      expect(router.state.uri.path, AppRoutes.labelDetailPath(label.id));
+    });
+
     testWidgets('is reached from the label on a catalog row', (tester) async {
       await pumpApp(tester, location: AppRoutes.catalog);
       final labelButton = find.byKey(
