@@ -14,4 +14,5 @@ BEGIN;
 \ir dev/040_pages.sql
 \ir dev/050_access_tickets.sql
 \ir dev/060_images.sql
+\ir dev/070_follows.sql
 COMMIT;

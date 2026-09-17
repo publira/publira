@@ -36,6 +36,7 @@ The files themselves are rendered from the vector sources under [`assets/`](../.
   - `040_pages.sql`: Published pages
   - `050_access_tickets.sql`: The member's access ticket for the priced episode
   - `060_images.sql`: The image rows: an eye-catch for every series and label, an icon for every creator, and eight body pages for every episode
+  - `070_follows.sql`: The member's series and author follows, which fill My Page's follow updates
 - `objects/`: The image files `task storage:seed` uploads, laid out as the keys `dev/060_images.sql` names
 - `scenarios/`: Scenario-specific data (run as needed) — [scenarios/README.md](./scenarios/README.md)
 
