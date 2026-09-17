@@ -13,6 +13,8 @@ import {
   listPlatformTenantAdminInvitations,
   listPlatformTenantMembers,
   listPlatformTenants,
+  platformTenantCacheTag,
+  platformTenantsCacheTag,
   resendPlatformTenantAdminInvitation,
   resumePlatformTenant,
   suspendPlatformTenant,
@@ -45,6 +47,7 @@ const createListTenantsResponse = ({
 const {
   mockAddTenantMember,
   mockBuildSessionHeaders,
+  mockCacheTag,
   mockCreateTenant,
   mockCreateTenantAdminInvitation,
   mockGetTenant,
@@ -63,6 +66,7 @@ const {
 } = vi.hoisted(() => ({
   mockAddTenantMember: vi.fn(),
   mockBuildSessionHeaders: vi.fn(),
+  mockCacheTag: vi.fn(),
   mockCancelTenantAdminInvitation: vi.fn(),
   mockCreateTenant: vi.fn(),
   mockCreateTenantAdminInvitation: vi.fn(),
@@ -78,6 +82,10 @@ const {
   mockResumeTenant: vi.fn(),
   mockSuspendTenant: vi.fn(),
   mockUpdateTenantMemberRole: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api-client", () => ({
@@ -847,5 +855,54 @@ describe("tenant admin invitations", () => {
       },
       ok: true,
     });
+  });
+});
+
+describe("tenant cache tags", () => {
+  it("files the tenant list under the tenants tag", async () => {
+    mockListTenants.mockResolvedValueOnce(createListTenantsResponse({}));
+
+    await listPlatformTenants({ locale: "en" });
+
+    expect(mockCacheTag).toHaveBeenCalledWith(platformTenantsCacheTag);
+  });
+
+  it("files a tenant's detail under the tenants tag and its own", async () => {
+    mockGetTenant.mockResolvedValueOnce({ tenant: undefined });
+
+    await getPlatformTenant("tenant_bluemaple", "en");
+
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      "platform:tenants",
+      "platform:tenants:tenant_bluemaple"
+    );
+  });
+
+  it("files a tenant's members under the tenants tag and the tenant's own", async () => {
+    mockListTenantMembers.mockResolvedValueOnce({ members: [] });
+
+    await listPlatformTenantMembers({
+      locale: "en",
+      tenantId: "tenant_bluemaple",
+    });
+
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      platformTenantsCacheTag,
+      platformTenantCacheTag("tenant_bluemaple")
+    );
+  });
+
+  it("files a tenant's invitations under the tenants tag and the tenant's own", async () => {
+    mockListTenantAdminInvitations.mockResolvedValueOnce({ invitations: [] });
+
+    await listPlatformTenantAdminInvitations({
+      locale: "en",
+      tenantId: "tenant_bluemaple",
+    });
+
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      platformTenantsCacheTag,
+      platformTenantCacheTag("tenant_bluemaple")
+    );
   });
 });

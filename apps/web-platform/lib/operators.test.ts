@@ -3,7 +3,11 @@ import type { PlatformApiClient } from "@publira/api-client/platform/client";
 import type { PlatformOperator } from "@publira/api-client/platform/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getPlatformOperator, listPlatformOperators } from "./operators";
+import {
+  getPlatformOperator,
+  listPlatformOperators,
+  platformOperatorsCacheTag,
+} from "./operators";
 
 type GetOperatorMethod = PlatformApiClient["operators"]["getOperator"];
 type GetOperatorResponse = Awaited<ReturnType<GetOperatorMethod>>;
@@ -47,14 +51,20 @@ const createGetOperatorResponse = (
 
 const {
   mockBuildSessionHeaders,
+  mockCacheTag,
   mockGetOperator,
   mockListOperators,
   mockResolveAccessToken,
 } = vi.hoisted(() => ({
   mockBuildSessionHeaders: vi.fn(),
+  mockCacheTag: vi.fn(),
   mockGetOperator: vi.fn<GetOperatorMethod>(),
   mockListOperators: vi.fn<ListOperatorsMethod>(),
   mockResolveAccessToken: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api-client", () => ({
@@ -235,5 +245,20 @@ describe("getPlatformOperator", () => {
     await expect(getPlatformOperator("OPERATOR001", "en")).rejects.toThrow(
       "boom"
     );
+  });
+});
+
+describe("operator cache tags", () => {
+  it("files the operator list and an operator's detail under the operators tag", async () => {
+    mockListOperators.mockResolvedValueOnce(createListOperatorsResponse({}));
+    mockGetOperator.mockResolvedValueOnce(createGetOperatorResponse());
+
+    await listPlatformOperators({ locale: "en" });
+    await getPlatformOperator("OPERATOR001", "en");
+
+    expect(platformOperatorsCacheTag).toBe("platform:operators");
+    expect(mockCacheTag).toHaveBeenCalledTimes(2);
+    expect(mockCacheTag).toHaveBeenNthCalledWith(1, platformOperatorsCacheTag);
+    expect(mockCacheTag).toHaveBeenNthCalledWith(2, platformOperatorsCacheTag);
   });
 });

@@ -2,6 +2,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 
 import {
   apiClient,
@@ -53,10 +54,14 @@ export type ListPlatformAuditLogsResult =
       requiresSignIn: boolean;
     };
 
+/** The tag the audit log read is filed under, cleared by every write the API records. */
+export const platformAuditLogsCacheTag = "platform:audit-logs";
+
 export const listPlatformAuditLogs = async (
   input: ListPlatformAuditLogsInput
 ): Promise<ListPlatformAuditLogsResult> => {
   "use cache: private";
+  cacheTag(platformAuditLogsCacheTag);
 
   const sid = await resolveAccessToken();
   if (!sid) {

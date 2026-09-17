@@ -3,6 +3,7 @@ import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { PlatformOperator } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 import { z } from "zod";
 
 import {
@@ -86,10 +87,14 @@ const mapOperator = (
   status: operator.status,
 });
 
+/** The tag every operator read is filed under, and every operator write clears. */
+export const platformOperatorsCacheTag = "platform:operators";
+
 export const listPlatformOperators = async (
   input: ListPlatformOperatorsInput
 ): Promise<ListPlatformOperatorsResult> => {
   "use cache: private";
+  cacheTag(platformOperatorsCacheTag);
 
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
@@ -224,6 +229,7 @@ export const getPlatformOperator = async (
   locale: Locale
 ): Promise<PlatformOperatorSummary | null> => {
   "use cache: private";
+  cacheTag(platformOperatorsCacheTag);
 
   // Locale is a cache-key argument so a later localized miss does not replay
   // under the wrong language. This read currently returns null on a miss.

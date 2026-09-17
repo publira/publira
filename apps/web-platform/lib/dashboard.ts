@@ -2,6 +2,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 
 import {
   apiClient,
@@ -44,11 +45,18 @@ const normalizeRecentEventsLimit = (value?: number): number => {
   return Math.max(1, Math.min(50, Math.trunc(value)));
 };
 
+/**
+ * The tag the dashboard read is filed under, cleared by every write that moves
+ * a tenant count, the pending end-user count, or a recent event.
+ */
+export const platformDashboardCacheTag = "platform:dashboard";
+
 export const getPlatformDashboardSummary = async (input: {
   locale: Locale;
   recentEventsLimit?: number;
 }): Promise<GetPlatformDashboardSummaryResult> => {
   "use cache: private";
+  cacheTag(platformDashboardCacheTag);
 
   const sid = await resolveAccessToken();
   if (!sid) {

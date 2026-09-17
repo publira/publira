@@ -10,6 +10,7 @@ import type {
 } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 
 import {
   apiClient,
@@ -155,10 +156,21 @@ export type ListPlatformTenantsResult =
       tenants: PlatformTenantSummary[];
     };
 
+/** The tag every tenant read is filed under, and every tenant write clears. */
+export const platformTenantsCacheTag = "platform:tenants";
+
+/**
+ * The tag the reads of one tenant carry as well, so a write that touches only
+ * its members or invitations leaves every other tenant cached.
+ */
+export const platformTenantCacheTag = (publicId: string): string =>
+  `platform:tenants:${publicId}`;
+
 export const listPlatformTenants = async (
   input: ListPlatformTenantsInput
 ): Promise<ListPlatformTenantsResult> => {
   "use cache: private";
+  cacheTag(platformTenantsCacheTag);
 
   const sid = await resolveAccessToken();
   if (!sid) {
@@ -249,6 +261,7 @@ export const getPlatformTenant = async (
   locale: Locale
 ): Promise<GetPlatformTenantResult> => {
   "use cache: private";
+  cacheTag(platformTenantsCacheTag, platformTenantCacheTag(publicId));
 
   const sid = await resolveAccessToken();
   if (!sid) {
@@ -320,6 +333,7 @@ export const listPlatformTenantMembers = async (
   input: ListPlatformTenantMembersInput
 ): Promise<ListPlatformTenantMembersResult> => {
   "use cache: private";
+  cacheTag(platformTenantsCacheTag, platformTenantCacheTag(input.tenantId));
 
   const tenantId = input.tenantId.trim();
   const sid = await resolveAccessToken();
@@ -572,6 +586,7 @@ export const listPlatformTenantAdminInvitations = async (
   input: ListPlatformTenantAdminInvitationsInput
 ): Promise<ListPlatformTenantAdminInvitationsResult> => {
   "use cache: private";
+  cacheTag(platformTenantsCacheTag, platformTenantCacheTag(input.tenantId));
 
   const { locale, t } = await loadTenantCopy(input.locale);
   const tenantId = input.tenantId.trim();

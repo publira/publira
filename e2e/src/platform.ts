@@ -64,14 +64,13 @@ export interface CreateTenantInput {
 }
 
 /**
- * Fill and submit the tenant create form. Resolves after redirect to the
- * detail URL (`/tenants/<publicId>`).
+ * Fill and submit the tenant create form the page already shows, resolving to
+ * the new tenant's public_id once the Action has redirected to its detail.
  */
-export const createTenantViaUi = async (
+export const submitTenantForm = async (
   page: Page,
   input: CreateTenantInput
 ): Promise<string> => {
-  await page.goto(platformUrl("/tenants/new"));
   await expect(
     page.getByRole("heading", { name: /Create tenant/u }).first()
   ).toBeVisible();
@@ -108,6 +107,18 @@ export const createTenantViaUi = async (
   return publicId;
 };
 
+/**
+ * Open the tenant create form, then fill and submit it. Resolves after redirect
+ * to the detail URL (`/tenants/<publicId>`).
+ */
+export const createTenantViaUi = async (
+  page: Page,
+  input: CreateTenantInput
+): Promise<string> => {
+  await page.goto(platformUrl("/tenants/new"));
+  return await submitTenantForm(page, input);
+};
+
 export const formMessage = (page: Page): Locator => page.getByRole("status");
 
 /** Label of the option to pick in an operator role selector. */
@@ -120,17 +131,16 @@ export interface CreateOperatorInput {
 }
 
 /**
- * Fill and submit the operator create form, resolving after the redirect back
- * to the list.
+ * Fill and submit the operator create form the page already shows, resolving
+ * after the redirect back to the list.
  *
  * The invited operator's public_id is not on that redirect and the Action
  * answers with nothing else, so a caller that needs it reads the row it created.
  */
-export const createOperatorViaUi = async (
+export const submitOperatorForm = async (
   page: Page,
   input: CreateOperatorInput
 ): Promise<void> => {
-  await page.goto(platformUrl("/operators/new"));
   await page.getByRole("textbox", { name: /^Name/u }).fill(input.name);
   await page
     .getByRole("textbox", { name: /^Email address/u })
@@ -142,6 +152,15 @@ export const createOperatorViaUi = async (
     .click();
   await page.getByRole("button", { name: "Add" }).click();
   await page.waitForURL((url) => url.pathname === "/operators");
+};
+
+/** Open the operator create form, then fill and submit it. */
+export const createOperatorViaUi = async (
+  page: Page,
+  input: CreateOperatorInput
+): Promise<void> => {
+  await page.goto(platformUrl("/operators/new"));
+  await submitOperatorForm(page, input);
 };
 
 /**

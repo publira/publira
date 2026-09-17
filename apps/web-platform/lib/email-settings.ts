@@ -9,6 +9,7 @@ import {
 import type { PlatformEmailSettings } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 
 import {
   apiClient,
@@ -142,10 +143,14 @@ const toPlatformSmtpSettings = (
   username: settings?.username ?? "",
 });
 
+/** The tag the SMTP settings read is filed under, and their save clears. */
+export const platformEmailSettingsCacheTag = "platform:email-settings";
+
 export const getPlatformEmailSettings = async (
   locale: Locale
 ): Promise<PlatformSmtpSettingsResult> => {
   "use cache: private";
+  cacheTag(platformEmailSettingsCacheTag);
 
   const sessionId = await resolveAccessToken();
   if (!sessionId) {

@@ -12,6 +12,7 @@ import {
   signInAsScenarioPlatformOperator,
   signInAsSeedPlatformSuperAdmin,
   signOutPlatform,
+  submitTenantForm,
 } from "../src/platform";
 import {
   PLATFORM_OPERATORS_SCENARIO,
@@ -130,6 +131,36 @@ test.describe("platform tenant operations", () => {
     ).toHaveAttribute("href", `/tenants/${tenantId}`);
     await expect(
       page.locator("tr", { hasText: name }).getByText("Active")
+    ).toBeVisible();
+  });
+
+  test("a tenant created from the list is in the list the console links back to", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Linked Tenant ${suffix}`;
+    const main = page.getByRole("main");
+
+    // Loaded once before the tenant exists; the rest are client navigations.
+    // Not the list sign-in lands on: setting the cookie empties the router cache.
+    await page.goto(platformUrl("/tenants"));
+    await expect(
+      main.getByRole("heading", { level: 1, name: "Tenants" })
+    ).toBeVisible();
+    await expect(main.getByText(name)).toHaveCount(0);
+
+    await main.getByRole("link", { name: "Create tenant" }).click();
+    trackTenant(
+      await submitTenantForm(page, { domain: `e2e-${suffix}.localhost`, name })
+    );
+
+    await main
+      .getByRole("link", { name: "Back to list" })
+      .filter({ visible: true })
+      .click();
+    await expect(page).toHaveURL(platformUrl("/tenants"));
+    await expect(
+      main.locator("tr", { hasText: name }).filter({ visible: true })
     ).toBeVisible();
   });
 

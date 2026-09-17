@@ -1,14 +1,23 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { listPlatformAuditLogs } from "./audit-logs";
+import { listPlatformAuditLogs, platformAuditLogsCacheTag } from "./audit-logs";
 
-const { mockBuildSessionHeaders, mockListAuditLogs, mockResolveSessionId } =
-  vi.hoisted(() => ({
-    mockBuildSessionHeaders: vi.fn(),
-    mockListAuditLogs: vi.fn(),
-    mockResolveSessionId: vi.fn(),
-  }));
+const {
+  mockBuildSessionHeaders,
+  mockCacheTag,
+  mockListAuditLogs,
+  mockResolveSessionId,
+} = vi.hoisted(() => ({
+  mockBuildSessionHeaders: vi.fn(),
+  mockCacheTag: vi.fn(),
+  mockListAuditLogs: vi.fn(),
+  mockResolveSessionId: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
+}));
 
 vi.mock("./api-client", () => ({
   apiClient: {
@@ -272,5 +281,16 @@ describe("listPlatformAuditLogs", () => {
     await expect(listPlatformAuditLogs({ locale: "en" })).rejects.toThrow(
       "boom"
     );
+  });
+});
+
+describe("audit log cache tag", () => {
+  it("files the audit log under the audit-logs tag", async () => {
+    mockListAuditLogs.mockResolvedValueOnce({ auditLogs: [] });
+
+    await listPlatformAuditLogs({ locale: "en" });
+
+    expect(platformAuditLogsCacheTag).toBe("platform:audit-logs");
+    expect(mockCacheTag).toHaveBeenCalledWith(platformAuditLogsCacheTag);
   });
 });

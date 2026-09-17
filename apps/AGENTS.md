@@ -95,6 +95,18 @@ All apps wire shared Redis cache via `@publira/next-cache-handlers` in `next.con
 
 Keep **both** enabled. Details and env (`PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`): `packages/next-cache-handlers/README.md`.
 
+## A cached read carries a tag, and every write clears it
+
+Every `"use cache"`, `"use cache: private"`, and `"use cache: remote"` function in `lib/` calls `cacheTag`, and every Server Action that changes what such a read returns calls `updateTag` for it before it returns or redirects. Three rules make that hold:
+
+- **A read carries a tag, exported beside it** (`platformTenantsCacheTag`, `genresCacheTag(tenantId)`), so the Action imports the name instead of retyping the string.
+- **A detail read carries its list's tag as well**, and a per-record tag only where some write touches that record without changing the list. A write to the collection then reaches every detail through one tag.
+- **An Action clears every tag whose read reports what it wrote**, not just the screen it was submitted from. Name the reads by what they return: a tenant rename changes the end-user rows that show the tenant's name, and a write the API records in the audit log changes the audit log. A create Action that ends in `redirect()` is no exception.
+
+Do not reach for `revalidatePath` instead. Called from an Action it discards the client router cache wholesale, which is what currently refreshes a private read, but Next.js documents that as temporary behaviour that will narrow to the named path; and a path names a screen rather than the data, so a second screen reading the same records stays stale. A `"use cache: private"` entry lives in the router cache of the browser that filled it, which is why a reload always looks right: the stale copy is only served on a client navigation, and that is what an E2E test of a write has to follow.
+
+No lint covers this. The unit tests of a `lib/` read assert the tag it carries, and the Action tests assert the tags each Action clears.
+
 ## Tracing: register through `@publira/tracing`
 
 Every app's `instrumentation.ts` `register()` calls `registerTracing("publira-<app>")` after the Temporal polyfill import. Do not call `registerOTel` (or construct an OpenTelemetry SDK) in an app: the opt-in switch, the deployment tier attribute, and the parent-based sampler are one policy shared with the Go processes, and a second copy of it drifts.

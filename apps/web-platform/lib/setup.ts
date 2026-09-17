@@ -9,9 +9,11 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import type { ResolvedLocaleState } from "@publira/utils/resolved-locale";
+import { cacheTag } from "next/cache";
 
 import { apiClient } from "./api-client";
 import { getMessagesFor } from "./messages";
+import { platformSetupStatusCacheTag } from "./setup-status";
 
 /**
  * Setup status is unknown rather than failed when the platform has not been
@@ -58,6 +60,7 @@ export type SetupStatus =
 
 export const isSetupCompleted = async (): Promise<SetupStatus> => {
   "use cache: private";
+  cacheTag(platformSetupStatusCacheTag);
 
   try {
     const { completed } = await readSetupStatus();

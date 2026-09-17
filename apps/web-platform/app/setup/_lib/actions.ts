@@ -5,6 +5,7 @@ import { getLocales } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -14,6 +15,7 @@ import { requiredTrimmedString } from "#lib/form-schemas";
 import { getInitialLocaleCandidate } from "#lib/initial-locale";
 import { getMessagesFor } from "#lib/messages";
 import { createInitialUser } from "#lib/setup";
+import { platformSetupStatusCacheTag } from "#lib/setup-status";
 
 /**
  * The chosen locale is checked against the supported list here as well as on
@@ -80,10 +82,12 @@ export const setupAction = async (
   });
   if (!result.ok) {
     if (result.alreadyCompleted) {
+      updateTag(platformSetupStatusCacheTag);
       redirect("/login");
     }
     return { message: result.message, ok: false };
   }
 
+  updateTag(platformSetupStatusCacheTag);
   redirect("/login?setup=done");
 };

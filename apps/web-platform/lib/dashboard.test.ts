@@ -1,16 +1,25 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getPlatformDashboardSummary } from "./dashboard";
+import {
+  getPlatformDashboardSummary,
+  platformDashboardCacheTag,
+} from "./dashboard";
 
 const {
   mockBuildSessionHeaders,
+  mockCacheTag,
   mockGetDashboardSummary,
   mockResolveSessionId,
 } = vi.hoisted(() => ({
   mockBuildSessionHeaders: vi.fn(),
+  mockCacheTag: vi.fn(),
   mockGetDashboardSummary: vi.fn(),
   mockResolveSessionId: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api-client", () => ({
@@ -146,5 +155,16 @@ describe("getPlatformDashboardSummary", () => {
     await expect(getPlatformDashboardSummary({ locale: "en" })).rejects.toThrow(
       "boom"
     );
+  });
+});
+
+describe("dashboard cache tag", () => {
+  it("files the dashboard under the dashboard tag", async () => {
+    mockGetDashboardSummary.mockResolvedValueOnce({ recentEvents: [] });
+
+    await getPlatformDashboardSummary({ locale: "en" });
+
+    expect(platformDashboardCacheTag).toBe("platform:dashboard");
+    expect(mockCacheTag).toHaveBeenCalledWith(platformDashboardCacheTag);
   });
 });

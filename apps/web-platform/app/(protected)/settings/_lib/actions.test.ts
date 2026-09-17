@@ -4,21 +4,28 @@ const {
   mockAssertSameOrigin,
   mockGetPlatformLocale,
   mockResolveAccessToken,
+  mockSendPlatformSmtpTestEmail,
   mockUpdatePlatformDefaultLocale,
   mockUpdatePlatformDefaultTimezone,
+  mockUpdatePlatformEmailSettings,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockResolveAccessToken: vi.fn(),
+  mockSendPlatformSmtpTestEmail: vi.fn(),
   mockUpdatePlatformDefaultLocale: vi.fn(),
   mockUpdatePlatformDefaultTimezone: vi.fn(),
+  mockUpdatePlatformEmailSettings: vi.fn(),
   mockUpdateTag: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
-  revalidatePath: vi.fn(),
   updateTag: mockUpdateTag,
+}));
+
+vi.mock("#lib/audit-logs", () => ({
+  platformAuditLogsCacheTag: "platform:audit-logs",
 }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
@@ -32,8 +39,9 @@ vi.mock("#lib/email-change", () => ({
 }));
 
 vi.mock("#lib/email-settings", () => ({
-  sendPlatformSmtpTestEmail: vi.fn(),
-  updatePlatformEmailSettings: vi.fn(),
+  platformEmailSettingsCacheTag: "platform:email-settings",
+  sendPlatformSmtpTestEmail: mockSendPlatformSmtpTestEmail,
+  updatePlatformEmailSettings: mockUpdatePlatformEmailSettings,
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
@@ -44,6 +52,10 @@ vi.mock("#lib/locale", async (importOriginal) => {
   };
 });
 
+vi.mock("#lib/setup-status", () => ({
+  platformSetupStatusCacheTag: "platform:setup-status",
+}));
+
 vi.mock("#lib/platform-settings", () => ({
   platformSettingsCacheTag: "platform:settings",
   updatePlatformDefaultLocale: mockUpdatePlatformDefaultLocale,
@@ -53,6 +65,14 @@ vi.mock("#lib/platform-settings", () => ({
 const timezoneFormData = (defaultTimezone: string): FormData => {
   const formData = new FormData();
   formData.set("default_timezone", defaultTimezone);
+  return formData;
+};
+
+const smtpFormData = (): FormData => {
+  const formData = new FormData();
+  formData.set("encryption", "starttls");
+  formData.set("host", "smtp.example.com");
+  formData.set("port", "587");
   return formData;
 };
 
@@ -95,6 +115,8 @@ describe("updatePlatformDefaultTimezoneAction", () => {
       "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:audit-logs");
+    expect(mockUpdateTag).not.toHaveBeenCalledWith("platform:setup-status");
   });
 
   it("saves unlisted aliases accepted by the server", async () => {
@@ -237,6 +259,9 @@ describe("updatePlatformDefaultLocaleAction", () => {
     });
     expect(mockUpdatePlatformDefaultLocale).toHaveBeenCalledWith("en", "en");
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
+    // The sign-in screen reads the saved language through `CheckSetupStatus`.
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:setup-status");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:audit-logs");
   });
 
   it.each(["fr", "ja-JP", ""])(
@@ -276,5 +301,56 @@ describe("updatePlatformDefaultLocaleAction", () => {
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("SMTP settings actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockResolveAccessToken.mockResolvedValue("session-token");
+    mockGetPlatformLocale.mockResolvedValue("en");
+  });
+
+  it("clears the SMTP settings and the audit log once a save succeeds", async () => {
+    mockUpdatePlatformEmailSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {},
+    });
+
+    const { updatePlatformEmailSettingsAction } = await import("./actions");
+
+    await expect(
+      updatePlatformEmailSettingsAction(null, smtpFormData())
+    ).resolves.toMatchObject({ ok: true });
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:email-settings");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:audit-logs");
+  });
+
+  it("clears nothing when the save fails", async () => {
+    mockUpdatePlatformEmailSettings.mockResolvedValueOnce({
+      message: "Could not save the settings.",
+      ok: false,
+    });
+
+    const { updatePlatformEmailSettingsAction } = await import("./actions");
+
+    await updatePlatformEmailSettingsAction(null, smtpFormData());
+
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("clears the audit log after a failed test send, which the API records too", async () => {
+    mockSendPlatformSmtpTestEmail.mockResolvedValueOnce({
+      message: "Could not send the test email.",
+      ok: false,
+    });
+
+    const { sendPlatformSmtpTestEmailAction } = await import("./actions");
+
+    await sendPlatformSmtpTestEmailAction(null, smtpFormData());
+
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:audit-logs");
+    expect(mockUpdateTag).not.toHaveBeenCalledWith("platform:email-settings");
   });
 });

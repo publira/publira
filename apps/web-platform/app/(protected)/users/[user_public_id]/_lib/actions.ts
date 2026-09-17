@@ -1,20 +1,23 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import {
   redirectToLoginIfSessionRejected,
   withPlatformSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { platformDashboardCacheTag } from "#lib/dashboard";
 import { requiredTrimmedString } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { canManageEndUsers } from "#lib/roles";
 import {
   deletePlatformEndUser,
+  platformEndUsersCacheTag,
   suspendPlatformEndUser,
   unsuspendPlatformEndUser,
 } from "#lib/users";
@@ -64,8 +67,9 @@ export const suspendEndUserAction = async (publicId: string): Promise<void> => {
   await withPlatformSessionReauth(() =>
     suspendPlatformEndUser(normalizedPublicId)
   );
-  revalidatePath(`/users/${normalizedPublicId}`);
-  revalidatePath("/users");
+  updateTag(platformEndUsersCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 };
 
 export const unsuspendEndUserAction = async (
@@ -86,8 +90,9 @@ export const unsuspendEndUserAction = async (
   await withPlatformSessionReauth(() =>
     unsuspendPlatformEndUser(normalizedPublicId)
   );
-  revalidatePath(`/users/${normalizedPublicId}`);
-  revalidatePath("/users");
+  updateTag(platformEndUsersCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 };
 
 export const deleteEndUserAction = async (publicId: string): Promise<void> => {
@@ -110,6 +115,8 @@ export const deleteEndUserAction = async (publicId: string): Promise<void> => {
     return;
   }
 
-  revalidatePath("/users");
+  updateTag(platformEndUsersCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
   redirect("/users");
 };

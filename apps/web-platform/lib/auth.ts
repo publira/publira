@@ -4,12 +4,14 @@ import {
   isUnauthenticatedRpcError,
 } from "@publira/api-client/errors";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { PLATFORM_SESSION_CACHE_TAG } from "./auth-shared";
 import { normalizePlatformRole } from "./roles";
 
 export {
@@ -71,6 +73,7 @@ export const logoutPlatform = async (accessToken: string): Promise<void> => {
 export const getPlatformCurrentOperator =
   async (): Promise<GetPlatformCurrentOperatorResult> => {
     "use cache: private";
+    cacheTag(PLATFORM_SESSION_CACHE_TAG);
 
     const sid = await resolveAccessToken();
     if (!sid) {

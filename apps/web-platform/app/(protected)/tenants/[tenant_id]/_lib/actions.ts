@@ -4,12 +4,14 @@ import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import { revalidatePath } from "next/cache";
+import { updateTag } from "next/cache";
 import { z } from "zod";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import { emailFormSchema } from "#lib/auth-input";
 import { withPlatformSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { platformDashboardCacheTag } from "#lib/dashboard";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
@@ -20,6 +22,8 @@ import {
   addPlatformTenantMember,
   cancelPlatformTenantAdminInvitation,
   createPlatformTenantAdminInvitation,
+  platformTenantCacheTag,
+  platformTenantsCacheTag,
   removePlatformTenantMember,
   resendPlatformTenantAdminInvitation,
   resumePlatformTenant,
@@ -27,6 +31,7 @@ import {
   updatePlatformTenant,
   updatePlatformTenantMemberRole,
 } from "#lib/tenants";
+import { platformEndUsersCacheTag } from "#lib/users";
 
 /**
  * Every schema below takes the `locale` and reads the catalog itself, so no
@@ -137,11 +142,6 @@ const invitationIdFormSchema = async (locale: Locale) => {
   });
 };
 
-const revalidateTenantMemberPaths = (tenantId: string) => {
-  revalidatePath(`/tenants/${tenantId}`);
-  revalidatePath(`/tenants/${tenantId}/members`);
-};
-
 export const suspendTenantAction = async (
   formData: FormData
 ): Promise<void> => {
@@ -160,8 +160,9 @@ export const suspendTenantAction = async (
   await withPlatformSessionReauth(() =>
     suspendPlatformTenant(parsed.data.tenantId)
   );
-  revalidatePath(`/tenants/${parsed.data.tenantId}`);
-  revalidatePath("/tenants");
+  updateTag(platformTenantsCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 };
 
 export const resumeTenantAction = async (formData: FormData): Promise<void> => {
@@ -180,8 +181,9 @@ export const resumeTenantAction = async (formData: FormData): Promise<void> => {
   await withPlatformSessionReauth(() =>
     resumePlatformTenant(parsed.data.tenantId)
   );
-  revalidatePath(`/tenants/${parsed.data.tenantId}`);
-  revalidatePath("/tenants");
+  updateTag(platformTenantsCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 };
 
 export const updateTenantNameAction = async (
@@ -213,7 +215,9 @@ export const updateTenantNameAction = async (
       locale
     )
   );
-  revalidatePath(`/tenants/${parsed.data.tenantId}`);
+  updateTag(platformTenantsCacheTag);
+  updateTag(platformEndUsersCacheTag);
+  updateTag(platformAuditLogsCacheTag);
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -251,7 +255,8 @@ export const updateTenantDomainAction = async (
       parsed.data.adminDomain
     )
   );
-  revalidatePath(`/tenants/${parsed.data.tenantId}`);
+  updateTag(platformTenantsCacheTag);
+  updateTag(platformAuditLogsCacheTag);
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -283,7 +288,9 @@ export const addTenantMemberAction = async (
     addPlatformTenantMember({ ...parsed.data, locale })
   );
 
-  revalidateTenantMemberPaths(parsed.data.tenantId);
+  updateTag(platformTenantCacheTag(parsed.data.tenantId));
+  updateTag(platformEndUsersCacheTag);
+  updateTag(platformDashboardCacheTag);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -325,7 +332,7 @@ export const updateTenantMemberRoleAction = async (
     )
   );
 
-  revalidateTenantMemberPaths(parsed.data.tenantId);
+  updateTag(platformTenantCacheTag(parsed.data.tenantId));
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -365,7 +372,9 @@ export const removeTenantMemberAction = async (
     )
   );
 
-  revalidateTenantMemberPaths(parsed.data.tenantId);
+  updateTag(platformTenantCacheTag(parsed.data.tenantId));
+  updateTag(platformEndUsersCacheTag);
+  updateTag(platformDashboardCacheTag);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -405,7 +414,10 @@ export const createTenantAdminInvitationAction = async (
     )
   );
 
-  revalidateTenantMemberPaths(parsed.data.tenantId);
+  updateTag(platformTenantCacheTag(parsed.data.tenantId));
+  updateTag(platformEndUsersCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -452,7 +464,8 @@ export const resendTenantAdminInvitationAction = async (
     )
   );
 
-  revalidateTenantMemberPaths(parsed.data.tenantId);
+  updateTag(platformTenantCacheTag(parsed.data.tenantId));
+  updateTag(platformAuditLogsCacheTag);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -492,7 +505,8 @@ export const cancelTenantAdminInvitationAction = async (
     )
   );
 
-  revalidateTenantMemberPaths(parsed.data.tenantId);
+  updateTag(platformTenantCacheTag(parsed.data.tenantId));
+  updateTag(platformAuditLogsCacheTag);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
