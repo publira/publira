@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
 import { getPlatformLocale } from "#lib/locale";
-import { loadPlatformMessages } from "#lib/messages";
-import type { PlatformMessages } from "#lib/messages";
+import { loadPlatformClientMessages } from "#lib/messages";
+import type { PlatformClientMessages } from "#lib/messages";
 
 import { PlatformMessagesContextProvider } from "./platform-messages-context";
 
-const loadRequestMessages = async (): Promise<PlatformMessages> =>
-  loadPlatformMessages(await getPlatformLocale());
+const loadRequestMessages = async (): Promise<PlatformClientMessages> =>
+  loadPlatformClientMessages(await getPlatformLocale());
 
 /**
  * Carries the catalog of the request's locale to the Client Components below,

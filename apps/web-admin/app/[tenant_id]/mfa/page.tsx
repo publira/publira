@@ -17,7 +17,7 @@ import { AdminLocaleProvider } from "#components/admin-locale-context";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
 import { getLocale } from "#lib/locale";
-import { getMessagesFor, loadAdminMessages } from "#lib/messages";
+import { getMessagesFor, loadAdminClientMessages } from "#lib/messages";
 import { readMfaChallenge } from "#lib/mfa-challenge";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -62,7 +62,7 @@ const MfaPageContent = async () => {
   }
 
   const locale = await getLocale(tenantId);
-  const messages = await loadAdminMessages(locale);
+  const messages = await loadAdminClientMessages(locale);
 
   return (
     <AdminLocaleProvider locale={locale} messages={messages}>

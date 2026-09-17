@@ -5,7 +5,10 @@ import type { MessageValues } from "@publira/i18n";
 import { use } from "react";
 
 import { AdminMessagesContext } from "#components/admin-locale-context";
-import type { AdminMessageAccessor, AdminMessageKey } from "#lib/messages";
+import type {
+  AdminClientMessageAccessor,
+  AdminClientMessageKey,
+} from "#lib/messages";
 
 /**
  * The accessor a Client Component resolves its copy through, bound to the
@@ -17,7 +20,7 @@ import type { AdminMessageAccessor, AdminMessageKey } from "#lib/messages";
  * no locale to answer in. `app/[tenant_id]/error.tsx`, which renders above the
  * layout that seeds the provider, uses `<ErrorBoundaryMessage>` instead.
  */
-export const useClientMessages = (): AdminMessageAccessor => {
+export const useClientMessages = (): AdminClientMessageAccessor => {
   const messages = use(AdminMessagesContext);
   if (messages === null) {
     throw new Error("AdminLocaleProvider is required.");
@@ -31,7 +34,7 @@ export const ClientMessage = ({
   message,
   values,
 }: {
-  message: AdminMessageKey;
+  message: AdminClientMessageKey;
   values?: MessageValues;
 }) => {
   const t = useClientMessages();

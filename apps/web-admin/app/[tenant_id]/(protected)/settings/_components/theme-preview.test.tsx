@@ -1,20 +1,20 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import { DEFAULT_TENANT_THEME } from "@publira/utils/theme-css-variables";
 import { act, cleanup, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { afterEach, describe, expect, it } from "vitest";
-
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ThemePreview } from "./theme-preview";
+import { ThemePreviewThemeContext } from "./theme-preview-frame";
 
-const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-    {children}
-  </AdminLocaleProvider>
-);
+vi.mock("#components/message", () => ({
+  Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
+    bindMessages(sharedCatalog("en"))(message),
+}));
 
 const renderPreview = async (
   theme: typeof DEFAULT_TENANT_THEME = DEFAULT_TENANT_THEME
@@ -22,9 +22,11 @@ const renderPreview = async (
   let container: HTMLElement | undefined;
 
   await act(() => {
-    ({ container } = render(<ThemePreview theme={theme} />, {
-      wrapper: EnglishConsole,
-    }));
+    ({ container } = render(
+      <ThemePreviewThemeContext value={theme}>
+        <ThemePreview />
+      </ThemePreviewThemeContext>
+    ));
   });
 
   const frame = container?.querySelector<HTMLElement>(".publira-theme-scope");

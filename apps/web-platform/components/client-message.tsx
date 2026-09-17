@@ -5,8 +5,8 @@ import type { MessageValues } from "@publira/i18n";
 import { use } from "react";
 
 import type {
-  PlatformMessageAccessor,
-  PlatformMessageKey,
+  PlatformClientMessageAccessor,
+  PlatformClientMessageKey,
 } from "#lib/messages";
 
 import { PlatformMessagesContext } from "./platform-messages-context";
@@ -21,7 +21,7 @@ import { PlatformMessagesContext } from "./platform-messages-context";
  * catalog is loaded in the browser. A route-level `error.tsx` uses
  * `<ErrorBoundaryMessage>` instead.
  */
-export const useClientMessages = (): PlatformMessageAccessor => {
+export const useClientMessages = (): PlatformClientMessageAccessor => {
   const messages = use(PlatformMessagesContext);
   if (messages === null) {
     throw new Error("PlatformMessagesProvider is required.");
@@ -35,7 +35,7 @@ export const ClientMessage = ({
   message,
   values,
 }: {
-  message: PlatformMessageKey;
+  message: PlatformClientMessageKey;
   values?: MessageValues;
 }) => {
   const t = useClientMessages();
