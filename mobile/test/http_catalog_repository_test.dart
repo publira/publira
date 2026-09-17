@@ -970,6 +970,40 @@ void main() {
     );
   });
 
+  test('getEpisode asks with the session it was called under, not the one that '
+      'replaced it', () async {
+    var accessToken = ConnectFixtureServer.memberAccessToken;
+    final authenticated = HttpCatalogRepository(
+      config: AppConfig(
+        apiBaseUrl: server.baseUrl,
+        tenantHost: 'localhost',
+        imageBaseUrl: imageBaseUrl,
+      ),
+      client: ConnectClient(
+        baseUrl: server.baseUrl,
+        accessToken: () => accessToken,
+      ),
+    );
+
+    final read = authenticated.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.paidEpisodeId,
+    );
+    // The reader signs out while the tenant lookup is still in flight.
+    accessToken = '';
+    final detail = await read;
+
+    expect(
+      server.requestsTo('GetEpisodeDetail').single.headers['authorization'],
+      'Bearer ${ConnectFixtureServer.memberAccessToken}',
+    );
+    expect(detail!.access, EpisodeAccess.entitled);
+    expect(
+      detail.imageRequestHeaders['authorization'],
+      'Bearer ${ConnectFixtureServer.memberAccessToken}',
+    );
+  });
+
   test(
     'the tenant is resolved once and reused by the reads after it',
     () async {

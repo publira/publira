@@ -149,13 +149,17 @@ class OfflineCatalogRepository implements CatalogRepository {
     String seriesPublicId,
     String episodePublicId,
   ) async {
+    // Read in the same turn as the origin reads its session token, so the body
+    // is filed under the reader it was fetched for even when the account
+    // changes before the answer arrives.
+    final reader = _readerId();
     try {
       final detail = await _origin.getEpisode(seriesPublicId, episodePublicId);
       if (detail == null) {
         await library.removeEpisode(seriesPublicId, episodePublicId);
         return null;
       }
-      await _remember(detail);
+      await _remember(detail, reader);
       return detail;
     } on CatalogFailure catch (failure) {
       if (failure.kind != CatalogFailureKind.network) {
@@ -308,10 +312,9 @@ class OfflineCatalogRepository implements CatalogRepository {
     );
   }
 
-  /// Records what the API just said about [detail], which is as much about
-  /// taking a body away as about keeping one.
-  Future<void> _remember(EpisodeDetail detail) async {
-    final reader = _readerId();
+  /// Records what the API just said about [detail] for [reader], which is as
+  /// much about taking a body away as about keeping one.
+  Future<void> _remember(EpisodeDetail detail, String reader) async {
     // An entitled body is kept only when there is a reader to hold it against:
     // a grant the device cannot name again is a grant it could never re-check.
     final keep = switch (detail.access) {

@@ -318,6 +318,25 @@ void main() {
     expect(library.episodes.values.single.ownerId, _reader);
   });
 
+  test(
+    'an entitled body stays with the reader who fetched it when another signs '
+    'in before it arrives',
+    () async {
+      readerId = _reader;
+      origin.episodes = {
+        episodeKey(_seriesId, _episodeId): _detail(
+          access: EpisodeAccess.entitled,
+        ),
+      };
+
+      final read = build().getEpisode(_seriesId, _episodeId);
+      readerId = 'SeedMMBRAAA2';
+      await read;
+
+      expect(library.episodes.values.single.ownerId, _reader);
+    },
+  );
+
   test('an entitled body with nobody signed in is not kept', () async {
     origin.episodes = {
       episodeKey(_seriesId, _episodeId): _detail(
