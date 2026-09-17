@@ -39,8 +39,9 @@ message AdminReader {
   string created_at = 5;
   // When the reader confirmed their address. Empty until they have.
   string email_verified_at = 6;
-  // The reader's birth date as YYYY-MM-DD. Empty when none is recorded. Staff
-  // read it to act on a reader who asks for it to be corrected.
+  // The reader's birth date as YYYY-MM-DD. Empty when none is recorded, and
+  // always empty in ListReaders: staff read it on one reader, to act on a
+  // reader who asks for it to be corrected.
   string birth_date = 8;
 }
 

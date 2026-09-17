@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func (e *adminDBEnv) listReaders(t *testing.T, tenant adminDBTenant, req *publiraadminv1.ListReadersRequest) *publiraadminv1.ListReadersResponse {
@@ -81,6 +82,49 @@ func TestDBAdminListReadersListsReadersOnlyAndPages(t *testing.T) {
 	back := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 2, Token: next.PreviousToken})
 	if got := adminReaderPublicIDs(back.Readers); !slices.Equal(got, []string{third.PublicID, second.PublicID}) {
 		t.Fatalf("page back = %v, want the two newest readers", got)
+	}
+}
+
+// Only the single read carries a birth date; a page of readers never does, in
+// either direction.
+func TestDBAdminListReadersLeavesBirthDatesOut(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RBLTENANT001", "reader-birth-list.example.com", "Birth", "RBLADMIN0001", "admin@reader-birth-list.example.com")
+	older := env.PG.SeedEndUser(t, admin.Tenant.ID, "RBLOLDER0001", "older@reader-birth-list.example.com", "Older")
+	newer := env.PG.SeedEndUser(t, admin.Tenant.ID, "RBLNEWER0001", "newer@reader-birth-list.example.com", "Newer")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for _, reader := range []testutil.TenantUser{older, newer} {
+		if _, err := dbmodels.New(env.PG.DB).SetUserBirthDateByID(ctx, dbmodels.SetUserBirthDateByIDParams{
+			ID:        reader.ID,
+			BirthDate: sql.NullTime{Time: time.Date(1990, time.April, 2, 0, 0, 0, 0, time.UTC), Valid: true},
+		}); err != nil {
+			t.Fatalf("SetUserBirthDateByID: %v", err)
+		}
+	}
+
+	first := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 1})
+	second := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 1, Token: first.NextToken})
+	back := env.listReaders(t, admin, &publiraadminv1.ListReadersRequest{Limit: 1, Token: second.PreviousToken})
+	for _, page := range [][]*publiraadminv1.AdminReader{first.Readers, second.Readers, back.Readers} {
+		if len(page) != 1 {
+			t.Fatalf("page = %+v, want one reader", page)
+		}
+		if page[0].BirthDate != "" {
+			t.Fatalf("listed reader %s birth_date = %q, want empty", page[0].PublicId, page[0].BirthDate)
+		}
+	}
+
+	res, err := env.userClient().GetReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.GetReaderRequest{
+		Tenant:   admin.tenantContext(),
+		PublicId: newer.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetReader: %v", err)
+	}
+	if res.Msg.Reader.BirthDate != "1990-04-02" {
+		t.Fatalf("read reader birth_date = %q, want 1990-04-02", res.Msg.Reader.BirthDate)
 	}
 }
 

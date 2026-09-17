@@ -353,6 +353,8 @@ LIMIT sqlc.arg('limit');
 -- through idx_users_tenant_created_at. Forward uses the DESC query; backward
 -- uses ASC, and the handler flips ASC rows back into display order.
 -- cursor rules: proto/README.md.
+-- The birth date is a NULL placeholder: a list has no use for it, so only the
+-- single read hands it out.
 -- name: ListTenantReadersDesc :many
 SELECT u.id,
     u.public_id,
@@ -361,7 +363,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    u.birth_date
+    NULL::date AS birth_date
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
     AND NOT EXISTS (
@@ -397,7 +399,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    u.birth_date
+    NULL::date AS birth_date
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
     AND NOT EXISTS (

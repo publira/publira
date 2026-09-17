@@ -142,8 +142,9 @@ export type AdminReader = Message<"publira.admin.v1.AdminReader"> & {
   emailVerifiedAt: string;
 
   /**
-   * The reader's birth date as YYYY-MM-DD. Empty when none is recorded. Staff
-   * read it to act on a reader who asks for it to be corrected.
+   * The reader's birth date as YYYY-MM-DD. Empty when none is recorded, and
+   * always empty in ListReaders: staff read it on one reader, to act on a
+   * reader who asks for it to be corrected.
    *
    * @generated from field: string birth_date = 8;
    */

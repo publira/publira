@@ -1376,6 +1376,8 @@ type Querier interface {
 	// through idx_users_tenant_created_at. Forward uses the DESC query; backward
 	// uses ASC, and the handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
+	// The birth date is a NULL placeholder: a list has no use for it, so only the
+	// single read hands it out.
 	ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error)
 	// Worker fan-out: everyone an announcement addressed to the whole tenant
 	// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a

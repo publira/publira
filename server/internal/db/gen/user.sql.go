@@ -934,7 +934,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    u.birth_date
+    NULL::date AS birth_date
 FROM users u
 WHERE u.tenant_id = $1
     AND NOT EXISTS (
@@ -1032,7 +1032,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    u.birth_date
+    NULL::date AS birth_date
 FROM users u
 WHERE u.tenant_id = $1
     AND NOT EXISTS (
@@ -1087,6 +1087,8 @@ type ListTenantReadersDescRow struct {
 // through idx_users_tenant_created_at. Forward uses the DESC query; backward
 // uses ASC, and the handler flips ASC rows back into display order.
 // cursor rules: proto/README.md.
+// The birth date is a NULL placeholder: a list has no use for it, so only the
+// single read hands it out.
 func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTenantReadersDesc,
 		arg.TenantID,

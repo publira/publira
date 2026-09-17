@@ -222,8 +222,9 @@ type AdminReader struct {
 	CreatedAt string `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// When the reader confirmed their address. Empty until they have.
 	EmailVerifiedAt string `protobuf:"bytes,6,opt,name=email_verified_at,json=emailVerifiedAt,proto3" json:"email_verified_at,omitempty"`
-	// The reader's birth date as YYYY-MM-DD. Empty when none is recorded. Staff
-	// read it to act on a reader who asks for it to be corrected.
+	// The reader's birth date as YYYY-MM-DD. Empty when none is recorded, and
+	// always empty in ListReaders: staff read it on one reader, to act on a
+	// reader who asks for it to be corrected.
 	BirthDate     string `protobuf:"bytes,8,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
