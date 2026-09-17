@@ -4,14 +4,14 @@ import { useToastManager } from "@publira/ui-components";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useRef } from "react";
 
-import type { AdminMessageKey } from "#lib/locale";
+import type { AdminClientMessageKey } from "#lib/messages";
 
 import { useClientMessages } from "./client-message";
 import { isFlashFlagSet } from "./flash-flag";
 
 interface FlashToastProps {
   keyName?: string;
-  message?: AdminMessageKey;
+  message?: AdminClientMessageKey;
   title?: string;
 }
 

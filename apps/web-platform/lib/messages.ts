@@ -26,6 +26,32 @@ export const loadPlatformMessages = (
   loadLocaleMessages(locale) as Promise<PlatformMessages>;
 
 /**
+ * The part of the catalog a Client Component renders from. The root layout
+ * places the provider, so this is written into the RSC payload of every route
+ * and carries the console's own copy rather than every app's.
+ */
+export type PlatformClientMessages = Pick<PlatformMessages, "platform">;
+
+/** Dotted key of a string a Client Component can render. */
+export type PlatformClientMessageKey = MessageKey<PlatformClientMessages>;
+
+/** What `useClientMessages()` answers with. */
+export type PlatformClientMessageAccessor =
+  MessageAccessor<PlatformClientMessages>;
+
+/**
+ * The {@link PlatformClientMessages} for `locale`, to seed
+ * `PlatformMessagesProvider`.
+ */
+export const loadPlatformClientMessages = async (
+  locale: Locale
+): Promise<PlatformClientMessages> => {
+  const { platform } = await loadPlatformMessages(locale);
+
+  return { platform };
+};
+
+/**
  * The accessor for a locale the caller already holds.
  *
  * This is the form for code that cannot resolve the request's locale itself

@@ -28,6 +28,7 @@ import { getTenantThemeSettings } from "#lib/theme-settings";
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { TenantIconForm } from "../_components/tenant-icon-form";
 import { TenantLogoForm } from "../_components/tenant-logo-form";
+import { ThemePreview } from "../_components/theme-preview";
 import { ThemeSettingsForm } from "../_components/theme-settings-form";
 import {
   updateTenantIconAction,
@@ -101,6 +102,7 @@ const SettingsThemeForms = async () => {
       <ThemeSettingsForm
         action={updateTenantThemeSettingsAction}
         initialTheme={themeResult.theme}
+        preview={<ThemePreview />}
       />
     </>
   );

@@ -25,6 +25,7 @@ import type {
   TenantThemeFontFamilies,
 } from "@publira/utils/theme-css-variables";
 import { useActionState, useCallback, useId, useState } from "react";
+import type { ReactNode } from "react";
 
 import {
   AdminSection,
@@ -35,11 +36,11 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import type { AdminMessageKey } from "#lib/locale";
+import type { AdminClientMessageKey } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { ThemeSettingsActionState } from "../settings-types";
-import { ThemePreview } from "./theme-preview";
+import { ThemePreviewThemeContext } from "./theme-preview-frame";
 
 interface ThemeSettingsFormProps {
   action: (
@@ -47,6 +48,8 @@ interface ThemeSettingsFormProps {
     formData: FormData
   ) => Promise<ThemeSettingsActionState>;
   initialTheme: TenantTheme;
+  /** `ThemePreview`, painted from the colors this form currently holds. */
+  preview: ReactNode;
 }
 
 interface ColorSwatchInputProps {
@@ -100,14 +103,14 @@ type FontFamilyKey = keyof TenantThemeFontFamilies;
 interface ColorFieldConfig {
   key: ColorKey;
   formName: string;
-  labelKey: AdminMessageKey;
-  descriptionKey?: AdminMessageKey;
+  labelKey: AdminClientMessageKey;
+  descriptionKey?: AdminClientMessageKey;
   inlineWithNext?: boolean;
 }
 
 const colorGroups: {
-  titleKey: AdminMessageKey;
-  descriptionKey: AdminMessageKey;
+  titleKey: AdminClientMessageKey;
+  descriptionKey: AdminClientMessageKey;
   fields: ColorFieldConfig[];
 }[] = [
   {
@@ -335,6 +338,7 @@ const applyThemePreview = (theme: TenantTheme) => {
 export const ThemeSettingsForm = ({
   action,
   initialTheme,
+  preview,
 }: ThemeSettingsFormProps) => {
   const t = useClientMessages();
   const pickerLabel = t("admin.settings.theme.color_picker");
@@ -592,7 +596,9 @@ export const ThemeSettingsForm = ({
               </AdminSectionDescription>
             </AdminSectionHeading>
           </AdminSectionHeader>
-          <ThemePreview theme={theme} />
+          <ThemePreviewThemeContext value={theme}>
+            {preview}
+          </ThemePreviewThemeContext>
         </AdminSection>
       </TabsPanel>
     </Tabs>

@@ -1,4 +1,4 @@
-import type { AdminMessageKey } from "./messages";
+import type { AdminClientMessageKey } from "./messages";
 
 export const PAYMENT_PROVIDER_STRIPE = "stripe";
 
@@ -48,7 +48,7 @@ export const paymentSettingsStatus = (
 
 export const paymentSettingsStatusCopy: Record<
   PaymentSettingsStatus,
-  { descriptionKey: AdminMessageKey; labelKey: AdminMessageKey }
+  { descriptionKey: AdminClientMessageKey; labelKey: AdminClientMessageKey }
 > = {
   disabled: {
     descriptionKey: "admin.settings.payment.status.disabled_description",

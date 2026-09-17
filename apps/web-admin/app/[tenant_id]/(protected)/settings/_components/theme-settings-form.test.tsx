@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
+import { ThemePreview } from "./theme-preview";
 import { ThemeSettingsForm } from "./theme-settings-form";
 
 vi.mock("#components/client-message", () => ({
@@ -28,6 +29,11 @@ vi.mock("#components/client-message", () => ({
     values?: MessageValues;
   }) => bindMessages(sharedCatalog("en"))(message, values),
   useClientMessages: () => bindMessages(sharedCatalog("en")),
+}));
+
+vi.mock("#components/message", () => ({
+  Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
+    bindMessages(sharedCatalog("en"))(message),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -50,7 +56,11 @@ const renderForm = async (
 
   await act(() => {
     ({ container } = render(
-      <ThemeSettingsForm action={action} initialTheme={DEFAULT_TENANT_THEME} />
+      <ThemeSettingsForm
+        action={action}
+        initialTheme={DEFAULT_TENANT_THEME}
+        preview={<ThemePreview />}
+      />
     ));
   });
 

@@ -23,6 +23,28 @@ export const loadAdminMessages = (locale: Locale): Promise<AdminMessages> =>
   loadLocaleMessages(locale) as Promise<AdminMessages>;
 
 /**
+ * The part of the catalog a Client Component renders from. It is written into
+ * the RSC payload of every console page, so it carries the console's own copy
+ * rather than every app's.
+ */
+export type AdminClientMessages = Pick<AdminMessages, "admin">;
+
+/** Dotted key of a string a Client Component can render. */
+export type AdminClientMessageKey = MessageKey<AdminClientMessages>;
+
+/** What `useClientMessages()` answers with. */
+export type AdminClientMessageAccessor = MessageAccessor<AdminClientMessages>;
+
+/** The {@link AdminClientMessages} for `locale`, to seed `AdminLocaleProvider`. */
+export const loadAdminClientMessages = async (
+  locale: Locale
+): Promise<AdminClientMessages> => {
+  const { admin } = await loadAdminMessages(locale);
+
+  return { admin };
+};
+
+/**
  * The accessor for a locale the caller already holds.
  *
  * This is the form for code that cannot resolve the request's locale itself

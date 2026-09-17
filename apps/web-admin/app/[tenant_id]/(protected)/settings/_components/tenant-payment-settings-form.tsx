@@ -29,7 +29,7 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import type { AdminMessageKey } from "#lib/locale";
+import type { AdminClientMessageKey } from "#lib/messages";
 import {
   paymentSettingsStatus,
   paymentSettingsStatusCopy,
@@ -65,7 +65,7 @@ interface PaymentSecretFieldProps {
   configured: boolean;
   error?: string;
   hint: string;
-  labelKey: AdminMessageKey;
+  labelKey: AdminClientMessageKey;
   name: string;
   required: boolean;
 }
