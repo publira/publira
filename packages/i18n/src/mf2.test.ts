@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   formatSimpleMessage,
@@ -52,6 +52,10 @@ describe("simpleMessageSyntaxError", () => {
 });
 
 describe("formatSimpleMessage", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("substitutes values and stringifies numbers", () => {
     expect(
       formatSimpleMessage("{$first} / {$total} pages", { first: 3, total: 12 })
@@ -75,6 +79,17 @@ describe("formatSimpleMessage", () => {
       "3 / {$total}"
     );
     expect(formatSimpleMessage("{$name}")).toBe("{$name}");
+  });
+
+  it("does not report an unresolved variable as a warning", () => {
+    const emitWarning = vi.spyOn(process, "emitWarning");
+    const warn = vi.spyOn(console, "warn");
+
+    expect(formatSimpleMessage("Page {$first} of {$total}")).toBe(
+      "Page {$first} of {$total}"
+    );
+    expect(emitWarning).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("resolves escape sequences", () => {

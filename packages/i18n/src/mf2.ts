@@ -29,6 +29,7 @@ import {
   isSelectMessage,
   isVariableRef,
   MessageFormat,
+  MessageResolutionError,
   parseMessage,
   validate,
 } from "messageformat";
@@ -178,6 +179,21 @@ export const simpleMessageParts = (source: string): SimpleMessagePart[] => {
 };
 
 /**
+ * Without a handler, `messageformat` reports every resolution error through
+ * `process.emitWarning`, which `next dev` shows as a console error.
+ */
+const reportFormatError = (error: unknown) => {
+  if (
+    error instanceof MessageResolutionError &&
+    error.type === "unresolved-variable"
+  ) {
+    return;
+  }
+
+  console.warn(error);
+};
+
+/**
  * Format one message. Throws `MessageSyntaxError` when `source` is not
  * well-formed MF2; an unresolved variable is not an error, and formats to the
  * spec's fallback for it (`{$name}`).
@@ -185,4 +201,8 @@ export const simpleMessageParts = (source: string): SimpleMessagePart[] => {
 export const formatSimpleMessage = (
   source: string,
   values?: MessageValues
-): string => formatterFor(source).format(values ? toParams(values) : undefined);
+): string =>
+  formatterFor(source).format(
+    values ? toParams(values) : undefined,
+    reportFormatError
+  );
