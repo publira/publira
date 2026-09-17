@@ -70,6 +70,10 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * `<HostMessagesProvider>` is the exception, because it reads nothing here: it
  * hands the catalog read down unresolved, so the error boundary sits below it
  * too and the provider is not remounted between `(site)` and `(auth)`.
+ *
+ * `group/document` never changes. Chrome that answers something deeper in the
+ * page — the site header giving way to a wide episode viewer — matches that
+ * element with `group-has-*`, so nothing above it has to be told.
  */
 const RootLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
   <html suppressHydrationWarning>
@@ -79,7 +83,7 @@ const RootLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
       {/* oxlint-disable-next-line next/no-css-tags, react-doctor/nextjs-no-css-link -- runtime tenant theme route */}
       <link href="/theme.css" rel="stylesheet" />
     </head>
-    <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
+    <body className="group/document min-h-dvh bg-background font-sans text-foreground antialiased">
       <HostMessagesProvider>{children}</HostMessagesProvider>
     </body>
   </html>

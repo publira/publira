@@ -2220,9 +2220,11 @@
       "scheduled_at": "公開予定",
       "to_series_detail": "シリーズを開く",
       "viewer": {
+        "collapse_viewer": "ページの幅を元に戻す",
         "end_page": "おわり",
         "enter_fullscreen": "全画面表示にする",
         "exit_fullscreen": "全画面表示を終了",
+        "expand_viewer": "ウィンドウの幅まで広げる",
         "loading": "読み込み中…",
         "navigation": "ページ送り",
         "no_pages": "ページがありません",

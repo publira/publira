@@ -22,11 +22,13 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getMyReadingPosition } from "#lib/reading-position";
 import { getTenantId } from "#lib/tenant-id";
+import { getMyViewerPreferences } from "#lib/viewer-preferences";
 
 import { episodePath } from "../_lib/episode-path";
 import { resumePageIndex } from "../_lib/reading-position";
 import { VIEWER_HEIGHT_CLASS } from "../_lib/viewer-layout";
 import { toViewerPages } from "../_lib/viewer-pages";
+import { saveWideViewerAction } from "../_lib/wide-viewer-action";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeComicViewer } from "./episode-comic-viewer";
 import { EpisodeComments, EpisodeCommentsSkeleton } from "./episode-comments";
@@ -43,7 +45,8 @@ import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recor
  * because a free episode reaches this component without a session ever being
  * resolved. It is read uncached and awaited before the viewer mounts: the page
  * the reader resumes on is the page the viewer draws first, not one it jumps
- * to once the reader is already looking at the first page.
+ * to once the reader is already looking at the first page. The viewer
+ * preferences are read beside it, so a wide viewer is wide from its first paint.
  *
  * What a reader does once they have finished — react to the episode, read what
  * others said about it, say something themselves — is the page after the last
@@ -93,11 +96,14 @@ export const EpisodeViewer = async ({
     getTenantId(),
     resolveAccessToken(),
   ]);
-  const savedPageIndex = await getMyReadingPosition({
-    accessToken,
-    episodePublicId: episode.publicId,
-    tenantId,
-  });
+  const [savedPageIndex, viewerPreferences] = await Promise.all([
+    getMyReadingPosition({
+      accessToken,
+      episodePublicId: episode.publicId,
+      tenantId,
+    }),
+    getMyViewerPreferences({ accessToken, tenantId }),
+  ]);
   const nextHref = nextEpisode
     ? episodePath(series.publicId, nextEpisode.publicId)
     : undefined;
@@ -106,12 +112,20 @@ export const EpisodeViewer = async ({
     : undefined;
 
   return (
-    <div className={cn(VIEWER_HEIGHT_CLASS, "w-full")}>
+    // A wide viewer fills the window, and the header gives way to it.
+    <div
+      className={cn(
+        VIEWER_HEIGHT_CLASS,
+        "w-full has-[[data-wide-viewer]]:h-svh"
+      )}
+    >
       <EpisodeComicViewer
         copy={{
+          collapseViewer: t("host.episode.viewer.collapse_viewer"),
           endPageStatus: t("host.episode.viewer.end_page"),
           enterFullscreen: t("host.episode.viewer.enter_fullscreen"),
           exitFullscreen: t("host.episode.viewer.exit_fullscreen"),
+          expandViewer: t("host.episode.viewer.expand_viewer"),
           loading: t("host.episode.viewer.loading"),
           navigation: t("host.episode.viewer.navigation"),
           nextPage: t("host.common.next_page"),
@@ -174,7 +188,11 @@ export const EpisodeViewer = async ({
           t("host.episode.viewer.page_title", values)
         )}
         readingDirection={episode.readingDirection}
+        saveWideViewer={
+          accessToken ? saveWideViewerAction.bind(null, tenantId) : undefined
+        }
         spreadStartIndex={episode.spreadStartIndex}
+        wideViewerEnabled={viewerPreferences.wideViewerEnabled}
       >
         <EpisodeReadRecorder episode={episode} series={series} />
         {accessToken ? (

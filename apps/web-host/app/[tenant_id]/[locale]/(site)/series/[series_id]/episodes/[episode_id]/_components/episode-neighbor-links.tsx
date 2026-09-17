@@ -35,6 +35,9 @@ export interface EpisodeNeighborLinksCopy {
  * the right. The sides are set as physical classes rather than through a `dir`
  * of its own, so the labels inside them are laid out in the direction their
  * own script asks for.
+ *
+ * Over a wide viewer the site header lies across the same edge while it is
+ * shown, so the bar steps down beneath it.
  */
 export const EpisodeNeighborLinks = ({
   copy,
@@ -58,7 +61,7 @@ export const EpisodeNeighborLinks = ({
   return (
     <nav
       aria-label={copy.label}
-      className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16"
+      className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 transition-transform duration-state ease-state group-has-[[data-wide-viewer=revealed]]/document:translate-y-14"
     >
       {previousHref === undefined ? null : (
         <LinkButton

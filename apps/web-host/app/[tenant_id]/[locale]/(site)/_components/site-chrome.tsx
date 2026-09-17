@@ -631,30 +631,36 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
     <Suspense fallback={null}>
       <PinnedAnnouncementBanner />
     </Suspense>
-    <SiteLayoutHeader>
-      <Suspense fallback={<SiteLayoutBrandSkeleton />}>
-        <TenantBrandLink />
-      </Suspense>
-      <Suspense fallback={<SiteLayoutNavSkeleton />}>
-        <SiteNav />
-      </Suspense>
-      <SiteLayoutHeaderSearch>
-        <Suspense fallback={<CatalogSearchFormSkeleton />}>
-          <CatalogSearchForm id="catalog-search-header" />
+    {/*
+      Over a wide episode viewer the header leaves the flow and lies across its
+      top, sliding away while the viewer marks its controls hidden.
+    */}
+    <div className="transition-[translate,visibility] duration-state ease-state group-has-[[data-wide-viewer=retracted]]/document:invisible group-has-[[data-wide-viewer=retracted]]/document:-translate-y-full group-has-[[data-wide-viewer]]/document:absolute group-has-[[data-wide-viewer]]/document:inset-x-0 group-has-[[data-wide-viewer]]/document:top-0 group-has-[[data-wide-viewer]]/document:z-30">
+      <SiteLayoutHeader>
+        <Suspense fallback={<SiteLayoutBrandSkeleton />}>
+          <TenantBrandLink />
         </Suspense>
-      </SiteLayoutHeaderSearch>
-      <SiteLayoutHeaderWideControls>
-        <Suspense fallback={<LocaleSwitcherSkeleton />}>
-          <LocaleSwitcher />
+        <Suspense fallback={<SiteLayoutNavSkeleton />}>
+          <SiteNav />
         </Suspense>
-      </SiteLayoutHeaderWideControls>
-      <SiteLayoutHeaderActions>
-        <Suspense fallback={<SiteLayoutHeaderActionsSkeleton />}>
-          <HeaderActions />
-        </Suspense>
-      </SiteLayoutHeaderActions>
-      <SiteMobileNavigation />
-    </SiteLayoutHeader>
+        <SiteLayoutHeaderSearch>
+          <Suspense fallback={<CatalogSearchFormSkeleton />}>
+            <CatalogSearchForm id="catalog-search-header" />
+          </Suspense>
+        </SiteLayoutHeaderSearch>
+        <SiteLayoutHeaderWideControls>
+          <Suspense fallback={<LocaleSwitcherSkeleton />}>
+            <LocaleSwitcher />
+          </Suspense>
+        </SiteLayoutHeaderWideControls>
+        <SiteLayoutHeaderActions>
+          <Suspense fallback={<SiteLayoutHeaderActionsSkeleton />}>
+            <HeaderActions />
+          </Suspense>
+        </SiteLayoutHeaderActions>
+        <SiteMobileNavigation />
+      </SiteLayoutHeader>
+    </div>
     <SiteLayoutMain>{children}</SiteLayoutMain>
     <SiteLayoutFooter>
       <Suspense fallback={null}>

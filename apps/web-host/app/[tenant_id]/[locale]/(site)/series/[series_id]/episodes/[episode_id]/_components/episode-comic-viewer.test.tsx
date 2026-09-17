@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { useViewerContext } from "@publira/comic-viewer";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -22,12 +22,17 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.sessionStorage.clear();
+});
 
 const copy: EpisodeComicViewerCopy = {
+  collapseViewer: "Restore the page width",
   endPageStatus: "End of episode",
   enterFullscreen: "Enter full screen",
   exitFullscreen: "Exit full screen",
+  expandViewer: "Widen to the window",
   loading: "Loading page",
   navigation: "Page navigation",
   nextPage: "Next page",
@@ -67,6 +72,7 @@ describe("EpisodeComicViewer", () => {
         pages={pages}
         readingDirection="ltr"
         spreadStartIndex={1}
+        wideViewerEnabled={false}
       >
         <LayoutProbe />
         <EpisodeNeighborLinks
@@ -96,11 +102,112 @@ describe("EpisodeComicViewer", () => {
         pages={pages}
         readingDirection="rtl"
         spreadStartIndex={0}
+        wideViewerEnabled={false}
       >
         <LayoutProbe />
       </EpisodeComicViewer>
     );
 
     expect(screen.getByText("rtl:0")).toBeDefined();
+  });
+});
+
+const wideViewerMarker = (container: HTMLElement) =>
+  container.querySelector<HTMLElement>("[data-wide-viewer]");
+
+/** Press the viewer the way a keyboard does, which shows or hides its controls. */
+const pressViewer = () => {
+  fireEvent.keyDown(screen.getByRole("button", { name: /Page 1/u }), {
+    key: "Enter",
+  });
+};
+
+describe("EpisodeComicViewer wide viewer", () => {
+  it("widens on the control, marks itself, and hands the choice to the server", () => {
+    const saveWideViewer = vi.fn(() => Promise.resolve());
+    const { container } = render(
+      <EpisodeComicViewer
+        copy={copy}
+        pages={pages}
+        readingDirection="rtl"
+        saveWideViewer={saveWideViewer}
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      />
+    );
+
+    expect(wideViewerMarker(container)).toBeNull();
+
+    pressViewer();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Widen to the window" })
+    );
+
+    // The controls the reader just used are still shown, and so is the header.
+    expect(wideViewerMarker(container)?.dataset.wideViewer).toBe("revealed");
+    expect(
+      screen
+        .getByRole("button", { name: "Restore the page width" })
+        .getAttribute("aria-pressed")
+    ).toBe("true");
+    expect(window.sessionStorage.getItem("publira.wide-viewer")).toBe("true");
+    expect(saveWideViewer).toHaveBeenCalledWith(true);
+  });
+
+  it("brings the header back with the reader controls when the viewer is pressed", () => {
+    const { container } = render(
+      <EpisodeComicViewer
+        copy={copy}
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled
+      />
+    );
+
+    // The reader controls start hidden, so the header starts retracted.
+    expect(wideViewerMarker(container)?.dataset.wideViewer).toBe("retracted");
+
+    pressViewer();
+    expect(wideViewerMarker(container)?.dataset.wideViewer).toBe("revealed");
+
+    pressViewer();
+    expect(wideViewerMarker(container)?.dataset.wideViewer).toBe("retracted");
+  });
+
+  it("restores the width, and keeps a guest's choice in the browser alone", () => {
+    const { container } = render(
+      <EpisodeComicViewer
+        copy={copy}
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled
+      />
+    );
+
+    pressViewer();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Restore the page width" })
+    );
+
+    expect(wideViewerMarker(container)).toBeNull();
+    expect(window.sessionStorage.getItem("publira.wide-viewer")).toBe("false");
+  });
+
+  it("follows a choice this tab already made over the value the server read", () => {
+    window.sessionStorage.setItem("publira.wide-viewer", "true");
+
+    const { container } = render(
+      <EpisodeComicViewer
+        copy={copy}
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      />
+    );
+
+    expect(wideViewerMarker(container)).not.toBeNull();
   });
 });

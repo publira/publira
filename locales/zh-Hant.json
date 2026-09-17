@@ -2220,9 +2220,11 @@
       "scheduled_at": "預約發布",
       "to_series_detail": "前往該系列",
       "viewer": {
+        "collapse_viewer": "恢復頁面寬度",
         "end_page": "完",
         "enter_fullscreen": "進入全螢幕",
         "exit_fullscreen": "結束全螢幕",
+        "expand_viewer": "擴展到視窗寬度",
         "loading": "正在載入…",
         "navigation": "翻頁導覽",
         "no_pages": "目前沒有頁面",

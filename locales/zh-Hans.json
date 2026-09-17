@@ -2220,9 +2220,11 @@
       "scheduled_at": "预约发布",
       "to_series_detail": "前往该系列",
       "viewer": {
+        "collapse_viewer": "恢复页面宽度",
         "end_page": "完",
         "enter_fullscreen": "进入全屏",
         "exit_fullscreen": "退出全屏",
+        "expand_viewer": "扩展到窗口宽度",
         "loading": "正在加载…",
         "navigation": "翻页导航",
         "no_pages": "暂无页面",
