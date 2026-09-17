@@ -37,10 +37,10 @@ vi.mock("./api", () => ({
 }));
 
 const adminReader = {
+  birthDate: "",
   createdAt: "2026-06-01T00:00:00Z",
   email: "reader@example.com",
   emailVerifiedAt: "2026-06-01T00:05:00Z",
-  hasBirthDate: false,
   name: "Reader One",
   publicId: "READER00001",
   status: "suspended",

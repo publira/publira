@@ -353,6 +353,8 @@ LIMIT sqlc.arg('limit');
 -- through idx_users_tenant_created_at. Forward uses the DESC query; backward
 -- uses ASC, and the handler flips ASC rows back into display order.
 -- cursor rules: proto/README.md.
+-- The birth date is a NULL placeholder: a list has no use for it, so only the
+-- single read hands it out.
 -- name: ListTenantReadersDesc :many
 SELECT u.id,
     u.public_id,
@@ -361,7 +363,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+    NULL::date AS birth_date
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
     AND NOT EXISTS (
@@ -397,7 +399,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+    NULL::date AS birth_date
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
     AND NOT EXISTS (
@@ -435,7 +437,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+    u.birth_date
 FROM users u
 WHERE u.tenant_id = sqlc.arg('tenant_id')
     AND u.public_id = sqlc.arg('public_id')
@@ -466,7 +468,7 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    (users.birth_date IS NOT NULL)::boolean AS has_birth_date;
+    users.birth_date;
 
 -- name: UnsuspendTenantReader :one
 -- A reader who never confirmed their address goes back to inactive, the state
@@ -488,7 +490,30 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    (users.birth_date IS NOT NULL)::boolean AS has_birth_date;
+    users.birth_date;
+
+-- name: SetTenantReaderBirthDate :one
+-- Sets or clears a reader's birth date past the written-once guard of
+-- SetUserBirthDateByID. Writing the date already stored is no rows, like a
+-- staff account and another tenant's.
+UPDATE users
+SET birth_date = sqlc.narg('birth_date')::date
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.public_id = sqlc.arg('public_id')
+    AND users.birth_date IS DISTINCT FROM sqlc.narg('birth_date')::date
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id,
+    users.public_id,
+    users.name,
+    users.email,
+    users.status,
+    users.created_at,
+    users.email_verified_at,
+    users.birth_date;
 
 -- name: DeleteTenantReader :one
 -- Hard delete, as DeleteUserByID. A staff account and another tenant's are no

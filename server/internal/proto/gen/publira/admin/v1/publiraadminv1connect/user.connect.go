@@ -48,6 +48,9 @@ const (
 	// AdminUserServiceUnsuspendReaderProcedure is the fully-qualified name of the AdminUserService's
 	// UnsuspendReader RPC.
 	AdminUserServiceUnsuspendReaderProcedure = "/publira.admin.v1.AdminUserService/UnsuspendReader"
+	// AdminUserServiceSetReaderBirthDateProcedure is the fully-qualified name of the AdminUserService's
+	// SetReaderBirthDate RPC.
+	AdminUserServiceSetReaderBirthDateProcedure = "/publira.admin.v1.AdminUserService/SetReaderBirthDate"
 	// AdminUserServiceDeleteReaderProcedure is the fully-qualified name of the AdminUserService's
 	// DeleteReader RPC.
 	AdminUserServiceDeleteReaderProcedure = "/publira.admin.v1.AdminUserService/DeleteReader"
@@ -69,6 +72,11 @@ type AdminUserServiceClient interface {
 	// suspension stay ended. A reader who is not suspended is left as they are.
 	// not_found as GetReader.
 	UnsuspendReader(context.Context, *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error)
+	// Sets or clears a reader's birth date. A reader cannot rewrite their own
+	// once it is recorded, so this is how a wrong date gets corrected. The next
+	// age-gated read for the reader is decided on the new date. Writing the date
+	// already stored changes nothing. not_found as GetReader.
+	SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error)
 	// Deletes a reader's account the way the reader's own DeleteMe does. not_found
 	// as GetReader.
 	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
@@ -115,6 +123,12 @@ func NewAdminUserServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminUserServiceMethods.ByName("UnsuspendReader")),
 			connect.WithClientOptions(opts...),
 		),
+		setReaderBirthDate: connect.NewClient[v1.SetReaderBirthDateRequest, v1.SetReaderBirthDateResponse](
+			httpClient,
+			baseURL+AdminUserServiceSetReaderBirthDateProcedure,
+			connect.WithSchema(adminUserServiceMethods.ByName("SetReaderBirthDate")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteReader: connect.NewClient[v1.DeleteReaderRequest, v1.DeleteReaderResponse](
 			httpClient,
 			baseURL+AdminUserServiceDeleteReaderProcedure,
@@ -126,12 +140,13 @@ func NewAdminUserServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // adminUserServiceClient implements AdminUserServiceClient.
 type adminUserServiceClient struct {
-	listTenantUsers *connect.Client[v1.ListTenantUsersRequest, v1.ListTenantUsersResponse]
-	listReaders     *connect.Client[v1.ListReadersRequest, v1.ListReadersResponse]
-	getReader       *connect.Client[v1.GetReaderRequest, v1.GetReaderResponse]
-	suspendReader   *connect.Client[v1.SuspendReaderRequest, v1.SuspendReaderResponse]
-	unsuspendReader *connect.Client[v1.UnsuspendReaderRequest, v1.UnsuspendReaderResponse]
-	deleteReader    *connect.Client[v1.DeleteReaderRequest, v1.DeleteReaderResponse]
+	listTenantUsers    *connect.Client[v1.ListTenantUsersRequest, v1.ListTenantUsersResponse]
+	listReaders        *connect.Client[v1.ListReadersRequest, v1.ListReadersResponse]
+	getReader          *connect.Client[v1.GetReaderRequest, v1.GetReaderResponse]
+	suspendReader      *connect.Client[v1.SuspendReaderRequest, v1.SuspendReaderResponse]
+	unsuspendReader    *connect.Client[v1.UnsuspendReaderRequest, v1.UnsuspendReaderResponse]
+	setReaderBirthDate *connect.Client[v1.SetReaderBirthDateRequest, v1.SetReaderBirthDateResponse]
+	deleteReader       *connect.Client[v1.DeleteReaderRequest, v1.DeleteReaderResponse]
 }
 
 // ListTenantUsers calls publira.admin.v1.AdminUserService.ListTenantUsers.
@@ -159,6 +174,11 @@ func (c *adminUserServiceClient) UnsuspendReader(ctx context.Context, req *conne
 	return c.unsuspendReader.CallUnary(ctx, req)
 }
 
+// SetReaderBirthDate calls publira.admin.v1.AdminUserService.SetReaderBirthDate.
+func (c *adminUserServiceClient) SetReaderBirthDate(ctx context.Context, req *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error) {
+	return c.setReaderBirthDate.CallUnary(ctx, req)
+}
+
 // DeleteReader calls publira.admin.v1.AdminUserService.DeleteReader.
 func (c *adminUserServiceClient) DeleteReader(ctx context.Context, req *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error) {
 	return c.deleteReader.CallUnary(ctx, req)
@@ -180,6 +200,11 @@ type AdminUserServiceHandler interface {
 	// suspension stay ended. A reader who is not suspended is left as they are.
 	// not_found as GetReader.
 	UnsuspendReader(context.Context, *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error)
+	// Sets or clears a reader's birth date. A reader cannot rewrite their own
+	// once it is recorded, so this is how a wrong date gets corrected. The next
+	// age-gated read for the reader is decided on the new date. Writing the date
+	// already stored changes nothing. not_found as GetReader.
+	SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error)
 	// Deletes a reader's account the way the reader's own DeleteMe does. not_found
 	// as GetReader.
 	DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error)
@@ -222,6 +247,12 @@ func NewAdminUserServiceHandler(svc AdminUserServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminUserServiceMethods.ByName("UnsuspendReader")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminUserServiceSetReaderBirthDateHandler := connect.NewUnaryHandler(
+		AdminUserServiceSetReaderBirthDateProcedure,
+		svc.SetReaderBirthDate,
+		connect.WithSchema(adminUserServiceMethods.ByName("SetReaderBirthDate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminUserServiceDeleteReaderHandler := connect.NewUnaryHandler(
 		AdminUserServiceDeleteReaderProcedure,
 		svc.DeleteReader,
@@ -240,6 +271,8 @@ func NewAdminUserServiceHandler(svc AdminUserServiceHandler, opts ...connect.Han
 			adminUserServiceSuspendReaderHandler.ServeHTTP(w, r)
 		case AdminUserServiceUnsuspendReaderProcedure:
 			adminUserServiceUnsuspendReaderHandler.ServeHTTP(w, r)
+		case AdminUserServiceSetReaderBirthDateProcedure:
+			adminUserServiceSetReaderBirthDateHandler.ServeHTTP(w, r)
 		case AdminUserServiceDeleteReaderProcedure:
 			adminUserServiceDeleteReaderHandler.ServeHTTP(w, r)
 		default:
@@ -269,6 +302,10 @@ func (UnimplementedAdminUserServiceHandler) SuspendReader(context.Context, *conn
 
 func (UnimplementedAdminUserServiceHandler) UnsuspendReader(context.Context, *connect.Request[v1.UnsuspendReaderRequest]) (*connect.Response[v1.UnsuspendReaderResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.UnsuspendReader is not implemented"))
+}
+
+func (UnimplementedAdminUserServiceHandler) SetReaderBirthDate(context.Context, *connect.Request[v1.SetReaderBirthDateRequest]) (*connect.Response[v1.SetReaderBirthDateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminUserService.SetReaderBirthDate is not implemented"))
 }
 
 func (UnimplementedAdminUserServiceHandler) DeleteReader(context.Context, *connect.Request[v1.DeleteReaderRequest]) (*connect.Response[v1.DeleteReaderResponse], error) {

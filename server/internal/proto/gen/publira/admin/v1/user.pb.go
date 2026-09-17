@@ -222,9 +222,10 @@ type AdminReader struct {
 	CreatedAt string `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// When the reader confirmed their address. Empty until they have.
 	EmailVerifiedAt string `protobuf:"bytes,6,opt,name=email_verified_at,json=emailVerifiedAt,proto3" json:"email_verified_at,omitempty"`
-	// Whether the reader has recorded a birth date. The date itself stays with
-	// the reader.
-	HasBirthDate  bool `protobuf:"varint,7,opt,name=has_birth_date,json=hasBirthDate,proto3" json:"has_birth_date,omitempty"`
+	// The reader's birth date as YYYY-MM-DD. Empty when none is recorded, and
+	// always empty in ListReaders: staff read it on one reader, to act on a
+	// reader who asks for it to be corrected.
+	BirthDate     string `protobuf:"bytes,8,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -301,11 +302,11 @@ func (x *AdminReader) GetEmailVerifiedAt() string {
 	return ""
 }
 
-func (x *AdminReader) GetHasBirthDate() bool {
+func (x *AdminReader) GetBirthDate() string {
 	if x != nil {
-		return x.HasBirthDate
+		return x.BirthDate
 	}
-	return false
+	return ""
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -743,6 +744,113 @@ func (x *UnsuspendReaderResponse) GetReader() *AdminReader {
 	return nil
 }
 
+type SetReaderBirthDateRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// YYYY-MM-DD, validated as a reader's own date is: a calendar date the
+	// tenant's calendar has reached, and not an implausibly old one. Empty clears
+	// the stored date.
+	BirthDate     string `protobuf:"bytes,3,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetReaderBirthDateRequest) Reset() {
+	*x = SetReaderBirthDateRequest{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetReaderBirthDateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetReaderBirthDateRequest) ProtoMessage() {}
+
+func (x *SetReaderBirthDateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetReaderBirthDateRequest.ProtoReflect.Descriptor instead.
+func (*SetReaderBirthDateRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SetReaderBirthDateRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *SetReaderBirthDateRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *SetReaderBirthDateRequest) GetBirthDate() string {
+	if x != nil {
+		return x.BirthDate
+	}
+	return ""
+}
+
+type SetReaderBirthDateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reader        *AdminReader           `protobuf:"bytes,1,opt,name=reader,proto3" json:"reader,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetReaderBirthDateResponse) Reset() {
+	*x = SetReaderBirthDateResponse{}
+	mi := &file_publira_admin_v1_user_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetReaderBirthDateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetReaderBirthDateResponse) ProtoMessage() {}
+
+func (x *SetReaderBirthDateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_user_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetReaderBirthDateResponse.ProtoReflect.Descriptor instead.
+func (*SetReaderBirthDateResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SetReaderBirthDateResponse) GetReader() *AdminReader {
+	if x != nil {
+		return x.Reader
+	}
+	return nil
+}
+
 type DeleteReaderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -753,7 +861,7 @@ type DeleteReaderRequest struct {
 
 func (x *DeleteReaderRequest) Reset() {
 	*x = DeleteReaderRequest{}
-	mi := &file_publira_admin_v1_user_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_user_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -765,7 +873,7 @@ func (x *DeleteReaderRequest) String() string {
 func (*DeleteReaderRequest) ProtoMessage() {}
 
 func (x *DeleteReaderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_user_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_user_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -778,7 +886,7 @@ func (x *DeleteReaderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteReaderRequest.ProtoReflect.Descriptor instead.
 func (*DeleteReaderRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{12}
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DeleteReaderRequest) GetTenant() *v1.TenantContext {
@@ -804,7 +912,7 @@ type DeleteReaderResponse struct {
 
 func (x *DeleteReaderResponse) Reset() {
 	*x = DeleteReaderResponse{}
-	mi := &file_publira_admin_v1_user_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_user_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -816,7 +924,7 @@ func (x *DeleteReaderResponse) String() string {
 func (*DeleteReaderResponse) ProtoMessage() {}
 
 func (x *DeleteReaderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_user_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_user_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -829,7 +937,7 @@ func (x *DeleteReaderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteReaderResponse.ProtoReflect.Descriptor instead.
 func (*DeleteReaderResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{13}
+	return file_publira_admin_v1_user_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DeleteReaderResponse) GetPublicId() string {
@@ -857,7 +965,7 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x05users\x18\x01 \x03(\v2!.publira.admin.v1.AdminTenantUserR\x05users\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xdd\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xec\x01\n" +
 	"\vAdminReader\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -865,8 +973,9 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12*\n" +
-	"\x11email_verified_at\x18\x06 \x01(\tR\x0femailVerifiedAt\x12$\n" +
-	"\x0ehas_birth_date\x18\a \x01(\bR\fhasBirthDate\"\xa7\x01\n" +
+	"\x11email_verified_at\x18\x06 \x01(\tR\x0femailVerifiedAt\x12\x1d\n" +
+	"\n" +
+	"birth_date\x18\b \x01(\tR\tbirthDateJ\x04\b\a\x10\bR\x0ehas_birth_date\"\xa7\x01\n" +
 	"\x12ListReadersRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x16\n" +
@@ -892,18 +1001,26 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"P\n" +
 	"\x17UnsuspendReaderResponse\x125\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"\x90\x01\n" +
+	"\x19SetReaderBirthDateRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x1d\n" +
+	"\n" +
+	"birth_date\x18\x03 \x01(\tR\tbirthDate\"S\n" +
+	"\x1aSetReaderBirthDateResponse\x125\n" +
 	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"k\n" +
 	"\x13DeleteReaderRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"3\n" +
 	"\x14DeleteReaderResponse\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId2\xe1\x04\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId2\xd4\x05\n" +
 	"\x10AdminUserService\x12h\n" +
 	"\x0fListTenantUsers\x12(.publira.admin.v1.ListTenantUsersRequest\x1a).publira.admin.v1.ListTenantUsersResponse\"\x00\x12\\\n" +
 	"\vListReaders\x12$.publira.admin.v1.ListReadersRequest\x1a%.publira.admin.v1.ListReadersResponse\"\x00\x12V\n" +
 	"\tGetReader\x12\".publira.admin.v1.GetReaderRequest\x1a#.publira.admin.v1.GetReaderResponse\"\x00\x12b\n" +
 	"\rSuspendReader\x12&.publira.admin.v1.SuspendReaderRequest\x1a'.publira.admin.v1.SuspendReaderResponse\"\x00\x12h\n" +
-	"\x0fUnsuspendReader\x12(.publira.admin.v1.UnsuspendReaderRequest\x1a).publira.admin.v1.UnsuspendReaderResponse\"\x00\x12_\n" +
+	"\x0fUnsuspendReader\x12(.publira.admin.v1.UnsuspendReaderRequest\x1a).publira.admin.v1.UnsuspendReaderResponse\"\x00\x12q\n" +
+	"\x12SetReaderBirthDate\x12+.publira.admin.v1.SetReaderBirthDateRequest\x1a,.publira.admin.v1.SetReaderBirthDateResponse\"\x00\x12_\n" +
 	"\fDeleteReader\x12%.publira.admin.v1.DeleteReaderRequest\x1a&.publira.admin.v1.DeleteReaderResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
@@ -918,53 +1035,59 @@ func file_publira_admin_v1_user_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_user_proto_rawDescData
 }
 
-var file_publira_admin_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_publira_admin_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_publira_admin_v1_user_proto_goTypes = []any{
-	(*AdminTenantUser)(nil),         // 0: publira.admin.v1.AdminTenantUser
-	(*ListTenantUsersRequest)(nil),  // 1: publira.admin.v1.ListTenantUsersRequest
-	(*ListTenantUsersResponse)(nil), // 2: publira.admin.v1.ListTenantUsersResponse
-	(*AdminReader)(nil),             // 3: publira.admin.v1.AdminReader
-	(*ListReadersRequest)(nil),      // 4: publira.admin.v1.ListReadersRequest
-	(*ListReadersResponse)(nil),     // 5: publira.admin.v1.ListReadersResponse
-	(*GetReaderRequest)(nil),        // 6: publira.admin.v1.GetReaderRequest
-	(*GetReaderResponse)(nil),       // 7: publira.admin.v1.GetReaderResponse
-	(*SuspendReaderRequest)(nil),    // 8: publira.admin.v1.SuspendReaderRequest
-	(*SuspendReaderResponse)(nil),   // 9: publira.admin.v1.SuspendReaderResponse
-	(*UnsuspendReaderRequest)(nil),  // 10: publira.admin.v1.UnsuspendReaderRequest
-	(*UnsuspendReaderResponse)(nil), // 11: publira.admin.v1.UnsuspendReaderResponse
-	(*DeleteReaderRequest)(nil),     // 12: publira.admin.v1.DeleteReaderRequest
-	(*DeleteReaderResponse)(nil),    // 13: publira.admin.v1.DeleteReaderResponse
-	(*v1.TenantContext)(nil),        // 14: publira.types.v1.TenantContext
+	(*AdminTenantUser)(nil),            // 0: publira.admin.v1.AdminTenantUser
+	(*ListTenantUsersRequest)(nil),     // 1: publira.admin.v1.ListTenantUsersRequest
+	(*ListTenantUsersResponse)(nil),    // 2: publira.admin.v1.ListTenantUsersResponse
+	(*AdminReader)(nil),                // 3: publira.admin.v1.AdminReader
+	(*ListReadersRequest)(nil),         // 4: publira.admin.v1.ListReadersRequest
+	(*ListReadersResponse)(nil),        // 5: publira.admin.v1.ListReadersResponse
+	(*GetReaderRequest)(nil),           // 6: publira.admin.v1.GetReaderRequest
+	(*GetReaderResponse)(nil),          // 7: publira.admin.v1.GetReaderResponse
+	(*SuspendReaderRequest)(nil),       // 8: publira.admin.v1.SuspendReaderRequest
+	(*SuspendReaderResponse)(nil),      // 9: publira.admin.v1.SuspendReaderResponse
+	(*UnsuspendReaderRequest)(nil),     // 10: publira.admin.v1.UnsuspendReaderRequest
+	(*UnsuspendReaderResponse)(nil),    // 11: publira.admin.v1.UnsuspendReaderResponse
+	(*SetReaderBirthDateRequest)(nil),  // 12: publira.admin.v1.SetReaderBirthDateRequest
+	(*SetReaderBirthDateResponse)(nil), // 13: publira.admin.v1.SetReaderBirthDateResponse
+	(*DeleteReaderRequest)(nil),        // 14: publira.admin.v1.DeleteReaderRequest
+	(*DeleteReaderResponse)(nil),       // 15: publira.admin.v1.DeleteReaderResponse
+	(*v1.TenantContext)(nil),           // 16: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_user_proto_depIdxs = []int32{
-	14, // 0: publira.admin.v1.ListTenantUsersRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 0: publira.admin.v1.ListTenantUsersRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 1: publira.admin.v1.ListTenantUsersResponse.users:type_name -> publira.admin.v1.AdminTenantUser
-	14, // 2: publira.admin.v1.ListReadersRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 2: publira.admin.v1.ListReadersRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3,  // 3: publira.admin.v1.ListReadersResponse.readers:type_name -> publira.admin.v1.AdminReader
-	14, // 4: publira.admin.v1.GetReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 4: publira.admin.v1.GetReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3,  // 5: publira.admin.v1.GetReaderResponse.reader:type_name -> publira.admin.v1.AdminReader
-	14, // 6: publira.admin.v1.SuspendReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 6: publira.admin.v1.SuspendReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3,  // 7: publira.admin.v1.SuspendReaderResponse.reader:type_name -> publira.admin.v1.AdminReader
-	14, // 8: publira.admin.v1.UnsuspendReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 8: publira.admin.v1.UnsuspendReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3,  // 9: publira.admin.v1.UnsuspendReaderResponse.reader:type_name -> publira.admin.v1.AdminReader
-	14, // 10: publira.admin.v1.DeleteReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 11: publira.admin.v1.AdminUserService.ListTenantUsers:input_type -> publira.admin.v1.ListTenantUsersRequest
-	4,  // 12: publira.admin.v1.AdminUserService.ListReaders:input_type -> publira.admin.v1.ListReadersRequest
-	6,  // 13: publira.admin.v1.AdminUserService.GetReader:input_type -> publira.admin.v1.GetReaderRequest
-	8,  // 14: publira.admin.v1.AdminUserService.SuspendReader:input_type -> publira.admin.v1.SuspendReaderRequest
-	10, // 15: publira.admin.v1.AdminUserService.UnsuspendReader:input_type -> publira.admin.v1.UnsuspendReaderRequest
-	12, // 16: publira.admin.v1.AdminUserService.DeleteReader:input_type -> publira.admin.v1.DeleteReaderRequest
-	2,  // 17: publira.admin.v1.AdminUserService.ListTenantUsers:output_type -> publira.admin.v1.ListTenantUsersResponse
-	5,  // 18: publira.admin.v1.AdminUserService.ListReaders:output_type -> publira.admin.v1.ListReadersResponse
-	7,  // 19: publira.admin.v1.AdminUserService.GetReader:output_type -> publira.admin.v1.GetReaderResponse
-	9,  // 20: publira.admin.v1.AdminUserService.SuspendReader:output_type -> publira.admin.v1.SuspendReaderResponse
-	11, // 21: publira.admin.v1.AdminUserService.UnsuspendReader:output_type -> publira.admin.v1.UnsuspendReaderResponse
-	13, // 22: publira.admin.v1.AdminUserService.DeleteReader:output_type -> publira.admin.v1.DeleteReaderResponse
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	16, // 10: publira.admin.v1.SetReaderBirthDateRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 11: publira.admin.v1.SetReaderBirthDateResponse.reader:type_name -> publira.admin.v1.AdminReader
+	16, // 12: publira.admin.v1.DeleteReaderRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 13: publira.admin.v1.AdminUserService.ListTenantUsers:input_type -> publira.admin.v1.ListTenantUsersRequest
+	4,  // 14: publira.admin.v1.AdminUserService.ListReaders:input_type -> publira.admin.v1.ListReadersRequest
+	6,  // 15: publira.admin.v1.AdminUserService.GetReader:input_type -> publira.admin.v1.GetReaderRequest
+	8,  // 16: publira.admin.v1.AdminUserService.SuspendReader:input_type -> publira.admin.v1.SuspendReaderRequest
+	10, // 17: publira.admin.v1.AdminUserService.UnsuspendReader:input_type -> publira.admin.v1.UnsuspendReaderRequest
+	12, // 18: publira.admin.v1.AdminUserService.SetReaderBirthDate:input_type -> publira.admin.v1.SetReaderBirthDateRequest
+	14, // 19: publira.admin.v1.AdminUserService.DeleteReader:input_type -> publira.admin.v1.DeleteReaderRequest
+	2,  // 20: publira.admin.v1.AdminUserService.ListTenantUsers:output_type -> publira.admin.v1.ListTenantUsersResponse
+	5,  // 21: publira.admin.v1.AdminUserService.ListReaders:output_type -> publira.admin.v1.ListReadersResponse
+	7,  // 22: publira.admin.v1.AdminUserService.GetReader:output_type -> publira.admin.v1.GetReaderResponse
+	9,  // 23: publira.admin.v1.AdminUserService.SuspendReader:output_type -> publira.admin.v1.SuspendReaderResponse
+	11, // 24: publira.admin.v1.AdminUserService.UnsuspendReader:output_type -> publira.admin.v1.UnsuspendReaderResponse
+	13, // 25: publira.admin.v1.AdminUserService.SetReaderBirthDate:output_type -> publira.admin.v1.SetReaderBirthDateResponse
+	15, // 26: publira.admin.v1.AdminUserService.DeleteReader:output_type -> publira.admin.v1.DeleteReaderResponse
+	20, // [20:27] is the sub-list for method output_type
+	13, // [13:20] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_user_proto_init() }
@@ -978,7 +1101,7 @@ func file_publira_admin_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_user_proto_rawDesc), len(file_publira_admin_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

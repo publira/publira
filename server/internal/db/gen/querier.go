@@ -1376,6 +1376,8 @@ type Querier interface {
 	// through idx_users_tenant_created_at. Forward uses the DESC query; backward
 	// uses ASC, and the handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
+	// The birth date is a NULL placeholder: a list has no use for it, so only the
+	// single read hands it out.
 	ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error)
 	// Worker fan-out: everyone an announcement addressed to the whole tenant
 	// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
@@ -1732,6 +1734,10 @@ type Querier interface {
 	// recent activity without the reader having moved.
 	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
+	// Sets or clears a reader's birth date past the written-once guard of
+	// SetUserBirthDateByID. Writing the date already stored is no rows, like a
+	// staff account and another tenant's.
+	SetTenantReaderBirthDate(ctx context.Context, arg SetTenantReaderBirthDateParams) (SetTenantReaderBirthDateRow, error)
 	// The theme row is created on demand: a tenant can upload a icon before it
 	// has ever saved a color, and the colors then keep their column defaults.
 	SetTenantThemeIconImage(ctx context.Context, arg SetTenantThemeIconImageParams) (TenantTheme, error)

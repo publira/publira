@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,12 +13,15 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 const (
@@ -124,8 +128,15 @@ func adminReader(row readerRow) *publiraadminv1.AdminReader {
 		Status:          row.Status,
 		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
 		EmailVerifiedAt: formatOptionalTime(row.EmailVerifiedAt),
-		HasBirthDate:    row.HasBirthDate,
+		BirthDate:       formatOptionalBirthDate(row.BirthDate),
 	}
+}
+
+func formatOptionalBirthDate(birthDate sql.NullTime) string {
+	if !birthDate.Valid {
+		return ""
+	}
+	return ageverification.FormatBirthDate(birthDate.Time)
 }
 
 // readerPage runs the keyset query for one page. The list reads newest first,
@@ -421,6 +432,77 @@ func (s *adminServer) UnsuspendReader(
 	}
 
 	return connect.NewResponse(&publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(readerRow(updated))}), nil
+}
+
+// SetReaderBirthDate sets or clears a reader's birth date. The age gates read
+// the stored date on every request, so nothing issued before the change needs
+// revoking.
+func (s *adminServer) SetReaderBirthDate(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.SetReaderBirthDateRequest],
+) (*connect.Response[publiraadminv1.SetReaderBirthDateResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	publicID, err := readerPublicIDArg(req.Msg.PublicId)
+	if err != nil {
+		return nil, err
+	}
+
+	var birthDate sql.NullTime
+	action := "reader_birth_date_cleared"
+	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
+		today, err := s.tenantToday(ctx, tenant)
+		if err != nil {
+			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", err, "tenant_id", tenant.ID.String())
+		}
+		parsed, err := ageverification.ParseBirthDate(raw, today)
+		if err != nil {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "birth_date")
+		}
+		birthDate = sql.NullTime{Time: parsed, Valid: true}
+		action = "reader_birth_date_changed"
+	}
+
+	var updated dbmodels.SetTenantReaderBirthDateRow
+	err = s.changeReader(ctx, req.Header(), sessionCtx, action, publicID, func(queries *dbmodels.Queries) error {
+		updated, err = queries.SetTenantReaderBirthDate(ctx, dbmodels.SetTenantReaderBirthDateParams{
+			BirthDate: birthDate,
+			TenantID:  uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			PublicID:  publicID,
+		})
+		return err
+	})
+	if errors.Is(err, errReaderUnchanged) {
+		// Either no such reader or one whose date is already this; the read
+		// tells which.
+		row, err := s.tenantReader(ctx, tenant.ID, publicID)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&publiraadminv1.SetReaderBirthDateResponse{Reader: adminReader(row)}), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&publiraadminv1.SetReaderBirthDateResponse{Reader: adminReader(readerRow(updated))}), nil
+}
+
+// tenantToday is the calendar day the tenant is living through, which is what
+// the storefront counts a reader's age against and so what bounds a date.
+func (s *adminServer) tenantToday(ctx context.Context, tenant dbmodels.Tenant) (time.Time, error) {
+	zone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx)))
+	location, err := time.LoadLocation(zone)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("load tenant time zone %q: %w", zone, err)
+	}
+	return ageverification.Today(time.Now(), location), nil
 }
 
 // DeleteReader deletes a reader of the tenant with the same statement DeleteMe

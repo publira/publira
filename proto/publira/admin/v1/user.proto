@@ -28,6 +28,9 @@ message ListTenantUsersResponse {
 // A reader of the tenant's site: an account of the tenant that holds no staff
 // role.
 message AdminReader {
+  reserved 7;
+  reserved "has_birth_date";
+
   string public_id = 1;
   string name = 2;
   string email = 3;
@@ -36,9 +39,10 @@ message AdminReader {
   string created_at = 5;
   // When the reader confirmed their address. Empty until they have.
   string email_verified_at = 6;
-  // Whether the reader has recorded a birth date. The date itself stays with
-  // the reader.
-  bool has_birth_date = 7;
+  // The reader's birth date as YYYY-MM-DD. Empty when none is recorded, and
+  // always empty in ListReaders: staff read it on one reader, to act on a
+  // reader who asks for it to be corrected.
+  string birth_date = 8;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -93,6 +97,19 @@ message UnsuspendReaderResponse {
   AdminReader reader = 1;
 }
 
+message SetReaderBirthDateRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // YYYY-MM-DD, validated as a reader's own date is: a calendar date the
+  // tenant's calendar has reached, and not an implausibly old one. Empty clears
+  // the stored date.
+  string birth_date = 3;
+}
+
+message SetReaderBirthDateResponse {
+  AdminReader reader = 1;
+}
+
 message DeleteReaderRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
@@ -117,6 +134,11 @@ service AdminUserService {
   // suspension stay ended. A reader who is not suspended is left as they are.
   // not_found as GetReader.
   rpc UnsuspendReader(UnsuspendReaderRequest) returns (UnsuspendReaderResponse) {}
+  // Sets or clears a reader's birth date. A reader cannot rewrite their own
+  // once it is recorded, so this is how a wrong date gets corrected. The next
+  // age-gated read for the reader is decided on the new date. Writing the date
+  // already stored changes nothing. not_found as GetReader.
+  rpc SetReaderBirthDate(SetReaderBirthDateRequest) returns (SetReaderBirthDateResponse) {}
   // Deletes a reader's account the way the reader's own DeleteMe does. not_found
   // as GetReader.
   rpc DeleteReader(DeleteReaderRequest) returns (DeleteReaderResponse) {}

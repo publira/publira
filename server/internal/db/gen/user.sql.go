@@ -201,7 +201,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+    u.birth_date
 FROM users u
 WHERE u.tenant_id = $1
     AND u.public_id = $2
@@ -225,7 +225,7 @@ type GetTenantReaderByPublicIDRow struct {
 	Status          string       `json:"status"`
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	HasBirthDate    bool         `json:"has_birth_date"`
+	BirthDate       sql.NullTime `json:"birth_date"`
 }
 
 // One reader in the shape ListTenantReaders* returns. A staff account and an
@@ -241,7 +241,7 @@ func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantRe
 		&i.Status,
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
-		&i.HasBirthDate,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -934,7 +934,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+    NULL::date AS birth_date
 FROM users u
 WHERE u.tenant_id = $1
     AND NOT EXISTS (
@@ -981,7 +981,7 @@ type ListTenantReadersAscRow struct {
 	Status          string       `json:"status"`
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	HasBirthDate    bool         `json:"has_birth_date"`
+	BirthDate       sql.NullTime `json:"birth_date"`
 }
 
 func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReadersAscParams) ([]ListTenantReadersAscRow, error) {
@@ -1009,7 +1009,7 @@ func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReader
 			&i.Status,
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
-			&i.HasBirthDate,
+			&i.BirthDate,
 		); err != nil {
 			return nil, err
 		}
@@ -1032,7 +1032,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
-    (u.birth_date IS NOT NULL)::boolean AS has_birth_date
+    NULL::date AS birth_date
 FROM users u
 WHERE u.tenant_id = $1
     AND NOT EXISTS (
@@ -1079,7 +1079,7 @@ type ListTenantReadersDescRow struct {
 	Status          string       `json:"status"`
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	HasBirthDate    bool         `json:"has_birth_date"`
+	BirthDate       sql.NullTime `json:"birth_date"`
 }
 
 // Admin ListReaders lists the tenant's readers: its accounts that hold no
@@ -1087,6 +1087,8 @@ type ListTenantReadersDescRow struct {
 // through idx_users_tenant_created_at. Forward uses the DESC query; backward
 // uses ASC, and the handler flips ASC rows back into display order.
 // cursor rules: proto/README.md.
+// The birth date is a NULL placeholder: a list has no use for it, so only the
+// single read hands it out.
 func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTenantReadersDesc,
 		arg.TenantID,
@@ -1112,7 +1114,7 @@ func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReade
 			&i.Status,
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
-			&i.HasBirthDate,
+			&i.BirthDate,
 		); err != nil {
 			return nil, err
 		}
@@ -1415,6 +1417,63 @@ func (q *Queries) ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDe
 	return items, nil
 }
 
+const setTenantReaderBirthDate = `-- name: SetTenantReaderBirthDate :one
+UPDATE users
+SET birth_date = $1::date
+WHERE users.tenant_id = $2
+    AND users.public_id = $3
+    AND users.birth_date IS DISTINCT FROM $1::date
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = users.id
+    )
+RETURNING users.id,
+    users.public_id,
+    users.name,
+    users.email,
+    users.status,
+    users.created_at,
+    users.email_verified_at,
+    users.birth_date
+`
+
+type SetTenantReaderBirthDateParams struct {
+	BirthDate sql.NullTime  `json:"birth_date"`
+	TenantID  uuid.NullUUID `json:"tenant_id"`
+	PublicID  string        `json:"public_id"`
+}
+
+type SetTenantReaderBirthDateRow struct {
+	ID              uuid.UUID    `json:"id"`
+	PublicID        string       `json:"public_id"`
+	Name            string       `json:"name"`
+	Email           string       `json:"email"`
+	Status          string       `json:"status"`
+	CreatedAt       time.Time    `json:"created_at"`
+	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
+	BirthDate       sql.NullTime `json:"birth_date"`
+}
+
+// Sets or clears a reader's birth date past the written-once guard of
+// SetUserBirthDateByID. Writing the date already stored is no rows, like a
+// staff account and another tenant's.
+func (q *Queries) SetTenantReaderBirthDate(ctx context.Context, arg SetTenantReaderBirthDateParams) (SetTenantReaderBirthDateRow, error) {
+	row := q.db.QueryRowContext(ctx, setTenantReaderBirthDate, arg.BirthDate, arg.TenantID, arg.PublicID)
+	var i SetTenantReaderBirthDateRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.Email,
+		&i.Status,
+		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.BirthDate,
+	)
+	return i, err
+}
+
 const setUserBirthDateByID = `-- name: SetUserBirthDateByID :one
 UPDATE users
 SET birth_date = $2
@@ -1470,7 +1529,7 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    (users.birth_date IS NOT NULL)::boolean AS has_birth_date
+    users.birth_date
 `
 
 type SuspendTenantReaderParams struct {
@@ -1486,7 +1545,7 @@ type SuspendTenantReaderRow struct {
 	Status          string       `json:"status"`
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	HasBirthDate    bool         `json:"has_birth_date"`
+	BirthDate       sql.NullTime `json:"birth_date"`
 }
 
 // Suspends a reader and invalidates the sessions they hold. A reader who is
@@ -1502,7 +1561,7 @@ func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantRead
 		&i.Status,
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
-		&i.HasBirthDate,
+		&i.BirthDate,
 	)
 	return i, err
 }
@@ -1525,7 +1584,7 @@ RETURNING users.id,
     users.status,
     users.created_at,
     users.email_verified_at,
-    (users.birth_date IS NOT NULL)::boolean AS has_birth_date
+    users.birth_date
 `
 
 type UnsuspendTenantReaderParams struct {
@@ -1541,7 +1600,7 @@ type UnsuspendTenantReaderRow struct {
 	Status          string       `json:"status"`
 	CreatedAt       time.Time    `json:"created_at"`
 	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	HasBirthDate    bool         `json:"has_birth_date"`
+	BirthDate       sql.NullTime `json:"birth_date"`
 }
 
 // A reader who never confirmed their address goes back to inactive, the state
@@ -1557,7 +1616,7 @@ func (q *Queries) UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenant
 		&i.Status,
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
-		&i.HasBirthDate,
+		&i.BirthDate,
 	)
 	return i, err
 }
