@@ -58,22 +58,22 @@ const MyPage = ({ searchParams }: MyPageProps) => (
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <LocaleLink
-            className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
-            href="/my/library"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Suspense fallback={<SkeletonLine className="h-9 w-32" />}>
+            <LocaleLink
+              className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+              href="/my/library"
+            >
               <Message message="host.my.to_library" />
-            </Suspense>
-          </LocaleLink>
-          <LocaleLink
-            className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-            href="/settings"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            </LocaleLink>
+          </Suspense>
+          <Suspense fallback={<SkeletonLine className="h-9 w-28" />}>
+            <LocaleLink
+              className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+              href="/settings"
+            >
               <Message message="host.my.to_settings" />
-            </Suspense>
-          </LocaleLink>
+            </LocaleLink>
+          </Suspense>
         </div>
       </div>
     </section>
