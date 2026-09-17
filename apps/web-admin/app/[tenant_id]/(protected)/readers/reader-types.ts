@@ -34,3 +34,26 @@ export type ListReadersResult = CursorPageTokens &
         requiresSignIn: boolean;
       }
   );
+
+/** One reader's account, with the fields only the detail page shows. */
+export interface ReaderDetail extends ReaderItem {
+  /** When the reader confirmed their address. Empty until they have. */
+  emailVerifiedAt: string;
+  /** Whether a birth date is recorded; the date itself stays with the reader. */
+  hasBirthDate: boolean;
+}
+
+/**
+ * `notFound` covers a missing account, a staff account, and another tenant's
+ * reader alike: the API never tells them apart, so neither does the page.
+ */
+export type GetReaderResult =
+  | { ok: true; reader: ReaderDetail }
+  | { notFound: true; ok: false }
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };

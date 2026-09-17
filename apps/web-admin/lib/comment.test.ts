@@ -111,6 +111,7 @@ describe("comment lib", () => {
 
     const { listComments } = await import("./comment");
     const result = await listComments("TENANT001", "en", {
+      authorPublicId: " USER001 ",
       episodePublicId: " EPISODE001 ",
       limit: 10,
       seriesPublicId: " SERIES001 ",
@@ -122,6 +123,7 @@ describe("comment lib", () => {
 
     expect(mockListComments).toHaveBeenCalledWith(
       {
+        authorPublicId: "USER001",
         episodePublicId: "EPISODE001",
         limit: 10,
         seriesPublicId: "SERIES001",

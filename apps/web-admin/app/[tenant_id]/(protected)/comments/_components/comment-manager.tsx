@@ -51,7 +51,7 @@ type CommentManagerProps = CursorPageHrefs & {
 
 // Absolute API timestamp → tenant display zone. `formatDateTime` falls back to
 // the raw value when it cannot be parsed, so only the empty case is special.
-const formatCommentDateTime = (
+export const formatCommentDateTime = (
   value: string,
   locale: Locale,
   timeZone: string
@@ -119,7 +119,7 @@ const PurgeNotice = ({
  * it exactly as it was — otherwise being quoted their own removed comment
  * looks like the removal failed.
  */
-const CommentStateNotes = ({
+export const CommentStateNotes = ({
   comment,
   locale,
   timeZone,
@@ -200,7 +200,7 @@ const CommentStateNotes = ({
  * `failed_precondition` for it, and a button that can only fail is not a
  * control. A purge is offered in every state — that is the point of it.
  */
-const CommentRowActions = ({ comment }: { comment: CommentItem }) => (
+export const CommentRowActions = ({ comment }: { comment: CommentItem }) => (
   <div className="grid gap-2">
     {comment.status === "pending" ? (
       <CommentActionButton action="approve" publicId={comment.publicId} />
@@ -319,9 +319,12 @@ const CommentListBody = ({
             </TableCell>
             <TableCell>
               <div className="grid gap-0.5">
-                <span className="font-medium">
+                <Link
+                  className="font-medium underline-offset-4 hover:underline"
+                  href={`/readers/${comment.authorPublicId}`}
+                >
                   {comment.authorName || comment.authorPublicId}
-                </span>
+                </Link>
                 <span className="text-xs text-muted-foreground">
                   {comment.authorPublicId}
                 </span>

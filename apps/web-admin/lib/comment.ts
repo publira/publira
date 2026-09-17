@@ -212,6 +212,8 @@ const mapCommentReport = (item: RawCommentReport): CommentReportItem => ({
 });
 
 export interface ListCommentsFilters extends CursorPageOptions {
+  /** Only the comments one reader wrote. */
+  authorPublicId?: string;
   /** Empty lists every state, which is the whole history in one list. */
   episodePublicId?: string;
   seriesPublicId?: string;
@@ -248,6 +250,7 @@ export const listComments = async (
     const response = await apiClient.comments.listComments(
       {
         ...cursorPageRequest(filters),
+        authorPublicId: filters.authorPublicId?.trim() ?? "",
         episodePublicId: filters.episodePublicId?.trim() ?? "",
         seriesPublicId: filters.seriesPublicId?.trim() ?? "",
         status: filters.status?.trim() ?? "",

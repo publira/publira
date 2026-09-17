@@ -1,11 +1,16 @@
 import type { AdminReader } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  isMissingResourceRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 
 import { READER_STATUSES } from "../app/[tenant_id]/(protected)/readers/reader-types";
 import type {
+  GetReaderResult,
   ListReadersResult,
+  ReaderDetail,
   ReaderItem,
   ReaderStatus,
 } from "../app/[tenant_id]/(protected)/readers/reader-types";
@@ -21,7 +26,7 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 /*
- * The list is not cached: readers sign up on the storefront, and nothing on
+ * Neither read is cached: readers sign up on the storefront, and nothing on
  * that path can drop a cache entry web-admin holds.
  */
 
@@ -101,6 +106,63 @@ export const listReaders = async (
       }),
       ok: false,
       readers: [],
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/** The generated `AdminReader` fields {@link mapReaderDetail} reads. */
+type RawReaderDetail = RawReader &
+  Pick<AdminReader, "emailVerifiedAt" | "hasBirthDate">;
+
+const mapReaderDetail = (item: RawReaderDetail): ReaderDetail => ({
+  ...mapReader(item),
+  emailVerifiedAt: item.emailVerifiedAt ?? "",
+  hasBirthDate: item.hasBirthDate ?? false,
+});
+
+/** One reader's account. */
+export const getReader = async (
+  tenantId: string,
+  locale: Locale,
+  publicId: string
+): Promise<GetReaderResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.users.getReader(
+      { publicId, tenant: { tenantId } },
+      withSessionHeaders(sessionId)
+    );
+    if (!response.reader?.publicId) {
+      return {
+        message: t("admin.readers.detail_failed"),
+        ok: false,
+        requiresSignIn: false,
+      };
+    }
+
+    return { ok: true, reader: mapReaderDetail(response.reader) };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    if (isMissingResourceRpcError(error)) {
+      return { notFound: true, ok: false };
+    }
+    return {
+      message: rpcErrorMessage(error, t("admin.readers.detail_failed"), {
+        locale,
+      }),
+      ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }
