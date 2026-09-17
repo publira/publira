@@ -426,6 +426,9 @@ type Querier interface {
 	// label that does not exist, or one of another tenant, returns no row.
 	GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error)
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
+	// A currently public series and the rating the tenant's age rule is applied
+	// to, for a read that decides access to its episodes.
+	GetPublishedSeriesAgeRatingByPublicID(ctx context.Context, arg GetPublishedSeriesAgeRatingByPublicIDParams) (GetPublishedSeriesAgeRatingByPublicIDRow, error)
 	// Resolves a currently public series to its internal ID and nothing else.
 	// Shared by every member-facing RPC that acts on a series (follow, rating), so
 	// they all treat a foreign, unpublished, or missing series the same way.
@@ -1106,6 +1109,13 @@ type Querier interface {
 	// No ORDER BY: the caller sorts the rows into the id order stage one settled
 	// on.
 	ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublishedCreatorsByIDsParams) ([]ListPublishedCreatorsByIDsRow, error)
+	// Every published episode of one series with the two facts its access state is
+	// decided from: whether published_free_episodes counts it free to everyone
+	// right now, and whether the reader holds a grant for it. The grant is the
+	// predicate UserHasEpisodeContentAccess answers one episode at a time, and a
+	// guest passes a NULL user_id, which no grant matches. The order is the one
+	// GetSeriesDetail lists the episodes in.
+	ListPublishedEpisodeAccessInSeries(ctx context.Context, arg ListPublishedEpisodeAccessInSeriesParams) ([]ListPublishedEpisodeAccessInSeriesRow, error)
 	// The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
 	// handler reverses the returned rows to preserve the newest-first display order.
 	ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtAscParams) ([]ListPublishedEpisodeCommentsByCreatedAtAscRow, error)

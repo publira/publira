@@ -74,6 +74,38 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 	return i, err
 }
 
+const getPublishedSeriesAgeRatingByPublicID = `-- name: GetPublishedSeriesAgeRatingByPublicID :one
+SELECT s.id,
+    sl.age_rating
+FROM series s
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+LIMIT 1
+`
+
+type GetPublishedSeriesAgeRatingByPublicIDParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+type GetPublishedSeriesAgeRatingByPublicIDRow struct {
+	ID        uuid.UUID      `json:"id"`
+	AgeRating sql.NullString `json:"age_rating"`
+}
+
+// A currently public series and the rating the tenant's age rule is applied
+// to, for a read that decides access to its episodes.
+func (q *Queries) GetPublishedSeriesAgeRatingByPublicID(ctx context.Context, arg GetPublishedSeriesAgeRatingByPublicIDParams) (GetPublishedSeriesAgeRatingByPublicIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getPublishedSeriesAgeRatingByPublicID, arg.TenantID, arg.PublicID)
+	var i GetPublishedSeriesAgeRatingByPublicIDRow
+	err := row.Scan(&i.ID, &i.AgeRating)
+	return i, err
+}
+
 const getPublishedSeriesIDByPublicID = `-- name: GetPublishedSeriesIDByPublicID :one
 SELECT s.id
 FROM series s

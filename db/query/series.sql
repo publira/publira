@@ -354,6 +354,20 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.published_at <= NOW()
 LIMIT 1;
 
+-- name: GetPublishedSeriesAgeRatingByPublicID :one
+-- A currently public series and the rating the tenant's age rule is applied
+-- to, for a read that decides access to its episodes.
+SELECT s.id,
+    sl.age_rating
+FROM series s
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.public_id = sqlc.arg('public_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+LIMIT 1;
+
 -- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,
