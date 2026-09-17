@@ -44,14 +44,14 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
 	}
 
-	// Optional auth, as GetEpisodeDetail has it: a session that cannot be
-	// verified reads as a guest, and only a failure to check it is reported.
+	// A rejected session reads as a guest. Any other failure is reported: a
+	// guest's answer would offer a signed-in reader what they already hold.
 	var reader dbmodels.User
 	userID := uuid.NullUUID{}
 	if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
 		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
 		if authErr != nil {
-			if connect.CodeOf(authErr) == connect.CodeInternal {
+			if connect.CodeOf(authErr) != connect.CodeUnauthenticated {
 				return nil, authErr
 			}
 			slog.InfoContext(ctx, "series episode access: bearer session rejected, continuing without it",
