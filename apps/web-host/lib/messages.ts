@@ -24,6 +24,28 @@ export const loadHostMessages = (locale: Locale): Promise<HostMessages> =>
   loadLocaleMessages(locale) as Promise<HostMessages>;
 
 /**
+ * The part of the catalog a Client Component renders from. It is written into
+ * the RSC payload of every page, so it carries `host` rather than every app's
+ * copy.
+ */
+export type HostClientMessages = Pick<HostMessages, "host">;
+
+/** Dotted key of a string a Client Component can render. */
+export type HostClientMessageKey = MessageKey<HostClientMessages>;
+
+/** What `useClientMessages()` answers with. */
+export type HostClientMessageAccessor = MessageAccessor<HostClientMessages>;
+
+/** The {@link HostClientMessages} for `locale`, to seed `HostMessagesProvider`. */
+export const loadHostClientMessages = async (
+  locale: Locale
+): Promise<HostClientMessages> => {
+  const { host } = await loadHostMessages(locale);
+
+  return { host };
+};
+
+/**
  * The accessor for a locale the caller already holds.
  *
  * This is the form for code that cannot resolve the request's locale itself

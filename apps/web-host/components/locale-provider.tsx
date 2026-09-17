@@ -26,9 +26,10 @@ const TenantDefaultLocaleContext = createContext<Promise<Locale> | null>(null);
  *
  * The root layout is not where this is seeded, even though the locale is
  * cheaper to resolve there than anything else: a root layout reads nothing, so
- * the two group layouts below it own the read (`app/[tenant_id]/[locale]/
- * error.tsx` seeds its own, from the browser, because a failure in those
- * layouts is exactly what brings it up).
+ * the two group layouts below it own the read. `app/[tenant_id]/[locale]/
+ * error.tsx` renders without one, because a failure in those layouts is
+ * exactly what brings it up; its copy comes from `<HostMessagesProvider>`,
+ * which the root layout places without reading anything.
  */
 export const LocaleProvider = ({
   children,

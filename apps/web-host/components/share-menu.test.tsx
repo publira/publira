@@ -16,7 +16,7 @@ vi.mock("./client-message", () => {
   };
 
   return {
-    useHostMessages:
+    useClientMessages:
       () =>
       (key: string, values?: Record<string, string>): string =>
         key === "host.share.aria"

@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 
 import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
-import { useHostMessages } from "./client-message";
+import { useClientMessages } from "./client-message";
 import { useLocale, useTenantDefaultLocale } from "./locale-provider";
 
 /**
@@ -52,7 +52,7 @@ export const LocaleSwitcherSkeleton = () => (
 export const LocaleSwitcher = () => {
   const currentLocale = useLocale();
   const defaultLocale = useTenantDefaultLocale();
-  const t = useHostMessages();
+  const t = useClientMessages();
   const pathname = usePathname();
   const barePathname = toBarePathname(pathname);
 

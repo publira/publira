@@ -26,7 +26,7 @@ import type { HostMessageAccessor } from "./messages";
  * both take the locale as an argument and call `getMessagesFor` instead.
  *
  * This module reads `next/root-params`, so it is server-only. A Client
- * Component resolves its copy through `<ClientMessage>` or `useHostMessages()`.
+ * Component resolves its copy through `<ClientMessage>` or `useClientMessages()`.
  */
 export const getMessages = async (): Promise<HostMessageAccessor> => {
   const locale = await getLocale();

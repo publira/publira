@@ -1,8 +1,6 @@
 "use client";
 
 import { LinkButton } from "@publira/ui-components/button";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { ErrorScreen } from "#components/error-screen";
@@ -20,13 +18,8 @@ import { LocaleLink } from "#components/locale-link";
  *
  * No `<main>` here: `SiteLayoutMain` already provides one.
  *
- * Each string sits behind its own `<Suspense>` because `<ClientMessage>`
- * suspends while it loads the catalog, and an error boundary cannot rely on
- * finding a boundary above it to absorb that — the neighbouring
- * `app/[tenant_id]/[locale]/error.tsx` has none at all, and a suspend with no
- * fallback to flush cuts the response short after the 200 is committed. The
- * `<Suspense>` also keeps the sizing of each fallback visible next to the
- * string it stands in for.
+ * The root layout places `<HostMessagesProvider>` above this boundary, so the
+ * copy is there on the first render and needs no `<Suspense>`.
  *
  * Reach, as measured against the production build: what decides whether
  * this renders is **when** the failure happens, not how the request arrived. A
@@ -54,33 +47,15 @@ const SiteError = ({
   <ErrorScreen
     actions={
       <LinkButton render={<LocaleLink href="/" />} variant="outline">
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <ClientMessage message="host.common.back_to_top" />
-        </Suspense>
+        <ClientMessage message="host.common.back_to_top" />
       </LinkButton>
     }
-    description={
-      <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-        <ClientMessage message="host.errors.page_description" />
-      </Suspense>
-    }
+    description={<ClientMessage message="host.errors.page_description" />}
     digest={error.digest}
-    digestLabel={
-      <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-        <ClientMessage message="host.common.error_id" />
-      </Suspense>
-    }
+    digestLabel={<ClientMessage message="host.common.error_id" />}
     retry={retry}
-    retryLabel={
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <ClientMessage message="host.common.retry" />
-      </Suspense>
-    }
-    title={
-      <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
-        <ClientMessage message="host.errors.page_title" />
-      </Suspense>
-    }
+    retryLabel={<ClientMessage message="host.common.retry" />}
+    title={<ClientMessage message="host.errors.page_title" />}
   />
 );
 

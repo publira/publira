@@ -39,7 +39,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./client-message", () => ({
-  useHostMessages: () => bindMessages(sharedCatalog("en")),
+  useClientMessages: () => bindMessages(sharedCatalog("en")),
 }));
 
 vi.mock("./locale-provider", () => ({

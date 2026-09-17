@@ -2,6 +2,7 @@ import { getLocales, PATH_LOCALE_LANG_SCRIPT } from "@publira/i18n";
 import { STATIC_PARAM_PLACEHOLDER } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
+import { HostMessagesProvider } from "#components/host-messages-provider";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { resolveTenantIcons } from "#lib/tenant-icon";
 import { getTenantId } from "#lib/tenant-id";
@@ -65,6 +66,10 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * `(site)` and `(auth)` layouts. That is also what puts the tenant read behind
  * `app/[tenant_id]/[locale]/error.tsx`: a tenant whose stored default cannot be
  * read now brings up that boundary instead of a bare 500 no boundary catches.
+ *
+ * `<HostMessagesProvider>` is the exception, because it reads nothing here: it
+ * hands the catalog read down unresolved, so the error boundary sits below it
+ * too and the provider is not remounted between `(site)` and `(auth)`.
  */
 const RootLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
   <html suppressHydrationWarning>
@@ -75,7 +80,7 @@ const RootLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
       <link href="/theme.css" rel="stylesheet" />
     </head>
     <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
-      {children}
+      <HostMessagesProvider>{children}</HostMessagesProvider>
     </body>
   </html>
 );

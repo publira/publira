@@ -8,9 +8,7 @@ import {
   EmptyStateHeading,
   EmptyStateTitle,
 } from "@publira/ui-components/empty-state";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { LocaleLink } from "#components/locale-link";
@@ -20,7 +18,7 @@ import {
   useConfirmedAgeRating,
   writeConfirmedAgeRating,
 } from "#lib/age-rating-confirmation";
-import type { HostMessageKey } from "#lib/messages";
+import type { HostClientMessageKey } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
 /** The interstitial itself: why the page is closed, and the two ways out. */
@@ -31,21 +29,21 @@ const AgeRatingConfirmation = ({
   seriesTitle,
 }: {
   backHref: string;
-  backMessage: HostMessageKey;
+  backMessage: HostClientMessageKey;
   rating?: RestrictedAgeRating;
   seriesTitle: string;
 }) => {
   const tenantId = useTenantId();
 
-  const titleMessage: HostMessageKey =
+  const titleMessage: HostClientMessageKey =
     rating === "r18"
       ? "host.series.age_gate.r18_title"
       : "host.series.age_gate.r15_title";
-  const descriptionMessage: HostMessageKey =
+  const descriptionMessage: HostClientMessageKey =
     rating === "r18"
       ? "host.series.age_gate.r18_description"
       : "host.series.age_gate.r15_description";
-  const confirmMessage: HostMessageKey =
+  const confirmMessage: HostClientMessageKey =
     rating === "r18"
       ? "host.series.age_gate.confirm_r18"
       : "host.series.age_gate.confirm_r15";
@@ -61,19 +59,13 @@ const AgeRatingConfirmation = ({
       <EmptyState>
         <EmptyStateHeading>
           <EmptyStateTitle>
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <ClientMessage
-                message={titleMessage}
-                values={{ title: seriesTitle }}
-              />
-            </Suspense>
+            <ClientMessage
+              message={titleMessage}
+              values={{ title: seriesTitle }}
+            />
           </EmptyStateTitle>
           <EmptyStateDescription>
-            <Suspense
-              fallback={<SkeletonLine className="h-4 w-full max-w-md" />}
-            >
-              <ClientMessage message={descriptionMessage} />
-            </Suspense>
+            <ClientMessage message={descriptionMessage} />
           </EmptyStateDescription>
         </EmptyStateHeading>
         <EmptyStateActions>
@@ -84,17 +76,13 @@ const AgeRatingConfirmation = ({
               type="button"
               variant="secondary"
             >
-              <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-                <ClientMessage message={confirmMessage} />
-              </Suspense>
+              <ClientMessage message={confirmMessage} />
             </Button>
             <LinkButton
               render={<LocaleLink href={backHref} />}
               variant="outline"
             >
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <ClientMessage message={backMessage} />
-              </Suspense>
+              <ClientMessage message={backMessage} />
             </LinkButton>
           </div>
         </EmptyStateActions>
@@ -121,7 +109,7 @@ export const AgeRatingGate = ({
   seriesTitle,
 }: {
   backHref: string;
-  backMessage: HostMessageKey;
+  backMessage: HostClientMessageKey;
   children: ReactNode;
   provenAgeRating?: RestrictedAgeRating;
   rating?: RestrictedAgeRating;
