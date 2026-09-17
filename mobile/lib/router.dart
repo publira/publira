@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
@@ -54,12 +55,19 @@ abstract final class AppRoutes {
 
 /// Application router. Kept as a factory so widget tests can inject a fresh
 /// [GoRouter] without sharing navigation state across tests.
-GoRouter createAppRouter({String initialLocation = AppRoutes.catalog}) {
+///
+/// With no [initialLocation], the app opens on the route it was launched
+/// with: the `route` extra of an Android intent, or the fragment of a web URL.
+GoRouter createAppRouter({String? initialLocation}) {
   return GoRouter(
-    initialLocation: initialLocation,
+    initialLocation:
+        initialLocation ??
+        launchLocation(
+          WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+        ),
     // Incoming tenant URLs are parsed by `app_links` and handed over as
-    // in-app paths. Leaving Flutter's default deep linking on would send
-    // the raw `https://…` location here, which none of these routes match.
+    // in-app paths, so the platform's raw `https://…` location is never
+    // matched against these routes.
     overridePlatformDefaultLocation: true,
     routes: [
       GoRoute(
@@ -160,3 +168,9 @@ String? inAppLocation(String? location) {
   }
   return location;
 }
+
+/// Where a launch on [defaultRouteName] opens: that route when it is a path
+/// inside this app, and the catalog otherwise, such as for a tenant link's
+/// raw URL.
+String launchLocation(String defaultRouteName) =>
+    inAppLocation(defaultRouteName) ?? AppRoutes.catalog;

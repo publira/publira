@@ -125,6 +125,51 @@ void main() {
     expect(find.text(fixtureSeries.first.title), findsWidgets);
   });
 
+  testWidgets('a launch route opens the screen it names', (tester) async {
+    tester.platformDispatcher.defaultRouteNameTestValue = '/series/$seriesId';
+    addTearDown(tester.platformDispatcher.clearDefaultRouteNameTestValue);
+    router = createAppRouter();
+    await tester.pumpWidget(
+      PubliraApp(
+        router: router,
+        catalog: catalog,
+        auth: fakeAuthController(),
+        site: const PublicSite(host: 'localhost'),
+        incomingLinks: incoming,
+      ),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
+
+    expect(
+      router.routerDelegate.currentConfiguration.uri.path,
+      '/series/$seriesId',
+    );
+  });
+
+  testWidgets('a launch route that is a tenant URL opens the catalog', (
+    tester,
+  ) async {
+    tester.platformDispatcher.defaultRouteNameTestValue =
+        'https://localhost/series/$seriesId';
+    addTearDown(tester.platformDispatcher.clearDefaultRouteNameTestValue);
+    router = createAppRouter();
+    await tester.pumpWidget(
+      PubliraApp(
+        router: router,
+        catalog: catalog,
+        auth: fakeAuthController(),
+        site: const PublicSite(host: 'localhost'),
+        incomingLinks: incoming,
+      ),
+    );
+    await pumpUntilFound(tester, find.text(fixtureSeries.first.title));
+
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/');
+  });
+
   testWidgets('a checkout return lands on the catalog', (tester) async {
     incoming.initialUri = Uri.parse(
       'https://localhost/checkout/return?episode=$episodeId&status=success',
