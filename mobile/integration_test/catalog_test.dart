@@ -163,7 +163,7 @@ void main() {
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
           ),
         );
-        expect(find.text('Publira'), findsOneWidget);
+        expect(find.text(ConnectFixtureServer.seedTenantName), findsOneWidget);
         expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsWidgets);
       });
     });
@@ -258,7 +258,10 @@ void main() {
         await tester.pageBack();
         // The catalog names the series on its new-arrivals shelf as well as in
         // its list, so the screen that has to be gone is the detail one.
-        await pumpUntilRouteSettled(tester, find.text('Publira'));
+        await pumpUntilRouteSettled(
+          tester,
+          find.text(ConnectFixtureServer.seedTenantName),
+        );
         expect(find.text('Episodes'), findsNothing);
         expect(
           find.byKey(
@@ -756,7 +759,7 @@ void main() {
           find.byType(ListTile),
           timeout: const Duration(seconds: 20),
         );
-        expect(find.text('Publira'), findsOneWidget);
+        expect(find.text(ConnectFixtureServer.seedTenantName), findsOneWidget);
         expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
       });
     });

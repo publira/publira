@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -9,6 +10,7 @@ import 'package:publira/offline/device_key.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_cipher.dart';
 import 'package:publira/offline/offline_library.dart';
+import 'package:publira/tenant/tenant_brand.dart';
 
 final _deviceKey = Uint8List.fromList(
   List<int>.generate(32, (index) => index * 7 % 256),
@@ -129,6 +131,56 @@ void main() {
     // The token comes back with the page, so a launch without a network still
     // knows there is a page under the saved one to ask for.
     expect(restored.nextToken, 'page-2');
+  });
+
+  test('the tenant brand is read back by the next launch', () async {
+    await open().writeTenantBrand(
+      'harbor.test',
+      TenantBrand(
+        name: 'Harbor Comics',
+        palette: TenantPalette.fromWire(const {'primaryColor': '#0b6e4f'}),
+        logo: TenantLogo(
+          url: Uri.parse('http://images.test/images/tenants/LOGO/logo'),
+          width: 320,
+          height: 80,
+        ),
+      ),
+    );
+
+    final restored = await open().readTenantBrand('harbor.test');
+
+    expect(restored!.name, 'Harbor Comics');
+    expect(restored.palette[TenantColor.primary], const Color(0xFF0B6E4F));
+    expect(
+      restored.palette[TenantColor.secondary],
+      TenantColor.secondary.fallback,
+    );
+    expect(
+      restored.logo?.url,
+      Uri.parse('http://images.test/images/tenants/LOGO/logo'),
+    );
+    expect(restored.logo?.height, 80);
+  });
+
+  test('clearing the library forgets the tenant brand', () async {
+    final library = open();
+    await library.writeTenantBrand(
+      'harbor.test',
+      const TenantBrand(name: 'Harbor Comics'),
+    );
+
+    await library.clear();
+
+    expect(await open().readTenantBrand('harbor.test'), isNull);
+  });
+
+  test('a brand saved for another tenant is not answered', () async {
+    await open().writeTenantBrand(
+      'harbor.test',
+      const TenantBrand(name: 'Harbor Comics'),
+    );
+
+    expect(await open().readTenantBrand('ember.test'), isNull);
   });
 
   test('a saved catalog that ended keeps no token', () async {

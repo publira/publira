@@ -1,6 +1,7 @@
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/tenant/tenant_brand.dart';
 
 /// How long an episode that needed an entitlement stays readable without the
 /// API confirming the reader still holds it.
@@ -109,6 +110,15 @@ abstract class OfflineLibrary implements EpisodePageStore {
   Future<SeriesPage?> readSeriesList();
 
   Future<void> writeSeriesList(SeriesPage page);
+
+  /// The brand of the tenant at [tenantHost] as the API last answered it, or
+  /// `null` when the device holds none for that tenant.
+  ///
+  /// A build pointed at another tenant can be installed over this one under
+  /// the same application id, and must not open in the previous tenant's brand.
+  Future<TenantBrand?> readTenantBrand(String tenantHost);
+
+  Future<void> writeTenantBrand(String tenantHost, TenantBrand brand);
 
   Future<SeriesDetail?> readSeriesDetail(String seriesPublicId);
 

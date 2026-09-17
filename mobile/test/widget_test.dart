@@ -9,10 +9,12 @@ import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
 import 'package:publira/settings/age_rating_confirmation.dart';
+import 'package:publira/tenant/tenant_brand_controller.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_offline_library.dart';
+import 'support/fake_tenant_brand.dart';
 import 'support/pump_until.dart';
 
 void main() {
@@ -41,6 +43,10 @@ void main() {
         auth: fakeAuthController(session: session),
         offline: offline,
         ageRatingConfirmation: ageRatingConfirmation,
+        tenantBrand: TenantBrandController(
+          tenantHost: 'localhost',
+          repository: FakeTenantBrandRepository(),
+        ),
       ),
     );
     await tester.pump();
@@ -52,7 +58,7 @@ void main() {
   ) async {
     await pumpApp(tester);
 
-    expect(find.text('Publira'), findsOneWidget);
+    expect(find.text(fixtureTenantBrand.name), findsOneWidget);
     for (final series in fixtureSeries) {
       expect(find.text(series.title), findsOneWidget);
     }
@@ -244,7 +250,7 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
 
     await tester.tap(find.byKey(const ValueKey('age-rating-cancel')));
-    await pumpUntilFound(tester, find.text('Publira'));
+    await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
 
     expect(find.text('Episodes'), findsNothing);
     expect(router.state.uri.path, AppRoutes.catalog);
@@ -322,7 +328,7 @@ void main() {
     );
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text('Publira'));
+    await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
     await tester.tap(
       find.byKey(ValueKey('series-tile-${fixtureRatedSeries.id}')),
     );
@@ -350,7 +356,7 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes'));
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text('Publira'));
+    await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
     await tester.tap(
       find.byKey(ValueKey('series-tile-${fixtureR18Series.id}')),
     );
@@ -445,9 +451,9 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes'));
 
     await tester.pageBack();
-    await pumpUntilFound(tester, find.text('Publira'));
+    await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
 
-    expect(find.text('Publira'), findsOneWidget);
+    expect(find.text(fixtureTenantBrand.name), findsOneWidget);
     expect(find.byKey(ValueKey('series-tile-${first.id}')), findsOneWidget);
     expect(router.state.uri.path, AppRoutes.catalog);
   });
@@ -461,7 +467,7 @@ void main() {
     await tester.tap(find.text('Back to the catalog'));
     await pumpUntilFound(tester, find.text(fixtureSeries.first.title));
 
-    expect(find.text('Publira'), findsOneWidget);
+    expect(find.text(fixtureTenantBrand.name), findsOneWidget);
     expect(router.state.uri.path, AppRoutes.catalog);
   });
 
@@ -475,7 +481,7 @@ void main() {
     await tester.tap(find.text('Back to the catalog'));
     await pumpUntilFound(tester, find.text(fixtureSeries.first.title));
 
-    expect(find.text('Publira'), findsOneWidget);
+    expect(find.text(fixtureTenantBrand.name), findsOneWidget);
     expect(router.state.uri.path, AppRoutes.catalog);
   });
 

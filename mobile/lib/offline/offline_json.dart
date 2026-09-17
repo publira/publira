@@ -1,6 +1,7 @@
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
+import 'package:publira/tenant/tenant_brand.dart';
 
 /// Layout of what the library writes. A file written under another number is
 /// dropped rather than read, so a shape change costs the saved episodes and
@@ -16,6 +17,8 @@ const offlineIndexVersion = 3;
 /// once to decide which to drop.
 class OfflineIndex {
   OfflineIndex({
+    this.tenantHost = '',
+    this.tenant,
     this.series,
     this.seriesNextToken = '',
     Map<String, SeriesDetail>? details,
@@ -24,6 +27,12 @@ class OfflineIndex {
   }) : details = details ?? <String, SeriesDetail>{},
        episodes = episodes ?? <String, SavedEpisode>{},
        positions = positions ?? <String, SavedReadingPosition>{};
+
+  /// The tenant host [tenant] was read for, empty when it never has been.
+  String tenantHost;
+
+  /// The tenant's brand as it last loaded, or `null` when it never has.
+  TenantBrand? tenant;
 
   /// Catalog list as it last loaded, or `null` when it never has.
   List<SeriesItem>? series;
@@ -45,6 +54,7 @@ class OfflineIndex {
 
   Map<String, Object?> toJson() => {
     'version': offlineIndexVersion,
+    if (tenant != null) 'tenant': _tenantToJson(tenantHost, tenant!),
     if (series != null)
       'series': [for (final item in series!) _seriesToJson(item)],
     if (seriesNextToken.isNotEmpty) 'seriesNextToken': seriesNextToken,
@@ -73,6 +83,8 @@ class OfflineIndex {
     final rawEpisodes = decoded['episodes'];
     final rawPositions = decoded['positions'];
     return OfflineIndex(
+      tenantHost: _tenantHostFromJson(decoded['tenant']),
+      tenant: _tenantFromJson(decoded['tenant']),
       positions: rawPositions is! Map
           ? null
           : {
@@ -97,6 +109,48 @@ class OfflineIndex {
             },
     );
   }
+}
+
+Map<String, Object?> _tenantToJson(String host, TenantBrand brand) => {
+  'host': host,
+  'name': brand.name,
+  'theme': brand.palette.toWire(),
+  if (brand.logo case final logo?)
+    'logo': {
+      'url': logo.url.toString(),
+      'width': logo.width,
+      'height': logo.height,
+    },
+};
+
+String _tenantHostFromJson(Object? decoded) =>
+    decoded is Map ? _string(decoded['host']) : '';
+
+TenantBrand? _tenantFromJson(Object? decoded) {
+  // A brand that names no tenant cannot be told apart from another tenant's.
+  if (decoded is! Map || _string(decoded['host']).isEmpty) {
+    return null;
+  }
+  return TenantBrand(
+    name: _string(decoded['name']),
+    palette: TenantPalette.fromWire(decoded['theme']),
+    logo: _logoFromJson(decoded['logo']),
+  );
+}
+
+TenantLogo? _logoFromJson(Object? decoded) {
+  if (decoded is! Map) {
+    return null;
+  }
+  final url = Uri.tryParse(_string(decoded['url']));
+  final width = _int(decoded['width']);
+  final height = _int(decoded['height']);
+  // Written down already resolved, like a cover; anything else is a logo this
+  // build cannot address or lay out.
+  if (url == null || !url.isAbsolute || width <= 0 || height <= 0) {
+    return null;
+  }
+  return TenantLogo(url: url, width: width, height: height);
 }
 
 // The request headers are left out the way a body page's are: they name the

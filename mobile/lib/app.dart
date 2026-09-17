@@ -34,6 +34,10 @@ import 'package:publira/push/push_messaging.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
 import 'package:publira/settings/age_rating_confirmation.dart';
+import 'package:publira/tenant/tenant_brand.dart';
+import 'package:publira/tenant/tenant_brand_controller.dart';
+import 'package:publira/tenant/tenant_brand_repository.dart';
+import 'package:publira/tenant/tenant_theme.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
 /// fresh [GoRouter], a fake or fixture-backed catalog, and a session that does
@@ -53,6 +57,7 @@ class PubliraApp extends StatefulWidget {
     this.site,
     this.incomingLinks,
     this.share,
+    this.tenantBrand,
   });
 
   /// Wires the app to the public API described by [config].
@@ -131,6 +136,16 @@ class PubliraApp extends StatefulWidget {
       site: PublicSite(host: resolved.tenantHost),
       incomingLinks: incomingLinks ?? PluginIncomingLinks(),
       share: share ?? const PluginShareSheet(),
+      tenantBrand: TenantBrandController(
+        repository: HttpTenantBrandRepository(
+          config: resolved,
+          client: client,
+          tenants: tenants,
+        ),
+        tenantHost: resolved.tenantHost,
+        library: library,
+        logoRequestHeaders: resolved.publicImageRequestHeaders,
+      ),
     );
   }
 
@@ -204,6 +219,13 @@ class PubliraApp extends StatefulWidget {
   /// share action, or to inject a sheet it can assert against.
   final ShareSheet? share;
 
+  /// The name, colours, and logo of the tenant the app was built for.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app in the
+  /// brand defaults with no tenant name.
+  final TenantBrandController? tenantBrand;
+
   @override
   State<PubliraApp> createState() => _PubliraAppState();
 }
@@ -238,7 +260,9 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.auth.addListener(_onAuthChanged);
     widget.push?.addListener(_onPushChanged);
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
+    widget.tenantBrand?.addListener(_onTenantBrandChanged);
     unawaited(_restore());
+    unawaited(widget.tenantBrand?.start());
   }
 
   /// Brings the device's notification registration back before the session.
@@ -298,10 +322,16 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       );
       widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     }
+    if (widget.tenantBrand != oldWidget.tenantBrand) {
+      oldWidget.tenantBrand?.removeListener(_onTenantBrandChanged);
+      widget.tenantBrand?.addListener(_onTenantBrandChanged);
+      unawaited(widget.tenantBrand?.start());
+    }
   }
 
   @override
   void dispose() {
+    widget.tenantBrand?.removeListener(_onTenantBrandChanged);
     widget.tenantDefaultLocale?.removeListener(_onTenantDefaultLocaleChanged);
     widget.push?.removeListener(_onPushChanged);
     widget.auth.removeListener(_onAuthChanged);
@@ -319,6 +349,11 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   }
 
   void _onTenantDefaultLocaleChanged() {
+    setState(() {});
+  }
+
+  /// The tenant's colours and name arrived, off the device or from the API.
+  void _onTenantBrandChanged() {
     setState(() {});
   }
 
@@ -409,16 +444,15 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final site = widget.site;
+    final brand = widget.tenantBrand?.brand;
     Widget app = MaterialApp.router(
-      title: 'Publira',
+      title: brand?.name ?? '',
       scaffoldMessengerKey: _messengerKey,
       locale: _locale,
       supportedLocales: AppMessages.supportedLocales,
       localizationsDelegates: appLocalizationsDelegates,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      theme: tenantLightTheme(brand?.palette ?? TenantPalette.standard),
+      darkTheme: tenantDarkTheme(brand?.palette ?? TenantPalette.standard),
       routerConfig: widget.router,
     );
     if (site != null) {
@@ -431,21 +465,24 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
         child: app,
       );
     }
-    return AuthScope(
-      controller: widget.auth,
-      child: PushScope(
-        controller: widget.push,
-        child: OfflineScope(
-          library: widget.offline,
-          child: CatalogScope(
-            repository: widget.catalog,
-            child: CommentScope(
-              repository: widget.comments,
-              child: FollowScope(
-                repository: widget.follows,
-                child: AgeRatingConfirmationScope(
-                  controller: _ageRating,
-                  child: app,
+    return TenantBrandScope(
+      controller: widget.tenantBrand,
+      child: AuthScope(
+        controller: widget.auth,
+        child: PushScope(
+          controller: widget.push,
+          child: OfflineScope(
+            library: widget.offline,
+            child: CatalogScope(
+              repository: widget.catalog,
+              child: CommentScope(
+                repository: widget.comments,
+                child: FollowScope(
+                  repository: widget.follows,
+                  child: AgeRatingConfirmationScope(
+                    controller: _ageRating,
+                    child: app,
+                  ),
                 ),
               ),
             ),
