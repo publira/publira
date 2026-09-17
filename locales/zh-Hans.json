@@ -2729,6 +2729,11 @@
       "no_results": "没有与“{$query}”匹配的系列。",
       "prompt": "请输入关键词搜索已发布的系列。"
     },
+    "share": {
+      "action": "分享",
+      "aria": "分享“{$title}”",
+      "text": "{$title}（{$creators}）"
+    },
     "series": {
       "age_gate": {
         "confirm_r15": "我已满 15 岁",

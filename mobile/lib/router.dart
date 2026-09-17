@@ -20,6 +20,7 @@ abstract final class AppRoutes {
   static const seriesDetail = '/series/:seriesId';
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
+  static const checkoutReturn = '/checkout/return';
 
   static String seriesDetailPath(String seriesId) => '/series/$seriesId';
 
@@ -35,6 +36,10 @@ abstract final class AppRoutes {
 GoRouter createAppRouter({String initialLocation = AppRoutes.catalog}) {
   return GoRouter(
     initialLocation: initialLocation,
+    // Incoming tenant URLs are parsed by `app_links` and handed over as
+    // in-app paths. Leaving Flutter's default deep linking on would send
+    // the raw `https://…` location here, which none of these routes match.
+    overridePlatformDefaultLocation: true,
     routes: [
       GoRoute(
         path: AppRoutes.catalog,
@@ -50,6 +55,14 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.catalog}) {
         path: AppRoutes.signIn,
         name: 'signIn',
         builder: (context, state) => const SignInScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.checkoutReturn,
+        name: 'checkoutReturn',
+        // A checkout the browser hands back lands here. Confirming the
+        // purchase by re-reading the episode is a later screen; until then
+        // the catalog is where the reader already knows how to find it.
+        redirect: (_, _) => AppRoutes.catalog,
       ),
       GoRoute(
         path: AppRoutes.account,

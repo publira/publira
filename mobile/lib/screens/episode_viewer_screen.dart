@@ -13,6 +13,7 @@ import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -295,6 +296,18 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         return _shell(
           title: open.detail.episode.title,
           credits: open.detail.creators,
+          share: LinkScope.maybeOf(context)?.share == null
+              ? null
+              : ShareAction(
+                  key: const ValueKey('episode-share'),
+                  path: AppRoutes.episodeViewerPath(
+                    widget.seriesId,
+                    widget.episodeId,
+                  ),
+                  title: open.detail.episode.title,
+                  workTitle: open.detail.seriesTitle,
+                  credits: open.detail.creators,
+                ),
           // A reader the tenant's age rule stops is told so first: a rating
           // they declared here would not open the pages for them.
           body: open.detail.access == EpisodeAccess.ageRestricted
@@ -419,6 +432,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     required String title,
     required Widget body,
     List<SeriesCreator> credits = const [],
+    Widget? share,
   }) {
     return Scaffold(
       backgroundColor: Colors.black,
@@ -445,6 +459,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
               ),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        actions: [?share],
       ),
       body: body,
     );

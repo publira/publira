@@ -56,9 +56,7 @@ Future<Directory> _applicationSupportRoot() => getApplicationSupportDirectory();
 /// The confirmation is a preference, not a secret, so it lives next to the
 /// other files this install keeps rather than in the platform keychain.
 class FileAgeRatingConfirmationStore implements AgeRatingConfirmationStore {
-  const FileAgeRatingConfirmationStore({
-    SettingsRootResolver root = _applicationSupportRoot,
-  }) : _root = root;
+  const FileAgeRatingConfirmationStore({this._root = _applicationSupportRoot});
 
   static const _fileName = 'age-rating-confirmation.json';
 

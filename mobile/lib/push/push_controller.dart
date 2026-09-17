@@ -25,14 +25,11 @@ enum PushFailure {
 /// runs, so the account screen leaves the switch out entirely.
 class PushController extends ChangeNotifier {
   PushController({
-    required PushMessaging? messaging,
-    required PushRepository repository,
-    required PushDeviceStore store,
+    required this._messaging,
+    required this._repository,
+    required this._store,
     PushPlatform? platform,
-  }) : _messaging = messaging,
-       _repository = repository,
-       _store = store,
-       _platform = platform ?? PushPlatform.current();
+  }) : _platform = platform ?? PushPlatform.current();
 
   final PushMessaging? _messaging;
   final PushRepository _repository;

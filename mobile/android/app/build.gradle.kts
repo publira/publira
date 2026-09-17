@@ -1,7 +1,29 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+/** `KEY=VALUE` pairs Flutter passed as `--dart-define`, keyed by name. */
+fun dartDefines(): Map<String, String> {
+    val encoded = project.findProperty("dart-defines") as String? ?: return emptyMap()
+    if (encoded.isBlank()) {
+        return emptyMap()
+    }
+    return encoded.split(",").mapNotNull { item ->
+        val decoded =
+            runCatching {
+                String(Base64.getDecoder().decode(item), Charsets.UTF_8)
+            }.getOrNull() ?: return@mapNotNull null
+        val separator = decoded.indexOf('=')
+        if (separator <= 0) {
+            null
+        } else {
+            decoded.substring(0, separator) to decoded.substring(separator + 1)
+        }
+    }.toMap()
 }
 
 android {
@@ -35,7 +57,24 @@ android {
         }
         create("production") {
             dimension = "environment"
+            // A store binary is pinned to one tenant. Unlike development,
+            // shipping a localhost App Links declaration would silently leave
+            // the real tenant links in the browser.
+            val tenantHost = dartDefines()["PUBLIRA_TENANT_HOST"]
+            val productionBuild = gradle.startParameter.taskNames.any {
+                it.contains("production", ignoreCase = true)
+            }
+            require(!productionBuild || !tenantHost.isNullOrBlank()) {
+                "Production builds require --dart-define=PUBLIRA_TENANT_HOST=<tenant host>"
+            }
+            manifestPlaceholders["tenantHost"] = tenantHost ?: "localhost"
         }
+    }
+
+    // The development flavor intentionally claims the seeded local tenant.
+    productFlavors.named("dev") {
+        manifestPlaceholders["tenantHost"] =
+            dartDefines()["PUBLIRA_TENANT_HOST"] ?: "localhost"
     }
 
     buildTypes {

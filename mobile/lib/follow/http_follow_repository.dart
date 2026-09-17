@@ -7,11 +7,7 @@ import 'package:publira/models/follow.dart';
 
 /// [FollowRepository] backed by `publira.v1.FollowService`.
 class HttpFollowRepository implements FollowRepository {
-  const HttpFollowRepository({
-    required ConnectClient client,
-    required TenantResolver tenants,
-  }) : _client = client,
-       _tenants = tenants;
+  const HttpFollowRepository({required this._client, required this._tenants});
 
   static const _statusProcedure = '/publira.v1.FollowService/GetMyFollowStatus';
   static const _followProcedure = '/publira.v1.FollowService/Follow';

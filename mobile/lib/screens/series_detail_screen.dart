@@ -15,6 +15,7 @@ import 'package:publira/follow/follow_control.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
@@ -130,7 +131,18 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         }
         final detail = open.detail;
         return Scaffold(
-          appBar: AppBar(title: Text(detail.series.title)),
+          appBar: AppBar(
+            title: Text(detail.series.title),
+            actions: [
+              if (LinkScope.maybeOf(context)?.share != null)
+                ShareAction(
+                  key: const ValueKey('series-share'),
+                  path: AppRoutes.seriesDetailPath(detail.series.id),
+                  title: detail.series.title,
+                  credits: detail.series.creators,
+                ),
+            ],
+          ),
           body: AgeRatingGate(
             rating: detail.series.ageRating,
             seriesTitle: detail.series.title,

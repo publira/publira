@@ -2729,6 +2729,11 @@
       "no_results": "No series match “{$query}”.",
       "prompt": "Enter a keyword to search the published series."
     },
+    "share": {
+      "action": "Share",
+      "aria": "Share “{$title}”",
+      "text": "{$title} by {$creators}"
+    },
     "series": {
       "age_gate": {
         "confirm_r15": "I am 15 or older",

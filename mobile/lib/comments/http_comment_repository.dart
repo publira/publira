@@ -8,11 +8,7 @@ import 'package:publira/models/episode_comment.dart';
 /// [CommentRepository] backed by `publira.v1.CommentService` and the tenant
 /// setting `publira.v1.TenantService` answers with.
 class HttpCommentRepository implements CommentRepository {
-  const HttpCommentRepository({
-    required ConnectClient client,
-    required TenantResolver tenants,
-  }) : _client = client,
-       _tenants = tenants;
+  const HttpCommentRepository({required this._client, required this._tenants});
 
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
   static const _listProcedure =

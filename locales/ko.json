@@ -2729,6 +2729,11 @@
       "no_results": "“{$query}”과(와) 일치하는 시리즈가 없습니다.",
       "prompt": "키워드를 입력해 공개 중인 시리즈를 검색해 보세요."
     },
+    "share": {
+      "action": "공유",
+      "aria": "“{$title}” 공유",
+      "text": "{$title} ({$creators})"
+    },
     "series": {
       "age_gate": {
         "confirm_r15": "15세 이상입니다",

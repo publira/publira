@@ -15,15 +15,13 @@ import 'package:publira/offline/offline_library.dart';
 /// reading forever behind airplane mode.
 class OfflineCatalogRepository implements CatalogRepository {
   OfflineCatalogRepository({
-    required CatalogRepository origin,
+    required this._origin,
     required this.library,
-    required ReaderIdReader readerId,
+    required this._readerId,
     required this.imageRequestHeaders,
-    DateTime Function() clock = DateTime.now,
+    this._clock = DateTime.now,
     this.grace = offlineGracePeriod,
-  }) : _origin = origin,
-       _readerId = readerId,
-       _clock = clock;
+  });
 
   final CatalogRepository _origin;
 

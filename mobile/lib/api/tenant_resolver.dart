@@ -9,8 +9,7 @@ import 'package:publira/api/connect_exception.dart';
 /// the lookup and the ones after it reuse the answer. A failed lookup is not
 /// kept, so the next caller retries it.
 class TenantResolver {
-  TenantResolver({required ConnectClient client, required this.tenantHost})
-    : _client = client;
+  TenantResolver({required this._client, required this.tenantHost});
 
   static const _procedure = '/publira.v1.DomainService/GetTenantByDomain';
 

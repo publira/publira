@@ -13,12 +13,10 @@ import 'package:publira/auth/session_store.dart';
 /// other wiring.
 class AuthController extends ChangeNotifier {
   AuthController({
-    required AuthRepository repository,
-    required SessionStore store,
-    AuthSession? session,
-  }) : _repository = repository,
-       _store = store,
-       _session = session;
+    required this._repository,
+    required this._store,
+    this._session,
+  });
 
   final AuthRepository _repository;
   final SessionStore _store;

@@ -23,11 +23,7 @@ class HttpAuthRepository implements AuthRepository {
     );
   }
 
-  HttpAuthRepository._({
-    required ConnectClient client,
-    required TenantResolver tenants,
-  }) : _client = client,
-       _tenants = tenants;
+  HttpAuthRepository._({required this._client, required this._tenants});
 
   static const _loginProcedure = '/publira.v1.AuthService/Login';
   static const _getMeProcedure = '/publira.v1.AuthService/GetMe';
