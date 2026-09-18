@@ -57,7 +57,7 @@ describe("ContactMessageManager", () => {
         locale: "en",
         messages: [contactMessage()],
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -71,7 +71,7 @@ describe("ContactMessageManager", () => {
     ).toBe("/readers/READER00001");
     expect(screen.getByText("reader@example.com")).toBeTruthy();
     expect(screen.getByText("Waiting")).toBeTruthy();
-    // 2026-06-01T20:00Z is already 2 June in Asia/Tokyo.
+    // 2026-06-01T20:00Z is already 2 June in Asia/Seoul.
     expect(screen.getByText(/Jun 2, 2026/u)).toBeTruthy();
   });
 
@@ -82,7 +82,7 @@ describe("ContactMessageManager", () => {
         locale: "en",
         messages: [contactMessage({ senderName: "", senderPublicId: "" })],
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -97,7 +97,7 @@ describe("ContactMessageManager", () => {
         locale: "en",
         messages: [contactMessage({ subject: "" })],
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -111,7 +111,7 @@ describe("ContactMessageManager", () => {
         locale: "en",
         messages: [contactMessage({ handledAt: "2026-06-03T00:00:00Z" })],
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -125,7 +125,7 @@ describe("ContactMessageManager", () => {
         locale: "en",
         messages: [],
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -145,7 +145,7 @@ describe("ContactMessageManager", () => {
         locale: "en",
         messages: [],
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -165,7 +165,7 @@ describe("ContactMessageManager", () => {
         messages: [],
         nextHref: "?token=next-token",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -185,7 +185,7 @@ describe("ContactMessageManager", () => {
         nextHref: "?token=next-token",
         pageSize: 20,
         previousHref: "?token=previous-token",
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 

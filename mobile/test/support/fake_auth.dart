@@ -67,9 +67,9 @@ class FakeAuthRepository implements AuthRepository {
   /// Thrown by [recordBirthDate], standing in for an API that refuses it.
   AuthFailure? recordFailure;
 
-  /// The zone [readReaderAge] reports. Tokyo has no daylight saving, so a
+  /// The zone [readReaderAge] reports. Seoul has no daylight saving, so a
   /// test's arithmetic about its calendar day does not drift with the season.
-  static const timeZone = 'Asia/Tokyo';
+  static const timeZone = 'Asia/Seoul';
 
   /// Held open by a test that needs to act while [refresh] is still in flight.
   Completer<void>? refreshGate;

@@ -68,7 +68,7 @@ describe("tenant-timezone", () => {
       message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
-      timezone: "Asia/Tokyo",
+      timezone: "UTC",
     });
     expect(mockGetTenantTimezoneApi).not.toHaveBeenCalled();
   });
@@ -83,7 +83,7 @@ describe("tenant-timezone", () => {
     const result = await getTenantTimezone("TENANT001", "en");
 
     expect(result.ok).toBe(false);
-    expect(result.timezone).toBe("Asia/Tokyo");
+    expect(result.timezone).toBe("UTC");
   });
 
   it("returns the saved time zone on a successful update", async () => {
@@ -179,15 +179,13 @@ describe("tenant-timezone", () => {
 
     const { getTenantDisplayTimeZone } = await import("./tenant-timezone");
 
-    await expect(getTenantDisplayTimeZone("TENANT001")).resolves.toBe(
-      "Asia/Tokyo"
-    );
+    await expect(getTenantDisplayTimeZone("TENANT001")).resolves.toBe("UTC");
   });
 
   it("still renders in the default time zone when the tenant id is empty", async () => {
     const { getTenantDisplayTimeZone } = await import("./tenant-timezone");
 
-    await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("Asia/Tokyo");
+    await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("UTC");
     expect(mockGetTenantTimezoneApi).not.toHaveBeenCalled();
   });
 });

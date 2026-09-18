@@ -94,7 +94,7 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
 		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
-			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
+			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", nil, now, "active", nil, "UTC", "ja"))
 	expectPublicIDAttemptReleased(mock)
 	expectDefaultCreatorRoleInserts(mock, tenantID, now)
 	mock.ExpectCommit()
@@ -209,7 +209,7 @@ func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "en.example.com", Valid: true}, sql.NullString{}, "English Tenant", tenanttz.Default, "en").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
-			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", nil, now, "active", nil, "Asia/Tokyo", "en"))
+			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", nil, now, "active", nil, "UTC", "en"))
 	expectPublicIDAttemptReleased(mock)
 	expectDefaultCreatorRoleInserts(mock, tenantID, now)
 	mock.ExpectCommit()
@@ -270,7 +270,7 @@ func TestSuspendTenantSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(integrationUpdateTenantStatusQuery)).
 		WithArgs("ACTIVE01", "suspended").
-		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil, "Asia/Tokyo", "ja"))
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil, "UTC", "ja"))
 	expectIntegrationAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
@@ -313,7 +313,7 @@ func TestResumeTenantSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(integrationUpdateTenantStatusQuery)).
 		WithArgs("SUSP001", "active").
-		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil, "UTC", "ja"))
 	expectIntegrationAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)

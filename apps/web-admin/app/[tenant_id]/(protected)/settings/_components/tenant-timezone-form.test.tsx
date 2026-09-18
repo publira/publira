@@ -77,7 +77,7 @@ describe("TenantTimezoneForm", () => {
       <TenantTimezoneForm
         action={noopAction}
         canEdit={false}
-        initialTimezone="Asia/Tokyo"
+        initialTimezone="UTC"
       />
     );
 
@@ -101,7 +101,7 @@ describe("TenantTimezoneForm", () => {
       <TenantTimezoneForm
         action={noopAction}
         canEdit
-        initialTimezone="Asia/Tokyo"
+        initialTimezone="UTC"
         loadErrorMessage="Could not load the time zone."
       />
     );

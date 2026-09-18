@@ -374,11 +374,11 @@ func TestDBUpdatePlatformSettingsRejectsAStaleRevision(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
 
 	// Both sessions read this revision.
-	stale := seedPlatformSettings(t, client, operator, "Asia/Tokyo", "ja")
+	stale := seedPlatformSettings(t, client, operator, "UTC", "ja")
 
 	// The language session saves first and moves the row on.
 	if _, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
-		DefaultTimezone:  "Asia/Tokyo",
+		DefaultTimezone:  "UTC",
 		DefaultLocale:    "en",
 		ExpectedRevision: stale,
 	})); err != nil {
@@ -405,8 +405,8 @@ func TestDBUpdatePlatformSettingsRejectsAStaleRevision(t *testing.T) {
 	if resp.Msg.Settings.DefaultLocale != "en" {
 		t.Fatalf("default_locale = %q, want en", resp.Msg.Settings.DefaultLocale)
 	}
-	if resp.Msg.Settings.DefaultTimezone != "Asia/Tokyo" {
-		t.Fatalf("default_timezone = %q, want Asia/Tokyo", resp.Msg.Settings.DefaultTimezone)
+	if resp.Msg.Settings.DefaultTimezone != "UTC" {
+		t.Fatalf("default_timezone = %q, want UTC", resp.Msg.Settings.DefaultTimezone)
 	}
 	if got := platformConfigRevision(t, pg); got != stale+1 {
 		t.Fatalf("platform_config.revision = %d, want %d", got, stale+1)
@@ -420,7 +420,7 @@ func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
 
-	shared := seedPlatformSettings(t, client, operator, "Asia/Tokyo", "ja")
+	shared := seedPlatformSettings(t, client, operator, "UTC", "ja")
 
 	type outcome struct {
 		settings *publirasplatformv1.PlatformSettings
@@ -432,7 +432,7 @@ func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
 		defaultLocale string
 	}{
 		{timezone: "Europe/Berlin", defaultLocale: "ja"},
-		{timezone: "Asia/Tokyo", defaultLocale: "en"},
+		{timezone: "UTC", defaultLocale: "en"},
 	}
 	outcomes := make(chan outcome, len(candidates))
 	// Both requests carry a deadline. The whole point of the test is that one of

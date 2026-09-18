@@ -21,11 +21,15 @@
 --
 -- A page has no public_id; it is addressed by its uuid, which is fixed here
 -- as 018f0f05-0001-7000-8000-000000000001 for the same reason.
+--
+-- The tenant is on Asia/Tokyo, where the dev seed tenant and every process
+-- that runs the suite are on UTC. A tenant whose day is not the server's day
+-- is a real case, and this is the tenant the suite exercises it on.
 
 WITH tenant_seed AS (
     SELECT '018f0f00-0001-7000-8000-000000000001'::uuid AS id
 )
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
 SELECT
     ts.id,
     'BndrTNNTAAA1',
@@ -33,6 +37,7 @@ SELECT
     'admin.other.localhost',
     'Boundary Tenant',
     'active',
+    'Asia/Tokyo',
     'en'
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
@@ -40,6 +45,7 @@ SET domain = EXCLUDED.domain,
     admin_domain = EXCLUDED.admin_domain,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
+    timezone = EXCLUDED.timezone,
     default_locale = EXCLUDED.default_locale;
 
 INSERT INTO tenant_config (

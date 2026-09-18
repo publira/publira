@@ -38,7 +38,7 @@ func TestDefaultLocaleColumnsHaveNoDefault(t *testing.T) {
 	}
 
 	_, err = pg.DB.ExecContext(ctx, `
-		INSERT INTO platform_config (singleton, default_timezone) VALUES (TRUE, 'Asia/Tokyo')
+		INSERT INTO platform_config (singleton, default_timezone) VALUES (TRUE, 'UTC')
 	`)
 	if !isNotNullViolation(err) {
 		t.Fatalf("platform_config insert without default_locale error = %v, want not_null_violation", err)
@@ -108,7 +108,7 @@ func insertTenantWithLocale(ctx context.Context, db *sql.DB, defaultLocale strin
 func upsertPlatformConfigWithLocale(ctx context.Context, db *sql.DB, defaultLocale string) error {
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO platform_config (singleton, default_timezone, default_locale)
-		VALUES (TRUE, 'Asia/Tokyo', $1)
+		VALUES (TRUE, 'UTC', $1)
 		ON CONFLICT (singleton) DO UPDATE SET default_locale = EXCLUDED.default_locale
 	`, defaultLocale)
 	return err

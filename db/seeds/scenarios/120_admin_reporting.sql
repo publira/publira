@@ -36,7 +36,8 @@
 --   day +1    `Seed Episode 001-01` 1000 / 1000 — after the window, not counted
 --   day -40   `Seed Episode 001-01` 1000 / 1000 — before the window, not counted
 --   day -2    Boundary Tenant's `Boundary Episode 001-01` 777 / 777 — another
---             tenant, not counted
+--             tenant, not counted here, and the one row that tenant's own
+--             report counts, two of its Asia/Tokyo days back
 -- Inside the window that is 628 completions over 1256 member views, a 50.0%
 -- rate, across 25 episodes: a first page of 20 and a second of 5, with no two
 -- episodes sharing a completion count.

@@ -100,7 +100,7 @@ describe("CommentManager", () => {
         comments: [],
         locale: "en",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -114,7 +114,7 @@ describe("CommentManager", () => {
         listErrorMessage: "The API is unavailable.",
         locale: "en",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -129,7 +129,7 @@ describe("CommentManager", () => {
         comments: [comment("pending")],
         locale: "en",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -150,7 +150,7 @@ describe("CommentManager", () => {
         ],
         locale: "en",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -171,7 +171,7 @@ describe("CommentManager", () => {
         ],
         locale: "en",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -198,7 +198,7 @@ describe("CommentManager", () => {
         await CommentManager({
           comments: [
             comment("withdrawn", {
-              // 2026-06-08 in Asia/Tokyo, where 2026-06-01T20:00Z is already
+              // 2026-06-08 in UTC, where 2026-06-01T20:00Z is already
               // the 2nd — six days, not seven.
               purgeDueAt: "2026-06-07T15:00:00Z",
               withdrawnAt: "2026-06-01T09:00:00Z",
@@ -206,7 +206,7 @@ describe("CommentManager", () => {
           ],
           locale: "en",
           pageSize: 20,
-          timeZone: "Asia/Tokyo",
+          timeZone: "UTC",
         })
       );
 
@@ -222,7 +222,7 @@ describe("CommentManager", () => {
         comments: [comment("published")],
         locale: "en",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -237,7 +237,7 @@ describe("CommentManager", () => {
         comments: [comment("published")],
         locale: "en",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -258,7 +258,7 @@ describe("CommentManager", () => {
         ],
         locale: "en",
         pageSize: 20,
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 

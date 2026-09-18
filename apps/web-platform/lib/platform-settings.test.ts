@@ -91,7 +91,7 @@ describe("platform-settings", () => {
     const result = await getPlatformSettings("en");
 
     expect(result).toEqual({
-      defaultTimezone: "Asia/Tokyo",
+      defaultTimezone: "UTC",
       message: "Your session is no longer valid. Please sign in again.",
       ok: false,
       requiresSignIn: true,
@@ -107,7 +107,7 @@ describe("platform-settings", () => {
     const result = await getPlatformSettings("ja");
 
     expect(result).toEqual({
-      defaultTimezone: "Asia/Tokyo",
+      defaultTimezone: "UTC",
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
       requiresSignIn: true,
@@ -124,13 +124,13 @@ describe("platform-settings", () => {
     const result = await getPlatformSettings("en");
 
     expect(result.ok).toBe(false);
-    expect(result.defaultTimezone).toBe("Asia/Tokyo");
+    expect(result.defaultTimezone).toBe("UTC");
     expect(result).not.toHaveProperty("defaultLocale");
   });
 
   it("treats a locale this build does not serve as a failed read", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "fr", defaultTimezone: "Asia/Tokyo" },
+      settings: { defaultLocale: "fr", defaultTimezone: "UTC" },
     });
 
     const { getPlatformSettings } = await import("./platform-settings");
@@ -148,14 +148,14 @@ describe("platform-settings", () => {
 
     const { getPlatformDisplayTimeZone } = await import("./platform-settings");
 
-    expect(await getPlatformDisplayTimeZone()).toBe("Asia/Tokyo");
+    expect(await getPlatformDisplayTimeZone()).toBe("UTC");
   });
 
   it("returns the saved default time zone when updating succeeds", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
         defaultLocale: "en",
-        defaultTimezone: "Asia/Tokyo",
+        defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
       },
     });
@@ -192,7 +192,7 @@ describe("platform-settings", () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
         defaultLocale: "en",
-        defaultTimezone: "Asia/Tokyo",
+        defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
       },
     });
@@ -233,7 +233,7 @@ describe("platform-settings", () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
         defaultLocale: "ja",
-        defaultTimezone: "Asia/Tokyo",
+        defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
       },
     });
@@ -259,7 +259,7 @@ describe("platform-settings", () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
         defaultLocale: "ja",
-        defaultTimezone: "Asia/Tokyo",
+        defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
       },
     });
@@ -351,7 +351,7 @@ describe("platform-settings", () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
         defaultLocale: "ja",
-        defaultTimezone: "Asia/Tokyo",
+        defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
       },
     });
@@ -421,7 +421,7 @@ describe("platform-settings", () => {
     // read is what confirmed the language, so an outage after it must not
     // renegotiate one from the browser.
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "ja", defaultTimezone: "Asia/Tokyo" },
+      settings: { defaultLocale: "ja", defaultTimezone: "UTC" },
     });
     mockHeaders.mockResolvedValue(
       new Headers({ "accept-language": "en-US,en;q=0.9" })

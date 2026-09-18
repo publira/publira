@@ -15,7 +15,7 @@ import (
 // column defaults in db/migrations. The platform default row is the source of
 // truth for new tenants, so this constant is only the last resort for when that
 // row cannot be read.
-const Default = "Asia/Tokyo"
+const Default = "UTC"
 
 // ErrInvalid is returned when a value is not a usable IANA time zone name.
 var ErrInvalid = errors.New("timezone must be a valid IANA time zone name")

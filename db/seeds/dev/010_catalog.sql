@@ -62,7 +62,7 @@ SET tenant_id = EXCLUDED.tenant_id,
     profile_text = EXCLUDED.profile_text;
 
 WITH tenant_scope AS (
-    SELECT t.id
+    SELECT t.id, t.timezone
     FROM tenants t
     WHERE t.domain = 'localhost'
 ),
@@ -95,11 +95,11 @@ SELECT
     FORMAT('Seed Series %s', LPAD(ss.n::text, 3, '0')),
     true,
     (
-        date_trunc('day', NOW() AT TIME ZONE 'Asia/Tokyo')
+        date_trunc('day', NOW() AT TIME ZONE ts.timezone)
         + make_interval(
             days => (GET_BYTE(DECODE(MD5(ss.id::text), 'hex'), 0) % 101) - 50
         )
-    ) AT TIME ZONE 'Asia/Tokyo'
+    ) AT TIME ZONE ts.timezone
 FROM series_seed ss
 JOIN label_pool lp ON lp.label_no = ss.label_no
 CROSS JOIN tenant_scope ts

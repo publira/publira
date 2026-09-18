@@ -21,16 +21,16 @@ import {
 const UTC_INSTANT = "2024-03-10T10:00:00.000Z";
 
 describe("DEFAULT_TIME_ZONE", () => {
-  it("is Asia/Tokyo for gradual migration from the previous fixed zone", () => {
-    expect(DEFAULT_TIME_ZONE).toBe("Asia/Tokyo");
+  it("is UTC, the tenant time zone column default", () => {
+    expect(DEFAULT_TIME_ZONE).toBe("UTC");
   });
 });
 
 describe("formatDateTime", () => {
   it("formats the same UTC instant differently per IANA time zone", () => {
-    // 10:00 UTC → 19:00 JST, 03:00 PDT (America/Los_Angeles, UTC-7 in March)
+    // 10:00 UTC → 19:00 KST, 03:00 PDT (America/Los_Angeles, UTC-7 in March)
     expect(
-      formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "Asia/Tokyo" })
+      formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "Asia/Seoul" })
     ).toBe("2024/03/10 19:00");
     expect(
       formatDateTime(UTC_INSTANT, {
@@ -43,9 +43,9 @@ describe("formatDateTime", () => {
     );
   });
 
-  it("defaults timeZone to Asia/Tokyo when omitted", () => {
+  it("defaults timeZone to UTC when omitted", () => {
     expect(formatDateTime(UTC_INSTANT, { locale: "ja" })).toBe(
-      "2024/03/10 19:00"
+      "2024/03/10 10:00"
     );
     expect(
       formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: DEFAULT_TIME_ZONE })
@@ -56,7 +56,7 @@ describe("formatDateTime", () => {
     expect(
       formatDateTime("2024-03-10T19:00:00+09:00", {
         locale: "ja",
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     ).toBe("2024/03/10 19:00");
   });
@@ -105,10 +105,10 @@ describe("formatDateTime", () => {
 
 describe("formatDate", () => {
   it("uses the calendar day of the given zone, not the UTC day", () => {
-    // 2024-03-10T23:00Z is already 2024-03-11 in Tokyo and still 03-10 in LA.
+    // 2024-03-10T23:00Z is already 2024-03-11 in Seoul and still 03-10 in LA.
     const lateInstant = "2024-03-10T23:00:00.000Z";
     expect(
-      formatDate(lateInstant, { locale: "ja", timeZone: "Asia/Tokyo" })
+      formatDate(lateInstant, { locale: "ja", timeZone: "Asia/Seoul" })
     ).toBe("2024/03/11");
     expect(
       formatDate(lateInstant, { locale: "ja", timeZone: "America/Los_Angeles" })
@@ -118,8 +118,11 @@ describe("formatDate", () => {
     );
   });
 
-  it("defaults timeZone to Asia/Tokyo when omitted", () => {
-    expect(formatDate(UTC_INSTANT, { locale: "ja" })).toBe("2024/03/10");
+  it("defaults timeZone to UTC when omitted", () => {
+    // 23:00Z would already be the next day in any zone ahead of UTC.
+    expect(formatDate("2024-03-10T23:00:00.000Z", { locale: "ja" })).toBe(
+      "2024/03/10"
+    );
   });
 
   it("returns fallback for empty or invalid values", () => {
@@ -180,7 +183,7 @@ describe("parseInstant", () => {
 
 describe("toInstantIsoString", () => {
   it("passes absolute timestamps through, normalized to UTC", () => {
-    expect(toInstantIsoString(UTC_INSTANT, "Asia/Tokyo")).toBe(
+    expect(toInstantIsoString(UTC_INSTANT, "Asia/Seoul")).toBe(
       "2024-03-10T10:00:00Z"
     );
     expect(toInstantIsoString("2024-03-10T19:00:00+09:00", "UTC")).toBe(
@@ -189,31 +192,31 @@ describe("toInstantIsoString", () => {
   });
 
   it("interprets zone-less wall clocks in the given zone, not the host zone", () => {
-    expect(toInstantIsoString("2024-03-10T19:00", "Asia/Tokyo")).toBe(
+    expect(toInstantIsoString("2024-03-10T19:00", "Asia/Seoul")).toBe(
       "2024-03-10T10:00:00Z"
     );
     expect(toInstantIsoString("2024-03-10T03:00", "America/Los_Angeles")).toBe(
       "2024-03-10T10:00:00Z"
     );
-    expect(toInstantIsoString("2024-03-10T19:00:30", "Asia/Tokyo")).toBe(
+    expect(toInstantIsoString("2024-03-10T19:00:30", "Asia/Seoul")).toBe(
       "2024-03-10T10:00:30Z"
     );
   });
 
   it("returns empty string for empty or unparseable values", () => {
-    expect(toInstantIsoString("", "Asia/Tokyo")).toBe("");
-    expect(toInstantIsoString("   ", "Asia/Tokyo")).toBe("");
-    expect(toInstantIsoString("not-a-date", "Asia/Tokyo")).toBe("");
-    expect(toInstantIsoString("2024-03-10", "Asia/Tokyo")).toBe("");
+    expect(toInstantIsoString("", "Asia/Seoul")).toBe("");
+    expect(toInstantIsoString("   ", "Asia/Seoul")).toBe("");
+    expect(toInstantIsoString("not-a-date", "Asia/Seoul")).toBe("");
+    expect(toInstantIsoString("2024-03-10", "Asia/Seoul")).toBe("");
   });
 });
 
 describe("date-only day boundaries", () => {
   it("brackets the calendar day of the given zone", () => {
-    expect(startOfDayIsoString("2024-03-10", "Asia/Tokyo")).toBe(
+    expect(startOfDayIsoString("2024-03-10", "Asia/Seoul")).toBe(
       "2024-03-09T15:00:00Z"
     );
-    expect(endOfDayIsoString("2024-03-10", "Asia/Tokyo")).toBe(
+    expect(endOfDayIsoString("2024-03-10", "Asia/Seoul")).toBe(
       "2024-03-10T14:59:59.999999999Z"
     );
     expect(startOfDayIsoString("2024-03-10", "UTC")).toBe(
@@ -249,10 +252,10 @@ describe("date-only day boundaries", () => {
 
   it("ends the day immediately before the next day starts", () => {
     const end = parseInstant(
-      endOfDayIsoString("2024-03-10", "Asia/Tokyo")
+      endOfDayIsoString("2024-03-10", "Asia/Seoul")
     ) as Temporal.Instant;
     const nextStart = parseInstant(
-      startOfDayIsoString("2024-03-11", "Asia/Tokyo")
+      startOfDayIsoString("2024-03-11", "Asia/Seoul")
     ) as Temporal.Instant;
     expect(nextStart.since(end).total({ unit: "nanosecond" })).toBe(1);
   });
@@ -281,15 +284,15 @@ describe("date-only day boundaries", () => {
       "2024-03-10T00:00",
       "2024-13-40",
     ]) {
-      expect(startOfDayIsoString(input, "Asia/Tokyo")).toBe("");
-      expect(endOfDayIsoString(input, "Asia/Tokyo")).toBe("");
+      expect(startOfDayIsoString(input, "Asia/Seoul")).toBe("");
+      expect(endOfDayIsoString(input, "Asia/Seoul")).toBe("");
     }
   });
 });
 
 describe("toDateTimeLocalValue", () => {
   it("converts an absolute instant to datetime-local wall clock in the given zone", () => {
-    expect(toDateTimeLocalValue(UTC_INSTANT, "Asia/Tokyo")).toBe(
+    expect(toDateTimeLocalValue(UTC_INSTANT, "Asia/Seoul")).toBe(
       "2024-03-10T19:00"
     );
     expect(toDateTimeLocalValue(UTC_INSTANT, "America/Los_Angeles")).toBe(
@@ -306,15 +309,15 @@ describe("toDateTimeLocalValue", () => {
   });
 
   it("returns fallback for empty or invalid values", () => {
-    expect(toDateTimeLocalValue("", "Asia/Tokyo")).toBe("");
-    expect(toDateTimeLocalValue("bogus", "Asia/Tokyo")).toBe("");
-    expect(toDateTimeLocalValue("bogus", "Asia/Tokyo", { fallback: "—" })).toBe(
+    expect(toDateTimeLocalValue("", "Asia/Seoul")).toBe("");
+    expect(toDateTimeLocalValue("bogus", "Asia/Seoul")).toBe("");
+    expect(toDateTimeLocalValue("bogus", "Asia/Seoul", { fallback: "—" })).toBe(
       "—"
     );
   });
 
   it("rejects zone-less timestamps (no host-local Date.parse)", () => {
-    expect(toDateTimeLocalValue("2024-03-10T10:00", "Asia/Tokyo")).toBe("");
+    expect(toDateTimeLocalValue("2024-03-10T10:00", "Asia/Seoul")).toBe("");
     expect(toDateTimeLocalValue("2024-03-10T10:00:00", "UTC")).toBe("");
     expect(
       toDateTimeLocalValue("2024-03-10T10:00", "UTC", { fallback: "—" })
@@ -324,7 +327,7 @@ describe("toDateTimeLocalValue", () => {
 
 describe("fromDateTimeLocalValue", () => {
   it("converts datetime-local wall clock + IANA zone to a UTC instant", () => {
-    expect(fromDateTimeLocalValue("2024-03-10T19:00", "Asia/Tokyo")).toBe(
+    expect(fromDateTimeLocalValue("2024-03-10T19:00", "Asia/Seoul")).toBe(
       "2024-03-10T10:00:00Z"
     );
     expect(
@@ -336,13 +339,13 @@ describe("fromDateTimeLocalValue", () => {
   });
 
   it("accepts optional seconds in the wall-clock string", () => {
-    expect(fromDateTimeLocalValue("2024-03-10T19:00:30", "Asia/Tokyo")).toBe(
+    expect(fromDateTimeLocalValue("2024-03-10T19:00:30", "Asia/Seoul")).toBe(
       "2024-03-10T10:00:30Z"
     );
   });
 
   it("round-trips with toDateTimeLocalValue", () => {
-    const zones = ["Asia/Tokyo", "America/Los_Angeles", "Europe/London", "UTC"];
+    const zones = ["Asia/Seoul", "America/Los_Angeles", "Europe/London", "UTC"];
     for (const timeZone of zones) {
       const local = toDateTimeLocalValue(UTC_INSTANT, timeZone);
       const back = fromDateTimeLocalValue(local, timeZone);
@@ -353,26 +356,26 @@ describe("fromDateTimeLocalValue", () => {
   });
 
   it("returns empty string for empty or invalid input", () => {
-    expect(fromDateTimeLocalValue("", "Asia/Tokyo")).toBe("");
-    expect(fromDateTimeLocalValue("   ", "Asia/Tokyo")).toBe("");
-    expect(fromDateTimeLocalValue("not-a-datetime", "Asia/Tokyo")).toBe("");
-    expect(fromDateTimeLocalValue("2024-13-40T99:99", "Asia/Tokyo")).toBe("");
+    expect(fromDateTimeLocalValue("", "Asia/Seoul")).toBe("");
+    expect(fromDateTimeLocalValue("   ", "Asia/Seoul")).toBe("");
+    expect(fromDateTimeLocalValue("not-a-datetime", "Asia/Seoul")).toBe("");
+    expect(fromDateTimeLocalValue("2024-13-40T99:99", "Asia/Seoul")).toBe("");
   });
 
   it("rejects Z, numeric offsets, and time-zone annotations", () => {
-    // PlainDateTime.from would ignore +09:00 / [Asia/Tokyo]; must not.
-    expect(fromDateTimeLocalValue("2024-03-10T19:00Z", "Asia/Tokyo")).toBe("");
-    expect(fromDateTimeLocalValue("2024-03-10T19:00+09:00", "Asia/Tokyo")).toBe(
+    // PlainDateTime.from would ignore +09:00 / [Asia/Seoul]; must not.
+    expect(fromDateTimeLocalValue("2024-03-10T19:00Z", "Asia/Seoul")).toBe("");
+    expect(fromDateTimeLocalValue("2024-03-10T19:00+09:00", "Asia/Seoul")).toBe(
       ""
     );
     expect(
       fromDateTimeLocalValue("2024-03-10T19:00-07:00", "America/Los_Angeles")
     ).toBe("");
     expect(
-      fromDateTimeLocalValue("2024-03-10T19:00[Asia/Tokyo]", "Asia/Tokyo")
+      fromDateTimeLocalValue("2024-03-10T19:00[Asia/Seoul]", "Asia/Seoul")
     ).toBe("");
     expect(
-      fromDateTimeLocalValue("2024-03-10T19:00+09:00[Asia/Tokyo]", "Asia/Tokyo")
+      fromDateTimeLocalValue("2024-03-10T19:00+09:00[Asia/Seoul]", "Asia/Seoul")
     ).toBe("");
   });
 });
@@ -436,7 +439,7 @@ describe("formatPlainDate", () => {
 });
 
 describe("formatRelativeTime", () => {
-  /** 2026-09-09 21:00 in Asia/Tokyo, so a JST midnight is three hours away. */
+  /** 2026-09-09 12:00 in UTC, the zone these cases fall back to. */
   const now = Temporal.Instant.from("2026-09-09T12:00:00Z");
 
   it("counts seconds, minutes, and hours below a day", () => {
@@ -452,11 +455,11 @@ describe("formatRelativeTime", () => {
   });
 
   it("says yesterday once the calendar day changes, not after 24 hours", () => {
-    // 23:00 and 01:00 JST: two hours apart, on either side of midnight.
+    // 23:00 and 01:00 UTC: two hours apart, on either side of midnight.
     expect(
-      formatRelativeTime("2026-09-09T14:00:00Z", {
+      formatRelativeTime("2026-09-08T23:00:00Z", {
         locale: "en",
-        now: Temporal.Instant.from("2026-09-09T16:00:00Z"),
+        now: Temporal.Instant.from("2026-09-09T01:00:00Z"),
       })
     ).toBe("yesterday");
   });
@@ -490,7 +493,7 @@ describe("formatRelativeTime", () => {
 
   it("counts the days in the time zone it is given", () => {
     // The same two instants fall on one calendar day in Los Angeles (07:00 and
-    // 09:00) and on two in Tokyo (23:00 and 01:00), so the phrase differs.
+    // 09:00) and on two in Seoul (23:00 and 01:00), so the phrase differs.
     const value = "2026-09-09T14:00:00Z";
     const later = Temporal.Instant.from("2026-09-09T16:00:00Z");
 
@@ -505,7 +508,7 @@ describe("formatRelativeTime", () => {
       formatRelativeTime(value, {
         locale: "en",
         now: later,
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     ).toBe("yesterday");
   });
@@ -587,11 +590,11 @@ describe("currentWeekday", () => {
   });
 
   it("answers with the day in the given zone, not the one in UTC", () => {
-    // 22:00 Sunday in UTC is already Monday morning in Tokyo.
+    // 22:00 Sunday in UTC is already Monday morning in Seoul.
     const instant = Temporal.Instant.from("2026-03-01T22:00:00Z");
 
     expect(currentWeekday("UTC", { now: instant })).toBe(0);
-    expect(currentWeekday("Asia/Tokyo", { now: instant })).toBe(1);
+    expect(currentWeekday("Asia/Seoul", { now: instant })).toBe(1);
   });
 
   it("answers with the day in a zone behind UTC", () => {

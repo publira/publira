@@ -78,9 +78,9 @@ func TestResolveReadThroughPeriodEndsOnTheLastCompleteDay(t *testing.T) {
 
 func TestResolveReadThroughPeriodUsesTheTenantsDays(t *testing.T) {
 	// One instant, two tenants: 2026-03-15T21:00Z is already the 16th in
-	// Tokyo and still the 15th in Los Angeles, so their last complete day is
+	// Seoul and still the 15th in Los Angeles, so their last complete day is
 	// not the same one — and neither is the UTC day the report used to report.
-	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	seoul, err := time.LoadLocation("Asia/Seoul")
 	if err != nil {
 		t.Fatalf("LoadLocation: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestResolveReadThroughPeriodUsesTheTenantsDays(t *testing.T) {
 		location *time.Location
 		want     string
 	}{
-		{name: "Tokyo has entered the next day", location: tokyo, want: "2026-03-15"},
+		{name: "Seoul has entered the next day", location: seoul, want: "2026-03-15"},
 		{name: "Los Angeles has not", location: losAngeles, want: "2026-03-14"},
 	}
 
@@ -159,8 +159,8 @@ func TestListEpisodeReadThroughReturnsCountsAndTotals(t *testing.T) {
 	}
 	// The zone the period was counted in comes back with it, so the screen
 	// names the same one the server used rather than a zone of its own.
-	if got := resp.Msg.TimeZone; got != "Asia/Tokyo" {
-		t.Fatalf("time_zone = %q, want the tenant's Asia/Tokyo", got)
+	if got := resp.Msg.TimeZone; got != "UTC" {
+		t.Fatalf("time_zone = %q, want the tenant's UTC", got)
 	}
 	if resp.Msg.PreviousToken != "" {
 		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)

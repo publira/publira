@@ -56,7 +56,7 @@ func newPlatformEmailEnv(t *testing.T) (*testutil.PostgresEnv, emailsettings.Sec
 	pg.Reset(t)
 	encryptor := newInvitationEncryptor(t)
 	seedPlatformSMTPConfig(t, pg, encryptor)
-	seedPlatformConfig(t, pg, "Asia/Tokyo", "ja")
+	seedPlatformConfig(t, pg, "UTC", "ja")
 	return pg, encryptor
 }
 
@@ -202,7 +202,7 @@ func TestPlatformPasswordResetEmailRendersTheStoredRequest(t *testing.T) {
 	if request.Template != "platform_console_password_reset" {
 		t.Fatalf("template = %q, want platform_console_password_reset", request.Template)
 	}
-	if request.Locale != "ja" || request.TimeZone != "Asia/Tokyo" {
+	if request.Locale != "ja" || request.TimeZone != "UTC" {
 		t.Fatalf("locale/time zone = %q/%q, want the platform defaults", request.Locale, request.TimeZone)
 	}
 	if url, _ := request.Data["reset_url"].(string); url != "http://platform.localhost:3080/confirm-password?token=reset-token" {
@@ -277,7 +277,7 @@ func TestPlatformPasswordResetEmailLogsAMismatchedTokenID(t *testing.T) {
 // retry, so the event fails permanently instead of looping.
 func TestPlatformPasswordResetEmailFailsPermanentlyOnAnUnusableLocale(t *testing.T) {
 	pg, encryptor := newPlatformEmailEnv(t)
-	seedPlatformConfig(t, pg, "Asia/Tokyo", "fr")
+	seedPlatformConfig(t, pg, "UTC", "fr")
 	operator := seedPlatformOperator(t, pg, "PLATOUTBOX03", "operator@example.com")
 	tokenID := seedPlatformPasswordResetToken(t, pg, operator.ID, "reset-token", time.Now().Add(time.Hour))
 

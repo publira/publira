@@ -19,7 +19,7 @@ describe("getReaderProvenAgeRating", () => {
   beforeEach(() => {
     mockGetMe.mockReset();
     mockGetTenantDisplayTimeZone.mockReset();
-    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
+    mockGetTenantDisplayTimeZone.mockResolvedValue("UTC");
   });
 
   it("Reads the rating an adult reader's stored date carries", async () => {

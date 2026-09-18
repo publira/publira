@@ -17,7 +17,7 @@ func TestResolve(t *testing.T) {
 		want            string
 	}{
 		{name: "configured value is kept", stored: "America/Los_Angeles", platformDefault: platformDefault("UTC"), want: "America/Los_Angeles"},
-		{name: "surrounding spaces are trimmed", stored: "  Asia/Tokyo  ", platformDefault: platformDefault("UTC"), want: "Asia/Tokyo"},
+		{name: "surrounding spaces are trimmed", stored: "  Asia/Seoul  ", platformDefault: platformDefault("UTC"), want: "Asia/Seoul"},
 		{name: "empty falls back to the platform default", stored: "", platformDefault: platformDefault("Europe/Berlin"), want: "Europe/Berlin"},
 		{name: "blank falls back to the platform default", stored: "   ", platformDefault: platformDefault("Europe/Berlin"), want: "Europe/Berlin"},
 		{name: "blank platform default falls back to Default", stored: "", platformDefault: platformDefault("  "), want: Default},
@@ -54,11 +54,11 @@ func TestNormalizeAcceptsIANANames(t *testing.T) {
 		raw  string
 		want string
 	}{
-		{raw: "Asia/Tokyo", want: "Asia/Tokyo"},
+		{raw: "Asia/Seoul", want: "Asia/Seoul"},
 		{raw: "America/Los_Angeles", want: "America/Los_Angeles"},
 		{raw: "Europe/Berlin", want: "Europe/Berlin"},
 		{raw: "UTC", want: "UTC"},
-		{raw: "  Asia/Tokyo\n", want: "Asia/Tokyo"},
+		{raw: "  Asia/Seoul\n", want: "Asia/Seoul"},
 	}
 
 	for _, tt := range tests {
@@ -82,7 +82,7 @@ func TestNormalizeRejectsInvalidNames(t *testing.T) {
 		{name: "empty", raw: ""},
 		{name: "blank", raw: "   "},
 		{name: "unknown zone", raw: "Mars/Olympus_Mons"},
-		{name: "wrong case", raw: "asia/tokyo"},
+		{name: "wrong case", raw: "asia/seoul"},
 		{name: "utc offset", raw: "+09:00"},
 		{name: "abbreviation", raw: "JST"},
 		{name: "process local zone", raw: "Local"},

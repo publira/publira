@@ -100,7 +100,7 @@ void main() {
     final age = await auth.readReaderAge(stored);
 
     expect(age.birthDate, '1990-04-02');
-    expect(age.timeZone, 'Asia/Tokyo');
+    expect(age.timeZone, 'UTC');
     expect(age.verification, AgeVerification.checked);
   });
 

@@ -98,7 +98,7 @@ describe("NotificationManager", () => {
     render(
       await NotificationManager({
         notifications: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 0,
       })
     );
@@ -113,7 +113,7 @@ describe("NotificationManager", () => {
       await NotificationManager({
         notifications: [],
         previousHref: "/notifications?token=previous",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 0,
       })
     );
@@ -139,7 +139,7 @@ describe("NotificationManager", () => {
           }),
         ],
         previousHref: "/notifications?token=previous",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 1,
       })
     );
@@ -148,7 +148,7 @@ describe("NotificationManager", () => {
       name: "Could not publish the episode",
     });
     expect(titleLink.getAttribute("href")).toBe("/tenants/SeedTNNTAAA1");
-    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
+    expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(screen.getByText("Unread")).toBeDefined();
     expect(screen.getByText("Read")).toBeDefined();
     expect(screen.getByText("Mark as read n1")).toBeDefined();
@@ -169,7 +169,7 @@ describe("NotificationManager", () => {
         nextHref: "/notifications?token=next",
         notifications: [],
         previousHref: "/notifications?token=previous",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 2,
       })
     );
@@ -196,6 +196,6 @@ describe("NotificationManager", () => {
     );
 
     expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
-    expect(screen.queryByText("Jun 1, 2026, 9:00 AM")).toBeNull();
+    expect(screen.queryByText("Jun 1, 2026, 12:00 AM")).toBeNull();
   });
 });

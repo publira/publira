@@ -52,7 +52,7 @@ describe("ReaderManager", () => {
         locale: "en",
         pageSize: 20,
         readers: [reader({ status: "suspended" })],
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -61,7 +61,7 @@ describe("ReaderManager", () => {
     ).toBe("/readers/READER00001");
     expect(screen.getByText("reader@example.com")).toBeTruthy();
     expect(screen.getByText("Suspended")).toBeTruthy();
-    // 2026-06-01T20:00Z is already 2 June in Asia/Tokyo.
+    // 2026-06-01T20:00Z is already 2 June in Asia/Seoul.
     expect(screen.getByText(/Jun 2, 2026/u)).toBeTruthy();
   });
 
@@ -72,7 +72,7 @@ describe("ReaderManager", () => {
         locale: "en",
         pageSize: 20,
         readers: [reader({ name: "" })],
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -86,7 +86,7 @@ describe("ReaderManager", () => {
         locale: "en",
         pageSize: 20,
         readers: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -104,7 +104,7 @@ describe("ReaderManager", () => {
         locale: "en",
         pageSize: 20,
         readers: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -123,7 +123,7 @@ describe("ReaderManager", () => {
         locale: "en",
         pageSize: 20,
         readers: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 
@@ -142,7 +142,7 @@ describe("ReaderManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         readers: [reader()],
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     );
 

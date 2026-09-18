@@ -78,7 +78,7 @@ describe("TicketManager", () => {
         locale: "en",
         pageSize: 20,
         tickets: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -93,7 +93,7 @@ describe("TicketManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tickets: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -116,7 +116,7 @@ describe("TicketManager", () => {
             status: "active",
           },
         ],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -133,7 +133,7 @@ describe("TicketManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tickets: [ticket("TICKET001")],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -155,7 +155,7 @@ describe("TicketManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tickets: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 

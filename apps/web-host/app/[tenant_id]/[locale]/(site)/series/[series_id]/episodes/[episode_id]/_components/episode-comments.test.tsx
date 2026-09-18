@@ -55,7 +55,7 @@ vi.mock("#lib/locale", () => ({
 vi.mock("#lib/auth", () => ({ getMe: mockGetMe }));
 
 vi.mock("#lib/tenant", () => ({
-  getTenantDisplayTimeZone: () => Promise.resolve("Asia/Tokyo"),
+  getTenantDisplayTimeZone: () => Promise.resolve("UTC"),
 }));
 
 // The merge is the real one: where a row lands in the list is exactly what
@@ -324,7 +324,7 @@ describe("EpisodeComments", () => {
     expect(screen.queryByText("Report CmntAAAAAAA2")).toBeNull();
     expect(
       screen.getByRole("button", {
-        name: "Report the comment Another Reader posted on Sep 1, 2026, 9:00 AM",
+        name: "Report the comment Another Reader posted on Sep 1, 2026, 12:00 AM",
       })
     ).toBeDefined();
   });

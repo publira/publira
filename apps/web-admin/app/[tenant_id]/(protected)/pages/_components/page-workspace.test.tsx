@@ -54,7 +54,7 @@ const renderWorkspace = async () => {
           publishAction={noopFormAction}
           rollbackAction={noopFormAction}
           saveAction={noopSaveAction}
-          timeZone="Asia/Tokyo"
+          timeZone="UTC"
           unpublishAction={noopFormAction}
         />
       </AdminLocaleProvider>

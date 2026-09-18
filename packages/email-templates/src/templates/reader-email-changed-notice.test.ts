@@ -41,7 +41,7 @@ describe("ReaderEmailChangedNoticeEmail", () => {
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "reader_email_changed_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);

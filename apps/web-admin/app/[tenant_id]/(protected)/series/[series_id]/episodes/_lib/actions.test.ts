@@ -74,7 +74,7 @@ describe("episode create actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
+    mockGetTenantDisplayTimeZone.mockResolvedValue("UTC");
     // `withAdminSessionReauth` resolves the session before the mutation runs;
     // without a token every Action under test would redirect to /login.
     mockGetAccessToken.mockResolvedValue("session-token");

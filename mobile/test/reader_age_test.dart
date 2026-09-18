@@ -3,7 +3,7 @@ import 'package:publira/auth/reader_age.dart';
 import 'package:publira/models/series_item.dart';
 
 void main() {
-  ReaderAge bornOn(String birthDate, {String timeZone = 'Asia/Tokyo'}) {
+  ReaderAge bornOn(String birthDate, {String timeZone = 'Asia/Seoul'}) {
     return ReaderAge(
       birthDate: birthDate,
       timeZone: timeZone,
@@ -17,7 +17,7 @@ void main() {
       () {
         final age = bornOn('2008-09-16');
 
-        // 15:00 UTC is midnight in Tokyo, where the birthday has arrived while
+        // 15:00 UTC is midnight in Seoul, where the birthday has arrived while
         // it has not yet in UTC.
         expect(
           age.provenAgeRating(DateTime.utc(2026, 9, 15, 14, 59)),

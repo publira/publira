@@ -21,8 +21,7 @@
 -- The seeded catalogue reaches `Seed Series 100`, and every date here is a
 -- fixed literal just after the last one `160_screenshot_baseline.sql` writes
 -- (2026-04-17), so the periods cover days the ranked series were already
--- published on. The tenant's zone is Asia/Tokyo and `computed_at` is
--- late-evening UTC, so the day the page prints is the following one.
+-- published on.
 --
 -- The cold start — no snapshot, so the module keeps the recommendation shelf —
 -- is the Boundary Tenant of `010_multi_tenant.sql`, which nothing ranks.
@@ -44,28 +43,28 @@ snapshot_seed (id, ranking_key, period_start, period_end, computed_at) AS (
             'weekly',
             DATE '2026-04-12',
             DATE '2026-04-18',
-            TIMESTAMPTZ '2026-04-19 21:00:00+00'
+            TIMESTAMPTZ '2026-04-20 06:00:00+00'
         ),
         (
             '018f0f85-0002-7000-8000-000000000002'::uuid,
             'weekly',
             DATE '2026-04-05',
             DATE '2026-04-11',
-            TIMESTAMPTZ '2026-04-12 21:00:00+00'
+            TIMESTAMPTZ '2026-04-13 06:00:00+00'
         ),
         (
             '018f0f85-0003-7000-8000-000000000003'::uuid,
             'daily',
             DATE '2026-04-18',
             DATE '2026-04-18',
-            TIMESTAMPTZ '2026-04-19 21:00:00+00'
+            TIMESTAMPTZ '2026-04-20 06:00:00+00'
         ),
         (
             '018f0f85-0004-7000-8000-000000000004'::uuid,
             'daily',
             DATE '2026-04-17',
             DATE '2026-04-17',
-            TIMESTAMPTZ '2026-04-18 21:00:00+00'
+            TIMESTAMPTZ '2026-04-19 06:00:00+00'
         )
 ),
 

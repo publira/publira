@@ -42,7 +42,7 @@ class ConnectFixtureServer {
     this.activeAccessToken = memberAccessToken,
     this.memberBirthDate = '',
     this.ageVerification = 'AGE_VERIFICATION_R18',
-    this.tenantTimeZone = 'Asia/Tokyo',
+    this.tenantTimeZone = 'UTC',
     this.tenantName = seedTenantName,
     this.tenantTheme,
     this.encryptImages = true,

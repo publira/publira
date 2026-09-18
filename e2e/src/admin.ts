@@ -4,7 +4,7 @@ import { expect } from "@playwright/test";
 import {
   SEED_ADMIN,
   SEED_CATALOG,
-  toTokyoDateTimeLocal,
+  toSeedTenantDateTimeLocal,
 } from "./scenarios/admin-publish";
 import { ANNOUNCEMENT_BANNER_ADMIN } from "./scenarios/announcement-banner";
 import {
@@ -239,7 +239,7 @@ export interface CreateSeriesInput {
   creatorRoleName?: string;
   /** Label to attach. Defaults to the seeded label. */
   labelName?: string;
-  /** When set, series is published at this absolute instant (Tokyo wall clock). */
+  /** When set, series is published at this absolute instant (seed tenant wall clock). */
   publishedAt?: Temporal.Instant;
   readingPeriodHours?: number;
   /** Genre to assign, by the name the tenant's genre list shows. */
@@ -290,7 +290,7 @@ export const createSeriesViaUi = async (
   }
 
   if (input.publishedAt) {
-    await fields.publishedAt.fill(toTokyoDateTimeLocal(input.publishedAt));
+    await fields.publishedAt.fill(toSeedTenantDateTimeLocal(input.publishedAt));
   }
 
   await page.getByRole("button", { name: "Create series" }).click();
@@ -315,7 +315,7 @@ export interface CreateEpisodeInput {
   title: string;
   price?: number;
   readingPeriodHours?: number;
-  /** When set, episode is scheduled for this absolute instant (Tokyo wall clock). */
+  /** When set, episode is scheduled for this absolute instant (seed tenant wall clock). */
   publishAt?: Temporal.Instant;
 }
 
@@ -360,7 +360,7 @@ export const createEpisodeViaUi = async (
   await fields.readingPeriodHours.fill(String(input.readingPeriodHours ?? 0));
 
   if (input.publishAt) {
-    await fields.publishAt.fill(toTokyoDateTimeLocal(input.publishAt));
+    await fields.publishAt.fill(toSeedTenantDateTimeLocal(input.publishAt));
   }
 
   await page.getByRole("button", { name: "Create episode" }).click();

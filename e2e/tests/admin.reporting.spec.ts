@@ -22,7 +22,10 @@ import {
   SEED_MEMBER_PUBLIC_ID,
   SEED_TENANT_TIME_ZONE,
 } from "../src/scenarios/auth";
-import { MULTI_TENANT_SCENARIO } from "../src/scenarios/multi-tenant";
+import {
+  MULTI_TENANT_SCENARIO,
+  OTHER_TENANT,
+} from "../src/scenarios/multi-tenant";
 import {
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_OTHER_TENANT_BASE_URL,
@@ -145,13 +148,12 @@ const expectReadThroughRow = async (
 };
 
 /**
- * The period the report names: the window's days in the seed tenant's own time
+ * The period the report names: the window's days in the tenant's own time
  * zone, worded the way the summary card formats a plain date in English. The
- * card names that zone too, so this asserts the report counts the tenant's days
- * rather than UTC ones — the two disagree for nine hours of every day.
+ * card names that zone too.
  */
-const expectedPeriodText = (): string => {
-  const end = Temporal.Now.plainDateISO(SEED_TENANT_TIME_ZONE).subtract({
+const expectedPeriodText = (timeZone: string): string => {
+  const end = Temporal.Now.plainDateISO(timeZone).subtract({
     days: 1,
   });
   const start = end.subtract({ days: READ_THROUGH_WINDOW_DAYS - 1 });
@@ -162,7 +164,7 @@ const expectedPeriodText = (): string => {
   const format = (date: Temporal.PlainDate): string =>
     formatter.format(date.toZonedDateTime("UTC").epochMilliseconds);
 
-  return `${format(start)} - ${format(end)}, counted in calendar days in the tenant's time zone (${SEED_TENANT_TIME_ZONE}).`;
+  return `${format(start)} - ${format(end)}, counted in calendar days in the tenant's time zone (${timeZone}).`;
 };
 
 /**
@@ -490,7 +492,9 @@ test.describe("admin reporting screens", () => {
     // a row dated tomorrow, a row dated 40 days back, both with figures that
     // would swamp these — is not in the totals, and neither is the Boundary
     // Tenant's episode.
-    await expect(page.getByText(expectedPeriodText())).toBeVisible();
+    await expect(
+      page.getByText(expectedPeriodText(SEED_TENANT_TIME_ZONE))
+    ).toBeVisible();
     await expect(summaryValue(page, "Completions")).toHaveText(
       String(REPORTING_READ_THROUGH.totalCompleteCount)
     );
@@ -521,6 +525,29 @@ test.describe("admin reporting screens", () => {
       readThroughRow(page, fullyRead.episodeTitle),
       fullyRead
     );
+  });
+
+  test("the read-through report counts the days of a tenant off UTC", async ({
+    page,
+  }) => {
+    // The Boundary Tenant is on Asia/Tokyo, so for nine hours of every UTC day
+    // its yesterday is the server's today. Its window is its own 28 days, and
+    // its one episode's row, dated two of its days back, falls inside them.
+    await signInAsAdmin(
+      page,
+      BOUNDARY_ADMIN,
+      "/engagement",
+      WEB_ADMIN_OTHER_TENANT_BASE_URL
+    );
+    await expect(
+      page.getByText(expectedPeriodText(OTHER_TENANT.timeZone))
+    ).toBeVisible();
+    await expect(summaryValue(page, "Completions")).toHaveText(
+      String(REPORTING_READ_THROUGH.boundaryCompleteCount)
+    );
+    await expect(
+      readThroughRow(page, REPORTING_READ_THROUGH.boundaryEpisodeTitle)
+    ).toHaveCount(1);
   });
 
   test("the read-through report pages through with a cursor", async ({

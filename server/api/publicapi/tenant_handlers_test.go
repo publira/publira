@@ -188,8 +188,8 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	if resp.Msg.Theme.BackgroundColor != "#f5f5f2" {
 		t.Fatalf("theme.background_color = %q, want #f5f5f2", resp.Msg.Theme.BackgroundColor)
 	}
-	if resp.Msg.Timezone != "Asia/Tokyo" {
-		t.Fatalf("timezone = %q, want Asia/Tokyo", resp.Msg.Timezone)
+	if resp.Msg.Timezone != "UTC" {
+		t.Fatalf("timezone = %q, want UTC", resp.Msg.Timezone)
 	}
 	if resp.Msg.DefaultLocale != "ja" {
 		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
@@ -334,8 +334,8 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.Timezone != "Asia/Tokyo" {
-		t.Fatalf("timezone = %q, want Asia/Tokyo", resp.Msg.Timezone)
+	if resp.Msg.Timezone != "UTC" {
+		t.Fatalf("timezone = %q, want UTC", resp.Msg.Timezone)
 	}
 	assertPublicExpectations(t, mock)
 }

@@ -41,7 +41,7 @@ describe("AdminConsoleEmailChangedNoticeEmail", () => {
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "admin_console_email_changed_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);

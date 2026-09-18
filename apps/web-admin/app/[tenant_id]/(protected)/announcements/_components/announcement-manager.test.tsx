@@ -68,7 +68,7 @@ describe("AnnouncementManager", () => {
         locale: "en",
         pageSize: 20,
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -84,7 +84,7 @@ describe("AnnouncementManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -106,13 +106,13 @@ describe("AnnouncementManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
     expect(screen.getByText("Scheduled maintenance")).toBeDefined();
-    // 2026-06-01T00:00:00Z is 09:00 the same calendar day in Asia/Tokyo.
-    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
+    // 2026-06-01T00:00:00Z is 09:00 the same calendar day in UTC.
+    expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(
       screen.getByRole("link", { name: "Previous" }).getAttribute("href")
     ).toBe("?token=previous");
@@ -131,7 +131,7 @@ describe("AnnouncementManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -165,6 +165,6 @@ describe("AnnouncementManager", () => {
 
     // 2026-06-01T00:00:00Z is 17:00 the previous calendar day in PDT.
     expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
-    expect(screen.queryByText("Jun 1, 2026, 9:00 AM")).toBeNull();
+    expect(screen.queryByText("Jun 1, 2026, 12:00 AM")).toBeNull();
   });
 });

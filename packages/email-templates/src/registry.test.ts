@@ -47,7 +47,7 @@ describe("resolveEmail", () => {
       locale: "en",
       messages,
       template: "password_reset",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result).toEqual({
@@ -63,7 +63,7 @@ describe("resolveEmail", () => {
       locale: "en",
       messages,
       template: "tenant_admin_invitation",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(false);
@@ -96,7 +96,7 @@ describe("resolveEmail", () => {
       locale: "fr",
       messages,
       template: "reader_password_reset",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(false);
@@ -114,7 +114,7 @@ describe("renderEmail", () => {
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "does_not_exist",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result).toEqual({

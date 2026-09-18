@@ -43,10 +43,7 @@ export const RANKING_SERIES = {
 export const RANKING_ENTRY_COUNT = 10;
 
 /**
- * The day the seeded snapshots report as computed, as the site prints it.
- *
- * `computed_at` is 2026-04-19T21:00:00Z and the tenant's zone is Asia/Tokyo,
- * so the calendar day on screen is the next one — which is what makes this
- * value evidence that the conversion happened.
+ * The day the seeded snapshots report as computed, as the site prints it:
+ * `computed_at` is 2026-04-20T06:00:00Z.
  */
 export const RANKING_COMPUTED_ON = "Apr 20, 2026";

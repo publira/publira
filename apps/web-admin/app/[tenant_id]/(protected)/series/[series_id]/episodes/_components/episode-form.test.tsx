@@ -32,16 +32,8 @@ const render = (ui: React.ReactNode) =>
 const renderBothForms = () =>
   render(
     <>
-      <EpisodeForm
-        action={action}
-        seriesPublicId="SERIES001"
-        timeZone="Asia/Tokyo"
-      />
-      <EpisodeForm
-        action={action}
-        seriesPublicId="SERIES002"
-        timeZone="Asia/Tokyo"
-      />
+      <EpisodeForm action={action} seriesPublicId="SERIES001" timeZone="UTC" />
+      <EpisodeForm action={action} seriesPublicId="SERIES002" timeZone="UTC" />
     </>
   );
 

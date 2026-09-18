@@ -213,7 +213,7 @@ describe("tenant", () => {
 
     const info = await getTenantSiteInfo("TENANT_001");
 
-    expect(info?.timeZone).toBe("Asia/Tokyo");
+    expect(info?.timeZone).toBe("UTC");
   });
 
   it("Return tenant timezone as display timezone", async () => {
@@ -231,13 +231,11 @@ describe("tenant", () => {
       new ConnectError("upstream is down", Code.Unavailable)
     );
 
-    await expect(getTenantDisplayTimeZone("TENANT_001")).resolves.toBe(
-      "Asia/Tokyo"
-    );
+    await expect(getTenantDisplayTimeZone("TENANT_001")).resolves.toBe("UTC");
   });
 
   it("Display in default time zone even when tenant ID is empty", async () => {
-    await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("Asia/Tokyo");
+    await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("UTC");
     expect(mockGetTenant).not.toHaveBeenCalled();
   });
 

@@ -256,7 +256,7 @@ func TestEmailCopyWritesTheWholeMail(t *testing.T) {
 				"We received a request to reset your password.\n\n" +
 				"Open the button below to set a new password.\n\n" +
 				"Reset password https://reader.example.test/confirm-password?token=reset\n\n" +
-				"This link expires at Jan 15, 2030, 9:00\u202fPM.\n\n" +
+				"This link expires at Jan 15, 2030, 12:00\u202fPM.\n\n" +
 				"If you were not expecting this email, you can ignore it.\n\n" +
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/confirm-password?token=reset\n\n" +
 				"This email was sent by Aoto Press.",
@@ -268,7 +268,7 @@ func TestEmailCopyWritesTheWholeMail(t *testing.T) {
 				"パスワード再設定のリクエストを受け付けました。\n\n" +
 				"以下のボタンから新しいパスワードを設定してください。\n\n" +
 				"パスワードを再設定する https://reader.example.test/confirm-password?token=reset\n\n" +
-				"このリンクの有効期限は 2030/01/15 21:00 です。\n\n" +
+				"このリンクの有効期限は 2030/01/15 12:00 です。\n\n" +
 				"心当たりがない場合、このメールは破棄してください。\n\n" +
 				"ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。 https://reader.example.test/confirm-password?token=reset\n\n" +
 				"このメールは Aoto Press から送信されています。",
@@ -283,7 +283,7 @@ func TestEmailCopyWritesTheWholeMail(t *testing.T) {
 					"reset_url":   "https://reader.example.test/confirm-password?token=reset",
 					"tenant_name": "Aoto Press",
 				},
-				TimeZone: "Asia/Tokyo",
+				TimeZone: "UTC",
 			})
 			if err != nil {
 				t.Fatalf("emailCopy: %v", err)
@@ -305,7 +305,7 @@ func TestEmailCopyBrandsAPlatformMailWithThePlatform(t *testing.T) {
 		Template: "platform_console_email_changed_notice",
 		Locale:   "en",
 		Data:     map[string]any{"new_email": "new@example.com", "previous_email": "old@example.com"},
-		TimeZone: "Asia/Tokyo",
+		TimeZone: "UTC",
 	})
 	if err != nil {
 		t.Fatalf("emailCopy: %v", err)
@@ -332,7 +332,7 @@ func TestEmailCopyCoversEveryTemplateInEveryLocale(t *testing.T) {
 			t.Run(testCase.name+" in "+code, func(t *testing.T) {
 				request := testCase.request
 				request.Locale = code
-				request.TimeZone = "Asia/Tokyo"
+				request.TimeZone = "UTC"
 
 				email, err := emailCopy(request)
 				if err != nil {
@@ -365,7 +365,7 @@ func TestEmailCopyRefusesAMailItCannotWord(t *testing.T) {
 		Template: "reader_password_reset",
 		Locale:   "en",
 		Data:     map[string]any{"reset_url": "https://reader.example.test/confirm-password?token=reset"},
-		TimeZone: "Asia/Tokyo",
+		TimeZone: "UTC",
 	}); err == nil {
 		t.Error("emailCopy accepted a request with no tenant_name")
 	}
@@ -377,7 +377,7 @@ func TestEmailCopyRefusesAMailItCannotWord(t *testing.T) {
 			"reset_url":   "https://reader.example.test/confirm-password?token=reset",
 			"tenant_name": "Aoto Press",
 		},
-		TimeZone: "Asia/Tokyo",
+		TimeZone: "UTC",
 	}); err == nil {
 		t.Error("emailCopy accepted an expiry that is not a timestamp")
 	}

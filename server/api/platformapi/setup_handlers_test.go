@@ -162,7 +162,7 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 			AddRow(uuid.Must(uuid.NewV7()), "platform_super_admin", now, userID))
 	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultLocaleQuery)).
 		WithArgs("en").
-		WillReturnRows(platformConfigRow("Asia/Tokyo", "en", 1, now))
+		WillReturnRows(platformConfigRow("UTC", "en", 1, now))
 	mock.ExpectCommit()
 
 	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{

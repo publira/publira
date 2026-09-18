@@ -32,7 +32,7 @@ describe("audit lib", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetAccessToken.mockResolvedValue("session-token");
-    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
+    mockGetTenantDisplayTimeZone.mockResolvedValue("UTC");
   });
 
   it("passes the shared token to the RPC and returns the tokens on both sides", async () => {

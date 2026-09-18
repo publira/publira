@@ -54,7 +54,7 @@ func expectTenantForInvitationList(mock sqlmock.Sqlmock, tenantID uuid.UUID, now
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
 }
 
 func newTenantAdminInvitationListRequest() *connect.Request[publirasplatformv1.ListTenantAdminInvitationsRequest] {

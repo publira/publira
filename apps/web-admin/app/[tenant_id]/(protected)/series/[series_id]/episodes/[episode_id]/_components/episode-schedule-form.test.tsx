@@ -37,7 +37,7 @@ describe("EpisodeScheduleForm", () => {
         episodePublicId="EP001"
         scheduledAt="2030-01-01T01:00:00Z"
         seriesPublicId="SERIES001"
-        timeZone="Asia/Tokyo"
+        timeZone="Asia/Seoul"
       />
     );
 
@@ -52,7 +52,7 @@ describe("EpisodeScheduleForm", () => {
         action={action}
         episodePublicId="EP001"
         seriesPublicId="SERIES001"
-        timeZone="Asia/Tokyo"
+        timeZone="Asia/Seoul"
       />
     );
 
@@ -67,14 +67,14 @@ describe("EpisodeScheduleForm", () => {
         <EpisodeForm
           action={() => Promise.resolve(null)}
           seriesPublicId="SERIES001"
-          timeZone="Asia/Tokyo"
+          timeZone="Asia/Seoul"
         />
         <EpisodeScheduleForm
           action={action}
           episodePublicId="EP001"
           scheduledAt="2030-01-01T01:00:00Z"
           seriesPublicId="SERIES001"
-          timeZone="Asia/Tokyo"
+          timeZone="Asia/Seoul"
         />
       </>
     );

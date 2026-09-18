@@ -321,7 +321,7 @@ describe("updateTenantTimezoneAction", () => {
 
     const result = await updateTenantTimezoneAction(
       null,
-      textFormData({ timezone: "Asia/Tokyo" })
+      textFormData({ timezone: "UTC" })
     );
 
     expect(result).toEqual({
@@ -341,7 +341,7 @@ describe("updateTenantTimezoneAction", () => {
 
     const result = await updateTenantTimezoneAction(
       null,
-      textFormData({ tenant_id: "TENANT001", timezone: "Asia/Tokyo" })
+      textFormData({ tenant_id: "TENANT001", timezone: "UTC" })
     );
 
     expect(result).toEqual({

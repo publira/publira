@@ -22,15 +22,22 @@ export const SEED_CATALOG = {
   labelPublicId: "SeedLABLAAA1",
 } as const;
 
-const ADMIN_UI_TIME_ZONE = "Asia/Tokyo";
+/**
+ * The dev seed tenant's time zone, which `001_tenant_users.sql` writes — the
+ * zone every calendar day the console shows that tenant is counted in.
+ */
+export const SEED_TENANT_TIME_ZONE = "UTC";
 
 const padTwo = (value: number): string => String(value).padStart(2, "0");
 
 /**
- * `datetime-local` wall clock in Asia/Tokyo (admin UI display zone).
+ * `datetime-local` wall clock in the seed tenant's zone, which is the zone the
+ * console reads its date inputs in.
  */
-export const toTokyoDateTimeLocal = (instant: Temporal.Instant): string => {
-  const zoned = instant.toZonedDateTimeISO(ADMIN_UI_TIME_ZONE);
+export const toSeedTenantDateTimeLocal = (
+  instant: Temporal.Instant
+): string => {
+  const zoned = instant.toZonedDateTimeISO(SEED_TENANT_TIME_ZONE);
   return `${zoned.year}-${padTwo(zoned.month)}-${padTwo(zoned.day)}T${padTwo(zoned.hour)}:${padTwo(zoned.minute)}`;
 };
 

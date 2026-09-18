@@ -54,7 +54,7 @@ describe("SeriesManager", () => {
         locale: "en",
         pageSize: 20,
         series: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -72,7 +72,7 @@ describe("SeriesManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         series: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 
@@ -91,7 +91,7 @@ describe("SeriesManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         series: [],
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     );
 

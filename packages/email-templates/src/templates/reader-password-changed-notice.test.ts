@@ -41,7 +41,7 @@ describe("ReaderPasswordChangedNoticeEmail", () => {
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "reader_password_changed_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);
@@ -83,7 +83,7 @@ describe("ReaderPasswordChangedNoticeEmail", () => {
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "reader_password_changed_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);

@@ -6,12 +6,12 @@ import (
 )
 
 func TestDatePinned(t *testing.T) {
-	// 2026-08-28 in Los Angeles and in Tokyo are the same calendar day to
+	// 2026-08-28 in Los Angeles and in Seoul are the same calendar day to
 	// rebuild, even though the instants they cover do not overlap.
 	pinned := time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)
 	now := time.Date(2026, time.September, 5, 12, 0, 0, 0, time.UTC)
 
-	for _, zone := range []string{"Asia/Tokyo", "America/Los_Angeles", "UTC"} {
+	for _, zone := range []string{"Asia/Seoul", "America/Los_Angeles", "UTC"} {
 		got, err := Tenant{TimeZone: zone}.Date(pinned, now)
 		if err != nil {
 			t.Fatalf("Date(%s): %v", zone, err)
@@ -23,9 +23,9 @@ func TestDatePinned(t *testing.T) {
 }
 
 func TestDateDefaultsToTheTenantsYesterday(t *testing.T) {
-	// 2026-09-05T14:30Z is already the 5th in Tokyo and still the 5th in Los
+	// 2026-09-05T14:30Z is already the 5th in Seoul and still the 5th in Los
 	// Angeles, so both tenants' yesterday is the 4th. Two hours earlier the
-	// zones disagree: Tokyo has entered the 5th while Los Angeles is on the
+	// zones disagree: Seoul has entered the 5th while Los Angeles is on the
 	// 4th, which is what makes one run cover two different days.
 	tests := []struct {
 		name string
@@ -33,9 +33,9 @@ func TestDateDefaultsToTheTenantsYesterday(t *testing.T) {
 		zone string
 		want string
 	}{
-		{name: "Tokyo after the shared day boundary", now: time.Date(2026, time.September, 5, 14, 30, 0, 0, time.UTC), zone: "Asia/Tokyo", want: "2026-09-04"},
+		{name: "Seoul after the shared day boundary", now: time.Date(2026, time.September, 5, 14, 30, 0, 0, time.UTC), zone: "Asia/Seoul", want: "2026-09-04"},
 		{name: "Los Angeles after the shared day boundary", now: time.Date(2026, time.September, 5, 14, 30, 0, 0, time.UTC), zone: "America/Los_Angeles", want: "2026-09-04"},
-		{name: "Tokyo has already turned the day", now: time.Date(2026, time.September, 4, 16, 0, 0, 0, time.UTC), zone: "Asia/Tokyo", want: "2026-09-04"},
+		{name: "Seoul has already turned the day", now: time.Date(2026, time.September, 4, 16, 0, 0, 0, time.UTC), zone: "Asia/Seoul", want: "2026-09-04"},
 		{name: "Los Angeles has not", now: time.Date(2026, time.September, 4, 16, 0, 0, 0, time.UTC), zone: "America/Los_Angeles", want: "2026-09-03"},
 	}
 
@@ -53,7 +53,7 @@ func TestDateDefaultsToTheTenantsYesterday(t *testing.T) {
 }
 
 func TestToday(t *testing.T) {
-	// 2026-09-04T16:00Z has already turned the day in Tokyo and has not in Los
+	// 2026-09-04T16:00Z has already turned the day in Seoul and has not in Los
 	// Angeles, which is the pair of answers a cache keyed on "what day is it
 	// there" has to tell apart.
 	tests := []struct {
@@ -62,7 +62,7 @@ func TestToday(t *testing.T) {
 		zone string
 		want string
 	}{
-		{name: "Tokyo has turned the day", now: time.Date(2026, time.September, 4, 16, 0, 0, 0, time.UTC), zone: "Asia/Tokyo", want: "2026-09-05"},
+		{name: "Seoul has turned the day", now: time.Date(2026, time.September, 4, 16, 0, 0, 0, time.UTC), zone: "Asia/Seoul", want: "2026-09-05"},
 		{name: "Los Angeles has not", now: time.Date(2026, time.September, 4, 16, 0, 0, 0, time.UTC), zone: "America/Los_Angeles", want: "2026-09-04"},
 		{name: "UTC reads its own day", now: time.Date(2026, time.September, 4, 16, 0, 0, 0, time.UTC), zone: "UTC", want: "2026-09-04"},
 	}

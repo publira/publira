@@ -24,7 +24,7 @@ func TestDBPlatformAuditorCannotWritePlatformSettings(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(server.Client(), server.URL)
 	_, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(auditor, publirasplatformv1.UpdatePlatformSettingsRequest{
-		DefaultTimezone: "Asia/Tokyo",
+		DefaultTimezone: "UTC",
 	}))
 	if got := connect.CodeOf(err); got != connect.CodePermissionDenied {
 		t.Fatalf("UpdatePlatformSettings code = %v, want permission_denied (err=%v)", got, err)

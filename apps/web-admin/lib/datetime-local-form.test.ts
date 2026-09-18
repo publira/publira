@@ -37,7 +37,7 @@ describe("fillInstantFromDateTimeLocal", () => {
     fillInstantFromDateTimeLocal(form, {
       isoName: "publish_at",
       localName: "publish_at_local",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(iso.value).toBe("");

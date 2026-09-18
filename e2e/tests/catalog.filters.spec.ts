@@ -1,6 +1,7 @@
 import "temporal-polyfill/global";
 import { expect, test } from "@playwright/test";
 
+import { SEED_TENANT_TIME_ZONE } from "../src/scenarios/auth";
 import { hostPath } from "../src/urls";
 
 /**
@@ -87,9 +88,6 @@ const TWICE_WEEKLY_SERIES = {
  */
 const SUNDAY_SERIES_PUBLIC_ID = "SeedSERSAA98";
 
-/** The seed tenant's display zone, which is the column default (`tenants`). */
-const TENANT_TIME_ZONE = "Asia/Tokyo";
-
 /**
  * The short weekday name the weekday module opens on: the day it is in the
  * tenant's own time zone, which is what the module follows rather than the
@@ -97,7 +95,7 @@ const TENANT_TIME_ZONE = "Asia/Tokyo";
  */
 const tenantWeekdayName = (): string =>
   new Intl.DateTimeFormat("en", {
-    timeZone: TENANT_TIME_ZONE,
+    timeZone: SEED_TENANT_TIME_ZONE,
     weekday: "short",
   }).format(Temporal.Now.instant().epochMilliseconds);
 
