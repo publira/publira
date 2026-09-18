@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:publira/api/episode_image_client.dart';
+import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -107,18 +108,20 @@ class EpisodeDownloader extends ChangeNotifier {
       }
       final pages = detail.images;
       for (var index = 0; index < pages.length; index++) {
-        try {
-          await images.keep(
-            pages[index].url,
-            headers: detail.imageRequestHeaders,
-          );
-        } on EpisodeImageException catch (error) {
-          throw EpisodeDownloadFailure(
-            error.kind == EpisodeImageFailureKind.storage
-                ? EpisodeDownloadFailureKind.storage
-                : EpisodeDownloadFailureKind.network,
-            message: '$error',
-          );
+        final url = pages[index].url;
+        // An episode the reader turned through part of holds those pages
+        // already, and finishing it fetches only the rest.
+        if (await _library.readPage(episodePageKey(url)) == null) {
+          try {
+            await images.keep(url, headers: detail.imageRequestHeaders);
+          } on EpisodeImageException catch (error) {
+            throw EpisodeDownloadFailure(
+              error.kind == EpisodeImageFailureKind.storage
+                  ? EpisodeDownloadFailureKind.storage
+                  : EpisodeDownloadFailureKind.network,
+              message: '$error',
+            );
+          }
         }
         _progress[key] = (index + 1) / pages.length;
         notifyListeners();

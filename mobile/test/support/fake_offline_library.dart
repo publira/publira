@@ -130,7 +130,8 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
     return {
       for (final episode in episodes.values)
         if (episode.detail.seriesId == seriesPublicId &&
-            isReadableOffline(episode, readerId: readerId, now: at))
+            isReadableOffline(episode, readerId: readerId, now: at) &&
+            episode.isWholeIn(pages.keys.toSet()))
           episode.detail.episode.id,
     };
   }
@@ -140,7 +141,19 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
 
   @override
   Future<void> writePage(String key, Uint8List bytes) async {
+    if (bytes.isEmpty) {
+      return;
+    }
+    final added = !pages.containsKey(key);
     pages[key] = bytes;
+    if (added &&
+        episodes.values.any(
+          (episode) =>
+              episode.pageKeys.contains(key) &&
+              episode.isWholeIn(pages.keys.toSet()),
+        )) {
+      _changes.add(null);
+    }
   }
 
   @override
@@ -152,6 +165,9 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
           bytes: {
             for (final key in episode.pageKeys) key,
           }.fold(0, (sum, key) => sum + (pages[key]?.length ?? 0)),
+          savedPages: {
+            for (final key in episode.pageKeys) key,
+          }.where(pages.containsKey).length,
         ),
     ]..sort((a, b) => b.episode.checkedAt.compareTo(a.episode.checkedAt));
     return OfflineStorage(

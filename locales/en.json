@@ -2824,6 +2824,7 @@
       "deleted": "“{$title}” was deleted from this device.",
       "empty": "Nothing is saved on this device yet. Save an episode from its series page, and it appears here.",
       "expired": "Offline reading ended {$date}. Open it online to read it again.",
+      "partial": "Partly saved: {$saved} of {$total} pages. Save it from its series page to read it all offline.",
       "readable_until": "Readable offline until {$date}",
       "saved_at": "Saved {$date} · {$size}",
       "title": "Downloads",
