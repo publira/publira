@@ -22,6 +22,10 @@ message User {
   // caller is merely looking at, so a console listing accounts never carries
   // it.
   string birth_date = 4;
+  // The account's email address, under the same rule as birth_date: set by the
+  // public API's GetMe and UpdateMe, so a form can offer the reader their own
+  // address, and empty wherever a User names someone else.
+  string email = 5;
 }
 
 // AccessToken is a JWT issued by Login. Clients send it as Authorization: Bearer.
