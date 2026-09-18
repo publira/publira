@@ -19,8 +19,8 @@
  * so this module reads no request state and stays testable as a pure function.
  */
 
-import { getLocales } from "./gen/locale-registry";
-import type { Locale } from "./gen/locale-registry";
+import { getLocales } from "./__generated__/locale-registry";
+import type { Locale } from "./__generated__/locale-registry";
 
 /**
  * Locale to open on when the header names nothing this repository supports.

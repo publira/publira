@@ -20,7 +20,7 @@ const indexPath = path.resolve(root, "locales/index.json");
 const i18nPackagePath = path.resolve(root, "packages/i18n/package.json");
 const newline = "\n";
 const check = process.argv.at(2) === "--check";
-const catalogTypePath = "./src/gen/locale-message-types.d.ts";
+const catalogTypePath = "./src/__generated__/locale-message-types.d.ts";
 
 const fail = (message: string): never => {
   throw new Error(`Invalid locales/index.json: ${message}`);
@@ -229,19 +229,19 @@ const generatedHeader =
 
 const files = new Map([
   [
-    "packages/i18n/src/gen/locale-registry.ts",
+    "packages/i18n/src/__generated__/locale-registry.ts",
     `${generatedHeader}${newline}${newline}const localeCodes = [${codesLiteral}] as const;${newline}${newline}export type Locale = (typeof localeCodes)[number];${newline}${newline}export const getLocales = (): readonly [Locale, ...Locale[]] =>${newline}  [...localeCodes] as [Locale, ...Locale[]];${newline}${newline}const localeDetails = {${newline}${localeDetails}${newline}} as const satisfies Record<Locale, { intl: string; label: string }>;${newline}${newline}export const getIntlLocale = (locale: Locale): string =>${newline}  localeDetails[locale].intl;${newline}${newline}export const getLocaleLabel = (locale: Locale): string =>${newline}  localeDetails[locale].label;${newline}`,
   ],
   [
-    "packages/i18n/src/gen/locale-catalogs.ts",
+    "packages/i18n/src/__generated__/locale-catalogs.ts",
     `${generatedHeader}${newline}${newline}${imports}${newline}${newline}import type { ExactCatalog } from "../i18n";${newline}import type { Locale } from "./locale-registry";${newline}${newline}${catalogUnion("export type LocaleMessages")}${newline}${newline}${exactCatalogs}${newline}${newline}export const CATALOGS = {${newline}${catalogEntries}${newline}} as const satisfies Record<Locale, LocaleMessages>;${newline}`,
   ],
   [
-    "packages/i18n/src/gen/locale-message-types.d.ts",
+    "packages/i18n/src/__generated__/locale-message-types.d.ts",
     `${generatedHeader}${newline}${newline}import type { Locale, MessageKey } from "../../dist/index.mjs";${newline}${newline}${typeImports}${newline}${newline}${catalogUnion("export type SharedMessages")}${newline}${newline}export declare const sharedCatalog: (locale: Locale) => SharedMessages;${newline}${newline}export declare const sharedMessage: (${newline}  key: MessageKey<SharedMessages>,${newline}  locale: Locale${newline}) => string;${newline}${newline}export { sharedRpcErrorMessage } from "../../dist/catalog.mjs";${newline}export type { SharedRpcDisposition } from "../../dist/catalog.mjs";${newline}`,
   ],
   [
-    "packages/i18n/src/gen/locale-messages.ts",
+    "packages/i18n/src/__generated__/locale-messages.ts",
     `${generatedHeader}${newline}${newline}import { loadMessages } from "../i18n";${newline}import type {${newline}  Locale,${newline}  LocaleCatalogImporters,${newline}  MessageTree,${newline}} from "../i18n";${newline}import type { LocaleMessages } from "./locale-catalogs";${newline}${newline}const importers = {${newline}${dynamicImports}${newline}} satisfies LocaleCatalogImporters<LocaleMessages>;${newline}${newline}export const loadLocaleMessages = (${newline}  locale: Locale${newline}): Promise<MessageTree> => loadMessages(locale, importers);${newline}`,
   ],
   [

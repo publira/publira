@@ -7,8 +7,8 @@
  * chunk.
  */
 
-import { CATALOGS } from "./gen/locale-catalogs";
-import type { LocaleMessages } from "./gen/locale-catalogs";
+import { CATALOGS } from "./__generated__/locale-catalogs";
+import type { LocaleMessages } from "./__generated__/locale-catalogs";
 import { getMessage } from "./i18n";
 import type { Locale, MessageKey } from "./i18n";
 

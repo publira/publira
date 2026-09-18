@@ -9,7 +9,7 @@ export default defineConfig({
   extends: [core, react, next, jsPlugins, nextJsPlugins],
   ignorePatterns: [
     ...(core.ignorePatterns ?? []),
-    "**/src/gen/**",
+    "**/gen/**",
     ".agents/skills/**",
   ],
   overrides: [
