@@ -19,20 +19,31 @@ abstract class AgeRatingConfirmationStore {
 /// [AgeRatingConfirmationStore] that keeps the confirmation in memory.
 ///
 /// Widget tests inject one so a confirmation does not reach the filesystem,
-/// and so a test can start already confirmed or make a write fail.
+/// and so a test can start already confirmed or make a read or a write fail.
 class MemoryAgeRatingConfirmationStore implements AgeRatingConfirmationStore {
   MemoryAgeRatingConfirmationStore({
     this.confirmed = AgeRatingConfirmation.empty,
+    this.readError,
     this.writeError,
   });
 
   AgeRatingConfirmation confirmed;
 
+  /// Thrown by [read], standing in for a platform with no directory to read
+  /// the file from.
+  Object? readError;
+
   /// Thrown by [write], standing in for a disk that refuses the file.
   Object? writeError;
 
   @override
-  Future<AgeRatingConfirmation> read() async => confirmed;
+  Future<AgeRatingConfirmation> read() async {
+    final error = readError;
+    if (error != null) {
+      throw error;
+    }
+    return confirmed;
+  }
 
   @override
   Future<AgeRatingConfirmation> write(SeriesAgeRating rating) async {
@@ -132,18 +143,28 @@ class AgeRatingConfirmationController extends ChangeNotifier {
 
   AgeRatingConfirmation get confirmed => _confirmed;
 
+  /// Brings back what this install has confirmed. A read that fails leaves the
+  /// app unconfirmed rather than un-restored, so a platform whose store never
+  /// answers asks the reader instead of holding the spinner forever.
   Future<void> restore() async {
-    _confirmed = await _store.read();
+    try {
+      _confirmed = await _store.read();
+    } on Object {
+      _confirmed = AgeRatingConfirmation.empty;
+    }
     isRestored = true;
     notifyListeners();
   }
 
-  /// Records [rating] after it has been persisted, then opens whatever it
-  /// covers. A write that fails leaves the previous confirmation in place,
-  /// so the body stays behind the prompt.
+  /// Records [rating], then opens whatever it covers. A write that fails still
+  /// confirms it for this run -- the reader has answered, and a prompt whose
+  /// button cannot land a write is one they could never get past.
   Future<void> confirm(SeriesAgeRating rating) async {
-    final confirmed = await _store.write(rating);
-    _confirmed = confirmed;
+    try {
+      _confirmed = await _store.write(rating);
+    } on Object {
+      _confirmed = _confirmed.confirming(rating);
+    }
     notifyListeners();
   }
 }

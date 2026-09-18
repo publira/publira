@@ -119,20 +119,11 @@ class _AgeRatingPromptState extends State<_AgeRatingPrompt> {
   }
 
   Future<void> _confirm() async {
+    final confirmation = AgeRatingConfirmationScope.of(context);
     setState(() {
       _busy = true;
     });
-    try {
-      await AgeRatingConfirmationScope.of(context).confirm(widget.rating);
-    } catch (_) {
-      // The write did not land, so the controller still holds the previous
-      // confirmation and this prompt stays. The button can be pressed again.
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
-    }
+    await confirmation.confirm(widget.rating);
   }
 
   void _dismiss(BuildContext context) {

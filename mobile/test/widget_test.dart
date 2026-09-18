@@ -441,7 +441,7 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes'));
   });
 
-  testWidgets('a failed confirmation write leaves the series unopened', (
+  testWidgets('a failed confirmation write still opens the series', (
     tester,
   ) async {
     catalog = FakeCatalogRepository(
@@ -462,11 +462,36 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
 
     await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await pumpUntilFound(tester, find.text('Episodes'));
 
-    expect(find.byKey(const ValueKey('age-rating-gate')), findsOneWidget);
-    expect(find.text('Episodes'), findsNothing);
+    expect(find.byKey(const ValueKey('age-rating-gate')), findsNothing);
+  });
+
+  testWidgets('a store that cannot be read prompts instead of spinning', (
+    tester,
+  ) async {
+    catalog = FakeCatalogRepository(
+      series: [fixtureRatedSeries],
+      details: {fixtureRatedSeries.id: fixtureDetail(fixtureRatedSeries)},
+    );
+    router = createAppRouter(
+      initialLocation: AppRoutes.seriesDetailPath(fixtureRatedSeries.id),
+    );
+    await pumpApp(
+      tester,
+      ageRatingConfirmation: AgeRatingConfirmationController(
+        store: MemoryAgeRatingConfirmationStore(
+          readError: UnimplementedError('no application support directory'),
+        ),
+      ),
+    );
+    await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
+
+    expect(find.byKey(const ValueKey('age-rating-gate-loading')), findsNothing);
+    expect(find.text('“After Dark” is rated R15'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
+    await pumpUntilFound(tester, find.text('Episodes'));
   });
 
   testWidgets('a series credited to nobody shows no credit line', (
