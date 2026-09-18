@@ -4,23 +4,23 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 /**
- * What web-host wrote while the suite ran. `start-apps.sh` truncates the file
- * as it starts the process, so it holds the whole run and nothing else.
- *
- * Next.js marks an unhandled server error with `⨯`, and an unhandled error in a
- * request is a bare 500 the reader sees. Which request it lands on is not
- * fixed, so a suite that only asserts its own responses reports such a defect
- * as an unrelated test failing on an unrelated branch — or misses it entirely.
- * This project runs after every other one and reads the log instead.
+ * Next.js marks an unhandled server error with `⨯`, and in a request that error
+ * is a bare 500 the reader sees. Which request it lands on is not fixed, so this
+ * suite reads the whole run's log instead of asserting on its own responses.
  */
 const ERROR_MARKER = "⨯";
 
 /**
- * The one error a passing run is expected to leave. `host.auth.spec.ts` and the
- * console auth suites present a rejected session on purpose, and web-host
- * reports the refusal its RPC client raised for it.
+ * The errors a passing run is expected to leave. `host.auth.spec.ts` and the
+ * console auth suites present a rejected session on purpose, and a reader
+ * redirected or navigated away mid-stream closes the response React is still
+ * rendering into — a render cancelled by the client, which Next.js reports with
+ * the same marker as an error that went unanswered.
  */
-const EXPECTED_ERRORS = [/\[unauthenticated\] invalid token/u];
+const EXPECTED_ERRORS = [
+  /\[unauthenticated\] invalid token/u,
+  /The destination stream closed early\./u,
+];
 
 test.describe("web-host server log", () => {
   test("carries no unhandled error", async () => {

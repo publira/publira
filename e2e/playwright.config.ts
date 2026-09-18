@@ -71,8 +71,7 @@ const performanceSpecs = /\.viewer-performance\./u;
 
 /**
  * The suite that reads what a server process logged rather than what a page
- * showed. It has to see the whole run, so the project below it runs last of
- * everything.
+ * showed, so its project below runs last of everything.
  */
 const serverLogSpecs = /\/logs\./u;
 
@@ -372,7 +371,6 @@ export default defineConfig({
     },
     // Truly last: it asserts on what the server processes logged, so every
     // request the suite makes has to have been answered before it reads them.
-    // It drives no browser, which is why it carries no `use`.
     {
       dependencies: ["platform-setup"],
       fullyParallel: false,
