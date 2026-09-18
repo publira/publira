@@ -14,6 +14,7 @@ import {
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
+import { formatShareBps, sharePercentToBps } from "#lib/credit-share";
 import type { AdminMessageAccessor } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -26,7 +27,10 @@ import type {
   CreditPickerOption,
   EpisodeCreditRangeOption,
 } from "../episode-types";
-import { EpisodeCreditsRangeEditor } from "./episode-credits-range-editor";
+import {
+  EpisodeCreditsRangeEditor,
+  OPERATIONS,
+} from "./episode-credits-range-editor";
 import type {
   CreditOperation,
   CreditPair,
@@ -35,7 +39,7 @@ import { EpisodeCreditsRangeResult } from "./episode-credits-range-result";
 import { useEpisodeCreditsSelection } from "./episode-credits-selection";
 
 const isCreditOperation = (value: string): value is CreditOperation =>
-  value === "add" || value === "replace" || value === "remove";
+  OPERATIONS.some((operation) => operation === value);
 
 const emptyPair = (creatorRoles: CreditPickerOption[]): CreditPair => ({
   creatorPublicId: "",
@@ -61,14 +65,25 @@ const isReplaceSame = (
   from.rolePublicId === to.rolePublicId &&
   isCompletePair(from);
 
+/**
+ * The share a set-share would write, or `undefined` while the box does not
+ * hold one. An empty box is not 0 here: it names no share to set.
+ */
+const toSetShareBps = (shareText: string): number | undefined =>
+  shareText.trim() === "" ? undefined : sharePercentToBps(shareText);
+
 const isCreditComplete = (
   operation: CreditOperation,
   credit: CreditPair,
   from: CreditPair,
-  to: CreditPair
+  to: CreditPair,
+  shareText: string
 ): boolean => {
   if (operation === "replace") {
     return isCompletePair(from) && isCompletePair(to);
+  }
+  if (operation === "set_share") {
+    return isCompletePair(credit) && toSetShareBps(shareText) !== undefined;
   }
   return isCompletePair(credit);
 };
@@ -98,10 +113,12 @@ const creditSelectionPreview = (input: {
   creatorRoles: CreditPickerOption[];
   creators: CreditPickerOption[];
   from: CreditPair;
+  intlLocale: string;
   operation: CreditOperation;
   replaceSame: boolean;
   selectedCount: number;
   selectionTooMany: boolean;
+  shareText: string;
   t: AdminMessageAccessor;
   to: CreditPair;
 }): string => {
@@ -120,6 +137,17 @@ const creditSelectionPreview = (input: {
       from_role: optionName(input.creatorRoles, input.from.rolePublicId),
       to_creator: optionName(input.creators, input.to.creatorPublicId),
       to_role: optionName(input.creatorRoles, input.to.rolePublicId),
+    });
+  }
+  if (input.operation === "set_share") {
+    return input.t("admin.series.episodes.credits.preview_set_share", {
+      count,
+      creator: optionName(input.creators, input.credit.creatorPublicId),
+      role: optionName(input.creatorRoles, input.credit.rolePublicId),
+      share: formatShareBps(
+        toSetShareBps(input.shareText) ?? 0,
+        input.intlLocale
+      ),
     });
   }
   const previewKey =
@@ -187,6 +215,7 @@ export const EpisodeCreditsRangeForm = ({
   const [credit, setCredit] = useState(() => emptyPair(creatorRoles));
   const [from, setFrom] = useState(() => emptyPair(creatorRoles));
   const [to, setTo] = useState(() => emptyPair(creatorRoles));
+  const [shareText, setShareText] = useState("");
 
   const creatorItems = useMemo<ComboboxItem[]>(
     () =>
@@ -208,7 +237,13 @@ export const EpisodeCreditsRangeForm = ({
   const selected = episodesSelectedInReadingOrder(episodes, [...selectedIds]);
   const selectionTooMany = selected.length > MAX_BULK_EPISODE_CREDIT_EPISODES;
   const replaceSame = isReplaceSame(operation, from, to);
-  const creditComplete = isCreditComplete(operation, credit, from, to);
+  const creditComplete = isCreditComplete(
+    operation,
+    credit,
+    from,
+    to,
+    shareText
+  );
   const canSubmit = canApplyCreditSelection({
     creditComplete,
     hasCreators: creatorItems.length > 0,
@@ -225,10 +260,12 @@ export const EpisodeCreditsRangeForm = ({
     credit,
     creditComplete,
     from,
+    intlLocale: toIntlLocale(locale),
     operation,
     replaceSame,
     selectedCount: selected.length,
     selectionTooMany,
+    shareText,
     t,
     to,
   });
@@ -281,6 +318,7 @@ export const EpisodeCreditsRangeForm = ({
         from,
         operation,
         seriesPublicId,
+        share: shareText,
         tenantId,
         to,
       }}
@@ -292,6 +330,7 @@ export const EpisodeCreditsRangeForm = ({
       onOperationChange={handleOperationChange}
       onRetryEpisodes={onRetryEpisodes}
       onSelectMany={selectMany}
+      onShareChange={setShareText}
       onToChange={setTo}
       onToggle={toggle}
       operation={operation}
@@ -301,6 +340,7 @@ export const EpisodeCreditsRangeForm = ({
       selectedIds={selectedIds}
       selectedCount={selected.length}
       selectionTooMany={selectionTooMany}
+      shareText={shareText}
       to={to}
     />
   );

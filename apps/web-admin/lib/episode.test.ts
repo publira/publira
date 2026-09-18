@@ -1,4 +1,7 @@
-import { ReadingDirection } from "@publira/api-client/admin/types";
+import {
+  CreatorCreditSource,
+  ReadingDirection,
+} from "@publira/api-client/admin/types";
 import {
   BadRequestSchema,
   Code,
@@ -10,6 +13,7 @@ const {
   mockBulkEditEpisodeCredits,
   mockGetAccessToken,
   mockGetEpisode,
+  mockListEpisodeCredits,
   mockListEpisodes,
   mockReorderEpisodes,
   mockUpdateEpisodeLayout,
@@ -17,6 +21,7 @@ const {
   mockBulkEditEpisodeCredits: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
+  mockListEpisodeCredits: vi.fn(),
   mockListEpisodes: vi.fn(),
   mockReorderEpisodes: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
@@ -31,6 +36,7 @@ vi.mock("./api", () => ({
     series: {
       bulkEditEpisodeCredits: mockBulkEditEpisodeCredits,
       getEpisode: mockGetEpisode,
+      listEpisodeCredits: mockListEpisodeCredits,
       listEpisodes: mockListEpisodes,
       reorderEpisodes: mockReorderEpisodes,
       updateEpisodeLayout: mockUpdateEpisodeLayout,
@@ -679,6 +685,45 @@ describe("reorderEpisodePage", () => {
   });
 });
 
+describe("listEpisodeCredits", () => {
+  it("reads each credit's share from the records beside the creators", async () => {
+    mockListEpisodeCredits.mockResolvedValue({
+      creatorCredits: [
+        {
+          creatorPublicId: "CREATOR_B",
+          rolePublicId: "ROLE_ARTIST",
+          shareBps: 3333,
+        },
+      ],
+      creators: [
+        {
+          publicId: "CREATOR_B",
+          role: { publicId: "ROLE_ARTIST" },
+          source: CreatorCreditSource.SERIES,
+        },
+      ],
+    });
+
+    const { listEpisodeCredits } = await import("./episode");
+    const result = await listEpisodeCredits(
+      { episodePublicId: "EP01", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      credits: [
+        {
+          creatorPublicId: "CREATOR_B",
+          rolePublicId: "ROLE_ARTIST",
+          shareBps: 3333,
+          source: CreatorCreditSource.SERIES,
+        },
+      ],
+      ok: true,
+    });
+  });
+});
+
 describe("bulkEditEpisodeCredits", () => {
   it("sends the composed public ids and the replace operation", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValue({
@@ -751,6 +796,76 @@ describe("bulkEditEpisodeCredits", () => {
     expect(result).toEqual({
       message:
         "Some of the selected episodes already credit the author this would become. Change the replacement or the selection.",
+      ok: false,
+    });
+  });
+
+  it("sends a set-share with the share on the credit", async () => {
+    mockBulkEditEpisodeCredits.mockResolvedValue({
+      changedEpisodePublicIds: ["EP01"],
+      unchangedEpisodes: [],
+    });
+
+    const { bulkEditEpisodeCredits } = await import("./episode");
+    await bulkEditEpisodeCredits(
+      {
+        episodePublicIds: ["EP01"],
+        operation: {
+          credit: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          shareBps: 3333,
+          type: "set_share",
+        },
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: {
+          case: "setShare",
+          value: {
+            credit: {
+              creatorPublicId: "CREATOR_B",
+              rolePublicId: "ROLE_ARTIST",
+              shareBps: 3333,
+            },
+          },
+        },
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  // The other credits on the range are not on screen, so the server is what
+  // finds an episode the new share would take over 100%.
+  it("maps a refused set-share to the over-100% wording", async () => {
+    mockBulkEditEpisodeCredits.mockRejectedValue(
+      new ConnectError(
+        "the share_bps total would exceed 10000",
+        Code.InvalidArgument
+      )
+    );
+
+    const { bulkEditEpisodeCredits } = await import("./episode");
+    const result = await bulkEditEpisodeCredits(
+      {
+        episodePublicIds: ["EP01"],
+        operation: {
+          credit: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          shareBps: 6000,
+          type: "set_share",
+        },
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "The new share would take some of the selected episodes over 100% in total. Lower the share or change the selection.",
       ok: false,
     });
   });

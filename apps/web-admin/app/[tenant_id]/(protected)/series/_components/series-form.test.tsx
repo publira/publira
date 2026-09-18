@@ -4,7 +4,12 @@ import { bindMessages } from "@publira/i18n";
 import type { Locale, MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render as renderBase, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render as renderBase,
+  screen,
+} from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
@@ -71,7 +76,9 @@ const tagSuggestions = ["seaside", "letterpress"];
 
 const series: SeriesListItem = {
   ageRating: "r15",
-  creatorCredits: [{ creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" }],
+  creatorCredits: [
+    { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002", shareBps: 0 },
+  ],
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],
   genrePublicIds: ["GENRE002"],
@@ -220,7 +227,7 @@ it("opens on the classification the series carries", () => {
   expect(posted("genre_public_ids")).toEqual(["GENRE002"]);
   expect(posted("creator_credits")).toEqual([
     JSON.stringify([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" },
+      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002", shareBps: 0 },
     ]),
   ]);
   expect(posted("tag_names")).toEqual(["letterpress"]);
@@ -374,6 +381,57 @@ it("names the empty schedule as irregular", async () => {
   );
 
   expect(await screen.findByText(/presented as irregular/u)).toBeDefined();
+});
+
+// The share boxes sit in a field of their own, and the save button belongs to
+// the form around it.
+it("disables the save while the credit shares pass 100%", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      initialSeries={{
+        ...series,
+        creatorCredits: [
+          {
+            creatorPublicId: "CREATOR001",
+            rolePublicId: "ROLE001",
+            shareBps: 0,
+          },
+          {
+            creatorPublicId: "CREATOR001",
+            rolePublicId: "ROLE002",
+            shareBps: 0,
+          },
+        ],
+      }}
+      labels={labels}
+      mode="update"
+      tagSuggestions={tagSuggestions}
+      timeZone="Asia/Tokyo"
+    />
+  );
+  const save = screen.getByRole<HTMLButtonElement>("button", {
+    name: "Update series",
+  });
+
+  fireEvent.change(screen.getByRole("textbox", { name: "Share of author 1" }), {
+    target: { value: "60" },
+  });
+  fireEvent.change(screen.getByRole("textbox", { name: "Share of author 2" }), {
+    target: { value: "50" },
+  });
+
+  expect(save.disabled).toBe(true);
+
+  fireEvent.change(screen.getByRole("textbox", { name: "Share of author 2" }), {
+    target: { value: "40" },
+  });
+
+  expect(save.disabled).toBe(false);
 });
 
 // The `ja` mirror of the assertions above, which all run under the `en`

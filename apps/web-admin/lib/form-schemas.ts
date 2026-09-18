@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 
+import { MAX_CREDIT_SHARE_BPS } from "./credit-share";
 import type { CropRect } from "./crop-rect";
 import { isCropRectField, parseCropRect } from "./crop-rect";
 
@@ -154,3 +155,16 @@ export const jsonStringArrayFormSchema = z.preprocess((value): string[] => {
     return [];
   }
 }, z.array(z.string()));
+
+/**
+ * A credit's share inside a posted credit list, already in basis points.
+ * Required rather than defaulted: the list replaces every credit, and a
+ * missing share read as 0 would stop paying the person without anyone
+ * choosing to.
+ */
+export const creditShareBpsSchema = (message: string) =>
+  z
+    .number({ error: message })
+    .int(message)
+    .min(0, message)
+    .max(MAX_CREDIT_SHARE_BPS, message);

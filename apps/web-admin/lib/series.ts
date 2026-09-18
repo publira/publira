@@ -1,4 +1,7 @@
-import type { GetSeriesResponse } from "@publira/api-client/admin/series";
+import type {
+  GetSeriesResponse,
+  SeriesCreatorCredit as SeriesCreatorCreditMessage,
+} from "@publira/api-client/admin/series";
 import {
   CommentMode,
   SeriesAgeRating,
@@ -79,6 +82,12 @@ export const seriesListCacheTag = (tenantId: string): string =>
 export interface SeriesCreatorCredit {
   creatorPublicId: string;
   rolePublicId: string;
+  /**
+   * The share of each episode's sales this credit is baked onto new episodes
+   * with, in basis points. 0 on a read that returns no credit records — the
+   * list — which nothing posts a credit list back from.
+   */
+  shareBps: number;
 }
 
 export interface SeriesItem {
@@ -329,56 +338,87 @@ const toSeriesReadingLayout = (
 
 const WEEKDAY_COUNT = 7;
 
-const mapSeries = (series: RawSeries): SeriesItem => ({
-  ageRating: toSeriesAgeRatingValue(series.ageRating),
-  creatorCredits: (series.creators ?? []).flatMap((creator) => {
-    const creatorPublicId = creator.publicId.trim();
-    // A credit written before roles existed states none. It is kept, so the
-    // person stays credited and the form is where a role is chosen for them.
-    const rolePublicId = creator.role?.publicId?.trim() ?? "";
-    return creatorPublicId.length > 0
-      ? [{ creatorPublicId, rolePublicId }]
-      : [];
-  }),
-  eyeCatchImageUpdatedAt: series.eyeCatchImageUpdatedAt ?? "",
-  eyeCatchImageVariants: (series.eyeCatchImageVariants ?? []).flatMap(
-    (variant) => {
-      const mappedVariant = {
-        contentType: variant.contentType ?? "",
-        fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
-        height: variant.height ?? 0,
-        label: variant.label ?? "",
-        url: variant.url ?? "",
-        variantType: variant.variantType ?? "",
-        width: variant.width ?? 0,
-      };
-      return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
-        ? [mappedVariant]
+type SeriesCreatorCreditRecord = Pick<
+  SeriesCreatorCreditMessage,
+  "creatorPublicId" | "rolePublicId" | "shareBps"
+>;
+
+const creditKey = (creatorPublicId: string, rolePublicId: string): string =>
+  `${creatorPublicId}\u0000${rolePublicId}`;
+
+/**
+ * `creditRecords` is where the shares come from: `Creator` carries none,
+ * because the storefront reads it too, so the reads that edit a series return
+ * the records beside it.
+ */
+const mapSeries = (
+  series: RawSeries,
+  creditRecords: readonly SeriesCreatorCreditRecord[] = []
+): SeriesItem => {
+  const shares = new Map(
+    creditRecords.map((record) => [
+      creditKey(record.creatorPublicId.trim(), record.rolePublicId.trim()),
+      record.shareBps,
+    ])
+  );
+  return {
+    ageRating: toSeriesAgeRatingValue(series.ageRating),
+    creatorCredits: (series.creators ?? []).flatMap((creator) => {
+      const creatorPublicId = creator.publicId.trim();
+      // A credit written before roles existed states none. It is kept, so the
+      // person stays credited and the form is where a role is chosen for them.
+      const rolePublicId = creator.role?.publicId?.trim() ?? "";
+      return creatorPublicId.length > 0
+        ? [
+            {
+              creatorPublicId,
+              rolePublicId,
+              shareBps:
+                shares.get(creditKey(creatorPublicId, rolePublicId)) ?? 0,
+            },
+          ]
         : [];
-    }
-  ),
-  genrePublicIds: (series.genres ?? []).flatMap((genre) => {
-    const publicId = genre.publicId?.trim() ?? "";
-    return publicId.length > 0 ? [publicId] : [];
-  }),
-  isPublished: series.isPublished ?? false,
-  labelName: series.label?.name?.trim() ?? "",
-  labelPublicId: series.label?.publicId?.trim() ?? "",
-  publicId: series.publicId,
-  publishedAt: series.publishedAt ?? "",
-  readingPeriodHours: series.readingPeriodHours ?? 0,
-  scheduleWeekdays: (series.scheduleWeekdays ?? []).filter(
-    (weekday) =>
-      Number.isInteger(weekday) && weekday >= 0 && weekday < WEEKDAY_COUNT
-  ),
-  status: toSeriesStatusValue(series.status),
-  synopsis: series.synopsis,
-  tagNames: (series.tags ?? []).flatMap((tag) => {
-    const name = tag.name?.trim() ?? "";
-    return name.length > 0 ? [name] : [];
-  }),
-  title: series.title,
-});
+    }),
+    eyeCatchImageUpdatedAt: series.eyeCatchImageUpdatedAt ?? "",
+    eyeCatchImageVariants: (series.eyeCatchImageVariants ?? []).flatMap(
+      (variant) => {
+        const mappedVariant = {
+          contentType: variant.contentType ?? "",
+          fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+          height: variant.height ?? 0,
+          label: variant.label ?? "",
+          url: variant.url ?? "",
+          variantType: variant.variantType ?? "",
+          width: variant.width ?? 0,
+        };
+        return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
+          ? [mappedVariant]
+          : [];
+      }
+    ),
+    genrePublicIds: (series.genres ?? []).flatMap((genre) => {
+      const publicId = genre.publicId?.trim() ?? "";
+      return publicId.length > 0 ? [publicId] : [];
+    }),
+    isPublished: series.isPublished ?? false,
+    labelName: series.label?.name?.trim() ?? "",
+    labelPublicId: series.label?.publicId?.trim() ?? "",
+    publicId: series.publicId,
+    publishedAt: series.publishedAt ?? "",
+    readingPeriodHours: series.readingPeriodHours ?? 0,
+    scheduleWeekdays: (series.scheduleWeekdays ?? []).filter(
+      (weekday) =>
+        Number.isInteger(weekday) && weekday >= 0 && weekday < WEEKDAY_COUNT
+    ),
+    status: toSeriesStatusValue(series.status),
+    synopsis: series.synopsis,
+    tagNames: (series.tags ?? []).flatMap((tag) => {
+      const name = tag.name?.trim() ?? "";
+      return name.length > 0 ? [name] : [];
+    }),
+    title: series.title,
+  };
+};
 
 /**
  * One page of the tenant's series, newest first.
@@ -596,7 +636,7 @@ export const getSeries = async (
       commentMode,
       ok: true,
       readingLayout,
-      series: mapSeries(response.series),
+      series: mapSeries(response.series, response.creatorCredits),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -711,7 +751,7 @@ export const createSeries = async (
     return {
       ok: true,
       series: {
-        ...mapSeries(response.series),
+        ...mapSeries(response.series, response.creatorCredits),
         isPublished: input.isPublished,
       },
     };
@@ -796,7 +836,7 @@ export const updateSeries = async (
     return {
       ok: true,
       series: {
-        ...mapSeries(response.series),
+        ...mapSeries(response.series, response.creatorCredits),
         isPublished: input.isPublished,
       },
     };

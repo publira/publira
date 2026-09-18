@@ -574,9 +574,17 @@ describe("series actions", () => {
     formData.set(
       "creator_credits",
       JSON.stringify([
-        { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
-        { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" },
-        { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" },
+        {
+          creatorPublicId: "CREATOR001",
+          rolePublicId: "ROLE001",
+          shareBps: 3000,
+        },
+        {
+          creatorPublicId: "CREATOR001",
+          rolePublicId: "ROLE002",
+          shareBps: 2000,
+        },
+        { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
       ])
     );
 
@@ -585,9 +593,21 @@ describe("series actions", () => {
     expect(mockCreateSeries).toHaveBeenCalledWith(
       expect.objectContaining({
         creatorCredits: [
-          { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
-          { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002" },
-          { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002" },
+          {
+            creatorPublicId: "CREATOR001",
+            rolePublicId: "ROLE001",
+            shareBps: 3000,
+          },
+          {
+            creatorPublicId: "CREATOR001",
+            rolePublicId: "ROLE002",
+            shareBps: 2000,
+          },
+          {
+            creatorPublicId: "CREATOR002",
+            rolePublicId: "ROLE002",
+            shareBps: 0,
+          },
         ],
       }),
       "en"
@@ -611,7 +631,9 @@ describe("series actions", () => {
     formData.set("spread_start_page", "2");
     formData.set(
       "creator_credits",
-      JSON.stringify([{ creatorPublicId: "CREATOR001", rolePublicId: "" }])
+      JSON.stringify([
+        { creatorPublicId: "CREATOR001", rolePublicId: "", shareBps: 0 },
+      ])
     );
 
     const result = await createSeriesAction(null, formData);
@@ -621,6 +643,34 @@ describe("series actions", () => {
       mode: "create",
       ok: false,
     });
+    expect(mockCreateSeries).not.toHaveBeenCalled();
+  });
+
+  // The list replaces every credit, so a missing share is refused rather than
+  // read as 0, which would stop paying the person without anyone choosing to.
+  it("refuses a credit that states no share", async () => {
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+    formData.set(
+      "creator_credits",
+      JSON.stringify([
+        { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
+      ])
+    );
+
+    const result = await createSeriesAction(null, formData);
+
+    expect(result).toMatchObject({ mode: "create", ok: false });
     expect(mockCreateSeries).not.toHaveBeenCalled();
   });
 

@@ -16,6 +16,13 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState, useId, useMemo, useRef, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import { CreditShareInput, CreditShareSummary } from "#components/credit-share";
+import {
+  isCreditShareTotalSavable,
+  shareBpsToPercentText,
+  sharePercentToBps,
+  totalCreditShares,
+} from "#lib/credit-share";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type {
@@ -31,8 +38,10 @@ interface CreatorRoleOption {
   publicId: string;
   name: string;
 }
-interface CreditEditorRow extends EpisodeCreatorCredit {
+interface CreditEditorRow extends Omit<EpisodeCreatorCredit, "shareBps"> {
   key: string;
+  /** The share box as typed, parsed when the list is summed and posted. */
+  shareText: string;
 }
 
 const isComplete = (row: CreditEditorRow) =>
@@ -107,6 +116,11 @@ const EpisodeCreditRow = ({
           </Combobox>
         </FieldContent>
       </Field>
+      <CreditShareInput
+        onChange={(shareText) => onChange({ ...row, shareText })}
+        position={position}
+        value={row.shareText}
+      />
       {row.source === CreatorCreditSource.EPISODE ? (
         <span className="text-xs text-muted-foreground">
           <ClientMessage message="admin.series.episodes.credits.episode_only" />
@@ -153,7 +167,11 @@ export const EpisodeCreatorCreditsForm = ({
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [rows, setRows] = useState<CreditEditorRow[]>(() =>
-    initialCredits.map((credit, index) => ({ ...credit, key: String(index) }))
+    initialCredits.map(({ shareBps, ...credit }, index) => ({
+      ...credit,
+      key: String(index),
+      shareText: shareBpsToPercentText(shareBps),
+    }))
   );
   const nextKey = useRef(initialCredits.length);
   const creatorItems = useMemo<ComboboxItem[]>(
@@ -175,10 +193,12 @@ export const EpisodeCreatorCreditsForm = ({
           {
             creatorPublicId: row.creatorPublicId,
             rolePublicId: row.rolePublicId,
+            shareBps: sharePercentToBps(row.shareText) ?? 0,
           },
         ]
       : []
   );
+  const shareTotal = totalCreditShares(rows.map((row) => row.shareText));
   const add = () => {
     const key = String(nextKey.current);
     nextKey.current += 1;
@@ -188,6 +208,7 @@ export const EpisodeCreatorCreditsForm = ({
         creatorPublicId: "",
         key,
         rolePublicId: creatorRoles.at(0)?.publicId ?? "",
+        shareText: "",
         source: CreatorCreditSource.EPISODE,
       },
     ]);
@@ -207,6 +228,9 @@ export const EpisodeCreatorCreditsForm = ({
       </h2>
       <p className="text-xs text-muted-foreground">
         <ClientMessage message="admin.series.episodes.credits.description" />
+      </p>
+      <p className="text-xs text-muted-foreground">
+        <ClientMessage message="admin.series.form.creators_share_description" />
       </p>
       <form action={formAction} className="grid gap-3">
         <input name="tenant_id" type="hidden" value={tenantId} />
@@ -236,6 +260,7 @@ export const EpisodeCreatorCreditsForm = ({
             ))}
           </ul>
         )}
+        {rows.length > 0 ? <CreditShareSummary total={shareTotal} /> : null}
         <div>
           <Button
             disabled={creatorItems.length === 0 || roleItems.length === 0}
@@ -253,7 +278,10 @@ export const EpisodeCreatorCreditsForm = ({
           </FormMessage>
         ) : null}
         <div className="flex justify-end">
-          <Button disabled={isPending} type="submit">
+          <Button
+            disabled={isPending || !isCreditShareTotalSavable(shareTotal)}
+            type="submit"
+          >
             {isPending
               ? t("admin.series.episodes.credits.saving")
               : t("admin.series.episodes.credits.save")}

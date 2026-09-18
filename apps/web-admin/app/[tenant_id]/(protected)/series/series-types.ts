@@ -14,6 +14,8 @@ export type SeriesEyeCatchVariantItem = EyeCatchVariantItem;
 export interface SeriesCreatorCredit {
   creatorPublicId: string;
   rolePublicId: string;
+  /** Basis points: 10000 is 100%. */
+  shareBps: number;
 }
 
 export interface SeriesListItem {

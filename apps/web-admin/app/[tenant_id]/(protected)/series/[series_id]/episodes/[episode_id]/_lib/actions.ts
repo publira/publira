@@ -21,6 +21,7 @@ import {
   uploadEpisodePages,
 } from "#lib/episode";
 import {
+  creditShareBpsSchema,
   fileListFormSchema,
   jsonStringArrayFormSchema,
   optionalFileFormSchema,
@@ -81,6 +82,7 @@ const creditsFormSchema = async (locale: Locale) => {
         z.object({
           creatorPublicId: requiredTrimmedString(message),
           rolePublicId: requiredTrimmedString(message),
+          shareBps: creditShareBpsSchema(message),
         }),
         { error: message }
       )

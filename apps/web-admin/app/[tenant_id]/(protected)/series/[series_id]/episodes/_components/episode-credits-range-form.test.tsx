@@ -275,4 +275,76 @@ describe("EpisodeCreditsRangeForm", () => {
     expect(await screen.findByText("Changed 3 episodes")).toBeDefined();
     expect(action).toHaveBeenCalledOnce();
   });
+
+  it("previews a set-share and posts the share as typed", async () => {
+    const action = vi.fn(
+      (
+        _prev: BulkEditEpisodeCreditsActionState,
+        formData: FormData
+      ): Promise<BulkEditEpisodeCreditsActionState> => {
+        expect(formData.get("operation")).toBe("set_share");
+        expect(formData.get("creator_public_id")).toBe("CREATOR_B");
+        expect(formData.get("role_public_id")).toBe("ROLE_ARTIST");
+        expect(formData.get("share")).toBe("25");
+        return Promise.resolve({
+          changedEpisodePublicIds: ["EP01", "EP02", "EP03"],
+          ok: true,
+          unchangedEpisodes: [],
+        });
+      }
+    );
+
+    render({ action, initialSelectedIds: ["EP01", "EP02", "EP03"] });
+
+    fireEvent.click(screen.getByRole("radio", { name: /Set share/u }));
+    const [author] = authorPickers();
+    if (!author) {
+      throw new Error("set-share offers an author picker");
+    }
+    fireEvent.change(author, { target: { value: "CREATOR_B" } });
+
+    // The credit alone is not a set-share: the share has to be stated.
+    expect(applyButton().hasAttribute("disabled")).toBe(true);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Share (%)" }), {
+      target: { value: "25" },
+    });
+
+    expect(
+      screen.getByText(
+        "Set the share of Artist B as Artist to 25% on 3 selected episodes."
+      )
+    ).toBeDefined();
+    expect(applyButton().hasAttribute("disabled")).toBe(false);
+
+    const form = applyButton().closest("form");
+    if (!(form instanceof HTMLFormElement)) {
+      throw new Error("apply is not inside a form");
+    }
+    fireEvent.submit(form);
+
+    expect(await screen.findByText("Changed 3 episodes")).toBeDefined();
+    expect(action).toHaveBeenCalledOnce();
+  });
+
+  it("keeps apply disabled and says why while the share is not one", () => {
+    render({ initialSelectedIds: ["EP01"] });
+
+    fireEvent.click(screen.getByRole("radio", { name: /Set share/u }));
+    const [author] = authorPickers();
+    if (!author) {
+      throw new Error("set-share offers an author picker");
+    }
+    fireEvent.change(author, { target: { value: "CREATOR_B" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Share (%)" }), {
+      target: { value: "120" },
+    });
+
+    expect(
+      screen.getByText(
+        "Enter each share as a percentage from 0 to 100, with up to two decimal places."
+      )
+    ).toBeDefined();
+    expect(applyButton().hasAttribute("disabled")).toBe(true);
+  });
 });

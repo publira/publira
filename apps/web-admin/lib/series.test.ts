@@ -621,3 +621,63 @@ describe("the layout a series states", () => {
     );
   });
 });
+
+describe("the shares a series' credits carry", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  // The share rides on the credit records beside the series, because
+  // `Creator` is what the storefront reads too.
+  it("reads each credit's share from the records beside the series", async () => {
+    mockGetSeries.mockResolvedValue({
+      creatorCredits: [
+        {
+          creatorPublicId: "CREATOR001",
+          rolePublicId: "ROLE001",
+          shareBps: 3000,
+        },
+        {
+          creatorPublicId: "CREATOR002",
+          rolePublicId: "ROLE002",
+          shareBps: 2000,
+        },
+      ],
+      series: {
+        creators: [
+          { publicId: "CREATOR001", role: { publicId: "ROLE001" } },
+          { publicId: "CREATOR002", role: { publicId: "ROLE002" } },
+        ],
+        publicId: "SERIES001",
+        synopsis: "",
+        title: "Series title",
+      },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      series: {
+        creatorCredits: [
+          {
+            creatorPublicId: "CREATOR001",
+            rolePublicId: "ROLE001",
+            shareBps: 3000,
+          },
+          {
+            creatorPublicId: "CREATOR002",
+            rolePublicId: "ROLE002",
+            shareBps: 2000,
+          },
+        ],
+      },
+    });
+  });
+});
