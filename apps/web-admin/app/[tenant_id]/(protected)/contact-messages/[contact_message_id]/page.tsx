@@ -41,7 +41,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { ContactMessageDetail } from "./_components/contact-message-detail";
 
 type ContactMessageDetailPageProps =
-  PageProps<"/[tenant_id]/contact-messages/[contact_message_public_id]">;
+  PageProps<"/[tenant_id]/contact-messages/[contact_message_id]">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -52,10 +52,10 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_id", "contact_message_public_id");
+  createPlaceholderStaticParams("tenant_id", "contact_message_id");
 
 const contactMessageParamsSchema = z.object({
-  contact_message_public_id: routeParamString(),
+  contact_message_id: routeParamString(),
 });
 
 const DetailSkeleton = () => (
@@ -78,7 +78,7 @@ const ContactMessageDetailContent = async ({
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const [result, timeZone] = await Promise.all([
-    getContactMessage(tenantId, locale, parsedParams.contact_message_public_id),
+    getContactMessage(tenantId, locale, parsedParams.contact_message_id),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
