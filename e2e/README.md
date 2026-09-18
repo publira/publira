@@ -74,7 +74,7 @@ e2e/
 ├── playwright.config.ts
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
 ├── src/                   # app login, API control, DB, scenario, session, and URL helpers
-└── tests/                 # catalogue, admin, host, platform, and health scenarios
+└── tests/                 # catalogue, admin, host, platform, health, and server log scenarios
     └── __screenshots__/   # committed screenshot baselines, one directory per project
 ```
 

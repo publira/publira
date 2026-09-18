@@ -48,6 +48,16 @@ interface StoredUseCacheEntry {
   revalidate: number;
 }
 
+/**
+ * The freshness `get` reports for an entry a tag revalidation has made stale.
+ * Next.js starts a background revalidation once an entry is older than this, so
+ * the previous value still answers the request; one second is the floor because
+ * the number becomes the minimum of every cache life the render collected and
+ * then the route's `cacheControl.revalidate`, which answers anything under a
+ * second with a 500 instead of the page.
+ */
+const STALE_REVALIDATE_SECONDS = 1;
+
 const entryKey = (prefix: string, cacheKey: string): string =>
   `${prefix}uc:v:${cacheKey}`;
 
@@ -200,8 +210,6 @@ export const createUseCacheHandler = (
       return;
     }
 
-    // `-1` is how Next.js asks for a revalidation while this value is served,
-    // the same signal its own default handler returns for a stale tag.
     const isStale =
       isStaleByTags(stored.tags, stored.timestamp) ||
       isStaleByTags(softTags, stored.timestamp);
@@ -209,7 +217,7 @@ export const createUseCacheHandler = (
     const bytes = Buffer.from(stored.valueBase64, "base64");
     return {
       expire: stored.expire,
-      revalidate: isStale ? -1 : stored.revalidate,
+      revalidate: isStale ? STALE_REVALIDATE_SECONDS : stored.revalidate,
       stale: stored.stale,
       tags: stored.tags,
       timestamp: stored.timestamp,

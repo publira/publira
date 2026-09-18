@@ -70,6 +70,13 @@ const platformSetupSpecs = /platform\.setup\./u;
 const performanceSpecs = /\.viewer-performance\./u;
 
 /**
+ * The suite that reads what a server process logged rather than what a page
+ * showed. It has to see the whole run, so the project below it runs last of
+ * everything.
+ */
+const serverLogSpecs = /\/logs\./u;
+
+/**
  * The suites that record what a screen looks like. They run before every other
  * project, as its dependency, because the state they photograph is the one
  * `task e2e:db` seeded: the admin console lists the series the publishing
@@ -155,6 +162,7 @@ export default defineConfig({
         processIsolatedSpecs,
         performanceSpecs,
         screenshotSpecs,
+        serverLogSpecs,
       ],
       use: {
         ...desktopChrome,
@@ -361,6 +369,15 @@ export default defineConfig({
         ...desktopChrome,
         baseURL: WEB_PLATFORM_BASE_URL,
       },
+    },
+    // Truly last: it asserts on what the server processes logged, so every
+    // request the suite makes has to have been answered before it reads them.
+    // It drives no browser, which is why it carries no `use`.
+    {
+      dependencies: ["platform-setup"],
+      fullyParallel: false,
+      name: "server-logs",
+      testMatch: [serverLogSpecs],
     },
   ],
   reporter: [

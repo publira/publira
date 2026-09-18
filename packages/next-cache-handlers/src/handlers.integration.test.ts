@@ -150,13 +150,15 @@ describe("Redis handlers integration", () => {
     await handler.updateTags([tag], { expire: 365 * 24 * 60 * 60 });
     await handler.refreshTags();
 
-    // The older value is still served, and asks to be revalidated.
+    // The older value is still served, and asks to be revalidated with the
+    // lowest second: the number reaches Next.js as the route's
+    // `cacheControl.revalidate`, which answers anything under one with a 500.
     const stale = await handler.get("uc-window-before", []);
     expect(stale).toBeDefined();
     if (!stale) {
       throw new Error("expected the previous value to still be served");
     }
-    expect(stale.revalidate).toBe(-1);
+    expect(stale.revalidate).toBe(1);
     expect(new TextDecoder().decode(await streamToBuffer(stale.value))).toBe(
       "before"
     );
