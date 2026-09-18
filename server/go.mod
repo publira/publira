@@ -36,7 +36,7 @@ require (
 	golang.org/x/image v0.46.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/text v0.42.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260917231906-eeb232e0883d
 	google.golang.org/protobuf v1.36.12
 	manael.org/x/manael/v3 v3.2.0
 )
