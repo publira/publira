@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "eslint-plugin-github": "6.1.2",
-    "eslint-plugin-sonarjs": "4.2.0",
+    "eslint-plugin-sonarjs": "4.2.1",
     "oxfmt": "0.68.0",
     "oxlint": "1.83.0",
     "oxlint-plugin-react-doctor": "0.9.14",
