@@ -16,13 +16,13 @@ import {
   getIntlLocale,
   getLocaleLabel as getLocaleLabelForSupportedLocale,
   getLocales,
-} from "./gen/locale-registry";
-import type { Locale } from "./gen/locale-registry";
+} from "./__generated__/locale-registry";
+import type { Locale } from "./__generated__/locale-registry";
 import { formatSimpleMessage } from "./mf2";
 import type { MessageValues } from "./mf2";
 
-export { getLocales } from "./gen/locale-registry";
-export type { Locale } from "./gen/locale-registry";
+export { getLocales } from "./__generated__/locale-registry";
+export type { Locale } from "./__generated__/locale-registry";
 export type { MessageValues } from "./mf2";
 
 /** Cookie that stores the UI locale for apps that do not put lang in the URL. */

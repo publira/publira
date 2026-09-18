@@ -12,12 +12,12 @@
       "default": "./dist/index.mjs"
     },
     "./catalog": {
-      "types": "./src/gen/locale-message-types.d.ts",
+      "types": "./src/__generated__/locale-message-types.d.ts",
       "default": "./dist/catalog.mjs"
     },
     "./messages": {
-      "types": "./dist/gen/locale-messages.d.mts",
-      "default": "./dist/gen/locale-messages.mjs"
+      "types": "./dist/__generated__/locale-messages.d.mts",
+      "default": "./dist/__generated__/locale-messages.mjs"
     }
   },
   "scripts": {

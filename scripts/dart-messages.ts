@@ -2,13 +2,13 @@
  * The Dart side of the shared catalog.
  *
  * `mobile/lib/l10n/gen/app_messages.dart` is compiled from `locales/*.json`
- * the way `packages/i18n/src/gen/` is: the namespaces the app reads become one
- * abstract class of typed getters and methods, plus a subclass per locale whose
- * bodies are Dart string literals. `messageformat` parses every message here,
- * so the app never reads a message at runtime — a `{$name}` placeholder becomes
- * a required named parameter, an escape is resolved before the literal is
- * written, and a key present in one catalog and not another fails this
- * generator rather than a screen.
+ * the way `packages/i18n/src/__generated__/` is: the namespaces the app reads
+ * become one abstract class of typed getters and methods, plus a subclass per
+ * locale whose bodies are Dart string literals. `messageformat` parses every
+ * message here, so the app never reads a message at runtime — a `{$name}`
+ * placeholder becomes a required named parameter, an escape is resolved before
+ * the literal is written, and a key present in one catalog and not another
+ * fails this generator rather than a screen.
  *
  * The output has to come back unchanged from `dart format`, because
  * `pnpm locales:check` compares it byte for byte and CI runs the formatter

@@ -15,6 +15,7 @@ reviews:
     # apply on top of these, but that list is not published, so nothing here leans on
     # it: every generated / vendored path is named even when a default may cover it.
     - "!**/gen/**"
+    - "!**/__generated__/**"
     - "!packages/**/dist/**"
     - "!**/*.tsbuildinfo"
     - "!pnpm-lock.yaml"
@@ -45,8 +46,9 @@ reviews:
         Shared packages. Prioritize breaking API changes, public export semantics,
         and overly wide types. Hand-written api-client code must keep a clear
         boundary from Connect-generated clients. Do not reimplement or patch
-        generated clients in hand-written sources (packages/**/gen/** and
-        packages/**/dist/** are path-filtered and not reviewed).
+        generated clients in hand-written sources (packages/**/gen/**,
+        packages/**/__generated__/**, and packages/**/dist/** are path-filtered
+        and not reviewed).
 
     - path: "server/**/*.go"
       instructions: |

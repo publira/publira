@@ -55,7 +55,13 @@ describe("coefficient", () => {
       0
     );
     assert.equal(coefficient("packages/api-client/src/gen/index.ts"), 0);
+    assert.equal(
+      coefficient("packages/i18n/src/__generated__/locale-registry.ts"),
+      0
+    );
     assert.equal(coefficient("server/internal/db/gen/models.go"), 0);
+    assert.equal(coefficient("server/internal/locale/gen/locales.go"), 0);
+    assert.equal(coefficient("mobile/lib/l10n/gen/app_messages.dart"), 0);
     assert.equal(coefficient(".agents/skills/example/SKILL.md"), 0);
   });
 
