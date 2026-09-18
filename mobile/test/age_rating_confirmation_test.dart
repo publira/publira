@@ -144,24 +144,49 @@ void main() {
     },
   );
 
-  test(
-    'a write that fails leaves the previous confirmation in place',
-    () async {
-      final store = MemoryAgeRatingConfirmationStore(
-        confirmed: const AgeRatingConfirmation(named: SeriesAgeRating.r15),
-        writeError: Exception('disk full'),
-      );
-      final controller = AgeRatingConfirmationController(store: store);
-      await controller.restore();
+  test('a read that fails restores the app unconfirmed', () async {
+    final store = MemoryAgeRatingConfirmationStore(
+      confirmed: const AgeRatingConfirmation(named: SeriesAgeRating.r18),
+      readError: UnimplementedError('no application support directory'),
+    );
+    final controller = AgeRatingConfirmationController(store: store);
 
-      await expectLater(
-        controller.confirm(SeriesAgeRating.r18),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        controller.confirmed,
-        const AgeRatingConfirmation(named: SeriesAgeRating.r15),
-      );
-    },
-  );
+    await controller.restore();
+
+    expect(controller.isRestored, isTrue);
+    expect(controller.confirmed, AgeRatingConfirmation.empty);
+  });
+
+  test('a write that fails still confirms the rating for this run', () async {
+    final store = MemoryAgeRatingConfirmationStore(
+      confirmed: const AgeRatingConfirmation(named: SeriesAgeRating.r15),
+      writeError: UnimplementedError('no application support directory'),
+    );
+    final controller = AgeRatingConfirmationController(store: store);
+    await controller.restore();
+
+    await controller.confirm(SeriesAgeRating.r18);
+
+    expect(
+      controller.confirmed,
+      const AgeRatingConfirmation(named: SeriesAgeRating.r18),
+    );
+    expect(
+      store.confirmed,
+      const AgeRatingConfirmation(named: SeriesAgeRating.r15),
+    );
+  });
+
+  test('a store that fails both ways still answers the prompt', () async {
+    final store = MemoryAgeRatingConfirmationStore(
+      readError: UnimplementedError('no application support directory'),
+      writeError: UnimplementedError('no application support directory'),
+    );
+    final controller = AgeRatingConfirmationController(store: store);
+    await controller.restore();
+
+    await controller.confirm(SeriesAgeRating.unknown);
+
+    expect(controller.confirmed, const AgeRatingConfirmation(unknown: true));
+  });
 }
