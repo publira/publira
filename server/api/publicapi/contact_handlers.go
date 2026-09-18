@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
@@ -88,13 +89,19 @@ func contactFieldError(field string, err error) error {
 // nobody is told about cannot outlive the request that stored it, and no mail
 // can announce a message that was never written.
 //
-// The public ID is generated here rather than by the caller: a collision is
-// resolved by retrying the insert, and inside a transaction that retry has to
-// roll back to a savepoint, which is what publicid.InsertTx does.
+// Both IDs are generated here rather than by the caller. The public ID's
+// collision is resolved by retrying the insert, and inside a transaction that
+// retry has to roll back to a savepoint, which is what publicid.InsertTx does.
 func (s *apiServer) storeContactMessage(
 	ctx context.Context,
 	params dbmodels.CreateContactMessageParams,
 ) (dbmodels.ContactMessage, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return dbmodels.ContactMessage{}, fmt.Errorf("generate contact message id: %w", err)
+	}
+	params.ID = id
+
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		return dbmodels.ContactMessage{}, err

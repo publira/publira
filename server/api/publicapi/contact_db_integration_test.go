@@ -152,6 +152,41 @@ func TestDBContactMessageQueuesTheStaffMail(t *testing.T) {
 	}
 }
 
+// Every message is a row of its own, with a staff mail of its own, rather than
+// the first one standing in for all that follow.
+func TestDBContactMessagesAreStoredSeparately(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "CONTACT9", "contact9.example.com", "Aoto Press")
+	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF9", "staff@contact9.example.com", "Staff")
+
+	for _, replyTo := range []string{"first@example.test", "second@example.test"} {
+		if err := env.submitContactMessage(t, tenant, &publirav1.SubmitContactMessageRequest{
+			ReplyToEmail: replyTo,
+			Body:         "Which episodes can I read without an account?",
+		}); err != nil {
+			t.Fatalf("SubmitContactMessage from %s: %v", replyTo, err)
+		}
+	}
+
+	listed := env.openAdminContactConsole(t, tenant, staff).list(t, "", 20, "")
+	if len(listed.Messages) != 2 {
+		t.Fatalf("listed %d messages, want 2", len(listed.Messages))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var mails int
+	if err := env.PG.DB.QueryRowContext(ctx,
+		`SELECT COUNT(DISTINCT idempotency_key) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2`,
+		tenant.ID, outbox.EventTypeContactMessageStaffEmail,
+	).Scan(&mails); err != nil {
+		t.Fatalf("count the queued mails: %v", err)
+	}
+	if mails != 2 {
+		t.Fatalf("queued %d staff mails, want 2", mails)
+	}
+}
+
 func TestDBContactMessageFromASignedInReaderCarriesTheAccount(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT3", "contact3.example.com", "Aoto Press")
