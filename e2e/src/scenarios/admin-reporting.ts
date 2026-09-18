@@ -65,6 +65,8 @@ export const BOUNDARY_AUDIT = {
  * scenario's `content_daily_stats` rows are in place.
  */
 export const REPORTING_READ_THROUGH = {
+  /** Completions on the Boundary Tenant's one in-window row. */
+  boundaryCompleteCount: 777,
   /** The Boundary Tenant's episode with in-window rows of its own. */
   boundaryEpisodeTitle: "Boundary Episode 001-01",
   episodeCount: 25,

@@ -85,7 +85,7 @@ describe("NotificationManager", () => {
         notifications: [],
         pageSize: 20,
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 0,
       })
     );
@@ -103,7 +103,7 @@ describe("NotificationManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 0,
       })
     );
@@ -132,7 +132,7 @@ describe("NotificationManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 1,
       })
     );
@@ -141,7 +141,7 @@ describe("NotificationManager", () => {
       name: "An episode was published",
     });
     expect(titleLink.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
-    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
+    expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(screen.getByText("Unread")).toBeDefined();
     expect(screen.getByText("Read")).toBeDefined();
     expect(screen.getByText("Mark as read n1")).toBeDefined();
@@ -165,7 +165,7 @@ describe("NotificationManager", () => {
         pageSize: 20,
         previousHref: "?token=previous",
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 2,
       })
     );
@@ -194,7 +194,7 @@ describe("NotificationManager", () => {
         notifications: [notification("n1")],
         pageSize: 20,
         tenantId: "TENANT001",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
         unreadCount: 1,
       })
     );
@@ -217,6 +217,6 @@ describe("NotificationManager", () => {
     );
 
     expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
-    expect(screen.queryByText("Jun 1, 2026, 9:00 AM")).toBeNull();
+    expect(screen.queryByText("Jun 1, 2026, 12:00 AM")).toBeNull();
   });
 });

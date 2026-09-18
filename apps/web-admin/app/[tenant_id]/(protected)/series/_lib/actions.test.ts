@@ -61,7 +61,7 @@ describe("series actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
+    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Seoul");
     // `withAdminSessionReauth` resolves the session before the mutation runs;
     // without a token every Action under test would redirect to /login.
     mockGetAccessToken.mockResolvedValue("session-token");
@@ -114,7 +114,7 @@ describe("series actions", () => {
         labelPublicId: "LABEL001",
         publicId: "SERIES001",
         // "2030-01-01T10:00" is a zone-less wall clock, read in the tenant zone
-        // (Asia/Tokyo here) — never as the server process's local zone.
+        // (Asia/Seoul here) — never as the server process's local zone.
         publishedAt: "2030-01-01T01:00:00Z",
         readingDirection: "rtl",
         readingPeriodHours: 24,

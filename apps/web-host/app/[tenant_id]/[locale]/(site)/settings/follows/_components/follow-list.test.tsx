@@ -88,7 +88,7 @@ const renderList = async (
     nextToken: "",
     previousToken: "",
     tenantId,
-    timeZone: "Asia/Tokyo",
+    timeZone: "UTC",
     token: "",
     ...props,
   });
@@ -152,7 +152,7 @@ describe("FollowList", () => {
     expect(screen.getByText("Series")).toBeDefined();
     // The kind label is the word the catalog shows for a creator.
     expect(screen.getByText("Author")).toBeDefined();
-    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
+    expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(
       screen.getByText("Unfollow Published Series SERIES01")
     ).toBeDefined();

@@ -72,7 +72,7 @@ describe("adminConsoleEmailChangeConfirmationDataSchema", () => {
 
 describe("AdminConsoleEmailChangeConfirmationEmail", () => {
   it("the ja mail carries the link and the expiry in the given time zone", async () => {
-    const timeZone = "Asia/Tokyo";
+    const timeZone = "UTC";
     const result = await renderEmail({
       data,
       locale: "ja",
@@ -120,7 +120,7 @@ describe("AdminConsoleEmailChangeConfirmationEmail", () => {
     );
     expect(result.html).toContain(expires);
     expect(expires).not.toBe(
-      formatDateTime(data.expires_at, { locale: "en", timeZone: "Asia/Tokyo" })
+      formatDateTime(data.expires_at, { locale: "en", timeZone: "UTC" })
     );
   });
 
@@ -131,14 +131,14 @@ describe("AdminConsoleEmailChangeConfirmationEmail", () => {
       locale: "en",
       messages,
       template: "admin_console_email_change_confirmation",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
     const toNew = await renderEmail({
       data: { ...data, recipient_kind: "new_email" },
       locale: "en",
       messages,
       template: "admin_console_email_change_confirmation",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(toCurrent.ok).toBe(true);

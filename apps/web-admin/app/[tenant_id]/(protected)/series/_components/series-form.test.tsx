@@ -105,7 +105,7 @@ const renderBothForms = () =>
         labels={labels}
         mode="create"
         tagSuggestions={tagSuggestions}
-        timeZone="Asia/Tokyo"
+        timeZone="UTC"
       />
       <SeriesForm
         action={action}
@@ -117,7 +117,7 @@ const renderBothForms = () =>
         labels={labels}
         mode="update"
         tagSuggestions={tagSuggestions}
-        timeZone="Asia/Tokyo"
+        timeZone="UTC"
       />
     </>
   );
@@ -210,7 +210,7 @@ it("opens on the classification the series carries", () => {
       labels={labels}
       mode="update"
       tagSuggestions={tagSuggestions}
-      timeZone="Asia/Tokyo"
+      timeZone="UTC"
     />
   );
 
@@ -249,7 +249,7 @@ it("opens on the comment mode the series states", () => {
       labels={labels}
       mode="update"
       tagSuggestions={tagSuggestions}
-      timeZone="Asia/Tokyo"
+      timeZone="UTC"
     />
   );
 
@@ -271,7 +271,7 @@ it("opens on the layout the series states", () => {
       labels={labels}
       mode="update"
       tagSuggestions={tagSuggestions}
-      timeZone="Asia/Tokyo"
+      timeZone="UTC"
     />
   );
 
@@ -294,7 +294,7 @@ it("opens a new series on the layout the viewers use today", async () => {
       labels={labels}
       mode="create"
       tagSuggestions={tagSuggestions}
-      timeZone="Asia/Tokyo"
+      timeZone="UTC"
     />
   );
 
@@ -324,7 +324,7 @@ it("names the tenant's own mode in the option that follows it", async () => {
       mode="create"
       tagSuggestions={tagSuggestions}
       tenantCommentMode="approval_required"
-      timeZone="Asia/Tokyo"
+      timeZone="UTC"
     />
   );
 
@@ -349,7 +349,7 @@ it("leaves that option unnamed when the tenant setting could not be read", async
       labels={labels}
       mode="create"
       tagSuggestions={tagSuggestions}
-      timeZone="Asia/Tokyo"
+      timeZone="UTC"
     />
   );
 
@@ -369,7 +369,7 @@ it("names the empty schedule as irregular", async () => {
       labels={labels}
       mode="create"
       tagSuggestions={tagSuggestions}
-      timeZone="Asia/Tokyo"
+      timeZone="UTC"
     />
   );
 
@@ -393,7 +393,7 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
         labels={labels}
         mode="create"
         tagSuggestions={tagSuggestions}
-        timeZone="Asia/Tokyo"
+        timeZone="UTC"
       />
     </AdminLocaleProvider>
   );

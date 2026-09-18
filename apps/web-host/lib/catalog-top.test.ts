@@ -650,7 +650,7 @@ describe("catalog-top section loaders", () => {
     const result = await getCatalogTopWeeklySchedule("TENANT_001", {
       locale: "en",
       maxScheduledSeries: 6,
-      timeZone: "Asia/Tokyo",
+      timeZone: "Asia/Seoul",
     });
 
     expect(
@@ -681,7 +681,7 @@ describe("catalog-top section loaders", () => {
 
     vi.useFakeTimers();
     vi.setSystemTime(
-      // Sunday 22:00 UTC is already Monday morning in Tokyo.
+      // Sunday 22:00 UTC is already Monday morning in Seoul.
       Temporal.Instant.from("2026-03-01T22:00:00Z").epochMilliseconds
     );
     try {
@@ -694,7 +694,7 @@ describe("catalog-top section loaders", () => {
       await expect(
         getCatalogTopWeeklySchedule("TENANT_002", {
           locale: "en",
-          timeZone: "Asia/Tokyo",
+          timeZone: "Asia/Seoul",
         })
       ).resolves.toMatchObject({ ok: true, value: { openWeekday: 1 } });
     } finally {
@@ -722,7 +722,7 @@ describe("catalog-top section loaders", () => {
     await expect(
       getCatalogTopWeeklySchedule("TENANT_001", {
         locale: "en",
-        timeZone: "Asia/Tokyo",
+        timeZone: "Asia/Seoul",
       })
     ).resolves.toMatchObject({
       message: "The catalog is unavailable.",

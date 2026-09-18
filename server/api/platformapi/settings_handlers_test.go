@@ -69,7 +69,7 @@ func TestGetPlatformSettingsFailsOnAnUnsupportedStoredLocale(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
-		WillReturnRows(platformConfigRow("Asia/Tokyo", "fr", 1, now))
+		WillReturnRows(platformConfigRow("UTC", "fr", 1, now))
 
 	_, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
 	if connect.CodeOf(err) != connect.CodeInternal {

@@ -122,7 +122,7 @@ const renderQueue = async (
       reports,
       status: "open",
       statusOptions,
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     })
   );
 

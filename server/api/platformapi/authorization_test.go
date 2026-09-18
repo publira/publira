@@ -83,7 +83,7 @@ func TestPlatformAuditorCannotWriteBeforeSideEffects(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
 	_, err := client.UpdatePlatformSettings(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.UpdatePlatformSettingsRequest{
-		DefaultTimezone: "Asia/Tokyo",
+		DefaultTimezone: "UTC",
 	}))
 	if got := connect.CodeOf(err); got != connect.CodePermissionDenied {
 		t.Fatalf("UpdatePlatformSettings code = %v, want permission_denied (err=%v)", got, err)
@@ -96,15 +96,15 @@ func TestPlatformAuditorCanReadPlatformSettings(t *testing.T) {
 	now := time.Now()
 	expectIntegrationAuth(mock, uuid.Nil, uuid.Must(uuid.NewV7()), auth.RolePlatformAuditor, now)
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
-		WillReturnRows(platformConfigRow("Asia/Tokyo", "ja", 1, now))
+		WillReturnRows(platformConfigRow("UTC", "ja", 1, now))
 
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetPlatformSettings(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetPlatformSettingsRequest{}))
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if got := resp.Msg.GetSettings().GetDefaultTimezone(); got != "Asia/Tokyo" {
-		t.Fatalf("default_timezone = %q, want Asia/Tokyo", got)
+	if got := resp.Msg.GetSettings().GetDefaultTimezone(); got != "UTC" {
+		t.Fatalf("default_timezone = %q, want UTC", got)
 	}
 	if got := resp.Msg.GetSettings().GetDefaultLocale(); got != "ja" {
 		t.Fatalf("default_locale = %q, want ja", got)

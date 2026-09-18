@@ -83,7 +83,7 @@ const renderList = async (
     notifications: [],
     previousToken: "",
     tenantId,
-    timeZone: "Asia/Tokyo",
+    timeZone: "UTC",
     token: "",
     unreadCount: 0,
     ...props,
@@ -134,7 +134,7 @@ describe("NotificationList", () => {
       name: "A new episode has been published",
     });
     expect(titleLink.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
-    expect(screen.getByText("Jun 1, 2026, 9:00 AM")).toBeDefined();
+    expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(screen.getByText("Unread")).toBeDefined();
     expect(screen.getByText("Read")).toBeDefined();
     expect(screen.getByText("Mark as read n1")).toBeDefined();
@@ -176,6 +176,6 @@ describe("NotificationList", () => {
     });
 
     expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
-    expect(screen.queryByText("Jun 1, 2026, 9:00 AM")).toBeNull();
+    expect(screen.queryByText("Jun 1, 2026, 12:00 AM")).toBeNull();
   });
 });

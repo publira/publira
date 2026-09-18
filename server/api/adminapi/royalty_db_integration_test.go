@@ -15,8 +15,11 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// royaltyTokyo is the zone testutil.SeedTenant gives every tenant.
-var royaltyTokyo = time.FixedZone("Asia/Tokyo", 9*60*60)
+// royaltyZone is the zone seedRoyaltyFixture puts its tenant in: ahead of UTC,
+// so a month's first and last hours fall on another UTC day.
+const royaltyZoneName = "Asia/Seoul"
+
+var royaltyZone = time.FixedZone(royaltyZoneName, 9*60*60)
 
 func (e *adminDBEnv) royaltyClient() publiraadminv1connect.AdminRoyaltyServiceClient {
 	return publiraadminv1connect.NewAdminRoyaltyServiceClient(e.Server.Client(), e.Server.URL)
@@ -42,6 +45,9 @@ func (e *adminDBEnv) seedRoyaltyFixture(t *testing.T, prefix string) royaltyFixt
 		Status:   testutil.EpisodeStatusPublished,
 	})
 	reader := e.PG.SeedEndUser(t, admin.Tenant.ID, prefix+"READER01", "reader@"+prefix+".example.com", "Reader")
+	if _, err := e.PG.DB.ExecContext(context.Background(), "UPDATE tenants SET timezone = $2 WHERE id = $1", admin.Tenant.ID, royaltyZoneName); err != nil {
+		t.Fatalf("set tenant %s time zone: %v", admin.Tenant.PublicID, err)
+	}
 	return royaltyFixture{admin: admin, series: series, episode: episode, reader: reader}
 }
 
@@ -143,8 +149,8 @@ func linesByCredit(t *testing.T, lines []*publiraadminv1.RoyaltyStatementLine) m
 	return byCredit
 }
 
-func inTokyo(year int, month time.Month, day, hour, minute, second int) time.Time {
-	return time.Date(year, month, day, hour, minute, second, 0, royaltyTokyo)
+func inRoyaltyZone(year int, month time.Month, day, hour, minute, second int) time.Time {
+	return time.Date(year, month, day, hour, minute, second, 0, royaltyZone)
 }
 
 func TestDBAdminCloseRoyaltyStatementPaysEachCreditItsShare(t *testing.T) {
@@ -156,13 +162,13 @@ func TestDBAdminCloseRoyaltyStatementPaysEachCreditItsShare(t *testing.T) {
 	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, author.ID, "Original Author", "series", 2000)
 
 	for day := 1; day <= 10; day++ {
-		env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inTokyo(2026, time.July, day, 12, 0, 0)})
+		env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.July, day, 12, 0, 0)})
 	}
 	env.seedSale(t, f, f.episode.ID, royaltySale{
 		price:          500,
-		purchasedAt:    inTokyo(2026, time.July, 20, 12, 0, 0),
+		purchasedAt:    inRoyaltyZone(2026, time.July, 20, 12, 0, 0),
 		refundedAmount: sql.NullInt32{Int32: 500, Valid: true},
-		refundedAt:     sql.NullTime{Time: inTokyo(2026, time.July, 21, 12, 0, 0), Valid: true},
+		refundedAt:     sql.NullTime{Time: inRoyaltyZone(2026, time.July, 21, 12, 0, 0), Valid: true},
 	})
 
 	want := map[[3]string]royaltyLineFigures{
@@ -193,8 +199,8 @@ func TestDBAdminCloseRoyaltyStatementPaysEachCreditItsShare(t *testing.T) {
 	}
 
 	statement := env.closeRoyalties(t, f.admin, "2026-07")
-	if statement.Period != "2026-07" || statement.TimeZone != "Asia/Tokyo" || statement.ClosedByUserPublicId != f.admin.User.PublicID {
-		t.Fatalf("closed statement = %+v, want 2026-07 in Asia/Tokyo closed by %s", statement, f.admin.User.PublicID)
+	if statement.Period != "2026-07" || statement.TimeZone != royaltyZoneName || statement.ClosedByUserPublicId != f.admin.User.PublicID {
+		t.Fatalf("closed statement = %+v, want 2026-07 in %s closed by %s", statement, royaltyZoneName, f.admin.User.PublicID)
 	}
 	if statement.Totals.Gross != 5000 || statement.Totals.Payout != 2500 {
 		t.Fatalf("closed totals = %+v, want gross 5000 and payout 2500", statement.Totals)
@@ -222,11 +228,11 @@ func TestDBAdminCloseRoyaltyStatementClosesAMonthOnce(t *testing.T) {
 	f := env.seedRoyaltyFixture(t, "RYO")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYOCREATOR01", Name: "Creator"})
 	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, creator.ID, "Artist", "series", 5000)
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inTokyo(2026, time.July, 3, 9, 0, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.July, 3, 9, 0, 0)})
 	env.closeRoyalties(t, f.admin, "2026-07")
 
 	// A sale that appears afterwards must not be picked up by a second close.
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inTokyo(2026, time.July, 4, 9, 0, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.July, 4, 9, 0, 0)})
 
 	client := env.royaltyClient()
 	_, err := client.CloseRoyaltyStatement(context.Background(), newAdminDBRequest(f.admin, &publiraadminv1.CloseRoyaltyStatementRequest{
@@ -262,12 +268,12 @@ func TestDBAdminRoyaltyStatementCutsTheMonthInTheTenantZone(t *testing.T) {
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYZCREATOR01", Name: "Creator"})
 	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, creator.ID, "Artist", "series", 10000)
 
-	// The first and last second of July in Tokyo belong to July, although both
-	// fall on another UTC day than their Tokyo one.
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 100, purchasedAt: inTokyo(2026, time.July, 1, 0, 0, 0)})
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 200, purchasedAt: inTokyo(2026, time.July, 31, 23, 59, 0)})
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 400, purchasedAt: inTokyo(2026, time.June, 30, 23, 59, 59)})
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 800, purchasedAt: inTokyo(2026, time.August, 1, 0, 0, 0)})
+	// The first and last second of July in Seoul belong to July, although both
+	// fall on another UTC day than their Seoul one.
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 100, purchasedAt: inRoyaltyZone(2026, time.July, 1, 0, 0, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 200, purchasedAt: inRoyaltyZone(2026, time.July, 31, 23, 59, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 400, purchasedAt: inRoyaltyZone(2026, time.June, 30, 23, 59, 59)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 800, purchasedAt: inRoyaltyZone(2026, time.August, 1, 0, 0, 0)})
 
 	statement := env.closeRoyalties(t, f.admin, "2026-07")
 	if statement.Totals.Gross != 300 || statement.Totals.Payout != 300 {
@@ -275,7 +281,7 @@ func TestDBAdminRoyaltyStatementCutsTheMonthInTheTenantZone(t *testing.T) {
 	}
 	august := env.previewRoyalties(t, f.admin, "2026-08")
 	if august.Totals.Gross != 800 {
-		t.Fatalf("August gross = %d, want the sale at August 1 00:00 Tokyo", august.Totals.Gross)
+		t.Fatalf("August gross = %d, want the sale at August 1 00:00 Seoul", august.Totals.Gross)
 	}
 }
 
@@ -296,14 +302,14 @@ func TestDBAdminRoyaltyStatementLinesFollowTheCredits(t *testing.T) {
 	}
 	env.creditEpisode(t, f.admin.Tenant.ID, second.ID, guest.ID, "Writer", "episode", 1000)
 
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inTokyo(2026, time.July, 5, 10, 0, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.July, 5, 10, 0, 0)})
 	for day := 6; day <= 8; day++ {
-		env.seedSale(t, f, second.ID, royaltySale{price: 333, purchasedAt: inTokyo(2026, time.July, day, 10, 0, 0)})
+		env.seedSale(t, f, second.ID, royaltySale{price: 333, purchasedAt: inRoyaltyZone(2026, time.July, day, 10, 0, 0)})
 	}
 	// A partial refund keeps the sale and takes its amount off the base.
 	env.seedSale(t, f, second.ID, royaltySale{
 		price:          333,
-		purchasedAt:    inTokyo(2026, time.July, 9, 10, 0, 0),
+		purchasedAt:    inRoyaltyZone(2026, time.July, 9, 10, 0, 0),
 		refundedAmount: sql.NullInt32{Int32: 100, Valid: true},
 	})
 
@@ -347,7 +353,7 @@ func TestDBAdminRoyaltyStatementSurvivesDeletedCatalogRows(t *testing.T) {
 	f := env.seedRoyaltyFixture(t, "RYD")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYDCREATOR01", Name: "Departed Creator"})
 	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, creator.ID, "Artist", "series", 4000)
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inTokyo(2026, time.July, 3, 9, 0, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.July, 3, 9, 0, 0)})
 	env.closeRoyalties(t, f.admin, "2026-07")
 
 	ctx := context.Background()
@@ -377,7 +383,7 @@ func TestDBAdminRoyaltyStatementRefusesMonthsNotOverAndOtherCallers(t *testing.T
 	client := env.royaltyClient()
 	ctx := context.Background()
 
-	now := time.Now().In(royaltyTokyo)
+	now := time.Now().In(royaltyZone)
 	current := now.Format("2006-01")
 	next := now.AddDate(0, 0, -now.Day()+1).AddDate(0, 1, 0).Format("2006-01")
 
@@ -417,7 +423,7 @@ func TestDBAdminRoyaltyStatementsPage(t *testing.T) {
 	for i, role := range []string{"Original Author", "Artist", "Writer"} {
 		env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, creator.ID, role, "series", int32(1000*(i+1)))
 	}
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inTokyo(2026, time.May, 3, 9, 0, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.May, 3, 9, 0, 0)})
 	for _, period := range []string{"2026-05", "2026-06", "2026-07"} {
 		env.closeRoyalties(t, f.admin, period)
 	}
@@ -477,7 +483,7 @@ func TestDBRoyaltyStatementCannotBeRewrittenButGoesWithItsTenant(t *testing.T) {
 	f := env.seedRoyaltyFixture(t, "RYI")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYICREATOR01", Name: "Creator"})
 	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, creator.ID, "Artist", "series", 5000)
-	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inTokyo(2026, time.July, 3, 9, 0, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.July, 3, 9, 0, 0)})
 	env.closeRoyalties(t, f.admin, "2026-07")
 
 	rewrites := []string{

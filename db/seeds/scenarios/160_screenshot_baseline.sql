@@ -33,9 +33,9 @@ WITH numbered AS (
         AND s.title LIKE 'Seed Series %'
 )
 UPDATE series s
-SET published_at = TIMESTAMPTZ '2026-01-05 09:00:00+09'
+SET published_at = TIMESTAMPTZ '2026-01-05 09:00:00+00'
         + make_interval(days => numbered.number),
-    updated_at = TIMESTAMPTZ '2026-01-05 09:00:00+09'
+    updated_at = TIMESTAMPTZ '2026-01-05 09:00:00+00'
         + make_interval(days => numbered.number)
 FROM numbered
 WHERE s.id = numbered.id;
@@ -58,19 +58,19 @@ WHERE el.episode_id = e.id
 -- development seed fixes, so a tenant a later spec creates keeps the real
 -- timestamp that spec is about.
 UPDATE tenants
-SET created_at = TIMESTAMPTZ '2026-01-05 09:00:00+09'
+SET created_at = TIMESTAMPTZ '2026-01-05 09:00:00+00'
 WHERE public_id = 'SeedTNNTAAA1';
 
 UPDATE users
-SET created_at = TIMESTAMPTZ '2026-01-05 09:30:00+09'
+SET created_at = TIMESTAMPTZ '2026-01-05 09:30:00+00'
 WHERE public_id = 'SeedADMNAAA1';
 
 UPDATE users
-SET created_at = TIMESTAMPTZ '2026-01-05 10:00:00+09'
+SET created_at = TIMESTAMPTZ '2026-01-05 10:00:00+00'
 WHERE public_id = 'SeedMMBRAAA1';
 
 UPDATE platform_user_roles pur
-SET created_at = TIMESTAMPTZ '2026-01-05 08:00:00+09'
+SET created_at = TIMESTAMPTZ '2026-01-05 08:00:00+00'
 FROM platform_users pu
 WHERE pu.id = pur.platform_user_id
     AND pu.public_id = 'SeedPFUSAAA1';

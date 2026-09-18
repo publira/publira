@@ -28,7 +28,7 @@ func quietLogger() *slog.Logger {
 }
 
 var (
-	tokyo       = tenantday.Tenant{ID: uuid.MustParse("018f0e6a-0000-7000-8000-000000000001"), TimeZone: "Asia/Tokyo"}
+	seoul       = tenantday.Tenant{ID: uuid.MustParse("018f0e6a-0000-7000-8000-000000000001"), TimeZone: "Asia/Seoul"}
 	losAngeles  = tenantday.Tenant{ID: uuid.MustParse("018f0e6a-0000-7000-8000-000000000002"), TimeZone: "America/Los_Angeles"}
 	unloadable  = tenantday.Tenant{ID: uuid.MustParse("018f0e6a-0000-7000-8000-000000000003"), TimeZone: "Mars/Olympus_Mons"}
 	everyTenant = func(tenants ...tenantday.Tenant) Lister {
@@ -47,14 +47,14 @@ func at(t *testing.T, value string) time.Time {
 
 func TestRunOnceDropsEveryTenantOnItsFirstPass(t *testing.T) {
 	reval := &stubRevalidator{}
-	runner := New(everyTenant(tokyo, losAngeles), reval, quietLogger())
+	runner := New(everyTenant(seoul, losAngeles), reval, quietLogger())
 
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T12:00:00Z"))
 
 	if len(reval.calls) != 2 {
 		t.Fatalf("revalidate calls = %d, want 2", len(reval.calls))
 	}
-	want := "tenant:" + tokyo.ID.String() + ":today"
+	want := "tenant:" + seoul.ID.String() + ":today"
 	if got := reval.calls[0]; len(got) != 1 || got[0] != want {
 		t.Fatalf("first call = %v, want [%s]", got, want)
 	}
@@ -62,9 +62,9 @@ func TestRunOnceDropsEveryTenantOnItsFirstPass(t *testing.T) {
 
 func TestRunOnceDropsOncePerDay(t *testing.T) {
 	reval := &stubRevalidator{}
-	runner := New(everyTenant(tokyo), reval, quietLogger())
+	runner := New(everyTenant(seoul), reval, quietLogger())
 
-	// Three passes inside one Tokyo day, then one after its midnight.
+	// Three passes inside one Seoul day, then one after its midnight.
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T01:00:00Z"))
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T09:00:00Z"))
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T14:00:00Z"))
@@ -78,11 +78,11 @@ func TestRunOnceDropsOncePerDay(t *testing.T) {
 	}
 }
 
-// 15:00 UTC is already the next day in Tokyo and still the day before in Los
+// 15:00 UTC is already the next day in Seoul and still the day before in Los
 // Angeles, which is what makes one pass turn one tenant over and not the other.
 func TestRunOnceFollowsEachTenantsOwnMidnight(t *testing.T) {
 	reval := &stubRevalidator{}
-	runner := New(everyTenant(tokyo, losAngeles), reval, quietLogger())
+	runner := New(everyTenant(seoul, losAngeles), reval, quietLogger())
 
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T12:00:00Z"))
 	reval.calls = nil
@@ -92,15 +92,15 @@ func TestRunOnceFollowsEachTenantsOwnMidnight(t *testing.T) {
 	if len(reval.calls) != 1 {
 		t.Fatalf("revalidate calls = %d, want 1", len(reval.calls))
 	}
-	want := "tenant:" + tokyo.ID.String() + ":today"
+	want := "tenant:" + seoul.ID.String() + ":today"
 	if got := reval.calls[0]; got[0] != want {
-		t.Fatalf("rolled %v, want the Tokyo tenant (%s)", got, want)
+		t.Fatalf("rolled %v, want the Seoul tenant (%s)", got, want)
 	}
 }
 
 func TestRunOnceRetriesATenantWhoseDropFailed(t *testing.T) {
 	reval := &stubRevalidator{err: errors.New("web-host is unreachable")}
-	runner := New(everyTenant(tokyo), reval, quietLogger())
+	runner := New(everyTenant(seoul), reval, quietLogger())
 
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T12:00:00Z"))
 	reval.err = nil
@@ -113,7 +113,7 @@ func TestRunOnceRetriesATenantWhoseDropFailed(t *testing.T) {
 
 func TestRunOnceLeavesTheOtherTenantsWhenOneZoneWillNotLoad(t *testing.T) {
 	reval := &stubRevalidator{}
-	runner := New(everyTenant(unloadable, tokyo), reval, quietLogger())
+	runner := New(everyTenant(unloadable, seoul), reval, quietLogger())
 
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T12:00:00Z"))
 
@@ -137,11 +137,11 @@ func TestRunOnceDropsNothingWhenTheTenantsCannotBeListed(t *testing.T) {
 }
 
 func TestRunOnceRecordsTheDayWithNoRevalidatorConfigured(t *testing.T) {
-	runner := New(everyTenant(tokyo), nil, quietLogger())
+	runner := New(everyTenant(seoul), nil, quietLogger())
 
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T12:00:00Z"))
 
-	if got := runner.rolled[tokyo.ID]; got != "2026-03-02" {
+	if got := runner.rolled[seoul.ID]; got != "2026-03-02" {
 		t.Fatalf("recorded day = %q, want 2026-03-02", got)
 	}
 }

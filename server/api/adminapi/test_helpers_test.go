@@ -269,7 +269,7 @@ func tenantColumns() []string {
 }
 
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
-	expectTenantLookupWithSettings(mock, tenantID, publicID, now, "Asia/Tokyo", "ja")
+	expectTenantLookupWithSettings(mock, tenantID, publicID, now, "UTC", "ja")
 }
 
 func expectTenantLookupWithTimezone(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone string) {
@@ -277,7 +277,7 @@ func expectTenantLookupWithTimezone(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 }
 
 func expectTenantLookupWithDefaultLocale(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, defaultLocale string) {
-	expectTenantLookupWithSettings(mock, tenantID, publicID, now, "Asia/Tokyo", defaultLocale)
+	expectTenantLookupWithSettings(mock, tenantID, publicID, now, "UTC", defaultLocale)
 }
 
 func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone, defaultLocale string) {

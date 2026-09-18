@@ -113,12 +113,12 @@ func TestAgeOnHandlesALeapDayBirthDate(t *testing.T) {
 // birth date read out of a `date` column is midnight UTC, and the tenant's day
 // is resolved in its own zone.
 func TestAgeOnIgnoresTheClockAndTheZone(t *testing.T) {
-	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	seoul, err := time.LoadLocation("Asia/Seoul")
 	if err != nil {
 		t.Fatalf("LoadLocation: %v", err)
 	}
 	born := time.Date(2008, time.April, 2, 0, 0, 0, 0, time.UTC)
-	day := time.Date(2026, time.April, 2, 8, 30, 0, 0, tokyo)
+	day := time.Date(2026, time.April, 2, 8, 30, 0, 0, seoul)
 	if got := AgeOn(born, day); got != 18 {
 		t.Fatalf("AgeOn = %d, want 18", got)
 	}
@@ -127,7 +127,7 @@ func TestAgeOnIgnoresTheClockAndTheZone(t *testing.T) {
 // The day an age is counted against is the tenant's, so an instant that is
 // still yesterday in one zone is already today in another.
 func TestTodayFollowsTheTenantZone(t *testing.T) {
-	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	seoul, err := time.LoadLocation("Asia/Seoul")
 	if err != nil {
 		t.Fatalf("LoadLocation: %v", err)
 	}
@@ -136,8 +136,8 @@ func TestTodayFollowsTheTenantZone(t *testing.T) {
 		t.Fatalf("LoadLocation: %v", err)
 	}
 	at := time.Date(2026, time.April, 1, 20, 0, 0, 0, time.UTC)
-	if got := Today(at, tokyo); !got.Equal(date(2026, time.April, 2)) {
-		t.Fatalf("Today in Tokyo = %s, want 2026-04-02", got.Format(time.DateOnly))
+	if got := Today(at, seoul); !got.Equal(date(2026, time.April, 2)) {
+		t.Fatalf("Today in Seoul = %s, want 2026-04-02", got.Format(time.DateOnly))
 	}
 	if got := Today(at, losAngeles); !got.Equal(date(2026, time.April, 1)) {
 		t.Fatalf("Today in Los Angeles = %s, want 2026-04-01", got.Format(time.DateOnly))

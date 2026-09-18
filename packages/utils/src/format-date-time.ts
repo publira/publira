@@ -13,8 +13,8 @@
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
-/** Default IANA zone when `timeZone` is omitted (gradual migration from fixed JST). */
-export const DEFAULT_TIME_ZONE = "Asia/Tokyo";
+/** Default IANA zone when `timeZone` is omitted; mirrors the tenant time zone column default. */
+export const DEFAULT_TIME_ZONE = "UTC";
 
 export interface FormatDateTimeOptions {
   fallback?: string;
@@ -25,7 +25,7 @@ export interface FormatDateTimeOptions {
    */
   locale: Locale;
   /**
-   * IANA time zone used for display (e.g. `Asia/Tokyo`, `America/Los_Angeles`).
+   * IANA time zone used for display (e.g. `Europe/Paris`, `America/Los_Angeles`).
    * Defaults to {@link DEFAULT_TIME_ZONE}.
    */
   timeZone?: string;
@@ -259,8 +259,8 @@ export const plainDateOrNull = (value: string): Temporal.PlainDate | null => {
  * day **in `timeZone`**, as an ISO-8601 instant.
  *
  * The zone is what makes the boundary meaningful: `` `${date}T00:00:00Z` ``
- * pins the day to UTC, which is nine hours off from the day the operator
- * actually picked in a JST-facing UI. Returns `""` for empty / non-date input.
+ * pins the day to UTC, which is hours off from the day the operator actually
+ * picked in a tenant on any other zone. Returns `""` for empty / non-date input.
  */
 export const startOfDayIsoString = (date: string, timeZone: string): string => {
   const plainDate = plainDateOrNull(date);

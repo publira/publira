@@ -49,7 +49,7 @@ const locale = "ja";
 const result = await renderEmail({
   template: "tenant_admin_invitation",
   locale,
-  timeZone: "Asia/Tokyo",
+  timeZone: "UTC",
   messages: await loadEmailMessages(locale),
   data: {
     invite_url: "https://admin.example.com/accept-invite?token=…",

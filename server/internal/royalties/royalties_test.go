@@ -29,15 +29,15 @@ func TestParsePeriodAcceptsOnlyYearAndMonth(t *testing.T) {
 }
 
 func TestMonthEndsAtTheNextMidnightInItsZone(t *testing.T) {
-	month := Month{TenantID: uuid.New(), Period: time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC), TimeZone: "Asia/Tokyo"}
-	endOfJulyInTokyo := time.Date(2026, time.July, 31, 15, 0, 0, 0, time.UTC)
+	month := Month{TenantID: uuid.New(), Period: time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC), TimeZone: "Asia/Seoul"}
+	endOfJulyInSeoul := time.Date(2026, time.July, 31, 15, 0, 0, 0, time.UTC)
 
 	// The month is refused before anything touches the database, so a nil
 	// beginner is enough to reach both answers.
-	if _, err := CloseStatement(context.Background(), nil, month, uuid.NullUUID{}, endOfJulyInTokyo.Add(-time.Second), nil); !errors.Is(err, ErrNotOver) {
-		t.Fatalf("close a second before the Tokyo month ends error = %v, want ErrNotOver", err)
+	if _, err := CloseStatement(context.Background(), nil, month, uuid.NullUUID{}, endOfJulyInSeoul.Add(-time.Second), nil); !errors.Is(err, ErrNotOver) {
+		t.Fatalf("close a second before the Seoul month ends error = %v, want ErrNotOver", err)
 	}
 	if _, err := PreviewStatement(context.Background(), nil, month, time.Date(2026, time.June, 30, 14, 59, 59, 0, time.UTC)); !errors.Is(err, ErrNotStarted) {
-		t.Fatalf("preview a second before the Tokyo month starts error = %v, want ErrNotStarted", err)
+		t.Fatalf("preview a second before the Seoul month starts error = %v, want ErrNotStarted", err)
 	}
 }

@@ -37,6 +37,8 @@ export const OTHER_TENANT = {
     title: "Boundary Series 001",
   },
   siteDescription: "Public description text for Boundary Tenant.",
+  /** Off UTC on purpose: the tenant whose day is not the server's day. */
+  timeZone: "Asia/Tokyo",
   /** Never published: must not be listed and must not have a detail page. */
   unpublishedSeries: {
     publicId: "BndrSERSAAA2",

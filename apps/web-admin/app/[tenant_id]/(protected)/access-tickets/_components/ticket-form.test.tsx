@@ -111,9 +111,7 @@ describe("TicketForm", () => {
   });
 
   it("picks an episode from the combobox when series are available and blocks issuing until one is chosen", () => {
-    render(
-      <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
-    );
+    render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
 
     expect(seriesCombobox()).toBeDefined();
     expect(episodeCombobox()).toBeDefined();
@@ -126,7 +124,7 @@ describe("TicketForm", () => {
   });
 
   it("falls back to typing the episode public_id when the series list is empty", () => {
-    render(<TicketForm action={action} series={[]} timeZone="Asia/Tokyo" />);
+    render(<TicketForm action={action} series={[]} timeZone="UTC" />);
 
     expect(screen.getByLabelText(/Episode public_id/u)).toBeDefined();
     expect(screen.queryByLabelText(/^Series$/u)).toBeNull();
@@ -143,7 +141,7 @@ describe("TicketForm", () => {
         action={action}
         series={[]}
         seriesErrorMessage="Could not load the series."
-        timeZone="Asia/Tokyo"
+        timeZone="UTC"
       />
     );
 
@@ -157,9 +155,7 @@ describe("TicketForm", () => {
       ok: true,
     });
 
-    render(
-      <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
-    );
+    render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
 
     selectSeries(seriesA);
 
@@ -199,9 +195,7 @@ describe("TicketForm", () => {
         ok: true,
       });
 
-    render(
-      <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
-    );
+    render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
 
     selectSeries(seriesA);
 
@@ -233,11 +227,7 @@ describe("TicketForm", () => {
       });
 
     render(
-      <TicketForm
-        action={action}
-        series={[seriesA, seriesB]}
-        timeZone="Asia/Tokyo"
-      />
+      <TicketForm action={action} series={[seriesA, seriesB]} timeZone="UTC" />
     );
 
     selectSeries(seriesA);

@@ -66,7 +66,7 @@ describe("StaffContactMessageNoticeEmail", () => {
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "staff_contact_message_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);
@@ -92,7 +92,7 @@ describe("StaffContactMessageNoticeEmail", () => {
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "staff_contact_message_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);
@@ -109,7 +109,7 @@ describe("StaffContactMessageNoticeEmail", () => {
       locale: "en",
       messages: await loadEmailMessages("en"),
       template: "staff_contact_message_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);
@@ -128,7 +128,7 @@ describe("StaffContactMessageNoticeEmail", () => {
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "staff_contact_message_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);

@@ -58,7 +58,7 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
       locale: "ja",
       messages: await loadEmailMessages("ja"),
       template: "reader_signup_attempt_notice",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.ok).toBe(true);
@@ -128,7 +128,7 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
         locale: "en",
         messages: await loadEmailMessages("en"),
         template: "reader_signup_attempt_notice",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       });
 
       expect(result.ok).toBe(true);

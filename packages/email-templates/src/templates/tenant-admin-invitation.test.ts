@@ -48,7 +48,7 @@ describe("tenantAdminInvitationDataSchema", () => {
 
 describe("TenantAdminInvitationEmail", () => {
   it("the ja mail carries the tenant name and the invitation URL", async () => {
-    const timeZone = "Asia/Tokyo";
+    const timeZone = "UTC";
     const result = await renderEmail({
       data: invitationData,
       locale: "ja",
@@ -97,7 +97,7 @@ describe("TenantAdminInvitationEmail", () => {
     });
     const tokyo = formatDateTime(invitationData.expires_at, {
       locale: "en",
-      timeZone: "Asia/Tokyo",
+      timeZone: "UTC",
     });
 
     expect(result.html).toContain(expires);

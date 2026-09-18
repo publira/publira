@@ -43,7 +43,7 @@ func passwordResetRequest() emailrenderer.Request {
 			"reset_url":   passwordResetURL,
 			"tenant_name": "Aoto Press",
 		},
-		TimeZone: "Asia/Tokyo",
+		TimeZone: "UTC",
 	}
 }
 

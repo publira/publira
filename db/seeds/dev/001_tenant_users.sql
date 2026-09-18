@@ -6,7 +6,7 @@
 WITH tenant_seed AS (
     SELECT '018f0e6a-1000-7000-8000-000000000001'::uuid AS id
 )
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
 SELECT
     ts.id,
     'SeedTNNTAAA1',
@@ -14,6 +14,7 @@ SELECT
     'admin.localhost',
     'Seed Tenant',
     'active',
+    'UTC',
     'en'
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
@@ -21,6 +22,7 @@ SET domain = EXCLUDED.domain,
     admin_domain = EXCLUDED.admin_domain,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
+    timezone = EXCLUDED.timezone,
     default_locale = EXCLUDED.default_locale;
 
 INSERT INTO tenant_config (
@@ -48,7 +50,7 @@ SET copyright_text = EXCLUDED.copyright_text,
 -- would be in a state real bootstrap cannot produce — set up, yet with no saved
 -- display language for the console to open in.
 INSERT INTO platform_config (singleton, default_timezone, default_locale)
-VALUES (TRUE, 'Asia/Tokyo', 'en')
+VALUES (TRUE, 'UTC', 'en')
 ON CONFLICT (singleton) DO UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
     default_locale = EXCLUDED.default_locale,

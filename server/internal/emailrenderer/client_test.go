@@ -49,7 +49,7 @@ func TestClientRender(t *testing.T) {
 			"invite_url":  "https://admin.example.com/accept-invite?token=token",
 			"tenant_name": "Publira",
 		},
-		TimeZone: "Asia/Tokyo",
+		TimeZone: "UTC",
 	})
 	if err != nil {
 		t.Fatalf("Render: %v", err)
@@ -57,7 +57,7 @@ func TestClientRender(t *testing.T) {
 	if email != (Email{HTML: "<p>HTML</p>"}) {
 		t.Fatalf("email = %+v", email)
 	}
-	if service.request.GetTemplate() != "tenant_admin_invitation" || service.request.GetLocale() != "ja" || service.request.GetTimeZone() != "Asia/Tokyo" {
+	if service.request.GetTemplate() != "tenant_admin_invitation" || service.request.GetLocale() != "ja" || service.request.GetTimeZone() != "UTC" {
 		t.Fatalf("request = %+v", service.request)
 	}
 	if service.request.GetData().GetFields()["tenant_name"].GetStringValue() != "Publira" {

@@ -61,8 +61,8 @@ func TestGetTenantTimezoneFallsBackToDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTenantTimezone: %v", err)
 	}
-	if resp.Msg.Timezone != "Asia/Tokyo" {
-		t.Fatalf("timezone = %q, want Asia/Tokyo", resp.Msg.Timezone)
+	if resp.Msg.Timezone != "UTC" {
+		t.Fatalf("timezone = %q, want UTC", resp.Msg.Timezone)
 	}
 	assertExpectations(t, mock)
 }
@@ -246,7 +246,7 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(updateTenantDefaultLocaleQuery)).
 		WithArgs("en", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Asia/Tokyo", "en"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "UTC", "en"))
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.UpdateTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantDefaultLocaleRequest{

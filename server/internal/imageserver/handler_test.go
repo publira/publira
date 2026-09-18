@@ -1483,7 +1483,7 @@ func TestEpisodeImageRefusesARatedBodyOnThePublicPath(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := newTestServer(t,
-				stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test", Timezone: "Asia/Tokyo"}},
+				stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test", Timezone: "UTC"}},
 				stubFactory{q: stubTenantQueries{
 					public: dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow{
 						ID:              mediaID,
@@ -1521,11 +1521,7 @@ func TestEpisodeImageChecksTheReaderAgainstTheAgeRule(t *testing.T) {
 	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
 	userID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
 	tokens := auth.NewTokenManager([]byte(testMediaJWTSecret))
-	tokyo, err := time.LoadLocation("Asia/Tokyo")
-	if err != nil {
-		t.Fatalf("LoadLocation: %v", err)
-	}
-	today := ageverification.Today(time.Now(), tokyo)
+	today := ageverification.Today(time.Now(), time.UTC)
 
 	cases := []struct {
 		name       string
@@ -1556,7 +1552,7 @@ func TestEpisodeImageChecksTheReaderAgainstTheAgeRule(t *testing.T) {
 			queries.userAccess.AgeVerification = sql.NullString{String: ageverification.R18, Valid: true}
 
 			srv := newTestServerWithTokens(t,
-				stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test", Timezone: "Asia/Tokyo"}},
+				stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test", Timezone: "UTC"}},
 				stubFactory{q: queries},
 				&countingStore{objects: map[string]storedObject{
 					"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},

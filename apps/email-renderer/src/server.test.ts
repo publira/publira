@@ -65,7 +65,7 @@ describe("email renderer server", () => {
         data: {},
         locale: "ja",
         template: "unknown",
-        timeZone: "Asia/Tokyo",
+        timeZone: "UTC",
       })
     ).rejects.toMatchObject({ code: Code.InvalidArgument });
   });

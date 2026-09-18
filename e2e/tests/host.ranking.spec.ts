@@ -52,8 +52,6 @@ test.describe("web-host ranking", () => {
   }) => {
     await page.goto(hostPath("/ranking?period=weekly"));
 
-    // The snapshot was computed at 21:00 UTC and this tenant is on Asia/Tokyo,
-    // so the day on screen is the following one.
     await expect(
       page.getByText(`Updated ${RANKING_COMPUTED_ON}`)
     ).toBeVisible();
