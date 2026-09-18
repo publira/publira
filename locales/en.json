@@ -567,6 +567,55 @@
       },
       "cancel": "Cancel"
     },
+    "contact_messages": {
+      "title": "Contact messages",
+      "page_description": "Read the messages readers sent this site, and keep track of which ones have been dealt with.",
+      "item_label": "contact messages",
+      "list_error": "Could not display the contact messages",
+      "list_failed": "Could not load the contact messages. Please try again later.",
+      "empty_title": "There are no contact messages to show.",
+      "empty_description": "Nothing has arrived through the contact form yet.",
+      "empty_filtered_description": "No message is in this state. Try the other state, or reset the filter.",
+      "pagination_aria": "Contact messages pagination",
+      "pagination_description": "Shows up to {$count} messages per page, newest first.",
+      "status_unhandled": "Waiting",
+      "status_handled": "Handled",
+      "subject_none": "No subject",
+      "sender_guest": "Guest",
+      "body": "Message",
+      "handled_at": "Handled on",
+      "columns": {
+        "subject": "Subject",
+        "sender": "From",
+        "reply_to": "Reply to",
+        "status": "Status",
+        "created_at": "Received"
+      },
+      "filter": {
+        "status": "Status",
+        "status_all": "Every status",
+        "apply": "Apply",
+        "reset": "Reset"
+      },
+      "detail_title": "Contact message",
+      "detail_description": "The whole message, the address to answer it at, and whether anyone has dealt with it yet.",
+      "detail_section_title": "Message",
+      "detail_error": "Could not display the contact message",
+      "detail_failed": "Could not load the contact message. Please try again later.",
+      "back_to_list": "Back to contact messages",
+      "mark_handled": "Mark handled",
+      "marking_handled": "Marking…",
+      "marked_handled": "The message has been marked handled.",
+      "mark_handled_failed": "Could not mark the message handled. Please try again later.",
+      "reopen": "Mark as waiting",
+      "reopening": "Marking…",
+      "reopened": "The message is waiting again.",
+      "reopen_failed": "Could not put the message back among the ones waiting. Please try again later.",
+      "validation": {
+        "target_missing": "Could not tell which message this applies to. Reload the page and try again.",
+        "tenant_missing": "Could not tell which tenant this applies to. Reload the page and try again."
+      }
+    },
     "creators": {
       "detail_error": "Could not display the author",
       "title": "Authors",
@@ -826,6 +875,7 @@
       "audit_label": "Audit logs",
       "comments_label": "Comments",
       "comments_pending": "{$count} comments awaiting approval",
+      "contact_messages_label": "Contact messages",
       "creators_label": "Authors",
       "dashboard_label": "Dashboard",
       "engagement_label": "Read-through",

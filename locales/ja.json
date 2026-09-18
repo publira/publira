@@ -567,6 +567,55 @@
       },
       "cancel": "キャンセル"
     },
+    "contact_messages": {
+      "title": "お問い合わせ",
+      "page_description": "読者からこのサイトに届いたメッセージを読み、対応済みかどうかを管理します。",
+      "item_label": "お問い合わせ",
+      "list_error": "お問い合わせを表示できませんでした",
+      "list_failed": "お問い合わせを取得できませんでした。時間をおいて再試行してください。",
+      "empty_title": "表示できるお問い合わせはありません。",
+      "empty_description": "お問い合わせフォームから届いたメッセージはまだありません。",
+      "empty_filtered_description": "この状態のお問い合わせはありません。別の状態を選ぶか、条件をリセットしてください。",
+      "pagination_aria": "お問い合わせのページ送り",
+      "pagination_description": "1ページあたり最大{$count}件を受信日時の新しい順に表示します。",
+      "status_unhandled": "未対応",
+      "status_handled": "対応済み",
+      "subject_none": "件名なし",
+      "sender_guest": "ゲスト",
+      "body": "本文",
+      "handled_at": "対応日時",
+      "columns": {
+        "subject": "件名",
+        "sender": "差出人",
+        "reply_to": "返信先",
+        "status": "状態",
+        "created_at": "受信日時"
+      },
+      "filter": {
+        "status": "状態",
+        "status_all": "すべての状態",
+        "apply": "適用",
+        "reset": "リセット"
+      },
+      "detail_title": "お問い合わせ",
+      "detail_description": "メッセージの全文と返信先のアドレス、そして対応済みかどうかを確認します。",
+      "detail_section_title": "メッセージ",
+      "detail_error": "お問い合わせを表示できませんでした",
+      "detail_failed": "お問い合わせを取得できませんでした。時間をおいて再試行してください。",
+      "back_to_list": "お問い合わせ一覧に戻る",
+      "mark_handled": "対応済みにする",
+      "marking_handled": "変更しています…",
+      "marked_handled": "お問い合わせを対応済みにしました。",
+      "mark_handled_failed": "お問い合わせを対応済みにできませんでした。時間をおいて再試行してください。",
+      "reopen": "未対応に戻す",
+      "reopening": "変更しています…",
+      "reopened": "お問い合わせを未対応に戻しました。",
+      "reopen_failed": "お問い合わせを未対応に戻せませんでした。時間をおいて再試行してください。",
+      "validation": {
+        "target_missing": "対象のお問い合わせを特定できませんでした。ページを再読み込みしてもう一度お試しください。",
+        "tenant_missing": "対象のテナントを特定できませんでした。ページを再読み込みしてもう一度お試しください。"
+      }
+    },
     "creators": {
       "detail_error": "著者を表示できませんでした",
       "title": "著者",
@@ -826,6 +875,7 @@
       "audit_label": "監査ログ",
       "comments_label": "コメント",
       "comments_pending": "承認待ちのコメント{$count}件",
+      "contact_messages_label": "お問い合わせ",
       "creators_label": "著者",
       "dashboard_label": "ダッシュボード",
       "engagement_label": "読了率",

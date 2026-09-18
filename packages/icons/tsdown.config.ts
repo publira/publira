@@ -22,6 +22,7 @@ export default defineConfig({
     "src/image-icon.tsx",
     "src/language-icon.tsx",
     "src/logout-icon.tsx",
+    "src/mail-icon.tsx",
     "src/maximize-icon.tsx",
     "src/megaphone-icon.tsx",
     "src/menu-icon.tsx",

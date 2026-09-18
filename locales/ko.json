@@ -567,6 +567,55 @@
       },
       "cancel": "취소"
     },
+    "contact_messages": {
+      "title": "문의",
+      "page_description": "독자가 이 사이트로 보낸 메시지를 읽고, 처리 여부를 관리합니다.",
+      "item_label": "문의",
+      "list_error": "문의를 표시할 수 없습니다",
+      "list_failed": "문의를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "empty_title": "표시할 문의가 없습니다.",
+      "empty_description": "아직 문의 양식으로 도착한 메시지가 없습니다.",
+      "empty_filtered_description": "이 상태의 문의가 없습니다. 다른 상태를 선택하거나 조건을 초기화하세요.",
+      "pagination_aria": "문의 목록 페이지 이동",
+      "pagination_description": "수신 일시 최신순으로 한 페이지에 최대 {$count}건까지 표시합니다.",
+      "status_unhandled": "미처리",
+      "status_handled": "처리 완료",
+      "subject_none": "제목 없음",
+      "sender_guest": "게스트",
+      "body": "본문",
+      "handled_at": "처리 일시",
+      "columns": {
+        "subject": "제목",
+        "sender": "보낸 사람",
+        "reply_to": "회신 주소",
+        "status": "상태",
+        "created_at": "수신 일시"
+      },
+      "filter": {
+        "status": "상태",
+        "status_all": "모든 상태",
+        "apply": "적용",
+        "reset": "초기화"
+      },
+      "detail_title": "문의",
+      "detail_description": "메시지 전문과 답장할 주소, 그리고 처리 여부를 확인합니다.",
+      "detail_section_title": "메시지",
+      "detail_error": "문의를 표시할 수 없습니다",
+      "detail_failed": "문의를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "back_to_list": "문의 목록으로 돌아가기",
+      "mark_handled": "처리 완료로 표시",
+      "marking_handled": "변경하는 중…",
+      "marked_handled": "문의를 처리 완료로 표시했습니다.",
+      "mark_handled_failed": "문의를 처리 완료로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "reopen": "미처리로 되돌리기",
+      "reopening": "변경하는 중…",
+      "reopened": "문의를 미처리로 되돌렸습니다.",
+      "reopen_failed": "문의를 미처리로 되돌리지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "validation": {
+        "target_missing": "대상 문의를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
+        "tenant_missing": "대상 테넌트를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요."
+      }
+    },
     "creators": {
       "detail_error": "작가를 표시할 수 없습니다",
       "title": "작가",
@@ -826,6 +875,7 @@
       "audit_label": "감사 로그",
       "comments_label": "댓글",
       "comments_pending": "승인 대기 중인 댓글 {$count}건",
+      "contact_messages_label": "문의",
       "creators_label": "작가",
       "dashboard_label": "대시보드",
       "engagement_label": "완독률",

@@ -567,6 +567,55 @@
       },
       "cancel": "取消"
     },
+    "contact_messages": {
+      "title": "咨询",
+      "page_description": "阅读读者发送到本站的消息，并管理其处理情况。",
+      "item_label": "咨询",
+      "list_error": "无法显示咨询",
+      "list_failed": "无法加载咨询。请稍后再试。",
+      "empty_title": "没有可显示的咨询。",
+      "empty_description": "还没有通过咨询表单收到消息。",
+      "empty_filtered_description": "没有处于该状态的咨询。请选择其他状态，或重置筛选条件。",
+      "pagination_aria": "咨询分页",
+      "pagination_description": "每页最多显示 {$count} 条咨询，按接收时间从新到旧排列。",
+      "status_unhandled": "未处理",
+      "status_handled": "已处理",
+      "subject_none": "无主题",
+      "sender_guest": "访客",
+      "body": "正文",
+      "handled_at": "处理时间",
+      "columns": {
+        "subject": "主题",
+        "sender": "发件人",
+        "reply_to": "回复地址",
+        "status": "状态",
+        "created_at": "接收时间"
+      },
+      "filter": {
+        "status": "状态",
+        "status_all": "全部状态",
+        "apply": "应用",
+        "reset": "重置"
+      },
+      "detail_title": "咨询",
+      "detail_description": "查看消息全文、回复地址，以及是否已经处理。",
+      "detail_section_title": "消息",
+      "detail_error": "无法显示该咨询",
+      "detail_failed": "无法加载该咨询。请稍后重试。",
+      "back_to_list": "返回咨询列表",
+      "mark_handled": "标记为已处理",
+      "marking_handled": "正在变更…",
+      "marked_handled": "已将该咨询标记为已处理。",
+      "mark_handled_failed": "无法将该咨询标记为已处理。请稍后重试。",
+      "reopen": "退回未处理",
+      "reopening": "正在变更…",
+      "reopened": "已将该咨询退回未处理。",
+      "reopen_failed": "无法将该咨询退回未处理。请稍后重试。",
+      "validation": {
+        "target_missing": "无法确定要操作的咨询。请刷新页面后重试。",
+        "tenant_missing": "无法确定要操作的租户。请刷新页面后重试。"
+      }
+    },
     "creators": {
       "detail_error": "无法显示该作者",
       "title": "作者",
@@ -826,6 +875,7 @@
       "audit_label": "审计日志",
       "comments_label": "评论",
       "comments_pending": "{$count} 条评论等待审核",
+      "contact_messages_label": "咨询",
       "creators_label": "作者",
       "dashboard_label": "仪表盘",
       "engagement_label": "读完率",
