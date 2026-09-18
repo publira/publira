@@ -21,6 +21,10 @@ for cmd in docker task psql migrate wait4x; do
   fi
 done
 
+# Phase 3 restarts containers, so the wait it relies on is checked first, before
+# anything is up and with `compose` stubbed.
+bash "${BOOTSTRAP_SCRIPTS_DIR}/lib_test.sh"
+
 cleanup_done=0
 cleanup() {
   local status=$?
