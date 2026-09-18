@@ -129,6 +129,9 @@ func (s *apiServer) ListNotifications(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
 
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultNotificationPageSize, maxNotificationPageSize)
 	cursor, err := pagination.Decode(req.Msg.Token)
@@ -182,6 +185,9 @@ func (s *apiServer) CountUnreadNotifications(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
 
 	unread, err := s.queriesFor(ctx).CountUnreadNotificationsForUser(ctx, dbmodels.CountUnreadNotificationsForUserParams{
 		TenantID: tenant.ID,
@@ -200,6 +206,9 @@ func (s *apiServer) MarkNotificationAsRead(
 ) (*connect.Response[publirav1.MarkNotificationAsReadResponse], error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
 
@@ -229,6 +238,9 @@ func (s *apiServer) MarkAllNotificationsAsRead(
 ) (*connect.Response[publirav1.MarkAllNotificationsAsReadResponse], error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
 

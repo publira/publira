@@ -85,7 +85,7 @@ type AnnouncementNotificationHandlerConfig struct {
 type announcementNotificationQuerier interface {
 	GetTenantUserID(ctx context.Context, arg dbmodels.GetTenantUserIDParams) (uuid.UUID, error)
 	ListTenantUserIDs(ctx context.Context, arg dbmodels.ListTenantUserIDsParams) ([]uuid.UUID, error)
-	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) (dbmodels.Notification, error)
+	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 }
 
 // NewAnnouncementNotificationHandler writes one bell notification per reader a
@@ -131,7 +131,7 @@ func announcementNotificationHandler(
 			if idErr != nil {
 				return fmt.Errorf("allocate notification id: %w", idErr)
 			}
-			_, insertErr := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+			insertErr := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 				ID:               notificationID,
 				TenantID:         tenantID,
 				UserID:           userID,
@@ -139,9 +139,9 @@ func announcementNotificationHandler(
 				SubjectKey:       AnnouncementSubjectKey(announcementID),
 				Payload:          body,
 			})
-			// No rows means this recipient already has this announcement's row,
-			// which is what a redelivered event looks like.
-			if insertErr != nil && !errors.Is(insertErr, sql.ErrNoRows) {
+			// A recipient who already has this announcement's row, which is what
+			// a redelivered event looks like, is a no-op rather than an error.
+			if insertErr != nil {
 				return fmt.Errorf("insert notification for %s: %w", userID, insertErr)
 			}
 			return nil

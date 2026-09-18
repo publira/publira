@@ -1,6 +1,9 @@
 -- Worker insert. Same recipient / type / subject is a no-op so retries
--- do not create a second row. :one returns no rows on conflict.
--- name: CreateNotification :one
+-- do not create a second row. Neither RETURNING nor a conflict target: either
+-- one needs SELECT on the row, which puts it through the member policy and
+-- refuses a row filed for somebody else. The ids are fresh UUIDv7s, so the
+-- recipient / type / subject key is the only one an insert can conflict on.
+-- name: CreateNotification :exec
 INSERT INTO notifications (
     id,
     tenant_id,
@@ -17,8 +20,7 @@ VALUES (
     sqlc.arg('subject_key'),
     sqlc.arg('payload')
 )
-ON CONFLICT (user_id, notification_type, subject_key) DO NOTHING
-RETURNING *;
+ON CONFLICT DO NOTHING;
 
 -- name: CreatePlatformNotification :one
 INSERT INTO platform_notifications (

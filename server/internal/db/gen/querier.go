@@ -203,8 +203,11 @@ type Querier interface {
 	CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error)
 	CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error)
 	// Worker insert. Same recipient / type / subject is a no-op so retries
-	// do not create a second row. :one returns no rows on conflict.
-	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
+	// do not create a second row. Neither RETURNING nor a conflict target: either
+	// one needs SELECT on the row, which puts it through the member policy and
+	// refuses a row filed for somebody else. The ids are fresh UUIDv7s, so the
+	// recipient / type / subject key is the only one an insert can conflict on.
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) error
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
 	CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error)
 	CreatePlatformNotification(ctx context.Context, arg CreatePlatformNotificationParams) (PlatformNotification, error)

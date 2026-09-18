@@ -58,7 +58,7 @@ func (q *Queries) CountUnreadPlatformNotificationsForUser(ctx context.Context, p
 	return unread_count, err
 }
 
-const createNotification = `-- name: CreateNotification :one
+const createNotification = `-- name: CreateNotification :exec
 INSERT INTO notifications (
     id,
     tenant_id,
@@ -75,8 +75,7 @@ VALUES (
     $5,
     $6
 )
-ON CONFLICT (user_id, notification_type, subject_key) DO NOTHING
-RETURNING id, tenant_id, user_id, notification_type, subject_key, payload, created_at
+ON CONFLICT DO NOTHING
 `
 
 type CreateNotificationParams struct {
@@ -89,9 +88,12 @@ type CreateNotificationParams struct {
 }
 
 // Worker insert. Same recipient / type / subject is a no-op so retries
-// do not create a second row. :one returns no rows on conflict.
-func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error) {
-	row := q.db.QueryRowContext(ctx, createNotification,
+// do not create a second row. Neither RETURNING nor a conflict target: either
+// one needs SELECT on the row, which puts it through the member policy and
+// refuses a row filed for somebody else. The ids are fresh UUIDv7s, so the
+// recipient / type / subject key is the only one an insert can conflict on.
+func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) error {
+	_, err := q.db.ExecContext(ctx, createNotification,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -99,17 +101,7 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 		arg.SubjectKey,
 		arg.Payload,
 	)
-	var i Notification
-	err := row.Scan(
-		&i.ID,
-		&i.TenantID,
-		&i.UserID,
-		&i.NotificationType,
-		&i.SubjectKey,
-		&i.Payload,
-		&i.CreatedAt,
-	)
-	return i, err
+	return err
 }
 
 const createPlatformNotification = `-- name: CreatePlatformNotification :one

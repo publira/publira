@@ -98,7 +98,7 @@ type StaffNotificationHandlerConfig struct {
 // test can drive the fan-out without a database behind it.
 type staffNotificationQuerier interface {
 	ListTenantAdminIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
-	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) (dbmodels.Notification, error)
+	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 }
 
 // NewCommentAwaitingApprovalNotificationHandler tells the tenant's staff that
@@ -171,7 +171,7 @@ func staffCommentNotificationHandler(
 			if err != nil {
 				return fmt.Errorf("allocate notification id: %w", err)
 			}
-			_, err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+			err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 				ID:               notificationID,
 				TenantID:         tenantID,
 				UserID:           userID,
@@ -179,9 +179,9 @@ func staffCommentNotificationHandler(
 				SubjectKey:       subjectKey,
 				Payload:          body,
 			})
-			// No rows means this recipient already has this window's row, which
-			// is what a redelivered event looks like.
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			// A recipient who already has this window's row, which is what a
+			// redelivered event looks like, is a no-op rather than an error.
+			if err != nil {
 				return fmt.Errorf("insert notification for %s: %w", userID, err)
 			}
 		}

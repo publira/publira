@@ -147,21 +147,6 @@ func TestAnnouncementNotificationRetriesAFailedTargetLookup(t *testing.T) {
 	}
 }
 
-func TestAnnouncementNotificationTreatsAnExistingRowAsDone(t *testing.T) {
-	// A redelivered event finds this announcement's row already written for
-	// everyone, which CreateNotification reports as no rows rather than as a
-	// failure.
-	queries := &stubAnnouncementQuerier{
-		users:     []uuid.UUID{uuid.New()},
-		createErr: sql.ErrNoRows,
-	}
-
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New(), "")); err != nil {
-		t.Fatalf("handler: %v", err)
-	}
-}
-
 func TestAnnouncementNotificationCompletesWhenTheTenantHasNoUsers(t *testing.T) {
 	queries := &stubAnnouncementQuerier{}
 
@@ -304,10 +289,10 @@ func (s *stubAnnouncementQuerier) ListTenantUserIDs(
 func (s *stubAnnouncementQuerier) CreateNotification(
 	_ context.Context,
 	arg dbmodels.CreateNotificationParams,
-) (dbmodels.Notification, error) {
+) error {
 	if s.createErr != nil {
-		return dbmodels.Notification{}, s.createErr
+		return s.createErr
 	}
 	s.created = append(s.created, arg)
-	return dbmodels.Notification{ID: arg.ID}, nil
+	return nil
 }

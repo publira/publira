@@ -235,7 +235,7 @@ func (r *Runner) notifyFollowersOfPublish(ctx context.Context, q *dbmodels.Queri
 			if err != nil {
 				return fmt.Errorf("allocate notification id: %w", err)
 			}
-			_, err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+			err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 				ID:               notificationID,
 				TenantID:         row.TenantID,
 				UserID:           followerID,
@@ -243,7 +243,7 @@ func (r *Runner) notifyFollowersOfPublish(ctx context.Context, q *dbmodels.Queri
 				SubjectKey:       subjectKey,
 				Payload:          payload,
 			})
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			if err != nil {
 				return fmt.Errorf("insert notification for %s: %w", followerID, err)
 			}
 		}
@@ -345,7 +345,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 			)
 			continue
 		}
-		_, err = r.queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+		err = r.queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 			ID:               notificationID,
 			TenantID:         row.TenantID,
 			UserID:           adminID,
@@ -353,7 +353,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 			SubjectKey:       subjectKey,
 			Payload:          payload,
 		})
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		if err != nil {
 			r.logger.ErrorContext(ctx, "failed to insert publish notification",
 				"episode_id", row.EpisodeID,
 				"user_id", adminID,
