@@ -435,16 +435,26 @@ void main() {
       );
 
       router.pop();
-      await pumpUntilFound(
-        tester,
-        find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+      final saveAction = find.byKey(
+        ValueKey('episode-save-offline-${_freeEpisode.id}'),
       );
-      await tester.tap(
-        find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+      await pumpUntilFound(tester, saveAction);
+      final saveActionBox = tester.getRect(saveAction);
+      final saveActionIcon = tester.getRect(
+        find.descendant(of: saveAction, matching: find.byType(Icon)),
       );
-      await pumpUntilFound(
-        tester,
-        find.byKey(const ValueKey('episode-saved-offline')),
+      await tester.tap(saveAction);
+      final savedMark = find.byKey(const ValueKey('episode-saved-offline'));
+      await pumpUntilFound(tester, savedMark);
+
+      // The row turns from the save action into the mark without its icon
+      // moving or changing size.
+      expect(tester.getRect(savedMark), saveActionBox);
+      expect(
+        tester.getRect(
+          find.descendant(of: savedMark, matching: find.byType(Icon)),
+        ),
+        saveActionIcon,
       );
 
       // The page already on the device is not fetched again.

@@ -658,15 +658,18 @@ class _SavedOfflineMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // The save action's box and icon size, so a row that turns from one into
+    // the other keeps its icon where it was.
+    return SizedBox.square(
       key: const ValueKey('episode-saved-offline'),
-      padding: const EdgeInsets.only(right: 8),
-      child: Icon(
-        Icons.offline_pin_outlined,
-        size: 20,
-        // The mark is the only thing that says this episode still opens
-        // without a network, so it has to reach a screen reader too.
-        semanticLabel: AppMessages.of(context).seriesSavedOffline,
+      dimension: kMinInteractiveDimension,
+      child: Center(
+        child: Icon(
+          Icons.offline_pin_outlined,
+          // The mark is the only thing that says this episode still opens
+          // without a network, so it has to reach a screen reader too.
+          semanticLabel: AppMessages.of(context).seriesSavedOffline,
+        ),
       ),
     );
   }
