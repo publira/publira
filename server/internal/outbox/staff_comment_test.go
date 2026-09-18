@@ -2,7 +2,6 @@ package outbox
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -126,21 +125,6 @@ func TestStaffCommentNotificationWritesTheReportedType(t *testing.T) {
 	}
 }
 
-func TestStaffCommentNotificationTreatsAnExistingRowAsDone(t *testing.T) {
-	// A redelivered event finds this window's row already written for everyone,
-	// which CreateNotification reports as no rows rather than as a failure.
-	queries := &stubStaffNotificationQuerier{
-		staff:     []uuid.UUID{uuid.New()},
-		createErr: sql.ErrNoRows,
-	}
-
-	handler := staffCommentNotificationHandler(
-		StaffNotificationHandlerConfig{}, NotificationTypeCommentAwaitingApproval, queries)
-	if err := handler(context.Background(), staffCommentEvent(t, uuid.New(), EventTypeCommentAwaitingApprovalNotification)); err != nil {
-		t.Fatalf("handler: %v", err)
-	}
-}
-
 func TestStaffCommentNotificationCompletesWhenTheTenantHasNoStaff(t *testing.T) {
 	queries := &stubStaffNotificationQuerier{}
 
@@ -247,10 +231,10 @@ func (s *stubStaffNotificationQuerier) ListTenantAdminIDs(_ context.Context, ten
 func (s *stubStaffNotificationQuerier) CreateNotification(
 	_ context.Context,
 	arg dbmodels.CreateNotificationParams,
-) (dbmodels.Notification, error) {
+) error {
 	if s.createErr != nil {
-		return dbmodels.Notification{}, s.createErr
+		return s.createErr
 	}
 	s.created = append(s.created, arg)
-	return dbmodels.Notification{ID: arg.ID}, nil
+	return nil
 }

@@ -1526,9 +1526,10 @@ func (s *apiServer) DeleteMe(
 }
 
 // scopeReaderStateUser applies the member half of the policies that guard what
-// a reader keeps for themselves — announcement_reads and
-// user_notification_settings — to the request connection. Direct handler tests
-// use sqlmock and therefore borrow no request connection.
+// a reader keeps for themselves — announcement_reads, notifications,
+// notification_reads, and user_notification_settings — to the request
+// connection. Direct handler tests use sqlmock and therefore borrow no request
+// connection.
 func (s *apiServer) scopeReaderStateUser(ctx context.Context, userID uuid.UUID) error {
 	conn, ok := rpcmiddleware.TenantConnFromContext(ctx)
 	if !ok {

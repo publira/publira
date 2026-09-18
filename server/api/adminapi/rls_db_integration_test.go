@@ -80,14 +80,21 @@ func TestDBRLSHidesNotificationsOfAnotherTenant(t *testing.T) {
 
 	mine := insertAdminNotification(t, env, first.Tenant.ID, first.User.ID, "episode_published", "episode:mine", `{"episode_id":"mine"}`)
 	theirs := insertAdminNotification(t, env, second.Tenant.ID, second.User.ID, "episode_published", "episode:theirs", `{"episode_id":"theirs"}`)
+	// A bell is one admin's own, so a second admin of the same tenant is hidden
+	// as well as the other tenant.
+	peer := env.PG.SeedTenantAdmin(t, first.Tenant.ID, "ADMINA000002", "peer@tenant-a.example.com", "Peer Admin")
+	insertAdminNotification(t, env, first.Tenant.ID, peer.ID, "episode_published", "episode:peer", `{"episode_id":"peer"}`)
 
 	env.withTenantConn(t, first.Tenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_user_id', $1, false)", first.User.ID.String()); err != nil {
+			t.Fatalf("set app.current_user_id: %v", err)
+		}
 		var visible int
 		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM notifications").Scan(&visible); err != nil {
 			t.Fatalf("count notifications: %v", err)
 		}
 		if visible != 1 {
-			t.Fatalf("visible notifications = %d, want only the one owned by tenant A", visible)
+			t.Fatalf("visible notifications = %d, want only the one filed for this admin", visible)
 		}
 
 		var notificationType string

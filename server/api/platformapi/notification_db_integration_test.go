@@ -132,8 +132,9 @@ func insertTenantNotificationForPlatformTest(
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	row, err := dbmodels.New(pg.DB).CreateNotification(ctx, dbmodels.CreateNotificationParams{
-		ID:               uuid.Must(uuid.NewV7()),
+	id := uuid.Must(uuid.NewV7())
+	err := dbmodels.New(pg.DB).CreateNotification(ctx, dbmodels.CreateNotificationParams{
+		ID:               id,
 		TenantID:         tenantID,
 		UserID:           userID,
 		NotificationType: notificationType,
@@ -143,5 +144,5 @@ func insertTenantNotificationForPlatformTest(
 	if err != nil {
 		t.Fatalf("CreateNotification: %v", err)
 	}
-	return row.ID
+	return id
 }

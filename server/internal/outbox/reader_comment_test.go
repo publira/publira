@@ -2,7 +2,6 @@ package outbox
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -85,20 +84,6 @@ func TestNotifyCommentAuthorWritesAHiddenRowWithTheReason(t *testing.T) {
 		"comment_id":    "CMTHIDE00001",
 		"hidden_reason": CommentHiddenReasonAutoReports,
 	})
-}
-
-func TestNotifyCommentAuthorTreatsAnExistingRowAsDone(t *testing.T) {
-	queries := &stubCommentAuthorNotifier{createErr: sql.ErrNoRows}
-
-	err := NotifyCommentAuthor(context.Background(), queries, CommentAuthorNotification{
-		TenantID:         uuid.New(),
-		UserID:           uuid.New(),
-		NotificationType: NotificationTypeCommentApproved,
-		CommentPublicID:  "CMTPEND00001",
-	})
-	if err != nil {
-		t.Fatalf("NotifyCommentAuthor: %v", err)
-	}
 }
 
 func TestNotifyCommentAuthorReturnsAFailedInsert(t *testing.T) {
@@ -214,10 +199,10 @@ type stubCommentAuthorNotifier struct {
 func (s *stubCommentAuthorNotifier) CreateNotification(
 	_ context.Context,
 	arg dbmodels.CreateNotificationParams,
-) (dbmodels.Notification, error) {
+) error {
 	if s.createErr != nil {
-		return dbmodels.Notification{}, s.createErr
+		return s.createErr
 	}
 	s.created = append(s.created, arg)
-	return dbmodels.Notification{ID: arg.ID}, nil
+	return nil
 }

@@ -15,6 +15,8 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantconn"
 )
 
 const (
@@ -120,6 +122,21 @@ func mapAdminNotificationFromRow(row notificationPageRow) *publiraadminv1.AdminN
 	}
 }
 
+// scopeNotificationRecipient applies the member half of the notifications and
+// notification_reads policies to the request connection, so the bell shows
+// only the signed-in admin's own rows. Direct handler tests use sqlmock and
+// therefore borrow no request connection.
+func (s *adminServer) scopeNotificationRecipient(ctx context.Context, userID uuid.UUID) error {
+	conn, ok := rpcmiddleware.TenantConnFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if err := tenantconn.SetUser(ctx, conn, userID); err != nil {
+		return s.internalDBError(ctx, "failed to set notification recipient context", err, "user_id", userID.String())
+	}
+	return nil
+}
+
 func (s *adminServer) ListNotifications(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListNotificationsRequest],
@@ -130,6 +147,9 @@ func (s *adminServer) ListNotifications(
 	}
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeNotificationRecipient(ctx, sessionCtx.User.ID); err != nil {
 		return nil, err
 	}
 
@@ -189,6 +209,9 @@ func (s *adminServer) CountUnreadNotifications(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.scopeNotificationRecipient(ctx, sessionCtx.User.ID); err != nil {
+		return nil, err
+	}
 
 	unread, err := s.queriesFor(ctx).CountUnreadNotificationsForUser(ctx, dbmodels.CountUnreadNotificationsForUserParams{
 		TenantID: tenant.ID,
@@ -211,6 +234,9 @@ func (s *adminServer) MarkNotificationAsRead(
 	}
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeNotificationRecipient(ctx, sessionCtx.User.ID); err != nil {
 		return nil, err
 	}
 
@@ -244,6 +270,9 @@ func (s *adminServer) MarkAllNotificationsAsRead(
 	}
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.scopeNotificationRecipient(ctx, sessionCtx.User.ID); err != nil {
 		return nil, err
 	}
 

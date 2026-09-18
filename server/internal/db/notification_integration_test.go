@@ -26,8 +26,9 @@ func TestCreateNotificationIgnoresDuplicateSubject(t *testing.T) {
 	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER001", "notif-user@example.com", "Notification User")
 	queries := dbmodels.New(pg.DB)
 
-	first, err := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
-		ID:               uuid.Must(uuid.NewV7()),
+	firstID := uuid.Must(uuid.NewV7())
+	err := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+		ID:               firstID,
 		TenantID:         tenantID,
 		UserID:           userID,
 		NotificationType: "episode_published",
@@ -38,7 +39,7 @@ func TestCreateNotificationIgnoresDuplicateSubject(t *testing.T) {
 		t.Fatalf("CreateNotification: %v", err)
 	}
 
-	_, err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+	err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 		ID:               uuid.Must(uuid.NewV7()),
 		TenantID:         tenantID,
 		UserID:           userID,
@@ -46,11 +47,11 @@ func TestCreateNotificationIgnoresDuplicateSubject(t *testing.T) {
 		SubjectKey:       "episode:EPISODE0001",
 		Payload:          json.RawMessage(`{"episode_id":"EPISODE0001"}`),
 	})
-	if !errors.Is(err, sql.ErrNoRows) {
-		t.Fatalf("duplicate CreateNotification error = %v, want sql.ErrNoRows", err)
+	if err != nil {
+		t.Fatalf("duplicate CreateNotification: %v", err)
 	}
 
-	_, err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+	err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 		ID:               uuid.Must(uuid.NewV7()),
 		TenantID:         tenantID,
 		UserID:           userID,
@@ -69,8 +70,12 @@ func TestCreateNotificationIgnoresDuplicateSubject(t *testing.T) {
 	if count != 2 {
 		t.Fatalf("notification count = %d, want 2", count)
 	}
-	if first.NotificationType != "episode_published" {
-		t.Fatalf("first type = %q", first.NotificationType)
+	var published uuid.UUID
+	if err := pg.DB.QueryRowContext(ctx, `SELECT id FROM notifications WHERE user_id = $1 AND notification_type = 'episode_published'`, userID).Scan(&published); err != nil {
+		t.Fatalf("read episode_published notification: %v", err)
+	}
+	if published != firstID {
+		t.Fatalf("episode_published notification id = %s, want the first insert's %s", published, firstID)
 	}
 }
 
@@ -343,7 +348,7 @@ func TestNotificationPayloadMustBeObject(t *testing.T) {
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	queries := dbmodels.New(pg.DB)
 
-	_, err := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+	err := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 		ID:               uuid.Must(uuid.NewV7()),
 		TenantID:         tenantID,
 		UserID:           userID,

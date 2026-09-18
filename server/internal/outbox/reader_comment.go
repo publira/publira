@@ -2,7 +2,6 @@ package outbox
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -72,7 +71,7 @@ type commentAuthorNotificationBody struct {
 // commentAuthorNotifier is the insert the helper runs, named so a test can
 // drive the write without a database behind it.
 type commentAuthorNotifier interface {
-	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) (dbmodels.Notification, error)
+	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 }
 
 // NotifyCommentAuthor writes one bell notification for the author of a comment
@@ -120,7 +119,7 @@ func NotifyCommentAuthor(ctx context.Context, queries commentAuthorNotifier, n C
 	if err != nil {
 		return fmt.Errorf("allocate notification id: %w", err)
 	}
-	_, err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+	err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 		ID:               notificationID,
 		TenantID:         n.TenantID,
 		UserID:           n.UserID,
@@ -128,9 +127,9 @@ func NotifyCommentAuthor(ctx context.Context, queries commentAuthorNotifier, n C
 		SubjectKey:       CommentAuthorSubjectKey(n.CommentPublicID),
 		Payload:          payload,
 	})
-	// No rows means this author already has this comment's row, which is what
-	// a retried approval or hide looks like.
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	// An author who already has this comment's row, which is what a retried
+	// approval or hide looks like, is a no-op rather than an error.
+	if err != nil {
 		return fmt.Errorf("insert comment author notification: %w", err)
 	}
 	return nil
