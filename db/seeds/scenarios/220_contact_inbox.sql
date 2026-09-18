@@ -1,9 +1,9 @@
 -- Scenario: contact messages the admin console's inbox E2E reads
 --
 -- `admin.contact-inbox.spec.ts` reads these from the development seed tenant's
--- inbox and marks one of them handled. Nothing else writes contact messages
--- yet — the public site's contact form is still to come — so the inbox is empty
--- without this file.
+-- inbox and marks one of them handled. Seeding them rather than sending them
+-- through the public site's contact form is what fixes the states and senders
+-- the inbox has to tell apart.
 --
 -- Applying it is also how the suite puts the three messages back: each row is
 -- removed and re-inserted, which is what resets the one the spec marked.

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
+import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { deleteMe, getMe } from "#lib/auth";
 import {
@@ -113,7 +114,13 @@ const BirthDateRow = async ({
           {formatPlainDate(birthDate, { locale })}
         </p>
         <p className="text-xs text-muted-foreground">
-          {t("host.settings.birth_date_set_help")}
+          {t("host.settings.birth_date_set_help")}{" "}
+          <LocaleLink
+            className="text-primary underline underline-offset-4"
+            href="/contact"
+          >
+            {t("host.settings.birth_date_contact")}
+          </LocaleLink>
         </p>
       </div>
     );

@@ -37,6 +37,8 @@ export interface PublicSession {
 export interface MeInfo {
   /** `YYYY-MM-DD`, and empty when the reader has given none. */
   birthDate: string;
+  /** The address the account signs in with. */
+  email: string;
   name: string;
   publicId: string;
   role: string;
@@ -396,6 +398,7 @@ export const getMe = async (
 
           return {
             birthDate: response.user.birthDate,
+            email: response.user.email,
             name: response.user.name,
             publicId: response.user.publicId,
             role: response.user.role,
@@ -443,6 +446,7 @@ export const updateMe = async (
 
     return {
       birthDate: response.user.birthDate,
+      email: response.user.email,
       name: response.user.name,
       publicId: response.user.publicId,
       role: response.user.role,

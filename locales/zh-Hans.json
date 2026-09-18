@@ -2187,6 +2187,26 @@
       "updating": "正在更新…",
       "view_series_detail": "查看系列"
     },
+    "contact": {
+      "back_to_top": "返回首页",
+      "body_label": "留言内容",
+      "body_required": "请输入留言内容。",
+      "body_too_long": "留言内容不能超过 {$max} 个字符。",
+      "description": "向本站点的运营者发送消息。回复将发送到您填写的邮箱地址。",
+      "email_help": "回复将发送到此地址。",
+      "email_label": "您的邮箱地址",
+      "email_too_long": "邮箱地址过长。",
+      "heading": "联系我们",
+      "sent_description": "感谢您联系 {$site}。回复将发送到您填写的邮箱地址。",
+      "sent_heading": "您的消息已发送",
+      "sent_title": "已发送",
+      "subject_label": "主题（可选）",
+      "subject_too_long": "主题不能超过 {$max} 个字符。",
+      "submit": "发送",
+      "submit_failed": "无法发送您的消息。请重试。",
+      "submitting": "正在发送…",
+      "title": "联系我们"
+    },
     "creators": {
       "back_to_list": "返回作者列表",
       "detail_description": "{$name} 参与的已发布系列共 {$count} 部",
@@ -2427,6 +2447,7 @@
     "nav": {
       "account_menu": "账户菜单",
       "announcements": "公告",
+      "contact": "联系我们",
       "footer_links": "页脚链接",
       "genres": "类型",
       "labels": "品牌",
@@ -2604,9 +2625,10 @@
       "x": "分享到 X"
     },
     "settings": {
+      "birth_date_contact": "如有错误，请联系本站点。",
       "birth_date_help": "本站点在打开有年龄限制的作品前会核对年龄。登记后无法更改。",
       "birth_date_label": "出生日期",
-      "birth_date_set_help": "出生日期无法更改。如有错误，请联系本站点。",
+      "birth_date_set_help": "出生日期无法更改。",
       "browser_notifications_denied": "本站的通知已关闭。请在浏览器设置中开启。",
       "browser_notifications_failed": "无法开启通知。请重试。",
       "browser_notifications_heading": "浏览器通知",

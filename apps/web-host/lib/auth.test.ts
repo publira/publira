@@ -155,6 +155,7 @@ describe("web-host auth", () => {
       .mockResolvedValueOnce({
         user: {
           birthDate: "1990-04-02",
+          email: "alice@example.com",
           name: "Alice",
           publicId: "U001",
           role: "reader",
@@ -163,6 +164,7 @@ describe("web-host auth", () => {
 
     await expect(getMe("TENANT001")).resolves.toEqual({
       birthDate: "1990-04-02",
+      email: "alice@example.com",
       name: "Alice",
       publicId: "U001",
       role: "reader",

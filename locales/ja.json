@@ -2187,6 +2187,26 @@
       "updating": "更新中…",
       "view_series_detail": "シリーズ詳細を見る"
     },
+    "contact": {
+      "back_to_top": "トップページへ戻る",
+      "body_label": "お問い合わせ内容",
+      "body_required": "お問い合わせ内容を入力してください。",
+      "body_too_long": "お問い合わせ内容は {$max} 文字以内で入力してください。",
+      "description": "このサイトの運営者にメッセージを送ります。返信は入力したメールアドレスに届きます。",
+      "email_help": "返信はこのアドレスに届きます。",
+      "email_label": "メールアドレス",
+      "email_too_long": "メールアドレスが長すぎます。",
+      "heading": "お問い合わせ",
+      "sent_description": "{$site} へのお問い合わせありがとうございます。返信は入力したメールアドレスに届きます。",
+      "sent_heading": "お問い合わせを送信しました",
+      "sent_title": "送信しました",
+      "subject_label": "件名（任意）",
+      "subject_too_long": "件名は {$max} 文字以内で入力してください。",
+      "submit": "送信する",
+      "submit_failed": "送信できませんでした。もう一度お試しください。",
+      "submitting": "送信中…",
+      "title": "お問い合わせ"
+    },
     "creators": {
       "back_to_list": "著者一覧へ戻る",
       "detail_description": "{$name} が関わっている公開中シリーズ {$count} 件",
@@ -2427,6 +2447,7 @@
     "nav": {
       "account_menu": "アカウントメニュー",
       "announcements": "お知らせ",
+      "contact": "お問い合わせ",
       "footer_links": "フッターリンク",
       "genres": "ジャンル",
       "labels": "レーベル",
@@ -2604,9 +2625,10 @@
       "x": "X で共有"
     },
     "settings": {
+      "birth_date_contact": "誤りがある場合はサイト運営者へお問い合わせください。",
       "birth_date_help": "年齢制限のある作品を開くときに年齢を確認します。一度登録すると変更できません。",
       "birth_date_label": "生年月日",
-      "birth_date_set_help": "生年月日は変更できません。誤りがある場合はサイト運営者へお問い合わせください。",
+      "birth_date_set_help": "生年月日は変更できません。",
       "browser_notifications_denied": "このサイトの通知がオフになっています。ブラウザの設定でオンにしてください。",
       "browser_notifications_failed": "通知をオンにできませんでした。もう一度お試しください。",
       "browser_notifications_heading": "ブラウザ通知",

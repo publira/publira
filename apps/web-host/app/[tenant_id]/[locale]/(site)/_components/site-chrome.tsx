@@ -320,6 +320,10 @@ const HeaderActions = async () => {
   );
 };
 
+/**
+ * The tenant's published pages, then the contact form. The form is the one
+ * link every site has, so the row is never empty.
+ */
 const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [defaultLocale, links, t] = await Promise.all([
@@ -327,10 +331,6 @@ const TenantFooterLinks = async () => {
     listPublishedPageLinks(tenantId),
     getMessagesFor(locale),
   ]);
-
-  if (links.length === 0) {
-    return null;
-  }
 
   return (
     <SiteLayoutFooterLinks aria-label={t("host.nav.footer_links")}>
@@ -342,6 +342,11 @@ const TenantFooterLinks = async () => {
           {link.label}
         </SiteLayoutFooterLink>
       ))}
+      <SiteLayoutFooterLink
+        href={withLocalePrefix(locale, defaultLocale, "/contact")}
+      >
+        {t("host.nav.contact")}
+      </SiteLayoutFooterLink>
     </SiteLayoutFooterLinks>
   );
 };
@@ -661,7 +666,7 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
     </SiteLayoutHeader>
     <SiteLayoutMain>{children}</SiteLayoutMain>
     <SiteLayoutFooter>
-      <Suspense fallback={null}>
+      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
         <TenantFooterLinks />
       </Suspense>
       <SiteLayoutFooterContent>
