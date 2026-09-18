@@ -14,6 +14,8 @@ abstract class EpisodePageStore {
   /// The saved page, or `null` when this device holds none.
   Future<Uint8List?> readPage(String key);
 
+  /// Keeps [bytes] under [key]. Empty [bytes] are not a page and are not
+  /// kept.
   Future<void> writePage(String key, Uint8List bytes);
 }
 

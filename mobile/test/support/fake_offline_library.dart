@@ -141,6 +141,9 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
 
   @override
   Future<void> writePage(String key, Uint8List bytes) async {
+    if (bytes.isEmpty) {
+      return;
+    }
     final added = !pages.containsKey(key);
     pages[key] = bytes;
     if (added &&

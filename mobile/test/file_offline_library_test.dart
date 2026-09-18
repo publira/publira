@@ -656,6 +656,23 @@ void main() {
     },
   );
 
+  test('a page with no bytes does not complete an episode', () async {
+    final library = open();
+    final episode = _episode('EMPTY');
+    await library.writeEpisode(episode);
+    var changes = 0;
+    final subscription = library.changes.listen((_) => changes++);
+    addTearDown(subscription.cancel);
+
+    await library.writePage(episode.pageKeys.single, Uint8List(0));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(changes, 0);
+    expect(await library.readableEpisodeIds(_seriesId, readerId: ''), isEmpty);
+    final stored = (await library.readStorage()).episodes.single;
+    expect((stored.savedPages, stored.isWhole), (0, false));
+  });
+
   test(
     'readableEpisodeIds leaves out a body granted to another reader',
     () async {

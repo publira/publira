@@ -239,6 +239,12 @@ class FileOfflineLibrary implements OfflineLibrary {
 
   @override
   Future<void> writePage(String key, Uint8List bytes) {
+    // Whether a page is saved is read off the file being there, so a page with
+    // no bytes is never written: it would count towards a whole episode that
+    // cannot draw it.
+    if (bytes.isEmpty) {
+      return Future<void>.value();
+    }
     return _write((home, index) async {
       final sealed = sealOfflineBytes(
         plaintext: bytes,
