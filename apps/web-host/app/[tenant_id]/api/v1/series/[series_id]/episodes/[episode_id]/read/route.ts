@@ -18,14 +18,15 @@ const episodeReadPathSchema = z.object({
 const noContent = () => new NextResponse(null, { status: 204 });
 
 /**
- * The reader finished this episode, sent by `navigator.sendBeacon` from the
+ * The reader finished this episode, sent by a `keepalive` fetch from the
  * viewer the moment its last page is on screen.
  *
- * A beacon rather than a Server Action: the reader is shown nothing about the
- * record, so the response is a bare 204 rather than a re-render of the route,
- * and the browser delivers it even when the reader closes the episode straight
- * after the last page. Nothing here is reported back, which is also why the
- * viewer's own suppression only counts what it has already sent.
+ * A plain request rather than a Server Action: the reader is shown nothing
+ * about the record, so the response is a bare 204 rather than a re-render of
+ * the route, and `keepalive` delivers it even when the reader leaves the
+ * episode straight after the last page. The viewer reads only whether an
+ * answer came, and sends again after a failure, which a re-read already
+ * tolerates.
  *
  * Everything the write is filed under comes from the path or the session, and
  * nothing from the request body — the sender must not get to choose whose

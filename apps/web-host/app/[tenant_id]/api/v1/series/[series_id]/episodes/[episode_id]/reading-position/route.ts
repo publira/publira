@@ -28,11 +28,12 @@ const readingPositionBodySchema = z.object({
 const noContent = () => new NextResponse(null, { status: 204 });
 
 /**
- * Where the reader stopped in this episode, sent by `navigator.sendBeacon`
- * from the viewer as they settle on a page and as they leave it.
+ * Where the reader stopped in this episode, sent from the viewer by a
+ * `keepalive` fetch as they settle on a page, and by `navigator.sendBeacon` as
+ * the page goes away.
  *
- * A beacon rather than a Server Action, for the reasons the sibling `read`
- * endpoint gives: the reader is shown nothing about the record, so the
+ * A plain request rather than a Server Action, for the reasons the sibling
+ * `read` endpoint gives: the reader is shown nothing about the record, so the
  * response is a bare 204 rather than a re-render of the route, and the browser
  * delivers it even when the reader closes the episode straight after the turn
  * that produced it.
