@@ -2824,6 +2824,7 @@
       "deleted": "已从此设备删除“{$title}”。",
       "empty": "此设备上尚未保存任何内容。在系列页面保存剧集后，它会显示在这里。",
       "expired": "离线阅读已于 {$date} 结束。联网打开即可再次阅读。",
+      "partial": "仅保存了部分（{$total} 页中的 {$saved} 页）。要离线读完，请在系列页面保存。",
       "readable_until": "可离线阅读至 {$date}",
       "saved_at": "{$date} 保存 · {$size}",
       "title": "下载",

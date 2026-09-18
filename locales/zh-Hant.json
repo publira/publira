@@ -2824,6 +2824,7 @@
       "deleted": "已從此裝置刪除「{$title}」。",
       "empty": "此裝置上尚未儲存任何內容。在系列頁面儲存集數後，它會顯示在這裡。",
       "expired": "離線閱讀已於 {$date} 結束。連線開啟即可再次閱讀。",
+      "partial": "僅儲存了部分（{$total} 頁中的 {$saved} 頁）。要離線讀完，請在系列頁面儲存。",
       "readable_until": "可離線閱讀至 {$date}",
       "saved_at": "{$date} 儲存 · {$size}",
       "title": "下載",

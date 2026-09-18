@@ -29,7 +29,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   /// The saves running when this screen last looked. A save that finishes
   /// while the screen is open has grown the bytes it shows, and the library
-  /// announces the episode rather than the pages under it.
+  /// announces an episode once it is whole rather than each page on the way,
+  /// which a save that fails partway never reaches.
   EpisodeDownloader? _downloader;
   var _saving = false;
   OfflineStorage? _storage;
@@ -294,6 +295,17 @@ class _DownloadTile extends StatelessWidget {
               size: messages.formatByteSize(stored.bytes),
             ),
           ),
+          // The size alone does not say an episode stops partway, and its
+          // row on the series screen is where the rest is fetched.
+          if (!stored.isWhole)
+            Text(
+              key: ValueKey('downloads-partial-${detail.episode.id}'),
+              messages.downloadsPartial(
+                saved: messages.formatInteger(stored.savedPages),
+                total: messages.formatInteger(stored.pageCount),
+              ),
+              style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+            ),
           if (until != null)
             Text(
               key: ValueKey('downloads-expiry-${detail.episode.id}'),

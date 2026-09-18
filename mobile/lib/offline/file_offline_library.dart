@@ -208,11 +208,13 @@ class FileOfflineLibrary implements OfflineLibrary {
     DateTime? now,
   }) async {
     final at = now ?? DateTime.now();
-    final ids = await _read<Set<String>>((home, index) {
+    final ids = await _read<Set<String>>((home, index) async {
+      final onDisk = await _listPageKeys(home);
       return {
         for (final episode in index.episodes.values)
           if (episode.detail.seriesId == seriesPublicId &&
-              isReadableOffline(episode, readerId: readerId, now: at))
+              isReadableOffline(episode, readerId: readerId, now: at) &&
+              episode.isWholeIn(onDisk))
             episode.detail.episode.id,
       };
     });
@@ -243,18 +245,25 @@ class FileOfflineLibrary implements OfflineLibrary {
         deviceKey: home.key,
         label: _pageLabel(key),
       );
-      await _writeFile(File(_pagePath(home, key)), sealed);
+      final file = File(_pagePath(home, key));
+      final added = !await file.exists();
+      await _writeFile(file, sealed);
       final known = _pageBytes;
       _pageBytes = known == null
           ? await _measurePages(home)
           : known + sealed.length;
+      var changed = false;
       if (_pageBytes! > byteLimit) {
         final before = index.episodes.length;
         await _evict(home, index);
         await _writeIndex(home, index);
-        if (index.episodes.length != before) {
-          _changes.add(null);
-        }
+        changed = index.episodes.length != before;
+      }
+      if (!changed && added) {
+        changed = await _completes(home, index, key);
+      }
+      if (changed) {
+        _changes.add(null);
       }
     }, persist: false);
   }
@@ -264,13 +273,7 @@ class FileOfflineLibrary implements OfflineLibrary {
     final storage = await _read<OfflineStorage>((home, index) async {
       final sizes = await _measurePageSizes(home);
       final episodes = [
-        for (final episode in index.episodes.values)
-          StoredEpisode(
-            episode: episode,
-            bytes: {
-              for (final key in episode.pageKeys) key,
-            }.fold<int>(0, (sum, key) => sum + (sizes[key] ?? 0)),
-          ),
+        for (final episode in index.episodes.values) _stored(episode, sizes),
       ]..sort((a, b) => b.episode.checkedAt.compareTo(a.episode.checkedAt));
       final bytes = sizes.values.fold<int>(0, (sum, size) => sum + size);
       // Measured from disk anyway, so the running count starts true again.
@@ -297,6 +300,15 @@ class FileOfflineLibrary implements OfflineLibrary {
         ..positions.clear();
       _pageBytes = 0;
     }, notify: true);
+  }
+
+  StoredEpisode _stored(SavedEpisode episode, Map<String, int> sizes) {
+    final keys = episode.pageKeys.toSet();
+    return StoredEpisode(
+      episode: episode,
+      bytes: keys.fold<int>(0, (sum, key) => sum + (sizes[key] ?? 0)),
+      savedPages: keys.where(sizes.containsKey).length,
+    );
   }
 
   /// Drops what no episode claims any more, then the least recently confirmed
@@ -332,6 +344,35 @@ class FileOfflineLibrary implements OfflineLibrary {
       index.positions.remove(episode.key);
     }
     _pageBytes = total;
+  }
+
+  /// Whether the page [key], just added, was the last one some episode
+  /// lacked.
+  ///
+  /// The screens mark an episode as saved only once it is whole, and the page
+  /// that makes it whole arrives after the episode was filed.
+  Future<bool> _completes(_Home home, OfflineIndex index, String key) async {
+    final owners = index.episodes.values
+        .where((episode) => episode.pageKeys.contains(key))
+        .toList(growable: false);
+    if (owners.isEmpty) {
+      return false;
+    }
+    final onDisk = await _listPageKeys(home);
+    return owners.any((episode) => episode.isWholeIn(onDisk));
+  }
+
+  Future<Set<String>> _listPageKeys(_Home home) async {
+    final keys = <String>{};
+    if (!await home.pages.exists()) {
+      return keys;
+    }
+    await for (final entity in home.pages.list()) {
+      if (entity is File) {
+        keys.add(_pageKeyOf(entity));
+      }
+    }
+    return keys;
   }
 
   Future<Map<String, int>> _measurePageSizes(_Home home) async {

@@ -44,6 +44,14 @@ class SavedEpisode {
   List<String> get pageKeys => [
     for (final image in detail.images) episodePageKey(image.url),
   ];
+
+  /// Whether every page this episode names is among [keys], the page files
+  /// the device holds.
+  ///
+  /// The body is filed as soon as the API answers for it, while its pages
+  /// arrive one per page the viewer drew, so an episode read halfway is filed
+  /// with half its pages.
+  bool isWholeIn(Set<String> keys) => pageKeys.every(keys.contains);
 }
 
 /// The last moment [episode] opens without the API confirming the grant again,
@@ -55,13 +63,27 @@ DateTime? offlineReadableUntil(
 
 /// One saved episode and the bytes its pages hold on the device.
 class StoredEpisode {
-  const StoredEpisode({required this.episode, required this.bytes});
+  const StoredEpisode({
+    required this.episode,
+    required this.bytes,
+    required this.savedPages,
+  });
 
   final SavedEpisode episode;
 
   /// Size of the page files on the device, which is less than the whole
   /// episode when the reader only turned through part of it.
   final int bytes;
+
+  /// How many of the episode's pages are on the device.
+  final int savedPages;
+
+  /// How many pages the episode names.
+  int get pageCount => episode.pageKeys.toSet().length;
+
+  /// Whether the episode opens without a network from its first page to its
+  /// last.
+  bool get isWhole => savedPages >= pageCount;
 }
 
 /// What the device spends on saved pages, and the episodes they belong to.
@@ -145,7 +167,7 @@ bool isReadableOffline(
 /// is best effort for the same reason.
 abstract class OfflineLibrary implements EpisodePageStore {
   /// Fires after the set of saved episodes changes: one saved, removed,
-  /// evicted, or everything cleared.
+  /// evicted, completed by its last page, or everything cleared.
   ///
   /// A screen marking episodes as saved listens here, because the change it
   /// has to show may come from another screen, such as a deletion on the
@@ -210,7 +232,11 @@ abstract class OfflineLibrary implements EpisodePageStore {
   });
 
   /// Episodes of [seriesPublicId] this device could open right now for
-  /// [readerId], which is what the series screen marks as saved.
+  /// [readerId] with every page on it, which is what the series screen marks
+  /// as saved.
+  ///
+  /// An episode filed with only some of its pages is left out, so its row
+  /// offers the save that fetches the rest.
   Future<Set<String>> readableEpisodeIds(
     String seriesPublicId, {
     required String readerId,

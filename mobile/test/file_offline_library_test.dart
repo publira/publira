@@ -532,12 +532,35 @@ void main() {
       return changes - before;
     }
 
-    expect(await countAfter(() => library.writeEpisode(_episode('OLD'))), 1);
+    expect(
+      await countAfter(() => library.writeEpisode(_episode('OLD', pages: 2))),
+      1,
+    );
     expect(
       await countAfter(
         () => library.writePage(
           episodePageKey(_pageUrl('OLD', 1)),
-          _bytes(80, 1),
+          _bytes(40, 1),
+        ),
+      ),
+      0,
+    );
+    // The last page it lacked makes the episode readable offline.
+    expect(
+      await countAfter(
+        () => library.writePage(
+          episodePageKey(_pageUrl('OLD', 2)),
+          _bytes(40, 2),
+        ),
+      ),
+      1,
+    );
+    // Writing a page the device already holds completes nothing.
+    expect(
+      await countAfter(
+        () => library.writePage(
+          episodePageKey(_pageUrl('OLD', 2)),
+          _bytes(40, 2),
         ),
       ),
       0,
@@ -588,16 +611,65 @@ void main() {
   });
 
   test(
+    'readableEpisodeIds leaves out an episode with only some of its pages',
+    () async {
+      final library = open();
+      await library.writeEpisode(_episode('WHOLE', pages: 2));
+      await library.writeEpisode(_episode('HALF', pages: 2));
+      await library.writePage(
+        episodePageKey(_pageUrl('WHOLE', 1)),
+        _bytes(64, 1),
+      );
+      await library.writePage(
+        episodePageKey(_pageUrl('WHOLE', 2)),
+        _bytes(64, 2),
+      );
+      await library.writePage(
+        episodePageKey(_pageUrl('HALF', 1)),
+        _bytes(64, 3),
+      );
+
+      expect(await library.readableEpisodeIds(_seriesId, readerId: ''), {
+        'WHOLE',
+      });
+      final storage = await library.readStorage();
+      final half = storage.episodes.singleWhere(
+        (stored) => stored.episode.detail.episode.id == 'HALF',
+      );
+      expect((half.savedPages, half.pageCount, half.isWhole), (1, 2, false));
+      final whole = storage.episodes.singleWhere(
+        (stored) => stored.episode.detail.episode.id == 'WHOLE',
+      );
+      expect(whole.isWhole, isTrue);
+
+      await library.writePage(
+        episodePageKey(_pageUrl('HALF', 2)),
+        _bytes(64, 4),
+      );
+
+      // A second instance stands in for the next launch, which reads the pages
+      // off the disk rather than from anything kept in memory.
+      expect(await open().readableEpisodeIds(_seriesId, readerId: ''), {
+        'WHOLE',
+        'HALF',
+      });
+    },
+  );
+
+  test(
     'readableEpisodeIds leaves out a body granted to another reader',
     () async {
       final library = open();
-      await library.writeEpisode(_episode('FREE'));
-      await library.writeEpisode(
+      for (final episode in [
+        _episode('FREE'),
         _episode('MINE', ownerId: 'READER1', access: EpisodeAccess.entitled),
-      );
-      await library.writeEpisode(
         _episode('THEIRS', ownerId: 'READER2', access: EpisodeAccess.entitled),
-      );
+      ]) {
+        await library.writeEpisode(episode);
+        for (final key in episode.pageKeys) {
+          await library.writePage(key, _bytes(64, 1));
+        }
+      }
 
       expect(
         await library.readableEpisodeIds(
@@ -614,14 +686,14 @@ void main() {
     'readableEpisodeIds leaves out a body past its offline window',
     () async {
       final library = open();
-      await library.writeEpisode(
-        _episode(
-          'MINE',
-          ownerId: 'READER1',
-          access: EpisodeAccess.entitled,
-          checkedAt: DateTime.utc(2026, 9),
-        ),
+      final episode = _episode(
+        'MINE',
+        ownerId: 'READER1',
+        access: EpisodeAccess.entitled,
+        checkedAt: DateTime.utc(2026, 9),
       );
+      await library.writeEpisode(episode);
+      await library.writePage(episode.pageKeys.single, _bytes(64, 1));
 
       expect(
         await library.readableEpisodeIds(
@@ -675,14 +747,14 @@ void main() {
     'readableEpisodeIds refuses a confirmation dated in the future',
     () async {
       final library = open();
-      await library.writeEpisode(
-        _episode(
-          'MINE',
-          ownerId: 'READER1',
-          access: EpisodeAccess.entitled,
-          checkedAt: DateTime.utc(2026, 10),
-        ),
+      final episode = _episode(
+        'MINE',
+        ownerId: 'READER1',
+        access: EpisodeAccess.entitled,
+        checkedAt: DateTime.utc(2026, 10),
       );
+      await library.writeEpisode(episode);
+      await library.writePage(episode.pageKeys.single, _bytes(64, 1));
 
       // A clock pushed forward and back would otherwise leave the body inside a
       // window that has not started yet.

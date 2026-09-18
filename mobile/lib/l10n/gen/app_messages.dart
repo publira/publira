@@ -436,6 +436,9 @@ abstract class AppMessages {
   /// `mobile.downloads.expired`
   String downloadsExpired({required String date});
 
+  /// `mobile.downloads.partial`
+  String downloadsPartial({required String saved, required String total});
+
   /// `mobile.downloads.readable_until`
   String downloadsReadableUntil({required String date});
 
@@ -1396,6 +1399,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String downloadsExpired({required String date}) {
     return '$date にオフラインで読める期間が終わりました。オンラインで開くと再び読めます。';
+  }
+
+  @override
+  String downloadsPartial({required String saved, required String total}) {
+    return '一部のみ保存済み（$total ページ中 $saved ページ）。オフラインで最後まで読むには、シリーズのページから保存してください。';
   }
 
   @override
@@ -2607,6 +2615,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String downloadsPartial({required String saved, required String total}) {
+    return 'Partly saved: $saved of $total pages. Save it from its series page to read it all offline.';
+  }
+
+  @override
   String downloadsReadableUntil({required String date}) {
     return 'Readable offline until $date';
   }
@@ -3812,6 +3825,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String downloadsExpired({required String date}) {
     return '$date에 오프라인 읽기 기간이 끝났습니다. 온라인에서 열면 다시 읽을 수 있습니다.';
+  }
+
+  @override
+  String downloadsPartial({required String saved, required String total}) {
+    return '일부만 저장됨($total페이지 중 $saved페이지). 오프라인으로 끝까지 읽으려면 시리즈 페이지에서 저장하세요.';
   }
 
   @override
@@ -5023,6 +5041,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String downloadsPartial({required String saved, required String total}) {
+    return '仅保存了部分（$total 页中的 $saved 页）。要离线读完，请在系列页面保存。';
+  }
+
+  @override
   String downloadsReadableUntil({required String date}) {
     return '可离线阅读至 $date';
   }
@@ -6228,6 +6251,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String downloadsExpired({required String date}) {
     return '離線閱讀已於 $date 結束。連線開啟即可再次閱讀。';
+  }
+
+  @override
+  String downloadsPartial({required String saved, required String total}) {
+    return '僅儲存了部分（$total 頁中的 $saved 頁）。要離線讀完，請在系列頁面儲存。';
   }
 
   @override

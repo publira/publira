@@ -112,12 +112,14 @@ void main() {
   }
 
   /// Puts [episode] on the device the way reading it would have: the body
-  /// filed under [ownerId], and every page it names.
+  /// filed under [ownerId], and every page it names, or the first [pages] of
+  /// them for a reader who stopped partway.
   Future<void> seed(
     WidgetTester tester,
     EpisodeDetail episode, {
     String ownerId = '',
     DateTime? checkedAt,
+    int? pages,
   }) async {
     await tester.runAsync(() async {
       await library.writeEpisode(
@@ -127,7 +129,8 @@ void main() {
           checkedAt: checkedAt ?? DateTime.now(),
         ),
       );
-      for (final (index, image) in episode.images.indexed) {
+      for (final (index, image)
+          in episode.images.take(pages ?? episode.images.length).indexed) {
         await library.writePage(episodePageKey(image.url), _page(index));
       }
     });
@@ -395,12 +398,70 @@ void main() {
     // The episode is listed as soon as its body is filed; the bytes follow
     // the pages, which is what the screen reads again once the save is done.
     await pumpUntilTrue(tester, () => !usage(tester).startsWith('0 B'));
-
-    expect(
+    await pumpUntilFound(
+      tester,
       find.text('“${_freeEpisode.title}” is saved on this device.'),
-      findsOne,
     );
   });
+
+  testWidgets(
+    'an episode read halfway offers its save and says it is partial',
+    (tester) async {
+      final episode = body(_freeEpisode.id);
+      expect(episode.images.length, greaterThan(1));
+      await seed(tester, episode, pages: 1);
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.seriesDetailPath(_series.id),
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+      );
+      expect(find.byKey(const ValueKey('episode-saved-offline')), findsNothing);
+
+      unawaited(router.push(AppRoutes.accountDownloads));
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('downloads-partial-${_freeEpisode.id}')),
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(ValueKey('downloads-partial-${_freeEpisode.id}')),
+            )
+            .data,
+        startsWith('Partly saved: 1 of ${episode.images.length} pages.'),
+      );
+
+      router.pop();
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+      );
+      await tester.tap(
+        find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('episode-saved-offline')),
+      );
+
+      // The page already on the device is not fetched again.
+      expect(imageRequests, [
+        for (final image in episode.images.skip(1)) image.url,
+      ]);
+      unawaited(router.push(AppRoutes.accountDownloads));
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('downloads-episode-${_freeEpisode.id}')),
+      );
+      expect(
+        find.byKey(ValueKey('downloads-partial-${_freeEpisode.id}')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('a paid episode with no known access offers no save', (
     tester,
