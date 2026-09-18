@@ -142,6 +142,11 @@ REVOKE INSERT, UPDATE, DELETE ON episode_rating_counts, series_rating_counts FRO
 -- a hand-maintained list would leave the next platform_ table exposed the day it
 -- lands. Like the revoke for the rating tallies, this runs after the migrations,
 -- so the tables exist by the time the loop finds them.
+--
+-- The REVOKE names the schema because the loop found the name in a schema of
+-- its own choosing while an unqualified name resolves through search_path: a
+-- statement the two disagree about revokes somewhere else and leaves these
+-- tables granted, with nothing failing to say so.
 DO $$
 DECLARE
     platform_table text;
@@ -156,7 +161,7 @@ BEGIN
         ORDER BY c.relname
     LOOP
         EXECUTE format(
-            'REVOKE ALL ON %I FROM publira_public, publira_admin, publira_content_stats, publira_outbox',
+            'REVOKE ALL ON public.%I FROM publira_public, publira_admin, publira_content_stats, publira_outbox',
             platform_table
         );
     END LOOP;
