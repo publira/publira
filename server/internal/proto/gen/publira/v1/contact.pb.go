@@ -26,7 +26,8 @@ type SubmitContactMessageRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Where the tenant's staff answer. Required, and a syntactically valid
-	// address of at most 254 characters; anything else is invalid_argument.
+	// address of at most 254 bytes, which is the length a mailbox may have;
+	// anything else is invalid_argument.
 	//
 	// A signed-in reader gives it too rather than having their account address
 	// taken: the address they can be reached at is not always the one they signed

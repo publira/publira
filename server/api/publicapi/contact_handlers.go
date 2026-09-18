@@ -49,7 +49,7 @@ func validateContactMessage(msg *publirav1.SubmitContactMessageRequest) (contact
 		return contactMessage{}, contactFieldError("reply_to_email", errors.New("a reply-to address is required"))
 	}
 	if len(replyTo) > maxContactReplyToBytes {
-		return contactMessage{}, contactFieldError("reply_to_email", fmt.Errorf("the address must be at most %d characters", maxContactReplyToBytes))
+		return contactMessage{}, contactFieldError("reply_to_email", fmt.Errorf("the address must be at most %d bytes", maxContactReplyToBytes))
 	}
 	// A bare mailbox and nothing else: net/mail also accepts `Name <a@b>`, and a
 	// display name the reader typed into an address field would be shown to

@@ -67,6 +67,21 @@ CREATE INDEX idx_contact_messages_tenant_unhandled_created_at ON contact_message
 -- INDEX: idx_contact_messages_tenant_handled_created_at
 CREATE INDEX idx_contact_messages_tenant_handled_created_at ON contact_messages USING btree (tenant_id, created_at DESC, id DESC) WHERE (handled_at IS NOT NULL);
 
+-- INDEX: idx_contact_messages_tenant_user_id
+-- The referencing side of the SET NULL above. PostgreSQL indexes the
+-- referenced side of a foreign key and not this one, so without it a reader
+-- closing their account scans every message the platform ever received, and
+-- closing an account is something readers do routinely.
+--
+-- Partial, because it is only ever read for a row that names an account: a
+-- guest's message is the majority of the table and can never match.
+CREATE INDEX idx_contact_messages_tenant_user_id ON contact_messages USING btree (tenant_id, user_id) WHERE (user_id IS NOT NULL);
+
+-- INDEX: idx_contact_messages_tenant_handled_by
+-- The same scan, on the staff side. A staff account is deleted far less often
+-- than a reader's, and the scan it would cause is the same one.
+CREATE INDEX idx_contact_messages_tenant_handled_by ON contact_messages USING btree (tenant_id, handled_by) WHERE (handled_by IS NOT NULL);
+
 -- ROW SECURITY: contact_messages
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 

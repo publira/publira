@@ -126,6 +126,16 @@ func TestDBContactMessageQueuesTheStaffMail(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	// Counted before it is read, because reading one row would pass just as
+	// well on a submission that queued a second event under another key.
+	var queued int
+	if err := env.PG.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_events WHERE tenant_id = $1`, tenant.ID).Scan(&queued); err != nil {
+		t.Fatalf("count the queued events: %v", err)
+	}
+	if queued != 1 {
+		t.Fatalf("queued %d events, want 1", queued)
+	}
+
 	var eventType, idempotencyKey string
 	if err := env.PG.DB.QueryRowContext(ctx, `
 		SELECT event_type, idempotency_key

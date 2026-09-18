@@ -25,7 +25,8 @@ export type SubmitContactMessageRequest = Message<"publira.v1.SubmitContactMessa
 
   /**
    * Where the tenant's staff answer. Required, and a syntactically valid
-   * address of at most 254 characters; anything else is invalid_argument.
+   * address of at most 254 bytes, which is the length a mailbox may have;
+   * anything else is invalid_argument.
    *
    * A signed-in reader gives it too rather than having their account address
    * taken: the address they can be reached at is not always the one they signed
