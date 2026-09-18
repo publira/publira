@@ -48,7 +48,7 @@ import {
 
 interface EditLabelPageProps {
   params: Promise<{
-    label_public_id: string;
+    label_id: string;
     tenant_id: string;
   }>;
   searchParams: Promise<{
@@ -57,7 +57,7 @@ interface EditLabelPageProps {
 }
 
 const editLabelParamsSchema = z.object({
-  label_public_id: routeParamString(),
+  label_id: routeParamString(),
 });
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -69,7 +69,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_id", "label_public_id");
+  createPlaceholderStaticParams("tenant_id", "label_id");
 
 const EditLabelFormSkeleton = () => (
   <div className="grid gap-4">
@@ -116,7 +116,7 @@ const EditLabelTabNav = async ({
   if (!parsedParams) {
     notFound();
   }
-  const { label_public_id: labelPublicId } = parsedParams;
+  const { label_id: labelPublicId } = parsedParams;
 
   return <LabelTabNav current={activeTab} labelId={labelPublicId} />;
 };
@@ -134,7 +134,7 @@ const EditLabelFormData = async ({
   if (!parsedParams) {
     notFound();
   }
-  const { label_public_id: labelPublicId } = parsedParams;
+  const { label_id: labelPublicId } = parsedParams;
 
   const locale = await getLocale(tenantId);
   const result = await getLabel(

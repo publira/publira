@@ -58,12 +58,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 interface OperatorDetailPageProps {
   params: Promise<{
-    operator_public_id: string;
+    operator_id: string;
   }>;
 }
 
 const operatorDetailParamsSchema = z.object({
-  operator_public_id: routeParamString(),
+  operator_id: routeParamString(),
 });
 
 const OperatorDetailSkeleton = () => (
@@ -93,7 +93,7 @@ const OperatorDetailContent = async ({
   if (!parsedParams) {
     notFound();
   }
-  const { operator_public_id: operatorPublicId } = parsedParams;
+  const { operator_id: operatorPublicId } = parsedParams;
 
   const locale = await getPlatformLocale();
   const [t, operator, currentOperatorResult, timeZone] = await Promise.all([

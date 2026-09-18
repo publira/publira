@@ -48,7 +48,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_id", "creator_public_id");
+  createPlaceholderStaticParams("tenant_id", "creator_id");
 
 const EditCreatorFormSkeleton = () => (
   <div className="grid gap-4">
@@ -60,13 +60,13 @@ const EditCreatorFormSkeleton = () => (
 
 interface EditCreatorPageProps {
   params: Promise<{
-    creator_public_id: string;
+    creator_id: string;
     tenant_id: string;
   }>;
 }
 
 const editCreatorParamsSchema = z.object({
-  creator_public_id: routeParamString(),
+  creator_id: routeParamString(),
 });
 
 const EditCreatorFormData = async ({
@@ -76,7 +76,7 @@ const EditCreatorFormData = async ({
   if (!parsedParams) {
     notFound();
   }
-  const { creator_public_id: creatorPublicId } = parsedParams;
+  const { creator_id: creatorPublicId } = parsedParams;
 
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);

@@ -65,12 +65,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 interface UserDetailPageProps {
   params: Promise<{
-    user_public_id: string;
+    user_id: string;
   }>;
 }
 
 const userDetailParamsSchema = z.object({
-  user_public_id: routeParamString(),
+  user_id: routeParamString(),
 });
 
 const UserDetailSkeleton = () => (
@@ -124,7 +124,7 @@ const UserDetailContent = async ({
   if (!parsedParams) {
     notFound();
   }
-  const { user_public_id: userPublicId } = parsedParams;
+  const { user_id: userPublicId } = parsedParams;
   const locale = await getPlatformLocale();
   const [t, userResult, currentOperatorResult, timeZone] = await Promise.all([
     getMessagesFor(locale),
