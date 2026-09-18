@@ -12,10 +12,10 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-READY_TIMEOUT_SEC="${E2E_API_READY_TIMEOUT_SEC:-60}"
+READY_TIMEOUT_SEC="${PUBLIRA_E2E_API_READY_TIMEOUT_SEC:-60}"
 
 api_readyz_url() {
-  printf 'http://127.0.0.1:%s/readyz' "${E2E_PUBLIC_API_GRPC_PORT}"
+  printf 'http://127.0.0.1:%s/readyz' "${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}"
 }
 
 api_is_ready() {
@@ -38,7 +38,7 @@ start_api_server() {
     exit 1
   fi
 
-  e2e_log "starting api-server (edge :${E2E_PUBLIC_API_PORT}, internal :${E2E_PUBLIC_API_GRPC_PORT})"
+  e2e_log "starting api-server (edge :${PUBLIRA_E2E_PUBLIC_API_PORT}, internal :${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT})"
   # `exec`: without it $! can name the subshell, and stopping it would leave the
   # server holding the port. Bash usually optimizes this away; do not rely on it.
   (
@@ -47,8 +47,8 @@ start_api_server() {
       PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
       PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
       PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
-      PUBLIRA_PUBLIC_API_ADDR=":${E2E_PUBLIC_API_PORT}" \
-      PUBLIRA_PUBLIC_API_GRPC_ADDR=":${E2E_PUBLIC_API_GRPC_PORT}" \
+      PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_E2E_PUBLIC_API_PORT}" \
+      PUBLIRA_PUBLIC_API_GRPC_ADDR=":${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}" \
       PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
       PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_HOUR="${PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_HOUR:-}" \
       PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_DAY="${PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_DAY:-}" \

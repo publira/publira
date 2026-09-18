@@ -6,8 +6,8 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 # Per-probe budget. compose --wait (up.sh) already covered postgres / redis /
 # rustfs container healthchecks; this script only probes host-reachable HTTP.
-TIMEOUT_SEC="${E2E_READY_TIMEOUT_SEC:-90}"
-INTERVAL_SEC="${E2E_READY_INTERVAL_SEC:-1}"
+TIMEOUT_SEC="${PUBLIRA_E2E_READY_TIMEOUT_SEC:-90}"
+INTERVAL_SEC="${PUBLIRA_E2E_READY_INTERVAL_SEC:-1}"
 
 # Matches the previous grep for `"status": "ok"` (optional spaces around `:`).
 JSON_OK_REGEX='"status"[[:space:]]*:[[:space:]]*"ok"'
@@ -60,59 +60,59 @@ e2e_log "waiting for readiness (timeout ${TIMEOUT_SEC}s)"
 
 # Checked from the host (not the compose healthcheck): the API servers reach
 # RustFS through the published port, so a container-only probe would miss it.
-wait_http "rustfs" "http://127.0.0.1:${E2E_RUSTFS_PORT}/health"
+wait_http "rustfs" "http://127.0.0.1:${PUBLIRA_E2E_RUSTFS_PORT}/health"
 
 # One probe for all three namespaces: the internal listener reports a check per
 # database role, so this is ready only once every one of them answers.
 wait_http "api/readyz" \
-  "http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 wait_http "email-renderer/readyz" \
-  "http://127.0.0.1:${E2E_EMAIL_RENDERER_PORT}/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_EMAIL_RENDERER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 wait_http "outbox-worker/readyz" \
-  "http://127.0.0.1:${E2E_OUTBOX_WORKER_PORT}/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_OUTBOX_WORKER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 wait_http "image-server/readyz" \
-  "http://127.0.0.1:${E2E_IMAGE_SERVER_PORT}/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_IMAGE_SERVER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 # Use localhost (not 127.0.0.1) to match browser Host / server bind hostname.
 # Substring `ok`, matching the previous check_http_body.
 wait_http "web-host/livez" \
-  "http://localhost:${E2E_WEB_HOST_PORT}/livez" \
+  "http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}/livez" \
   --expect-body-regex "ok"
 
 wait_http "web-host/readyz" \
-  "http://localhost:${E2E_WEB_HOST_PORT}/readyz" \
+  "http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 # web-admin binds 0.0.0.0; probe via 127.0.0.1 (tenant resolution is skipped
 # for /livez and /readyz in proxy.ts).
 wait_http "web-admin/livez" \
-  "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/livez" \
+  "http://127.0.0.1:${PUBLIRA_E2E_WEB_ADMIN_PORT}/livez" \
   --expect-body-regex "ok"
 
 wait_http "web-admin/readyz" \
-  "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_WEB_ADMIN_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 # web-platform also binds 0.0.0.0; probes skip setup / session checks.
 wait_http "web-platform/livez" \
-  "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/livez" \
+  "http://127.0.0.1:${PUBLIRA_E2E_WEB_PLATFORM_PORT}/livez" \
   --expect-body-regex "ok"
 
 wait_http "web-platform/readyz" \
-  "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_WEB_PLATFORM_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 # The edge itself, last: it only answers once both of its backends do. The
 # viewer performance suite reads pages through this origin.
 wait_http "edge/web-host/readyz" \
-  "http://localhost:${E2E_EDGE_PORT}/readyz" \
+  "http://localhost:${PUBLIRA_E2E_EDGE_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 e2e_log "all readiness checks passed"

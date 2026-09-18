@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "${MOBILE_DIR}/.." && pwd)"
 # shellcheck source=../../e2e/scripts/lib.sh
 source "${REPO_ROOT}/e2e/scripts/lib.sh"
 
-ART_DIR="${E2E_RUN_DIR:-${MOBILE_DIR}/.run}/artifacts"
+ART_DIR="${PUBLIRA_E2E_RUN_DIR:-${MOBILE_DIR}/.run}/artifacts"
 mkdir -p "${ART_DIR}"
 
 export PUBLIRA_LIVE_API="${PUBLIRA_LIVE_API:-true}"
@@ -21,8 +21,8 @@ host_address="127.0.0.1"
 if adb devices 2>/dev/null | grep -q 'emulator'; then
   host_address="10.0.2.2"
 fi
-export PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host_address}:${E2E_PUBLIC_API_PORT}}"
-export PUBLIRA_IMAGE_BASE_URL="${PUBLIRA_IMAGE_BASE_URL:-http://${host_address}:${E2E_IMAGE_SERVER_PORT}}"
+export PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_PUBLIC_API_PORT}}"
+export PUBLIRA_IMAGE_BASE_URL="${PUBLIRA_IMAGE_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_IMAGE_SERVER_PORT}}"
 export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
 
 device="${MOBILE_E2E_DEVICE:-}"

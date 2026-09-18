@@ -653,7 +653,7 @@ jobs:
     timeout-minutes: 45
     env:
       COMPOSE_PROJECT_NAME: publira-mobile-e2e
-      E2E_RUN_DIR: ${{ github.workspace }}/mobile/.run
+      PUBLIRA_E2E_RUN_DIR: ${{ github.workspace }}/mobile/.run
       CI: true
     steps:
       - name: Setup / Checkout

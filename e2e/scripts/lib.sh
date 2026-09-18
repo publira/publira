@@ -4,49 +4,49 @@
 
 set -euo pipefail
 
-E2E_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-E2E_DIR="$(cd "${E2E_SCRIPTS_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${E2E_DIR}/.." && pwd)"
+PUBLIRA_E2E_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUBLIRA_E2E_DIR="$(cd "${PUBLIRA_E2E_SCRIPTS_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${PUBLIRA_E2E_DIR}/.." && pwd)"
 
-# Capture before defaults so we can tell "caller set E2E_RUN_DIR" from "unset".
-_E2E_RUN_DIR_FROM_ENV="${E2E_RUN_DIR-}"
+# Capture before defaults so we can tell "caller set PUBLIRA_E2E_RUN_DIR" from "unset".
+_E2E_RUN_DIR_FROM_ENV="${PUBLIRA_E2E_RUN_DIR-}"
 
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-publira-e2e}"
-export COMPOSE_FILE="${COMPOSE_FILE:-${E2E_DIR}/compose.yaml}"
+export COMPOSE_FILE="${COMPOSE_FILE:-${PUBLIRA_E2E_DIR}/compose.yaml}"
 
 # Host ports published by e2e/compose.yaml
-export E2E_POSTGRES_PORT="${E2E_POSTGRES_PORT:-5433}"
-export E2E_REDIS_PORT="${E2E_REDIS_PORT:-6380}"
-export E2E_RUSTFS_PORT="${E2E_RUSTFS_PORT:-9003}"
-export E2E_MAILPIT_SMTP_PORT="${E2E_MAILPIT_SMTP_PORT:-1026}"
-export E2E_MAILPIT_HTTP_PORT="${E2E_MAILPIT_HTTP_PORT:-8026}"
+export PUBLIRA_E2E_POSTGRES_PORT="${PUBLIRA_E2E_POSTGRES_PORT:-5433}"
+export PUBLIRA_E2E_REDIS_PORT="${PUBLIRA_E2E_REDIS_PORT:-6380}"
+export PUBLIRA_E2E_RUSTFS_PORT="${PUBLIRA_E2E_RUSTFS_PORT:-9003}"
+export PUBLIRA_E2E_MAILPIT_SMTP_PORT="${PUBLIRA_E2E_MAILPIT_SMTP_PORT:-1026}"
+export PUBLIRA_E2E_MAILPIT_HTTP_PORT="${PUBLIRA_E2E_MAILPIT_HTTP_PORT:-8026}"
 
-export E2E_WEB_HOST_PORT="${E2E_WEB_HOST_PORT:-3000}"
-export E2E_WEB_ADMIN_PORT="${E2E_WEB_ADMIN_PORT:-4000}"
-export E2E_WEB_PLATFORM_PORT="${E2E_WEB_PLATFORM_PORT:-4100}"
-export E2E_PUBLIC_API_PORT="${E2E_PUBLIC_API_PORT:-8000}"
-export E2E_PUBLIC_API_GRPC_PORT="${E2E_PUBLIC_API_GRPC_PORT:-8100}"
-export E2E_OUTBOX_WORKER_PORT="${E2E_OUTBOX_WORKER_PORT:-8003}"
-export E2E_IMAGE_SERVER_PORT="${E2E_IMAGE_SERVER_PORT:-8200}"
-export E2E_EMAIL_RENDERER_PORT="${E2E_EMAIL_RENDERER_PORT:-8300}"
+export PUBLIRA_E2E_WEB_HOST_PORT="${PUBLIRA_E2E_WEB_HOST_PORT:-3000}"
+export PUBLIRA_E2E_WEB_ADMIN_PORT="${PUBLIRA_E2E_WEB_ADMIN_PORT:-4000}"
+export PUBLIRA_E2E_WEB_PLATFORM_PORT="${PUBLIRA_E2E_WEB_PLATFORM_PORT:-4100}"
+export PUBLIRA_E2E_PUBLIC_API_PORT="${PUBLIRA_E2E_PUBLIC_API_PORT:-8000}"
+export PUBLIRA_E2E_PUBLIC_API_GRPC_PORT="${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT:-8100}"
+export PUBLIRA_E2E_OUTBOX_WORKER_PORT="${PUBLIRA_E2E_OUTBOX_WORKER_PORT:-8003}"
+export PUBLIRA_E2E_IMAGE_SERVER_PORT="${PUBLIRA_E2E_IMAGE_SERVER_PORT:-8200}"
+export PUBLIRA_E2E_EMAIL_RENDERER_PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT:-8300}"
 # Traefik entrypoint. `/images` belongs to image-server and everything else to
 # web-host, so the browser can reach both from one origin the way the Dev
 # Container edge serves them.
-export E2E_EDGE_PORT="${E2E_EDGE_PORT:-3080}"
+export PUBLIRA_E2E_EDGE_PORT="${PUBLIRA_E2E_EDGE_PORT:-3080}"
 # The pinned browser the screenshot projects connect to, so a baseline taken
 # here and the comparison run on CI are rasterized by the same fonts.
-export E2E_BROWSER_PORT="${E2E_BROWSER_PORT:-3090}"
+export PUBLIRA_E2E_BROWSER_PORT="${PUBLIRA_E2E_BROWSER_PORT:-3090}"
 
-export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
-export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
-export PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL:-postgres://publira_admin:adminpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
-export PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL:-postgres://publira_platform:platformpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
-export PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL:-postgres://publira_outbox:outboxpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
-export PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL:-postgres://publira_ticker:tickerpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
+export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
+export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
+export PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL:-postgres://publira_admin:adminpass@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
+export PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL:-postgres://publira_platform:platformpass@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
+export PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL:-postgres://publira_outbox:outboxpass@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
+export PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL:-postgres://publira_ticker:tickerpass@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 # Always the E2E compose Redis. Do not inherit ambient PUBLIRA_REDIS_URL — the
 # devcontainer / `task dev` value is redis://redis:6379 and would serve
 # another build's cached HTML (login then hangs waiting to hydrate).
-export PUBLIRA_REDIS_URL="redis://127.0.0.1:${E2E_REDIS_PORT}"
+export PUBLIRA_REDIS_URL="redis://127.0.0.1:${PUBLIRA_E2E_REDIS_PORT}"
 export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
 
 # The forms that cause mail — sign-up, the resend, the password reset, the
@@ -62,34 +62,34 @@ export PUBLIRA_MAIL_REQUEST_LIMIT_PER_SOURCE_PER_DAY="${PUBLIRA_MAIL_REQUEST_LIM
 # Same reasoning as PUBLIRA_REDIS_URL: the devcontainer exports
 # PUBLIRA_S3_ENDPOINT=http://rustfs:9000, so an inherited value would store
 # E2E uploads in the dev stack's RustFS (and is unreachable once it is down).
-export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${E2E_RUSTFS_PORT}"
+export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${PUBLIRA_E2E_RUSTFS_PORT}"
 export PUBLIRA_S3_FORCE_PATH_STYLE="true"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
 # The API server's internal listener, which every app dials: one process
 # carries all three Connect namespaces.
-export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
-export E2E_WEB_HOST_BASE_URL="${E2E_WEB_HOST_BASE_URL:-http://localhost:${E2E_WEB_HOST_PORT}}"
-export E2E_WEB_ADMIN_BASE_URL="${E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${E2E_WEB_ADMIN_PORT}}"
-export E2E_WEB_PLATFORM_BASE_URL="${E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${E2E_WEB_PLATFORM_PORT}}"
-export E2E_PUBLIC_API_BASE_URL="${E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
+export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}}"
+export PUBLIRA_E2E_WEB_HOST_BASE_URL="${PUBLIRA_E2E_WEB_HOST_BASE_URL:-http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}}"
+export PUBLIRA_E2E_WEB_ADMIN_BASE_URL="${PUBLIRA_E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${PUBLIRA_E2E_WEB_ADMIN_PORT}}"
+export PUBLIRA_E2E_WEB_PLATFORM_BASE_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${PUBLIRA_E2E_WEB_PLATFORM_PORT}}"
+export PUBLIRA_E2E_PUBLIC_API_BASE_URL="${PUBLIRA_E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}}"
 # Same web-host, reached through the edge, by every suite that opens an
 # episode body: `/images` resolves on no other origin.
-export E2E_WEB_HOST_EDGE_BASE_URL="${E2E_WEB_HOST_EDGE_BASE_URL:-http://localhost:${E2E_EDGE_PORT}}"
+export PUBLIRA_E2E_WEB_HOST_EDGE_BASE_URL="${PUBLIRA_E2E_WEB_HOST_EDGE_BASE_URL:-http://localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 # Mailpit's HTTP API. A spec reads the confirmation link out of the message a
 # flow mailed, because the database keeps only the token's hash.
-export E2E_MAILPIT_BASE_URL="${E2E_MAILPIT_BASE_URL:-http://127.0.0.1:${E2E_MAILPIT_HTTP_PORT}}"
+export PUBLIRA_E2E_MAILPIT_BASE_URL="${PUBLIRA_E2E_MAILPIT_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_MAILPIT_HTTP_PORT}}"
 # Built from the port like the rest, so a second stack's screenshot projects
 # reach that stack's browser rather than the first one's.
-export E2E_BROWSER_WS_ENDPOINT="${E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${E2E_BROWSER_PORT}}"
+export PUBLIRA_E2E_BROWSER_WS_ENDPOINT="${PUBLIRA_E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${PUBLIRA_E2E_BROWSER_PORT}}"
 
 # The three periodic jobs the outbox worker runs, in seconds. Short so a
 # scheduled episode, a free window boundary, and a tenant's midnight all land
 # within the same Playwright run instead of after multi-minute waits.
-export E2E_PUBLISH_EPISODES_INTERVAL_SEC="${E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2}"
-export E2E_FREE_WINDOW_INTERVAL_SEC="${E2E_FREE_WINDOW_INTERVAL_SEC:-2}"
-export E2E_TENANT_DAY_INTERVAL_SEC="${E2E_TENANT_DAY_INTERVAL_SEC:-2}"
+export PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC="${PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2}"
+export PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC="${PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC:-2}"
+export PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC="${PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC:-2}"
 
 export PUBLIRA_CACHE_APP="${PUBLIRA_CACHE_APP:-web-host}"
 
@@ -117,19 +117,19 @@ export PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN:-publira-e2e-only-in
 # entries and leave this run's untouched. The hostnames follow how start-apps
 # binds each app — web-host binds `localhost`, while web-admin and
 # web-platform bind 0.0.0.0 and are reached over IPv4.
-export PUBLIRA_WEB_HOST_INTERNAL_URL="http://localhost:${E2E_WEB_HOST_PORT}"
-export PUBLIRA_WEB_ADMIN_INTERNAL_URL="http://127.0.0.1:${E2E_WEB_ADMIN_PORT}"
-export PUBLIRA_WEB_PLATFORM_INTERNAL_URL="http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}"
+export PUBLIRA_WEB_HOST_INTERNAL_URL="http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}"
+export PUBLIRA_WEB_ADMIN_INTERNAL_URL="http://127.0.0.1:${PUBLIRA_E2E_WEB_ADMIN_PORT}"
+export PUBLIRA_WEB_PLATFORM_INTERNAL_URL="http://127.0.0.1:${PUBLIRA_E2E_WEB_PLATFORM_PORT}"
 
 # Where the outbox worker renders its mail. Always built from the E2E port, for
 # the same reason as PUBLIRA_REDIS_URL above: the isolated dev profile exports
 # PUBLIRA_EMAIL_RENDERER_URL for its own renderer, so an inherited value would
 # have this stack's worker render through a process it neither starts nor stops.
-export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${E2E_EMAIL_RENDERER_PORT}"
+export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${PUBLIRA_E2E_EMAIL_RENDERER_PORT}"
 
 # Where the platform console auth mail points. The worker builds those links, so
 # without this they would name the dev stack's port instead of this run's.
-export PUBLIRA_PLATFORM_APP_URL="${E2E_WEB_PLATFORM_BASE_URL}"
+export PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL}"
 
 # Secret decryption for the SMTP password. The worker reports an unusable
 # manager when it is started without keys, and every auth mail it renders stops
@@ -152,57 +152,57 @@ export PUBLIRA_WEBPUSH_SUBJECT="${PUBLIRA_WEBPUSH_SUBJECT:-mailto:e2e@publira.te
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share
-# PID/log state: stop-apps would kill the other run. When E2E_RUN_DIR is unset
+# PID/log state: stop-apps would kill the other run. When PUBLIRA_E2E_RUN_DIR is unset
 # and any of those knobs leave the defaults, isolate under a subdirectory named
 # from the project + port numbers (same overrides → same path). Explicit
-# E2E_RUN_DIR always wins. The default path e2e/.run is kept for the standard
+# PUBLIRA_E2E_RUN_DIR always wins. The default path e2e/.run is kept for the standard
 # single-stack / CI layout so artifacts stay stable.
 if [[ -n "${_E2E_RUN_DIR_FROM_ENV}" ]]; then
-  export E2E_RUN_DIR="${_E2E_RUN_DIR_FROM_ENV}"
+  export PUBLIRA_E2E_RUN_DIR="${_E2E_RUN_DIR_FROM_ENV}"
 else
   _e2e_uses_default_stack=1
   if [[ "${COMPOSE_PROJECT_NAME}" != "publira-e2e" ]] ||
-    [[ "${E2E_POSTGRES_PORT}" != "5433" ]] ||
-    [[ "${E2E_REDIS_PORT}" != "6380" ]] ||
-    [[ "${E2E_RUSTFS_PORT}" != "9003" ]] ||
-    [[ "${E2E_MAILPIT_SMTP_PORT}" != "1026" ]] ||
-    [[ "${E2E_MAILPIT_HTTP_PORT}" != "8026" ]] ||
-    [[ "${E2E_WEB_HOST_PORT}" != "3000" ]] ||
-    [[ "${E2E_WEB_ADMIN_PORT}" != "4000" ]] ||
-    [[ "${E2E_WEB_PLATFORM_PORT}" != "4100" ]] ||
-    [[ "${E2E_PUBLIC_API_PORT}" != "8000" ]] ||
-    [[ "${E2E_PUBLIC_API_GRPC_PORT}" != "8100" ]] ||
-    [[ "${E2E_OUTBOX_WORKER_PORT}" != "8003" ]] ||
-    [[ "${E2E_IMAGE_SERVER_PORT}" != "8200" ]] ||
-    [[ "${E2E_EMAIL_RENDERER_PORT}" != "8300" ]] ||
-    [[ "${E2E_EDGE_PORT}" != "3080" ]]; then
+    [[ "${PUBLIRA_E2E_POSTGRES_PORT}" != "5433" ]] ||
+    [[ "${PUBLIRA_E2E_REDIS_PORT}" != "6380" ]] ||
+    [[ "${PUBLIRA_E2E_RUSTFS_PORT}" != "9003" ]] ||
+    [[ "${PUBLIRA_E2E_MAILPIT_SMTP_PORT}" != "1026" ]] ||
+    [[ "${PUBLIRA_E2E_MAILPIT_HTTP_PORT}" != "8026" ]] ||
+    [[ "${PUBLIRA_E2E_WEB_HOST_PORT}" != "3000" ]] ||
+    [[ "${PUBLIRA_E2E_WEB_ADMIN_PORT}" != "4000" ]] ||
+    [[ "${PUBLIRA_E2E_WEB_PLATFORM_PORT}" != "4100" ]] ||
+    [[ "${PUBLIRA_E2E_PUBLIC_API_PORT}" != "8000" ]] ||
+    [[ "${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}" != "8100" ]] ||
+    [[ "${PUBLIRA_E2E_OUTBOX_WORKER_PORT}" != "8003" ]] ||
+    [[ "${PUBLIRA_E2E_IMAGE_SERVER_PORT}" != "8200" ]] ||
+    [[ "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" != "8300" ]] ||
+    [[ "${PUBLIRA_E2E_EDGE_PORT}" != "3080" ]]; then
     _e2e_uses_default_stack=0
   fi
   if [[ "${_e2e_uses_default_stack}" -eq 1 ]]; then
-    export E2E_RUN_DIR="${E2E_DIR}/.run"
+    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run"
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-mp${E2E_MAILPIT_SMTP_PORT}-${E2E_MAILPIT_HTTP_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-ow${E2E_OUTBOX_WORKER_PORT}-img${E2E_IMAGE_SERVER_PORT}-er${E2E_EMAIL_RENDERER_PORT}-edge${E2E_EDGE_PORT}"
+    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_HOST_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-ow${PUBLIRA_E2E_OUTBOX_WORKER_PORT}-img${PUBLIRA_E2E_IMAGE_SERVER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi
 unset _E2E_RUN_DIR_FROM_ENV
 
-RUN_DIR="${E2E_RUN_DIR}"
+RUN_DIR="${PUBLIRA_E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
 PID_DIR="${RUN_DIR}/pids"
 # Traefik reads its routers from a watched directory. The backend ports are
 # overridable, so the file is written per run rather than committed, and
 # compose mounts it through this variable.
-export E2E_TRAEFIK_DYNAMIC_DIR="${RUN_DIR}/traefik"
+export PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR="${RUN_DIR}/traefik"
 
 # Lease for the compose project. Docker resources are keyed by
 # COMPOSE_PROJECT_NAME, so a second stack with the same project would
 # compose-down the first. A background holder keeps the lease after up.sh
-# exits; only the owning E2E_RUN_DIR may release it (down.sh).
-E2E_LOCK_FILE="${E2E_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lock"
-E2E_LEASE_FILE="${E2E_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lease"
+# exits; only the owning PUBLIRA_E2E_RUN_DIR may release it (down.sh).
+PUBLIRA_E2E_LOCK_FILE="${PUBLIRA_E2E_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lock"
+PUBLIRA_E2E_LEASE_FILE="${PUBLIRA_E2E_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lease"
 
 e2e_log() {
   printf '[e2e] %s\n' "$*"
@@ -217,7 +217,7 @@ compose() {
 }
 
 ensure_run_dirs() {
-  mkdir -p "${LOG_DIR}" "${PID_DIR}" "${E2E_TRAEFIK_DYNAMIC_DIR}"
+  mkdir -p "${LOG_DIR}" "${PID_DIR}" "${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}"
 }
 
 is_pid_running() {
@@ -232,20 +232,20 @@ pid_start_time() {
 }
 
 e2e_lease_run_dir() {
-  sed -n '1p' "${E2E_LEASE_FILE}" 2>/dev/null || true
+  sed -n '1p' "${PUBLIRA_E2E_LEASE_FILE}" 2>/dev/null || true
 }
 
 e2e_lease_holder_alive() {
   local pid recorded_start
-  [[ -f "${E2E_LEASE_FILE}" ]] || return 1
-  pid="$(sed -n '2p' "${E2E_LEASE_FILE}" 2>/dev/null || true)"
-  recorded_start="$(sed -n '3p' "${E2E_LEASE_FILE}" 2>/dev/null || true)"
+  [[ -f "${PUBLIRA_E2E_LEASE_FILE}" ]] || return 1
+  pid="$(sed -n '2p' "${PUBLIRA_E2E_LEASE_FILE}" 2>/dev/null || true)"
+  recorded_start="$(sed -n '3p' "${PUBLIRA_E2E_LEASE_FILE}" 2>/dev/null || true)"
   is_pid_running "${pid}" || return 1
   [[ -n "${recorded_start}" && "$(pid_start_time "${pid}")" == "${recorded_start}" ]]
 }
 
 e2e_refuse_foreign_lease() {
-  e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (owned by $(e2e_lease_run_dir)); wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+  e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (owned by $(e2e_lease_run_dir)); wait or set COMPOSE_PROJECT_NAME and PUBLIRA_E2E_*_PORT"
   exit 1
 }
 
@@ -254,28 +254,28 @@ e2e_refuse_foreign_lease() {
 # The lease names its owner only while its holder process is alive, and a stack
 # outlives that process easily: kill the holder, or lose it with the terminal it
 # was started from, and the containers stay up with Postgres still answering on
-# E2E_POSTGRES_PORT. A run that finds no lease therefore asks the stack itself
-# whose it is — compose.yaml stamps E2E_RUN_DIR on every container it creates,
+# PUBLIRA_E2E_POSTGRES_PORT. A run that finds no lease therefore asks the stack itself
+# whose it is — compose.yaml stamps PUBLIRA_E2E_RUN_DIR on every container it creates,
 # and a label lives exactly as long as the container carrying it.
-E2E_STACK_OWNER=""
-E2E_STACK_PORT=""
-E2E_STACK_PORT_PROJECT=""
+PUBLIRA_E2E_STACK_OWNER=""
+PUBLIRA_E2E_STACK_PORT=""
+PUBLIRA_E2E_STACK_PORT_PROJECT=""
 
-# Sets E2E_STACK_OWNER to the run directory of another run's stack under this
+# Sets PUBLIRA_E2E_STACK_OWNER to the run directory of another run's stack under this
 # compose project and returns 0. The owner is empty when the containers carry no
 # label at all, which is a stack these scripts did not create. Returns 1 when the
 # project has no containers, or every one of them is this run's.
 e2e_find_foreign_stack() {
   local run_dir
-  E2E_STACK_OWNER=""
+  PUBLIRA_E2E_STACK_OWNER=""
   if ! command -v docker >/dev/null 2>&1; then
     return 1
   fi
   while read -r run_dir; do
-    if [[ "${run_dir}" == "${E2E_RUN_DIR}" ]]; then
+    if [[ "${run_dir}" == "${PUBLIRA_E2E_RUN_DIR}" ]]; then
       continue
     fi
-    E2E_STACK_OWNER="${run_dir}"
+    PUBLIRA_E2E_STACK_OWNER="${run_dir}"
     return 0
   done < <(docker ps --all \
     --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}" \
@@ -283,32 +283,32 @@ e2e_find_foreign_stack() {
   return 1
 }
 
-# Sets E2E_STACK_PORT and E2E_STACK_PORT_PROJECT to a data port of this run that
+# Sets PUBLIRA_E2E_STACK_PORT and PUBLIRA_E2E_STACK_PORT_PROJECT to a data port of this run that
 # another compose project already publishes, and returns 0. Such a stack touches
 # neither this project's lease nor its containers, yet `task e2e:db` would still
-# migrate and re-seed the Postgres behind E2E_POSTGRES_PORT. Only the
+# migrate and re-seed the Postgres behind PUBLIRA_E2E_POSTGRES_PORT. Only the
 # containerized services are covered; the app ports belong to host processes
 # docker cannot see, and start-apps.sh checks those against the listening
 # sockets.
 e2e_find_foreign_port_publisher() {
   local port project
-  E2E_STACK_PORT=""
-  E2E_STACK_PORT_PROJECT=""
+  PUBLIRA_E2E_STACK_PORT=""
+  PUBLIRA_E2E_STACK_PORT_PROJECT=""
   if ! command -v docker >/dev/null 2>&1; then
     return 1
   fi
   for port in \
-    "${E2E_POSTGRES_PORT}" \
-    "${E2E_REDIS_PORT}" \
-    "${E2E_RUSTFS_PORT}" \
-    "${E2E_MAILPIT_SMTP_PORT}" \
-    "${E2E_MAILPIT_HTTP_PORT}"; do
+    "${PUBLIRA_E2E_POSTGRES_PORT}" \
+    "${PUBLIRA_E2E_REDIS_PORT}" \
+    "${PUBLIRA_E2E_RUSTFS_PORT}" \
+    "${PUBLIRA_E2E_MAILPIT_SMTP_PORT}" \
+    "${PUBLIRA_E2E_MAILPIT_HTTP_PORT}"; do
     while read -r project; do
       if [[ -z "${project}" || "${project}" == "${COMPOSE_PROJECT_NAME}" ]]; then
         continue
       fi
-      E2E_STACK_PORT="${port}"
-      E2E_STACK_PORT_PROJECT="${project}"
+      PUBLIRA_E2E_STACK_PORT="${port}"
+      PUBLIRA_E2E_STACK_PORT_PROJECT="${project}"
       return 0
     done < <(docker ps \
       --filter "publish=${port}" \
@@ -322,15 +322,15 @@ e2e_find_foreign_port_publisher() {
 # database.
 require_no_foreign_stack() {
   if e2e_find_foreign_stack; then
-    if [[ -n "${E2E_STACK_OWNER}" ]]; then
-      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (stack owned by ${E2E_STACK_OWNER}); wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+    if [[ -n "${PUBLIRA_E2E_STACK_OWNER}" ]]; then
+      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (stack owned by ${PUBLIRA_E2E_STACK_OWNER}); wait or set COMPOSE_PROJECT_NAME and PUBLIRA_E2E_*_PORT"
     else
-      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (containers these scripts did not create); remove them with 'task e2e:down', or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (containers these scripts did not create); remove them with 'task e2e:down', or set COMPOSE_PROJECT_NAME and PUBLIRA_E2E_*_PORT"
     fi
     exit 1
   fi
   if e2e_find_foreign_port_publisher; then
-    e2e_err "port ${E2E_STACK_PORT} is published by compose project ${E2E_STACK_PORT_PROJECT}; wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+    e2e_err "port ${PUBLIRA_E2E_STACK_PORT} is published by compose project ${PUBLIRA_E2E_STACK_PORT_PROJECT}; wait or set COMPOSE_PROJECT_NAME and PUBLIRA_E2E_*_PORT"
     exit 1
   fi
 }
@@ -340,19 +340,19 @@ e2e_lock_is_free() {
   if ! command -v flock >/dev/null 2>&1; then
     return 0
   fi
-  if [[ ! -e "${E2E_LOCK_FILE}" ]]; then
+  if [[ ! -e "${PUBLIRA_E2E_LOCK_FILE}" ]]; then
     return 0
   fi
-  flock -n "${E2E_LOCK_FILE}" true 2>/dev/null
+  flock -n "${PUBLIRA_E2E_LOCK_FILE}" true 2>/dev/null
 }
 
-# E2E_LOCK_FILE keeps whatever path the caller reached the repository through,
+# PUBLIRA_E2E_LOCK_FILE keeps whatever path the caller reached the repository through,
 # symlinks included, while /proc reports the physical one. Resolve the directory
 # with `pwd -P` so the two can be compared (`readlink -f` is GNU-only).
 e2e_lock_file_physical() {
   local dir
-  dir="$(cd "$(dirname "${E2E_LOCK_FILE}")" 2>/dev/null && pwd -P)" || return 1
-  printf '%s/%s\n' "${dir}" "$(basename "${E2E_LOCK_FILE}")"
+  dir="$(cd "$(dirname "${PUBLIRA_E2E_LOCK_FILE}")" 2>/dev/null && pwd -P)" || return 1
+  printf '%s/%s\n' "${dir}" "$(basename "${PUBLIRA_E2E_LOCK_FILE}")"
 }
 
 # PIDs with the lock file open, newline separated. The lease file normally
@@ -361,14 +361,14 @@ e2e_lock_file_physical() {
 # falls back to printing a recovery hint.
 e2e_lock_holder_pids() {
   local fd pid target physical
-  if [[ ! -d /proc || ! -e "${E2E_LOCK_FILE}" ]]; then
+  if [[ ! -d /proc || ! -e "${PUBLIRA_E2E_LOCK_FILE}" ]]; then
     return 0
   fi
   physical="$(e2e_lock_file_physical || true)"
-  physical="${physical:-${E2E_LOCK_FILE}}"
+  physical="${physical:-${PUBLIRA_E2E_LOCK_FILE}}"
   for fd in /proc/[0-9]*/fd/*; do
     target="$(readlink "${fd}" 2>/dev/null || true)"
-    if [[ "${target}" != "${E2E_LOCK_FILE}" && "${target}" != "${physical}" ]]; then
+    if [[ "${target}" != "${PUBLIRA_E2E_LOCK_FILE}" && "${target}" != "${physical}" ]]; then
       continue
     fi
     pid="${fd#/proc/}"
@@ -381,7 +381,7 @@ e2e_lock_holder_pids() {
 }
 
 e2e_lock_holder_hint() {
-  printf "identify it with 'fuser %s' or 'lsof %s', then kill it" "${E2E_LOCK_FILE}" "${E2E_LOCK_FILE}"
+  printf "identify it with 'fuser %s' or 'lsof %s', then kill it" "${PUBLIRA_E2E_LOCK_FILE}" "${PUBLIRA_E2E_LOCK_FILE}"
 }
 
 # SIGTERM, then SIGKILL. Best effort: callers verify by the lock, not the pid,
@@ -417,7 +417,7 @@ e2e_reclaim_orphan_lock() {
   done
   pids="$(e2e_lock_holder_pids)"
   if [[ -z "${pids}" ]]; then
-    e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${E2E_LOCK_FILE} is held by an unidentified process; $(e2e_lock_holder_hint)"
+    e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${PUBLIRA_E2E_LOCK_FILE} is held by an unidentified process; $(e2e_lock_holder_hint)"
     return 1
   fi
   while read -r pid; do
@@ -433,7 +433,7 @@ e2e_reclaim_orphan_lock() {
     fi
     sleep 0.1
   done
-  e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${E2E_LOCK_FILE} is still held after killing $(tr '\n' ' ' <<<"${pids}" | sed 's/ $//'); $(e2e_lock_holder_hint)"
+  e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${PUBLIRA_E2E_LOCK_FILE} is still held after killing $(tr '\n' ' ' <<<"${pids}" | sed 's/ $//'); $(e2e_lock_holder_hint)"
   return 1
 }
 
@@ -443,23 +443,23 @@ e2e_report_lock_holders() {
   local pids
   pids="$(e2e_lock_holder_pids)"
   if [[ -z "${pids}" ]]; then
-    e2e_err "lock ${E2E_LOCK_FILE} is held but no lease file names the owner; $(e2e_lock_holder_hint)"
+    e2e_err "lock ${PUBLIRA_E2E_LOCK_FILE} is held but no lease file names the owner; $(e2e_lock_holder_hint)"
     return 0
   fi
-  e2e_err "lock ${E2E_LOCK_FILE} is held by pid(s) $(tr '\n' ' ' <<<"${pids}" | sed 's/ $//') with no lease file; run 'task e2e:down' to reclaim it"
+  e2e_err "lock ${PUBLIRA_E2E_LOCK_FILE} is held by pid(s) $(tr '\n' ' ' <<<"${pids}" | sed 's/ $//') with no lease file; run 'task e2e:down' to reclaim it"
 }
 
 # Detached holder so the lease outlives up.sh / start-apps.sh. Leftover-stack
-# commands with the same E2E_RUN_DIR join; a different RUN_DIR is refused.
+# commands with the same PUBLIRA_E2E_RUN_DIR join; a different RUN_DIR is refused.
 e2e_spawn_lease_holder() {
-  mkdir -p "$(dirname "${E2E_LOCK_FILE}")"
+  mkdir -p "$(dirname "${PUBLIRA_E2E_LOCK_FILE}")"
   local ready pid waited
   ready="$(mktemp)"
   # Detached from the caller's stdio: the holder outlives up.sh, and keeping the
   # inherited pipe open blocks whoever reads its output until teardown.
   (
     if command -v flock >/dev/null 2>&1; then
-      exec 9>"${E2E_LOCK_FILE}"
+      exec 9>"${PUBLIRA_E2E_LOCK_FILE}"
       flock -n 9 || exit 1
     fi
     printf '%s\n' "${BASHPID}" >"${ready}"
@@ -473,7 +473,7 @@ e2e_spawn_lease_holder() {
   while [[ ! -s "${ready}" ]]; do
     if ! kill -0 $! 2>/dev/null && [[ ! -s "${ready}" ]]; then
       rm -f "${ready}"
-      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set COMPOSE_PROJECT_NAME and PUBLIRA_E2E_*_PORT"
       e2e_report_lock_holders
       exit 1
     fi
@@ -487,18 +487,18 @@ e2e_spawn_lease_holder() {
   done
   pid="$(cat "${ready}")"
   rm -f "${ready}"
-  printf '%s\n%s\n%s\n' "${E2E_RUN_DIR}" "${pid}" "$(pid_start_time "${pid}")" >"${E2E_LEASE_FILE}"
+  printf '%s\n%s\n%s\n' "${PUBLIRA_E2E_RUN_DIR}" "${pid}" "$(pid_start_time "${pid}")" >"${PUBLIRA_E2E_LEASE_FILE}"
 }
 
-# Spawn a holder or join the existing owner. Children inherit E2E_LOCK_HELD=1
+# Spawn a holder or join the existing owner. Children inherit PUBLIRA_E2E_LOCK_HELD=1
 # and skip so `bash up.sh` from run.sh does not spawn a second holder.
 acquire_e2e_lock() {
-  if [[ "${E2E_LOCK_HELD:-0}" == "1" ]]; then
+  if [[ "${PUBLIRA_E2E_LOCK_HELD:-0}" == "1" ]]; then
     return 0
   fi
   if e2e_lease_holder_alive; then
-    if [[ "$(e2e_lease_run_dir)" == "${E2E_RUN_DIR}" ]]; then
-      export E2E_LOCK_HELD=1
+    if [[ "$(e2e_lease_run_dir)" == "${PUBLIRA_E2E_RUN_DIR}" ]]; then
+      export PUBLIRA_E2E_LOCK_HELD=1
       return 0
     fi
     e2e_refuse_foreign_lease
@@ -506,19 +506,19 @@ acquire_e2e_lock() {
   # No live lease holder says nothing about whether a stack is up, so ask the
   # containers before taking the project over for this run.
   require_no_foreign_stack
-  rm -f "${E2E_LEASE_FILE}"
+  rm -f "${PUBLIRA_E2E_LEASE_FILE}"
   e2e_spawn_lease_holder
-  export E2E_LOCK_HELD=1
+  export PUBLIRA_E2E_LOCK_HELD=1
 }
 
 # stop-apps must not create a lease; it only refuses a foreign owner.
 join_e2e_lease() {
-  if [[ "${E2E_LOCK_HELD:-0}" == "1" ]]; then
+  if [[ "${PUBLIRA_E2E_LOCK_HELD:-0}" == "1" ]]; then
     return 0
   fi
   if e2e_lease_holder_alive; then
-    if [[ "$(e2e_lease_run_dir)" == "${E2E_RUN_DIR}" ]]; then
-      export E2E_LOCK_HELD=1
+    if [[ "$(e2e_lease_run_dir)" == "${PUBLIRA_E2E_RUN_DIR}" ]]; then
+      export PUBLIRA_E2E_LOCK_HELD=1
       return 0
     fi
     e2e_refuse_foreign_lease
@@ -526,23 +526,23 @@ join_e2e_lease() {
 }
 
 require_e2e_owner_or_free() {
-  if e2e_lease_holder_alive && [[ "$(e2e_lease_run_dir)" != "${E2E_RUN_DIR}" ]]; then
+  if e2e_lease_holder_alive && [[ "$(e2e_lease_run_dir)" != "${PUBLIRA_E2E_RUN_DIR}" ]]; then
     e2e_refuse_foreign_lease
   fi
 }
 
 # Owner-only. A leftover `task e2e:down` matches the lease RUN_DIR and succeeds;
-# a second stack with another E2E_RUN_DIR cannot tear the first down.
+# a second stack with another PUBLIRA_E2E_RUN_DIR cannot tear the first down.
 release_e2e_lease() {
   local pid
   if e2e_lease_holder_alive; then
-    if [[ "$(e2e_lease_run_dir)" != "${E2E_RUN_DIR}" ]]; then
+    if [[ "$(e2e_lease_run_dir)" != "${PUBLIRA_E2E_RUN_DIR}" ]]; then
       e2e_refuse_foreign_lease
     fi
-    pid="$(sed -n '2p' "${E2E_LEASE_FILE}" 2>/dev/null || true)"
+    pid="$(sed -n '2p' "${PUBLIRA_E2E_LEASE_FILE}" 2>/dev/null || true)"
     e2e_terminate_pid "${pid}"
   fi
-  rm -f "${E2E_LEASE_FILE}"
+  rm -f "${PUBLIRA_E2E_LEASE_FILE}"
   # Nothing owns the lock now, so anything still holding it is an orphan from a
   # crashed or hard-killed run: teardown is the place that can free it.
   e2e_reclaim_orphan_lock
