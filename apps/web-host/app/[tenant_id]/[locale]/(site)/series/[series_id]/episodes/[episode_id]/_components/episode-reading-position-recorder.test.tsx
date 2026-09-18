@@ -17,6 +17,7 @@ import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
 import { READING_POSITION_SAVE_DELAY_MS } from "../_lib/reading-position";
 import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
 
+const fetchMock = vi.fn<typeof fetch>();
 const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>();
 
 /** The reader's own pairing rule: the cover stands alone. */
@@ -80,13 +81,17 @@ const turnPage = (name: "Next page" | "Previous page") => {
 };
 
 /** The reader rests on the page they turned to for longer than the delay. */
-const settle = () => {
-  act(() => {
-    vi.advanceTimersByTime(READING_POSITION_SAVE_DELAY_MS);
-  });
+const settle = async () => {
+  await act(() => vi.advanceTimersByTimeAsync(READING_POSITION_SAVE_DELAY_MS));
 };
 
-const savedPageIndex = async (call: number): Promise<number> => {
+const savedPageIndex = (call: number): number => {
+  const [, init] = fetchMock.mock.calls[call];
+  const payload: unknown = JSON.parse(String(init?.body));
+  return (payload as { pageIndex: number }).pageIndex;
+};
+
+const beaconPageIndex = async (call: number): Promise<number> => {
   const [, body] = sendBeacon.mock.calls[call];
   const payload: unknown = JSON.parse(await body.text());
   return (payload as { pageIndex: number }).pageIndex;
@@ -96,6 +101,11 @@ beforeEach(() => {
   vi.useFakeTimers();
   // `clearMocks` drops the calls but keeps whatever a test taught the mock to
   // return, so a queue-refusing test would otherwise reach the next one.
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(() =>
+    Promise.resolve(new Response(null, { status: 204 }))
+  );
+  vi.stubGlobal("fetch", fetchMock);
   sendBeacon.mockReset();
   sendBeacon.mockReturnValue(true);
   vi.stubGlobal("navigator", { ...navigator, sendBeacon });
@@ -111,14 +121,13 @@ describe("EpisodeReadingPositionRecorder", () => {
   it("saves the page the reader settled on, addressed by the reader's own path", async () => {
     renderViewer();
     turnPage("Next page");
-    settle();
+    await settle();
 
-    expect(sendBeacon).toHaveBeenCalledOnce();
-    expect(sendBeacon.mock.calls[0][0]).toBe(
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe(
       "/api/v1/series/SERIES_001/episodes/EPISODE_001/reading-position"
     );
-    expect(sendBeacon.mock.calls[0][1].type).toBe("application/json");
-    await expect(savedPageIndex(0)).resolves.toBe(1);
+    expect(savedPageIndex(0)).toBe(1);
   });
 
   it("saves one page for a run of turns rather than one per turn", async () => {
@@ -126,68 +135,90 @@ describe("EpisodeReadingPositionRecorder", () => {
     turnPage("Next page");
     turnPage("Next page");
     turnPage("Next page");
-    settle();
+    await settle();
 
-    expect(sendBeacon).toHaveBeenCalledOnce();
-    await expect(savedPageIndex(0)).resolves.toBe(3);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(savedPageIndex(0)).toBe(3);
   });
 
-  it("saves the page the reader is on when the page goes away", async () => {
+  it("hands the page the reader is on to the browser when the page goes away", async () => {
     renderViewer();
     turnPage("Next page");
     fireEvent(window, new Event("pagehide"));
 
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(sendBeacon).toHaveBeenCalledOnce();
-    await expect(savedPageIndex(0)).resolves.toBe(1);
+    await expect(beaconPageIndex(0)).resolves.toBe(1);
   });
 
-  it("saves the page the reader is on when they navigate away inside the app", async () => {
+  it("saves the page the reader is on when they navigate away inside the app", () => {
     const { unmount } = renderViewer();
     turnPage("Next page");
     unmount();
 
-    expect(sendBeacon).toHaveBeenCalledOnce();
-    await expect(savedPageIndex(0)).resolves.toBe(1);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(savedPageIndex(0)).toBe(1);
   });
 
   it("saves the page a resumed reader opens on without a turn", async () => {
     renderViewer({ initialPageIndex: 4 });
-    settle();
+    await settle();
 
-    expect(sendBeacon).toHaveBeenCalledOnce();
-    await expect(savedPageIndex(0)).resolves.toBe(4);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(savedPageIndex(0)).toBe(4);
   });
 
-  it("saves the last page of the episode for a reader on the page after it", () => {
+  it("saves the last page of the episode for a reader on the page after it", async () => {
     renderViewer({ endPage: true, initialPageIndex: 7 });
-    settle();
-    sendBeacon.mockClear();
+    await settle();
+    fetchMock.mockClear();
 
     turnPage("Next page");
-    settle();
+    await settle();
 
     // The page after the last one belongs to the viewer rather than to the
     // episode, so the saved position stays where the episode ends.
-    expect(sendBeacon).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("saves nothing more while the reader stays on the page it already saved", () => {
+  it("saves nothing more while the reader stays on the page it already saved", async () => {
     renderViewer();
     turnPage("Next page");
-    settle();
+    await settle();
     turnPage("Previous page");
     turnPage("Next page");
-    settle();
+    await settle();
 
-    expect(sendBeacon).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("saves the start of the spread when pairing begins on the first page", async () => {
     renderViewer({ spreadStartIndex: 0, viewMode: "double" });
     turnPage("Next page");
-    settle();
+    await settle();
 
-    expect(sendBeacon).toHaveBeenCalledOnce();
-    await expect(savedPageIndex(0)).resolves.toBe(2);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(savedPageIndex(0)).toBe(2);
+  });
+
+  it("saves the pages turned offline once the connection returns", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderViewer();
+    turnPage("Next page");
+    await settle();
+    turnPage("Next page");
+    turnPage("Next page");
+    await settle();
+
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(new Response(null, { status: 204 }))
+    );
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(savedPageIndex(2)).toBe(3);
   });
 });

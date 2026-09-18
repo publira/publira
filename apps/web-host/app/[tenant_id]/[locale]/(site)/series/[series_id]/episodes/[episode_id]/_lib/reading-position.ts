@@ -1,3 +1,6 @@
+import type { WaitForConnection } from "./delivery";
+import { postReport, waitForConnection } from "./delivery";
+
 /**
  * How long the reader stays on a page before it is worth saving.
  *
@@ -38,14 +41,16 @@ export const readingPositionBeaconPath = (
 ): string =>
   `/api/v1/series/${encodeURIComponent(seriesPublicId)}/episodes/${encodeURIComponent(episodePublicId)}/reading-position`;
 
+/** Send one position and resolve whether the server answered. */
+export const sendReadingPosition = (
+  path: string,
+  pageIndex: number
+): Promise<boolean> => postReport(path, { pageIndex });
+
 /**
- * Hand one position to the browser to deliver. The JSON content type is what
- * keeps the request off the CORS safelist, so a cross-origin page cannot send
- * it at all — the same-origin check on the endpoint is the guard, and this is
- * the layer above it.
- *
- * The answer is whether the browser accepted the beacon for delivery, not
- * whether it was written: nothing reads the response.
+ * Hand one position to the browser for a page that is going away, where no
+ * answer can be awaited. Whether it arrives stays unknown, so the saver never
+ * counts it as saved.
  */
 export const sendReadingPositionBeacon = (
   path: string,
@@ -61,27 +66,39 @@ export interface ReadingPositionSaver {
   save: (pageIndex: number) => void;
   /** Send what is waiting, without waiting for the delay to run out. */
   flush: () => void;
+  /** The page is going away: hand what is unsaved to the browser. */
+  leave: () => void;
 }
 
 /**
  * Collects page turns and sends the page the reader rests on.
  *
- * A page equal to the last one sent is not sent again, and turning back to it
- * inside the delay drops what was waiting, so a reader paging over the same
- * spread produces one request rather than one per turn. A beacon the browser
- * refused to queue leaves the last sent page as it was, which is what makes
- * the next turn try again.
+ * A page counts as saved only once the server answered for it. A page equal
+ * to the last one saved or in flight is not sent again, and turning back to
+ * it inside the delay drops what was waiting, so a reader paging over the
+ * same spread produces one request rather than one per turn. One request is
+ * in flight at a time, so an older page never lands after a newer one.
+ *
+ * A send that fails keeps its page unsaved and sends it again when the
+ * connection returns, unless the reader has since moved on to a page that
+ * supersedes it.
  */
 export const createReadingPositionSaver = ({
+  beacon,
   delayMs = READING_POSITION_SAVE_DELAY_MS,
+  onReconnect = waitForConnection,
   send,
 }: {
+  beacon: (pageIndex: number) => boolean;
   delayMs?: number;
-  send: (pageIndex: number) => boolean;
+  onReconnect?: WaitForConnection;
+  send: (pageIndex: number) => Promise<boolean>;
 }): ReadingPositionSaver => {
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let stopWaiting: (() => void) | null = null;
   let pendingPageIndex: number | null = null;
-  let sentPageIndex: number | null = null;
+  let inFlightPageIndex: number | null = null;
+  let savedPageIndex: number | null = null;
 
   const cancelTimer = () => {
     if (timer !== null) {
@@ -90,23 +107,47 @@ export const createReadingPositionSaver = ({
     }
   };
 
-  const flush = () => {
+  const deliver = async () => {
     cancelTimer();
+    stopWaiting?.();
+    stopWaiting = null;
     const pageIndex = pendingPageIndex;
-    pendingPageIndex = null;
-    if (pageIndex === null) {
+    if (pageIndex === null || inFlightPageIndex !== null) {
       return;
     }
-    if (send(pageIndex)) {
-      sentPageIndex = pageIndex;
+    pendingPageIndex = null;
+    inFlightPageIndex = pageIndex;
+    const delivered = await send(pageIndex);
+    inFlightPageIndex = null;
+    if (!delivered) {
+      pendingPageIndex ??= pageIndex;
+      stopWaiting = onReconnect(() => {
+        void deliver();
+      });
+      return;
     }
+    savedPageIndex = pageIndex;
+    // A page the reader rested on while this one was in flight.
+    if (pendingPageIndex !== null && timer === null) {
+      await deliver();
+    }
+  };
+
+  const flush = () => {
+    void deliver();
   };
 
   return {
     flush,
+    leave: () => {
+      cancelTimer();
+      if (pendingPageIndex !== null) {
+        beacon(pendingPageIndex);
+      }
+    },
     save: (pageIndex: number) => {
       cancelTimer();
-      if (pageIndex === sentPageIndex) {
+      if (pageIndex === (inFlightPageIndex ?? savedPageIndex)) {
         pendingPageIndex = null;
         return;
       }

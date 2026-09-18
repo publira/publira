@@ -9,6 +9,7 @@ import type { ReadingPositionSaver } from "../_lib/reading-position";
 import {
   createReadingPositionSaver,
   readingPositionBeaconPath,
+  sendReadingPosition,
   sendReadingPositionBeacon,
 } from "../_lib/reading-position";
 
@@ -26,11 +27,11 @@ import {
  * It is mounted for a signed-in reader only. A guest has no position to save,
  * and the API would discard the write, so the beacon is not sent at all.
  *
- * `sendBeacon` hands the request to the browser, which delivers it on its own
- * schedule and keeps it alive across the navigation a reader leaving the
- * episode makes. There is nothing to await and no answer to read, so the API
- * owns what that costs: it decides whether this reader may record a position
- * at all, and a page outside the episode is refused there.
+ * A position counts as saved only once the API answered for it, so a page
+ * turned while the connection is gone is sent again when it returns. Only
+ * `pagehide` falls back to `sendBeacon`, since a page going away can await
+ * nothing. The API decides whether this reader may record a position at all,
+ * and refuses a page outside the episode.
  */
 export const EpisodeReadingPositionRecorder = ({
   episode,
@@ -51,23 +52,25 @@ export const EpisodeReadingPositionRecorder = ({
 
   useEffect(() => {
     const saver = createReadingPositionSaver({
-      send: (index) => sendReadingPositionBeacon(beaconPath, index),
+      beacon: (index) => sendReadingPositionBeacon(beaconPath, index),
+      send: (index) => sendReadingPosition(beaconPath, index),
     });
     saverRef.current = saver;
 
     // `pagehide` rather than `unload`: a page the browser keeps for the back
     // button is never unloaded, and a mobile browser may kill the tab without
     // ever firing it.
-    const flush = () => {
-      saver.flush();
+    const leave = () => {
+      saver.leave();
     };
-    window.addEventListener("pagehide", flush);
+    window.addEventListener("pagehide", leave);
 
     return () => {
-      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("pagehide", leave);
       saverRef.current = null;
       // The reader navigated away inside the app, which the browser reports
-      // through no event of its own.
+      // through no event of its own. The document stays, so the send can
+      // still be confirmed and retried.
       saver.flush();
     };
   }, [beaconPath]);

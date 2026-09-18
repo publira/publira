@@ -5,10 +5,12 @@ import { useEffect, useRef } from "react";
 
 import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
 
+import type { Report } from "../_lib/delivery";
+import { createReport, postReport } from "../_lib/delivery";
 import { isLastPageVisible } from "../_lib/viewer-progress";
 
 /**
- * The tenant-scoped endpoint the beacon reaches. `proxy.ts` rewrites `/api/…`
+ * The tenant-scoped endpoint the report reaches. `proxy.ts` rewrites `/api/…`
  * onto the resolved tenant, so the reader's URL carries no tenant and no
  * locale segment.
  */
@@ -30,18 +32,14 @@ const episodeReadBeaconPath = (
  * page is finished the moment it appears, as is an episode that is one page
  * long.
  *
- * `sendBeacon` hands the request to the browser, which delivers it on its own
- * schedule and keeps it alive across the navigation a finished episode
- * invites. There is nothing to await and no answer to read, so the API owns
- * both halves of what that costs: it decides whether this reader may record
- * the episode at all, and a re-read never writes a second row or moves the
- * first timestamp. The suppression here counts only what this mount has
- * already handed over, so the reader who pages back and forth over the last
- * spread sends one beacon rather than one per turn.
- *
- * A beacon the browser refused to queue is the one case worth another go, so
- * that leaves the state open and the next arrival at the last page tries
- * again.
+ * The report is sent with `fetch` and counts as made only once the API
+ * answered, so a finish reached while the connection is gone is sent again
+ * when it returns, and the next arrival at the last page also tries again.
+ * `keepalive` carries it across the navigation a finished episode invites.
+ * The API decides whether this reader may record the episode at all, and a
+ * re-read never writes a second row or moves the first timestamp. The
+ * suppression here keeps the reader who pages back and forth over the last
+ * spread to one request rather than one per turn.
  */
 export const EpisodeReadRecorder = ({
   episode,
@@ -58,23 +56,24 @@ export const EpisodeReadRecorder = ({
     spreadStartIndex,
     viewMode,
   });
-  const hasReportedRef = useRef(false);
-  const beaconPath = episodeReadBeaconPath(series.publicId, episode.publicId);
+  const reportRef = useRef<Report | null>(null);
 
   useEffect(() => {
-    if (!isFinished || hasReportedRef.current) {
-      return;
-    }
+    // The episode is named by the path, so the body is an empty object.
+    reportRef.current = createReport({
+      deliver: () =>
+        postReport(episodeReadBeaconPath(series.publicId, episode.publicId)),
+    });
+    return () => {
+      reportRef.current = null;
+    };
+  }, [episode.publicId, series.publicId]);
 
-    // The episode is named by the path, so the body carries nothing. The JSON
-    // content type is what keeps the request off the CORS safelist, so a
-    // cross-origin page cannot send this beacon at all — the same-origin check
-    // on the endpoint is the guard, and this is the layer above it.
-    hasReportedRef.current = navigator.sendBeacon(
-      beaconPath,
-      new Blob([], { type: "application/json" })
-    );
-  }, [beaconPath, isFinished]);
+  useEffect(() => {
+    if (isFinished) {
+      reportRef.current?.send();
+    }
+  }, [isFinished]);
 
   return null;
 };
