@@ -9,10 +9,11 @@
 -- write a row carrying A's tenant_id while pointing at a row owned by B.
 --
 -- The seventeen references left behind were the ones whose parent had no
--- UNIQUE (tenant_id, id) for a composite reference to name. Ten parents get one
--- here. Two of them, episode_images and notifications, hold enough rows that
--- building the index would block writes, so the preceding two migrations built
--- it concurrently and it is promoted to a constraint below.
+-- UNIQUE (tenant_id, id) for a composite reference to name. Eight parents get
+-- one here. The other two, episode_images and notifications, hold enough rows
+-- that building the key would block writes, so the preceding two migrations
+-- built theirs concurrently as bare unique indexes, which a reference is
+-- satisfied by just as well.
 --
 -- ON DELETE behaviour is carried over from the constraint being replaced. Where
 -- that behaviour is SET NULL, the composite constraint names the referencing
@@ -20,8 +21,8 @@
 -- is NOT NULL on every one of these tables.
 
 -- The (tenant_id, id) keys a composite reference can name. PostgreSQL accepts a
--- reference only against a unique constraint on exactly those columns, and each
--- of these tables has id alone as its primary key.
+-- reference only against a unique key on exactly those columns, and each of
+-- these tables has id alone as its primary key.
 
 -- PLATFORM
 
@@ -47,10 +48,8 @@ ALTER TABLE ONLY creator_images
 ALTER TABLE ONLY series_images
     ADD CONSTRAINT series_images_tenant_id_id_key UNIQUE (tenant_id, id);
 
--- CONSTRAINT: episode_images episode_images_tenant_id_id_key
--- Built concurrently by 20260918094804; promoting the index costs no rebuild.
-ALTER TABLE ONLY episode_images
-    ADD CONSTRAINT episode_images_tenant_id_id_key UNIQUE USING INDEX episode_images_tenant_id_id_key;
+-- episode_images_tenant_id_id_key is 20260918094804's, and notifications'
+-- is 20260918094805's.
 
 -- PAGES
 
@@ -63,11 +62,6 @@ ALTER TABLE ONLY page_versions
     ADD CONSTRAINT page_versions_tenant_id_id_key UNIQUE (tenant_id, id);
 
 -- NOTIFICATIONS
-
--- CONSTRAINT: notifications notifications_tenant_id_id_key
--- Built concurrently by 20260918094805; promoting the index costs no rebuild.
-ALTER TABLE ONLY notifications
-    ADD CONSTRAINT notifications_tenant_id_id_key UNIQUE USING INDEX notifications_tenant_id_id_key;
 
 -- CONSTRAINT: announcements announcements_tenant_id_id_key
 ALTER TABLE ONLY announcements

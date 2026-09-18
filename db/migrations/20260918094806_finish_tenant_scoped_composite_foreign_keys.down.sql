@@ -1,10 +1,7 @@
 -- Restore the single-column foreign keys, in the reverse order of the up, then
--- take away the keys they no longer name.
---
--- Dropping a unique constraint drops the index underneath it, so the two that
--- were promoted from an index built concurrently are put back as plain indexes:
--- that is the state 20260918094804 and 20260918094805 left, and it is what
--- their own down migrations expect to find.
+-- take away the keys they no longer name. The two indexes the preceding
+-- migrations built concurrently are not among them — they are those
+-- migrations' to drop, concurrently, the way they were built.
 
 -- COMMERCE
 
@@ -125,11 +122,6 @@ ALTER TABLE ONLY tenant_image_variants
 ALTER TABLE ONLY announcements
     DROP CONSTRAINT announcements_tenant_id_id_key;
 
-ALTER TABLE ONLY notifications
-    DROP CONSTRAINT notifications_tenant_id_id_key;
-
-CREATE UNIQUE INDEX notifications_tenant_id_id_key ON notifications USING btree (tenant_id, id);
-
 -- PAGES
 
 ALTER TABLE ONLY page_versions
@@ -139,11 +131,6 @@ ALTER TABLE ONLY pages
     DROP CONSTRAINT pages_tenant_id_id_key;
 
 -- CATALOG
-
-ALTER TABLE ONLY episode_images
-    DROP CONSTRAINT episode_images_tenant_id_id_key;
-
-CREATE UNIQUE INDEX episode_images_tenant_id_id_key ON episode_images USING btree (tenant_id, id);
 
 ALTER TABLE ONLY series_images
     DROP CONSTRAINT series_images_tenant_id_id_key;
