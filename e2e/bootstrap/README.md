@@ -35,6 +35,7 @@ It always tears down the `task dev` process group, compose project, and volumes 
 
 | Command | Purpose |
 | --- | --- |
+| `task e2e:bootstrap:test-lib` | Check the stop phase 3 waits on, with `compose` stubbed (no Docker). |
 | `task e2e:bootstrap:up` | Phase 1: start `db`, `redis`, and `rustfs` with empty volumes. |
 | `task e2e:bootstrap:setup` | Phase 2: run `task setup` and verify migration / seed. |
 | `task e2e:bootstrap:restart-db` | Phase 3: verify persistence after restarting DB and RustFS. |
@@ -51,7 +52,7 @@ To preserve a local development `task dev`, run `BOOTSTRAP_SKIP_DEV=1 task e2e:b
 | --- | --- | --- |
 | 1 | Start `db`, `redis`, and `rustfs` in dedicated project `publira-bootstrap`. | `publira-bootstrap_postgres-data` mounts at `/var/lib/postgresql`; `data_directory` is below it (for PG 18, `/var/lib/postgresql/18/docker`); `PG_VERSION` exists; `schema_migrations` does not yet exist; teardown removes the Postgres and RustFS volumes. |
 | 2 | Run `task setup` (or `task deps` + `task db:setup` + `task storage:seed` without Flutter). | `schema_migrations` is current and clean; seed tenant `localhost` exists; main tables are non-empty; a second `task db:seed` leaves counts unchanged; a second `task storage:seed` succeeds, proving the bucket and the images it names are both idempotent. |
-| 3 | `compose stop db rustfs` then `compose up --wait db rustfs`. | Data directory, migration state, and all seed counts match before restart; a sentinel object and its contents remain in the bucket before rerunning the storage seed; subsequent `task db:setup` and `task storage:seed` stay clean. |
+| 3 | `compose stop db rustfs`, wait until neither is up any more, then `compose up --wait db rustfs`. | Data directory, migration state, and all seed counts match before restart; a sentinel object and its contents remain in the bucket before rerunning the storage seed; subsequent `task db:setup` and `task storage:seed` stay clean. |
 | 4 | Run `task dev`. | Two Go servers (the API server, on its edge and its internal listener, and the image server) and three Next.js apps return 200 from `/livez` and `/readyz`; all 6 ports listen; the bootstrap Redis has application connections. |
 
 `scripts/lib.sh` exports `PUBLIRA_DB_URL`, `PUBLIRA_*_DB_URL`, `PUBLIRA_REDIS_URL`, `PUBLIRA_S3_*`, `AWS_*`, `PUBLIRA_AUTH_SECRET`, and `PUBLIRA_AUTH_JWT_SECRET` so `task dev` uses the bootstrap stack. Storage uses Dev-Container path style, with `PUBLIRA_S3_ENDPOINT` fixed to bootstrap RustFS at `http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}`. API targets keep their usual localhost ports.
@@ -64,6 +65,7 @@ e2e/bootstrap/
 ├── Taskfile.yaml
 └── scripts/
     ├── lib.sh              # Paths, URLs, probes, and assertion helpers
+    ├── lib_test.sh         # Checks for the stop phase 3 waits on (no Docker)
     ├── run.sh              # Phases 1–4, always teardown, and failure-log collection
     ├── up.sh / setup.sh / restart-db.sh
     ├── dev-up.sh / dev-wait.sh / dev-down.sh
@@ -79,7 +81,7 @@ The failing `[bootstrap] ERROR: …` message identifies the phase.
 3. **phase 3** — data did not persist to the volume. Check the DB mount / `data_directory` relationship, or the `rustfs-data` volume and sentinel object.
 4. **phase 4** — inspect the named service in `readiness failed: <name>` and `.run/logs/task-dev.log`.
 
-Teardown leaves `.run/logs/task-dev.log` whenever phase 4 ran, and writes `compose-ps.log` / `compose.log` on failure.
+Teardown leaves `.run/logs/task-dev.log` whenever phase 4 ran, and writes `compose-ps.log` / `compose.log` on failure. `compose-ps.log` covers every service the project created, stopped ones included, so a failure caused by a service that exited names the state it was in.
 
 ## CI
 

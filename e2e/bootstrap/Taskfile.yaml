@@ -18,6 +18,11 @@ tasks:
     cmds:
       - bash "{{.BOOTSTRAP_DIR}}/scripts/run.sh"
 
+  test-lib:
+    desc: Check the stop phase 3 waits on before restarting (no Docker)
+    cmds:
+      - bash "{{.BOOTSTRAP_DIR}}/scripts/lib_test.sh"
+
   up:
     desc: "Phase 1: fresh compose project on an empty Postgres volume"
     cmds:

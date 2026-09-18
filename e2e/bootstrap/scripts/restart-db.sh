@@ -29,6 +29,7 @@ aws s3 cp "${sentinel_file}" "s3://${PUBLIRA_S3_BUCKET}/${sentinel_key}" \
 
 bootstrap_log "stopping db and rustfs"
 compose stop db rustfs
+wait_until_stopped db rustfs
 
 bootstrap_log "starting db and rustfs"
 compose up -d --wait db rustfs

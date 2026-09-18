@@ -63,6 +63,10 @@ export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
 BOOTSTRAP_DEV_TIMEOUT_SEC="${BOOTSTRAP_DEV_TIMEOUT_SEC:-600}"
 BOOTSTRAP_DEV_INTERVAL_SEC="${BOOTSTRAP_DEV_INTERVAL_SEC:-2}"
 
+# Budget for the stop phase 3 waits on before starting the services again.
+BOOTSTRAP_STOP_TIMEOUT_SEC="${BOOTSTRAP_STOP_TIMEOUT_SEC:-60}"
+BOOTSTRAP_STOP_INTERVAL_SEC="${BOOTSTRAP_STOP_INTERVAL_SEC:-1}"
+
 # Ports `task dev` listens on. Fixed, not configurable: the Next.js apps carry
 # their port in the `dev` script of each apps/*/package.json.
 BOOTSTRAP_DEV_PORTS=(3000 4000 4100 8000 8100 8200)
@@ -91,6 +95,33 @@ compose() {
 
 ensure_run_dirs() {
   mkdir -p "${LOG_DIR}" "${STATE_DIR}"
+}
+
+# `<service>=<state>` for the named services, on one sorted line.
+service_states() {
+  compose ps -a --format '{{.Service}}={{.State}}' "$@" | sort | paste -sd' ' -
+}
+
+# `compose stop` can return before the daemon's view of the container settles,
+# and the `up` that follows then reads it as still running, starts nothing, and
+# waits on a container on its way down. Poll Compose's own view — the one `up`
+# reads — until none of the named services is up any more.
+wait_until_stopped() {
+  local deadline=$((SECONDS + BOOTSTRAP_STOP_TIMEOUT_SEC))
+  local up_filter=(--status running --status restarting --status removing --status paused)
+  local still_up
+  while :; do
+    still_up="$(compose ps -a --format '{{.Service}}' "${up_filter[@]}" "$@")"
+    if [[ -z "${still_up}" ]]; then
+      bootstrap_log "ok: stopped $(service_states "$@")"
+      return 0
+    fi
+    if ((SECONDS >= deadline)); then
+      bootstrap_err "still up: $(service_states "$@")"
+      bootstrap_fail "timed out after ${BOOTSTRAP_STOP_TIMEOUT_SEC}s waiting for $* to stop"
+    fi
+    sleep "${BOOTSTRAP_STOP_INTERVAL_SEC}"
+  done
 }
 
 db_container_id() {
@@ -169,7 +200,9 @@ collect_diagnostics() {
   bootstrap_err "collecting diagnostics into ${LOG_DIR}"
   mkdir -p "${LOG_DIR}"
 
-  compose ps >"${LOG_DIR}/compose-ps.log" 2>&1 || true
+  # `--all`, so a service that exited — the state a failure is most likely to
+  # be about — is named instead of being left out of the listing.
+  compose ps --all >"${LOG_DIR}/compose-ps.log" 2>&1 || true
   compose logs --no-color --tail 200 >"${LOG_DIR}/compose.log" 2>&1 || true
 
   local f
