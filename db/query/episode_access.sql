@@ -45,5 +45,11 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
 ORDER BY e.order_index ASC,
     e.id ASC;

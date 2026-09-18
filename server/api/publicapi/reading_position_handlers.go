@@ -224,7 +224,7 @@ func (s *apiServer) ListMyRecentSeries(
 		ids = append(ids, row.SeriesID)
 		rowBySeriesID[row.SeriesID] = row
 	}
-	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
+	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, anySurface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recent series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}

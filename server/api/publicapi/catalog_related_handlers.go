@@ -133,6 +133,7 @@ type relatedSeriesPageRow struct {
 func (s *apiServer) relatedSeriesPageRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	seriesID uuid.UUID,
 	ranking seriesRanking,
 	reversed bool,
@@ -143,6 +144,7 @@ func (s *apiServer) relatedSeriesPageRows(
 
 	if reversed {
 		rows, err := queries.ListRelatedSeriesIDsReversed(ctx, dbmodels.ListRelatedSeriesIDsReversedParams{
+			Surface:           surface,
 			CursorID:          keys.id,
 			CursorInclusive:   keys.inclusive,
 			CursorPublishedAt: keys.publishedAt,
@@ -167,6 +169,7 @@ func (s *apiServer) relatedSeriesPageRows(
 	}
 
 	rows, err := queries.ListRelatedSeriesIDs(ctx, dbmodels.ListRelatedSeriesIDsParams{
+		Surface:           surface,
 		CursorID:          keys.id,
 		CursorInclusive:   keys.inclusive,
 		CursorPublishedAt: keys.publishedAt,
@@ -208,6 +211,10 @@ func (s *apiServer) ListRelatedSeries(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
 	if seriesPublicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
@@ -230,6 +237,7 @@ func (s *apiServer) ListRelatedSeries(
 	// and none of them can be told apart.
 	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 		TenantID: tenant.ID,
+		Surface:  surfaceArg(surface),
 		PublicID: seriesPublicID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -248,6 +256,7 @@ func (s *apiServer) ListRelatedSeries(
 	pageRows, err := s.relatedSeriesPageRows(
 		ctx,
 		tenant.ID,
+		surface,
 		seriesID,
 		ranking,
 		cursor.Direction == pagination.Backward,
@@ -266,7 +275,7 @@ func (s *apiServer) ListRelatedSeries(
 		sortKeysByID[pageRow.id] = pageRow.sortKeys
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list related series", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}

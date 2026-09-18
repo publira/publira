@@ -300,6 +300,128 @@ func (CommentMode) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{4}
 }
 
+// The client a public catalog read is made from. A work may be withheld from
+// either of them (SurfaceAvailability), and the catalog answers each one with
+// the works it may show, so the rule lives on the server rather than in two
+// clients filtering a full catalog.
+type ClientSurface int32
+
+const (
+	// Answered as CLIENT_SURFACE_WEB, so a caller that names nothing keeps
+	// seeing what the storefront sees.
+	ClientSurface_CLIENT_SURFACE_UNSPECIFIED ClientSurface = 0
+	// The tenant's web storefront.
+	ClientSurface_CLIENT_SURFACE_WEB ClientSurface = 1
+	// The tenant's mobile app.
+	ClientSurface_CLIENT_SURFACE_APP ClientSurface = 2
+)
+
+// Enum value maps for ClientSurface.
+var (
+	ClientSurface_name = map[int32]string{
+		0: "CLIENT_SURFACE_UNSPECIFIED",
+		1: "CLIENT_SURFACE_WEB",
+		2: "CLIENT_SURFACE_APP",
+	}
+	ClientSurface_value = map[string]int32{
+		"CLIENT_SURFACE_UNSPECIFIED": 0,
+		"CLIENT_SURFACE_WEB":         1,
+		"CLIENT_SURFACE_APP":         2,
+	}
+)
+
+func (x ClientSurface) Enum() *ClientSurface {
+	p := new(ClientSurface)
+	*p = x
+	return p
+}
+
+func (x ClientSurface) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ClientSurface) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[5].Descriptor()
+}
+
+func (ClientSurface) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[5]
+}
+
+func (x ClientSurface) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ClientSurface.Descriptor instead.
+func (ClientSurface) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{5}
+}
+
+// Which surfaces a work may be shown on. A series states it
+// (series.availability) and an episode may narrow it (episodes.availability):
+// an episode is shown only where its series is, so its own value can take it
+// off a surface but never put it on one its series is kept off.
+//
+// A work kept off a surface is absent from every list, search, ranking, and
+// recommendation read that surface makes, and a read of it by public ID
+// answers not_found exactly as it does for an unpublished one.
+type SurfaceAvailability int32
+
+const (
+	// On a series write, the default the column carries: both surfaces. On an
+	// episode, following its series.
+	SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED SurfaceAvailability = 0
+	// The storefront and the app.
+	SurfaceAvailability_SURFACE_AVAILABILITY_ALL SurfaceAvailability = 1
+	// The storefront alone.
+	SurfaceAvailability_SURFACE_AVAILABILITY_WEB SurfaceAvailability = 2
+	// The app alone.
+	SurfaceAvailability_SURFACE_AVAILABILITY_APP SurfaceAvailability = 3
+)
+
+// Enum value maps for SurfaceAvailability.
+var (
+	SurfaceAvailability_name = map[int32]string{
+		0: "SURFACE_AVAILABILITY_UNSPECIFIED",
+		1: "SURFACE_AVAILABILITY_ALL",
+		2: "SURFACE_AVAILABILITY_WEB",
+		3: "SURFACE_AVAILABILITY_APP",
+	}
+	SurfaceAvailability_value = map[string]int32{
+		"SURFACE_AVAILABILITY_UNSPECIFIED": 0,
+		"SURFACE_AVAILABILITY_ALL":         1,
+		"SURFACE_AVAILABILITY_WEB":         2,
+		"SURFACE_AVAILABILITY_APP":         3,
+	}
+)
+
+func (x SurfaceAvailability) Enum() *SurfaceAvailability {
+	p := new(SurfaceAvailability)
+	*p = x
+	return p
+}
+
+func (x SurfaceAvailability) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SurfaceAvailability) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[6].Descriptor()
+}
+
+func (SurfaceAvailability) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[6]
+}
+
+func (x SurfaceAvailability) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SurfaceAvailability.Descriptor instead.
+func (SurfaceAvailability) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{6}
+}
+
 // Which of a tenant's age ratings a reader has to prove an age for
 // (tenant_config.age_verification). The values are the rungs of one ladder
 // rather than a switch per rating: a tenant that gated `r15` while leaving
@@ -346,11 +468,11 @@ func (x AgeVerification) String() string {
 }
 
 func (AgeVerification) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[5].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[7].Descriptor()
 }
 
 func (AgeVerification) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[5]
+	return &file_publira_types_v1_types_proto_enumTypes[7]
 }
 
 func (x AgeVerification) Number() protoreflect.EnumNumber {
@@ -359,7 +481,7 @@ func (x AgeVerification) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AgeVerification.Descriptor instead.
 func (AgeVerification) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{5}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{7}
 }
 
 // TenantContext identifies a tenant for internal RPC wiring.
@@ -1112,7 +1234,11 @@ type Series struct {
 	// series however many of its episodes they reacted to, so this is a
 	// headcount and not a count of reactions. It is set and cleared together
 	// with the figure.
-	RatingCount   int64 `protobuf:"varint,20,opt,name=rating_count,json=ratingCount,proto3" json:"rating_count,omitempty"`
+	RatingCount int64 `protobuf:"varint,20,opt,name=rating_count,json=ratingCount,proto3" json:"rating_count,omitempty"`
+	// Which surfaces the series may be shown on. Set on the console's reads;
+	// SURFACE_AVAILABILITY_UNSPECIFIED on the storefront's and the app's, where
+	// the catalog has already left out every series the caller may not show.
+	Availability  SurfaceAvailability `protobuf:"varint,21,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1273,6 +1399,13 @@ func (x *Series) GetRatingCount() int64 {
 	return 0
 }
 
+func (x *Series) GetAvailability() SurfaceAvailability {
+	if x != nil {
+		return x.Availability
+	}
+	return SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED
+}
+
 type Episode struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -1309,8 +1442,15 @@ type Episode struct {
 	// episodes than this one, and the episode is then laid out without a spread.
 	ReadingDirection ReadingDirection `protobuf:"varint,11,opt,name=reading_direction,json=readingDirection,proto3,enum=publira.types.v1.ReadingDirection" json:"reading_direction,omitempty"`
 	SpreadStartIndex int32            `protobuf:"varint,12,opt,name=spread_start_index,json=spreadStartIndex,proto3" json:"spread_start_index,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The episode's own availability, and SURFACE_AVAILABILITY_UNSPECIFIED
+	// where it follows its series. Set on the console's reads and unspecified on
+	// the public ones, like Series.availability. It is the override rather than
+	// a resolved value because the series bounds it: an episode is shown only
+	// where its series is too, so a series and an episode naming different
+	// single surfaces leave the episode shown nowhere, which no one value says.
+	Availability  SurfaceAvailability `protobuf:"varint,13,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -1425,6 +1565,13 @@ func (x *Episode) GetSpreadStartIndex() int32 {
 		return x.SpreadStartIndex
 	}
 	return 0
+}
+
+func (x *Episode) GetAvailability() SurfaceAvailability {
+	if x != nil {
+		return x.Availability
+	}
+	return SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED
 }
 
 type EpisodeImage struct {
@@ -2174,7 +2321,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\"-\n" +
 	"\x03Tag\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xda\x06\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xa5\a\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -2195,7 +2342,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x04tags\x18\x11 \x03(\v2\x15.publira.types.v1.TagR\x04tags\x12,\n" +
 	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCount\x12%\n" +
 	"\x0erating_average\x18\x13 \x01(\x01R\rratingAverage\x12!\n" +
-	"\frating_count\x18\x14 \x01(\x03R\vratingCountJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xdc\x03\n" +
+	"\frating_count\x18\x14 \x01(\x03R\vratingCount\x12I\n" +
+	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailabilityJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xa7\x04\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -2210,7 +2358,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\frating_count\x18\n" +
 	" \x01(\x03R\vratingCount\x12O\n" +
 	"\x11reading_direction\x18\v \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x12,\n" +
-	"\x12spread_start_index\x18\f \x01(\x05R\x10spreadStartIndex\"\xd9\x01\n" +
+	"\x12spread_start_index\x18\f \x01(\x05R\x10spreadStartIndex\x12I\n" +
+	"\favailability\x18\r \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +
@@ -2311,7 +2460,16 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x18COMMENT_MODE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15COMMENT_MODE_DISABLED\x10\x01\x12\x1a\n" +
 	"\x16COMMENT_MODE_IMMEDIATE\x10\x02\x12\"\n" +
-	"\x1eCOMMENT_MODE_APPROVAL_REQUIRED\x10\x03*\x8a\x01\n" +
+	"\x1eCOMMENT_MODE_APPROVAL_REQUIRED\x10\x03*_\n" +
+	"\rClientSurface\x12\x1e\n" +
+	"\x1aCLIENT_SURFACE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12CLIENT_SURFACE_WEB\x10\x01\x12\x16\n" +
+	"\x12CLIENT_SURFACE_APP\x10\x02*\x95\x01\n" +
+	"\x13SurfaceAvailability\x12$\n" +
+	" SURFACE_AVAILABILITY_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18SURFACE_AVAILABILITY_ALL\x10\x01\x12\x1c\n" +
+	"\x18SURFACE_AVAILABILITY_WEB\x10\x02\x12\x1c\n" +
+	"\x18SURFACE_AVAILABILITY_APP\x10\x03*\x8a\x01\n" +
 	"\x0fAgeVerification\x12 \n" +
 	"\x1cAGE_VERIFICATION_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15AGE_VERIFICATION_NONE\x10\x01\x12\x18\n" +
@@ -2330,7 +2488,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
 var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
@@ -2338,45 +2496,49 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(SeriesAgeRating)(0),          // 2: publira.types.v1.SeriesAgeRating
 	(ReadingDirection)(0),         // 3: publira.types.v1.ReadingDirection
 	(CommentMode)(0),              // 4: publira.types.v1.CommentMode
-	(AgeVerification)(0),          // 5: publira.types.v1.AgeVerification
-	(*TenantContext)(nil),         // 6: publira.types.v1.TenantContext
-	(*User)(nil),                  // 7: publira.types.v1.User
-	(*AccessToken)(nil),           // 8: publira.types.v1.AccessToken
-	(*CreatorRole)(nil),           // 9: publira.types.v1.CreatorRole
-	(*Creator)(nil),               // 10: publira.types.v1.Creator
-	(*Label)(nil),                 // 11: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 12: publira.types.v1.SeriesEyeCatchVariant
-	(*ImageCropRect)(nil),         // 13: publira.types.v1.ImageCropRect
-	(*Genre)(nil),                 // 14: publira.types.v1.Genre
-	(*Tag)(nil),                   // 15: publira.types.v1.Tag
-	(*Series)(nil),                // 16: publira.types.v1.Series
-	(*Episode)(nil),               // 17: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 18: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 19: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 20: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 21: publira.types.v1.Page
-	(*PageVersion)(nil),           // 22: publira.types.v1.PageVersion
+	(ClientSurface)(0),            // 5: publira.types.v1.ClientSurface
+	(SurfaceAvailability)(0),      // 6: publira.types.v1.SurfaceAvailability
+	(AgeVerification)(0),          // 7: publira.types.v1.AgeVerification
+	(*TenantContext)(nil),         // 8: publira.types.v1.TenantContext
+	(*User)(nil),                  // 9: publira.types.v1.User
+	(*AccessToken)(nil),           // 10: publira.types.v1.AccessToken
+	(*CreatorRole)(nil),           // 11: publira.types.v1.CreatorRole
+	(*Creator)(nil),               // 12: publira.types.v1.Creator
+	(*Label)(nil),                 // 13: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 14: publira.types.v1.SeriesEyeCatchVariant
+	(*ImageCropRect)(nil),         // 15: publira.types.v1.ImageCropRect
+	(*Genre)(nil),                 // 16: publira.types.v1.Genre
+	(*Tag)(nil),                   // 17: publira.types.v1.Tag
+	(*Series)(nil),                // 18: publira.types.v1.Series
+	(*Episode)(nil),               // 19: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 20: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 21: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 22: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 23: publira.types.v1.Page
+	(*PageVersion)(nil),           // 24: publira.types.v1.PageVersion
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	9,  // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
+	11, // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
 	0,  // 1: publira.types.v1.Creator.source:type_name -> publira.types.v1.CreatorCreditSource
-	12, // 2: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	11, // 3: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	10, // 4: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	12, // 5: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	14, // 2: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	13, // 3: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	12, // 4: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	14, // 5: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	1,  // 6: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
 	2,  // 7: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	14, // 8: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
-	15, // 9: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
-	10, // 10: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
-	3,  // 11: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
-	19, // 12: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	19, // 13: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	16, // 8: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	17, // 9: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	6,  // 10: publira.types.v1.Series.availability:type_name -> publira.types.v1.SurfaceAvailability
+	12, // 11: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	3,  // 12: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	6,  // 13: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
+	21, // 14: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	21, // 15: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -2389,7 +2551,7 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      6,
+			NumEnums:      8,
 			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,

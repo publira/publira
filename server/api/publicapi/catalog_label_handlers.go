@@ -36,8 +36,13 @@ func (s *apiServer) GetPublishedLabelDetail(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	row, err := s.queriesFor(ctx).GetPublishedLabelByPublicID(ctx, dbmodels.GetPublishedLabelByPublicIDParams{
 		TenantID: tenant.ID,
+		Surface:  surface,
 		PublicID: req.Msg.PublicId,
 	})
 	if err != nil {
@@ -61,6 +66,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 	series, previousToken, nextToken, err := s.publishedLabelSeriesPage(
 		ctx,
 		tenant.ID,
+		surface,
 		row.ID,
 		req.Msg.Limit,
 		req.Msg.Token,
@@ -83,6 +89,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 func (s *apiServer) publishedLabelSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	labelID uuid.UUID,
 	requestedLimit int32,
 	token string,
@@ -101,12 +108,12 @@ func (s *apiServer) publishedLabelSeriesPage(
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedLabelSeriesPageIDs(ctx, tenantID, labelID, descending, keys, limit+1)
+	ids, err := s.publishedLabelSeriesPageIDs(ctx, tenantID, surface, labelID, descending, keys, limit+1)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surfaceArg(surface), ids)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}
@@ -136,6 +143,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 func (s *apiServer) publishedLabelSeriesPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	labelID uuid.UUID,
 	descending bool,
 	keys seriesCursorKeys,
@@ -144,6 +152,7 @@ func (s *apiServer) publishedLabelSeriesPageIDs(
 	queries := s.queriesFor(ctx)
 	if descending {
 		return queries.ListPublishedSeriesIDsByLabelTitleDesc(ctx, dbmodels.ListPublishedSeriesIDsByLabelTitleDescParams{
+			Surface:         surface,
 			LabelID:         labelID,
 			TenantID:        tenantID,
 			CursorID:        keys.id,
@@ -153,6 +162,7 @@ func (s *apiServer) publishedLabelSeriesPageIDs(
 		})
 	}
 	return queries.ListPublishedSeriesIDsByLabelTitleAsc(ctx, dbmodels.ListPublishedSeriesIDsByLabelTitleAscParams{
+		Surface:         surface,
 		LabelID:         labelID,
 		TenantID:        tenantID,
 		CursorID:        keys.id,

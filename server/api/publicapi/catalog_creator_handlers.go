@@ -113,6 +113,7 @@ func publishedCreatorFromDetailRow(row dbmodels.GetPublishedCreatorByPublicIDRow
 func (s *apiServer) publishedCreatorPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	descending bool,
 	keys creatorCursorKeys,
 	limit int32,
@@ -121,6 +122,7 @@ func (s *apiServer) publishedCreatorPageIDs(
 	if descending {
 		return queries.ListPublishedCreatorIDsByNameDesc(ctx, dbmodels.ListPublishedCreatorIDsByNameDescParams{
 			TenantID:        tenantID,
+			Surface:         surface,
 			CursorName:      keys.name,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
@@ -129,6 +131,7 @@ func (s *apiServer) publishedCreatorPageIDs(
 	}
 	return queries.ListPublishedCreatorIDsByNameAsc(ctx, dbmodels.ListPublishedCreatorIDsByNameAscParams{
 		TenantID:        tenantID,
+		Surface:         surface,
 		CursorName:      keys.name,
 		CursorID:        keys.id,
 		CursorInclusive: keys.inclusive,
@@ -139,6 +142,7 @@ func (s *apiServer) publishedCreatorPageIDs(
 func (s *apiServer) publishedCreatorRowsInOrder(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	ids []uuid.UUID,
 ) ([]dbmodels.ListPublishedCreatorsByIDsRow, error) {
 	if len(ids) == 0 {
@@ -147,6 +151,7 @@ func (s *apiServer) publishedCreatorRowsInOrder(
 
 	rows, err := s.queriesFor(ctx).ListPublishedCreatorsByIDs(ctx, dbmodels.ListPublishedCreatorsByIDsParams{
 		TenantID: tenantID,
+		Surface:  surface,
 		Ids:      ids,
 	})
 	if err != nil {
@@ -179,6 +184,10 @@ func (s *apiServer) ListPublishedCreators(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorPageSize, maxCreatorPageSize)
 	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
@@ -192,12 +201,12 @@ func (s *apiServer) ListPublishedCreators(
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedCreatorPageIDs(ctx, tenant.ID, descending, keys, limit+1)
+	ids, err := s.publishedCreatorPageIDs(ctx, tenant.ID, surface, descending, keys, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published creators", err, "tenant_id", tenant.ID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.publishedCreatorRowsInOrder(ctx, tenant.ID, ids)
+	rows, err := s.publishedCreatorRowsInOrder(ctx, tenant.ID, surface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published creators", err, "tenant_id", tenant.ID.String())
 	}
@@ -233,8 +242,13 @@ func (s *apiServer) GetPublishedCreatorDetail(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	row, err := s.queriesFor(ctx).GetPublishedCreatorByPublicID(ctx, dbmodels.GetPublishedCreatorByPublicIDParams{
 		TenantID: tenant.ID,
+		Surface:  surfaceArg(surface),
 		PublicID: req.Msg.PublicId,
 	})
 	if err != nil {
@@ -247,6 +261,7 @@ func (s *apiServer) GetPublishedCreatorDetail(
 	series, previousToken, nextToken, err := s.publishedCreatorSeriesPage(
 		ctx,
 		tenant.ID,
+		surface,
 		row.ID,
 		req.Msg.Limit,
 		req.Msg.Token,
@@ -269,6 +284,7 @@ func (s *apiServer) GetPublishedCreatorDetail(
 func (s *apiServer) publishedCreatorSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	creatorID uuid.UUID,
 	requestedLimit int32,
 	token string,
@@ -287,12 +303,12 @@ func (s *apiServer) publishedCreatorSeriesPage(
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedCreatorSeriesPageIDs(ctx, tenantID, creatorID, descending, keys, limit+1)
+	ids, err := s.publishedCreatorSeriesPageIDs(ctx, tenantID, surface, creatorID, descending, keys, limit+1)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published creator series", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surfaceArg(surface), ids)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published creator series", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
@@ -322,6 +338,7 @@ func (s *apiServer) publishedCreatorSeriesPage(
 func (s *apiServer) publishedCreatorSeriesPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	creatorID uuid.UUID,
 	descending bool,
 	keys seriesCursorKeys,
@@ -330,6 +347,7 @@ func (s *apiServer) publishedCreatorSeriesPageIDs(
 	queries := s.queriesFor(ctx)
 	if descending {
 		return queries.ListPublishedSeriesIDsByCreatorTitleDesc(ctx, dbmodels.ListPublishedSeriesIDsByCreatorTitleDescParams{
+			Surface:         surface,
 			CreatorID:       creatorID,
 			TenantID:        tenantID,
 			CursorID:        keys.id,
@@ -339,6 +357,7 @@ func (s *apiServer) publishedCreatorSeriesPageIDs(
 		})
 	}
 	return queries.ListPublishedSeriesIDsByCreatorTitleAsc(ctx, dbmodels.ListPublishedSeriesIDsByCreatorTitleAscParams{
+		Surface:         surface,
 		CreatorID:       creatorID,
 		TenantID:        tenantID,
 		CursorID:        keys.id,

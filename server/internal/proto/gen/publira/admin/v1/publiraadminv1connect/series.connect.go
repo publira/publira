@@ -72,6 +72,9 @@ const (
 	// AdminSeriesServiceUpdateEpisodeLayoutProcedure is the fully-qualified name of the
 	// AdminSeriesService's UpdateEpisodeLayout RPC.
 	AdminSeriesServiceUpdateEpisodeLayoutProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeLayout"
+	// AdminSeriesServiceUpdateEpisodeAvailabilityProcedure is the fully-qualified name of the
+	// AdminSeriesService's UpdateEpisodeAvailability RPC.
+	AdminSeriesServiceUpdateEpisodeAvailabilityProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeAvailability"
 	// AdminSeriesServiceListEpisodeCreditsProcedure is the fully-qualified name of the
 	// AdminSeriesService's ListEpisodeCredits RPC.
 	AdminSeriesServiceListEpisodeCreditsProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodeCredits"
@@ -110,6 +113,7 @@ type AdminSeriesServiceClient interface {
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
 	UpdateEpisodeLayout(context.Context, *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error)
+	UpdateEpisodeAvailability(context.Context, *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error)
 	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
 	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
 	BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error)
@@ -208,6 +212,12 @@ func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodeLayout")),
 			connect.WithClientOptions(opts...),
 		),
+		updateEpisodeAvailability: connect.NewClient[v1.UpdateEpisodeAvailabilityRequest, v1.UpdateEpisodeAvailabilityResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceUpdateEpisodeAvailabilityProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodeAvailability")),
+			connect.WithClientOptions(opts...),
+		),
 		listEpisodeCredits: connect.NewClient[v1.ListEpisodeCreditsRequest, v1.ListEpisodeCreditsResponse](
 			httpClient,
 			baseURL+AdminSeriesServiceListEpisodeCreditsProcedure,
@@ -268,6 +278,7 @@ type adminSeriesServiceClient struct {
 	reorderEpisodeImages            *connect.Client[v1.ReorderEpisodeImagesRequest, v1.ReorderEpisodeImagesResponse]
 	updateEpisodePublishSchedule    *connect.Client[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse]
 	updateEpisodeLayout             *connect.Client[v1.UpdateEpisodeLayoutRequest, v1.UpdateEpisodeLayoutResponse]
+	updateEpisodeAvailability       *connect.Client[v1.UpdateEpisodeAvailabilityRequest, v1.UpdateEpisodeAvailabilityResponse]
 	listEpisodeCredits              *connect.Client[v1.ListEpisodeCreditsRequest, v1.ListEpisodeCreditsResponse]
 	replaceEpisodeCredits           *connect.Client[v1.ReplaceEpisodeCreditsRequest, v1.ReplaceEpisodeCreditsResponse]
 	bulkEditEpisodeCredits          *connect.Client[v1.BulkEditEpisodeCreditsRequest, v1.BulkEditEpisodeCreditsResponse]
@@ -343,6 +354,11 @@ func (c *adminSeriesServiceClient) UpdateEpisodeLayout(ctx context.Context, req 
 	return c.updateEpisodeLayout.CallUnary(ctx, req)
 }
 
+// UpdateEpisodeAvailability calls publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability.
+func (c *adminSeriesServiceClient) UpdateEpisodeAvailability(ctx context.Context, req *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error) {
+	return c.updateEpisodeAvailability.CallUnary(ctx, req)
+}
+
 // ListEpisodeCredits calls publira.admin.v1.AdminSeriesService.ListEpisodeCredits.
 func (c *adminSeriesServiceClient) ListEpisodeCredits(ctx context.Context, req *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error) {
 	return c.listEpisodeCredits.CallUnary(ctx, req)
@@ -395,6 +411,7 @@ type AdminSeriesServiceHandler interface {
 	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
 	UpdateEpisodeLayout(context.Context, *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error)
+	UpdateEpisodeAvailability(context.Context, *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error)
 	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
 	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
 	BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error)
@@ -489,6 +506,12 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodeLayout")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminSeriesServiceUpdateEpisodeAvailabilityHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceUpdateEpisodeAvailabilityProcedure,
+		svc.UpdateEpisodeAvailability,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodeAvailability")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminSeriesServiceListEpisodeCreditsHandler := connect.NewUnaryHandler(
 		AdminSeriesServiceListEpisodeCreditsProcedure,
 		svc.ListEpisodeCredits,
@@ -559,6 +582,8 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 			adminSeriesServiceUpdateEpisodePublishScheduleHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceUpdateEpisodeLayoutProcedure:
 			adminSeriesServiceUpdateEpisodeLayoutHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceUpdateEpisodeAvailabilityProcedure:
+			adminSeriesServiceUpdateEpisodeAvailabilityHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceListEpisodeCreditsProcedure:
 			adminSeriesServiceListEpisodeCreditsHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceReplaceEpisodeCreditsProcedure:
@@ -632,6 +657,10 @@ func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(conte
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeLayout(context.Context, *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeAvailability(context.Context, *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability is not implemented"))
 }
 
 func (UnimplementedAdminSeriesServiceHandler) ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error) {

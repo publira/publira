@@ -35,6 +35,12 @@ SELECT s.id,
         SELECT COUNT(*)
         FROM published_free_episodes fe
         WHERE fe.series_id = s.id
+            AND EXISTS (
+                SELECT 1
+                FROM episode_surfaces es
+                WHERE es.episode_id = fe.episode_id
+                    AND es.surface = sqlc.arg('surface')::text
+            )
     )::int4 AS free_episode_count,
     -- Collect the several creators into one column as a JSON array
     COALESCE(
@@ -142,7 +148,9 @@ SELECT s.id,
                 )
             FROM episodes e
                 JOIN episode_listings el ON el.episode_id = e.id
+                JOIN episode_surfaces es ON es.episode_id = e.id
             WHERE e.series_id = s.id
+                AND es.surface = sqlc.arg('surface')::text
                 AND el.status = 'published'
                 AND el.published_at IS NOT NULL
                 AND el.published_at <= NOW()
@@ -156,8 +164,16 @@ FROM series s
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_roles cr ON cr.id = sc.role_id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
-WHERE s.public_id = $1
-    AND s.tenant_id = $2
+WHERE s.public_id = sqlc.arg('public_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    -- A series the calling surface may not show is no row, which the caller
+    -- answers exactly as it answers an unpublished one.
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
 GROUP BY s.id,
     l.id,
     sl.series_id,
@@ -173,15 +189,17 @@ INSERT INTO series (
         tenant_id,
         label_id,
         public_id,
-        title
+        title,
+        availability
     )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: UpdateSeriesBase :exec
 UPDATE series
 SET title = $2,
     label_id = $3,
+    availability = $4,
     updated_at = NOW()
 WHERE id = $1;
 
@@ -255,7 +273,8 @@ SELECT s.id,
     s.created_at,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
-    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
+    s.availability
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -306,7 +325,8 @@ SELECT s.id,
     s.created_at,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
-    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
+    s.availability
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -352,6 +372,15 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('surface')::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.narg('surface')::text
+        )
+    )
 LIMIT 1;
 
 -- name: GetPublishedSeriesAgeRatingByPublicID :one
@@ -366,6 +395,12 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
 LIMIT 1;
 
 -- name: GetSeriesByPublicIDForTenant :one
@@ -386,7 +421,8 @@ SELECT s.id,
     s.published_at,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
-    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
+    s.availability
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id

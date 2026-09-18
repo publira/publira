@@ -720,7 +720,9 @@ type Querier interface {
 	// id is a UUIDv7, so the order stays unique even when created_at ties.
 	// cursor rules: proto/README.md.
 	ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAccessTicketsForTenantDescParams) ([]ListAccessTicketsForTenantDescRow, error)
-	// Display data for the published series, narrowed by tenant id.
+	// Display data for the published series, narrowed by tenant id. A NULL
+	// surface filters by no surface, for the member reads that do not name one;
+	// the catalog always names one.
 	// No ORDER BY: the caller sorts the rows into the id order stage one settled
 	// on.
 	ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error)
@@ -772,6 +774,11 @@ type Querier interface {
 	// catalogue, and idx_series_genres_tenant_genre, idx_series_tags_tenant_tag,
 	// idx_series_listings_tenant_status, or idx_series_listings_schedule_weekdays
 	// when it keeps a handful.
+	//
+	// Every query also keeps only what the calling surface may show, through
+	// series_surfaces for the series and episode_surfaces for the episodes counted
+	// into them. The surface is not one of the filters the token is bound to: a
+	// client names the same surface on every read it makes.
 	//
 	// What counts as a free episode is the published_free_episodes view, which
 	// both stages read: stage one keeps only the series that have such an episode
@@ -1867,6 +1874,8 @@ type Querier interface {
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
 	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error
+	// NULL returns the episode to following its series.
+	UpdateEpisodeAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodeAvailabilityByIDForTenantParams) error
 	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
 	// Both overrides are written together, and NULL returns a value to following
 	// the series.

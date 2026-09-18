@@ -1208,7 +1208,7 @@ const listRankedSeriesIDs = `-- name: ListRankedSeriesIDs :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
-    FROM jsonb_array_elements($6::jsonb) AS item
+    FROM jsonb_array_elements($7::jsonb) AS item
     WHERE item->>'rank' IS NOT NULL
     GROUP BY (item->>'entity_id')::uuid
 )
@@ -1218,29 +1218,36 @@ FROM ranked r
 WHERE s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
+    )
     AND (
-        $2::uuid IS NULL
+        $3::uuid IS NULL
         OR (
-            $3::boolean
+            $4::boolean
             AND (r.rank, r.entity_id) >= (
-                $4::int,
-                $2::uuid
+                $5::int,
+                $3::uuid
             )
         )
         OR (
-            NOT $3::boolean
+            NOT $4::boolean
             AND (r.rank, r.entity_id) > (
-                $4::int,
-                $2::uuid
+                $5::int,
+                $3::uuid
             )
         )
     )
 ORDER BY r.rank ASC, r.entity_id ASC
-LIMIT $5
+LIMIT $6
 `
 
 type ListRankedSeriesIDsParams struct {
 	TenantID        uuid.UUID       `json:"tenant_id"`
+	Surface         string          `json:"surface"`
 	CursorID        uuid.NullUUID   `json:"cursor_id"`
 	CursorInclusive bool            `json:"cursor_inclusive"`
 	CursorRank      sql.NullInt32   `json:"cursor_rank"`
@@ -1277,6 +1284,7 @@ type ListRankedSeriesIDsRow struct {
 func (q *Queries) ListRankedSeriesIDs(ctx context.Context, arg ListRankedSeriesIDsParams) ([]ListRankedSeriesIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRankedSeriesIDs,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorRank,
@@ -1308,7 +1316,7 @@ const listRankedSeriesIDsReversed = `-- name: ListRankedSeriesIDsReversed :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
-    FROM jsonb_array_elements($6::jsonb) AS item
+    FROM jsonb_array_elements($7::jsonb) AS item
     WHERE item->>'rank' IS NOT NULL
     GROUP BY (item->>'entity_id')::uuid
 )
@@ -1318,29 +1326,36 @@ FROM ranked r
 WHERE s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
+    )
     AND (
-        $2::uuid IS NULL
+        $3::uuid IS NULL
         OR (
-            $3::boolean
+            $4::boolean
             AND (r.rank, r.entity_id) <= (
-                $4::int,
-                $2::uuid
+                $5::int,
+                $3::uuid
             )
         )
         OR (
-            NOT $3::boolean
+            NOT $4::boolean
             AND (r.rank, r.entity_id) < (
-                $4::int,
-                $2::uuid
+                $5::int,
+                $3::uuid
             )
         )
     )
 ORDER BY r.rank DESC, r.entity_id DESC
-LIMIT $5
+LIMIT $6
 `
 
 type ListRankedSeriesIDsReversedParams struct {
 	TenantID        uuid.UUID       `json:"tenant_id"`
+	Surface         string          `json:"surface"`
 	CursorID        uuid.NullUUID   `json:"cursor_id"`
 	CursorInclusive bool            `json:"cursor_inclusive"`
 	CursorRank      sql.NullInt32   `json:"cursor_rank"`
@@ -1358,6 +1373,7 @@ type ListRankedSeriesIDsReversedRow struct {
 func (q *Queries) ListRankedSeriesIDsReversed(ctx context.Context, arg ListRankedSeriesIDsReversedParams) ([]ListRankedSeriesIDsReversedRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRankedSeriesIDsReversed,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorRank,
@@ -1402,6 +1418,12 @@ candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $8::text
+        )
 )
 SELECT id, sort_rank
 FROM candidate
@@ -1442,6 +1464,7 @@ type ListRecommendedSeriesIDsParams struct {
 	Limit             int32           `json:"limit"`
 	RankingItems      json.RawMessage `json:"ranking_items"`
 	TenantID          uuid.UUID       `json:"tenant_id"`
+	Surface           string          `json:"surface"`
 }
 
 type ListRecommendedSeriesIDsRow struct {
@@ -1477,6 +1500,7 @@ func (q *Queries) ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommen
 		arg.Limit,
 		arg.RankingItems,
 		arg.TenantID,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err
@@ -1516,6 +1540,12 @@ candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $8::text
+        )
 )
 SELECT id, sort_rank
 FROM candidate
@@ -1556,6 +1586,7 @@ type ListRecommendedSeriesIDsReversedParams struct {
 	Limit             int32           `json:"limit"`
 	RankingItems      json.RawMessage `json:"ranking_items"`
 	TenantID          uuid.UUID       `json:"tenant_id"`
+	Surface           string          `json:"surface"`
 }
 
 type ListRecommendedSeriesIDsReversedRow struct {
@@ -1574,6 +1605,7 @@ func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg List
 		arg.Limit,
 		arg.RankingItems,
 		arg.TenantID,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err
@@ -1670,6 +1702,12 @@ candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $10::text
+        )
 )
 SELECT id, score, sort_rank
 FROM candidate
@@ -1719,6 +1757,7 @@ type ListRelatedSeriesIDsParams struct {
 	TenantID          uuid.UUID       `json:"tenant_id"`
 	SeriesID          uuid.UUID       `json:"series_id"`
 	RankingItems      json.RawMessage `json:"ranking_items"`
+	Surface           string          `json:"surface"`
 }
 
 type ListRelatedSeriesIDsRow struct {
@@ -1760,6 +1799,7 @@ func (q *Queries) ListRelatedSeriesIDs(ctx context.Context, arg ListRelatedSerie
 		arg.TenantID,
 		arg.SeriesID,
 		arg.RankingItems,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err
@@ -1856,6 +1896,12 @@ candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $10::text
+        )
 )
 SELECT id, score, sort_rank
 FROM candidate
@@ -1905,6 +1951,7 @@ type ListRelatedSeriesIDsReversedParams struct {
 	TenantID          uuid.UUID       `json:"tenant_id"`
 	SeriesID          uuid.UUID       `json:"series_id"`
 	RankingItems      json.RawMessage `json:"ranking_items"`
+	Surface           string          `json:"surface"`
 }
 
 type ListRelatedSeriesIDsReversedRow struct {
@@ -1926,6 +1973,7 @@ func (q *Queries) ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRela
 		arg.TenantID,
 		arg.SeriesID,
 		arg.RankingItems,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err

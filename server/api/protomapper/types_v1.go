@@ -54,6 +54,11 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 	if row.PublishedAt.Valid {
 		series.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
+	availability, err := SurfaceAvailabilityFromStored(row.Availability)
+	if err != nil {
+		return nil, err
+	}
+	series.Availability = availability
 	return series, nil
 }
 

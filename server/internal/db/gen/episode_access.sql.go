@@ -52,6 +52,12 @@ WHERE s.tenant_id = $2
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $4::text
+    )
 ORDER BY e.order_index ASC,
     e.id ASC
 `
@@ -60,6 +66,7 @@ type ListPublishedEpisodeAccessInSeriesParams struct {
 	UserID   uuid.NullUUID `json:"user_id"`
 	TenantID uuid.UUID     `json:"tenant_id"`
 	SeriesID uuid.UUID     `json:"series_id"`
+	Surface  string        `json:"surface"`
 }
 
 type ListPublishedEpisodeAccessInSeriesRow struct {
@@ -75,7 +82,12 @@ type ListPublishedEpisodeAccessInSeriesRow struct {
 // guest passes a NULL user_id, which no grant matches. The order is the one
 // GetSeriesDetail lists the episodes in.
 func (q *Queries) ListPublishedEpisodeAccessInSeries(ctx context.Context, arg ListPublishedEpisodeAccessInSeriesParams) ([]ListPublishedEpisodeAccessInSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeAccessInSeries, arg.UserID, arg.TenantID, arg.SeriesID)
+	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeAccessInSeries,
+		arg.UserID,
+		arg.TenantID,
+		arg.SeriesID,
+		arg.Surface,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,12 @@ SELECT l.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     ) AS published_series_count
 FROM labels l
     LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
@@ -197,6 +203,12 @@ WHERE l.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -238,6 +250,12 @@ WHERE l.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL

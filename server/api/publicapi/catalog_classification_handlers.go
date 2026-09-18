@@ -70,6 +70,7 @@ func mapPublishedGenreDescRows(rows []dbmodels.ListPublishedGenresByTenantDescRo
 func (s *apiServer) publishedGenrePage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	keys pagination.CountUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -78,6 +79,7 @@ func (s *apiServer) publishedGenrePage(
 	if direction == pagination.Backward {
 		rows, err := queries.ListPublishedGenresByTenantDesc(ctx, dbmodels.ListPublishedGenresByTenantDescParams{
 			TenantID:           tenantID,
+			Surface:            surface,
 			CursorID:           uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive:    keys.Inclusive,
 			CursorDisplayOrder: sql.NullInt32{Int32: int32(keys.Count), Valid: keys.Valid},
@@ -91,6 +93,7 @@ func (s *apiServer) publishedGenrePage(
 
 	rows, err := queries.ListPublishedGenresByTenantAsc(ctx, dbmodels.ListPublishedGenresByTenantAscParams{
 		TenantID:           tenantID,
+		Surface:            surface,
 		CursorID:           uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive:    keys.Inclusive,
 		CursorDisplayOrder: sql.NullInt32{Int32: int32(keys.Count), Valid: keys.Valid},
@@ -110,6 +113,10 @@ func (s *apiServer) ListPublishedGenres(
 	req *connect.Request[publirav1.ListPublishedGenresRequest],
 ) (*connect.Response[publirav1.ListPublishedGenresResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	surface, err := catalogSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +141,7 @@ func (s *apiServer) ListPublishedGenres(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.publishedGenrePage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.publishedGenrePage(ctx, tenant.ID, surface, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published genres", err, "tenant_id", tenant.ID.String())
 	}
@@ -233,6 +240,7 @@ type publishedTagRow struct {
 func (s *apiServer) publishedTagPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	keys tagCursorKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -241,6 +249,7 @@ func (s *apiServer) publishedTagPage(
 	if direction == pagination.Backward {
 		rows, err := queries.ListPublishedTagsByTenantAsc(ctx, dbmodels.ListPublishedTagsByTenantAscParams{
 			TenantID:                   tenantID,
+			Surface:                    surface,
 			CursorSlug:                 keys.slug,
 			CursorPublishedSeriesCount: keys.publishedSeriesCount,
 			CursorInclusive:            keys.inclusive,
@@ -258,6 +267,7 @@ func (s *apiServer) publishedTagPage(
 
 	rows, err := queries.ListPublishedTagsByTenantDesc(ctx, dbmodels.ListPublishedTagsByTenantDescParams{
 		TenantID:                   tenantID,
+		Surface:                    surface,
 		CursorSlug:                 keys.slug,
 		CursorPublishedSeriesCount: keys.publishedSeriesCount,
 		CursorInclusive:            keys.inclusive,
@@ -285,6 +295,10 @@ func (s *apiServer) ListPublishedTags(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultTagPageSize, maxTagPageSize)
 	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
@@ -299,7 +313,7 @@ func (s *apiServer) ListPublishedTags(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.publishedTagPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.publishedTagPage(ctx, tenant.ID, surface, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published tags", err, "tenant_id", tenant.ID.String())
 	}

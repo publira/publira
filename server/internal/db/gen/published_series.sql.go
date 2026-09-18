@@ -30,6 +30,15 @@ SELECT s.id,
         SELECT COUNT(*)
         FROM published_free_episodes fe
         WHERE fe.series_id = s.id
+            AND (
+                $1::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = $1::text
+                )
+            )
     )::int4 AS free_episode_count,
     COALESCE(
         json_agg(
@@ -88,7 +97,7 @@ SELECT s.id,
                 )
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $1
+            WHERE sg.tenant_id = $2
                 AND sg.series_id = s.id
         ),
         '[]'
@@ -109,7 +118,7 @@ SELECT s.id,
                 )
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $1
+            WHERE st.tenant_id = $2
                 AND st.series_id = s.id
         ),
         '[]'
@@ -130,11 +139,20 @@ FROM series s
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_roles cr ON cr.id = sc.role_id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
-WHERE s.tenant_id = $1
-    AND s.id = ANY($2::uuid [])
+WHERE s.tenant_id = $2
+    AND s.id = ANY($3::uuid [])
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        $1::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $1::text
+        )
+    )
 GROUP BY s.id,
     sl.series_id,
     sl.synopsis,
@@ -146,8 +164,9 @@ GROUP BY s.id,
 `
 
 type ListActiveSeriesByIDsParams struct {
-	TenantID uuid.UUID   `json:"tenant_id"`
-	Ids      []uuid.UUID `json:"ids"`
+	Surface  sql.NullString `json:"surface"`
+	TenantID uuid.UUID      `json:"tenant_id"`
+	Ids      []uuid.UUID    `json:"ids"`
 }
 
 type ListActiveSeriesByIDsRow struct {
@@ -168,11 +187,13 @@ type ListActiveSeriesByIDsRow struct {
 	LabelInfo              json.RawMessage `json:"label_info"`
 }
 
-// Display data for the published series, narrowed by tenant id.
+// Display data for the published series, narrowed by tenant id. A NULL
+// surface filters by no surface, for the member reads that do not name one;
+// the catalog always names one.
 // No ORDER BY: the caller sorts the rows into the id order stage one settled
 // on.
 func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeriesByIDs, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, listActiveSeriesByIDs, arg.Surface, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +239,9 @@ WITH candidate AS (
                 SELECT max(el.published_at)
                 FROM episodes e
                     JOIN episode_listings el ON el.episode_id = e.id
+                    JOIN episode_surfaces es ON es.episode_id = e.id
                 WHERE e.series_id = s.id
+                    AND es.surface = $5::text
                     AND el.status = 'published'
                     AND el.published_at IS NOT NULL
                     AND el.published_at <= NOW()
@@ -226,58 +249,70 @@ WITH candidate AS (
             s.published_at
         )::timestamptz AS latest_episode_at
     FROM series s
-    WHERE s.tenant_id = $5
+    WHERE s.tenant_id = $6
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $5::text
+        )
         AND (
-            NOT $6::boolean
+            NOT $7::boolean
             OR EXISTS (
                 SELECT 1
                 FROM published_free_episodes fe
                 WHERE fe.series_id = s.id
-            )
-        )
-        AND (
-            $7::text IS NULL
-            OR EXISTS (
-                SELECT 1
-                FROM series_genres sg
-                    JOIN genres g ON g.id = sg.genre_id
-                WHERE sg.tenant_id = $5
-                    AND sg.series_id = s.id
-                    AND g.public_id = $7::text
+                    AND EXISTS (
+                        SELECT 1
+                        FROM episode_surfaces es
+                        WHERE es.episode_id = fe.episode_id
+                            AND es.surface = $5::text
+                    )
             )
         )
         AND (
             $8::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_tags st
-                    JOIN tags t ON t.id = st.tag_id
-                WHERE st.tenant_id = $5
-                    AND st.series_id = s.id
-                    AND t.slug = $8::text
+                FROM series_genres sg
+                    JOIN genres g ON g.id = sg.genre_id
+                WHERE sg.tenant_id = $6
+                    AND sg.series_id = s.id
+                    AND g.public_id = $8::text
             )
         )
         AND (
             $9::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_listings sl
-                WHERE sl.tenant_id = $5
-                    AND sl.series_id = s.id
-                    AND sl.status = $9::text
+                FROM series_tags st
+                    JOIN tags t ON t.id = st.tag_id
+                WHERE st.tenant_id = $6
+                    AND st.series_id = s.id
+                    AND t.slug = $9::text
             )
         )
         AND (
-            $10::int2 IS NULL
+            $10::text IS NULL
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.tenant_id = $5
+                WHERE sl.tenant_id = $6
                     AND sl.series_id = s.id
-                    AND sl.schedule_weekdays @> ARRAY[$10::int2]
+                    AND sl.status = $10::text
+            )
+        )
+        AND (
+            $11::int2 IS NULL
+            OR EXISTS (
+                SELECT 1
+                FROM series_listings sl
+                WHERE sl.tenant_id = $6
+                    AND sl.series_id = s.id
+                    AND sl.schedule_weekdays @> ARRAY[$11::int2]
             )
         )
 )
@@ -311,6 +346,7 @@ type ListActiveSeriesIDsByLatestEpisodeAtAscParams struct {
 	CursorInclusive       bool           `json:"cursor_inclusive"`
 	CursorLatestEpisodeAt sql.NullTime   `json:"cursor_latest_episode_at"`
 	Limit                 int32          `json:"limit"`
+	Surface               string         `json:"surface"`
 	TenantID              uuid.UUID      `json:"tenant_id"`
 	HasFreeEpisodes       bool           `json:"has_free_episodes"`
 	GenrePublicID         sql.NullString `json:"genre_public_id"`
@@ -330,6 +366,7 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtAsc(ctx context.Context, a
 		arg.CursorInclusive,
 		arg.CursorLatestEpisodeAt,
 		arg.Limit,
+		arg.Surface,
 		arg.TenantID,
 		arg.HasFreeEpisodes,
 		arg.GenrePublicID,
@@ -366,7 +403,9 @@ WITH candidate AS (
                 SELECT max(el.published_at)
                 FROM episodes e
                     JOIN episode_listings el ON el.episode_id = e.id
+                    JOIN episode_surfaces es ON es.episode_id = e.id
                 WHERE e.series_id = s.id
+                    AND es.surface = $5::text
                     AND el.status = 'published'
                     AND el.published_at IS NOT NULL
                     AND el.published_at <= NOW()
@@ -374,58 +413,70 @@ WITH candidate AS (
             s.published_at
         )::timestamptz AS latest_episode_at
     FROM series s
-    WHERE s.tenant_id = $5
+    WHERE s.tenant_id = $6
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $5::text
+        )
         AND (
-            NOT $6::boolean
+            NOT $7::boolean
             OR EXISTS (
                 SELECT 1
                 FROM published_free_episodes fe
                 WHERE fe.series_id = s.id
-            )
-        )
-        AND (
-            $7::text IS NULL
-            OR EXISTS (
-                SELECT 1
-                FROM series_genres sg
-                    JOIN genres g ON g.id = sg.genre_id
-                WHERE sg.tenant_id = $5
-                    AND sg.series_id = s.id
-                    AND g.public_id = $7::text
+                    AND EXISTS (
+                        SELECT 1
+                        FROM episode_surfaces es
+                        WHERE es.episode_id = fe.episode_id
+                            AND es.surface = $5::text
+                    )
             )
         )
         AND (
             $8::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_tags st
-                    JOIN tags t ON t.id = st.tag_id
-                WHERE st.tenant_id = $5
-                    AND st.series_id = s.id
-                    AND t.slug = $8::text
+                FROM series_genres sg
+                    JOIN genres g ON g.id = sg.genre_id
+                WHERE sg.tenant_id = $6
+                    AND sg.series_id = s.id
+                    AND g.public_id = $8::text
             )
         )
         AND (
             $9::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_listings sl
-                WHERE sl.tenant_id = $5
-                    AND sl.series_id = s.id
-                    AND sl.status = $9::text
+                FROM series_tags st
+                    JOIN tags t ON t.id = st.tag_id
+                WHERE st.tenant_id = $6
+                    AND st.series_id = s.id
+                    AND t.slug = $9::text
             )
         )
         AND (
-            $10::int2 IS NULL
+            $10::text IS NULL
             OR EXISTS (
                 SELECT 1
                 FROM series_listings sl
-                WHERE sl.tenant_id = $5
+                WHERE sl.tenant_id = $6
                     AND sl.series_id = s.id
-                    AND sl.schedule_weekdays @> ARRAY[$10::int2]
+                    AND sl.status = $10::text
+            )
+        )
+        AND (
+            $11::int2 IS NULL
+            OR EXISTS (
+                SELECT 1
+                FROM series_listings sl
+                WHERE sl.tenant_id = $6
+                    AND sl.series_id = s.id
+                    AND sl.schedule_weekdays @> ARRAY[$11::int2]
             )
         )
 )
@@ -459,6 +510,7 @@ type ListActiveSeriesIDsByLatestEpisodeAtDescParams struct {
 	CursorInclusive       bool           `json:"cursor_inclusive"`
 	CursorLatestEpisodeAt sql.NullTime   `json:"cursor_latest_episode_at"`
 	Limit                 int32          `json:"limit"`
+	Surface               string         `json:"surface"`
 	TenantID              uuid.UUID      `json:"tenant_id"`
 	HasFreeEpisodes       bool           `json:"has_free_episodes"`
 	GenrePublicID         sql.NullString `json:"genre_public_id"`
@@ -494,6 +546,7 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx context.Context, 
 		arg.CursorInclusive,
 		arg.CursorLatestEpisodeAt,
 		arg.Limit,
+		arg.Surface,
 		arg.TenantID,
 		arg.HasFreeEpisodes,
 		arg.GenrePublicID,
@@ -529,80 +582,93 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
+    )
     AND (
-        NOT $2::boolean
+        NOT $3::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
             WHERE fe.series_id = s.id
-        )
-    )
-    AND (
-        $3::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_genres sg
-                JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $1
-                AND sg.series_id = s.id
-                AND g.public_id = $3::text
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = $2::text
+                )
         )
     )
     AND (
         $4::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_tags st
-                JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $1
-                AND st.series_id = s.id
-                AND t.slug = $4::text
+            FROM series_genres sg
+                JOIN genres g ON g.id = sg.genre_id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
+                AND g.public_id = $4::text
         )
     )
     AND (
         $5::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.status = $5::text
+            FROM series_tags st
+                JOIN tags t ON t.id = st.tag_id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
+                AND t.slug = $5::text
         )
     )
     AND (
-        $6::int2 IS NULL
+        $6::text IS NULL
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
             WHERE sl.tenant_id = $1
                 AND sl.series_id = s.id
-                AND sl.schedule_weekdays @> ARRAY[$6::int2]
+                AND sl.status = $6::text
         )
     )
     AND (
-        $7::uuid IS NULL
+        $7::int2 IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.schedule_weekdays @> ARRAY[$7::int2]
+        )
+    )
+    AND (
+        $8::uuid IS NULL
         OR (
-            $8::boolean
+            $9::boolean
             AND (s.published_at, s.id) >= (
-                $9::timestamptz,
-                $7::uuid
+                $10::timestamptz,
+                $8::uuid
             )
         )
         OR (
-            NOT $8::boolean
+            NOT $9::boolean
             AND (s.published_at, s.id) > (
-                $9::timestamptz,
-                $7::uuid
+                $10::timestamptz,
+                $8::uuid
             )
         )
     )
 ORDER BY s.published_at ASC,
     s.id ASC
-LIMIT $10
+LIMIT $11
 `
 
 type ListActiveSeriesIDsByPublishedAtAscParams struct {
 	TenantID          uuid.UUID      `json:"tenant_id"`
+	Surface           string         `json:"surface"`
 	HasFreeEpisodes   bool           `json:"has_free_episodes"`
 	GenrePublicID     sql.NullString `json:"genre_public_id"`
 	TagSlug           sql.NullString `json:"tag_slug"`
@@ -617,6 +683,7 @@ type ListActiveSeriesIDsByPublishedAtAscParams struct {
 func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtAsc,
 		arg.TenantID,
+		arg.Surface,
 		arg.HasFreeEpisodes,
 		arg.GenrePublicID,
 		arg.TagSlug,
@@ -655,80 +722,93 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
+    )
     AND (
-        NOT $2::boolean
+        NOT $3::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
             WHERE fe.series_id = s.id
-        )
-    )
-    AND (
-        $3::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_genres sg
-                JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $1
-                AND sg.series_id = s.id
-                AND g.public_id = $3::text
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = $2::text
+                )
         )
     )
     AND (
         $4::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_tags st
-                JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $1
-                AND st.series_id = s.id
-                AND t.slug = $4::text
+            FROM series_genres sg
+                JOIN genres g ON g.id = sg.genre_id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
+                AND g.public_id = $4::text
         )
     )
     AND (
         $5::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.status = $5::text
+            FROM series_tags st
+                JOIN tags t ON t.id = st.tag_id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
+                AND t.slug = $5::text
         )
     )
     AND (
-        $6::int2 IS NULL
+        $6::text IS NULL
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
             WHERE sl.tenant_id = $1
                 AND sl.series_id = s.id
-                AND sl.schedule_weekdays @> ARRAY[$6::int2]
+                AND sl.status = $6::text
         )
     )
     AND (
-        $7::uuid IS NULL
+        $7::int2 IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.schedule_weekdays @> ARRAY[$7::int2]
+        )
+    )
+    AND (
+        $8::uuid IS NULL
         OR (
-            $8::boolean
+            $9::boolean
             AND (s.published_at, s.id) <= (
-                $9::timestamptz,
-                $7::uuid
+                $10::timestamptz,
+                $8::uuid
             )
         )
         OR (
-            NOT $8::boolean
+            NOT $9::boolean
             AND (s.published_at, s.id) < (
-                $9::timestamptz,
-                $7::uuid
+                $10::timestamptz,
+                $8::uuid
             )
         )
     )
 ORDER BY s.published_at DESC,
     s.id DESC
-LIMIT $10
+LIMIT $11
 `
 
 type ListActiveSeriesIDsByPublishedAtDescParams struct {
 	TenantID          uuid.UUID      `json:"tenant_id"`
+	Surface           string         `json:"surface"`
 	HasFreeEpisodes   bool           `json:"has_free_episodes"`
 	GenrePublicID     sql.NullString `json:"genre_public_id"`
 	TagSlug           sql.NullString `json:"tag_slug"`
@@ -770,6 +850,11 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 // idx_series_listings_tenant_status, or idx_series_listings_schedule_weekdays
 // when it keeps a handful.
 //
+// Every query also keeps only what the calling surface may show, through
+// series_surfaces for the series and episode_surfaces for the episodes counted
+// into them. The surface is not one of the filters the token is bound to: a
+// client names the same surface on every read it makes.
+//
 // What counts as a free episode is the published_free_episodes view, which
 // both stages read: stage one keeps only the series that have such an episode
 // when the caller asks for those, and stage two counts them into
@@ -779,6 +864,7 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtDesc,
 		arg.TenantID,
+		arg.Surface,
 		arg.HasFreeEpisodes,
 		arg.GenrePublicID,
 		arg.TagSlug,
@@ -817,80 +903,93 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
+    )
     AND (
-        NOT $2::boolean
+        NOT $3::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
             WHERE fe.series_id = s.id
-        )
-    )
-    AND (
-        $3::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_genres sg
-                JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $1
-                AND sg.series_id = s.id
-                AND g.public_id = $3::text
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = $2::text
+                )
         )
     )
     AND (
         $4::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_tags st
-                JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $1
-                AND st.series_id = s.id
-                AND t.slug = $4::text
+            FROM series_genres sg
+                JOIN genres g ON g.id = sg.genre_id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
+                AND g.public_id = $4::text
         )
     )
     AND (
         $5::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.status = $5::text
+            FROM series_tags st
+                JOIN tags t ON t.id = st.tag_id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
+                AND t.slug = $5::text
         )
     )
     AND (
-        $6::int2 IS NULL
+        $6::text IS NULL
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
             WHERE sl.tenant_id = $1
                 AND sl.series_id = s.id
-                AND sl.schedule_weekdays @> ARRAY[$6::int2]
+                AND sl.status = $6::text
         )
     )
     AND (
-        $7::uuid IS NULL
+        $7::int2 IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.schedule_weekdays @> ARRAY[$7::int2]
+        )
+    )
+    AND (
+        $8::uuid IS NULL
         OR (
-            $8::boolean
+            $9::boolean
             AND (s.title, s.id) >= (
-                $9::text,
-                $7::uuid
+                $10::text,
+                $8::uuid
             )
         )
         OR (
-            NOT $8::boolean
+            NOT $9::boolean
             AND (s.title, s.id) > (
-                $9::text,
-                $7::uuid
+                $10::text,
+                $8::uuid
             )
         )
     )
 ORDER BY s.title ASC,
     s.id ASC
-LIMIT $10
+LIMIT $11
 `
 
 type ListActiveSeriesIDsByTitleAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	HasFreeEpisodes bool           `json:"has_free_episodes"`
 	GenrePublicID   sql.NullString `json:"genre_public_id"`
 	TagSlug         sql.NullString `json:"tag_slug"`
@@ -905,6 +1004,7 @@ type ListActiveSeriesIDsByTitleAscParams struct {
 func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleAsc,
 		arg.TenantID,
+		arg.Surface,
 		arg.HasFreeEpisodes,
 		arg.GenrePublicID,
 		arg.TagSlug,
@@ -943,80 +1043,93 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
+    )
     AND (
-        NOT $2::boolean
+        NOT $3::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
             WHERE fe.series_id = s.id
-        )
-    )
-    AND (
-        $3::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_genres sg
-                JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $1
-                AND sg.series_id = s.id
-                AND g.public_id = $3::text
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = $2::text
+                )
         )
     )
     AND (
         $4::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_tags st
-                JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $1
-                AND st.series_id = s.id
-                AND t.slug = $4::text
+            FROM series_genres sg
+                JOIN genres g ON g.id = sg.genre_id
+            WHERE sg.tenant_id = $1
+                AND sg.series_id = s.id
+                AND g.public_id = $4::text
         )
     )
     AND (
         $5::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.status = $5::text
+            FROM series_tags st
+                JOIN tags t ON t.id = st.tag_id
+            WHERE st.tenant_id = $1
+                AND st.series_id = s.id
+                AND t.slug = $5::text
         )
     )
     AND (
-        $6::int2 IS NULL
+        $6::text IS NULL
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
             WHERE sl.tenant_id = $1
                 AND sl.series_id = s.id
-                AND sl.schedule_weekdays @> ARRAY[$6::int2]
+                AND sl.status = $6::text
         )
     )
     AND (
-        $7::uuid IS NULL
+        $7::int2 IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_listings sl
+            WHERE sl.tenant_id = $1
+                AND sl.series_id = s.id
+                AND sl.schedule_weekdays @> ARRAY[$7::int2]
+        )
+    )
+    AND (
+        $8::uuid IS NULL
         OR (
-            $8::boolean
+            $9::boolean
             AND (s.title, s.id) <= (
-                $9::text,
-                $7::uuid
+                $10::text,
+                $8::uuid
             )
         )
         OR (
-            NOT $8::boolean
+            NOT $9::boolean
             AND (s.title, s.id) < (
-                $9::text,
-                $7::uuid
+                $10::text,
+                $8::uuid
             )
         )
     )
 ORDER BY s.title DESC,
     s.id DESC
-LIMIT $10
+LIMIT $11
 `
 
 type ListActiveSeriesIDsByTitleDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	HasFreeEpisodes bool           `json:"has_free_episodes"`
 	GenrePublicID   sql.NullString `json:"genre_public_id"`
 	TagSlug         sql.NullString `json:"tag_slug"`
@@ -1031,6 +1144,7 @@ type ListActiveSeriesIDsByTitleDescParams struct {
 func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleDesc,
 		arg.TenantID,
+		arg.Surface,
 		arg.HasFreeEpisodes,
 		arg.GenrePublicID,
 		arg.TagSlug,
@@ -1071,31 +1185,38 @@ WHERE sc.creator_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $3::text
+    )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (s.title, s.id) >= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (s.title, s.id) > (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY s.title ASC,
     s.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedSeriesIDsByCreatorTitleAscParams struct {
 	CreatorID       uuid.UUID      `json:"creator_id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorTitle     sql.NullString `json:"cursor_title"`
@@ -1111,6 +1232,7 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, a
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleAsc,
 		arg.CreatorID,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorTitle,
@@ -1146,31 +1268,38 @@ WHERE sc.creator_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $3::text
+    )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (s.title, s.id) <= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (s.title, s.id) < (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY s.title DESC,
     s.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedSeriesIDsByCreatorTitleDescParams struct {
 	CreatorID       uuid.UUID      `json:"creator_id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorTitle     sql.NullString `json:"cursor_title"`
@@ -1182,6 +1311,7 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, 
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleDesc,
 		arg.CreatorID,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorTitle,
@@ -1216,31 +1346,38 @@ WHERE s.label_id = $1::uuid
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $3::text
+    )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (s.title, s.id) >= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (s.title, s.id) > (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY s.title ASC,
     s.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedSeriesIDsByLabelTitleAscParams struct {
 	LabelID         uuid.UUID      `json:"label_id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorTitle     sql.NullString `json:"cursor_title"`
@@ -1257,6 +1394,7 @@ func (q *Queries) ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByLabelTitleAsc,
 		arg.LabelID,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorTitle,
@@ -1291,31 +1429,38 @@ WHERE s.label_id = $1::uuid
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $3::text
+    )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (s.title, s.id) <= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (s.title, s.id) < (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY s.title DESC,
     s.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedSeriesIDsByLabelTitleDescParams struct {
 	LabelID         uuid.UUID      `json:"label_id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorTitle     sql.NullString `json:"cursor_title"`
@@ -1327,6 +1472,7 @@ func (q *Queries) ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, ar
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByLabelTitleDesc,
 		arg.LabelID,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorTitle,
@@ -1361,34 +1507,41 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
-    AND (
-        s.title ILIKE $2::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE $2::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
     )
     AND (
-        $3::uuid IS NULL
+        s.title ILIKE $3::text ESCAPE '!'
+        OR COALESCE(sl.synopsis, '') ILIKE $3::text ESCAPE '!'
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (s.title, s.id) >= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (s.title, s.id) > (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY s.title ASC,
     s.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedSeriesIDsBySearchTitleAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	QueryPattern    string         `json:"query_pattern"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
@@ -1408,6 +1561,7 @@ type ListPublishedSeriesIDsBySearchTitleAscParams struct {
 func (q *Queries) ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsBySearchTitleAsc,
 		arg.TenantID,
+		arg.Surface,
 		arg.QueryPattern,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -1443,34 +1597,41 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
-    AND (
-        s.title ILIKE $2::text ESCAPE '!'
-        OR COALESCE(sl.synopsis, '') ILIKE $2::text ESCAPE '!'
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $2::text
     )
     AND (
-        $3::uuid IS NULL
+        s.title ILIKE $3::text ESCAPE '!'
+        OR COALESCE(sl.synopsis, '') ILIKE $3::text ESCAPE '!'
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (s.title, s.id) <= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (s.title, s.id) < (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY s.title DESC,
     s.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedSeriesIDsBySearchTitleDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	QueryPattern    string         `json:"query_pattern"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
@@ -1482,6 +1643,7 @@ type ListPublishedSeriesIDsBySearchTitleDescParams struct {
 func (q *Queries) ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsBySearchTitleDesc,
 		arg.TenantID,
+		arg.Surface,
 		arg.QueryPattern,
 		arg.CursorID,
 		arg.CursorInclusive,

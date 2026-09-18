@@ -403,27 +403,34 @@ SELECT g.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $2::text
+            )
     )::int4 AS published_series_count
 FROM genres g
 WHERE g.tenant_id = $1
     AND (
-        $2::uuid IS NULL
+        $3::uuid IS NULL
         OR (
-            $3::boolean
-            AND (g.display_order, g.id) >= ($4::int4, $2::uuid)
+            $4::boolean
+            AND (g.display_order, g.id) >= ($5::int4, $3::uuid)
         )
         OR (
-            NOT $3::boolean
-            AND (g.display_order, g.id) > ($4::int4, $2::uuid)
+            NOT $4::boolean
+            AND (g.display_order, g.id) > ($5::int4, $3::uuid)
         )
     )
 ORDER BY g.display_order ASC,
     g.id ASC
-LIMIT $5
+LIMIT $6
 `
 
 type ListPublishedGenresByTenantAscParams struct {
 	TenantID           uuid.UUID     `json:"tenant_id"`
+	Surface            string        `json:"surface"`
 	CursorID           uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive    bool          `json:"cursor_inclusive"`
 	CursorDisplayOrder sql.NullInt32 `json:"cursor_display_order"`
@@ -456,6 +463,7 @@ type ListPublishedGenresByTenantAscRow struct {
 func (q *Queries) ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPublishedGenresByTenantAscParams) ([]ListPublishedGenresByTenantAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedGenresByTenantAsc,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorDisplayOrder,
@@ -504,27 +512,34 @@ SELECT g.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $2::text
+            )
     )::int4 AS published_series_count
 FROM genres g
 WHERE g.tenant_id = $1
     AND (
-        $2::uuid IS NULL
+        $3::uuid IS NULL
         OR (
-            $3::boolean
-            AND (g.display_order, g.id) <= ($4::int4, $2::uuid)
+            $4::boolean
+            AND (g.display_order, g.id) <= ($5::int4, $3::uuid)
         )
         OR (
-            NOT $3::boolean
-            AND (g.display_order, g.id) < ($4::int4, $2::uuid)
+            NOT $4::boolean
+            AND (g.display_order, g.id) < ($5::int4, $3::uuid)
         )
     )
 ORDER BY g.display_order DESC,
     g.id DESC
-LIMIT $5
+LIMIT $6
 `
 
 type ListPublishedGenresByTenantDescParams struct {
 	TenantID           uuid.UUID     `json:"tenant_id"`
+	Surface            string        `json:"surface"`
 	CursorID           uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive    bool          `json:"cursor_inclusive"`
 	CursorDisplayOrder sql.NullInt32 `json:"cursor_display_order"`
@@ -543,6 +558,7 @@ type ListPublishedGenresByTenantDescRow struct {
 func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListPublishedGenresByTenantDescParams) ([]ListPublishedGenresByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedGenresByTenantDesc,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorDisplayOrder,

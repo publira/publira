@@ -29,8 +29,13 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	series, err := s.queriesFor(ctx).GetPublishedSeriesAgeRatingByPublicID(ctx, dbmodels.GetPublishedSeriesAgeRatingByPublicIDParams{
 		TenantID: tenant.ID,
+		Surface:  surface,
 		PublicID: seriesPublicID,
 	})
 	if err != nil {
@@ -71,6 +76,7 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 	}
 
 	rows, err := s.queriesFor(ctx).ListPublishedEpisodeAccessInSeries(ctx, dbmodels.ListPublishedEpisodeAccessInSeriesParams{
+		Surface:  surface,
 		UserID:   userID,
 		TenantID: tenant.ID,
 		SeriesID: series.ID,

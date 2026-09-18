@@ -813,6 +813,12 @@ FROM ranked r
 WHERE s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -849,6 +855,12 @@ FROM ranked r
 WHERE s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -905,6 +917,12 @@ candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
 )
 SELECT id, sort_rank
 FROM candidate
@@ -955,6 +973,12 @@ candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
 )
 SELECT id, sort_rank
 FROM candidate
@@ -1082,6 +1106,12 @@ candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
 )
 SELECT id, score, sort_rank
 FROM candidate
@@ -1196,6 +1226,12 @@ candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
 )
 SELECT id, score, sort_rank
 FROM candidate

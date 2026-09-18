@@ -63,6 +63,9 @@ type SeriesSeed struct {
 	// approval_required. Empty stores no override, which leaves the series
 	// following its tenant's setting.
 	CommentMode string
+	// Availability is series.availability: all, web, or app. Empty takes the
+	// column's default, both surfaces.
+	Availability string
 }
 
 // Episode is a seeded episode together with the listing that prices it.
@@ -89,6 +92,9 @@ type EpisodeSeed struct {
 	PublishedAt time.Time
 	// ScheduledAt is only stored for a scheduled listing.
 	ScheduledAt time.Time
+	// Availability is episodes.availability: all, web, or app. Empty stores no
+	// override, which leaves the episode following its series.
+	Availability string
 }
 
 // Page is a seeded page together with the version the seed created.
@@ -155,6 +161,13 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 	// that rolls the schema back to an older migration seeds series through
 	// here too: the insert above has to name only the columns every version
 	// this seeder is used at already has.
+	if seed.Availability != "" {
+		if _, err := e.DB.ExecContext(ctx, `
+			UPDATE series SET availability = $2 WHERE id = $1
+		`, seriesID, seed.Availability); err != nil {
+			t.Fatalf("set series availability %s: %v", publicID, err)
+		}
+	}
 	if seed.CommentMode != "" {
 		if _, err := e.DB.ExecContext(ctx, `
 			UPDATE series_listings SET comment_mode = $2 WHERE series_id = $1
@@ -510,6 +523,15 @@ func (e *PostgresEnv) SeedEpisode(t *testing.T, tenantID, seriesID uuid.UUID, se
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, episodeID, tenantID, seriesID, publicID, title, orderIndex); err != nil {
 		t.Fatalf("insert episode %s: %v", publicID, err)
+	}
+	// Written separately, and only for a seed that asks for it, for the reason
+	// SeedSeries writes the comment mode that way.
+	if seed.Availability != "" {
+		if _, err := e.DB.ExecContext(ctx, `
+			UPDATE episodes SET availability = $2 WHERE id = $1
+		`, episodeID, seed.Availability); err != nil {
+			t.Fatalf("set episode availability %s: %v", publicID, err)
+		}
 	}
 
 	publishedAt := sql.NullTime{}

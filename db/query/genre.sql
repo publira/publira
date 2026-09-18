@@ -164,6 +164,12 @@ SELECT g.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     )::int4 AS published_series_count
 FROM genres g
 WHERE g.tenant_id = sqlc.arg('tenant_id')
@@ -197,6 +203,12 @@ SELECT g.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     )::int4 AS published_series_count
 FROM genres g
 WHERE g.tenant_id = sqlc.arg('tenant_id')

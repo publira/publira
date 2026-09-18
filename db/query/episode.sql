@@ -5,9 +5,10 @@ INSERT INTO episodes (
         public_id,
         title,
         order_index,
-        tenant_id
+        tenant_id,
+        availability
     )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: UpsertEpisodeListing :one
@@ -94,7 +95,8 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -117,7 +119,9 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -147,7 +151,9 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -240,7 +246,9 @@ SELECT e.id,
     e.reading_direction,
     e.spread_start_index,
     sl.reading_direction AS series_reading_direction,
-    sl.spread_start_index AS series_spread_start_index
+    sl.spread_start_index AS series_spread_start_index,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -263,7 +271,8 @@ SELECT e.id,
     e.reading_direction,
     e.spread_start_index,
     sl.reading_direction AS series_reading_direction,
-    sl.spread_start_index AS series_spread_start_index
+    sl.spread_start_index AS series_spread_start_index,
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -324,14 +333,23 @@ FROM episodes e
     AND fw.ends_at > NOW()
     LEFT JOIN episode_rating_counts erc ON erc.tenant_id = s.tenant_id
     AND erc.episode_id = e.id
-WHERE s.tenant_id = $1
-    AND e.public_id = $2
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND e.public_id = sqlc.arg('public_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND (
+        sqlc.narg('surface')::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.narg('surface')::text
+        )
+    )
 LIMIT 1;
 
 -- name: ListPublishedEpisodeNeighborsForTenant :many
@@ -378,6 +396,12 @@ LIMIT 1;
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
     ORDER BY e.order_index DESC,
         e.id DESC
     LIMIT 1
@@ -412,6 +436,12 @@ UNION ALL
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
     ORDER BY e.order_index ASC,
         e.id ASC
     LIMIT 1
@@ -607,6 +637,13 @@ WHERE el.episode_id = e.id
 UPDATE episodes
 SET reading_direction = sqlc.narg('reading_direction'),
     spread_start_index = sqlc.narg('spread_start_index')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
+
+-- name: UpdateEpisodeAvailabilityByIDForTenant :exec
+-- NULL returns the episode to following its series.
+UPDATE episodes
+SET availability = sqlc.narg('availability')
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id');
 

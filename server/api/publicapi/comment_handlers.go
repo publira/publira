@@ -52,6 +52,7 @@ func (s *apiServer) resolvePublicEpisode(
 	}
 	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
 		TenantID: tenantID,
+		Surface:  anySurface,
 		PublicID: publicID,
 	})
 	if err == nil {

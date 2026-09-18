@@ -49,6 +49,7 @@ func (s *apiServer) resolveFollowTarget(
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE:
 		row, err := queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
 			TenantID: tenantID,
+			Surface:  anySurface,
 			PublicID: strings.TrimSpace(target.PublicId),
 		})
 		if err == nil {
@@ -61,6 +62,7 @@ func (s *apiServer) resolveFollowTarget(
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR:
 		row, err := queries.GetPublishedCreatorByPublicID(ctx, dbmodels.GetPublishedCreatorByPublicIDParams{
 			TenantID: tenantID,
+			Surface:  anySurface,
 			PublicID: strings.TrimSpace(target.PublicId),
 		})
 		if err == nil {
@@ -73,6 +75,7 @@ func (s *apiServer) resolveFollowTarget(
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES:
 		row, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 			TenantID: tenantID,
+			Surface:  anySurface,
 			PublicID: strings.TrimSpace(target.PublicId),
 		})
 		if err == nil {

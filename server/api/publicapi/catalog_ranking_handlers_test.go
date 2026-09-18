@@ -142,14 +142,14 @@ func TestCatalogListRankedSeriesReportsSnapshotPositionsAndMovement(t *testing.T
 		rankingItemsJSON(slipped, climbed),
 	)
 	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(4), sqlmock.AnyArg()).
+		WithArgs(tenantID, "web", nil, false, nil, int32(4), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(
 			rankedID{id: climbed, rank: 1},
 			rankedID{id: slipped, rank: 2},
 			rankedID{id: entered, rank: 3},
 		))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(
 				recommendedSeriesRow(seriesDetailColumns(), entered, "ENTERED", "Entered", now),
@@ -204,13 +204,13 @@ func TestCatalogListRankedSeriesKeepsSnapshotPositionsOverAGap(t *testing.T) {
 	// written. The positions around it are the snapshot's own and do not close
 	// up over the gap.
 	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(4), sqlmock.AnyArg()).
+		WithArgs(tenantID, "web", nil, false, nil, int32(4), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(
 			rankedID{id: first, rank: 1},
 			rankedID{id: third, rank: 3},
 		))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(seriesDetailColumns(), third, "THIRD", "Third", now),
 			first, "FIRST", "First", now))
@@ -239,10 +239,10 @@ func TestCatalogListRankedSeriesReadsTheWeeklySnapshotForTheWeeklyPeriod(t *test
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, "weekly", now, rankingItemsJSON(seriesID), nil)
 	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(3), sqlmock.AnyArg()).
+		WithArgs(tenantID, "web", nil, false, nil, int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: seriesID, rank: 1}))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "WEEKLY", "Weekly", now))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -307,10 +307,10 @@ func TestCatalogListRankedSeriesServesTheRankingWhenTheEarlierSnapshotIsMalforme
 	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, "daily", now,
 		rankingItemsJSON(seriesID), []byte(`{"broken":true}`))
 	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(3), sqlmock.AnyArg()).
+		WithArgs(tenantID, "web", nil, false, nil, int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: seriesID, rank: 1}))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "RANKED", "Ranked", now))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -343,7 +343,7 @@ func TestCatalogListRankedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	expectPinnedRankingSnapshotLookup(mock, tenantID, snapshotID, "daily", now, rankingItemsJSON(boundary), nil)
 	// Everything past the boundary was unpublished after the token was issued.
 	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
-		WithArgs(tenantID, boundary, false, int32(1), int32(3), sqlmock.AnyArg()).
+		WithArgs(tenantID, "web", boundary, false, int32(1), int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -455,10 +455,10 @@ func TestCatalogListRankedSeriesKeepsALaterPageInThePinnedSnapshot(t *testing.T)
 	expectPinnedRankingSnapshotLookup(mock, tenantID, pinned, "daily", now,
 		rankingItemsJSON(boundary, tail), rankingItemsJSON(tail, boundary))
 	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
-		WithArgs(tenantID, boundary, false, int32(1), int32(3), rankingItemsJSON(boundary, tail)).
+		WithArgs(tenantID, "web", boundary, false, int32(1), int32(3), rankingItemsJSON(boundary, tail)).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: tail, rank: 2}))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), tail, "TAIL", "Tail", now))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
