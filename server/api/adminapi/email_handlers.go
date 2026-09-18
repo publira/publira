@@ -88,21 +88,6 @@ func tenantEmailSettingsFromTestRequest(req *publiraadminv1.SendTenantSmtpTestEm
 	}
 }
 
-func platformEmailSettingsFromRow(config dbmodels.PlatformSmtpConfig, password string) emailsettings.SMTPSettings {
-	settings := emailsettings.SMTPSettings{
-		Host:        config.Host,
-		Port:        config.Port,
-		Username:    config.Username,
-		Password:    password,
-		Encryption:  config.Encryption,
-		FromAddress: config.FromAddress,
-	}
-	if config.ReplyTo.Valid {
-		settings.ReplyTo = config.ReplyTo.String
-	}
-	return settings
-}
-
 func mergeTenantSettingsWithExisting(settings emailsettings.SMTPSettings, config dbmodels.TenantSmtpConfig, found bool) emailsettings.SMTPSettings {
 	if !found {
 		return settings
@@ -305,52 +290,36 @@ func (s *adminServer) loadTenantSMTPConfigByID(ctx context.Context, tenantID uui
 	return config, true, nil
 }
 
-func (s *adminServer) loadPlatformSMTPConfigByID(ctx context.Context) (dbmodels.PlatformSmtpConfig, bool, error) {
-	config, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.PlatformSmtpConfig{}, false, nil
-		}
-		return dbmodels.PlatformSmtpConfig{}, false, s.internalDBError(ctx, "failed to get platform smtp config", err)
-	}
-	return config, true, nil
-}
-
+// resolveTenantSMTPSettingsForTest answers with the settings the test message
+// goes out over, which are always the tenant's own. A tenant that overrides
+// nothing has nothing here to test: its mail leaves over the platform relay,
+// whose settings the platform console owns and tests through
+// SendPlatformSmtpTestEmail. Reading them here would mean the admin database
+// role could read the platform SMTP credentials, and that role serves every
+// tenant console request.
 func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tenantID uuid.UUID, req *publiraadminv1.SendTenantSmtpTestEmailRequest) (emailsettings.SMTPSettings, error) {
-	if req.SmtpOverrideEnabled {
-		existing, found, err := s.loadTenantSMTPConfigByID(ctx, tenantID)
-		if err != nil {
-			return emailsettings.SMTPSettings{}, err
-		}
-		existingPassword := ""
-		if found && existing.PasswordEncrypted.Valid {
-			existingPassword = existing.PasswordEncrypted.String
-		}
-		password, err := emailsettings.ResolvePasswordForTest(existingPassword, int32(req.PasswordUpdateMode), req.Password, s.encryptor)
-		if err != nil {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		settings := tenantEmailSettingsFromTestRequest(req, password)
-		if err := emailsettings.Validate(settings, true); err != nil {
-			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		return settings, nil
+	if !req.SmtpOverrideEnabled {
+		return emailsettings.SMTPSettings{}, connect.NewError(
+			connect.CodeFailedPrecondition,
+			errors.New("the smtp connection test needs this tenant's own smtp settings"),
+		)
 	}
 
-	platformConfig, found, err := s.loadPlatformSMTPConfigByID(ctx)
+	existing, found, err := s.loadTenantSMTPConfigByID(ctx, tenantID)
 	if err != nil {
 		return emailsettings.SMTPSettings{}, err
 	}
-	if !found {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
+	existingPassword := ""
+	if found && existing.PasswordEncrypted.Valid {
+		existingPassword = existing.PasswordEncrypted.String
 	}
-	password, err := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
+	password, err := emailsettings.ResolvePasswordForTest(existingPassword, int32(req.PasswordUpdateMode), req.Password, s.encryptor)
 	if err != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not available for testing"))
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	settings := platformEmailSettingsFromRow(platformConfig, password)
+	settings := tenantEmailSettingsFromTestRequest(req, password)
 	if err := emailsettings.Validate(settings, true); err != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, err)
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	return settings, nil
 }

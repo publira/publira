@@ -47,10 +47,6 @@ func tenantSMTPColumns() []string {
 	return []string{"tenant_id", "smtp_override_enabled", "host", "port", "username", "password_encrypted", "encryption", "from_name", "from_address", "reply_to", "created_at", "updated_at"}
 }
 
-func platformSMTPColumnsForAdmin() []string {
-	return []string{"singleton", "host", "port", "username", "password_encrypted", "encryption", "from_address", "reply_to", "created_at", "updated_at"}
-}
-
 func TestGetTenantEmailSettingsRejectsEditorRole(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
@@ -122,15 +118,17 @@ func TestUpdateTenantEmailSettingsDisabledPreservesStoredValues(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestSendTenantSmtpTestEmailUsesPlatformFallbackWhenOverrideDisabled(t *testing.T) {
+// A tenant that overrides nothing has no SMTP settings of its own to test: its
+// mail leaves over the platform relay, and the admin database role must not be
+// able to read those credentials. The request is refused before any query runs.
+func TestSendTenantSmtpTestEmailRefusesWhenOverrideDisabled(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	encryptor := newAdminTestEncryptor(t)
 	tester := &adminSMTPTesterStub{}
-	handler, err := newTestHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), encryptor, tester)
+	handler, err := newTestHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), tester)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
@@ -141,17 +139,9 @@ func TestSendTenantSmtpTestEmailUsesPlatformFallbackWhenOverrideDisabled(t *test
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
-	encrypted, err := encryptor.EncryptString("platform-secret")
-	if err != nil {
-		t.Fatalf("EncryptString: %v", err)
-	}
 
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(getPlatformSMTPConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformSMTPColumnsForAdmin()).
-			AddRow(true, "smtp.platform.example", 587, "platform-user", encrypted, "starttls", "platform@example.com", "help@example.com", now, now))
-	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.SendTenantSmtpTestEmailRequest{
@@ -160,18 +150,11 @@ func TestSendTenantSmtpTestEmailUsesPlatformFallbackWhenOverrideDisabled(t *test
 		SmtpOverrideEnabled: false,
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.SendTenantSmtpTestEmail(context.Background(), req)
-	if err != nil {
-		t.Fatalf("SendTenantSmtpTestEmail: %v", err)
+	if _, err := client.SendTenantSmtpTestEmail(context.Background(), req); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("SendTenantSmtpTestEmail code = %v, want failed_precondition", connect.CodeOf(err))
 	}
-	if resp.Msg.RecipientEmail != "user@example.com" {
-		t.Fatalf("recipient_email = %q, want user@example.com", resp.Msg.RecipientEmail)
-	}
-	if tester.recipient != "user@example.com" {
-		t.Fatalf("tester.recipient = %q, want user@example.com", tester.recipient)
-	}
-	if tester.settings.Host != "smtp.platform.example" || tester.settings.Password != "platform-secret" {
-		t.Fatalf("tester settings = %#v, want platform fallback settings", tester.settings)
+	if tester.recipient != "" {
+		t.Fatalf("tester.recipient = %q, want no test message sent", tester.recipient)
 	}
 	assertExpectations(t, mock)
 }

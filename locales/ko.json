@@ -1720,7 +1720,7 @@
         "description": "설정하지 않거나 사용하지 않으면 플랫폼에 설정된 발신자로 메일을 보냅니다.",
         "override": "이 테넌트 전용 SMTP 서버 사용",
         "override_checkbox": "덮어쓰기 사용",
-        "override_description": "꺼 두면 플랫폼 기본 SMTP 설정으로 메일을 보냅니다.",
+        "override_description": "꺼 두면 플랫폼 기본 SMTP 설정으로 메일을 보내며, 연결 테스트는 사용할 수 없습니다.",
         "host": "호스트",
         "port": "포트",
         "username": "사용자 이름",

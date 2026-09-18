@@ -1720,7 +1720,7 @@
         "description": "未设置或未启用时，邮件将由平台自身的发件人发送。",
         "override": "使用该租户自己的 SMTP 服务器",
         "override_checkbox": "启用覆盖设置",
-        "override_description": "关闭时，邮件将使用平台的默认 SMTP 设置发送。",
+        "override_description": "关闭时，邮件将使用平台的默认 SMTP 设置发送，且无法进行连接测试。",
         "host": "主机",
         "port": "端口",
         "username": "用户名",

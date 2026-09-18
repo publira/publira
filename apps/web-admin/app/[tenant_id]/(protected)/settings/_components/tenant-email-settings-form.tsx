@@ -161,7 +161,7 @@ interface SmtpTestDialogProps {
   onSendToSelfChange: (checked: boolean) => void;
   testFormAction: (formData: FormData) => void;
   testState: TenantSmtpTestFormState;
-  canEdit: boolean;
+  canTest: boolean;
 }
 
 const SmtpTestDialog = ({
@@ -173,7 +173,7 @@ const SmtpTestDialog = ({
   onSendToSelfChange,
   testFormAction,
   testState,
-  canEdit,
+  canTest,
 }: SmtpTestDialogProps) => {
   const locale = useContext(AdminLocaleContext);
   if (locale === null) {
@@ -191,7 +191,7 @@ const SmtpTestDialog = ({
     <Dialog onOpenChange={onDialogOpenChange} open={dialogOpen}>
       <DialogTrigger
         render={
-          <Button disabled={!canEdit} type="button" variant="outline">
+          <Button disabled={!canTest} type="button" variant="outline">
             <ClientMessage message="admin.settings.email.test" />
           </Button>
         }
@@ -536,7 +536,7 @@ export const TenantEmailSettingsForm = ({
 
         <div className="flex flex-wrap gap-3">
           <SmtpTestDialog
-            canEdit={canEdit}
+            canTest={fieldsInteractive}
             dialogOpen={dialogOpen}
             formId={formId}
             isTesting={isTesting}
