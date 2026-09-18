@@ -16,6 +16,7 @@ export { HeartIcon } from "./heart-icon";
 export { ImageIcon } from "./image-icon";
 export { LanguageIcon } from "./language-icon";
 export { LogoutIcon } from "./logout-icon";
+export { MailIcon } from "./mail-icon";
 export { MaximizeIcon } from "./maximize-icon";
 export { MegaphoneIcon } from "./megaphone-icon";
 export { MenuIcon } from "./menu-icon";

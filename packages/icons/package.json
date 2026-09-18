@@ -83,6 +83,10 @@
       "types": "./dist/logout-icon.d.mts",
       "default": "./dist/logout-icon.mjs"
     },
+    "./mail-icon": {
+      "types": "./dist/mail-icon.d.mts",
+      "default": "./dist/mail-icon.mjs"
+    },
     "./maximize-icon": {
       "types": "./dist/maximize-icon.d.mts",
       "default": "./dist/maximize-icon.mjs"
