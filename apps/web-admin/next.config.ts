@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   experimental: {
     // `assertSameOrigin()` terminates rejected Server Actions with Next's 403.
     authInterrupts: true,
+    // `cacheComponents` turns this on implicitly, and with the async Redis
+    // `cacheHandlers` its spawned prerender races their pending reads
+    // (vercel/next.js#98543).
+    cachedNavigations: false,
     // Unmatched URLs skip the [tenant_id] layout tree.
     globalNotFound: true,
     serverActions: {
