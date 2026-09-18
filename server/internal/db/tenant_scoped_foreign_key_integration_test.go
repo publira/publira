@@ -47,11 +47,18 @@ func TestEveryTenantScopedForeignKeyNamesTenantID(t *testing.T) {
 				WHERE ca.attrelid = con.conrelid AND ca.attname = 'tenant_id'
 					AND ca.attnum > 0 AND NOT ca.attisdropped
 			)
-			-- And it does not.
+			-- And it does not point the one at the other. The two sides are
+			-- paired by position, because naming tenant_id on the child while
+			-- matching it against some other column of the parent would leave
+			-- the same hole open.
 			AND NOT EXISTS (
-				SELECT 1 FROM unnest(con.conkey) AS key(attnum)
-				JOIN pg_attribute ca ON ca.attrelid = con.conrelid AND ca.attnum = key.attnum
-				WHERE ca.attname = 'tenant_id'
+				SELECT 1
+				FROM generate_subscripts(con.conkey, 1) AS pos(i)
+				JOIN pg_attribute ca
+					ON ca.attrelid = con.conrelid AND ca.attnum = con.conkey[pos.i]
+				JOIN pg_attribute pa
+					ON pa.attrelid = con.confrelid AND pa.attnum = con.confkey[pos.i]
+				WHERE ca.attname = 'tenant_id' AND pa.attname = 'tenant_id'
 			)
 		ORDER BY 1, 2
 	`)
