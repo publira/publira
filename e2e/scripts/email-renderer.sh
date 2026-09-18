@@ -8,10 +8,10 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-READY_TIMEOUT_SEC="${E2E_EMAIL_RENDERER_READY_TIMEOUT_SEC:-60}"
+READY_TIMEOUT_SEC="${PUBLIRA_E2E_EMAIL_RENDERER_READY_TIMEOUT_SEC:-60}"
 
 email_renderer_readyz_url() {
-  printf 'http://127.0.0.1:%s/readyz' "${E2E_EMAIL_RENDERER_PORT}"
+  printf 'http://127.0.0.1:%s/readyz' "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}"
 }
 
 email_renderer_is_ready() {
@@ -34,14 +34,14 @@ start_email_renderer() {
     exit 1
   fi
 
-  e2e_log "starting email-renderer (:${E2E_EMAIL_RENDERER_PORT})"
+  e2e_log "starting email-renderer (:${PUBLIRA_E2E_EMAIL_RENDERER_PORT})"
   # `exec`: without it $! can name the subshell, and stopping it would leave the
   # server holding the port. Bash usually optimizes this away; do not rely on it.
   (
     cd "${app_dir}"
     exec env \
       HOST="127.0.0.1" \
-      PORT="${E2E_EMAIL_RENDERER_PORT}" \
+      PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
       node dist/index.mjs
   ) >>"${LOG_DIR}/email-renderer.log" 2>&1 &
   write_pid "email-renderer" $!

@@ -11,37 +11,37 @@ acquire_e2e_lock
 # repository's infra/proxy/traefik/dynamic and lays this file over the
 # services.yaml in it, so the routers are the ones every environment runs and
 # only the addresses are written here — the ports are overridable
-# (E2E_WEB_HOST_PORT and the rest) and a file provider substitutes no
+# (PUBLIRA_E2E_WEB_HOST_PORT and the rest) and a file provider substitutes no
 # variables of its own.
 #
 # `localhost` rather than a literal address: web-host is started with
 # HOSTNAME=localhost and Next resolves that to ::1 alone, while image-server
 # binds every address. Only a name covers both, and it keeps working when
-# E2E_WEB_BIND_HOST moves web-host to an IPv4 address instead.
-e2e_log "writing traefik services to ${E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml"
-cat >"${E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml" <<EOF
+# PUBLIRA_E2E_WEB_BIND_HOST moves web-host to an IPv4 address instead.
+e2e_log "writing traefik services to ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml"
+cat >"${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml" <<EOF
 http:
   services:
     web-host:
       loadBalancer:
         servers:
-          - url: "http://localhost:${E2E_WEB_HOST_PORT}"
+          - url: "http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}"
     web-admin:
       loadBalancer:
         servers:
-          - url: "http://localhost:${E2E_WEB_ADMIN_PORT}"
+          - url: "http://localhost:${PUBLIRA_E2E_WEB_ADMIN_PORT}"
     web-platform:
       loadBalancer:
         servers:
-          - url: "http://localhost:${E2E_WEB_PLATFORM_PORT}"
+          - url: "http://localhost:${PUBLIRA_E2E_WEB_PLATFORM_PORT}"
     api:
       loadBalancer:
         servers:
-          - url: "http://localhost:${E2E_PUBLIC_API_PORT}"
+          - url: "http://localhost:${PUBLIRA_E2E_PUBLIC_API_PORT}"
     image-server:
       loadBalancer:
         servers:
-          - url: "http://localhost:${E2E_IMAGE_SERVER_PORT}"
+          - url: "http://localhost:${PUBLIRA_E2E_IMAGE_SERVER_PORT}"
 EOF
 
 e2e_log "starting compose project ${COMPOSE_PROJECT_NAME}"

@@ -15,7 +15,7 @@ includes:
 
 vars:
   # Directory of this Taskfile (e2e/), stable whether included or run directly.
-  E2E_DIR: "{{.TASKFILE_DIR}}"
+  PUBLIRA_E2E_DIR: "{{.TASKFILE_DIR}}"
 
 tasks:
   default:
@@ -28,7 +28,7 @@ tasks:
     deps:
       - task: prepare
     cmds:
-      - bash {{.E2E_DIR}}/scripts/run.sh
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh
 
   prepare:
     desc: Build server binaries, web-host, web-admin, web-platform, email-renderer, and install Playwright Chromium
@@ -39,48 +39,48 @@ tasks:
       # (run `pnpm --dir e2e exec playwright install-deps chromium` once if needed).
       - |
         if [ -n "${CI:-}" ]; then
-          pnpm --dir {{.E2E_DIR}} exec playwright install --with-deps chromium
+          pnpm --dir {{.PUBLIRA_E2E_DIR}} exec playwright install --with-deps chromium
         else
-          pnpm --dir {{.E2E_DIR}} exec playwright install chromium
+          pnpm --dir {{.PUBLIRA_E2E_DIR}} exec playwright install chromium
         fi
 
   test:
     desc: Run Playwright only (stack must already be ready)
     cmds:
       # Not wired to package.json "test" so `pnpm test` / turbo unit suite skips E2E.
-      - bash {{.E2E_DIR}}/scripts/test.sh {{.CLI_ARGS}}
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/test.sh {{.CLI_ARGS}}
 
   up:
     desc: Start compose dependencies (postgres + redis)
     cmds:
-      - bash {{.E2E_DIR}}/scripts/up.sh
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/up.sh
 
   down:
     desc: Stop apps and remove compose project + volumes
     cmds:
-      - bash {{.E2E_DIR}}/scripts/down.sh
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/down.sh
 
   db:
     desc: Migrate and apply dev seed against E2E postgres
     cmds:
-      - bash {{.E2E_DIR}}/scripts/db-setup.sh
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/db-setup.sh
 
   start-apps:
-    desc: Start API servers, email-renderer, outbox-worker, web-host, web-admin, web-platform (background, logs in $E2E_RUN_DIR/logs)
+    desc: Start API servers, email-renderer, outbox-worker, web-host, web-admin, web-platform (background, logs in $PUBLIRA_E2E_RUN_DIR/logs)
     cmds:
-      - bash {{.E2E_DIR}}/scripts/start-apps.sh
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/start-apps.sh
 
   test-lib:
-    desc: Check E2E_RUN_DIR isolation and compose-project lease (no Docker)
+    desc: Check PUBLIRA_E2E_RUN_DIR isolation and compose-project lease (no Docker)
     cmds:
-      - bash {{.E2E_DIR}}/scripts/lib_test.sh
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/lib_test.sh
 
   stop-apps:
     desc: Stop background API/app processes started by start-apps
     cmds:
-      - bash {{.E2E_DIR}}/scripts/stop-apps.sh
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/stop-apps.sh
 
   wait-ready:
     desc: "Wait for HTTP readiness probes via wait4x (fails with readiness failed: <name>)"
     cmds:
-      - bash {{.E2E_DIR}}/scripts/wait-ready.sh
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/wait-ready.sh

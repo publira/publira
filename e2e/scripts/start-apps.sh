@@ -8,7 +8,7 @@ ensure_run_dirs
 acquire_e2e_lock
 
 # Avoid double-starts leaving orphan processes.
-bash "${E2E_SCRIPTS_DIR}/stop-apps.sh" || true
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/stop-apps.sh" || true
 
 start_web_app() {
   local app_name="$1"
@@ -37,11 +37,11 @@ start_web_app() {
   fi
 
   if ss -ltn 2>/dev/null | grep -qE ":${app_port}\\b" || netstat -ltn 2>/dev/null | grep -qE ":${app_port}\\b"; then
-    e2e_err "port ${app_port} is already in use; free it or override E2E_*_PORT"
+    e2e_err "port ${app_port} is already in use; free it or override PUBLIRA_E2E_*_PORT"
     exit 1
   fi
 
-  local web_mode="${E2E_WEB_MODE:-start}"
+  local web_mode="${PUBLIRA_E2E_WEB_MODE:-start}"
   e2e_log "starting ${app_name} (mode=${web_mode}, host=${bind_host}, port ${app_port})"
 
   if [[ "${web_mode}" == "dev" ]]; then
@@ -75,16 +75,16 @@ start_web_app() {
 }
 
 for port in \
-  "${E2E_PUBLIC_API_PORT}" \
-  "${E2E_PUBLIC_API_GRPC_PORT}" \
-  "${E2E_OUTBOX_WORKER_PORT}" \
-  "${E2E_IMAGE_SERVER_PORT}" \
-  "${E2E_EMAIL_RENDERER_PORT}" \
-  "${E2E_WEB_HOST_PORT}" \
-  "${E2E_WEB_ADMIN_PORT}" \
-  "${E2E_WEB_PLATFORM_PORT}"; do
+  "${PUBLIRA_E2E_PUBLIC_API_PORT}" \
+  "${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}" \
+  "${PUBLIRA_E2E_OUTBOX_WORKER_PORT}" \
+  "${PUBLIRA_E2E_IMAGE_SERVER_PORT}" \
+  "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
+  "${PUBLIRA_E2E_WEB_HOST_PORT}" \
+  "${PUBLIRA_E2E_WEB_ADMIN_PORT}" \
+  "${PUBLIRA_E2E_WEB_PLATFORM_PORT}"; do
   if ss -ltn 2>/dev/null | grep -qE ":${port}\\b" || netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"; then
-    e2e_err "port ${port} is already in use; free it or override E2E_*_PORT"
+    e2e_err "port ${port} is already in use; free it or override PUBLIRA_E2E_*_PORT"
     exit 1
   fi
 done
@@ -96,33 +96,33 @@ done
 : >"${LOG_DIR}/outbox-worker.log"
 : >"${LOG_DIR}/image-server.log"
 
-bash "${E2E_SCRIPTS_DIR}/api-server.sh" start
-bash "${E2E_SCRIPTS_DIR}/email-renderer.sh" start
-bash "${E2E_SCRIPTS_DIR}/outbox-worker.sh" start
-bash "${E2E_SCRIPTS_DIR}/image-server.sh" start
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/api-server.sh" start
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/email-renderer.sh" start
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/outbox-worker.sh" start
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/image-server.sh" start
 
 # Bind hostname must match browser Host so Next internal rewrites are not
 # treated as external proxies (127.0.0.1 vs localhost → socket hang up).
 start_web_app \
   "web-host" \
-  "${E2E_WEB_HOST_PORT}" \
-  "${E2E_WEB_BIND_HOST:-localhost}" \
+  "${PUBLIRA_E2E_WEB_HOST_PORT}" \
+  "${PUBLIRA_E2E_WEB_BIND_HOST:-localhost}" \
   "web-host"
 
 # web-admin is reached as admin.localhost (seed admin_domain). Chromium resolves
 # *.localhost to loopback; the server must bind a hostname that accepts that Host.
 start_web_app \
   "web-admin" \
-  "${E2E_WEB_ADMIN_PORT}" \
-  "${E2E_WEB_ADMIN_BIND_HOST:-0.0.0.0}" \
+  "${PUBLIRA_E2E_WEB_ADMIN_PORT}" \
+  "${PUBLIRA_E2E_WEB_ADMIN_BIND_HOST:-0.0.0.0}" \
   "web-admin"
 
 # web-platform has no tenant Host resolution; bind 0.0.0.0 so platform.localhost
 # reaches the process the same way admin.localhost does for web-admin.
 start_web_app \
   "web-platform" \
-  "${E2E_WEB_PLATFORM_PORT}" \
-  "${E2E_WEB_PLATFORM_BIND_HOST:-0.0.0.0}" \
+  "${PUBLIRA_E2E_WEB_PLATFORM_PORT}" \
+  "${PUBLIRA_E2E_WEB_PLATFORM_BIND_HOST:-0.0.0.0}" \
   "web-platform"
 
 e2e_log "apps started (logs under ${LOG_DIR})"

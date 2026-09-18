@@ -9,10 +9,10 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-READY_TIMEOUT_SEC="${E2E_IMAGE_READY_TIMEOUT_SEC:-60}"
+READY_TIMEOUT_SEC="${PUBLIRA_E2E_IMAGE_READY_TIMEOUT_SEC:-60}"
 
 image_readyz_url() {
-  printf 'http://127.0.0.1:%s/readyz' "${E2E_IMAGE_SERVER_PORT}"
+  printf 'http://127.0.0.1:%s/readyz' "${PUBLIRA_E2E_IMAGE_SERVER_PORT}"
 }
 
 image_is_ready() {
@@ -34,7 +34,7 @@ start_image_server() {
     exit 1
   fi
 
-  e2e_log "starting image-server (:${E2E_IMAGE_SERVER_PORT})"
+  e2e_log "starting image-server (:${PUBLIRA_E2E_IMAGE_SERVER_PORT})"
   # `exec`: without it $! can name the subshell, and stopping it would leave the
   # server holding the port. Bash usually optimizes this away; do not rely on it.
   (
@@ -42,7 +42,7 @@ start_image_server() {
     exec env \
       PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
       PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
-      PUBLIRA_IMAGE_SERVER_ADDR=":${E2E_IMAGE_SERVER_PORT}" \
+      PUBLIRA_IMAGE_SERVER_ADDR=":${PUBLIRA_E2E_IMAGE_SERVER_PORT}" \
       PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
       PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
       PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-}" \

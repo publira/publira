@@ -89,9 +89,9 @@ const emailChangeTokenCount = (): string =>
  * override or from-name is what the scenario puts back.
  */
 const pointTenantSmtpAtMailpit = (): void => {
-  const port = process.env.E2E_MAILPIT_SMTP_PORT?.trim() || "1026";
+  const port = process.env.PUBLIRA_E2E_MAILPIT_SMTP_PORT?.trim() || "1026";
   if (!/^\d+$/u.test(port)) {
-    throw new Error(`invalid E2E_MAILPIT_SMTP_PORT: ${port}`);
+    throw new Error(`invalid PUBLIRA_E2E_MAILPIT_SMTP_PORT: ${port}`);
   }
   runSql(`
     UPDATE tenant_smtp_config

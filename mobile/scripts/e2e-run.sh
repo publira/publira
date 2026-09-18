@@ -6,10 +6,10 @@ set -euo pipefail
 MOBILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$(cd "${MOBILE_DIR}/.." && pwd)"
 
-# Must be set before lib.sh so the compose lease and E2E_RUN_DIR do not
+# Must be set before lib.sh so the compose lease and PUBLIRA_E2E_RUN_DIR do not
 # collide with the Playwright stack (`publira-e2e`).
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-publira-mobile-e2e}"
-export E2E_RUN_DIR="${E2E_RUN_DIR:-${MOBILE_DIR}/.run}"
+export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_RUN_DIR:-${MOBILE_DIR}/.run}"
 
 # shellcheck source=../../e2e/scripts/lib.sh
 source "${REPO_ROOT}/e2e/scripts/lib.sh"
@@ -24,9 +24,9 @@ cleanup() {
   fi
   cleanup_done=1
   e2e_log "teardown (always)"
-  bash "${E2E_SCRIPTS_DIR}/image-server.sh" stop || true
-  bash "${E2E_SCRIPTS_DIR}/api-server.sh" stop || true
-  bash "${E2E_SCRIPTS_DIR}/down.sh" || true
+  bash "${PUBLIRA_E2E_SCRIPTS_DIR}/image-server.sh" stop || true
+  bash "${PUBLIRA_E2E_SCRIPTS_DIR}/api-server.sh" stop || true
+  bash "${PUBLIRA_E2E_SCRIPTS_DIR}/down.sh" || true
 }
 trap cleanup EXIT INT TERM
 
@@ -34,13 +34,13 @@ e2e_log "=== Mobile E2E run start (project=${COMPOSE_PROJECT_NAME}) ==="
 
 (cd "${REPO_ROOT}" && task server:build)
 
-bash "${E2E_SCRIPTS_DIR}/up.sh"
-bash "${E2E_SCRIPTS_DIR}/db-setup.sh"
-bash "${E2E_SCRIPTS_DIR}/api-server.sh" start-wait
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/up.sh"
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/db-setup.sh"
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/api-server.sh" start-wait
 # Every seeded episode carries a body, so the reader fetches its pages as soon
 # as a test opens one, and an unanswered fetch fails the run from outside the
 # test that caused it.
-bash "${E2E_SCRIPTS_DIR}/image-server.sh" start-wait
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/image-server.sh" start-wait
 
 e2e_log "=== Flutter integration_test phase ==="
 set +e
@@ -50,7 +50,7 @@ set -e
 
 if [[ "${test_status}" -ne 0 ]]; then
   e2e_err "mobile integration tests failed (exit ${test_status})"
-  e2e_err "Artifacts: ${E2E_RUN_DIR}/artifacts ${LOG_DIR}"
+  e2e_err "Artifacts: ${PUBLIRA_E2E_RUN_DIR}/artifacts ${LOG_DIR}"
   exit "${test_status}"
 fi
 

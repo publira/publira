@@ -5,17 +5,16 @@
 # the browser the screenshot projects render in.
 #
 # Host ports are offset from each service's default (5432 / 6379 / 9000 / 1025
-# / 8025) so they clear other local stacks. Override with E2E_POSTGRES_PORT /
-# E2E_REDIS_PORT / E2E_RUSTFS_PORT / E2E_MAILPIT_SMTP_PORT /
-# E2E_MAILPIT_HTTP_PORT / E2E_EDGE_PORT / E2E_BROWSER_PORT (and a distinct
-# COMPOSE_PROJECT_NAME) so a second stack can run from the same checkout:
-#   postgres → localhost:${E2E_POSTGRES_PORT:-5433}
-#   redis    → localhost:${E2E_REDIS_PORT:-6380}
-#   rustfs   → localhost:${E2E_RUSTFS_PORT:-9003}
-#   mailpit  → localhost:${E2E_MAILPIT_SMTP_PORT:-1026} (SMTP),
-#              localhost:${E2E_MAILPIT_HTTP_PORT:-8026} (API)
-#   traefik  → localhost:${E2E_EDGE_PORT:-3080}
-#   browser  → localhost:${E2E_BROWSER_PORT:-3090}
+# / 8025) so they clear other local stacks. Override the variable a line below
+# names (and set a distinct COMPOSE_PROJECT_NAME) so a second stack can run
+# from the same checkout:
+#   postgres → localhost:${PUBLIRA_E2E_POSTGRES_PORT:-5433}
+#   redis    → localhost:${PUBLIRA_E2E_REDIS_PORT:-6380}
+#   rustfs   → localhost:${PUBLIRA_E2E_RUSTFS_PORT:-9003}
+#   mailpit  → localhost:${PUBLIRA_E2E_MAILPIT_SMTP_PORT:-1026} (SMTP),
+#              localhost:${PUBLIRA_E2E_MAILPIT_HTTP_PORT:-8026} (API)
+#   traefik  → localhost:${PUBLIRA_E2E_EDGE_PORT:-3080}
+#   browser  → localhost:${PUBLIRA_E2E_BROWSER_PORT:-3090}
 
 name: publira-e2e
 
@@ -24,7 +23,7 @@ name: publira-e2e
 # one's database: the compose-project lease disappears with its holder process,
 # while this label lives exactly as long as the container carrying it.
 x-run-dir-label: &run-dir-label
-  com.publira.e2e.run-dir: "${E2E_RUN_DIR:-}"
+  com.publira.e2e.run-dir: "${PUBLIRA_E2E_RUN_DIR:-}"
 
 services:
   # SMTP sink for the mail the flows under test send, and the only way a spec
@@ -40,8 +39,8 @@ services:
     labels: *run-dir-label
     ports:
       # SMTP intake and the web UI / API.
-      - "127.0.0.1:${E2E_MAILPIT_SMTP_PORT:-1026}:1025"
-      - "127.0.0.1:${E2E_MAILPIT_HTTP_PORT:-8026}:8025"
+      - "127.0.0.1:${PUBLIRA_E2E_MAILPIT_SMTP_PORT:-1026}:1025"
+      - "127.0.0.1:${PUBLIRA_E2E_MAILPIT_HTTP_PORT:-8026}:8025"
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 2s
@@ -57,7 +56,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: postgres
     ports:
-      - "127.0.0.1:${E2E_POSTGRES_PORT:-5433}:5432"
+      - "127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT:-5433}:5432"
     volumes:
       - e2e-postgres-data:/var/lib/postgresql
     healthcheck:
@@ -73,7 +72,7 @@ services:
     labels: *run-dir-label
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
-      - "127.0.0.1:${E2E_REDIS_PORT:-6380}:6379"
+      - "127.0.0.1:${PUBLIRA_E2E_REDIS_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
@@ -88,7 +87,7 @@ services:
       RUSTFS_ACCESS_KEY: publira
       RUSTFS_SECRET_KEY: publirapass
     ports:
-      - "127.0.0.1:${E2E_RUSTFS_PORT:-9003}:9000"
+      - "127.0.0.1:${PUBLIRA_E2E_RUSTFS_PORT:-9003}:9000"
     volumes:
       - e2e-rustfs-data:/data
     healthcheck:
@@ -119,7 +118,7 @@ services:
     command:
       # Loopback, like every published port above: a bare `:port` would listen
       # on every interface, which host networking makes the real ones.
-      - "--entrypoints.web.address=127.0.0.1:${E2E_EDGE_PORT:-3080}"
+      - "--entrypoints.web.address=127.0.0.1:${PUBLIRA_E2E_EDGE_PORT:-3080}"
       # Inbound W3C Trace Context is dropped before any router runs, the same
       # way the Dev Container edge does it.
       - "--entrypoints.web.http.middlewares=strip-trace-context@file"
@@ -131,7 +130,7 @@ services:
       # land on a path that already exists inside a read-only directory mount,
       # and services.yaml is committed, so it does.
       - ../infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
-      - ${E2E_TRAEFIK_DYNAMIC_DIR:-./.run/traefik}/services.yaml:/etc/traefik/dynamic/services.yaml:ro
+      - ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR:-./.run/traefik}/services.yaml:/etc/traefik/dynamic/services.yaml:ro
 
   # The browser the screenshot projects render in. Every other project drives
   # the Playwright Chromium installed on the host; a screenshot is compared
@@ -154,7 +153,7 @@ services:
       - "--host"
       - "127.0.0.1"
       - "--port"
-      - "${E2E_BROWSER_PORT:-3090}"
+      - "${PUBLIRA_E2E_BROWSER_PORT:-3090}"
     healthcheck:
       # The endpoint is a WebSocket the client upgrades to, so accepting a
       # connection is the whole readiness signal.
@@ -162,7 +161,7 @@ services:
         - "CMD"
         - "node"
         - "-e"
-        - "require('node:net').connect(${E2E_BROWSER_PORT:-3090}, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"
+        - "require('node:net').connect(${PUBLIRA_E2E_BROWSER_PORT:-3090}, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"
       interval: 2s
       timeout: 3s
       retries: 20

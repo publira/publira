@@ -33,7 +33,7 @@ export const localeHostPath = (locale: string, pathname: string): string =>
 
 /** Public catalog site (web-host). Matches seed domain `localhost`. */
 export const WEB_HOST_BASE_URL = envUrl(
-  "E2E_WEB_HOST_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_BASE_URL",
   "http://localhost:3000"
 );
 
@@ -50,7 +50,7 @@ export const WEB_HOST_BASE_URL = envUrl(
  * ordinary chain rather than on that project's deliberately empty machine.
  */
 export const WEB_HOST_EDGE_BASE_URL = envUrl(
-  "E2E_WEB_HOST_EDGE_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_EDGE_BASE_URL",
   "http://localhost:3080"
 );
 
@@ -63,19 +63,19 @@ export const WEB_HOST_EDGE_BASE_URL = envUrl(
  * browser. Every other project keeps using the host's Playwright Chromium.
  */
 export const BROWSER_WS_ENDPOINT = `${envUrl(
-  "E2E_BROWSER_WS_ENDPOINT",
+  "PUBLIRA_E2E_BROWSER_WS_ENDPOINT",
   "ws://127.0.0.1:3090"
 )}/`;
 
 /** Tenant admin console (web-admin). Matches seed domain `admin.localhost`. */
 export const WEB_ADMIN_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_BASE_URL",
   "http://admin.localhost:4000"
 );
 
 /** Platform console (web-platform). No tenant Host resolution. */
 export const WEB_PLATFORM_BASE_URL = envUrl(
-  "E2E_WEB_PLATFORM_BASE_URL",
+  "PUBLIRA_E2E_WEB_PLATFORM_BASE_URL",
   "http://platform.localhost:4100"
 );
 
@@ -87,7 +87,7 @@ export const WEB_PLATFORM_BASE_URL = envUrl(
  * back from here.
  */
 export const MAILPIT_BASE_URL = envUrl(
-  "E2E_MAILPIT_BASE_URL",
+  "PUBLIRA_E2E_MAILPIT_BASE_URL",
   "http://127.0.0.1:8026"
 );
 
@@ -105,7 +105,7 @@ export const WEB_HOST_INTERNAL_URL = envUrl(
 
 /** Public API gRPC/Connect origin used by web-host (readyz probe target). */
 export const PUBLIC_API_BASE_URL = envUrl(
-  "E2E_PUBLIC_API_BASE_URL",
+  "PUBLIRA_E2E_PUBLIC_API_BASE_URL",
   "http://127.0.0.1:8100"
 );
 
@@ -141,7 +141,7 @@ export const WEB_PLATFORM_EDGE_BASE_URL = withHostname(
 
 /** Second tenant from the scenario seed `db/seeds/scenarios/010_multi_tenant.sql`. */
 export const WEB_HOST_OTHER_TENANT_BASE_URL = envUrl(
-  "E2E_WEB_HOST_OTHER_TENANT_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_OTHER_TENANT_BASE_URL",
   withHostname(WEB_HOST_BASE_URL, "other.localhost")
 );
 
@@ -151,7 +151,7 @@ export const WEB_HOST_OTHER_TENANT_BASE_URL = envUrl(
  * there: the tenant boundary of the audit log is asserted from both sides.
  */
 export const WEB_ADMIN_OTHER_TENANT_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_OTHER_TENANT_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_OTHER_TENANT_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.other.localhost")
 );
 
@@ -165,13 +165,13 @@ export const WEB_ADMIN_OTHER_TENANT_BASE_URL = envUrl(
  * its creators.
  */
 export const WEB_HOST_NOTIFICATION_INBOX_BASE_URL = envUrl(
-  "E2E_WEB_HOST_NOTIFICATION_INBOX_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_NOTIFICATION_INBOX_BASE_URL",
   withHostname(WEB_HOST_BASE_URL, "notify.localhost")
 );
 
 /** Admin console of the same inbox tenant. */
 export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.notify.localhost")
 );
 
@@ -184,13 +184,13 @@ export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
  * that arrives in it arrived on purpose.
  */
 export const WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
-  "E2E_WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL",
   withHostname(WEB_HOST_BASE_URL, "announce.localhost")
 );
 
 /** Admin console of the same delivery tenant. */
 export const WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.announce.localhost")
 );
 
@@ -202,13 +202,13 @@ export const WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
  * is pinned in a tenant no other spec browses.
  */
 export const WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL = envUrl(
-  "E2E_WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL",
   withHostname(WEB_HOST_BASE_URL, "banner.localhost")
 );
 
 /** Admin console of the same banner tenant. */
 export const WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.banner.localhost")
 );
 
@@ -221,7 +221,7 @@ export const WEB_ADMIN_ANNOUNCEMENT_BANNER_BASE_URL = envUrl(
  * as the development seed admin or send mail through the seed tenant.
  */
 export const WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.aset.localhost")
 );
 
@@ -237,7 +237,7 @@ export const WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL = envUrl(
  * the reader's own origin alone.
  */
 export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
-  "E2E_WEB_HOST_EPISODE_COMMENTS_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_EPISODE_COMMENTS_BASE_URL",
   withHostname(WEB_HOST_EDGE_BASE_URL, "comment.localhost")
 );
 
@@ -251,13 +251,13 @@ export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
  * Through the edge, for the reason the commenting tenant above is.
  */
 export const WEB_HOST_COMMENT_MODERATION_BASE_URL = envUrl(
-  "E2E_WEB_HOST_COMMENT_MODERATION_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_COMMENT_MODERATION_BASE_URL",
   withHostname(WEB_HOST_EDGE_BASE_URL, "moderate.localhost")
 );
 
 /** Admin console of the same moderation tenant. */
 export const WEB_ADMIN_COMMENT_MODERATION_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_COMMENT_MODERATION_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_COMMENT_MODERATION_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.moderate.localhost")
 );
 
@@ -272,13 +272,13 @@ export const WEB_ADMIN_COMMENT_MODERATION_BASE_URL = envUrl(
  * resolves on the reader's own origin alone.
  */
 export const WEB_HOST_AGE_VERIFICATION_BASE_URL = envUrl(
-  "E2E_WEB_HOST_AGE_VERIFICATION_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_AGE_VERIFICATION_BASE_URL",
   withHostname(WEB_HOST_EDGE_BASE_URL, "age.localhost")
 );
 
 /** Admin console of the same age-verification tenant. */
 export const WEB_ADMIN_AGE_VERIFICATION_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_AGE_VERIFICATION_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_AGE_VERIFICATION_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.age.localhost")
 );
 
@@ -290,19 +290,19 @@ export const WEB_ADMIN_AGE_VERIFICATION_BASE_URL = envUrl(
  * unprefixed URL is Japanese and `/en/...` is the one that keeps its prefix.
  */
 export const WEB_HOST_JAPANESE_DEFAULT_BASE_URL = envUrl(
-  "E2E_WEB_HOST_JAPANESE_DEFAULT_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_JAPANESE_DEFAULT_BASE_URL",
   withHostname(WEB_HOST_BASE_URL, "locale.localhost")
 );
 
 /** Admin console of the same Japanese-default tenant. */
 export const WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL = envUrl(
-  "E2E_WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL",
+  "PUBLIRA_E2E_WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL",
   withHostname(WEB_ADMIN_BASE_URL, "admin.locale.localhost")
 );
 
 /** Host that maps to no tenant at all. */
 export const WEB_HOST_UNKNOWN_TENANT_BASE_URL = envUrl(
-  "E2E_WEB_HOST_UNKNOWN_TENANT_BASE_URL",
+  "PUBLIRA_E2E_WEB_HOST_UNKNOWN_TENANT_BASE_URL",
   withHostname(WEB_HOST_BASE_URL, "unknown-tenant.localhost")
 );
 

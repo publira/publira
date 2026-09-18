@@ -19,12 +19,12 @@ e2e_log "running task db:setup against ${PUBLIRA_DB_URL}"
 # rows is what gives the mail-sending flows one path that behaves the same in
 # both places, so a spec can read a confirmation link the database keeps only
 # the hash of.
-e2e_log "pointing SMTP settings at mailpit on 127.0.0.1:${E2E_MAILPIT_SMTP_PORT}"
+e2e_log "pointing SMTP settings at mailpit on 127.0.0.1:${PUBLIRA_E2E_MAILPIT_SMTP_PORT}"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
   UPDATE platform_smtp_config
-  SET host = '127.0.0.1', port = ${E2E_MAILPIT_SMTP_PORT}, updated_at = NOW();
+  SET host = '127.0.0.1', port = ${PUBLIRA_E2E_MAILPIT_SMTP_PORT}, updated_at = NOW();
   UPDATE tenant_smtp_config
-  SET host = '127.0.0.1', port = ${E2E_MAILPIT_SMTP_PORT}, updated_at = NOW();
+  SET host = '127.0.0.1', port = ${PUBLIRA_E2E_MAILPIT_SMTP_PORT}, updated_at = NOW();
 "
 
 # Creates the bucket and uploads the images the development seed's rows name:

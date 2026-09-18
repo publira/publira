@@ -38,10 +38,10 @@ const EXPECTED_ERRORS = [
 
 test.describe("web-host server log", () => {
   test("carries only the lines a passing run leaves", async () => {
-    const runDir = process.env.E2E_RUN_DIR;
+    const runDir = process.env.PUBLIRA_E2E_RUN_DIR;
     if (!runDir) {
       throw new Error(
-        "E2E_RUN_DIR is unset: run the suite through `task e2e:test`, which sources e2e/scripts/lib.sh"
+        "PUBLIRA_E2E_RUN_DIR is unset: run the suite through `task e2e:test`, which sources e2e/scripts/lib.sh"
       );
     }
 
