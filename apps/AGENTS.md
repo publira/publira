@@ -372,6 +372,14 @@ When the segment's name is already taken in that file — `(site)`'s layout want
 
 No lint covers this.
 
+## A dynamic segment is named `<resource>_id`
+
+A dynamic route segment names the resource it identifies and nothing more: `[series_id]`, `[creator_id]`, `[reader_id]`, never `[creator_public_id]`. The name never reaches a URL — it lives only in the directory, the `PageProps` type argument, the `createPlaceholderStaticParams` arguments, and the key of the schema that parses `params` — and the value of a segment in a URL is a public id by definition, so `public` there lengthens the longest token in the tree without telling a reader anything.
+
+The shortening stops at the segment. The `public_id` column and proto field and the `publicId` properties in `lib/` stay one word across DB, API, and client, which is what keeps a grep for the concept complete, and a `FormData` field or search parameter such as `creator_public_id` still names the identifier it submits.
+
+No lint covers this: nothing can tell a route segment from any other identifier, so review enforces it.
+
 ## Never use `instant = false`
 
 `export const instant = false` opts a segment out of Cache Components' static-shell validation. It is an escape hatch for codebases that cannot yet fix a blocking read, and it has no place in a product being built from scratch — **do not add it to any segment**, and do not treat an existing occurrence as licence to add another.

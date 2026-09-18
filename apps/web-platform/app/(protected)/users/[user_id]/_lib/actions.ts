@@ -25,7 +25,7 @@ import {
 /**
  * A Server Action's arguments are request input, not a value the page handed
  * over: the endpoint can be invoked directly with anything at all. Same schema
- * the operator Actions use (`operators/[operator_public_id]/_lib/actions.ts`).
+ * the operator Actions use (`operators/[operator_id]/_lib/actions.ts`).
  */
 const userPublicIdSchema = async () => {
   const locale = await getPlatformLocale();

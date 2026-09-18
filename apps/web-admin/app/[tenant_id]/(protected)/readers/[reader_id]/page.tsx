@@ -46,8 +46,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { ReaderAccount } from "./_components/reader-account";
 import { ReaderComments } from "./_components/reader-comments";
 
-type ReaderDetailPageProps =
-  PageProps<"/[tenant_id]/readers/[reader_public_id]">;
+type ReaderDetailPageProps = PageProps<"/[tenant_id]/readers/[reader_id]">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -58,10 +57,10 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_id", "reader_public_id");
+  createPlaceholderStaticParams("tenant_id", "reader_id");
 
 const readerParamsSchema = z.object({
-  reader_public_id: routeParamString(),
+  reader_id: routeParamString(),
 });
 
 const commentSearchParamsSchema = z.object({
@@ -92,7 +91,7 @@ const ReaderAccountContent = async ({
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const [result, timeZone] = await Promise.all([
-    getReader(tenantId, locale, parsedParams.reader_public_id),
+    getReader(tenantId, locale, parsedParams.reader_id),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -154,7 +153,7 @@ const ReaderCommentsContent = async ({
 
   const [result, timeZone] = await Promise.all([
     listComments(tenantId, locale, {
-      authorPublicId: parsedParams.reader_public_id,
+      authorPublicId: parsedParams.reader_id,
       limit: DEFAULT_PAGE_SIZE,
       token,
     }),
