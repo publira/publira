@@ -200,16 +200,17 @@ func (s *adminServer) syncSeriesCredits(
 	tenantID, seriesID uuid.UUID,
 	credits []creatorCredit,
 	replace bool,
-) ([]*publirattypesv1.Creator, error) {
+) ([]*publirattypesv1.Creator, []*publiraadminv1.SeriesCreatorCredit, error) {
 	if replace {
 		if err := s.queriesFor(ctx).DeleteSeriesCreatorsBySeriesID(ctx, seriesID); err != nil {
-			return nil, s.internalDBError(ctx, "failed to delete series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
+			return nil, nil, s.internalDBError(ctx, "failed to delete series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 		}
 	}
 	ordered := slices.SortedStableFunc(slices.Values(credits), func(left, right creatorCredit) int {
 		return cmp.Compare(left.role.DisplayPriority, right.role.DisplayPriority)
 	})
 	items := make([]*publirattypesv1.Creator, 0, len(ordered))
+	records := make([]*publiraadminv1.SeriesCreatorCredit, 0, len(ordered))
 	for index, credit := range ordered {
 		err := s.queriesFor(ctx).CreateSeriesCreator(ctx, dbmodels.CreateSeriesCreatorParams{
 			TenantID:     tenantID,
@@ -220,7 +221,7 @@ func (s *adminServer) syncSeriesCredits(
 			ShareBps:     credit.shareBps,
 		})
 		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", credit.creator.ID.String())
+			return nil, nil, s.internalDBError(ctx, "failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", credit.creator.ID.String())
 		}
 		items = append(items, &publirattypesv1.Creator{
 			PublicId:    credit.creator.PublicID,
@@ -231,22 +232,42 @@ func (s *adminServer) syncSeriesCredits(
 				Name:     credit.role.Name,
 			},
 		})
+		records = append(records, &publiraadminv1.SeriesCreatorCredit{
+			CreatorPublicId: credit.creator.PublicID,
+			RolePublicId:    credit.role.PublicID,
+			ShareBps:        credit.shareBps,
+		})
 	}
-	return items, nil
+	return items, records, nil
 }
 
 func (s *adminServer) seriesCreatorsBySeriesIDs(
 	ctx context.Context,
 	seriesIDs []uuid.UUID,
 ) (map[uuid.UUID][]*publirattypesv1.Creator, error) {
+	rows, err := s.seriesCreatorRows(ctx, seriesIDs)
+	if err != nil {
+		return nil, err
+	}
+	return seriesCreatorsFromRows(rows), nil
+}
+
+func (s *adminServer) seriesCreatorRows(
+	ctx context.Context,
+	seriesIDs []uuid.UUID,
+) ([]dbmodels.ListSeriesCreatorsBySeriesIDsRow, error) {
 	if len(seriesIDs) == 0 {
-		return map[uuid.UUID][]*publirattypesv1.Creator{}, nil
+		return nil, nil
 	}
 	rows, err := s.queriesFor(ctx).ListSeriesCreatorsBySeriesIDs(ctx, seriesIDs)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list series creators", err)
 	}
-	items := make(map[uuid.UUID][]*publirattypesv1.Creator, len(seriesIDs))
+	return rows, nil
+}
+
+func seriesCreatorsFromRows(rows []dbmodels.ListSeriesCreatorsBySeriesIDsRow) map[uuid.UUID][]*publirattypesv1.Creator {
+	items := make(map[uuid.UUID][]*publirattypesv1.Creator)
 	for _, row := range rows {
 		creator := &publirattypesv1.Creator{
 			PublicId: row.PublicID,
@@ -262,7 +283,19 @@ func (s *adminServer) seriesCreatorsBySeriesIDs(
 		}
 		items[row.SeriesID] = append(items[row.SeriesID], creator)
 	}
-	return items, nil
+	return items
+}
+
+func seriesCreatorCreditsFromRows(rows []dbmodels.ListSeriesCreatorsBySeriesIDsRow) []*publiraadminv1.SeriesCreatorCredit {
+	credits := make([]*publiraadminv1.SeriesCreatorCredit, 0, len(rows))
+	for _, row := range rows {
+		credits = append(credits, &publiraadminv1.SeriesCreatorCredit{
+			CreatorPublicId: row.PublicID,
+			RolePublicId:    row.RolePublicID.String,
+			ShareBps:        row.ShareBps,
+		})
+	}
+	return credits
 }
 
 // maxSeriesTags bounds how many tags one series carries. Tags exist to group
@@ -662,7 +695,7 @@ func (s *adminServer) CreateSeries(
 			return nil, s.internalDBError(ctx, "failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 		}
 	}
-	creators, err := s.syncSeriesCredits(txCtx, tenant.ID, base.ID, creditsToLink, false)
+	creators, creatorCredits, err := s.syncSeriesCredits(txCtx, tenant.ID, base.ID, creditsToLink, false)
 	if err != nil {
 		return nil, err
 	}
@@ -725,6 +758,7 @@ func (s *adminServer) CreateSeries(
 		CommentMode:      commentMode,
 		ReadingDirection: readingDirection,
 		SpreadStartIndex: spreadStartIndex,
+		CreatorCredits:   creatorCredits,
 	}), nil
 }
 
@@ -854,7 +888,7 @@ func (s *adminServer) UpdateSeries(
 			return nil, s.internalDBError(ctx, "failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 		}
 	}
-	creators, err := s.syncSeriesCredits(txCtx, tenant.ID, current.ID, creditsToLink, true)
+	creators, creatorCredits, err := s.syncSeriesCredits(txCtx, tenant.ID, current.ID, creditsToLink, true)
 	if err != nil {
 		return nil, err
 	}
@@ -919,6 +953,7 @@ func (s *adminServer) UpdateSeries(
 		CommentMode:      commentMode,
 		ReadingDirection: readingDirection,
 		SpreadStartIndex: spreadStartIndex,
+		CreatorCredits:   creatorCredits,
 	}), nil
 }
 
@@ -1291,7 +1326,7 @@ func (s *adminServer) GetSeries(
 		}
 		return nil, s.internalDBError(ctx, "failed to get series", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
 	}
-	creatorsBySeriesID, err := s.seriesCreatorsBySeriesIDs(ctx, []uuid.UUID{row.ID})
+	creatorRows, err := s.seriesCreatorRows(ctx, []uuid.UUID{row.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -1314,7 +1349,7 @@ func (s *adminServer) GetSeries(
 		}
 		series.EyeCatchImageVariants = variantsByImageID[row.EyeCatchImageID.UUID]
 	}
-	series.Creators = creatorsBySeriesID[row.ID]
+	series.Creators = seriesCreatorsFromRows(creatorRows)[row.ID]
 	series.Genres = genresBySeriesID[row.ID]
 	series.Tags = tagsBySeriesID[row.ID]
 	commentMode, err := protomapper.CommentModeOverrideFromStored(row.CommentMode)
@@ -1330,5 +1365,6 @@ func (s *adminServer) GetSeries(
 		CommentMode:      commentMode,
 		ReadingDirection: readingDirection,
 		SpreadStartIndex: spreadStartIndex,
+		CreatorCredits:   seriesCreatorCreditsFromRows(creatorRows),
 	}), nil
 }
