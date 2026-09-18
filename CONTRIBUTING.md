@@ -121,7 +121,7 @@ Run the commands that match the area you changed, from the repository root. They
 | `apps/`, `packages/`, `locales/`, `scripts/*.ts` | `pnpm preflight` (locale catalog, `typegen`, `typecheck`, `check`, `test`, `test:scripts`) |
 | `server/` | `task server:lint`, `task server:test-short`, and `task server:test` before finishing (it needs Docker for Testcontainers); `task server:build` when `cmd/` changes |
 | `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` must be clean, then the `server/` commands again; commit the regenerated output |
-| `db/migrations/` | `task db:reset`; the history is append-only, so fix a mistake with a new migration rather than by editing one |
+| `db/migrations/` | `task db:reset`; the history is append-only once merged, so fix a mistake in a migration already on `main` with a new migration rather than by editing it |
 | `mobile/` | `task mobile:check` |
 | Behaviour that spans the web apps and the API | `task e2e` |
 | Everything | `pnpm check` formats and lints every file type oxfmt supports, Markdown included |
