@@ -4,7 +4,9 @@ Conventions for `db/` (migrations, sqlc queries, seeds). Prefer this file for sc
 
 ## Migrations are append-only
 
-`migrations/` is the golang-migrate history. A schema change is always a **new** migration; the files already there are never edited, renamed, or deleted.
+`migrations/` is the golang-migrate history. A schema change is always a **new** migration; the files already on `main` are never edited, renamed, or deleted.
+
+A migration that exists only on an open branch is not one of those files. Nothing outside its author's own database has applied it, so it is corrected in place for as long as the branch is open: review feedback edits the file rather than stacking a second migration, which would leave the merged history carrying a redundant pair forever.
 
 Rewriting an applied migration changes nothing in a database that already recorded that version in `schema_migrations` — golang-migrate will not run the version a second time. The edit reaches only databases built from scratch afterwards, so environments silently drift apart. Correct a mistake by stacking another migration on top of it.
 

@@ -70,9 +70,11 @@ reviews:
       instructions: |
         PostgreSQL / sqlc. Rules: db/AGENTS.md.
 
-        - migrations/ is append-only: flag any edit, rename, or deletion of an
-          existing migration file. A schema change is a new timestamped pair,
-          and every up needs a down that undoes it.
+        - migrations/ is append-only once merged: flag any edit, rename, or
+          deletion of a migration file that is already on main. A migration the
+          PR itself adds is still being written, so ask for it to be corrected in
+          place rather than stacked on. A schema change is a new timestamped
+          pair, and every up needs a down that undoes it.
         - migration = DDL; seed = idempotent DML. Flag mixed responsibilities.
         - Strongly flag destructive DDL (DROP / TRUNCATE / drop constraints) and RLS disable.
         - sqlc queries must be parameterized; flag string-concatenated dynamic SQL.
