@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ratelimit"
+	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -54,6 +55,13 @@ const (
 	// in the viewer rather than on a settings screen, so a press is as cheap as
 	// a rating's and the budget is the same size.
 	actionUpdateViewerPreferences readerAction = "viewer.preferences.update"
+	// A message written to the tenant's staff through the contact form. It is
+	// the one reader-writable RPC a guest may reach, so it is charged twice: the
+	// account holds one allowance when there is an account, and the client holds
+	// another whether or not anyone is signed in. Without the second, a sender
+	// who never signs in would have no allowance at all.
+	actionSubmitContactMessage           readerAction = "contact.submit"
+	actionSubmitContactMessageFromClient readerAction = "contact.submit.client"
 )
 
 // The deployment settings, and the defaults a deployment that sets none of them
@@ -72,6 +80,10 @@ const (
 	verifyPasswordPerDayEnv             = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_DAY"
 	updateViewerPreferencesPerMinuteEnv = "PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_MINUTE"
 	updateViewerPreferencesPerDayEnv    = "PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_DAY"
+	contactMessagePerAccountPerHourEnv  = "PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_ACCOUNT_PER_HOUR"
+	contactMessagePerAccountPerDayEnv   = "PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_ACCOUNT_PER_DAY"
+	contactMessagePerClientPerHourEnv   = "PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_CLIENT_PER_HOUR"
+	contactMessagePerClientPerDayEnv    = "PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_CLIENT_PER_DAY"
 
 	defaultPostCommentPerMinute   = 10
 	defaultPostCommentPerDay      = 100
@@ -99,6 +111,21 @@ const (
 	// then reads; nobody who is reading spends a day's worth of these.
 	defaultUpdateViewerPreferencesPerMinute = 30
 	defaultUpdateViewerPreferencesPerDay    = 300
+
+	// The contact form is the one place a reader writes a letter rather than a
+	// reaction, so its windows are the hour and the day rather than the minute:
+	// a minute is shorter than it takes to write one, and a budget nobody could
+	// reach would bound nothing. Somebody with three separate things to ask is
+	// unusual; somebody with a fourth in the same hour is filling a queue.
+	//
+	// The client's budget is wider than the account's because one address may
+	// stand for a whole office or campus, and because it is the only allowance
+	// a guest spends. It is still far below what makes a staff inbox worth
+	// flooding.
+	defaultContactMessagePerAccountPerHour = 3
+	defaultContactMessagePerAccountPerDay  = 10
+	defaultContactMessagePerClientPerHour  = 10
+	defaultContactMessagePerClientPerDay   = 30
 
 	// defaultDuplicateCommentWindow is long enough to cover a reader hammering
 	// the button and short enough that coming back to an episode hours later
@@ -132,6 +159,10 @@ type readerLimits struct {
 	verifyPasswordPerDay             int
 	updateViewerPreferencesPerMinute int
 	updateViewerPreferencesPerDay    int
+	contactMessagePerAccountPerHour  int
+	contactMessagePerAccountPerDay   int
+	contactMessagePerClientPerHour   int
+	contactMessagePerClientPerDay    int
 }
 
 // defaultReaderLimits is the policy a deployment that sets none of the settings
@@ -148,6 +179,10 @@ func defaultReaderLimits() readerLimits {
 		verifyPasswordPerDay:             defaultVerifyPasswordPerDay,
 		updateViewerPreferencesPerMinute: defaultUpdateViewerPreferencesPerMinute,
 		updateViewerPreferencesPerDay:    defaultUpdateViewerPreferencesPerDay,
+		contactMessagePerAccountPerHour:  defaultContactMessagePerAccountPerHour,
+		contactMessagePerAccountPerDay:   defaultContactMessagePerAccountPerDay,
+		contactMessagePerClientPerHour:   defaultContactMessagePerClientPerHour,
+		contactMessagePerClientPerDay:    defaultContactMessagePerClientPerDay,
 	}
 }
 
@@ -172,6 +207,10 @@ func newReaderGuardsFromEnv(logger *slog.Logger) (readerGuards, error) {
 		{verifyPasswordPerDayEnv, defaultVerifyPasswordPerDay, &limits.verifyPasswordPerDay},
 		{updateViewerPreferencesPerMinuteEnv, defaultUpdateViewerPreferencesPerMinute, &limits.updateViewerPreferencesPerMinute},
 		{updateViewerPreferencesPerDayEnv, defaultUpdateViewerPreferencesPerDay, &limits.updateViewerPreferencesPerDay},
+		{contactMessagePerAccountPerHourEnv, defaultContactMessagePerAccountPerHour, &limits.contactMessagePerAccountPerHour},
+		{contactMessagePerAccountPerDayEnv, defaultContactMessagePerAccountPerDay, &limits.contactMessagePerAccountPerDay},
+		{contactMessagePerClientPerHourEnv, defaultContactMessagePerClientPerHour, &limits.contactMessagePerClientPerHour},
+		{contactMessagePerClientPerDayEnv, defaultContactMessagePerClientPerDay, &limits.contactMessagePerClientPerDay},
 	} {
 		value, err := envLimit(setting.name, setting.fallback)
 		if err != nil {
@@ -214,6 +253,14 @@ func readerRules(limits readerLimits) map[readerAction][]ratelimit.Rule {
 		actionUpdateViewerPreferences: {
 			{Limit: limits.updateViewerPreferencesPerMinute, Window: time.Minute},
 			{Limit: limits.updateViewerPreferencesPerDay, Window: 24 * time.Hour},
+		},
+		actionSubmitContactMessage: {
+			{Limit: limits.contactMessagePerAccountPerHour, Window: time.Hour},
+			{Limit: limits.contactMessagePerAccountPerDay, Window: 24 * time.Hour},
+		},
+		actionSubmitContactMessageFromClient: {
+			{Limit: limits.contactMessagePerClientPerHour, Window: time.Hour},
+			{Limit: limits.contactMessagePerClientPerDay, Window: 24 * time.Hour},
 		},
 	}
 }
@@ -258,16 +305,41 @@ func readerActionSubject(action readerAction, tenantID, userID uuid.UUID) string
 	return string(action) + ":" + tenantID.String() + ":" + userID.String()
 }
 
+// clientActionSubject names the allowance one caller holds, whoever they are
+// signed in as. It is what stands in front of an RPC a guest may reach, where
+// there is no account to hold a budget.
+//
+// The tenant is deliberately absent. What this bounds is one client spreading
+// the same traffic over every storefront on the platform, which a key per
+// tenant would let them do once per tenant.
+func clientActionSubject(action readerAction, client string) string {
+	return string(action) + ":client:" + client
+}
+
 // chargeReaderAction spends one of the reader's allowances for action, and
 // answers resource_exhausted once they are out of them.
 func (s *apiServer) chargeReaderAction(ctx context.Context, action readerAction, tenantID, userID uuid.UUID) error {
+	return s.chargeAction(ctx, action, readerActionSubject(action, tenantID, userID), "tenant_id", tenantID.String())
+}
+
+// chargeClientAction spends one of the calling client's allowances for action.
+//
+// It is charged alongside the reader's rather than instead of it: a sender who
+// is signed in spends both, so neither a borrowed account nor a fresh one taken
+// out for the purpose widens what one client can send.
+func (s *apiServer) chargeClientAction(ctx context.Context, action readerAction, req connect.AnyRequest) error {
+	client := requestmeta.ClientSource(req.Header(), req.Peer().Addr)
+	return s.chargeAction(ctx, action, clientActionSubject(action, client))
+}
+
+func (s *apiServer) chargeAction(ctx context.Context, action readerAction, subject string, logAttrs ...any) error {
 	rules := s.guards.rules[action]
 	if len(rules) == 0 {
 		return nil
 	}
-	decision, err := s.guards.limiter.Allow(ctx, readerActionSubject(action, tenantID, userID), rules...)
+	decision, err := s.guards.limiter.Allow(ctx, subject, rules...)
 	if err != nil {
-		return s.internalError(ctx, "failed to apply the reader rate limit", err, "tenant_id", tenantID.String(), "action", string(action))
+		return s.internalError(ctx, "failed to apply the reader rate limit", err, append(logAttrs, "action", string(action))...)
 	}
 	if decision.Allowed {
 		return nil

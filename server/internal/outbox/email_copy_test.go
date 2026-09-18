@@ -8,7 +8,10 @@ import (
 	"github.com/publira/publira/server/internal/locale"
 )
 
-const copyExpiresAt = "2030-01-15T12:00:00Z"
+const (
+	copyExpiresAt  = "2030-01-15T12:00:00Z"
+	copyReceivedAt = "2030-01-15T12:00:00Z"
+)
 
 // emailCopyCases is one request per template the worker sends, and one more for
 // each template whose copy branches on a value the sender supplies.
@@ -205,6 +208,36 @@ var emailCopyCases = []struct {
 			Data: map[string]any{
 				"expires_at": copyExpiresAt,
 				"reset_url":  "https://platform.example.test/confirm-password?token=reset",
+			},
+		},
+	},
+	{
+		name:     "staff_contact_message_notice from a signed-in reader",
+		subjects: map[string]string{"en": "Aoto Press contact message", "ja": "Aoto Press お問い合わせ"},
+		request: emailrenderer.Request{
+			Template: "staff_contact_message_notice",
+			Data: map[string]any{
+				"body":           "The date of birth on my account is wrong.",
+				"received_at":    copyReceivedAt,
+				"reply_to_email": "reader@example.com",
+				"sender_name":    "Rin Amagai",
+				"subject":        "Wrong date of birth",
+				"tenant_name":    "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "staff_contact_message_notice from a guest who titled nothing",
+		subjects: map[string]string{"en": "Aoto Press contact message", "ja": "Aoto Press お問い合わせ"},
+		request: emailrenderer.Request{
+			Template: "staff_contact_message_notice",
+			Data: map[string]any{
+				"body":           "Which episodes can I read without an account?",
+				"received_at":    copyReceivedAt,
+				"reply_to_email": "guest@example.com",
+				"sender_name":    "",
+				"subject":        "",
+				"tenant_name":    "Aoto Press",
 			},
 		},
 	},

@@ -23,5 +23,6 @@ export {
   EmailHeading,
   EmailIntro,
   EmailMeta,
+  EmailQuote,
 } from "./text";
 export type { EmailFallbackLinkProps, EmailTextProps } from "./text";

@@ -67,6 +67,11 @@ import {
   readerSignupAttemptNoticePreview,
 } from "./templates/reader-signup-attempt-notice";
 import {
+  StaffContactMessageNoticeEmail,
+  staffContactMessageNoticeDataSchema,
+  staffContactMessageNoticePreview,
+} from "./templates/staff-contact-message-notice";
+import {
   TenantAdminInvitationEmail,
   tenantAdminInvitationDataSchema,
   tenantAdminInvitationPreview,
@@ -86,6 +91,7 @@ export const TEMPLATE_IDS = [
   "platform_console_email_change_confirmation",
   "platform_console_email_changed_notice",
   "platform_console_password_reset",
+  "staff_contact_message_notice",
 ] as const;
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
@@ -292,6 +298,17 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: readerSignupAttemptNoticePreview,
     schema: readerSignupAttemptNoticeDataSchema,
+  }),
+  staff_contact_message_notice: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(StaffContactMessageNoticeEmail, {
+        data,
+        locale,
+        messages,
+        timeZone,
+      }),
+    preview: staffContactMessageNoticePreview,
+    schema: staffContactMessageNoticeDataSchema,
   }),
   tenant_admin_invitation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

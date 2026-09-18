@@ -78,6 +78,8 @@ The counters live in Redis when `PUBLIRA_REDIS_URL` names one and in this proces
 
 The step-up password check is one of those actions and is charged differently. `ChangePassword`, `DeleteMe` and `RequestEmailChange` ask for the account's password on top of the session, and every RPC that does spends `actionVerifyPassword` — one budget for all of them, because a budget per RPC would hand a guesser one of each to rotate between. The charge goes **before the verification**, so an attempt past the limit costs no bcrypt and reaches no row, and a verification that succeeds clears the count through `clearReaderAction`: the limit is there for the caller who does not know the password, and that caller never gets that far.
 
+A public RPC a **guest** may write through charges a second action keyed on the caller instead of on an account, through `chargeClientAction`: there is no account to hold a budget, so a limit that only knew accounts would be no limit at all. `SubmitContactMessage` is the one that does, and it spends both — the client's whoever is asking, and the account's on top when there is one — so signing up does not widen what one client may send. The client's key leaves the tenant out, the way `mailguard`'s origin allowance does, because what it bounds is one caller spreading the same traffic over every storefront on the platform.
+
 No lint covers this — nothing can tell an RPC that writes on a reader's behalf from one that does not, or one that asks for a password from one that does not.
 
 ## A form that mails an address charges the mail guard

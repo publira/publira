@@ -143,6 +143,18 @@
       "preview": "A sign-up used your email address.",
       "subject": "{$tenant_name} sign-up attempt"
     },
+    "staff_contact_message_notice": {
+      "body_heading": "Message",
+      "footnote": "Answer the reader from your own mail client, at the reply-to address above. This message cannot be replied to from the console.",
+      "heading": "New contact message",
+      "intro": "A reader sent {$tenant_name} a message through the contact form.",
+      "preview": "A reader sent {$tenant_name} a message.",
+      "received": "Received at {$received_at}.",
+      "reply_to": "Reply to: {$reply_to_email}",
+      "sender": "Signed in as {$sender_name}.",
+      "subject": "{$tenant_name} contact message",
+      "subject_line": "Subject: {$subject}"
+    },
     "tenant_admin_invitation": {
       "action": "Accept invitation",
       "body": "You are invited as a tenant admin of {$tenant_name}. Open the button below to accept the invitation.",

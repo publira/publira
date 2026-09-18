@@ -66,3 +66,31 @@ export const recipientKindField = () => z.enum(["current_email", "new_email"]);
  * mail — so the sender says which one it found and the copy follows it.
  */
 export const accountStateField = () => z.enum(["confirmed", "unconfirmed"]);
+
+/**
+ * A short value the mail shows when there is one. It is the empty string rather
+ * than an absent key when there is nothing to show, so one template's `data`
+ * has the same shape whatever the sender found, and the component decides
+ * whether the line appears.
+ */
+export const optionalSingleLineField = (name: string, max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .refine(hasNoLineBreaks, {
+      error: `${name} must not contain CR or LF`,
+    });
+
+/**
+ * Text somebody other than the sender wrote, shown as they typed it. Its line
+ * breaks are part of what they wrote, so this is the one field that keeps them;
+ * it reaches the mail as content rather than as a header, so there is nothing
+ * for a CR or LF to break out of.
+ */
+export const quotedTextField = (name: string, max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1, { error: `${name} is required` })
+    .max(max);

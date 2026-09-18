@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// One message a reader sent the tenant, as staff read it.
+//
+// Publira carries no reply of its own, so the message is the whole record: what
+// the reader wrote, the address to answer at, and whether anyone has dealt with
+// it yet.
+message ContactMessage {
+  string public_id = 1;
+  // The address staff answer at, as the reader typed it.
+  string reply_to_email = 2;
+  // Empty for a message the reader gave no subject.
+  string subject = 3;
+  string body = 4;
+  // When the message arrived.
+  string created_at = 5;
+  // When staff marked the message dealt with. Empty while it is still waiting,
+  // which is what an inbox separates its unhandled messages by.
+  string handled_at = 6;
+  // The account that sent the message. Both are empty for a guest, and for a
+  // reader whose account has been deleted since: the message stays, because the
+  // tenant may still owe an answer to the address on it.
+  string sender_public_id = 7;
+  string sender_name = 8;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListContactMessagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // One of unhandled, handled. Empty lists both, which is how the whole history
+  // is read back. Anything else is invalid_argument.
+  string status = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message ListContactMessagesResponse {
+  // Newest first.
+  repeated ContactMessage messages = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetContactMessageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetContactMessageResponse {
+  ContactMessage message = 1;
+}
+
+message MarkContactMessageHandledRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // True marks the message dealt with, false puts it back among the ones still
+  // waiting. The flag is stated rather than toggled, so two members of staff
+  // working the same inbox cannot undo each other by pressing at once.
+  bool handled = 3;
+}
+
+message MarkContactMessageHandledResponse {
+  ContactMessage message = 1;
+}
+
+service AdminContactService {
+  // Lists the messages readers sent the tenant, newest first.
+  rpc ListContactMessages(ListContactMessagesRequest) returns (ListContactMessagesResponse) {}
+  // Reads one message in full.
+  //
+  // Separate from the list because the list carries every message's whole body
+  // already and a detail view is what a member of staff opens to answer from;
+  // an inbox that has lost its page can reach one message without walking back
+  // to it.
+  rpc GetContactMessage(GetContactMessageRequest) returns (GetContactMessageResponse) {}
+  // Marks one message dealt with, or puts it back among the ones waiting.
+  //
+  // Marking a message that is already in the state asked for succeeds and
+  // leaves the recorded time alone, so a repeated press does not move it.
+  rpc MarkContactMessageHandled(MarkContactMessageHandledRequest) returns (MarkContactMessageHandledResponse) {}
+}

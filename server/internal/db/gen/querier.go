@@ -128,6 +128,27 @@ type Querier interface {
 	CountWithdrawnEpisodeCommentsBefore(ctx context.Context, arg CountWithdrawnEpisodeCommentsBeforeParams) (int64, error)
 	CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error)
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
+	// Messages readers send the tenant through the contact form, and the staff
+	// addresses the mail announcing one goes to.
+	//
+	// Expected plans:
+	//   CreateContactMessage
+	//     -> contact_messages_tenant_public_id_key for the uniqueness check
+	//   GetContactMessageByIDForTenant
+	//     -> contact_messages_pkey
+	//   GetContactMessageByPublicIDForTenant
+	//     -> contact_messages_tenant_public_id_key
+	//   ListContactMessagesByCreatedAt*
+	//     -> idx_contact_messages_tenant_created_at with no status filter,
+	//        idx_contact_messages_tenant_unhandled_created_at for 'unhandled',
+	//        idx_contact_messages_tenant_handled_created_at for 'handled'
+	//   SetContactMessageHandledByPublicIDForTenant
+	//     -> contact_messages_tenant_public_id_key
+	//   ListTenantStaffContactRecipients
+	//     -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
+	// One message as the public API stores it. The sender is nullable because a
+	// guest may write: the reply-to address is the only way back either way.
+	CreateContactMessage(ctx context.Context, arg CreateContactMessageParams) (ContactMessage, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
 	CreateCreatorFollow(ctx context.Context, arg CreateCreatorFollowParams) (CreatorFollow, error)
 	CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error)
@@ -290,6 +311,12 @@ type Querier interface {
 	// belongs to that caller's inbox. A row addressed to another user or owned by
 	// another tenant comes back as no rows, so its existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
+	// What the outbox worker reads to word the staff mail. It is by primary key
+	// because the event names the row it was queued for, and it carries the
+	// sender's name so the mail can say who wrote without a second round trip.
+	GetContactMessageByIDForTenant(ctx context.Context, arg GetContactMessageByIDForTenantParams) (GetContactMessageByIDForTenantRow, error)
+	// One message as the console reads it, by the identifier its screens carry.
+	GetContactMessageByPublicIDForTenant(ctx context.Context, arg GetContactMessageByPublicIDForTenantParams) (GetContactMessageByPublicIDForTenantRow, error)
 	GetContentDailyStatsByEntity(ctx context.Context, arg GetContentDailyStatsByEntityParams) (ContentDailyStat, error)
 	GetContentEventByID(ctx context.Context, id uuid.UUID) (ContentEvent, error)
 	GetContentRankingSnapshot(ctx context.Context, arg GetContentRankingSnapshotParams) (ContentRankingSnapshot, error)
@@ -775,6 +802,16 @@ type Querier interface {
 	// index order, so each scan direction gets its own query.
 	// cursor rules: proto/README.md.
 	ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error)
+	// The previous-page half of ListContactMessagesByCreatedAtDesc. The handler
+	// reverses the returned rows to preserve the newest-first order.
+	ListContactMessagesByCreatedAtAsc(ctx context.Context, arg ListContactMessagesByCreatedAtAscParams) ([]ListContactMessagesByCreatedAtAscRow, error)
+	// The inbox, newest first. The status filter is the presence of handled_at
+	// rather than a column of its own, so the two partial indexes answer it
+	// directly: 'unhandled' is the queue staff work from and 'handled' the history
+	// behind it.
+	//
+	// cursor rules: proto/README.md.
+	ListContactMessagesByCreatedAtDesc(ctx context.Context, arg ListContactMessagesByCreatedAtDescParams) ([]ListContactMessagesByCreatedAtDescRow, error)
 	ListContentDailyStatsByTenantDate(ctx context.Context, arg ListContentDailyStatsByTenantDateParams) ([]ContentDailyStat, error)
 	// Representative tenant timeline. EXPLAIN: idx_content_events_tenant_occurred_at.
 	ListContentEventsByTenantOccurredAt(ctx context.Context, arg ListContentEventsByTenantOccurredAtParams) ([]ContentEvent, error)
@@ -1419,6 +1456,14 @@ type Querier interface {
 	// The birth date is a NULL placeholder: a list has no use for it, so only the
 	// single read hands it out.
 	ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error)
+	// Who the mail announcing a message goes to: every member of staff the tenant
+	// has, with the address their own account is reached at.
+	//
+	// Suspended and inactive accounts are left out. A tenant whose staff were all
+	// deactivated is a tenant nobody can be mailed at, which the worker reports
+	// rather than working around: sending to an account that cannot sign in would
+	// announce a message to somebody who cannot read it.
+	ListTenantStaffContactRecipients(ctx context.Context, tenantID uuid.UUID) ([]string, error)
 	// Worker fan-out: everyone an announcement addressed to the whole tenant
 	// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
 	// row to — every user the tenant owns — so the bell counts what the
@@ -1773,6 +1818,14 @@ type Querier interface {
 	// writes the current page on a timer would otherwise reorder the reader's
 	// recent activity without the reader having moved.
 	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
+	// Staff stating which side of the flag a message is on.
+	//
+	// The state is stated rather than toggled, so two members of staff working the
+	// same inbox cannot undo each other by pressing at once. A message already in
+	// the state asked for keeps the time and the actor it was first marked with:
+	// what the row records is when the message was dealt with, and a second press
+	// is not a second handling.
+	SetContactMessageHandledByPublicIDForTenant(ctx context.Context, arg SetContactMessageHandledByPublicIDForTenantParams) (ContactMessage, error)
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
 	// Sets or clears a reader's birth date past the written-once guard of
 	// SetUserBirthDateByID. Writing the date already stored is no rows, like a

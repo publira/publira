@@ -60,6 +60,19 @@ type AuditLog struct {
 	CreatedAt   time.Time      `json:"created_at"`
 }
 
+type ContactMessage struct {
+	ID           uuid.UUID      `json:"id"`
+	TenantID     uuid.UUID      `json:"tenant_id"`
+	PublicID     string         `json:"public_id"`
+	UserID       uuid.NullUUID  `json:"user_id"`
+	ReplyToEmail string         `json:"reply_to_email"`
+	Subject      sql.NullString `json:"subject"`
+	Body         string         `json:"body"`
+	CreatedAt    time.Time      `json:"created_at"`
+	HandledAt    sql.NullTime   `json:"handled_at"`
+	HandledBy    uuid.NullUUID  `json:"handled_by"`
+}
+
 type ContentDailyStat struct {
 	ID                uuid.UUID `json:"id"`
 	TenantID          uuid.UUID `json:"tenant_id"`
