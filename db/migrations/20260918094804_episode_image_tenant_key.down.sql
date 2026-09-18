@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY episode_images_tenant_id_id_key;
