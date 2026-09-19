@@ -14,8 +14,7 @@ const nextConfig: NextConfig = {
     // Unmatched URLs skip normal layout rendering.
     globalNotFound: true,
     turbopackRustReactCompiler: true,
-    // Retries Next-managed navigation, RSC, prefetch, and Server Actions after
-    // connectivity drops; direct client fetches and sendBeacon are not covered.
+    // Retries Next-managed navigation, prefetch, and Server Actions; not direct client requests.
     useOffline: true,
   },
   images: {

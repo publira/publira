@@ -21,9 +21,7 @@ const nextConfig: NextConfig = {
     // Unmatched URLs skip the [tenant_id] layout tree.
     globalNotFound: true,
     turbopackRustReactCompiler: true,
-    // Retries Next-managed navigation, RSC, prefetch, and Server Actions after
-    // connectivity drops; direct client fetches (including viewer-fetch) and
-    // sendBeacon are not covered.
+    // Retries Next-managed navigation, prefetch, and Server Actions; not direct client requests.
     useOffline: true,
   },
   images: {
