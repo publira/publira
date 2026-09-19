@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
     // Unmatched URLs skip the [tenant_id] layout tree.
     globalNotFound: true,
     turbopackRustReactCompiler: true,
+    // Retries Next-managed navigation, RSC, prefetch, and Server Actions after
+    // connectivity drops; direct client fetches (including viewer-fetch) and
+    // sendBeacon are not covered.
+    useOffline: true,
   },
   images: {
     // image-server converts and resizes through Manael, so `next/image` asks it

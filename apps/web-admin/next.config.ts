@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
     turbopackRustReactCompiler: true,
+    // Retries Next-managed navigation, RSC, prefetch, and Server Actions after
+    // connectivity drops; direct client fetches and sendBeacon are not covered.
+    useOffline: true,
   },
   images: {
     // image-server converts and resizes through Manael, so `next/image` asks
