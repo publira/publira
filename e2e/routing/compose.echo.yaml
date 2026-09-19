@@ -7,7 +7,7 @@
 # backend addresses use — infra/proxy/nginx/upstreams.conf and the Caddyfile
 # defaults alike.
 #
-# `ROUTING_ECHO_PY` is exported by scripts/lib.sh; the path is absolute so it
+# `PUBLIRA_ROUTING_ECHO_PY` is exported by scripts/lib.sh; the path is absolute so it
 # resolves the same way here as it does under the Dev Container overlay, where
 # relative paths belong to the repository root.
 
@@ -17,7 +17,7 @@ services:
     image: python:3.14-alpine@sha256:016508ba505da24f7139765bc4bb669df4e88eb2f12eeadd571bf2f88d7533df
     command: ["python", "/echo.py"]
     volumes:
-      - ${ROUTING_ECHO_PY}:/echo.py:ro
+      - ${PUBLIRA_ROUTING_ECHO_PY}:/echo.py:ro
     healthcheck:
       test:
         [

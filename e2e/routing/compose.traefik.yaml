@@ -12,7 +12,7 @@
 # `db` / `redis` / `mailpit` stay down. The Dev Container file is itself an
 # overlay, so the root compose file has to come first for the project to be
 # valid at all. Relative paths in the base files resolve against the repository
-# root (the first `-f` wins), so this file uses the absolute `ROUTING_ECHO_PY`
+# root (the first `-f` wins), so this file uses the absolute `PUBLIRA_ROUTING_ECHO_PY`
 # exported by scripts/lib.sh.
 #
 # Published ports are offset from the Dev Container forwards (`traefik:3080`
@@ -21,8 +21,8 @@
 services:
   traefik:
     ports:
-      - "127.0.0.1:${ROUTING_EDGE_PORT:-13080}:3080"
-      - "127.0.0.1:${ROUTING_TRAEFIK_API_PORT:-18080}:8080"
+      - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT:-13080}:3080"
+      - "127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT:-18080}:8080"
 
   app:
     # Pin the tag + digest the same way .devcontainer/compose.yaml does.
@@ -31,7 +31,7 @@ services:
     build: !reset
     command: ["python", "/echo.py"]
     volumes: !override
-      - ${ROUTING_ECHO_PY}:/echo.py:ro
+      - ${PUBLIRA_ROUTING_ECHO_PY}:/echo.py:ro
     depends_on: !reset
     healthcheck:
       test:

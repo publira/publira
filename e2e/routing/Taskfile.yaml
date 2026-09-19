@@ -5,7 +5,7 @@ version: "3"
 
 vars:
   # Directory of this Taskfile (e2e/routing/), stable whether included or not.
-  ROUTING_DIR: "{{.TASKFILE_DIR}}"
+  PUBLIRA_ROUTING_DIR: "{{.TASKFILE_DIR}}"
 
 tasks:
   default:
@@ -16,24 +16,24 @@ tasks:
   run:
     desc: Full routing check per proxy (up → probe → down), always tears down
     cmds:
-      - bash "{{.ROUTING_DIR}}/scripts/run.sh"
+      - bash "{{.PUBLIRA_ROUTING_DIR}}/scripts/run.sh"
 
   up:
-    desc: "Start one proxy + the echo backends (ROUTING_PROXY, default traefik)"
+    desc: "Start one proxy + the echo backends (PUBLIRA_ROUTING_PROXY, default traefik)"
     cmds:
-      - bash "{{.ROUTING_DIR}}/scripts/up.sh"
+      - bash "{{.PUBLIRA_ROUTING_DIR}}/scripts/up.sh"
 
   wait-ready:
     desc: Wait until that edge serves the contract
     cmds:
-      - bash "{{.ROUTING_DIR}}/scripts/wait-ready.sh"
+      - bash "{{.PUBLIRA_ROUTING_DIR}}/scripts/wait-ready.sh"
 
   test:
     desc: Probe hosts / /api / /images (stack must already be up)
     cmds:
-      - bash "{{.ROUTING_DIR}}/scripts/test.sh"
+      - bash "{{.PUBLIRA_ROUTING_DIR}}/scripts/test.sh"
 
   down:
     desc: Remove that proxy's compose project + volumes
     cmds:
-      - bash "{{.ROUTING_DIR}}/scripts/down.sh"
+      - bash "{{.PUBLIRA_ROUTING_DIR}}/scripts/down.sh"

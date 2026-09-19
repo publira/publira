@@ -19,12 +19,12 @@ The Traefik run starts **the same compose files** the Dev Container does (the ro
 
 | Use | Port | Notes |
 | --- | --- | --- |
-| The proxy's HTTP entrypoint | `13080` | Change with `ROUTING_EDGE_PORT`; it intentionally differs from the Dev Container's `3080`. |
-| Traefik API / dashboard | `18080` | Change with `ROUTING_TRAEFIK_API_PORT`; the Traefik readiness check reads routers here. |
+| The proxy's HTTP entrypoint | `13080` | Change with `PUBLIRA_ROUTING_EDGE_PORT`; it intentionally differs from the Dev Container's `3080`. |
+| Traefik API / dashboard | `18080` | Change with `PUBLIRA_ROUTING_TRAEFIK_API_PORT`; the Traefik readiness check reads routers here. |
 
 `db`, `redis`, and `mailpit` do not start. This can run alongside `task dev` when the default ports do not collide. The three proxies run one at a time, because they publish the same port.
 
-Logs default to `e2e/routing/.run/<proxy>/`. When `ROUTING_EDGE_PORT`, `ROUTING_TRAEFIK_API_PORT`, or `ROUTING_PROJECT_NAME` differs from its default, `lib.sh` keeps state in a subdirectory made from the project name and ports. `ROUTING_RUN_DIR` takes precedence when set. `flock` rejects concurrent starts of the same compose project; starts on the same ports fail through normal port collision.
+Logs default to `e2e/routing/.run/<proxy>/`. When `PUBLIRA_ROUTING_EDGE_PORT`, `PUBLIRA_ROUTING_TRAEFIK_API_PORT`, or `PUBLIRA_ROUTING_PROJECT_NAME` differs from its default, `lib.sh` keeps state in a subdirectory made from the project name and ports. `PUBLIRA_ROUTING_RUN_DIR` takes precedence when set. `flock` rejects concurrent starts of the same compose project; starts on the same ports fail through normal port collision.
 
 ## Run
 
@@ -34,10 +34,10 @@ task e2e:routing
 
 It always tears down each compose project and its volumes, whether it succeeds, fails, or is interrupted.
 
-`ROUTING_PROXY` narrows the run to one proxy, or to a space-separated subset, and selects which one the individual commands below act on (default `traefik`).
+`PUBLIRA_ROUTING_PROXY` narrows the run to one proxy, or to a space-separated subset, and selects which one the individual commands below act on (default `traefik`).
 
 ```bash
-ROUTING_PROXY=caddy task e2e:routing
+PUBLIRA_ROUTING_PROXY=caddy task e2e:routing
 ```
 
 ### Individual commands
@@ -81,7 +81,7 @@ The Traefik overlay replaces only the `app` image, command, volumes, `depends_on
 
 The failing `[routing:<proxy>] ERROR: …` message identifies the probe and the proxy.
 
-1. **port is already in use** — free `13080` / `18080`, or change `ROUTING_EDGE_PORT` / `ROUTING_TRAEFIK_API_PORT`.
+1. **port is already in use** — free `13080` / `18080`, or change `PUBLIRA_ROUTING_EDGE_PORT` / `PUBLIRA_ROUTING_TRAEFIK_API_PORT`.
 2. **readiness failed: traefik-routers** — the file provider did not read `infra/proxy/traefik/dynamic`. Check the bind mount on the `traefik` service and that both `routes.yaml` and `services.yaml` parse. If middleware entries alone are missing, inspect `routes.yaml`.
 3. **readiness failed: the … edge did not serve web-host** — the proxy exited or refused its configuration. `compose.log` in the run directory carries its startup errors.
 4. **backend / path mismatch** — one proxy no longer agrees with the contract. Compare that proxy's files against the table in [`infra/proxy/README.md`](../../infra/proxy/README.md); a mismatch on one proxy only is in that proxy's configuration, and a mismatch on all three is the contract itself.

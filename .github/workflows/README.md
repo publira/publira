@@ -256,7 +256,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Test / Mobile` | `task mobile:check` |
    | `Test / Mobile E2E` | `task mobile:e2e` |
    | `Test / E2E` | `task e2e` |
-   | `Test / Bootstrap` | `task e2e:bootstrap` (`BOOTSTRAP_SKIP_DEV=1` if `task dev` cannot stop) |
+   | `Test / Bootstrap` | `task e2e:bootstrap` (`PUBLIRA_BOOTSTRAP_SKIP_DEV=1` if `task dev` cannot stop) |
    | `Test / Routing` | `task e2e:routing` |
    | `Build` | `pnpm build` / `task server:build` |
    | `Docker / <target>` | The exact CI `task docker:build:…` line, or `task docker:verify` |

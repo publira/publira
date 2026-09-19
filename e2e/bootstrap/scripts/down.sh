@@ -6,7 +6,7 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-bash "${BOOTSTRAP_SCRIPTS_DIR}/dev-down.sh" || true
+bash "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/dev-down.sh" || true
 
 bootstrap_log "removing compose project ${COMPOSE_PROJECT_NAME} (containers + volumes)"
 compose down -v --remove-orphans || true

@@ -48,7 +48,7 @@ reset_stub() {
   printf '0' >"${poll_count_file}"
 }
 
-BOOTSTRAP_STOP_INTERVAL_SEC=0.05
+PUBLIRA_BOOTSTRAP_STOP_INTERVAL_SEC=0.05
 
 reset_stub 0
 if wait_until_stopped db rustfs >"${test_dir}/stopped.log" 2>&1; then
@@ -79,7 +79,7 @@ fi
 
 reset_stub 1000
 if (
-  BOOTSTRAP_STOP_TIMEOUT_SEC=0
+  PUBLIRA_BOOTSTRAP_STOP_TIMEOUT_SEC=0
   wait_until_stopped db rustfs
 ) >/dev/null 2>"${test_dir}/timeout.log"; then
   fail "wait_until_stopped returned while db was still running"

@@ -25,7 +25,7 @@ export PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host_address}:${PU
 export PUBLIRA_IMAGE_BASE_URL="${PUBLIRA_IMAGE_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_IMAGE_SERVER_PORT}}"
 export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
 
-device="${MOBILE_E2E_DEVICE:-}"
+device="${PUBLIRA_E2E_MOBILE_DEVICE:-}"
 if [[ -z "${device}" ]]; then
   device="$(
     cd "${MOBILE_DIR}" && flutter devices --machine |
@@ -41,7 +41,7 @@ for device in devices:
   )"
 fi
 if [[ -z "${device}" ]]; then
-  e2e_err "no Flutter device; start an Android emulator or set MOBILE_E2E_DEVICE"
+  e2e_err "no Flutter device; start an Android emulator or set PUBLIRA_E2E_MOBILE_DEVICE"
   exit 1
 fi
 

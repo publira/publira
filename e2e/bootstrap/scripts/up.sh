@@ -20,9 +20,9 @@ if docker volume inspect "${EXPECTED_RUSTFS_VOLUME}" >/dev/null 2>&1; then
   bootstrap_fail "volume ${EXPECTED_RUSTFS_VOLUME} still exists after teardown; remove it and retry"
 fi
 
-for port in "${BOOTSTRAP_POSTGRES_PORT}" "${BOOTSTRAP_REDIS_PORT}" "${BOOTSTRAP_RUSTFS_PORT}"; do
+for port in "${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}" "${PUBLIRA_BOOTSTRAP_REDIS_PORT}" "${PUBLIRA_BOOTSTRAP_RUSTFS_PORT}"; do
   if port_in_use "${port}"; then
-    bootstrap_fail "port ${port} is already in use; free it or override BOOTSTRAP_POSTGRES_PORT / BOOTSTRAP_REDIS_PORT / BOOTSTRAP_RUSTFS_PORT"
+    bootstrap_fail "port ${port} is already in use; free it or override PUBLIRA_BOOTSTRAP_POSTGRES_PORT / PUBLIRA_BOOTSTRAP_REDIS_PORT / PUBLIRA_BOOTSTRAP_RUSTFS_PORT"
   fi
 done
 

@@ -9,101 +9,101 @@
 
 set -euo pipefail
 
-ROUTING_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROUTING_DIR="$(cd "${ROUTING_SCRIPTS_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${ROUTING_DIR}/../.." && pwd)"
+PUBLIRA_ROUTING_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUBLIRA_ROUTING_DIR="$(cd "${PUBLIRA_ROUTING_SCRIPTS_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${PUBLIRA_ROUTING_DIR}/../.." && pwd)"
 
-# Capture before defaults so we can tell "caller set ROUTING_RUN_DIR" from unset.
-_ROUTING_RUN_DIR_FROM_ENV="${ROUTING_RUN_DIR-}"
+# Capture before defaults so we can tell "caller set PUBLIRA_ROUTING_RUN_DIR" from unset.
+_PUBLIRA_ROUTING_RUN_DIR_FROM_ENV="${PUBLIRA_ROUTING_RUN_DIR-}"
 
 # Which proxy this run exercises. run.sh iterates over every one of them; the
 # individual tasks take one at a time.
-export ROUTING_PROXY="${ROUTING_PROXY:-traefik}"
-case "${ROUTING_PROXY}" in
+export PUBLIRA_ROUTING_PROXY="${PUBLIRA_ROUTING_PROXY:-traefik}"
+case "${PUBLIRA_ROUTING_PROXY}" in
 traefik | nginx | caddy) ;;
 *)
-  printf '[routing] ERROR: unknown ROUTING_PROXY %s (traefik, nginx, or caddy)\n' \
-    "${ROUTING_PROXY}" >&2
+  printf '[routing] ERROR: unknown PUBLIRA_ROUTING_PROXY %s (traefik, nginx, or caddy)\n' \
+    "${PUBLIRA_ROUTING_PROXY}" >&2
   exit 1
   ;;
 esac
 
 # Dedicated project name, one per proxy: a run never touches the Dev Container
 # stack, and two proxies never tear each other down.
-export COMPOSE_PROJECT_NAME="${ROUTING_PROJECT_NAME:-publira-routing-${ROUTING_PROXY}}"
+export COMPOSE_PROJECT_NAME="${PUBLIRA_ROUTING_PROJECT_NAME:-publira-routing-${PUBLIRA_ROUTING_PROXY}}"
 
 # Absolute: under the Dev Container overlay the first `-f` is the root
 # compose.yaml, so a relative volume would resolve against the repository
 # root, not this directory.
-export ROUTING_ECHO_PY="${ROUTING_DIR}/echo.py"
+export PUBLIRA_ROUTING_ECHO_PY="${PUBLIRA_ROUTING_DIR}/echo.py"
 
 # Host ports the compose files publish. Offset from the Dev Container forwards
 # (3080 / 8080) so a local run can coexist with `task dev`.
-export ROUTING_EDGE_PORT="${ROUTING_EDGE_PORT:-13080}"
+export PUBLIRA_ROUTING_EDGE_PORT="${PUBLIRA_ROUTING_EDGE_PORT:-13080}"
 # Traefik alone: the insecure API readiness reads routers and middlewares from.
-export ROUTING_TRAEFIK_API_PORT="${ROUTING_TRAEFIK_API_PORT:-18080}"
+export PUBLIRA_ROUTING_TRAEFIK_API_PORT="${PUBLIRA_ROUTING_TRAEFIK_API_PORT:-18080}"
 
 # Logs for one stack run. Concurrent stacks that override ports or
-# ROUTING_PROJECT_NAME must not share diagnostics: a failure would overwrite
-# the other run. When ROUTING_RUN_DIR is unset and any of those knobs leave
+# PUBLIRA_ROUTING_PROJECT_NAME must not share diagnostics: a failure would overwrite
+# the other run. When PUBLIRA_ROUTING_RUN_DIR is unset and any of those knobs leave
 # the defaults, isolate under a subdirectory named from the project + ports.
-# Explicit ROUTING_RUN_DIR always wins. The default path e2e/routing/.run/<proxy>
+# Explicit PUBLIRA_ROUTING_RUN_DIR always wins. The default path e2e/routing/.run/<proxy>
 # is kept for the standard single-stack / CI layout so artifacts stay stable.
-if [[ -n "${_ROUTING_RUN_DIR_FROM_ENV}" ]]; then
-  export ROUTING_RUN_DIR="${_ROUTING_RUN_DIR_FROM_ENV}"
+if [[ -n "${_PUBLIRA_ROUTING_RUN_DIR_FROM_ENV}" ]]; then
+  export PUBLIRA_ROUTING_RUN_DIR="${_PUBLIRA_ROUTING_RUN_DIR_FROM_ENV}"
 else
-  if [[ "${COMPOSE_PROJECT_NAME}" == "publira-routing-${ROUTING_PROXY}" ]] &&
-    [[ "${ROUTING_EDGE_PORT}" == "13080" ]] &&
-    [[ "${ROUTING_TRAEFIK_API_PORT}" == "18080" ]]; then
-    export ROUTING_RUN_DIR="${ROUTING_DIR}/.run/${ROUTING_PROXY}"
+  if [[ "${COMPOSE_PROJECT_NAME}" == "publira-routing-${PUBLIRA_ROUTING_PROXY}" ]] &&
+    [[ "${PUBLIRA_ROUTING_EDGE_PORT}" == "13080" ]] &&
+    [[ "${PUBLIRA_ROUTING_TRAEFIK_API_PORT}" == "18080" ]]; then
+    export PUBLIRA_ROUTING_RUN_DIR="${PUBLIRA_ROUTING_DIR}/.run/${PUBLIRA_ROUTING_PROXY}"
   else
-    export ROUTING_RUN_DIR="${ROUTING_DIR}/.run/${COMPOSE_PROJECT_NAME}-edge${ROUTING_EDGE_PORT}-api${ROUTING_TRAEFIK_API_PORT}"
+    export PUBLIRA_ROUTING_RUN_DIR="${PUBLIRA_ROUTING_DIR}/.run/${COMPOSE_PROJECT_NAME}-edge${PUBLIRA_ROUTING_EDGE_PORT}-api${PUBLIRA_ROUTING_TRAEFIK_API_PORT}"
   fi
 fi
-unset _ROUTING_RUN_DIR_FROM_ENV
-RUN_DIR="${ROUTING_RUN_DIR}"
+unset _PUBLIRA_ROUTING_RUN_DIR_FROM_ENV
+RUN_DIR="${PUBLIRA_ROUTING_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
 
 # Exclusive lock for the compose project. up.sh does `compose down` before
 # starting, so a second run with the same project name would kill the first.
 # The lock file is keyed by project name (the shared Docker resource), not by
 # RUN_DIR. flock -n fails immediately; same ports still fail on port_in_use.
-ROUTING_LOCK_FILE="${ROUTING_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lock"
+PUBLIRA_ROUTING_LOCK_FILE="${PUBLIRA_ROUTING_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lock"
 
-ROUTING_READY_TIMEOUT_SEC="${ROUTING_READY_TIMEOUT_SEC:-60}"
-ROUTING_READY_INTERVAL_SEC="${ROUTING_READY_INTERVAL_SEC:-1}"
+PUBLIRA_ROUTING_READY_TIMEOUT_SEC="${PUBLIRA_ROUTING_READY_TIMEOUT_SEC:-60}"
+PUBLIRA_ROUTING_READY_INTERVAL_SEC="${PUBLIRA_ROUTING_READY_INTERVAL_SEC:-1}"
 
 # The compose files for this proxy. Traefik is the Dev Container's own edge,
 # so its run overlays the very files the Dev Container starts and proves that
 # wiring; nginx and Caddy have no environment of their own and get the echo
 # backends plus a proxy container.
-case "${ROUTING_PROXY}" in
+case "${PUBLIRA_ROUTING_PROXY}" in
 traefik)
   # The Dev Container file is an overlay: on its own it leaves the dependency
   # services with nothing but `ports: !reset []`, which is not a valid project.
-  ROUTING_COMPOSE_FILES=(
+  PUBLIRA_ROUTING_COMPOSE_FILES=(
     "${REPO_ROOT}/compose.yaml"
     "${REPO_ROOT}/.devcontainer/compose.yaml"
-    "${ROUTING_DIR}/compose.traefik.yaml"
+    "${PUBLIRA_ROUTING_DIR}/compose.traefik.yaml"
   )
   ;;
 *)
-  ROUTING_COMPOSE_FILES=(
-    "${ROUTING_DIR}/compose.echo.yaml"
-    "${ROUTING_DIR}/compose.${ROUTING_PROXY}.yaml"
+  PUBLIRA_ROUTING_COMPOSE_FILES=(
+    "${PUBLIRA_ROUTING_DIR}/compose.echo.yaml"
+    "${PUBLIRA_ROUTING_DIR}/compose.${PUBLIRA_ROUTING_PROXY}.yaml"
   )
   ;;
 esac
 
 # Ports one run publishes. Only Traefik answers an API.
-if [[ "${ROUTING_PROXY}" == "traefik" ]]; then
-  ROUTING_PUBLISHED_PORTS=("${ROUTING_EDGE_PORT}" "${ROUTING_TRAEFIK_API_PORT}")
+if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+  PUBLIRA_ROUTING_PUBLISHED_PORTS=("${PUBLIRA_ROUTING_EDGE_PORT}" "${PUBLIRA_ROUTING_TRAEFIK_API_PORT}")
 else
-  ROUTING_PUBLISHED_PORTS=("${ROUTING_EDGE_PORT}")
+  PUBLIRA_ROUTING_PUBLISHED_PORTS=("${PUBLIRA_ROUTING_EDGE_PORT}")
 fi
 
 # Router names Traefik loads from infra/proxy/traefik/dynamic/routes.yaml.
-ROUTING_ROUTERS=(
+PUBLIRA_ROUTING_ROUTERS=(
   web-host
   web-admin
   web-platform
@@ -116,14 +116,14 @@ ROUTING_ROUTERS=(
 # entrypoint refuses requests until the file provider has advertised it;
 # waiting for it turns that into one readable message instead of a wall of
 # failing probes.
-ROUTING_MIDDLEWARES=(
+PUBLIRA_ROUTING_MIDDLEWARES=(
   api-strip
   strip-trace-context
 )
 
 # W3C Trace Context a caller could forge. echo.py reports each of these
 # headers back, so a probe can assert the backend saw none of them.
-ROUTING_TRACE_CONTEXT_HEADERS=(
+PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS=(
   "traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
   "tracestate: publira=forged"
   "baggage: publira=forged"
@@ -134,18 +134,18 @@ ROUTING_TRACE_CONTEXT_HEADERS=(
 # than passing the caller's through: the client IP a backend records is the
 # first address in X-Forwarded-For, and the CSRF origin check reads the other
 # two.
-ROUTING_FORGED_FORWARDED_HEADERS=(
+PUBLIRA_ROUTING_FORGED_FORWARDED_HEADERS=(
   "X-Forwarded-For: 203.0.113.9"
   "X-Forwarded-Host: forged.example.test"
   "X-Forwarded-Proto: https"
 )
 
 routing_log() {
-  printf '[routing:%s] %s\n' "${ROUTING_PROXY}" "$*"
+  printf '[routing:%s] %s\n' "${PUBLIRA_ROUTING_PROXY}" "$*"
 }
 
 routing_err() {
-  printf '[routing:%s] ERROR: %s\n' "${ROUTING_PROXY}" "$*" >&2
+  printf '[routing:%s] ERROR: %s\n' "${PUBLIRA_ROUTING_PROXY}" "$*" >&2
 }
 
 routing_fail() {
@@ -155,7 +155,7 @@ routing_fail() {
 
 compose() {
   local file args=()
-  for file in "${ROUTING_COMPOSE_FILES[@]}"; do
+  for file in "${PUBLIRA_ROUTING_COMPOSE_FILES[@]}"; do
     args+=(-f "${file}")
   done
   docker compose "${args[@]}" -p "${COMPOSE_PROJECT_NAME}" "$@"
@@ -166,19 +166,19 @@ ensure_run_dirs() {
 }
 
 # Hold until this shell exits (the FD stays open). Children inherit
-# ROUTING_LOCK_HELD=1 and skip re-acquire so `bash up.sh` from run-one.sh works.
+# PUBLIRA_ROUTING_LOCK_HELD=1 and skip re-acquire so `bash up.sh` from run-one.sh works.
 acquire_routing_lock() {
-  if [[ "${ROUTING_LOCK_HELD:-0}" == "1" ]]; then
+  if [[ "${PUBLIRA_ROUTING_LOCK_HELD:-0}" == "1" ]]; then
     return 0
   fi
   command -v flock >/dev/null 2>&1 ||
     routing_fail "flock is not available; compose project lock cannot be taken"
-  mkdir -p "$(dirname "${ROUTING_LOCK_FILE}")"
-  exec {ROUTING_LOCK_FD}>"${ROUTING_LOCK_FILE}"
-  if ! flock -n "${ROUTING_LOCK_FD}"; then
-    routing_fail "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set ROUTING_PROJECT_NAME"
+  mkdir -p "$(dirname "${PUBLIRA_ROUTING_LOCK_FILE}")"
+  exec {PUBLIRA_ROUTING_LOCK_FD}>"${PUBLIRA_ROUTING_LOCK_FILE}"
+  if ! flock -n "${PUBLIRA_ROUTING_LOCK_FD}"; then
+    routing_fail "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set PUBLIRA_ROUTING_PROJECT_NAME"
   fi
-  export ROUTING_LOCK_HELD=1
+  export PUBLIRA_ROUTING_LOCK_HELD=1
 }
 
 require_port_tool() {
@@ -202,14 +202,14 @@ json_string_field() {
 # Routers Traefik has currently advertised on the insecure API.
 traefik_router_names() {
   curl -fsS --max-time 3 \
-    "http://127.0.0.1:${ROUTING_TRAEFIK_API_PORT}/api/http/routers" |
+    "http://127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT}/api/http/routers" |
     tr ',' '\n' | sed -n 's/.*"name":"\([^"]*\)".*/\1/p'
 }
 
 # Middlewares Traefik has currently advertised on the insecure API.
 traefik_middleware_names() {
   curl -fsS --max-time 3 \
-    "http://127.0.0.1:${ROUTING_TRAEFIK_API_PORT}/api/http/middlewares" |
+    "http://127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT}/api/http/middlewares" |
     tr ',' '\n' | sed -n 's/.*"name":"\([^"]*\)".*/\1/p'
 }
 
@@ -228,7 +228,7 @@ http_probe() {
       -X "${method}" \
       -H "Host: ${host}" \
       ${header_args[@]+"${header_args[@]}"} \
-      "http://127.0.0.1:${ROUTING_EDGE_PORT}${path}" 2>/dev/null || true
+      "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}" 2>/dev/null || true
   )"
   printf '%s\n' "${code}"
   cat "${tmpfile}" 2>/dev/null || true
@@ -267,7 +267,7 @@ assert_trace_context_stripped() {
   local name="$1" method="$2" host="$3" path="$4" want_backend="$5" want_path="$6"
   local out code body actual_backend actual_path header field value
 
-  out="$(http_probe "${method}" "${host}" "${path}" "${ROUTING_TRACE_CONTEXT_HEADERS[@]}")"
+  out="$(http_probe "${method}" "${host}" "${path}" "${PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS[@]}")"
   code="$(printf '%s' "${out}" | sed -n '1p')"
   body="$(printf '%s' "${out}" | tail -n +2)"
 
@@ -284,7 +284,7 @@ assert_trace_context_stripped() {
     routing_fail "${name}: path '${actual_path}' (want '${want_path}') host=${host} ${method} ${path} body=${body}"
   fi
 
-  for header in "${ROUTING_TRACE_CONTEXT_HEADERS[@]}"; do
+  for header in "${PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS[@]}"; do
     field="${header%%:*}"
     value="$(json_string_field "${body}" "${field}")"
     if [[ -n "${value}" ]]; then
@@ -304,7 +304,7 @@ assert_forwarded_headers() {
   local name="$1" method="$2" host="$3" path="$4" want_backend="$5"
   local out code body actual_backend value
 
-  out="$(http_probe "${method}" "${host}" "${path}" "${ROUTING_FORGED_FORWARDED_HEADERS[@]}")"
+  out="$(http_probe "${method}" "${host}" "${path}" "${PUBLIRA_ROUTING_FORGED_FORWARDED_HEADERS[@]}")"
   code="$(printf '%s' "${out}" | sed -n '1p')"
   body="$(printf '%s' "${out}" | tail -n +2)"
 
@@ -363,12 +363,12 @@ collect_diagnostics() {
 
   compose ps >"${LOG_DIR}/compose-ps.log" 2>&1 || true
   compose logs --no-color --tail 200 >"${LOG_DIR}/compose.log" 2>&1 || true
-  if [[ "${ROUTING_PROXY}" == "traefik" ]]; then
+  if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
     curl -fsS --max-time 3 \
-      "http://127.0.0.1:${ROUTING_TRAEFIK_API_PORT}/api/http/routers" \
+      "http://127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT}/api/http/routers" \
       >"${LOG_DIR}/traefik-routers.json" 2>&1 || true
     curl -fsS --max-time 3 \
-      "http://127.0.0.1:${ROUTING_TRAEFIK_API_PORT}/api/http/middlewares" \
+      "http://127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT}/api/http/middlewares" \
       >"${LOG_DIR}/traefik-middlewares.json" 2>&1 || true
   fi
 

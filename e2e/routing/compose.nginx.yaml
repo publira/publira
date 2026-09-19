@@ -16,6 +16,6 @@ services:
       app:
         condition: service_healthy
     ports:
-      - "127.0.0.1:${ROUTING_EDGE_PORT:-13080}:80"
+      - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT:-13080}:80"
     volumes:
       - ../../infra/proxy/nginx:/etc/nginx/conf.d:ro

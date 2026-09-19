@@ -26,31 +26,31 @@ traefik_ready() {
   local routers middlewares
   routers="$(traefik_router_names 2>/dev/null || true)"
   middlewares="$(traefik_middleware_names 2>/dev/null || true)"
-  all_advertised "${routers}" "${ROUTING_ROUTERS[@]}" &&
-    all_advertised "${middlewares}" "${ROUTING_MIDDLEWARES[@]}"
+  all_advertised "${routers}" "${PUBLIRA_ROUTING_ROUTERS[@]}" &&
+    all_advertised "${middlewares}" "${PUBLIRA_ROUTING_MIDDLEWARES[@]}"
 }
 
-if [[ "${ROUTING_PROXY}" == "traefik" ]]; then
-  routing_log "waiting for Traefik routers + middlewares (timeout ${ROUTING_READY_TIMEOUT_SEC}s)"
+if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+  routing_log "waiting for Traefik routers + middlewares (timeout ${PUBLIRA_ROUTING_READY_TIMEOUT_SEC}s)"
 else
-  routing_log "waiting for the ${ROUTING_PROXY} edge to answer (timeout ${ROUTING_READY_TIMEOUT_SEC}s)"
+  routing_log "waiting for the ${PUBLIRA_ROUTING_PROXY} edge to answer (timeout ${PUBLIRA_ROUTING_READY_TIMEOUT_SEC}s)"
 fi
 
-deadline=$((SECONDS + ROUTING_READY_TIMEOUT_SEC))
+deadline=$((SECONDS + PUBLIRA_ROUTING_READY_TIMEOUT_SEC))
 while ((SECONDS < deadline)); do
-  if [[ "${ROUTING_PROXY}" == "traefik" ]]; then
+  if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
     if traefik_ready; then
-      routing_log "ok: ${#ROUTING_ROUTERS[@]} routers + ${#ROUTING_MIDDLEWARES[@]} middlewares advertised"
+      routing_log "ok: ${#PUBLIRA_ROUTING_ROUTERS[@]} routers + ${#PUBLIRA_ROUTING_MIDDLEWARES[@]} middlewares advertised"
       exit 0
     fi
   elif edge_serves_web_host; then
-    routing_log "ok: the edge answers on :${ROUTING_EDGE_PORT}"
+    routing_log "ok: the edge answers on :${PUBLIRA_ROUTING_EDGE_PORT}"
     exit 0
   fi
-  sleep "${ROUTING_READY_INTERVAL_SEC}"
+  sleep "${PUBLIRA_ROUTING_READY_INTERVAL_SEC}"
 done
 
-if [[ "${ROUTING_PROXY}" == "traefik" ]]; then
+if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
   routing_err "advertised routers:"
   traefik_router_names >&2 || true
   routing_err "advertised middlewares:"
@@ -58,4 +58,4 @@ if [[ "${ROUTING_PROXY}" == "traefik" ]]; then
   routing_fail "readiness failed: traefik-routers"
 fi
 
-routing_fail "readiness failed: the ${ROUTING_PROXY} edge did not serve web-host on :${ROUTING_EDGE_PORT}"
+routing_fail "readiness failed: the ${PUBLIRA_ROUTING_PROXY} edge did not serve web-host on :${PUBLIRA_ROUTING_EDGE_PORT}"

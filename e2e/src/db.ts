@@ -4,7 +4,8 @@ import path from "node:path";
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 
 // Absolute path avoids PATH lookup (oxlint sonarjs/no-os-command-from-path).
-const psqlBin = (): string => process.env.PSQL_BIN?.trim() || "/usr/bin/psql";
+const psqlBin = (): string =>
+  process.env.PUBLIRA_PSQL_BIN?.trim() || "/usr/bin/psql";
 
 const resolveDbUrl = (): string => {
   const url = process.env.PUBLIRA_DB_URL?.trim();

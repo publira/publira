@@ -29,12 +29,12 @@ fail_probe() {
   if ! dev_is_running; then
     bootstrap_fail "task dev exited before ${name} became ready; see ${DEV_LOG}"
   fi
-  bootstrap_fail "readiness failed: ${name} (${url}) — timed out after ${BOOTSTRAP_DEV_TIMEOUT_SEC}s"
+  bootstrap_fail "readiness failed: ${name} (${url}) — timed out after ${PUBLIRA_BOOTSTRAP_DEV_TIMEOUT_SEC}s"
 }
 
 wait_http_probe() {
   local name="$1" url="$2" kind="$3"
-  local remaining=$((BOOTSTRAP_DEV_TIMEOUT_SEC - SECONDS))
+  local remaining=$((PUBLIRA_BOOTSTRAP_DEV_TIMEOUT_SEC - SECONDS))
   local body_regex="${JSON_OK_REGEX}"
 
   # Shared budget across probes, same as the previous deadline. wait4x --timeout
@@ -48,7 +48,7 @@ wait_http_probe() {
 
   if wait4x http "${url}" \
     --timeout "${remaining}s" \
-    --interval "${BOOTSTRAP_DEV_INTERVAL_SEC}s" \
+    --interval "${PUBLIRA_BOOTSTRAP_DEV_INTERVAL_SEC}s" \
     --connection-timeout 5s \
     --quiet \
     --no-color \
@@ -60,19 +60,19 @@ wait_http_probe() {
   fail_probe "${name}" "${url}"
 }
 
-bootstrap_log "waiting for services (budget ${BOOTSTRAP_DEV_TIMEOUT_SEC}s)"
+bootstrap_log "waiting for services (budget ${PUBLIRA_BOOTSTRAP_DEV_TIMEOUT_SEC}s)"
 
 while IFS=$'\t' read -r name url kind; do
   [[ -n "${name}" ]] || continue
   wait_http_probe "${name}" "${url}" "${kind}"
 done < <(bootstrap_probes)
 
-for port in "${BOOTSTRAP_DEV_PORTS[@]}"; do
+for port in "${PUBLIRA_BOOTSTRAP_DEV_PORTS[@]}"; do
   if ! port_in_use "${port}"; then
     bootstrap_fail "port ${port} is not listening although every probe passed"
   fi
 done
-bootstrap_log "ok: all ${#BOOTSTRAP_DEV_PORTS[@]} dev ports are listening"
+bootstrap_log "ok: all ${#PUBLIRA_BOOTSTRAP_DEV_PORTS[@]} dev ports are listening"
 
 # A green /readyz only proves the apps reached *some* Redis. If
 # PUBLIRA_REDIS_URL never reaches them they fall back to redis://localhost:6379,

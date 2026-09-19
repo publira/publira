@@ -8,14 +8,14 @@
 
 set -euo pipefail
 
-BOOTSTRAP_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BOOTSTRAP_DIR="$(cd "${BOOTSTRAP_SCRIPTS_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
+PUBLIRA_BOOTSTRAP_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUBLIRA_BOOTSTRAP_DIR="$(cd "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${PUBLIRA_BOOTSTRAP_DIR}/../.." && pwd)"
 
 # Dedicated project name: a run never touches the Dev Container stack.
-export COMPOSE_PROJECT_NAME="${BOOTSTRAP_PROJECT_NAME:-publira-bootstrap}"
+export COMPOSE_PROJECT_NAME="${PUBLIRA_BOOTSTRAP_PROJECT_NAME:-publira-bootstrap}"
 ROOT_COMPOSE_FILE="${REPO_ROOT}/compose.yaml"
-BOOTSTRAP_COMPOSE_FILE="${BOOTSTRAP_DIR}/compose.override.yaml"
+PUBLIRA_BOOTSTRAP_COMPOSE_FILE="${PUBLIRA_BOOTSTRAP_DIR}/compose.override.yaml"
 
 # What `db` is expected to keep its data on. PostgreSQL 18 moved the data
 # directory under a major-version subdirectory, so the volume must be mounted
@@ -26,11 +26,11 @@ EXPECTED_POSTGRES_VOLUME="${COMPOSE_PROJECT_NAME}_postgres-data"
 EXPECTED_RUSTFS_VOLUME="${COMPOSE_PROJECT_NAME}_rustfs-data"
 
 # Host ports published by compose.override.yaml.
-export BOOTSTRAP_POSTGRES_PORT="${BOOTSTRAP_POSTGRES_PORT:-5434}"
-export BOOTSTRAP_REDIS_PORT="${BOOTSTRAP_REDIS_PORT:-6381}"
-export BOOTSTRAP_RUSTFS_PORT="${BOOTSTRAP_RUSTFS_PORT:-9002}"
+export PUBLIRA_BOOTSTRAP_POSTGRES_PORT="${PUBLIRA_BOOTSTRAP_POSTGRES_PORT:-5434}"
+export PUBLIRA_BOOTSTRAP_REDIS_PORT="${PUBLIRA_BOOTSTRAP_REDIS_PORT:-6381}"
+export PUBLIRA_BOOTSTRAP_RUSTFS_PORT="${PUBLIRA_BOOTSTRAP_RUSTFS_PORT:-9002}"
 
-RUN_DIR="${BOOTSTRAP_DIR}/.run"
+RUN_DIR="${PUBLIRA_BOOTSTRAP_DIR}/.run"
 LOG_DIR="${RUN_DIR}/logs"
 STATE_DIR="${RUN_DIR}/state"
 DEV_LOG="${LOG_DIR}/task-dev.log"
@@ -38,13 +38,13 @@ DEV_PGID_FILE="${STATE_DIR}/task-dev.pgid"
 
 # `task db:setup` reads PUBLIRA_DB_URL (db/Taskfile.yaml); the Go servers read
 # one role URL each. Roles and dev passwords come from db/seeds/baseline.
-export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
-export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
-export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
-export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
-export PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
-export PUBLIRA_TICKER_DB_URL="postgres://publira_ticker:tickerpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
-export PUBLIRA_REDIS_URL="redis://127.0.0.1:${BOOTSTRAP_REDIS_PORT}"
+export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
+export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
+export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
+export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
+export PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
+export PUBLIRA_TICKER_DB_URL="postgres://publira_ticker:tickerpass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
+export PUBLIRA_REDIS_URL="redis://127.0.0.1:${PUBLIRA_BOOTSTRAP_REDIS_PORT}"
 # Session cookie (JWE) key for the three Next.js apps, required and without a
 # fallback. `task dev` runs on the host, so the value the Dev Container's
 # compose file supplies is not in scope here; export one for the check.
@@ -53,23 +53,23 @@ export PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET:-publira-bootstrap-only-insecu
 # and without a fallback. Exported here for the same reason as the line above.
 export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-bootstrap-only-insecure-access-token-secret}"
 export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
-export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}"
+export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${PUBLIRA_BOOTSTRAP_RUSTFS_PORT}"
 export PUBLIRA_S3_FORCE_PATH_STYLE="true"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
 
 # Readiness budget for `task dev` (Turbopack cold start + `go run` of five cmds).
-BOOTSTRAP_DEV_TIMEOUT_SEC="${BOOTSTRAP_DEV_TIMEOUT_SEC:-600}"
-BOOTSTRAP_DEV_INTERVAL_SEC="${BOOTSTRAP_DEV_INTERVAL_SEC:-2}"
+PUBLIRA_BOOTSTRAP_DEV_TIMEOUT_SEC="${PUBLIRA_BOOTSTRAP_DEV_TIMEOUT_SEC:-600}"
+PUBLIRA_BOOTSTRAP_DEV_INTERVAL_SEC="${PUBLIRA_BOOTSTRAP_DEV_INTERVAL_SEC:-2}"
 
 # Budget for the stop phase 3 waits on before starting the services again.
-BOOTSTRAP_STOP_TIMEOUT_SEC="${BOOTSTRAP_STOP_TIMEOUT_SEC:-60}"
-BOOTSTRAP_STOP_INTERVAL_SEC="${BOOTSTRAP_STOP_INTERVAL_SEC:-1}"
+PUBLIRA_BOOTSTRAP_STOP_TIMEOUT_SEC="${PUBLIRA_BOOTSTRAP_STOP_TIMEOUT_SEC:-60}"
+PUBLIRA_BOOTSTRAP_STOP_INTERVAL_SEC="${PUBLIRA_BOOTSTRAP_STOP_INTERVAL_SEC:-1}"
 
 # Ports `task dev` listens on. Fixed, not configurable: the Next.js apps carry
 # their port in the `dev` script of each apps/*/package.json.
-BOOTSTRAP_DEV_PORTS=(3000 4000 4100 8000 8100 8200)
+PUBLIRA_BOOTSTRAP_DEV_PORTS=(3000 4000 4100 8000 8100 8200)
 
 bootstrap_log() {
   printf '[bootstrap] %s\n' "$*"
@@ -88,7 +88,7 @@ bootstrap_fail() {
 compose() {
   docker compose \
     -f "${ROOT_COMPOSE_FILE}" \
-    -f "${BOOTSTRAP_COMPOSE_FILE}" \
+    -f "${PUBLIRA_BOOTSTRAP_COMPOSE_FILE}" \
     -p "${COMPOSE_PROJECT_NAME}" \
     "$@"
 }
@@ -107,7 +107,7 @@ service_states() {
 # waits on a container on its way down. Poll Compose's own view — the one `up`
 # reads — until none of the named services is up any more.
 wait_until_stopped() {
-  local deadline=$((SECONDS + BOOTSTRAP_STOP_TIMEOUT_SEC))
+  local deadline=$((SECONDS + PUBLIRA_BOOTSTRAP_STOP_TIMEOUT_SEC))
   local up_filter=(--status running --status restarting --status removing --status paused)
   local still_up
   while :; do
@@ -118,9 +118,9 @@ wait_until_stopped() {
     fi
     if ((SECONDS >= deadline)); then
       bootstrap_err "still up: $(service_states "$@")"
-      bootstrap_fail "timed out after ${BOOTSTRAP_STOP_TIMEOUT_SEC}s waiting for $* to stop"
+      bootstrap_fail "timed out after ${PUBLIRA_BOOTSTRAP_STOP_TIMEOUT_SEC}s waiting for $* to stop"
     fi
-    sleep "${BOOTSTRAP_STOP_INTERVAL_SEC}"
+    sleep "${PUBLIRA_BOOTSTRAP_STOP_INTERVAL_SEC}"
   done
 }
 
@@ -135,7 +135,7 @@ psql_value() {
 
 # Tables the dev seed must fill; compared before/after a seed re-run and
 # before/after the DB restart.
-BOOTSTRAP_SEED_TABLES=(tenants tenant_config platform_users users labels series episodes)
+PUBLIRA_BOOTSTRAP_SEED_TABLES=(tenants tenant_config platform_users users labels series episodes)
 
 # `<version> <dirty>` of the single golang-migrate bookkeeping row.
 migration_state() {
@@ -144,7 +144,7 @@ migration_state() {
 
 seed_snapshot() {
   local table
-  for table in "${BOOTSTRAP_SEED_TABLES[@]}"; do
+  for table in "${PUBLIRA_BOOTSTRAP_SEED_TABLES[@]}"; do
     printf '%s=%s\n' "${table}" "$(psql_value "SELECT count(*) FROM ${table}")"
   done
 }
