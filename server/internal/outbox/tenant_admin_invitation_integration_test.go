@@ -94,9 +94,7 @@ func TestWorkerRetriesTenantAdminInvitationEmail(t *testing.T) {
 	if mailer.attempts.Load() != 2 {
 		t.Fatalf("mailer attempts = %d, want 2", mailer.attempts.Load())
 	}
-	if worker.Metrics().Retry.Load() < 1 {
-		t.Fatalf("retry metric = %d, want at least 1", worker.Metrics().Retry.Load())
-	}
+	waitMetric(t, ctx, "retry", &worker.Metrics().Retry, 1)
 	if strings.Contains(string(got.Payload), token) {
 		t.Fatalf("done invitation payload still contains raw token: %s", got.Payload)
 	}

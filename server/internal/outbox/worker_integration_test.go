@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,12 +32,8 @@ func TestWorkerProcessesTestEvent(t *testing.T) {
 	if got.Attempts != 0 {
 		t.Fatalf("attempts = %d, want 0", got.Attempts)
 	}
-	if w.Metrics().Done.Load() < 1 {
-		t.Fatalf("done metric = %d, want at least 1", w.Metrics().Done.Load())
-	}
-	if w.Metrics().Claimed.Load() < 1 {
-		t.Fatalf("claimed metric = %d, want at least 1", w.Metrics().Claimed.Load())
-	}
+	waitMetric(t, ctx, "done", &w.Metrics().Done, 1)
+	waitMetric(t, ctx, "claimed", &w.Metrics().Claimed, 1)
 }
 
 func TestWorkerRetriesThenSucceeds(t *testing.T) {
@@ -55,9 +52,7 @@ func TestWorkerRetriesThenSucceeds(t *testing.T) {
 	if got.Attempts != 2 {
 		t.Fatalf("attempts = %d, want 2", got.Attempts)
 	}
-	if w.Metrics().Retry.Load() < 2 {
-		t.Fatalf("retry metric = %d, want at least 2", w.Metrics().Retry.Load())
-	}
+	waitMetric(t, ctx, "retry", &w.Metrics().Retry, 2)
 }
 
 func TestWorkerMarksDeadAfterMaxAttempts(t *testing.T) {
@@ -79,9 +74,7 @@ func TestWorkerMarksDeadAfterMaxAttempts(t *testing.T) {
 	if !got.LastError.Valid || got.LastError.String == "" {
 		t.Fatal("dead event missing last_error")
 	}
-	if w.Metrics().Dead.Load() < 1 {
-		t.Fatalf("dead metric = %d, want at least 1", w.Metrics().Dead.Load())
-	}
+	waitMetric(t, ctx, "dead", &w.Metrics().Dead, 1)
 }
 
 func TestWorkerUnknownEventTypeGoesDead(t *testing.T) {
@@ -351,6 +344,24 @@ func waitStatus(
 	return last
 }
 
+// waitMetric polls a worker counter the way waitStatus polls a row: the worker
+// commits a status before it records the metric, so a test that has seen the
+// row can still be ahead of the counter.
+func waitMetric(t *testing.T, ctx context.Context, name string, counter *atomic.Int64, atLeast int64) {
+	t.Helper()
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		if err := ctx.Err(); err != nil {
+			t.Fatalf("wait %s metric: %v (last value %d)", name, err, counter.Load())
+		}
+		if counter.Load() >= atLeast {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("%s metric = %d, want at least %d", name, counter.Load(), atLeast)
+}
+
 // A worker that dies between claiming an auth-mail event and finishing it
 // leaves the raw token in payload with no failure recorded. The reclaim is
 // what ends that: it charges the retry budget, and the reclaim that exhausts
@@ -407,7 +418,5 @@ func TestWorkerStaleReclaimBoundsAuthMailToken(t *testing.T) {
 	if strings.Contains(string(got.Payload), rawToken) {
 		t.Fatalf("payload still contains the raw token: %s", got.Payload)
 	}
-	if w.Metrics().Dead.Load() < 1 {
-		t.Fatalf("dead metric = %d, want at least 1", w.Metrics().Dead.Load())
-	}
+	waitMetric(t, ctx, "dead", &w.Metrics().Dead, 1)
 }
