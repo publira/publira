@@ -58,7 +58,7 @@ The emulator needs KVM. The task stops before downloading anything when the cont
 | Variable | Meaning |
 | --- | --- |
 | `ANDROID_HOME` | Where the SDK is installed and read from. `~/Android/Sdk` when unset |
-| `MOBILE_AVD_NAME` | The AVD to create and boot. `publira-pixel-7` when unset |
+| `PUBLIRA_MOBILE_AVD_NAME` | The AVD to create and boot. `publira-pixel-7` when unset |
 
 ### Local machine (outside the Dev Container)
 

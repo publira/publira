@@ -11,6 +11,10 @@ MOBILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly LOG_DIR="${MOBILE_DIR}/.run/logs"
 readonly LOG_FILE="${LOG_DIR}/emulator.log"
 readonly BOOT_TIMEOUT_SECONDS=300
+# The console port names the emulator's adb serial, so the boot check asks this
+# emulator rather than whichever device adb would pick.
+readonly EMULATOR_PORT=5554
+readonly EMULATOR_SERIAL="emulator-${EMULATOR_PORT}"
 
 command -v adb >/dev/null 2>&1 ||
   android_die "adb is not installed; run: task mobile:android-install"
@@ -31,6 +35,7 @@ start() {
   local command=(
     "${ANDROID_HOME}/emulator/emulator" -avd "${ANDROID_AVD_NAME}"
     -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -no-boot-anim
+    -port "${EMULATOR_PORT}"
   )
   local group
   group="$(stat -c %G /dev/kvm)"
@@ -46,17 +51,22 @@ start() {
   local pid=$!
 
   local elapsed=0
-  while [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != '1' ]]; do
+  while [[ "$(adb -s "${EMULATOR_SERIAL}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != '1' ]]; do
     if ! kill -0 "${pid}" 2>/dev/null; then
       tail -n 20 "${LOG_FILE}" >&2
       android_die "the emulator exited before it finished booting"
     fi
-    [[ "${elapsed}" -lt "${BOOT_TIMEOUT_SECONDS}" ]] ||
+    if [[ "${elapsed}" -ge "${BOOT_TIMEOUT_SECONDS}" ]]; then
+      # setsid made the launch a process group of its own, which holds the
+      # emulator whether or not `sg` stands between them.
+      kill -TERM -- "-${pid}" 2>/dev/null || true
+      wait "${pid}" 2>/dev/null || true
       android_die "the emulator did not finish booting within ${BOOT_TIMEOUT_SECONDS}s; see ${LOG_FILE}"
+    fi
     sleep 2
     elapsed=$((elapsed + 2))
   done
-  android_log "booted: $(running_emulators | paste -sd ' ')"
+  android_log "booted: ${EMULATOR_SERIAL}"
 }
 
 stop() {

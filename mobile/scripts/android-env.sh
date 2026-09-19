@@ -14,7 +14,7 @@ readonly ANDROID_SYSTEM_IMAGE='system-images;android-34;default;x86_64'
 # The phone `task mobile:screenshot` photographs as when it falls back to a
 # browser, so both paths draw the same screen size.
 readonly ANDROID_DEVICE_PROFILE='pixel_7'
-ANDROID_AVD_NAME="${MOBILE_AVD_NAME:-publira-pixel-7}"
+ANDROID_AVD_NAME="${PUBLIRA_MOBILE_AVD_NAME:-publira-pixel-7}"
 
 android_log() {
   printf 'android: %s\n' "$*"
