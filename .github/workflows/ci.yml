@@ -14,7 +14,7 @@ env:
   # renovate: datasource=github-releases depName=wait4x/wait4x versioning=semver-coerced
   WAIT4X_VERSION: 3.7.1
   # renovate: datasource=flutter-version depName=flutter
-  FLUTTER_VERSION: 3.47.4
+  FLUTTER_VERSION: 3.47.5
   # Retry flags for every release download below, unquoted at each call site so
   # they split into separate arguments. A transient response from github.com is
   # not what the job downloading the archive is testing.
