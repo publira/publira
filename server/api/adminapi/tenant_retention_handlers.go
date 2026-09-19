@@ -84,17 +84,19 @@ func (s *adminServer) GetTenantRetentionSettings(
 // writeTenantRetention locks the tenant's row, compares its revision with the
 // one the request states, and writes only when they match. The audit entry
 // commits with the write, so a change to how long the tenant's data is kept
-// never goes unrecorded.
+// never goes unrecorded. The platform defaults the response reports are read
+// in the same transaction, so a failed read cannot report a committed save as
+// an error.
 func (s *adminServer) writeTenantRetention(
 	ctx context.Context,
 	tenant dbmodels.Tenant,
 	overrides retention.Overrides,
 	expectedRevision int64,
 	audit auditlog.TenantEntry,
-) (dbmodels.TenantRetentionSetting, error) {
+) (retention.Settings, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		return dbmodels.TenantRetentionSetting{}, s.internalDBError(ctx, "failed to begin update retention settings transaction", err, "tenant_id", tenant.ID.String())
+		return retention.Settings{}, s.internalDBError(ctx, "failed to begin update retention settings transaction", err, "tenant_id", tenant.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 
@@ -106,36 +108,44 @@ func (s *adminServer) writeTenantRetention(
 		// Any revision but zero was read from a row that has since been
 		// deleted, and creating one would resurrect values nobody confirmed.
 		if expectedRevision != 0 {
-			return dbmodels.TenantRetentionSetting{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
+			return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
 		}
 		updated, err = txq.InsertTenantRetentionSettings(ctx, overrides.TenantSettingsInsertParams(tenant.ID))
 		if err != nil {
 			// Two first saves both find nothing to lock; the primary key
 			// settles which one wins.
 			if dberr.IsUniqueViolation(err) {
-				return dbmodels.TenantRetentionSetting{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
+				return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
 			}
-			return dbmodels.TenantRetentionSetting{}, s.internalDBError(ctx, "failed to create retention settings", err, "tenant_id", tenant.ID.String())
+			return retention.Settings{}, s.internalDBError(ctx, "failed to create retention settings", err, "tenant_id", tenant.ID.String())
 		}
 	case err != nil:
-		return dbmodels.TenantRetentionSetting{}, s.internalDBError(ctx, "failed to lock retention settings", err, "tenant_id", tenant.ID.String())
+		return retention.Settings{}, s.internalDBError(ctx, "failed to lock retention settings", err, "tenant_id", tenant.ID.String())
 	default:
 		if expectedRevision != current.Revision {
-			return dbmodels.TenantRetentionSetting{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
+			return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
 		}
 		updated, err = txq.UpdateTenantRetentionSettings(ctx, overrides.TenantSettingsParams(tenant.ID))
 		if err != nil {
-			return dbmodels.TenantRetentionSetting{}, s.internalDBError(ctx, "failed to update retention settings", err, "tenant_id", tenant.ID.String())
+			return retention.Settings{}, s.internalDBError(ctx, "failed to update retention settings", err, "tenant_id", tenant.ID.String())
 		}
 	}
 
+	defaults, _, err := retention.ReadDefaults(ctx, txq)
+	if err != nil {
+		return retention.Settings{}, s.internalDBError(ctx, "failed to read retention defaults", err, "tenant_id", tenant.ID.String())
+	}
 	if err := auditlog.WriteTenant(ctx, txq, s.logger, audit); err != nil {
-		return dbmodels.TenantRetentionSetting{}, s.internalDBError(ctx, "failed to audit retention settings", err, "tenant_id", tenant.ID.String())
+		return retention.Settings{}, s.internalDBError(ctx, "failed to audit retention settings", err, "tenant_id", tenant.ID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		return dbmodels.TenantRetentionSetting{}, s.internalDBError(ctx, "failed to commit retention settings", err, "tenant_id", tenant.ID.String())
+		return retention.Settings{}, s.internalDBError(ctx, "failed to commit retention settings", err, "tenant_id", tenant.ID.String())
 	}
-	return updated, nil
+	return retention.Settings{
+		Overrides: retention.FromTenantSettings(updated),
+		Defaults:  defaults,
+		Revision:  updated.Revision,
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantRetentionSettings(
@@ -164,7 +174,7 @@ func (s *adminServer) UpdateTenantRetentionSettings(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("expected_revision must not be negative"))
 	}
 
-	updated, err := s.writeTenantRetention(ctx, tenant, overrides, req.Msg.ExpectedRevision, auditlog.TenantEntry{
+	settings, err := s.writeTenantRetention(ctx, tenant, overrides, req.Msg.ExpectedRevision, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -178,15 +188,6 @@ func (s *adminServer) UpdateTenantRetentionSettings(
 		return nil, err
 	}
 
-	defaults, _, err := retention.ReadDefaults(ctx, s.queriesFor(ctx))
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to read retention defaults", err, "tenant_id", tenant.ID.String())
-	}
-	settings := retention.Settings{
-		Overrides: retention.FromTenantSettings(updated),
-		Defaults:  defaults,
-		Revision:  updated.Revision,
-	}
 	return connect.NewResponse(&publiraadminv1.UpdateTenantRetentionSettingsResponse{
 		Overrides:        retentionOverridesToProto(settings.Overrides),
 		PlatformDefaults: retentionPeriodsToProto(settings.Defaults),

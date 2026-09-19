@@ -632,6 +632,12 @@ func (s *adminServer) ApproveComment(
 	if err != nil {
 		return nil, err
 	}
+	// Read before the write, so a failed read cannot report a moderation that
+	// has already committed as an error.
+	periods, err := s.commentRetention(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	current, err := s.loadCommentForModeration(ctx, tenant.ID, publicID)
 	if err != nil {
@@ -672,10 +678,6 @@ func (s *adminServer) ApproveComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_approved", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	periods, err := s.commentRetention(ctx, tenant.ID)
-	if err != nil {
-		return nil, err
-	}
 	return connect.NewResponse(&publiraadminv1.ApproveCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
 
@@ -687,6 +689,12 @@ func (s *adminServer) HideComment(
 	req *connect.Request[publiraadminv1.HideCommentRequest],
 ) (*connect.Response[publiraadminv1.HideCommentResponse], error) {
 	tenant, sessionCtx, publicID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
+	}
+	// Read before the write, so a failed read cannot report a moderation that
+	// has already committed as an error.
+	periods, err := s.commentRetention(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -728,10 +736,6 @@ func (s *adminServer) HideComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_hidden", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	periods, err := s.commentRetention(ctx, tenant.ID)
-	if err != nil {
-		return nil, err
-	}
 	return connect.NewResponse(&publiraadminv1.HideCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
 
@@ -745,6 +749,12 @@ func (s *adminServer) RestoreComment(
 	req *connect.Request[publiraadminv1.RestoreCommentRequest],
 ) (*connect.Response[publiraadminv1.RestoreCommentResponse], error) {
 	tenant, sessionCtx, publicID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
+	}
+	// Read before the write, so a failed read cannot report a moderation that
+	// has already committed as an error.
+	periods, err := s.commentRetention(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -802,10 +812,6 @@ func (s *adminServer) RestoreComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_restored", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	periods, err := s.commentRetention(ctx, tenant.ID)
-	if err != nil {
-		return nil, err
-	}
 	return connect.NewResponse(&publiraadminv1.RestoreCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
 
@@ -967,6 +973,12 @@ func (s *adminServer) ResolveCommentReport(
 	if err != nil {
 		return nil, err
 	}
+	// Read before the write, so a failed read cannot report a moderation that
+	// has already committed as an error.
+	periods, err := s.commentRetention(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	current, err := s.loadCommentReport(ctx, tenant.ID, reportID)
 	if err != nil {
@@ -1020,10 +1032,6 @@ func (s *adminServer) ResolveCommentReport(
 	// target. The action says which way this decision went.
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, commentReportAuditAction(resolution), updated.PublicID, strings.TrimSpace(req.Msg.Reason))
 
-	periods, err := s.commentRetention(ctx, tenant.ID)
-	if err != nil {
-		return nil, err
-	}
 	return connect.NewResponse(&publiraadminv1.ResolveCommentReportResponse{Report: adminCommentReport(updated, periods)}), nil
 }
 
