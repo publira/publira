@@ -122,6 +122,10 @@
     "./user-icon": {
       "types": "./dist/user-icon.d.mts",
       "default": "./dist/user-icon.mjs"
+    },
+    "./wifi-off-icon": {
+      "types": "./dist/wifi-off-icon.d.mts",
+      "default": "./dist/wifi-off-icon.mjs"
     }
   },
   "scripts": {

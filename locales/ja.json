@@ -1944,6 +1944,7 @@
       "navigation_open": "ナビゲーションを開く",
       "notifications_none": "通知、未読はありません",
       "notifications_unread": "通知、未読{$count}件",
+      "offline": "オフラインです。接続が戻るのを待っています。",
       "tenant_title": "{$name} 管理画面",
       "title": "管理画面"
     },
@@ -2188,6 +2189,7 @@
       "mark_all_read": "すべて既読にする",
       "mark_read": "既読にする",
       "next_page": "次のページ",
+      "offline": "オフラインです。接続が戻るのを待っています。",
       "previous_page": "前のページ",
       "read": "既読",
       "retry": "再試行",
@@ -3448,7 +3450,8 @@
       "navigation_close": "ナビゲーションを閉じる",
       "navigation_open": "ナビゲーションを開く",
       "notifications_none": "通知、未読はありません",
-      "notifications_unread": "通知、未読{$count}件"
+      "notifications_unread": "通知、未読{$count}件",
+      "offline": "オフラインです。接続が戻るのを待っています。"
     },
     "tenants": {
       "add_member": "メンバーを追加",

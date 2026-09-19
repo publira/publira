@@ -1944,6 +1944,7 @@
       "navigation_open": "Open navigation",
       "notifications_none": "Notifications, none unread",
       "notifications_unread": "Notifications, {$count} unread",
+      "offline": "You're offline. Waiting for the connection to come back.",
       "tenant_title": "{$name} Admin console",
       "title": "Admin console"
     },
@@ -2188,6 +2189,7 @@
       "mark_all_read": "Mark all as read",
       "mark_read": "Mark as read",
       "next_page": "Next page",
+      "offline": "You're offline. Waiting for the connection to come back.",
       "previous_page": "Previous page",
       "read": "Read",
       "retry": "Try again",
@@ -3448,7 +3450,8 @@
       "navigation_close": "Close navigation",
       "navigation_open": "Open navigation",
       "notifications_none": "Notifications, none unread",
-      "notifications_unread": "Notifications, {$count} unread"
+      "notifications_unread": "Notifications, {$count} unread",
+      "offline": "You're offline. Waiting for the connection to come back."
     },
     "tenants": {
       "add_member": "Add member",

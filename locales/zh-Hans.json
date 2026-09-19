@@ -1944,6 +1944,7 @@
       "navigation_open": "打开导航",
       "notifications_none": "通知，没有未读",
       "notifications_unread": "通知，{$count} 条未读",
+      "offline": "当前处于离线状态，正在等待网络恢复。",
       "tenant_title": "{$name} 管理控制台",
       "title": "管理控制台"
     },
@@ -2188,6 +2189,7 @@
       "mark_all_read": "全部标记为已读",
       "mark_read": "标记为已读",
       "next_page": "下一页",
+      "offline": "当前处于离线状态，正在等待网络恢复。",
       "previous_page": "上一页",
       "read": "阅读",
       "retry": "重试",
@@ -3448,7 +3450,8 @@
       "navigation_close": "关闭导航",
       "navigation_open": "打开导航",
       "notifications_none": "通知，没有未读",
-      "notifications_unread": "通知，{$count} 条未读"
+      "notifications_unread": "通知，{$count} 条未读",
+      "offline": "当前处于离线状态，正在等待网络恢复。"
     },
     "tenants": {
       "add_member": "添加成员",
