@@ -76,12 +76,12 @@ mobile_bind_device_ports() {
   adb -s "${device}" reverse "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" >/dev/null
 }
 
-# The serial of the device to use: the one MOBILE_DEVICE names, else the first
-# attached. Nothing at all when none is attached or `adb` is not installed --
-# which is the Dev Container until `task mobile:android-install` has run.
+# The serial of the device to use: the one PUBLIRA_MOBILE_DEVICE names, else the
+# first attached. Nothing at all when none is attached or `adb` is not installed
+# -- which is the Dev Container until `task mobile:android-install` has run.
 mobile_attached_device() {
-  if [[ -n "${MOBILE_DEVICE:-}" ]]; then
-    printf '%s\n' "${MOBILE_DEVICE}"
+  if [[ -n "${PUBLIRA_MOBILE_DEVICE:-}" ]]; then
+    printf '%s\n' "${PUBLIRA_MOBILE_DEVICE}"
     return 0
   fi
   command -v adb >/dev/null 2>&1 || return 0

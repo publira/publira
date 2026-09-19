@@ -8,7 +8,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/app-config.sh"
 
 # The device `flutter run` will use, so that the addresses compiled into the
 # build are the ones that device can reach: the one the caller named, else the
-# one MOBILE_DEVICE or adb answers with.
+# one PUBLIRA_MOBILE_DEVICE or adb answers with.
 device=""
 previous=""
 for argument in "$@"; do

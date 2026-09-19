@@ -394,7 +394,7 @@ flutter run -d android \
 task mobile:run -- -d android
 ```
 
-It addresses that profile's `api-server` and `image-server` themselves rather than its edge, and reaches them at `10.0.2.2` from an Android emulator and through `adb reverse` from a device on a cable. A value already exported is left as it is, which is how a stack of another kind is named without editing anything. `MOBILE_DEVICE` names the device the addresses are resolved for when several are attached.
+It addresses that profile's `api-server` and `image-server` themselves rather than its edge, and reaches them at `10.0.2.2` from an Android emulator and through `adb reverse` from a device on a cable. A value already exported is left as it is, which is how a stack of another kind is named without editing anything. `PUBLIRA_MOBILE_DEVICE` names the device the addresses are resolved for when several are attached.
 
 ## Screenshots
 
@@ -412,9 +412,9 @@ The screens are taken on an attached device or emulator, which the app is built 
 
 | Variable | Meaning |
 | --- | --- |
-| `MOBILE_DEVICE` | The device to build, install, and photograph on. The first attached one when unset |
-| `MOBILE_SCREENSHOT_WAIT_MS` | How long a screen is given to finish arriving before the shutter. `8000` when unset |
-| `MOBILE_SCREENSHOT_DEVICE` | The Playwright device the browser fallback emulates. `Pixel 7` when unset |
+| `PUBLIRA_MOBILE_DEVICE` | The device to build, install, and photograph on. The first attached one when unset |
+| `PUBLIRA_MOBILE_SCREENSHOT_WAIT_MS` | How long a screen is given to finish arriving before the shutter. `8000` when unset |
+| `PUBLIRA_MOBILE_SCREENSHOT_DEVICE` | The Playwright device the browser fallback emulates. `Pixel 7` when unset |
 
 ## Integration tests
 
