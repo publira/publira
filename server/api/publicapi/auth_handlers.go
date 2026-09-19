@@ -1378,14 +1378,15 @@ func (s *apiServer) GetMe(
 }
 
 // ownAccount is the account the request authenticated as, in the shape the two
-// RPCs that answer with it speak. The birth date is on it because these are
-// the only places a User stands for the reader's own account rather than for
-// someone they are looking at.
+// RPCs that answer with it speak. The birth date and the email address are on
+// it because these are the only places a User stands for the reader's own
+// account rather than for someone they are looking at.
 func ownAccount(user dbmodels.User, role string) *publirattypesv1.User {
 	account := &publirattypesv1.User{
 		PublicId: user.PublicID,
 		Name:     user.Name,
 		Role:     role,
+		Email:    user.Email,
 	}
 	if user.BirthDate.Valid {
 		account.BirthDate = ageverification.FormatBirthDate(user.BirthDate.Time)

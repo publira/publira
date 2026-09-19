@@ -418,7 +418,11 @@ type User struct {
 	// as, which is GetMe and UpdateMe; empty everywhere a User names someone the
 	// caller is merely looking at, so a console listing accounts never carries
 	// it.
-	BirthDate     string `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	BirthDate string `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	// The account's email address, under the same rule as birth_date: set by the
+	// public API's GetMe and UpdateMe, so a form can offer the reader their own
+	// address, and empty wherever a User names someone else.
+	Email         string `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -477,6 +481,13 @@ func (x *User) GetRole() string {
 func (x *User) GetBirthDate() string {
 	if x != nil {
 		return x.BirthDate
+	}
+	return ""
+}
+
+func (x *User) GetEmail() string {
+	if x != nil {
+		return x.Email
 	}
 	return ""
 }
@@ -2115,13 +2126,14 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"\x1cpublira/types/v1/types.proto\x12\x10publira.types.v1\",\n" +
 	"\rTenantContext\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"j\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"\x80\x01\n" +
 	"\x04User\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12\x1d\n" +
 	"\n" +
-	"birth_date\x18\x04 \x01(\tR\tbirthDate\"B\n" +
+	"birth_date\x18\x04 \x01(\tR\tbirthDate\x12\x14\n" +
+	"\x05email\x18\x05 \x01(\tR\x05email\"B\n" +
 	"\vAccessToken\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
 	"\n" +
