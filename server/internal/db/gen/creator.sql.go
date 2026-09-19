@@ -262,6 +262,15 @@ SELECT c.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND (
+                $1::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = $1::text
+                )
+            )
     ) AS published_series_count
 FROM creators c
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
@@ -272,8 +281,8 @@ FROM creators c
         ORDER BY width DESC
         LIMIT 1
     ) civ ON true
-WHERE c.tenant_id = $1
-    AND c.public_id = $2
+WHERE c.tenant_id = $2
+    AND c.public_id = $3
     AND EXISTS (
         SELECT 1
         FROM series_creators sc
@@ -283,13 +292,23 @@ WHERE c.tenant_id = $1
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND (
+                $1::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = $1::text
+                )
+            )
     )
 LIMIT 1
 `
 
 type GetPublishedCreatorByPublicIDParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	Surface  sql.NullString `json:"surface"`
+	TenantID uuid.UUID      `json:"tenant_id"`
+	PublicID string         `json:"public_id"`
 }
 
 type GetPublishedCreatorByPublicIDRow struct {
@@ -307,7 +326,7 @@ type GetPublishedCreatorByPublicIDRow struct {
 // caller turns an empty result into not_found exactly as it does a missing
 // row, so the existence of an unpublished creator does not leak.
 func (q *Queries) GetPublishedCreatorByPublicID(ctx context.Context, arg GetPublishedCreatorByPublicIDParams) (GetPublishedCreatorByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedCreatorByPublicID, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, getPublishedCreatorByPublicID, arg.Surface, arg.TenantID, arg.PublicID)
 	var i GetPublishedCreatorByPublicIDRow
 	err := row.Scan(
 		&i.ID,
@@ -595,31 +614,38 @@ WHERE c.tenant_id = $1
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $2::text
+            )
     )
     AND (
-        $2::uuid IS NULL
+        $3::uuid IS NULL
         OR (
-            $3::boolean
+            $4::boolean
             AND (c.name, c.id) >= (
-                $4::text,
-                $2::uuid
+                $5::text,
+                $3::uuid
             )
         )
         OR (
-            NOT $3::boolean
+            NOT $4::boolean
             AND (c.name, c.id) > (
-                $4::text,
-                $2::uuid
+                $5::text,
+                $3::uuid
             )
         )
     )
 ORDER BY c.name ASC,
     c.id ASC
-LIMIT $5
+LIMIT $6
 `
 
 type ListPublishedCreatorIDsByNameAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorName      sql.NullString `json:"cursor_name"`
@@ -652,6 +678,7 @@ type ListPublishedCreatorIDsByNameAscParams struct {
 func (q *Queries) ListPublishedCreatorIDsByNameAsc(ctx context.Context, arg ListPublishedCreatorIDsByNameAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsByNameAsc,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorName,
@@ -691,31 +718,38 @@ WHERE c.tenant_id = $1
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $2::text
+            )
     )
     AND (
-        $2::uuid IS NULL
+        $3::uuid IS NULL
         OR (
-            $3::boolean
+            $4::boolean
             AND (c.name, c.id) <= (
-                $4::text,
-                $2::uuid
+                $5::text,
+                $3::uuid
             )
         )
         OR (
-            NOT $3::boolean
+            NOT $4::boolean
             AND (c.name, c.id) < (
-                $4::text,
-                $2::uuid
+                $5::text,
+                $3::uuid
             )
         )
     )
 ORDER BY c.name DESC,
     c.id DESC
-LIMIT $5
+LIMIT $6
 `
 
 type ListPublishedCreatorIDsByNameDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorName      sql.NullString `json:"cursor_name"`
@@ -725,6 +759,7 @@ type ListPublishedCreatorIDsByNameDescParams struct {
 func (q *Queries) ListPublishedCreatorIDsByNameDesc(ctx context.Context, arg ListPublishedCreatorIDsByNameDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsByNameDesc,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorName,
@@ -765,32 +800,39 @@ WHERE c.tenant_id = $1
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $3::text
+            )
     )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (c.name, c.id) >= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (c.name, c.id) > (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY c.name ASC,
     c.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedCreatorIDsBySearchNameAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	QueryPattern    string         `json:"query_pattern"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorName      sql.NullString `json:"cursor_name"`
@@ -812,6 +854,7 @@ func (q *Queries) ListPublishedCreatorIDsBySearchNameAsc(ctx context.Context, ar
 	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsBySearchNameAsc,
 		arg.TenantID,
 		arg.QueryPattern,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorName,
@@ -852,32 +895,39 @@ WHERE c.tenant_id = $1
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $3::text
+            )
     )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (c.name, c.id) <= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (c.name, c.id) < (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY c.name DESC,
     c.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedCreatorIDsBySearchNameDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	QueryPattern    string         `json:"query_pattern"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorName      sql.NullString `json:"cursor_name"`
@@ -889,6 +939,7 @@ func (q *Queries) ListPublishedCreatorIDsBySearchNameDesc(ctx context.Context, a
 	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsBySearchNameDesc,
 		arg.TenantID,
 		arg.QueryPattern,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorName,
@@ -932,6 +983,12 @@ SELECT c.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $1::text
+            )
     ) AS published_series_count
 FROM creators c
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
@@ -942,11 +999,12 @@ FROM creators c
         ORDER BY width DESC
         LIMIT 1
     ) civ ON true
-WHERE c.tenant_id = $1
-    AND c.id = ANY($2::uuid [])
+WHERE c.tenant_id = $2
+    AND c.id = ANY($3::uuid [])
 `
 
 type ListPublishedCreatorsByIDsParams struct {
+	Surface  string      `json:"surface"`
 	TenantID uuid.UUID   `json:"tenant_id"`
 	Ids      []uuid.UUID `json:"ids"`
 }
@@ -965,7 +1023,7 @@ type ListPublishedCreatorsByIDsRow struct {
 // No ORDER BY: the caller sorts the rows into the id order stage one settled
 // on.
 func (q *Queries) ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublishedCreatorsByIDsParams) ([]ListPublishedCreatorsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedCreatorsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, listPublishedCreatorsByIDs, arg.Surface, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}

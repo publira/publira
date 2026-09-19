@@ -287,6 +287,7 @@ type activeSeriesPageRow struct {
 func (s *apiServer) activeSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	order seriesOrder,
 	filters seriesFilters,
 	descending bool,
@@ -299,6 +300,7 @@ func (s *apiServer) activeSeriesPage(
 	case order.column == seriesOrderColumnLatestEpisodeAt && descending:
 		rows, err := queries.ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx, dbmodels.ListActiveSeriesIDsByLatestEpisodeAtDescParams{
 			TenantID:              tenantID,
+			Surface:               surface,
 			HasFreeEpisodes:       filters.hasFreeEpisodes,
 			GenrePublicID:         filters.genrePublicID,
 			TagSlug:               filters.tagSlug,
@@ -320,6 +322,7 @@ func (s *apiServer) activeSeriesPage(
 	case order.column == seriesOrderColumnLatestEpisodeAt:
 		rows, err := queries.ListActiveSeriesIDsByLatestEpisodeAtAsc(ctx, dbmodels.ListActiveSeriesIDsByLatestEpisodeAtAscParams{
 			TenantID:              tenantID,
+			Surface:               surface,
 			HasFreeEpisodes:       filters.hasFreeEpisodes,
 			GenrePublicID:         filters.genrePublicID,
 			TagSlug:               filters.tagSlug,
@@ -341,6 +344,7 @@ func (s *apiServer) activeSeriesPage(
 	case order.column == seriesOrderColumnTitle && descending:
 		ids, err := queries.ListActiveSeriesIDsByTitleDesc(ctx, dbmodels.ListActiveSeriesIDsByTitleDescParams{
 			TenantID:        tenantID,
+			Surface:         surface,
 			HasFreeEpisodes: filters.hasFreeEpisodes,
 			GenrePublicID:   filters.genrePublicID,
 			TagSlug:         filters.tagSlug,
@@ -355,6 +359,7 @@ func (s *apiServer) activeSeriesPage(
 	case order.column == seriesOrderColumnTitle:
 		ids, err := queries.ListActiveSeriesIDsByTitleAsc(ctx, dbmodels.ListActiveSeriesIDsByTitleAscParams{
 			TenantID:        tenantID,
+			Surface:         surface,
 			HasFreeEpisodes: filters.hasFreeEpisodes,
 			GenrePublicID:   filters.genrePublicID,
 			TagSlug:         filters.tagSlug,
@@ -369,6 +374,7 @@ func (s *apiServer) activeSeriesPage(
 	case descending:
 		ids, err := queries.ListActiveSeriesIDsByPublishedAtDesc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtDescParams{
 			TenantID:          tenantID,
+			Surface:           surface,
 			HasFreeEpisodes:   filters.hasFreeEpisodes,
 			GenrePublicID:     filters.genrePublicID,
 			TagSlug:           filters.tagSlug,
@@ -383,6 +389,7 @@ func (s *apiServer) activeSeriesPage(
 	default:
 		ids, err := queries.ListActiveSeriesIDsByPublishedAtAsc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtAscParams{
 			TenantID:          tenantID,
+			Surface:           surface,
 			HasFreeEpisodes:   filters.hasFreeEpisodes,
 			GenrePublicID:     filters.genrePublicID,
 			TagSlug:           filters.tagSlug,
@@ -410,9 +417,12 @@ func activeSeriesPageRowsFromIDs(ids []uuid.UUID) []activeSeriesPageRow {
 
 // activeSeriesRowsInOrder fetches the display rows for a page and puts them back
 // in the order the keyset query decided; the detail query is unordered.
+// `surface` is the catalog read's, or anySurface for a member read that names
+// none.
 func (s *apiServer) activeSeriesRowsInOrder(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface sql.NullString,
 	ids []uuid.UUID,
 ) ([]dbmodels.ListActiveSeriesByIDsRow, error) {
 	if len(ids) == 0 {
@@ -421,6 +431,7 @@ func (s *apiServer) activeSeriesRowsInOrder(
 
 	rows, err := s.queriesFor(ctx).ListActiveSeriesByIDs(ctx, dbmodels.ListActiveSeriesByIDsParams{
 		TenantID: tenantID,
+		Surface:  surface,
 		Ids:      ids,
 	})
 	if err != nil {
@@ -871,6 +882,10 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	order, err := resolveSeriesOrder(req.Msg.Order)
 	if err != nil {
 		return nil, err
@@ -880,7 +895,7 @@ func (s *apiServer) ListPublishedSeries(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultSeriesPageSize, maxSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -894,7 +909,7 @@ func (s *apiServer) ListPublishedSeries(
 	// Walking back through the list runs against the sort order.
 	descending := order.descending != (cursor.Direction == pagination.Backward)
 	// One id past the page: its presence is what says another page exists.
-	pageRows, err := s.activeSeriesPage(ctx, tenant.ID, order, filters, descending, keys, limit+1)
+	pageRows, err := s.activeSeriesPage(ctx, tenant.ID, surface, order, filters, descending, keys, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
@@ -905,7 +920,7 @@ func (s *apiServer) ListPublishedSeries(
 		ids = append(ids, pageRow.id)
 		latestEpisodeAtByID[pageRow.id] = pageRow.latestEpisodeAt
 	}
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
@@ -936,6 +951,7 @@ func (s *apiServer) ListPublishedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeSeriesRecoveryToken(pagination.Forward, order, filters, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }
 
@@ -947,7 +963,11 @@ func (s *apiServer) GetSeriesDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetSeriesDetail(ctx, dbmodels.GetSeriesDetailParams{PublicID: req.Msg.PublicId, TenantID: tenant.ID})
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
+	row, err := s.queriesFor(ctx).GetSeriesDetail(ctx, dbmodels.GetSeriesDetailParams{PublicID: req.Msg.PublicId, TenantID: tenant.ID, Surface: surface})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
@@ -1089,7 +1109,11 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
+	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId, Surface: surfaceArg(surface)})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
@@ -1212,7 +1236,7 @@ func (s *apiServer) GetEpisodeDetail(
 			series.EyeCatchImageVariants = variants[row.SeriesEyeCatchImageID.UUID]
 		}
 	}
-	neighborRows, err := s.publishedEpisodeNeighborRows(ctx, tenant.ID, row)
+	neighborRows, err := s.publishedEpisodeNeighborRows(ctx, tenant.ID, surface, row)
 	if err != nil {
 		return nil, err
 	}
@@ -1279,10 +1303,12 @@ func (s *apiServer) GetEpisodeDetail(
 func (s *apiServer) publishedEpisodeNeighborRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow,
 ) ([]dbmodels.ListPublishedEpisodeNeighborsForTenantRow, error) {
 	rows, err := s.queriesFor(ctx).ListPublishedEpisodeNeighborsForTenant(ctx, dbmodels.ListPublishedEpisodeNeighborsForTenantParams{
 		TenantID:   tenantID,
+		Surface:    surface,
 		SeriesID:   row.SeriesID,
 		OrderIndex: row.OrderIndex,
 		EpisodeID:  row.ID,

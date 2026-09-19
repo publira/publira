@@ -36,18 +36,20 @@ INSERT INTO series (
         tenant_id,
         label_id,
         public_id,
-        title
+        title,
+        availability
     )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at, eye_catch_image_id
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at, eye_catch_image_id, availability
 `
 
 type CreateSeriesBaseParams struct {
-	ID       uuid.UUID     `json:"id"`
-	TenantID uuid.UUID     `json:"tenant_id"`
-	LabelID  uuid.NullUUID `json:"label_id"`
-	PublicID string        `json:"public_id"`
-	Title    string        `json:"title"`
+	ID           uuid.UUID     `json:"id"`
+	TenantID     uuid.UUID     `json:"tenant_id"`
+	LabelID      uuid.NullUUID `json:"label_id"`
+	PublicID     string        `json:"public_id"`
+	Title        string        `json:"title"`
+	Availability string        `json:"availability"`
 }
 
 func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error) {
@@ -57,6 +59,7 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		arg.LabelID,
 		arg.PublicID,
 		arg.Title,
+		arg.Availability,
 	)
 	var i Series
 	err := row.Scan(
@@ -70,6 +73,7 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		&i.PublishedAt,
 		&i.UpdatedAt,
 		&i.EyeCatchImageID,
+		&i.Availability,
 	)
 	return i, err
 }
@@ -84,12 +88,19 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $3::text
+    )
 LIMIT 1
 `
 
 type GetPublishedSeriesAgeRatingByPublicIDParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	PublicID string    `json:"public_id"`
+	Surface  string    `json:"surface"`
 }
 
 type GetPublishedSeriesAgeRatingByPublicIDRow struct {
@@ -100,7 +111,7 @@ type GetPublishedSeriesAgeRatingByPublicIDRow struct {
 // A currently public series and the rating the tenant's age rule is applied
 // to, for a read that decides access to its episodes.
 func (q *Queries) GetPublishedSeriesAgeRatingByPublicID(ctx context.Context, arg GetPublishedSeriesAgeRatingByPublicIDParams) (GetPublishedSeriesAgeRatingByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedSeriesAgeRatingByPublicID, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, getPublishedSeriesAgeRatingByPublicID, arg.TenantID, arg.PublicID, arg.Surface)
 	var i GetPublishedSeriesAgeRatingByPublicIDRow
 	err := row.Scan(&i.ID, &i.AgeRating)
 	return i, err
@@ -114,19 +125,29 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        $3::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $3::text
+        )
+    )
 LIMIT 1
 `
 
 type GetPublishedSeriesIDByPublicIDParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	TenantID uuid.UUID      `json:"tenant_id"`
+	PublicID string         `json:"public_id"`
+	Surface  sql.NullString `json:"surface"`
 }
 
 // Resolves a currently public series to its internal ID and nothing else.
 // Shared by every member-facing RPC that acts on a series (follow, rating), so
 // they all treat a foreign, unpublished, or missing series the same way.
 func (q *Queries) GetPublishedSeriesIDByPublicID(ctx context.Context, arg GetPublishedSeriesIDByPublicIDParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedSeriesIDByPublicID, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, getPublishedSeriesIDByPublicID, arg.TenantID, arg.PublicID, arg.Surface)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
@@ -150,7 +171,8 @@ SELECT s.id,
     s.published_at,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
-    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
+    s.availability
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -191,6 +213,7 @@ type GetSeriesByPublicIDForTenantRow struct {
 	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
 	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
+	Availability               string         `json:"availability"`
 }
 
 func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error) {
@@ -215,6 +238,7 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		&i.EyeCatchImageID,
 		&i.EyeCatchImageUpdatedAt,
 		&i.EyeCatchImageFileSizeBytes,
+		&i.Availability,
 	)
 	return i, err
 }
@@ -241,6 +265,12 @@ SELECT s.id,
         SELECT COUNT(*)
         FROM published_free_episodes fe
         WHERE fe.series_id = s.id
+            AND EXISTS (
+                SELECT 1
+                FROM episode_surfaces es
+                WHERE es.episode_id = fe.episode_id
+                    AND es.surface = $1::text
+            )
     )::int4 AS free_episode_count,
     -- Collect the several creators into one column as a JSON array
     COALESCE(
@@ -348,7 +378,9 @@ SELECT s.id,
                 )
             FROM episodes e
                 JOIN episode_listings el ON el.episode_id = e.id
+                JOIN episode_surfaces es ON es.episode_id = e.id
             WHERE e.series_id = s.id
+                AND es.surface = $1::text
                 AND el.status = 'published'
                 AND el.published_at IS NOT NULL
                 AND el.published_at <= NOW()
@@ -362,8 +394,16 @@ FROM series s
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_roles cr ON cr.id = sc.role_id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
-WHERE s.public_id = $1
-    AND s.tenant_id = $2
+WHERE s.public_id = $2
+    AND s.tenant_id = $3
+    -- A series the calling surface may not show is no row, which the caller
+    -- answers exactly as it answers an unpublished one.
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $1::text
+    )
 GROUP BY s.id,
     l.id,
     sl.series_id,
@@ -375,6 +415,7 @@ GROUP BY s.id,
 `
 
 type GetSeriesDetailParams struct {
+	Surface  string    `json:"surface"`
 	PublicID string    `json:"public_id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 }
@@ -402,7 +443,7 @@ type GetSeriesDetailRow struct {
 }
 
 func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error) {
-	row := q.db.QueryRowContext(ctx, getSeriesDetail, arg.PublicID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getSeriesDetail, arg.Surface, arg.PublicID, arg.TenantID)
 	var i GetSeriesDetailRow
 	err := row.Scan(
 		&i.ID,
@@ -444,7 +485,8 @@ SELECT s.id,
     s.created_at,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
-    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
+    s.availability
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -507,6 +549,7 @@ type ListSeriesByTenantAscRow struct {
 	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
 	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
+	Availability               string         `json:"availability"`
 }
 
 func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error) {
@@ -543,6 +586,7 @@ func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTen
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
 			&i.EyeCatchImageFileSizeBytes,
+			&i.Availability,
 		); err != nil {
 			return nil, err
 		}
@@ -573,7 +617,8 @@ SELECT s.id,
     s.created_at,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
-    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
+    s.availability
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -636,6 +681,7 @@ type ListSeriesByTenantDescRow struct {
 	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
 	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
+	Availability               string         `json:"availability"`
 }
 
 // Admin ListSeries is (created_at, id) DESC. Forward uses the DESC query;
@@ -677,6 +723,7 @@ func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTe
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
 			&i.EyeCatchImageFileSizeBytes,
+			&i.Availability,
 		); err != nil {
 			return nil, err
 		}
@@ -723,18 +770,25 @@ const updateSeriesBase = `-- name: UpdateSeriesBase :exec
 UPDATE series
 SET title = $2,
     label_id = $3,
+    availability = $4,
     updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateSeriesBaseParams struct {
-	ID      uuid.UUID     `json:"id"`
-	Title   string        `json:"title"`
-	LabelID uuid.NullUUID `json:"label_id"`
+	ID           uuid.UUID     `json:"id"`
+	Title        string        `json:"title"`
+	LabelID      uuid.NullUUID `json:"label_id"`
+	Availability string        `json:"availability"`
 }
 
 func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error {
-	_, err := q.db.ExecContext(ctx, updateSeriesBase, arg.ID, arg.Title, arg.LabelID)
+	_, err := q.db.ExecContext(ctx, updateSeriesBase,
+		arg.ID,
+		arg.Title,
+		arg.LabelID,
+		arg.Availability,
+	)
 	return err
 }
 

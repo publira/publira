@@ -160,7 +160,7 @@ func (s *apiServer) followUpdateSeriesByID(
 		ids = append(ids, row.SeriesID)
 	}
 
-	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenantID, ids)
+	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenantID, anySurface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list follow update series", err, "tenant_id", tenantID.String())
 	}

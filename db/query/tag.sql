@@ -89,6 +89,12 @@ WITH counted AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
     GROUP BY t.id,
         t.name,
         t.slug
@@ -133,6 +139,12 @@ WITH counted AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
     GROUP BY t.id,
         t.name,
         t.slug

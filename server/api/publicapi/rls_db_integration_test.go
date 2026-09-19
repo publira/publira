@@ -84,6 +84,11 @@ var publicDataTables = []struct {
 	// difference between the catalog counting the tenant's free episodes and
 	// counting everyone's.
 	{name: "published_free_episodes", count: "SELECT count(*) FROM published_free_episodes"},
+	// The surface views every catalog read filters through. Like the one above,
+	// they are views, and answer with their owner's rights unless declared
+	// security_invoker.
+	{name: "series_surfaces", count: "SELECT count(*) FROM series_surfaces"},
+	{name: "episode_surfaces", count: "SELECT count(*) FROM episode_surfaces"},
 	// The catalog reads a credit through its role, so the role list is on the
 	// storefront's read path as much as the genre list is.
 	{name: "creator_roles", count: "SELECT count(*) FROM creator_roles"},

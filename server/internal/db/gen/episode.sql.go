@@ -55,19 +55,21 @@ INSERT INTO episodes (
         public_id,
         title,
         order_index,
-        tenant_id
+        tenant_id,
+        availability
     )
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, series_id, public_id, title, order_index, created_at, tenant_id, reading_direction, spread_start_index
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, series_id, public_id, title, order_index, created_at, tenant_id, reading_direction, spread_start_index, availability
 `
 
 type CreateEpisodeBaseParams struct {
-	ID         uuid.UUID `json:"id"`
-	SeriesID   uuid.UUID `json:"series_id"`
-	PublicID   string    `json:"public_id"`
-	Title      string    `json:"title"`
-	OrderIndex int32     `json:"order_index"`
-	TenantID   uuid.UUID `json:"tenant_id"`
+	ID           uuid.UUID      `json:"id"`
+	SeriesID     uuid.UUID      `json:"series_id"`
+	PublicID     string         `json:"public_id"`
+	Title        string         `json:"title"`
+	OrderIndex   int32          `json:"order_index"`
+	TenantID     uuid.UUID      `json:"tenant_id"`
+	Availability sql.NullString `json:"availability"`
 }
 
 func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error) {
@@ -78,6 +80,7 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 		arg.Title,
 		arg.OrderIndex,
 		arg.TenantID,
+		arg.Availability,
 	)
 	var i Episode
 	err := row.Scan(
@@ -90,6 +93,7 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 		&i.TenantID,
 		&i.ReadingDirection,
 		&i.SpreadStartIndex,
+		&i.Availability,
 	)
 	return i, err
 }
@@ -110,7 +114,9 @@ SELECT e.id,
     e.reading_direction,
     e.spread_start_index,
     sl.reading_direction AS series_reading_direction,
-    sl.spread_start_index AS series_spread_start_index
+    sl.spread_start_index AS series_spread_start_index,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -139,6 +145,7 @@ type GetEpisodeByPublicIDForTenantRow struct {
 	SpreadStartIndex       sql.NullInt32  `json:"spread_start_index"`
 	SeriesReadingDirection sql.NullString `json:"series_reading_direction"`
 	SeriesSpreadStartIndex sql.NullInt32  `json:"series_spread_start_index"`
+	Availability           sql.NullString `json:"availability"`
 }
 
 func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error) {
@@ -158,6 +165,7 @@ func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpis
 		&i.SpreadStartIndex,
 		&i.SeriesReadingDirection,
 		&i.SeriesSpreadStartIndex,
+		&i.Availability,
 	)
 	return i, err
 }
@@ -176,7 +184,8 @@ SELECT e.id,
     e.reading_direction,
     e.spread_start_index,
     sl.reading_direction AS series_reading_direction,
-    sl.spread_start_index AS series_spread_start_index
+    sl.spread_start_index AS series_spread_start_index,
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -207,6 +216,7 @@ type GetEpisodeByPublicIDForTenantAndSeriesRow struct {
 	SpreadStartIndex       sql.NullInt32  `json:"spread_start_index"`
 	SeriesReadingDirection sql.NullString `json:"series_reading_direction"`
 	SeriesSpreadStartIndex sql.NullInt32  `json:"series_spread_start_index"`
+	Availability           sql.NullString `json:"availability"`
 }
 
 func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error) {
@@ -226,6 +236,7 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 		&i.SpreadStartIndex,
 		&i.SeriesReadingDirection,
 		&i.SeriesSpreadStartIndex,
+		&i.Availability,
 	)
 	return i, err
 }
@@ -309,12 +320,22 @@ WHERE s.tenant_id = $1
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND (
+        $3::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $3::text
+        )
+    )
 LIMIT 1
 `
 
 type GetPublishedEpisodeByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	TenantID uuid.UUID      `json:"tenant_id"`
+	PublicID string         `json:"public_id"`
+	Surface  sql.NullString `json:"surface"`
 }
 
 type GetPublishedEpisodeByPublicIDForTenantRow struct {
@@ -343,7 +364,7 @@ type GetPublishedEpisodeByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, getPublishedEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.Surface)
 	var i GetPublishedEpisodeByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -381,7 +402,8 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -397,15 +419,16 @@ type ListEpisodesBySeriesForTenantParams struct {
 }
 
 type ListEpisodesBySeriesForTenantRow struct {
-	ID                 uuid.UUID     `json:"id"`
-	PublicID           string        `json:"public_id"`
-	Title              string        `json:"title"`
-	OrderIndex         int32         `json:"order_index"`
-	Price              int32         `json:"price"`
-	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
-	Status             string        `json:"status"`
-	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
-	PublishedAt        sql.NullTime  `json:"published_at"`
+	ID                 uuid.UUID      `json:"id"`
+	PublicID           string         `json:"public_id"`
+	Title              string         `json:"title"`
+	OrderIndex         int32          `json:"order_index"`
+	Price              int32          `json:"price"`
+	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	Status             string         `json:"status"`
+	ScheduledAt        sql.NullTime   `json:"scheduled_at"`
+	PublishedAt        sql.NullTime   `json:"published_at"`
+	Availability       sql.NullString `json:"availability"`
 }
 
 // Reordering has to see every episode under the series, so this stays a list
@@ -432,6 +455,7 @@ func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpi
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
+			&i.Availability,
 		); err != nil {
 			return nil, err
 		}
@@ -455,7 +479,9 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -487,15 +513,16 @@ type ListEpisodesBySeriesForTenantAscParams struct {
 }
 
 type ListEpisodesBySeriesForTenantAscRow struct {
-	ID                 uuid.UUID     `json:"id"`
-	PublicID           string        `json:"public_id"`
-	Title              string        `json:"title"`
-	OrderIndex         int32         `json:"order_index"`
-	Price              int32         `json:"price"`
-	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
-	Status             string        `json:"status"`
-	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
-	PublishedAt        sql.NullTime  `json:"published_at"`
+	ID                 uuid.UUID      `json:"id"`
+	PublicID           string         `json:"public_id"`
+	Title              string         `json:"title"`
+	OrderIndex         int32          `json:"order_index"`
+	Price              int32          `json:"price"`
+	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	Status             string         `json:"status"`
+	ScheduledAt        sql.NullTime   `json:"scheduled_at"`
+	PublishedAt        sql.NullTime   `json:"published_at"`
+	Availability       sql.NullString `json:"availability"`
 }
 
 // Admin ListEpisodes is (order_index, id) ASC. Forward uses the ASC query;
@@ -529,6 +556,7 @@ func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg List
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
+			&i.Availability,
 		); err != nil {
 			return nil, err
 		}
@@ -552,7 +580,9 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -584,15 +614,16 @@ type ListEpisodesBySeriesForTenantDescParams struct {
 }
 
 type ListEpisodesBySeriesForTenantDescRow struct {
-	ID                 uuid.UUID     `json:"id"`
-	PublicID           string        `json:"public_id"`
-	Title              string        `json:"title"`
-	OrderIndex         int32         `json:"order_index"`
-	Price              int32         `json:"price"`
-	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
-	Status             string        `json:"status"`
-	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
-	PublishedAt        sql.NullTime  `json:"published_at"`
+	ID                 uuid.UUID      `json:"id"`
+	PublicID           string         `json:"public_id"`
+	Title              string         `json:"title"`
+	OrderIndex         int32          `json:"order_index"`
+	Price              int32          `json:"price"`
+	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	Status             string         `json:"status"`
+	ScheduledAt        sql.NullTime   `json:"scheduled_at"`
+	PublishedAt        sql.NullTime   `json:"published_at"`
+	Availability       sql.NullString `json:"availability"`
 }
 
 func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodesBySeriesForTenantDescParams) ([]ListEpisodesBySeriesForTenantDescRow, error) {
@@ -621,6 +652,7 @@ func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg Lis
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
+			&i.Availability,
 		); err != nil {
 			return nil, err
 		}
@@ -1021,6 +1053,12 @@ const listPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $5::text
+        )
     ORDER BY e.order_index DESC,
         e.id DESC
     LIMIT 1
@@ -1055,6 +1093,12 @@ UNION ALL
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $5::text
+        )
     ORDER BY e.order_index ASC,
         e.id ASC
     LIMIT 1
@@ -1066,6 +1110,7 @@ type ListPublishedEpisodeNeighborsForTenantParams struct {
 	SeriesID   uuid.UUID `json:"series_id"`
 	OrderIndex int32     `json:"order_index"`
 	EpisodeID  uuid.UUID `json:"episode_id"`
+	Surface    string    `json:"surface"`
 }
 
 type ListPublishedEpisodeNeighborsForTenantRow struct {
@@ -1098,6 +1143,7 @@ func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, ar
 		arg.SeriesID,
 		arg.OrderIndex,
 		arg.EpisodeID,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err
@@ -1450,6 +1496,25 @@ func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublis
 		&i.ReadAt,
 	)
 	return i, err
+}
+
+const updateEpisodeAvailabilityByIDForTenant = `-- name: UpdateEpisodeAvailabilityByIDForTenant :exec
+UPDATE episodes
+SET availability = $1
+WHERE tenant_id = $2
+    AND id = $3
+`
+
+type UpdateEpisodeAvailabilityByIDForTenantParams struct {
+	Availability sql.NullString `json:"availability"`
+	TenantID     uuid.UUID      `json:"tenant_id"`
+	ID           uuid.UUID      `json:"id"`
+}
+
+// NULL returns the episode to following its series.
+func (q *Queries) UpdateEpisodeAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodeAvailabilityByIDForTenantParams) error {
+	_, err := q.db.ExecContext(ctx, updateEpisodeAvailabilityByIDForTenant, arg.Availability, arg.TenantID, arg.ID)
+	return err
 }
 
 const updateEpisodeLayoutByIDForTenant = `-- name: UpdateEpisodeLayoutByIDForTenant :exec

@@ -154,15 +154,17 @@ type CatalogServiceClient interface {
 	// of one series, for the caller. It is separate from GetSeriesDetail so that
 	// read stays the same for every reader. Optional authentication: a guest and
 	// a bearer this server cannot verify are answered as a guest. Unpublished,
-	// cross-tenant, and missing series are all surfaced as NotFound.
+	// cross-tenant, and missing series, and a series the calling surface may not
+	// show, are all surfaced as NotFound.
 	GetSeriesEpisodeAccess(context.Context, *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error)
 	// Returns only currently published episodes in the requested tenant.
-	// Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
-	// to prevent content existence leakage.
+	// Unpublished, cross-tenant, and missing episodes, and an episode the calling
+	// surface may not show, are all surfaced as NotFound to prevent content
+	// existence leakage.
 	GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error)
 	ListPublishedCreators(context.Context, *connect.Request[v1.ListPublishedCreatorsRequest]) (*connect.Response[v1.ListPublishedCreatorsResponse], error)
 	// Returns a creator only when they have at least one currently published
-	// series in the requested tenant. Cross-tenant, unpublished, and missing
+	// series in the requested tenant that the calling surface may show. Cross-tenant, unpublished, and missing
 	// creators are all surfaced as NotFound so an unpublished creator cannot be
 	// distinguished from one that does not exist.
 	GetPublishedCreatorDetail(context.Context, *connect.Request[v1.GetPublishedCreatorDetailRequest]) (*connect.Response[v1.GetPublishedCreatorDetailResponse], error)
@@ -438,15 +440,17 @@ type CatalogServiceHandler interface {
 	// of one series, for the caller. It is separate from GetSeriesDetail so that
 	// read stays the same for every reader. Optional authentication: a guest and
 	// a bearer this server cannot verify are answered as a guest. Unpublished,
-	// cross-tenant, and missing series are all surfaced as NotFound.
+	// cross-tenant, and missing series, and a series the calling surface may not
+	// show, are all surfaced as NotFound.
 	GetSeriesEpisodeAccess(context.Context, *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error)
 	// Returns only currently published episodes in the requested tenant.
-	// Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
-	// to prevent content existence leakage.
+	// Unpublished, cross-tenant, and missing episodes, and an episode the calling
+	// surface may not show, are all surfaced as NotFound to prevent content
+	// existence leakage.
 	GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error)
 	ListPublishedCreators(context.Context, *connect.Request[v1.ListPublishedCreatorsRequest]) (*connect.Response[v1.ListPublishedCreatorsResponse], error)
 	// Returns a creator only when they have at least one currently published
-	// series in the requested tenant. Cross-tenant, unpublished, and missing
+	// series in the requested tenant that the calling surface may show. Cross-tenant, unpublished, and missing
 	// creators are all surfaced as NotFound so an unpublished creator cannot be
 	// distinguished from one that does not exist.
 	GetPublishedCreatorDetail(context.Context, *connect.Request[v1.GetPublishedCreatorDetailRequest]) (*connect.Response[v1.GetPublishedCreatorDetailResponse], error)

@@ -62,6 +62,10 @@ message CreateSeriesRequest {
   // pages. Absent stores the default the column carries, 1: the cover stands
   // alone. Negative is invalid_argument.
   optional int32 spread_start_index = 21;
+  // Which surfaces this series may be shown on. SURFACE_AVAILABILITY_UNSPECIFIED
+  // stores the default the column carries, both surfaces. The stored value
+  // comes back as Series.availability.
+  publira.types.v1.SurfaceAvailability availability = 22;
 }
 
 message CreateSeriesResponse {
@@ -123,6 +127,12 @@ message UpdateSeriesRequest {
   // pages. Absent stores the default the column carries, 1: the cover stands
   // alone. Negative is invalid_argument.
   optional int32 spread_start_index = 21;
+  // Which surfaces this series may be shown on. Unlike the listing fields
+  // above, an absent value keeps the one stored: a caller that predates the
+  // field would otherwise put a series kept to one surface back on both.
+  // SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly, stores both surfaces.
+  // The stored value comes back as Series.availability.
+  optional publira.types.v1.SurfaceAvailability availability = 22;
 }
 
 message UpdateSeriesResponse {
@@ -239,6 +249,22 @@ message UpdateEpisodeLayoutResponse {
   optional int32 spread_start_index = 3;
 }
 
+// Sets which surfaces one episode may be shown on. The episode is still shown
+// only where its series is: its own value can take it off a surface, never put
+// it on one the series is kept off.
+message UpdateEpisodeAvailabilityRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  // SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
+  // series.
+  publira.types.v1.SurfaceAvailability availability = 3;
+}
+
+message UpdateEpisodeAvailabilityResponse {
+  // Carries the override as it was stored, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+}
+
 message ReorderEpisodesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
@@ -265,6 +291,9 @@ message CreateEpisodeRequest {
   int32 price = 5;
   int32 reading_period_hours = 6;
   string scheduled_at = 7;
+  // Which surfaces this episode may be shown on, narrowing its series'.
+  // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
+  publira.types.v1.SurfaceAvailability availability = 8;
 }
 
 message CreateEpisodeResponse {
@@ -520,6 +549,7 @@ service AdminSeriesService {
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
   rpc UpdateEpisodeLayout(UpdateEpisodeLayoutRequest) returns (UpdateEpisodeLayoutResponse) {}
+  rpc UpdateEpisodeAvailability(UpdateEpisodeAvailabilityRequest) returns (UpdateEpisodeAvailabilityResponse) {}
   rpc ListEpisodeCredits(ListEpisodeCreditsRequest) returns (ListEpisodeCreditsResponse) {}
   rpc ReplaceEpisodeCredits(ReplaceEpisodeCreditsRequest) returns (ReplaceEpisodeCreditsResponse) {}
   rpc BulkEditEpisodeCredits(BulkEditEpisodeCreditsRequest) returns (BulkEditEpisodeCreditsResponse) {}

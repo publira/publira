@@ -109,6 +109,7 @@ func decodeSearchCursorKeys(cursor pagination.Cursor, query string) (seriesCurso
 func (s *apiServer) publishedSearchSeriesPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	queryPattern string,
 	descending bool,
 	keys seriesCursorKeys,
@@ -118,6 +119,7 @@ func (s *apiServer) publishedSearchSeriesPageIDs(
 	if descending {
 		return queries.ListPublishedSeriesIDsBySearchTitleDesc(ctx, dbmodels.ListPublishedSeriesIDsBySearchTitleDescParams{
 			TenantID:        tenantID,
+			Surface:         surface,
 			QueryPattern:    queryPattern,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
@@ -127,6 +129,7 @@ func (s *apiServer) publishedSearchSeriesPageIDs(
 	}
 	return queries.ListPublishedSeriesIDsBySearchTitleAsc(ctx, dbmodels.ListPublishedSeriesIDsBySearchTitleAscParams{
 		TenantID:        tenantID,
+		Surface:         surface,
 		QueryPattern:    queryPattern,
 		CursorID:        keys.id,
 		CursorInclusive: keys.inclusive,
@@ -143,12 +146,16 @@ func (s *apiServer) SearchPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	query, err := normalizeSearchQuery(req.Msg.Query)
 	if err != nil {
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultSeriesPageSize, maxSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -160,12 +167,12 @@ func (s *apiServer) SearchPublishedSeries(
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedSearchSeriesPageIDs(ctx, tenant.ID, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
+	ids, err := s.publishedSearchSeriesPageIDs(ctx, tenant.ID, surface, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published series", err, "tenant_id", tenant.ID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published series", err, "tenant_id", tenant.ID.String())
 	}
@@ -189,6 +196,7 @@ func (s *apiServer) SearchPublishedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeSearchRecoveryToken(pagination.Forward, query, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }
 
@@ -217,6 +225,7 @@ func decodeSearchCreatorCursorKeys(cursor pagination.Cursor, query string) (crea
 func (s *apiServer) publishedSearchCreatorPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	queryPattern string,
 	descending bool,
 	keys creatorCursorKeys,
@@ -226,6 +235,7 @@ func (s *apiServer) publishedSearchCreatorPageIDs(
 	if descending {
 		return queries.ListPublishedCreatorIDsBySearchNameDesc(ctx, dbmodels.ListPublishedCreatorIDsBySearchNameDescParams{
 			TenantID:        tenantID,
+			Surface:         surface,
 			QueryPattern:    queryPattern,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
@@ -235,6 +245,7 @@ func (s *apiServer) publishedSearchCreatorPageIDs(
 	}
 	return queries.ListPublishedCreatorIDsBySearchNameAsc(ctx, dbmodels.ListPublishedCreatorIDsBySearchNameAscParams{
 		TenantID:        tenantID,
+		Surface:         surface,
 		QueryPattern:    queryPattern,
 		CursorID:        keys.id,
 		CursorInclusive: keys.inclusive,
@@ -251,12 +262,16 @@ func (s *apiServer) SearchPublishedCreators(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	query, err := normalizeSearchQuery(req.Msg.Query)
 	if err != nil {
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorPageSize, maxCreatorPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -268,12 +283,12 @@ func (s *apiServer) SearchPublishedCreators(
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedSearchCreatorPageIDs(ctx, tenant.ID, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
+	ids, err := s.publishedSearchCreatorPageIDs(ctx, tenant.ID, surface, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published creators", err, "tenant_id", tenant.ID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.publishedCreatorRowsInOrder(ctx, tenant.ID, ids)
+	rows, err := s.publishedCreatorRowsInOrder(ctx, tenant.ID, surface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published creators", err, "tenant_id", tenant.ID.String())
 	}
@@ -298,6 +313,7 @@ func (s *apiServer) SearchPublishedCreators(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeSearchCreatorRecoveryToken(pagination.Forward, query, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }
 
@@ -373,6 +389,7 @@ func searchLabelRowFromDesc(row dbmodels.ListPublishedLabelsBySearchNameDescRow)
 func (s *apiServer) searchPublishedLabelPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	queryPattern string,
 	descending bool,
 	keys labelCursorKeys,
@@ -382,6 +399,7 @@ func (s *apiServer) searchPublishedLabelPage(
 	if descending {
 		rows, err := queries.ListPublishedLabelsBySearchNameDesc(ctx, dbmodels.ListPublishedLabelsBySearchNameDescParams{
 			TenantID:        tenantID,
+			Surface:         surface,
 			QueryPattern:    queryPattern,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
@@ -396,6 +414,7 @@ func (s *apiServer) searchPublishedLabelPage(
 
 	rows, err := queries.ListPublishedLabelsBySearchNameAsc(ctx, dbmodels.ListPublishedLabelsBySearchNameAscParams{
 		TenantID:        tenantID,
+		Surface:         surface,
 		QueryPattern:    queryPattern,
 		CursorID:        keys.id,
 		CursorInclusive: keys.inclusive,
@@ -416,12 +435,16 @@ func (s *apiServer) SearchPublishedLabels(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	query, err := normalizeSearchQuery(req.Msg.Query)
 	if err != nil {
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultLabelPageSize, maxLabelPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -433,7 +456,7 @@ func (s *apiServer) SearchPublishedLabels(
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	rows, err := s.searchPublishedLabelPage(ctx, tenant.ID, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
+	rows, err := s.searchPublishedLabelPage(ctx, tenant.ID, surface, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published labels", err, "tenant_id", tenant.ID.String())
 	}
@@ -463,5 +486,6 @@ func (s *apiServer) SearchPublishedLabels(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeSearchLabelRecoveryToken(pagination.Forward, query, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }

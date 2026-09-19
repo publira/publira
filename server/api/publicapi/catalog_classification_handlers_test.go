@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"math"
 	"regexp"
+	"strconv"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func TestCatalogListPublishedSeriesPassesEveryFilterToTheQuery(t *testing.T) {
 	expectGenreLookup(mock, tenantID, "GENRE0000001", true)
 	expectTagLookup(mock, tenantID, "swordplay", true)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, true, "GENRE0000001", "swordplay", "completed", int16(4), nil, false, nil, int32(21)).
+		WithArgs(tenantID, "web", true, "GENRE0000001", "swordplay", "completed", int16(4), nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
 	weekday := int32(4)
@@ -81,10 +82,10 @@ func TestCatalogListPublishedSeriesTokenNamesTheFilteredList(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectGenreLookup(mock, tenantID, "GENRE0000001", true)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, false, "GENRE0000001", nil, nil, int16(1), nil, false, nil, int32(2)).
+		WithArgs(tenantID, "web", false, "GENRE0000001", nil, nil, int16(1), nil, false, nil, int32(2)).
 		WillReturnRows(seriesIDRows(seriesID, uuid.Must(uuid.NewV7())))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
 
 	weekday := int32(1)
@@ -99,7 +100,7 @@ func TestCatalogListPublishedSeriesTokenNamesTheFilteredList(t *testing.T) {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := decodeSurfaceToken(resp.Msg.NextToken, "web")
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -116,7 +117,7 @@ func TestCatalogListPublishedSeriesRefusesATokenFromAnotherFilterSet(t *testing.
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		"published_at_desc+genre:GENRE0000001",
 		now.Format(time.RFC3339Nano),
@@ -224,12 +225,12 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderCarriesTheEpisodeInstant(t *
 	latestEpisodeAt := now.Add(-time.Hour)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByLatestEpisodeAtDescQuery)).
-		WithArgs(nil, false, nil, int32(2), tenantID, false, nil, nil, nil, nil).
+		WithArgs(nil, false, nil, int32(2), "web", tenantID, false, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}).
 			AddRow(seriesID, latestEpisodeAt).
 			AddRow(uuid.Must(uuid.NewV7()), latestEpisodeAt.Add(-time.Hour)))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -242,7 +243,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderCarriesTheEpisodeInstant(t *
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := decodeSurfaceToken(resp.Msg.NextToken, "web")
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -264,7 +265,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderReadsBackwardsAscending(t *t
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Backward,
 		"latest_episode_at_desc",
 		now.Format(time.RFC3339Nano),
@@ -273,7 +274,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderReadsBackwardsAscending(t *t
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByLatestEpisodeAtAscQuery)).
-		WithArgs(boundaryID, false, now, int32(21), tenantID, false, nil, nil, nil, nil).
+		WithArgs(boundaryID, false, now, int32(21), "web", tenantID, false, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -304,7 +305,7 @@ func TestCatalogListPublishedGenresSuccess(t *testing.T) {
 	genreID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedGenresByTenantAscQuery)).
-		WithArgs(tenantID, nil, false, nil, int32(21)).
+		WithArgs(tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(publishedGenreRows([]driver.Value{genreID, "GENRE0000001", "Fantasy", "fantasy", int32(1), int32(3)}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -340,11 +341,11 @@ func TestCatalogListPublishedGenresReadsBackwardsDescending(t *testing.T) {
 	boundaryID := uuid.Must(uuid.NewV7())
 	first := uuid.Must(uuid.NewV7())
 	second := uuid.Must(uuid.NewV7())
-	token := pagination.EncodeCountUUID(pagination.Backward, 5, boundaryID)
+	token := webToken(pagination.Backward, "5", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedGenresByTenantDescQuery)).
-		WithArgs(tenantID, boundaryID, false, int32(5), int32(21)).
+		WithArgs(tenantID, "web", boundaryID, false, int32(5), int32(21)).
 		WillReturnRows(publishedGenreRows(
 			[]driver.Value{second, "GENRE0000002", "Mystery", "mystery", int32(4), int32(1)},
 			[]driver.Value{first, "GENRE0000001", "Fantasy", "fantasy", int32(3), int32(2)},
@@ -379,7 +380,7 @@ func TestCatalogListPublishedTagsCarriesTheCountInItsToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedTagsByTenantDescQuery)).
-		WithArgs(nil, nil, false, int32(2), tenantID).
+		WithArgs(nil, nil, false, int32(2), tenantID, "web").
 		WillReturnRows(publishedTagRows(
 			[]driver.Value{"Swordplay", "swordplay", int32(4)},
 			[]driver.Value{"Rivals", "rivals", int32(2)},
@@ -396,7 +397,7 @@ func TestCatalogListPublishedTagsCarriesTheCountInItsToken(t *testing.T) {
 	if len(resp.Msg.Tags) != 1 || resp.Msg.Tags[0].Slug != "swordplay" {
 		t.Fatalf("tags = %v, want the most-carried tag alone", resp.Msg.Tags)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := decodeSurfaceToken(resp.Msg.NextToken, "web")
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -415,11 +416,11 @@ func TestCatalogListPublishedTagsReadsBackwardsAscending(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Backward, "2", "rivals")
+	token := webToken(pagination.Backward, "2", "rivals")
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedTagsByTenantAscQuery)).
-		WithArgs("rivals", int32(2), false, int32(21), tenantID).
+		WithArgs("rivals", int32(2), false, int32(21), tenantID, "web").
 		WillReturnRows(publishedTagRows(
 			[]driver.Value{"Duels", "duels", int32(3)},
 			[]driver.Value{"Swordplay", "swordplay", int32(4)},
@@ -477,7 +478,7 @@ func TestCatalogListPublishedGenresRejectsACursorOutsideTheColumnRange(t *testin
 		client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 		_, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
 			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			Token:  pagination.EncodeCountUUID(pagination.Forward, count, uuid.Must(uuid.NewV7())),
+			Token:  webToken(pagination.Forward, strconv.FormatInt(int64(count), 10), uuid.Must(uuid.NewV7()).String()),
 		}))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("cursor count %d code = %v, want invalid_argument (err=%v)", count, connect.CodeOf(err), err)
@@ -496,7 +497,7 @@ func TestCatalogListPublishedSeriesLatestUpdateEmptyPageKeepsAWayBack(t *testing
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		"latest_episode_at_desc",
 		now.Format(time.RFC3339Nano),
@@ -505,7 +506,7 @@ func TestCatalogListPublishedSeriesLatestUpdateEmptyPageKeepsAWayBack(t *testing
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByLatestEpisodeAtDescQuery)).
-		WithArgs(boundaryID, false, now, int32(21), tenantID, false, nil, nil, nil, nil).
+		WithArgs(boundaryID, false, now, int32(21), "web", tenantID, false, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -524,7 +525,7 @@ func TestCatalogListPublishedSeriesLatestUpdateEmptyPageKeepsAWayBack(t *testing
 		t.Fatalf("next_token = %q, want empty past the end of the list", resp.Msg.NextToken)
 	}
 
-	cursor, err := pagination.Decode(resp.Msg.PreviousToken)
+	cursor, err := decodeSurfaceToken(resp.Msg.PreviousToken, "web")
 	if err != nil {
 		t.Fatalf("decode previous_token: %v", err)
 	}

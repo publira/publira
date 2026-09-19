@@ -203,6 +203,7 @@ func (s *apiServer) resolveContentViewTarget(
 	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES:
 		seriesID, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 			TenantID: tenantID,
+			Surface:  anySurface,
 			PublicID: publicID,
 		})
 		if err == nil {
@@ -215,6 +216,7 @@ func (s *apiServer) resolveContentViewTarget(
 	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE:
 		row, err := queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
 			TenantID: tenantID,
+			Surface:  anySurface,
 			PublicID: publicID,
 		})
 		if err == nil {

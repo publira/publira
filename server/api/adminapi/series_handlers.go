@@ -603,6 +603,10 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, err
 	}
+	availability, err := protomapper.SeriesSurfaceAvailabilityToStored(req.Msg.Availability)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
+	}
 	publishedAt, err := parsePublishedAtOrZero(req.Msg.PublishedAt)
 	if err != nil {
 		return nil, err
@@ -655,7 +659,7 @@ func (s *adminServer) CreateSeries(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 	base, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.Series, error) {
 		return s.queriesFor(txCtx).CreateSeriesBase(txCtx, dbmodels.CreateSeriesBaseParams{
-			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Title: req.Msg.Title,
+			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Title: req.Msg.Title, Availability: availability,
 		})
 	})
 	if err != nil {
@@ -801,6 +805,13 @@ func (s *adminServer) UpdateSeries(
 		}
 		return nil, s.internalDBError(ctx, "failed to get series for update", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
 	}
+	availability := current.Availability
+	if req.Msg.Availability != nil {
+		availability, err = protomapper.SeriesSurfaceAvailabilityToStored(req.Msg.GetAvailability())
+		if err != nil {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
+		}
+	}
 	labelPublicID := strings.TrimSpace(req.Msg.LabelPublicId)
 	if labelPublicID == "" && current.LabelPublicID.Valid {
 		labelPublicID = current.LabelPublicID.String
@@ -844,7 +855,7 @@ func (s *adminServer) UpdateSeries(
 	defer tx.Rollback() //nolint:errcheck
 
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
-	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID})
+	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID, Availability: availability})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
@@ -975,6 +986,7 @@ type seriesPageRow struct {
 	status                 sql.NullString
 	scheduleWeekdays       []int32
 	ageRating              sql.NullString
+	availability           string
 	isPublished            bool
 	publishedAt            sql.NullTime
 	createdAt              time.Time
@@ -996,6 +1008,7 @@ func mapSeriesDescRows(rows []dbmodels.ListSeriesByTenantDescRow) []seriesPageRo
 			status:                 row.Status,
 			scheduleWeekdays:       row.ScheduleWeekdays,
 			ageRating:              row.AgeRating,
+			availability:           row.Availability,
 			isPublished:            row.IsPublished,
 			publishedAt:            row.PublishedAt,
 			createdAt:              row.CreatedAt,
@@ -1020,6 +1033,7 @@ func mapSeriesAscRows(rows []dbmodels.ListSeriesByTenantAscRow) []seriesPageRow 
 			status:                 row.Status,
 			scheduleWeekdays:       row.ScheduleWeekdays,
 			ageRating:              row.AgeRating,
+			availability:           row.Availability,
 			isPublished:            row.IsPublished,
 			publishedAt:            row.PublishedAt,
 			createdAt:              row.CreatedAt,
@@ -1228,6 +1242,11 @@ func (s *adminServer) ListSeries(
 			}
 			item.AgeRating = ageRating
 		}
+		availability, availabilityErr := protomapper.SurfaceAvailabilityFromStored(row.availability)
+		if availabilityErr != nil {
+			return nil, s.internalError(ctx, "series holds an availability this build does not know", availabilityErr, "tenant_id", tenant.ID.String(), "series_public_id", row.publicID)
+		}
+		item.Availability = availability
 		if row.eyeCatchImageID.Valid {
 			seriesImageIDs = append(seriesImageIDs, row.eyeCatchImageID.UUID)
 			itemByImageID[row.eyeCatchImageID.UUID] = item

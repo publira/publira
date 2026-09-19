@@ -73,6 +73,12 @@ WITH counted AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $6::text
+        )
     GROUP BY t.id,
         t.name,
         t.slug
@@ -109,6 +115,7 @@ type ListPublishedTagsByTenantAscParams struct {
 	CursorInclusive            bool           `json:"cursor_inclusive"`
 	Limit                      int32          `json:"limit"`
 	TenantID                   uuid.UUID      `json:"tenant_id"`
+	Surface                    string         `json:"surface"`
 }
 
 type ListPublishedTagsByTenantAscRow struct {
@@ -126,6 +133,7 @@ func (q *Queries) ListPublishedTagsByTenantAsc(ctx context.Context, arg ListPubl
 		arg.CursorInclusive,
 		arg.Limit,
 		arg.TenantID,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err
@@ -161,6 +169,12 @@ WITH counted AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $6::text
+        )
     GROUP BY t.id,
         t.name,
         t.slug
@@ -197,6 +211,7 @@ type ListPublishedTagsByTenantDescParams struct {
 	CursorInclusive            bool           `json:"cursor_inclusive"`
 	Limit                      int32          `json:"limit"`
 	TenantID                   uuid.UUID      `json:"tenant_id"`
+	Surface                    string         `json:"surface"`
 }
 
 type ListPublishedTagsByTenantDescRow struct {
@@ -227,6 +242,7 @@ func (q *Queries) ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPub
 		arg.CursorInclusive,
 		arg.Limit,
 		arg.TenantID,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err

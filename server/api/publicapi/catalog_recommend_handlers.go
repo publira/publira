@@ -165,6 +165,7 @@ type recommendedSeriesPageRow struct {
 func (s *apiServer) recommendedSeriesPageRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	ranking seriesRanking,
 	reversed bool,
 	keys recommendedCursorKeys,
@@ -174,6 +175,7 @@ func (s *apiServer) recommendedSeriesPageRows(
 
 	if reversed {
 		rows, err := queries.ListRecommendedSeriesIDsReversed(ctx, dbmodels.ListRecommendedSeriesIDsReversedParams{
+			Surface:           surface,
 			CursorID:          keys.id,
 			CursorInclusive:   keys.inclusive,
 			CursorPublishedAt: keys.publishedAt,
@@ -193,6 +195,7 @@ func (s *apiServer) recommendedSeriesPageRows(
 	}
 
 	rows, err := queries.ListRecommendedSeriesIDs(ctx, dbmodels.ListRecommendedSeriesIDsParams{
+		Surface:           surface,
 		CursorID:          keys.id,
 		CursorInclusive:   keys.inclusive,
 		CursorPublishedAt: keys.publishedAt,
@@ -228,8 +231,12 @@ func (s *apiServer) ListRecommendedSeries(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRecommendedSeriesPageSize, maxRecommendedSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -250,6 +257,7 @@ func (s *apiServer) ListRecommendedSeries(
 	pageRows, err := s.recommendedSeriesPageRows(
 		ctx,
 		tenant.ID,
+		surface,
 		ranking,
 		cursor.Direction == pagination.Backward,
 		keys,
@@ -267,7 +275,7 @@ func (s *apiServer) ListRecommendedSeries(
 		sortRankByID[pageRow.id] = pageRow.sortRank
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenant.ID.String())
 	}
@@ -304,5 +312,6 @@ func (s *apiServer) ListRecommendedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeRecommendedRecoveryToken(pagination.Forward, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }

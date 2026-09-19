@@ -34,6 +34,12 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -69,6 +75,12 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -116,6 +128,12 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -153,6 +171,12 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -194,6 +218,12 @@ SELECT c.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     ) AS published_series_count
 FROM creators c
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
@@ -227,6 +257,15 @@ SELECT c.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND (
+                sqlc.narg('surface')::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.narg('surface')::text
+                )
+            )
     ) AS published_series_count
 FROM creators c
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
@@ -248,6 +287,15 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND (
+                sqlc.narg('surface')::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.narg('surface')::text
+                )
+            )
     )
 LIMIT 1;
 

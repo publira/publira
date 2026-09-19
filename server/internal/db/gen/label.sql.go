@@ -263,15 +263,22 @@ SELECT l.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $1::text
+            )
     ) AS published_series_count
 FROM labels l
     LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
-WHERE l.tenant_id = $1
-    AND l.public_id = $2
+WHERE l.tenant_id = $2
+    AND l.public_id = $3
 LIMIT 1
 `
 
 type GetPublishedLabelByPublicIDParams struct {
+	Surface  string    `json:"surface"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	PublicID string    `json:"public_id"`
 }
@@ -289,7 +296,7 @@ type GetPublishedLabelByPublicIDRow struct {
 // no published series, because a label has no unpublished state of its own. A
 // label that does not exist, or one of another tenant, returns no row.
 func (q *Queries) GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedLabelByPublicID, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, getPublishedLabelByPublicID, arg.Surface, arg.TenantID, arg.PublicID)
 	var i GetPublishedLabelByPublicIDRow
 	err := row.Scan(
 		&i.ID,
@@ -544,32 +551,39 @@ WHERE l.tenant_id = $1
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $3::text
+            )
     )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (l.name, l.id) >= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (l.name, l.id) > (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY l.name ASC,
     l.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedLabelsBySearchNameAscParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	QueryPattern    string         `json:"query_pattern"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorName      sql.NullString `json:"cursor_name"`
@@ -600,6 +614,7 @@ func (q *Queries) ListPublishedLabelsBySearchNameAsc(ctx context.Context, arg Li
 	rows, err := q.db.QueryContext(ctx, listPublishedLabelsBySearchNameAsc,
 		arg.TenantID,
 		arg.QueryPattern,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorName,
@@ -650,32 +665,39 @@ WHERE l.tenant_id = $1
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $3::text
+            )
     )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (l.name, l.id) <= (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (l.name, l.id) < (
-                $5::text,
-                $3::uuid
+                $6::text,
+                $4::uuid
             )
         )
     )
 ORDER BY l.name DESC,
     l.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedLabelsBySearchNameDescParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	QueryPattern    string         `json:"query_pattern"`
+	Surface         string         `json:"surface"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
 	CursorName      sql.NullString `json:"cursor_name"`
@@ -695,6 +717,7 @@ func (q *Queries) ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg L
 	rows, err := q.db.QueryContext(ctx, listPublishedLabelsBySearchNameDesc,
 		arg.TenantID,
 		arg.QueryPattern,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorName,

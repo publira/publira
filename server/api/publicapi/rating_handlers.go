@@ -61,6 +61,7 @@ func (s *apiServer) resolveRatingEpisode(
 	}
 	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
 		TenantID: tenantID,
+		Surface:  anySurface,
 		PublicID: publicID,
 	})
 	if err == nil {
@@ -208,6 +209,7 @@ func (s *apiServer) GetMySeriesRating(
 	// anything of the reader's is read.
 	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 		TenantID: tenant.ID,
+		Surface:  anySurface,
 		PublicID: seriesPublicID,
 	})
 	if err != nil {

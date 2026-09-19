@@ -200,6 +200,10 @@ message Series {
   // headcount and not a count of reactions. It is set and cleared together
   // with the figure.
   int64 rating_count = 20;
+  // Which surfaces the series may be shown on. Set on the console's reads;
+  // SURFACE_AVAILABILITY_UNSPECIFIED on the storefront's and the app's, where
+  // the catalog has already left out every series the caller may not show.
+  SurfaceAvailability availability = 21;
 }
 
 message Episode {
@@ -237,6 +241,13 @@ message Episode {
   // episodes than this one, and the episode is then laid out without a spread.
   ReadingDirection reading_direction = 11;
   int32 spread_start_index = 12;
+  // The episode's own availability, and SURFACE_AVAILABILITY_UNSPECIFIED
+  // where it follows its series. Set on the console's reads and unspecified on
+  // the public ones, like Series.availability. It is the override rather than
+  // a resolved value because the series bounds it: an episode is shown only
+  // where its series is too, so a series and an episode naming different
+  // single surfaces leave the episode shown nowhere, which no one value says.
+  SurfaceAvailability availability = 13;
 }
 
 // Which way the pages of a work are turned. A series states it for every one
@@ -356,6 +367,40 @@ enum CommentMode {
   // A posted comment waits for a staff approval before anyone but its author
   // can read it.
   COMMENT_MODE_APPROVAL_REQUIRED = 3;
+}
+
+// The client a public catalog read is made from. A work may be withheld from
+// either of them (SurfaceAvailability), and the catalog answers each one with
+// the works it may show, so the rule lives on the server rather than in two
+// clients filtering a full catalog.
+enum ClientSurface {
+  // Answered as CLIENT_SURFACE_WEB, so a caller that names nothing keeps
+  // seeing what the storefront sees.
+  CLIENT_SURFACE_UNSPECIFIED = 0;
+  // The tenant's web storefront.
+  CLIENT_SURFACE_WEB = 1;
+  // The tenant's mobile app.
+  CLIENT_SURFACE_APP = 2;
+}
+
+// Which surfaces a work may be shown on. A series states it
+// (series.availability) and an episode may narrow it (episodes.availability):
+// an episode is shown only where its series is, so its own value can take it
+// off a surface but never put it on one its series is kept off.
+//
+// A work kept off a surface is absent from every list, search, ranking, and
+// recommendation read that surface makes, and a read of it by public ID
+// answers not_found exactly as it does for an unpublished one.
+enum SurfaceAvailability {
+  // On a series write, the default the column carries: both surfaces. On an
+  // episode, following its series.
+  SURFACE_AVAILABILITY_UNSPECIFIED = 0;
+  // The storefront and the app.
+  SURFACE_AVAILABILITY_ALL = 1;
+  // The storefront alone.
+  SURFACE_AVAILABILITY_WEB = 2;
+  // The app alone.
+  SURFACE_AVAILABILITY_APP = 3;
 }
 
 // Which of a tenant's age ratings a reader has to prove an age for

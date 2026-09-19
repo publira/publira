@@ -129,9 +129,10 @@ type episodePageRow struct {
 	status             string
 	scheduledAt        sql.NullTime
 	publishedAt        sql.NullTime
+	availability       sql.NullString
 }
 
-func (r episodePageRow) toProto() *publirattypesv1.Episode {
+func (r episodePageRow) toProto() (*publirattypesv1.Episode, error) {
 	episode := &publirattypesv1.Episode{
 		PublicId:   r.publicID,
 		Title:      r.title,
@@ -148,7 +149,22 @@ func (r episodePageRow) toProto() *publirattypesv1.Episode {
 	if r.publishedAt.Valid {
 		episode.PublishedAt = r.publishedAt.Time.UTC().Format(time.RFC3339)
 	}
-	return episode
+	if err := setEpisodeAvailability(episode, r.availability); err != nil {
+		return nil, err
+	}
+	return episode, nil
+}
+
+// setEpisodeAvailability puts the episode's own availability onto it, which
+// every console episode read carries so the lists can mark an episode that is
+// not on both surfaces.
+func setEpisodeAvailability(episode *publirattypesv1.Episode, stored sql.NullString) error {
+	availability, err := protomapper.SurfaceAvailabilityOverrideFromStored(stored)
+	if err != nil {
+		return err
+	}
+	episode.Availability = availability
+	return nil
 }
 
 func mapEpisodeAscRows(rows []dbmodels.ListEpisodesBySeriesForTenantAscRow) []episodePageRow {
@@ -164,6 +180,7 @@ func mapEpisodeAscRows(rows []dbmodels.ListEpisodesBySeriesForTenantAscRow) []ep
 			status:             row.Status,
 			scheduledAt:        row.ScheduledAt,
 			publishedAt:        row.PublishedAt,
+			availability:       row.Availability,
 		})
 	}
 	return mapped
@@ -182,6 +199,7 @@ func mapEpisodeDescRows(rows []dbmodels.ListEpisodesBySeriesForTenantDescRow) []
 			status:             row.Status,
 			scheduledAt:        row.ScheduledAt,
 			publishedAt:        row.PublishedAt,
+			availability:       row.Availability,
 		})
 	}
 	return mapped
@@ -262,7 +280,11 @@ func (s *adminServer) ListEpisodes(
 
 	episodes := make([]*publirattypesv1.Episode, 0, len(rows))
 	for _, row := range rows {
-		episodes = append(episodes, row.toProto())
+		episode, mapErr := row.toProto()
+		if mapErr != nil {
+			return nil, s.internalError(ctx, "episode holds an availability this build does not know", mapErr, "tenant_id", tenant.ID.String(), "episode_public_id", row.publicID)
+		}
+		episodes = append(episodes, episode)
 	}
 
 	res := &publiraadminv1.ListEpisodesResponse{Episodes: episodes}
@@ -325,6 +347,9 @@ func (s *adminServer) GetEpisode(
 	})
 	if err != nil {
 		return nil, s.internalError(ctx, "episode layout holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", row.PublicID)
+	}
+	if err := setEpisodeAvailability(episode, row.Availability); err != nil {
+		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", row.PublicID)
 	}
 
 	return connect.NewResponse(&publiraadminv1.GetEpisodeResponse{
@@ -436,7 +461,11 @@ func (s *adminServer) ReorderEpisodes(
 
 	episodes := make([]*publirattypesv1.Episode, 0, len(updatedRows))
 	for _, row := range updatedRows {
-		episodes = append(episodes, protomapper.EpisodeFromListEpisodesBySeriesForTenantRow(row))
+		episode := protomapper.EpisodeFromListEpisodesBySeriesForTenantRow(row)
+		if err := setEpisodeAvailability(episode, row.Availability); err != nil {
+			return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", row.PublicID)
+		}
+		episodes = append(episodes, episode)
 	}
 
 	return connect.NewResponse(&publiraadminv1.ReorderEpisodesResponse{Episodes: episodes}), nil
@@ -469,6 +498,10 @@ func (s *adminServer) CreateEpisode(
 	scheduledAt, err = normalizeAndValidateScheduledAt(scheduledAt, time.Now())
 	if err != nil {
 		return nil, err
+	}
+	availability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.Availability)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -514,12 +547,13 @@ func (s *adminServer) CreateEpisode(
 	}
 	base, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Episode, error) {
 		return q.CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{
-			ID:         episodeID,
-			OrderIndex: orderIndex,
-			PublicID:   publicID,
-			SeriesID:   seriesID,
-			TenantID:   tenant.ID,
-			Title:      req.Msg.Title,
+			ID:           episodeID,
+			OrderIndex:   orderIndex,
+			PublicID:     publicID,
+			SeriesID:     seriesID,
+			TenantID:     tenant.ID,
+			Title:        req.Msg.Title,
+			Availability: availability,
 		})
 	})
 	if err != nil {
@@ -565,6 +599,9 @@ func (s *adminServer) CreateEpisode(
 	}
 	if listing.PublishedAt.Valid {
 		episode.PublishedAt = listing.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if err := setEpisodeAvailability(episode, base.Availability); err != nil {
+		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", base.PublicID)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -803,7 +840,11 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			s.logger.Warn("failed to request next revalidate after episode schedule update", "tenant_public_id", tenant.PublicID, "episode_public_id", req.Msg.EpisodePublicId, "error", err)
 		}
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(ep)}), nil
+	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(ep)
+	if err := setEpisodeAvailability(mapped, ep.Availability); err != nil {
+		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", ep.PublicID)
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: mapped}), nil
 }
 
 func (s *adminServer) UpdateEpisodeLayout(
@@ -872,6 +913,9 @@ func (s *adminServer) UpdateEpisodeLayout(
 	if err != nil {
 		return nil, s.internalError(ctx, "episode layout holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
 	}
+	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
+		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
 
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -895,4 +939,64 @@ func (s *adminServer) UpdateEpisodeLayout(
 		ReadingDirection: readingDirection,
 		SpreadStartIndex: spreadStartIndex,
 	}), nil
+}
+
+func (s *adminServer) UpdateEpisodeAvailability(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateEpisodeAvailabilityRequest],
+) (*connect.Response[publiraadminv1.UpdateEpisodeAvailabilityResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
+	if episodePublicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	}
+	availability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.Availability)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
+	}
+
+	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to get episode for availability update", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+	}
+	if err := s.queriesFor(ctx).UpdateEpisodeAvailabilityByIDForTenant(ctx, dbmodels.UpdateEpisodeAvailabilityByIDForTenantParams{
+		TenantID:     tenant.ID,
+		ID:           episode.ID,
+		Availability: availability,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to update episode availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	updated, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get episode after availability update", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(updated)
+	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
+		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
+
+	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "episode_updated",
+			TargetType:  "episode",
+			TargetID:    updated.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		})
+	}
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after episode availability update", "tenant_public_id", tenant.PublicID, "episode_public_id", updated.PublicID, "error", err)
+		}
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateEpisodeAvailabilityResponse{Episode: mapped}), nil
 }

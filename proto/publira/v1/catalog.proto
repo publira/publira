@@ -87,6 +87,8 @@ message ListPublishedSeriesRequest {
   // 0 is Sunday rather than "no weekday"; a weekday outside 0 to 6 is
   // invalid_argument.
   optional int32 weekday = 10;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 11;
 }
 
 message ListPublishedSeriesResponse {
@@ -100,6 +102,8 @@ message ListPublishedSeriesResponse {
 message GetSeriesDetailRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 3;
 }
 
 message GetSeriesDetailResponse {
@@ -129,6 +133,8 @@ message GetSeriesDetailResponse {
 message GetSeriesEpisodeAccessRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 3;
 }
 
 // What the caller may do with one published episode's body.
@@ -147,6 +153,8 @@ message GetSeriesEpisodeAccessResponse {
 message GetEpisodeDetailRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 3;
 }
 
 // Viewer access state for an episode body on GetEpisodeDetail.
@@ -234,6 +242,8 @@ message ListPublishedCreatorsRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 3;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 4;
 }
 
 message ListPublishedCreatorsResponse {
@@ -255,6 +265,8 @@ message GetPublishedCreatorDetailRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message GetPublishedCreatorDetailResponse {
@@ -290,6 +302,8 @@ message GetPublishedLabelDetailRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message GetPublishedLabelDetailResponse {
@@ -326,6 +340,8 @@ message ListPublishedGenresRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 3;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 4;
 }
 
 message ListPublishedGenresResponse {
@@ -358,6 +374,8 @@ message ListPublishedTagsRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 3;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 4;
 }
 
 message ListPublishedTagsResponse {
@@ -385,6 +403,8 @@ message SearchPublishedSeriesRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message SearchPublishedSeriesResponse {
@@ -414,6 +434,8 @@ message SearchPublishedCreatorsRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message SearchPublishedCreatorsResponse {
@@ -445,6 +467,8 @@ message SearchPublishedLabelsRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message SearchPublishedLabelsResponse {
@@ -477,6 +501,8 @@ message ListRecommendedSeriesRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 3;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 4;
 }
 
 message ListRecommendedSeriesResponse {
@@ -533,6 +559,8 @@ message ListRankedSeriesRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message ListRankedSeriesResponse {
@@ -562,8 +590,8 @@ message ListRankedSeriesResponse {
 message ListRelatedSeriesRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The series to find neighbours for. Unpublished, cross-tenant, and missing
-  // series are all surfaced as not_found, the way every other public read of a
-  // series is.
+  // series, and a series the calling surface may not show, are all surfaced as
+  // not_found, the way every other public read of a series is.
   string series_public_id = 2;
   // Max items in one page. <= 0 or > 100 falls back to 12, which is what a
   // "more like this" strip on the series page and the end-of-episode panel
@@ -571,6 +599,8 @@ message ListRelatedSeriesRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message ListRelatedSeriesResponse {
@@ -590,15 +620,17 @@ service CatalogService {
   // of one series, for the caller. It is separate from GetSeriesDetail so that
   // read stays the same for every reader. Optional authentication: a guest and
   // a bearer this server cannot verify are answered as a guest. Unpublished,
-  // cross-tenant, and missing series are all surfaced as NotFound.
+  // cross-tenant, and missing series, and a series the calling surface may not
+  // show, are all surfaced as NotFound.
   rpc GetSeriesEpisodeAccess(GetSeriesEpisodeAccessRequest) returns (GetSeriesEpisodeAccessResponse) {}
   // Returns only currently published episodes in the requested tenant.
-  // Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
-  // to prevent content existence leakage.
+  // Unpublished, cross-tenant, and missing episodes, and an episode the calling
+  // surface may not show, are all surfaced as NotFound to prevent content
+  // existence leakage.
   rpc GetEpisodeDetail(GetEpisodeDetailRequest) returns (GetEpisodeDetailResponse) {}
   rpc ListPublishedCreators(ListPublishedCreatorsRequest) returns (ListPublishedCreatorsResponse) {}
   // Returns a creator only when they have at least one currently published
-  // series in the requested tenant. Cross-tenant, unpublished, and missing
+  // series in the requested tenant that the calling surface may show. Cross-tenant, unpublished, and missing
   // creators are all surfaced as NotFound so an unpublished creator cannot be
   // distinguished from one that does not exist.
   rpc GetPublishedCreatorDetail(GetPublishedCreatorDetailRequest) returns (GetPublishedCreatorDetailResponse) {}

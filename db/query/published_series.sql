@@ -28,6 +28,11 @@
 -- idx_series_listings_tenant_status, or idx_series_listings_schedule_weekdays
 -- when it keeps a handful.
 --
+-- Every query also keeps only what the calling surface may show, through
+-- series_surfaces for the series and episode_surfaces for the episodes counted
+-- into them. The token names the surface it was built on as well, for the
+-- reason it names the filters.
+--
 -- What counts as a free episode is the published_free_episodes view, which
 -- both stages read: stage one keeps only the series that have such an episode
 -- when the caller asks for those, and stage two counts them into
@@ -41,12 +46,24 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         NOT sqlc.arg('has_free_episodes')::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
             WHERE fe.series_id = s.id
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = sqlc.arg('surface')::text
+                )
         )
     )
     AND (
@@ -119,12 +136,24 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         NOT sqlc.arg('has_free_episodes')::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
             WHERE fe.series_id = s.id
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = sqlc.arg('surface')::text
+                )
         )
     )
     AND (
@@ -197,12 +226,24 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         NOT sqlc.arg('has_free_episodes')::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
             WHERE fe.series_id = s.id
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = sqlc.arg('surface')::text
+                )
         )
     )
     AND (
@@ -275,12 +316,24 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         NOT sqlc.arg('has_free_episodes')::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
             WHERE fe.series_id = s.id
+                AND EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = sqlc.arg('surface')::text
+                )
         )
     )
     AND (
@@ -370,7 +423,9 @@ WITH candidate AS (
                 SELECT max(el.published_at)
                 FROM episodes e
                     JOIN episode_listings el ON el.episode_id = e.id
+                    JOIN episode_surfaces es ON es.episode_id = e.id
                 WHERE e.series_id = s.id
+                    AND es.surface = sqlc.arg('surface')::text
                     AND el.status = 'published'
                     AND el.published_at IS NOT NULL
                     AND el.published_at <= NOW()
@@ -382,12 +437,24 @@ WITH candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
         AND (
             NOT sqlc.arg('has_free_episodes')::boolean
             OR EXISTS (
                 SELECT 1
                 FROM published_free_episodes fe
                 WHERE fe.series_id = s.id
+                    AND EXISTS (
+                        SELECT 1
+                        FROM episode_surfaces es
+                        WHERE es.episode_id = fe.episode_id
+                            AND es.surface = sqlc.arg('surface')::text
+                    )
             )
         )
         AND (
@@ -465,7 +532,9 @@ WITH candidate AS (
                 SELECT max(el.published_at)
                 FROM episodes e
                     JOIN episode_listings el ON el.episode_id = e.id
+                    JOIN episode_surfaces es ON es.episode_id = e.id
                 WHERE e.series_id = s.id
+                    AND es.surface = sqlc.arg('surface')::text
                     AND el.status = 'published'
                     AND el.published_at IS NOT NULL
                     AND el.published_at <= NOW()
@@ -477,12 +546,24 @@ WITH candidate AS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
         AND (
             NOT sqlc.arg('has_free_episodes')::boolean
             OR EXISTS (
                 SELECT 1
                 FROM published_free_episodes fe
                 WHERE fe.series_id = s.id
+                    AND EXISTS (
+                        SELECT 1
+                        FROM episode_surfaces es
+                        WHERE es.episode_id = fe.episode_id
+                            AND es.surface = sqlc.arg('surface')::text
+                    )
             )
         )
         AND (
@@ -553,7 +634,9 @@ ORDER BY latest_episode_at ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListActiveSeriesByIDs :many
--- Display data for the published series, narrowed by tenant id.
+-- Display data for the published series, narrowed by tenant id. A NULL
+-- surface filters by no surface, for the member reads that do not name one;
+-- the catalog always names one.
 -- No ORDER BY: the caller sorts the rows into the id order stage one settled
 -- on.
 SELECT s.id,
@@ -570,6 +653,15 @@ SELECT s.id,
         SELECT COUNT(*)
         FROM published_free_episodes fe
         WHERE fe.series_id = s.id
+            AND (
+                sqlc.narg('surface')::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM episode_surfaces es
+                    WHERE es.episode_id = fe.episode_id
+                        AND es.surface = sqlc.narg('surface')::text
+                )
+            )
     )::int4 AS free_episode_count,
     COALESCE(
         json_agg(
@@ -675,6 +767,15 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('surface')::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.narg('surface')::text
+        )
+    )
 GROUP BY s.id,
     sl.series_id,
     sl.synopsis,
@@ -698,6 +799,12 @@ WHERE sc.creator_id = sqlc.arg('creator_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -729,6 +836,12 @@ WHERE sc.creator_id = sqlc.arg('creator_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -764,6 +877,12 @@ WHERE s.label_id = sqlc.arg('label_id')::uuid
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -794,6 +913,12 @@ WHERE s.label_id = sqlc.arg('label_id')::uuid
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -832,6 +957,12 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         s.title ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
         OR COALESCE(sl.synopsis, '') ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
@@ -866,6 +997,12 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    )
     AND (
         s.title ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
         OR COALESCE(sl.synopsis, '') ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'

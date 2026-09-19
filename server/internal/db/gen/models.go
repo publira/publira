@@ -179,6 +179,7 @@ type Episode struct {
 	TenantID         uuid.UUID      `json:"tenant_id"`
 	ReadingDirection sql.NullString `json:"reading_direction"`
 	SpreadStartIndex sql.NullInt32  `json:"spread_start_index"`
+	Availability     sql.NullString `json:"availability"`
 }
 
 type EpisodeComment struct {
@@ -305,6 +306,13 @@ type EpisodeReadingPosition struct {
 	PageIndex int32     `json:"page_index"`
 	PageCount int32     `json:"page_count"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type EpisodeSurface struct {
+	EpisodeID uuid.UUID `json:"episode_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Surface   string    `json:"surface"`
 }
 
 type Genre struct {
@@ -566,6 +574,7 @@ type Series struct {
 	PublishedAt     sql.NullTime  `json:"published_at"`
 	UpdatedAt       time.Time     `json:"updated_at"`
 	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
+	Availability    string        `json:"availability"`
 }
 
 type SeriesCreator struct {
@@ -634,6 +643,12 @@ type SeriesRatingCount struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	SeriesID uuid.UUID `json:"series_id"`
 	Count    int64     `json:"count"`
+}
+
+type SeriesSurface struct {
+	SeriesID uuid.UUID `json:"series_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Surface  string    `json:"surface"`
 }
 
 type SeriesTag struct {

@@ -283,6 +283,7 @@ type rankedSeriesPageRow struct {
 func (s *apiServer) rankedSeriesPageRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	items json.RawMessage,
 	reversed bool,
 	keys rankedSeriesCursorKeys,
@@ -292,6 +293,7 @@ func (s *apiServer) rankedSeriesPageRows(
 
 	if reversed {
 		rows, err := queries.ListRankedSeriesIDsReversed(ctx, dbmodels.ListRankedSeriesIDsReversedParams{
+			Surface:         surface,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
 			CursorRank:      keys.rank,
@@ -310,6 +312,7 @@ func (s *apiServer) rankedSeriesPageRows(
 	}
 
 	rows, err := queries.ListRankedSeriesIDs(ctx, dbmodels.ListRankedSeriesIDsParams{
+		Surface:         surface,
 		CursorID:        keys.id,
 		CursorInclusive: keys.inclusive,
 		CursorRank:      keys.rank,
@@ -343,12 +346,16 @@ func (s *apiServer) ListRankedSeries(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := catalogSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	rankingKey, err := rankingKeyForPeriod(req.Msg.Period)
 	if err != nil {
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRankedSeriesPageSize, maxRankedSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -378,6 +385,7 @@ func (s *apiServer) ListRankedSeries(
 	pageRows, err := s.rankedSeriesPageRows(
 		ctx,
 		tenant.ID,
+		surface,
 		snapshots.current.Items,
 		cursor.Direction == pagination.Backward,
 		keys,
@@ -395,7 +403,7 @@ func (s *apiServer) ListRankedSeries(
 		rankByID[pageRow.id] = pageRow.rank
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list ranked series", err, "tenant_id", tenant.ID.String())
 	}
@@ -442,5 +450,6 @@ func (s *apiServer) ListRankedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeRankedSeriesRecoveryToken(pagination.Forward, rankingKey, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }

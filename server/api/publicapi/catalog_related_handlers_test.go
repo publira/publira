@@ -40,7 +40,7 @@ func relatedSeriesIDRows(rows ...scoredID) *sqlmock.Rows {
 
 func expectSubjectSeriesLookup(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedSeriesIDByPublicIDQuery)).
-		WithArgs(tenantID, subjectSeriesPublicID).
+		WithArgs(tenantID, subjectSeriesPublicID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
 }
 
@@ -77,7 +77,7 @@ func TestCatalogListRelatedSeriesLeadsWithTheScoredRows(t *testing.T) {
 	// to the query untouched. The fourth id is the over-fetched one that says
 	// another page exists.
 	mock.ExpectQuery(regexp.QuoteMeta(listRelatedSeriesIDsQuery)).
-		WithArgs(nil, nil, nil, false, nil, int32(4), tenantID, subjectID, rankingItemsJSON(unrelated)).
+		WithArgs(nil, nil, nil, false, nil, int32(4), tenantID, subjectID, rankingItemsJSON(unrelated), "web").
 		WillReturnRows(relatedSeriesIDRows(
 			scoredID{id: sameCreator, score: 3, sortRank: unrankedSortRank},
 			scoredID{id: sameLabel, score: 2, sortRank: unrankedSortRank},
@@ -87,7 +87,7 @@ func TestCatalogListRelatedSeriesLeadsWithTheScoredRows(t *testing.T) {
 	// The display query is unordered; the handler puts the rows back in the
 	// order the keyset scan decided.
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(
 				recommendedSeriesRow(seriesDetailColumns(), unrelated, "UNRELATED", "Unrelated", now),
@@ -126,7 +126,7 @@ func TestCatalogListRelatedSeriesDefaultsToTheStripSize(t *testing.T) {
 	expectSubjectSeriesLookup(mock, tenantID, subjectID)
 	expectRankingSnapshotLookup(mock, tenantID, now, rankingItemsJSON())
 	mock.ExpectQuery(regexp.QuoteMeta(listRelatedSeriesIDsQuery)).
-		WithArgs(nil, nil, nil, false, nil, defaultRelatedSeriesPageSize+1, tenantID, subjectID, rankingItemsJSON()).
+		WithArgs(nil, nil, nil, false, nil, defaultRelatedSeriesPageSize+1, tenantID, subjectID, rankingItemsJSON(), "web").
 		WillReturnRows(relatedSeriesIDRows())
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
@@ -153,7 +153,7 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 	next := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	publishedAt := now.Add(-2 * time.Hour)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		subjectSeriesPublicID,
 		"2",
@@ -176,10 +176,10 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 			tenantID,
 			subjectID,
 			rankingItemsJSON(),
-		).
+			"web").
 		WillReturnRows(relatedSeriesIDRows(scoredID{id: next, score: 2, sortRank: unrankedSortRank}))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), next, "NEXT", "Next", publishedAt))
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
@@ -209,7 +209,7 @@ func TestCatalogListRelatedSeriesRejectsATokenFromAnotherSeries(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		"OTHERSERIES1",
 		"2",
@@ -239,7 +239,7 @@ func TestCatalogListRelatedSeriesIsNotFoundWithoutAPublishedSubject(t *testing.T
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedSeriesIDByPublicIDQuery)).
-		WithArgs(tenantID, subjectSeriesPublicID).
+		WithArgs(tenantID, subjectSeriesPublicID, "web").
 		WillReturnError(sql.ErrNoRows)
 
 	_, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
@@ -277,7 +277,7 @@ func TestCatalogListRelatedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	subjectID := uuid.Must(uuid.NewV7())
 	boundary := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		subjectSeriesPublicID,
 		"3",
@@ -290,7 +290,7 @@ func TestCatalogListRelatedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	expectSubjectSeriesLookup(mock, tenantID, subjectID)
 	expectRankingSnapshotLookup(mock, tenantID, now, rankingItemsJSON())
 	mock.ExpectQuery(regexp.QuoteMeta(listRelatedSeriesIDsQuery)).
-		WithArgs(boundary, int32(3), int32(1), false, now, int32(2), tenantID, subjectID, rankingItemsJSON()).
+		WithArgs(boundary, int32(3), int32(1), false, now, int32(2), tenantID, subjectID, rankingItemsJSON(), "web").
 		WillReturnRows(relatedSeriesIDRows())
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
