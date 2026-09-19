@@ -109,6 +109,9 @@ func (s *adminServer) UpdateRoyaltyConfig(
 	if closeMode == royaltyCloseModeAuto && !day.Valid {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auto_close_day is required when close_mode is automatic"))
 	}
+	if closeMode == royaltyCloseModeManual && day.Valid {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auto_close_day must not be set when close_mode is manual"))
+	}
 	if day.Valid && (day.Int32 < 1 || day.Int32 > 28) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auto_close_day must be between 1 and 28"))
 	}

@@ -93,6 +93,24 @@ func TestUpdateRoyaltyConfigRejectsAutomaticWithoutDay(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestUpdateRoyaltyConfigRejectsManualWithDay(t *testing.T) {
+	client, mock, token, tenantID := newRoyaltyConfigClient(t)
+	now := time.Now()
+	expectRoyaltyConfigAdmin(mock, tenantID, token, now)
+	day := int32(5)
+	request := connect.NewRequest(&publiraadminv1.UpdateRoyaltyConfigRequest{
+		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		CloseMode:    publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL,
+		AutoCloseDay: &day,
+	})
+	request.Header().Set("Authorization", "Bearer "+token)
+	_, err := client.UpdateRoyaltyConfig(context.Background(), request)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateRoyaltyConfig code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
 func TestUpdateRoyaltyConfigRejectsOutOfRangeDay(t *testing.T) {
 	client, mock, token, tenantID := newRoyaltyConfigClient(t)
 	now := time.Now()

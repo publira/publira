@@ -6,7 +6,7 @@ CREATE TABLE tenant_royalty_config (
     updated_at timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT tenant_royalty_config_close_mode_check CHECK (close_mode IN ('manual', 'automatic')),
     CONSTRAINT tenant_royalty_config_auto_close_day_check CHECK (auto_close_day IS NULL OR auto_close_day BETWEEN 1 AND 28),
-    CONSTRAINT tenant_royalty_config_automatic_requires_day CHECK (close_mode <> 'automatic' OR auto_close_day IS NOT NULL)
+    CONSTRAINT tenant_royalty_config_auto_close_day_matches_mode CHECK ((close_mode = 'automatic') = (auto_close_day IS NOT NULL))
 );
 
 ALTER TABLE tenant_royalty_config ENABLE ROW LEVEL SECURITY;
