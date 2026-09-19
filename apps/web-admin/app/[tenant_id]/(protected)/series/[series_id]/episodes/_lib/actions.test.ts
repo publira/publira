@@ -230,4 +230,53 @@ describe("bulkEditEpisodeCreditsAction", () => {
     });
     expect(mockBulkEditEpisodeCredits).not.toHaveBeenCalled();
   });
+
+  const setShareFormData = (share: string): FormData => {
+    const formData = bulkCreditFormData();
+    formData.set("operation", "set_share");
+    formData.set("creator_public_id", "CREATOR_B");
+    formData.set("role_public_id", "ROLE_ARTIST");
+    formData.set("share", share);
+    return formData;
+  };
+
+  it("sends a set-share with the typed percentage in basis points", async () => {
+    mockBulkEditEpisodeCredits.mockResolvedValueOnce({
+      changedEpisodePublicIds: ["EP01"],
+      ok: true,
+      unchangedEpisodes: [],
+    });
+
+    const { bulkEditEpisodeCreditsAction } = await import("./actions");
+    await bulkEditEpisodeCreditsAction(null, setShareFormData("33.33"));
+
+    expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: {
+          credit: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          shareBps: 3333,
+          type: "set_share",
+        },
+      }),
+      "en"
+    );
+  });
+
+  it.each(["", "120", "12.345"])(
+    "refuses a set-share whose share box holds %j",
+    async (share) => {
+      const { bulkEditEpisodeCreditsAction } = await import("./actions");
+      const result = await bulkEditEpisodeCreditsAction(
+        null,
+        setShareFormData(share)
+      );
+
+      expect(result).toEqual({
+        message:
+          "Enter each share as a percentage from 0 to 100, with up to two decimal places.",
+        ok: false,
+      });
+      expect(mockBulkEditEpisodeCredits).not.toHaveBeenCalled();
+    }
+  );
 });

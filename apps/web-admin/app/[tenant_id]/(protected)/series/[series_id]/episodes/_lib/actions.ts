@@ -15,6 +15,7 @@ import {
 } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
+import { sharePercentToBps } from "#lib/credit-share";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
@@ -246,7 +247,12 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   };
 };
 
-const BULK_CREDIT_OPERATIONS = ["add", "replace", "remove"] as const;
+const BULK_CREDIT_OPERATIONS = [
+  "add",
+  "replace",
+  "remove",
+  "set_share",
+] as const;
 
 type BulkCreditOperationType = (typeof BULK_CREDIT_OPERATIONS)[number];
 
@@ -271,6 +277,7 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
       seriesPublicId: requiredTrimmedString(
         t("admin.series.episodes.validation.series_missing")
       ),
+      share: optionalTrimmedString(),
       tenantId: requiredTrimmedString(
         t("admin.series.episodes.validation.tenant_missing")
       ),
@@ -330,6 +337,18 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
           path: ["creatorPublicId"],
         });
       }
+      // An empty box names no share to set, so set-share needs a value.
+      if (
+        value.operation === "set_share" &&
+        (value.share.length === 0 ||
+          sharePercentToBps(value.share) === undefined)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: t("admin.series.episodes.credits.validation.share_invalid"),
+          path: ["share"],
+        });
+      }
     });
 };
 
@@ -355,13 +374,17 @@ const toBulkCreditOperation = (
   if (parsed.creatorPublicId.length === 0 || parsed.rolePublicId.length === 0) {
     return undefined;
   }
-  return {
-    credit: {
-      creatorPublicId: parsed.creatorPublicId,
-      rolePublicId: parsed.rolePublicId,
-    },
-    type: parsed.operation,
+  const credit = {
+    creatorPublicId: parsed.creatorPublicId,
+    rolePublicId: parsed.rolePublicId,
   };
+  if (parsed.operation === "set_share") {
+    const shareBps = sharePercentToBps(parsed.share);
+    return shareBps === undefined
+      ? undefined
+      : { credit, shareBps, type: "set_share" };
+  }
+  return { credit, type: parsed.operation };
 };
 
 const listEpisodeCreditRangeOptionsSchema = async (locale: Locale) => {
@@ -458,6 +481,7 @@ export const bulkEditEpisodeCreditsAction = async (
       operation: "value",
       rolePublicId: { kind: "value", name: "role_public_id" },
       seriesPublicId: { kind: "value", name: "series_public_id" },
+      share: "value",
       tenantId: { kind: "value", name: "tenant_id" },
       toCreatorPublicId: { kind: "value", name: "to_creator_public_id" },
       toRolePublicId: { kind: "value", name: "to_role_public_id" },

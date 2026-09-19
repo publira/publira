@@ -25,12 +25,19 @@ import {
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import { CreditShareInput, CreditShareSummary } from "#components/credit-share";
 import {
   SortableItem,
   SortableItemHandle,
   SortableList,
   withItemMoved,
 } from "#components/sortable-list";
+import {
+  isCreditShareTotalSavable,
+  shareBpsToPercentText,
+  sharePercentToBps,
+  totalCreditShares,
+} from "#lib/credit-share";
 
 import type { SeriesCreatorCredit } from "../series-types";
 
@@ -56,6 +63,8 @@ interface CreditRow {
   key: string;
   creatorPublicId: string;
   rolePublicId: string;
+  /** The share box as typed, parsed when the list is summed and posted. */
+  shareText: string;
 }
 
 const rowKey = (row: CreditRow): string => row.key;
@@ -87,6 +96,7 @@ const toInitialRows = (
     creatorPublicId: credit.creatorPublicId,
     key: String(index),
     rolePublicId: credit.rolePublicId || leadingRolePublicId,
+    shareText: shareBpsToPercentText(credit.shareBps),
   }));
 };
 
@@ -133,9 +143,11 @@ interface CreatorCreditRowProps {
   onCreatorChange: (nextCreatorPublicId: string) => void;
   onRemove: () => void;
   onRoleChange: (nextRolePublicId: string) => void;
+  onShareChange: (nextShareText: string) => void;
   position: number;
   roleItems: ComboboxItem[];
   rolePublicId: string;
+  shareText: string;
 }
 
 /**
@@ -161,9 +173,11 @@ const CreatorCreditRow = ({
   onCreatorChange,
   onRemove,
   onRoleChange,
+  onShareChange,
   position,
   roleItems,
   rolePublicId,
+  shareText,
 }: CreatorCreditRowProps) => {
   const t = useClientMessages();
   const creatorComboboxId = useId();
@@ -235,6 +249,11 @@ const CreatorCreditRow = ({
           </Combobox>
         </FieldContent>
       </Field>
+      <CreditShareInput
+        onChange={onShareChange}
+        position={position}
+        value={shareText}
+      />
       <Button
         className="shrink-0"
         onClick={onRemove}
@@ -266,6 +285,11 @@ interface SeriesCreatorCreditsFieldProps {
    * to know about it.
    */
   initialCredits: SeriesCreatorCredit[];
+  /**
+   * Told whether the shares as typed can be saved, whenever that changes. The
+   * save button belongs to the form around this field.
+   */
+  onSavableChange: (savable: boolean) => void;
 }
 
 /**
@@ -285,6 +309,7 @@ export const SeriesCreatorCreditsField = ({
   creators,
   creatorsErrorMessage,
   initialCredits,
+  onSavableChange,
 }: SeriesCreatorCreditsFieldProps) => {
   const locale = useContext(AdminLocaleContext);
   if (locale === null) {
@@ -324,10 +349,12 @@ export const SeriesCreatorCreditsField = ({
           {
             creatorPublicId: row.creatorPublicId,
             rolePublicId: row.rolePublicId,
+            shareBps: sharePercentToBps(row.shareText) ?? 0,
           },
         ]
       : []
   );
+  const shareTotal = totalCreditShares(rows.map((row) => row.shareText));
   const hasExhaustedAuthor = resolvedRows.some(
     (row) => row.creatorPublicId.length > 0 && row.rolePublicId.length === 0
   );
@@ -341,9 +368,31 @@ export const SeriesCreatorCreditsField = ({
         creatorPublicId: "",
         key,
         rolePublicId: creatorRoles.at(0)?.publicId ?? "",
+        shareText: "",
       },
     ]);
   }, [creatorRoles]);
+
+  /**
+   * Writes the rows a share edit or a removal leaves, and tells the form
+   * whether they can be saved: those are the only two edits that move the sum.
+   */
+  const commitShareRows = (nextRows: CreditRow[]) => {
+    setRows(nextRows);
+    onSavableChange(
+      isCreditShareTotalSavable(
+        totalCreditShares(nextRows.map((row) => row.shareText))
+      )
+    );
+  };
+
+  const handleShareChange = (key: string, nextShareText: string) => {
+    commitShareRows(
+      rows.map((row) =>
+        row.key === key ? { ...row, shareText: nextShareText } : row
+      )
+    );
+  };
 
   /**
    * A drop reorders the rows, so the list the form posts is the list the
@@ -353,9 +402,9 @@ export const SeriesCreatorCreditsField = ({
     setRows((currentRows) => withItemMoved(currentRows, rowKey, event));
   }, []);
 
-  const handleRemove = useCallback((key: string) => {
-    setRows((currentRows) => currentRows.filter((row) => row.key !== key));
-  }, []);
+  const handleRemove = (key: string) => {
+    commitShareRows(rows.filter((row) => row.key !== key));
+  };
 
   /**
    * Changing who a row credits can take its role out of the offer — the new
@@ -431,13 +480,20 @@ export const SeriesCreatorCreditsField = ({
               onRoleChange={(nextRolePublicId) =>
                 handleRoleChange(row.key, nextRolePublicId)
               }
+              onShareChange={(nextShareText) =>
+                handleShareChange(row.key, nextShareText)
+              }
               position={index + 1}
               roleItems={row.roleItems}
               rolePublicId={row.rolePublicId}
+              shareText={row.shareText}
             />
           ))}
         </SortableList>
       )}
+      {resolvedRows.length > 0 ? (
+        <CreditShareSummary total={shareTotal} />
+      ) : null}
 
       {creatorItems.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -476,6 +532,9 @@ export const SeriesCreatorCreditsField = ({
 
       <p className="text-xs text-muted-foreground">
         <ClientMessage message="admin.series.form.creators_description" />
+      </p>
+      <p className="text-xs text-muted-foreground">
+        <ClientMessage message="admin.series.form.creators_share_description" />
       </p>
       <p className="text-xs text-muted-foreground">
         <ClientMessage message="admin.series.form.creators_template_note" />

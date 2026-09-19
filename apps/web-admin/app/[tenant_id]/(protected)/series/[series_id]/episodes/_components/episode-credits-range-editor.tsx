@@ -18,12 +18,13 @@ import { RadioGroup } from "@publira/ui-components/radio-group";
 import { useId, useState } from "react";
 
 import { useClientMessages } from "#components/client-message";
+import { sharePercentToBps } from "#lib/credit-share";
 
 import { MAX_BULK_EPISODE_CREDIT_EPISODES } from "../_lib/credit-range";
 import type { EpisodeCreditRangeOption } from "../episode-types";
 import { selectionCheckboxProps } from "./episode-credits-selection";
 
-export const OPERATIONS = ["add", "replace", "remove"] as const;
+export const OPERATIONS = ["add", "replace", "remove", "set_share"] as const;
 
 export type CreditOperation = (typeof OPERATIONS)[number];
 
@@ -103,15 +104,54 @@ const CreditPairFields = ({
   );
 };
 
+/** The share a set-share writes, typed as a percentage. */
+const ShareField = ({
+  onShareChange,
+  shareText,
+}: {
+  onShareChange: (next: string) => void;
+  shareText: string;
+}) => {
+  const t = useClientMessages();
+  const shareId = useId();
+  const invalid =
+    shareText.trim().length > 0 && sharePercentToBps(shareText) === undefined;
+
+  return (
+    <Field className="sm:max-w-40">
+      <FieldLabel htmlFor={shareId}>
+        {t("admin.series.episodes.credits.share")}
+      </FieldLabel>
+      <FieldContent>
+        <Input
+          aria-invalid={invalid}
+          className="text-right tabular-nums"
+          id={shareId}
+          inputMode="decimal"
+          onChange={(event) => onShareChange(event.currentTarget.value)}
+          value={shareText}
+        />
+      </FieldContent>
+      {invalid ? (
+        <FormMessage variant="destructive">
+          {t("admin.series.episodes.credits.validation.share_invalid")}
+        </FormMessage>
+      ) : null}
+    </Field>
+  );
+};
+
 const CreditTargetFields = ({
   credit,
   creatorItems,
   from,
   onCreditChange,
   onFromChange,
+  onShareChange,
   onToChange,
   operation,
   roleItems,
+  shareText,
   to,
 }: {
   credit: CreditPair;
@@ -119,14 +159,37 @@ const CreditTargetFields = ({
   from: CreditPair;
   onCreditChange: (next: CreditPair) => void;
   onFromChange: (next: CreditPair) => void;
+  onShareChange: (next: string) => void;
   onToChange: (next: CreditPair) => void;
   operation: CreditOperation;
   roleItems: ComboboxItem[];
+  shareText: string;
   to: CreditPair;
 }) => {
   const t = useClientMessages();
   const creatorLabel = t("admin.series.episodes.credits.creator");
   const roleLabel = t("admin.series.episodes.credits.role");
+
+  if (operation === "set_share") {
+    return (
+      <div className="grid gap-3">
+        <CreditPairFields
+          creatorItems={creatorItems}
+          creatorLabel={creatorLabel}
+          onCreatorChange={(creatorPublicId) =>
+            onCreditChange({ ...credit, creatorPublicId })
+          }
+          onRoleChange={(rolePublicId) =>
+            onCreditChange({ ...credit, rolePublicId })
+          }
+          pair={credit}
+          roleItems={roleItems}
+          roleLabel={roleLabel}
+        />
+        <ShareField onShareChange={onShareChange} shareText={shareText} />
+      </div>
+    );
+  }
 
   if (operation !== "replace") {
     return (
@@ -382,6 +445,7 @@ export interface EpisodeCreditsRangeEditorProps {
     from: CreditPair;
     operation: CreditOperation;
     seriesPublicId: string;
+    share: string;
     tenantId: string;
     to: CreditPair;
   };
@@ -393,6 +457,7 @@ export interface EpisodeCreditsRangeEditorProps {
   onOperationChange: (next: string) => void;
   onRetryEpisodes: () => void;
   onSelectMany: (publicIds: readonly string[], selected: boolean) => void;
+  onShareChange: (next: string) => void;
   onToChange: (next: CreditPair) => void;
   onToggle: (publicId: string, selected: boolean) => void;
   operation: CreditOperation;
@@ -402,6 +467,7 @@ export interface EpisodeCreditsRangeEditorProps {
   selectedCount: number;
   selectedIds: ReadonlySet<string>;
   selectionTooMany: boolean;
+  shareText: string;
   to: CreditPair;
 }
 
@@ -428,6 +494,7 @@ export const EpisodeCreditsRangeEditor = ({
   onOperationChange,
   onRetryEpisodes,
   onSelectMany,
+  onShareChange,
   onToChange,
   onToggle,
   operation,
@@ -437,6 +504,7 @@ export const EpisodeCreditsRangeEditor = ({
   selectedCount,
   selectedIds,
   selectionTooMany,
+  shareText,
   to,
 }: EpisodeCreditsRangeEditorProps) => {
   const t = useClientMessages();
@@ -486,6 +554,7 @@ export const EpisodeCreditsRangeEditor = ({
         type="hidden"
         value={hidden.to.rolePublicId}
       />
+      <input name="share" type="hidden" value={hidden.share} />
 
       <Field>
         <FieldLabel htmlFor={operationId}>
@@ -516,6 +585,13 @@ export const EpisodeCreditsRangeEditor = ({
                 label: t("admin.series.episodes.credits.operation_remove"),
                 value: "remove",
               },
+              {
+                description: t(
+                  "admin.series.episodes.credits.operation_set_share_description"
+                ),
+                label: t("admin.series.episodes.credits.operation_set_share"),
+                value: "set_share",
+              },
             ]}
             onValueChange={onOperationChange}
             value={operation}
@@ -529,9 +605,11 @@ export const EpisodeCreditsRangeEditor = ({
         from={from}
         onCreditChange={onCreditChange}
         onFromChange={onFromChange}
+        onShareChange={onShareChange}
         onToChange={onToChange}
         operation={operation}
         roleItems={roleItems}
+        shareText={shareText}
         to={to}
       />
 

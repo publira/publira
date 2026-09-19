@@ -130,6 +130,21 @@ const SeriesFormSubmitLabel = ({
   );
 };
 
+/** `blocked` is a field the form cannot save as it stands. */
+const SeriesFormSubmitButton = ({
+  blocked,
+  isPending,
+  isUpdate,
+}: {
+  blocked: boolean;
+  isPending: boolean;
+  isUpdate: boolean;
+}) => (
+  <Button disabled={isPending || blocked} type="submit">
+    <SeriesFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
+  </Button>
+);
+
 interface LabelFieldProps {
   labelItems: ComboboxItem[];
   labelsErrorMessage?: string;
@@ -404,6 +419,9 @@ export const SeriesForm = ({
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
+  // The stored shares already passed the server's cap, so the form opens
+  // savable.
+  const [creditSharesSavable, setCreditSharesSavable] = useState(true);
   const labelItems = useMemo<ComboboxItem[]>(
     () =>
       labels
@@ -524,6 +542,7 @@ export const SeriesForm = ({
           creators={creators}
           creatorsErrorMessage={creatorsErrorMessage}
           initialCredits={initialSeries?.creatorCredits ?? []}
+          onSavableChange={setCreditSharesSavable}
         />
 
         <LabelField
@@ -618,9 +637,11 @@ export const SeriesForm = ({
       ) : null}
 
       <div className="flex justify-end">
-        <Button disabled={isPending} type="submit">
-          <SeriesFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
-        </Button>
+        <SeriesFormSubmitButton
+          blocked={!creditSharesSavable}
+          isPending={isPending}
+          isUpdate={isUpdate}
+        />
       </div>
     </form>
   );

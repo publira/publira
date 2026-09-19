@@ -1153,6 +1153,11 @@
         "eye_catch_update": "更新封面圖",
         "creators_no_match": "沒有相符的作者。",
         "creators_remove": "移除作者 {$position}",
+        "creators_share_field_label": "作者 {$position} 的分潤",
+        "creators_share_summary": "作者 {$total} · 出版方 {$publisher}",
+        "creators_share_over": "分潤合計為 {$total}，超出 100% 共 {$excess}。請降低後再儲存。",
+        "creators_share_invalid": "請以 0 到 100 的百分比輸入每項分潤，最多保留兩位小數。",
+        "creators_share_description": "每位作者旁的百分比是其在一章銷售額中的分潤。分潤以外的部分歸出版方所有。",
         "status": "連載狀態",
         "status_description": "表示是否仍會更新新話。會顯示在作品頁面上。",
         "schedule": "更新週期",
@@ -1367,10 +1372,13 @@
           "operation_replace_description": "將所選每一章來自系列的署名改寫成另一條署名。只屬於某一章的客座署名維持不變。",
           "operation_remove": "移除",
           "operation_remove_description": "從所選每一章移除來自系列的這條署名。只屬於某一章的客座署名維持不變。",
+          "operation_set_share": "設定分潤",
+          "operation_set_share_description": "在所選每一章中變更來自系列的這條署名的分潤。只屬於某一章的客座署名維持不變。",
           "from_legend": "取代這條署名",
           "to_legend": "取代為",
           "creator": "作者",
           "role": "角色",
+          "share": "分潤 (%)",
           "creator_search": "搜尋作者",
           "role_search": "搜尋角色",
           "creator_no_match": "沒有符合的作者。",
@@ -1388,6 +1396,7 @@
           "preview_add": "將 {$creator} 以 {$role} 新增到所選的 {$count} 章。",
           "preview_replace": "在所選的 {$count} 章中，將 {$from_creator}（{$from_role}）取代為 {$to_creator}（{$to_role}）。",
           "preview_remove": "從所選的 {$count} 章中移除 {$creator}（{$role}）。",
+          "preview_set_share": "將所選 {$count} 章中 {$role} {$creator} 的分潤設為 {$share}。",
           "apply": "套用",
           "applying": "正在套用...",
           "close": "關閉",
@@ -1403,11 +1412,13 @@
           "episodes_retry": "重試",
           "apply_failed": "無法更新署名。請稍後再試。",
           "duplicate": "所選的部分章節已經以該角色署了取代目標作者。請變更取代目標或選擇。",
+          "share_over_limit": "依此分潤，所選部分章節的分潤合計將超過 100%。請變更分潤或選擇。",
           "validation": {
             "operation_required": "請選擇一項操作。",
             "credit_required": "請選擇作者與角色。",
             "selection_required": "請至少選擇一章。",
-            "replace_same": "取代目標必須是不同的作者或角色。"
+            "replace_same": "取代目標必須是不同的作者或角色。",
+            "share_invalid": "請以 0 到 100 的百分比輸入每項分潤，最多保留兩位小數。"
           }
         }
       },

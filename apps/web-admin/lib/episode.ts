@@ -140,7 +140,8 @@ export interface EpisodeCreditPair {
 export type BulkEpisodeCreditOperation =
   | { type: "add"; credit: EpisodeCreditPair }
   | { type: "replace"; from: EpisodeCreditPair; to: EpisodeCreditPair }
-  | { type: "remove"; credit: EpisodeCreditPair };
+  | { type: "remove"; credit: EpisodeCreditPair }
+  | { type: "set_share"; credit: EpisodeCreditPair; shareBps: number };
 
 export type EpisodeCreditUnchangedReasonValue =
   | "already_credited"
@@ -164,6 +165,8 @@ export type BulkEditEpisodeCreditsResult =
 export interface EpisodeCreatorCreditItem {
   creatorPublicId: string;
   rolePublicId: string;
+  /** The share of this episode's sales the credit is paid, in basis points. */
+  shareBps: number;
   source: CreatorCreditSource;
 }
 
@@ -280,13 +283,38 @@ const mapEpisodeImage = (image: RawEpisodeImage): EpisodeImageItem => ({
 
 type RawEpisodeCredit = Pick<Creator, "publicId" | "role" | "source">;
 
-const mapEpisodeCredit = (
-  credit: RawEpisodeCredit
-): EpisodeCreatorCreditItem => ({
-  creatorPublicId: credit.publicId,
-  rolePublicId: credit.role?.publicId ?? "",
-  source: credit.source,
-});
+type EpisodeCreditShareRecord = Pick<
+  EpisodeCreatorCreditItem,
+  "creatorPublicId" | "rolePublicId" | "shareBps"
+>;
+
+const creditKey = (creatorPublicId: string, rolePublicId: string): string =>
+  `${creatorPublicId}\u0000${rolePublicId}`;
+
+/**
+ * `Creator` carries who and in what role, and the records carry the share:
+ * the storefront reads `Creator` too, and a share is the publisher's business.
+ */
+const mapEpisodeCredits = (
+  creators: readonly RawEpisodeCredit[],
+  records: readonly EpisodeCreditShareRecord[]
+): EpisodeCreatorCreditItem[] => {
+  const shares = new Map(
+    records.map((record) => [
+      creditKey(record.creatorPublicId, record.rolePublicId),
+      record.shareBps,
+    ])
+  );
+  return creators.map((credit) => {
+    const rolePublicId = credit.role?.publicId ?? "";
+    return {
+      creatorPublicId: credit.publicId,
+      rolePublicId,
+      shareBps: shares.get(creditKey(credit.publicId, rolePublicId)) ?? 0,
+      source: credit.source,
+    };
+  });
+};
 
 export const listEpisodeCredits = async (
   input: { tenantId: string; episodePublicId: string },
@@ -312,7 +340,10 @@ export const listEpisodeCredits = async (
       withSessionHeaders(sessionId)
     );
     return {
-      credits: (response.creators ?? []).map(mapEpisodeCredit),
+      credits: mapEpisodeCredits(
+        response.creators ?? [],
+        response.creatorCredits ?? []
+      ),
       ok: true,
     };
   } catch (error) {
@@ -333,10 +364,7 @@ export const replaceEpisodeCredits = async (
   input: {
     tenantId: string;
     episodePublicId: string;
-    creatorCredits: Pick<
-      EpisodeCreatorCreditItem,
-      "creatorPublicId" | "rolePublicId"
-    >[];
+    creatorCredits: EpisodeCreditShareRecord[];
   },
   locale: Locale
 ): Promise<ReplaceEpisodeCreditsResult> => {
@@ -356,8 +384,10 @@ export const replaceEpisodeCredits = async (
       },
       withSessionHeaders(sessionId)
     );
+    // The response names the credits alone; their shares are the ones just
+    // written.
     return {
-      credits: (response.creators ?? []).map(mapEpisodeCredit),
+      credits: mapEpisodeCredits(response.creators ?? [], input.creatorCredits),
       ok: true,
     };
   } catch (error) {
@@ -1289,11 +1319,23 @@ const toBulkCreditOperation = (operation: BulkEpisodeCreditOperation) => {
       value: { from: operation.from, to: operation.to },
     };
   }
+  if (operation.type === "set_share") {
+    return {
+      case: "setShare" as const,
+      value: { credit: { ...operation.credit, shareBps: operation.shareBps } },
+    };
+  }
   return { case: "remove" as const, value: { credit: operation.credit } };
 };
 
+/**
+ * A set-share refused as invalid is one that would take an episode of the
+ * range over 100%, which the console can only find out from the server: the
+ * other credits on those episodes are not on screen.
+ */
 const mapBulkCreditErrorToMessage = async (
   error: unknown,
+  operation: BulkEpisodeCreditOperation,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
@@ -1304,7 +1346,10 @@ const mapBulkCreditErrorToMessage = async (
     {
       locale,
       overrides: {
-        "invalid-argument": t("admin.series.episodes.credits.apply_failed"),
+        "invalid-argument":
+          operation.type === "set_share"
+            ? t("admin.series.episodes.credits.share_over_limit")
+            : t("admin.series.episodes.credits.apply_failed"),
         "not-found": t("admin.series.episodes.series_not_found"),
         precondition: t("admin.series.episodes.credits.duplicate"),
       },
@@ -1361,7 +1406,11 @@ export const bulkEditEpisodeCredits = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: await mapBulkCreditErrorToMessage(error, locale),
+      message: await mapBulkCreditErrorToMessage(
+        error,
+        input.operation,
+        locale
+      ),
       ok: false,
     };
   }

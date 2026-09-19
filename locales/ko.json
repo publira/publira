@@ -1153,6 +1153,11 @@
         "eye_catch_update": "커버 이미지 변경",
         "creators_no_match": "일치하는 작가가 없습니다.",
         "creators_remove": "작가 {$position} 제거",
+        "creators_share_field_label": "작가 {$position}의 몫",
+        "creators_share_summary": "작가 {$total} · 출판사 {$publisher}",
+        "creators_share_over": "몫의 합계가 {$total}(으)로 100%를 {$excess} 넘습니다. 저장하려면 줄여 주세요.",
+        "creators_share_invalid": "각 몫은 0부터 100까지의 퍼센트로, 소수점 이하 두 자리까지 입력해 주세요.",
+        "creators_share_description": "각 작가 옆의 퍼센트는 에피소드 매출 중 그 작가가 받는 몫입니다. 몫을 뺀 나머지는 출판사의 몫이 됩니다.",
         "status": "연재 상태",
         "status_description": "새 에피소드가 계속 나오는지를 나타냅니다. 작품 페이지에 표시됩니다.",
         "schedule": "연재 요일",
@@ -1367,10 +1372,13 @@
           "operation_replace_description": "선택한 각 에피소드의 시리즈에서 온 크레딧을 다른 크레딧으로 바꿉니다. 에피소드 고유의 게스트는 그대로 둡니다.",
           "operation_remove": "삭제",
           "operation_remove_description": "선택한 각 에피소드에서 시리즈에서 온 이 크레딧을 뺍니다. 에피소드 고유의 게스트는 그대로 둡니다.",
+          "operation_set_share": "몫 설정",
+          "operation_set_share_description": "선택한 각 에피소드에서 시리즈에서 온 이 크레딧의 몫을 바꿉니다. 에피소드 고유의 게스트는 그대로 둡니다.",
           "from_legend": "이 크레딧을 교체",
           "to_legend": "이 크레딧으로",
           "creator": "작가",
           "role": "역할",
+          "share": "몫 (%)",
           "creator_search": "작가 검색",
           "role_search": "역할 검색",
           "creator_no_match": "일치하는 작가가 없습니다.",
@@ -1388,6 +1396,7 @@
           "preview_add": "선택한 {$count}화에 {$creator}를 {$role}(으)로 추가합니다.",
           "preview_replace": "선택한 {$count}화에서 {$from_creator}({$from_role})를 {$to_creator}({$to_role})(으)로 바꿉니다.",
           "preview_remove": "선택한 {$count}화에서 {$creator}({$role})를 뺍니다.",
+          "preview_set_share": "선택한 {$count}화에서 {$role}인 {$creator}의 몫을 {$share}(으)로 설정합니다.",
           "apply": "적용",
           "applying": "적용하는 중...",
           "close": "닫기",
@@ -1403,11 +1412,13 @@
           "episodes_retry": "다시 시도",
           "apply_failed": "크레딧을 업데이트하지 못했습니다. 잠시 후 다시 시도해 주세요.",
           "duplicate": "선택한 일부 에피소드는 바꾸려는 작가를 이미 같은 역할로 크레딧하고 있습니다. 교체 대상이나 선택을 바꿔 주세요.",
+          "share_over_limit": "이 몫으로는 선택한 일부 에피소드에서 몫의 합계가 100%를 넘습니다. 몫이나 선택을 바꿔 주세요.",
           "validation": {
             "operation_required": "작업을 선택해 주세요.",
             "credit_required": "작가와 역할을 선택해 주세요.",
             "selection_required": "에피소드를 하나 이상 선택해 주세요.",
-            "replace_same": "교체 대상은 원래와 다른 작가나 역할이어야 합니다."
+            "replace_same": "교체 대상은 원래와 다른 작가나 역할이어야 합니다.",
+            "share_invalid": "각 몫은 0부터 100까지의 퍼센트로, 소수점 이하 두 자리까지 입력해 주세요."
           }
         }
       },

@@ -1153,6 +1153,11 @@
         "eye_catch_update": "Update cover image",
         "creators_no_match": "No matching authors found.",
         "creators_remove": "Remove author {$position}",
+        "creators_share_field_label": "Share of author {$position}",
+        "creators_share_summary": "Authors {$total} · Publisher {$publisher}",
+        "creators_share_over": "The shares add up to {$total}, {$excess} over 100%. Lower them to save.",
+        "creators_share_invalid": "Enter each share as a percentage from 0 to 100, with up to two decimal places.",
+        "creators_share_description": "The percentage beside each author is their share of an episode's sales. Whatever the shares leave is the publisher's own.",
         "status": "Serialization status",
         "status_description": "Whether new episodes are still coming. Readers see this on the series page.",
         "schedule": "Update schedule",
@@ -1367,10 +1372,13 @@
           "operation_replace_description": "Rewrite this credit into another on the standing team of every selected episode. A guest credited on one episode is left as they are.",
           "operation_remove": "Remove",
           "operation_remove_description": "Drop this credit from the standing team of every selected episode. A guest credited on one episode is left as they are.",
+          "operation_set_share": "Set share",
+          "operation_set_share_description": "Change this credit's share on the standing team of every selected episode. A guest credited on one episode is left as they are.",
           "from_legend": "Replace this credit",
           "to_legend": "With this credit",
           "creator": "Author",
           "role": "Role",
+          "share": "Share (%)",
           "creator_search": "Search authors",
           "role_search": "Search roles",
           "creator_no_match": "No matching authors found.",
@@ -1388,6 +1396,7 @@
           "preview_add": "Add {$creator} as {$role} to {$count} selected episodes.",
           "preview_replace": "Replace {$from_creator} as {$from_role} with {$to_creator} as {$to_role} on {$count} selected episodes.",
           "preview_remove": "Remove {$creator} as {$role} from {$count} selected episodes.",
+          "preview_set_share": "Set the share of {$creator} as {$role} to {$share} on {$count} selected episodes.",
           "apply": "Apply",
           "applying": "Applying...",
           "close": "Close",
@@ -1403,11 +1412,13 @@
           "episodes_retry": "Try again",
           "apply_failed": "Could not update the credits. Please try again later.",
           "duplicate": "Some of the selected episodes already credit the author this would become. Change the replacement or the selection.",
+          "share_over_limit": "The new share would take some of the selected episodes over 100% in total. Lower the share or change the selection.",
           "validation": {
             "operation_required": "Choose an operation.",
             "credit_required": "Choose an author and a role.",
             "selection_required": "Choose at least one episode.",
-            "replace_same": "The replacement has to name a different author or role."
+            "replace_same": "The replacement has to name a different author or role.",
+            "share_invalid": "Enter each share as a percentage from 0 to 100, with up to two decimal places."
           }
         }
       },

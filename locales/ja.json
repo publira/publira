@@ -1153,6 +1153,11 @@
         "eye_catch_update": "アイキャッチを更新",
         "creators_no_match": "一致する著者が見つかりません。",
         "creators_remove": "著者 {$position} を削除",
+        "creators_share_field_label": "著者 {$position} の取り分",
+        "creators_share_summary": "著者 {$total} ・ 出版社 {$publisher}",
+        "creators_share_over": "取り分の合計が {$total} で、100% を {$excess} 超えています。保存するには減らしてください。",
+        "creators_share_invalid": "取り分は 0 から 100 までのパーセントで、小数点以下 2 桁まで入力してください。",
+        "creators_share_description": "各著者の横のパーセントは、エピソードの売上のうちその著者が受け取る取り分です。取り分を除いた残りは出版社のものになります。",
         "status": "連載状況",
         "status_description": "新しいエピソードが続くかどうかです。作品ページに表示されます。",
         "schedule": "更新スケジュール",
@@ -1367,10 +1372,13 @@
           "operation_replace_description": "選択した各エピソードのシリーズ由来のクレジットを、別のクレジットに書き換える。エピソード独自のゲストはそのまま残ります。",
           "operation_remove": "削除",
           "operation_remove_description": "選択した各エピソードから、シリーズ由来のこのクレジットを外す。エピソード独自のゲストはそのまま残ります。",
+          "operation_set_share": "取り分を設定",
+          "operation_set_share_description": "選択した各エピソードで、シリーズ由来のこのクレジットの取り分を変更します。エピソード独自のゲストはそのまま残ります。",
           "from_legend": "このクレジットを置き換え",
           "to_legend": "このクレジットへ",
           "creator": "著者",
           "role": "役割",
+          "share": "取り分 (%)",
           "creator_search": "著者を検索",
           "role_search": "役割を検索",
           "creator_no_match": "一致する著者がありません。",
@@ -1388,6 +1396,7 @@
           "preview_add": "選択した {$count} 話に、{$creator} を {$role} として追加します。",
           "preview_replace": "選択した {$count} 話で、{$from_creator}（{$from_role}）を {$to_creator}（{$to_role}）に置き換えます。",
           "preview_remove": "選択した {$count} 話から、{$creator}（{$role}）を外します。",
+          "preview_set_share": "選択した {$count} 話で、{$role} の {$creator} の取り分を {$share} にします。",
           "apply": "適用",
           "applying": "適用しています...",
           "close": "閉じる",
@@ -1403,11 +1412,13 @@
           "episodes_retry": "再試行",
           "apply_failed": "クレジットを更新できませんでした。しばらくしてからもう一度お試しください。",
           "duplicate": "選択した一部のエピソードは、置き換え先の著者をすでに同じ役割でクレジットしています。置き換え先か選択を変更してください。",
+          "share_over_limit": "この取り分では、選択した一部のエピソードで取り分の合計が 100% を超えます。取り分か選択を変更してください。",
           "validation": {
             "operation_required": "操作を選んでください。",
             "credit_required": "著者と役割を選んでください。",
             "selection_required": "エピソードを1つ以上選んでください。",
-            "replace_same": "置き換え先は、元とは異なる著者か役割にしてください。"
+            "replace_same": "置き換え先は、元とは異なる著者か役割にしてください。",
+            "share_invalid": "取り分は 0 から 100 までのパーセントで、小数点以下 2 桁まで入力してください。"
           }
         }
       },

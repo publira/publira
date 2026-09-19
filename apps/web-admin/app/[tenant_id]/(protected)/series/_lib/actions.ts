@@ -16,6 +16,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   checkboxOnFormSchema,
+  creditShareBpsSchema,
   flagOneFormSchema,
   nonNegativeIntFormSchema,
   optionalCropRectFormSchema,
@@ -83,6 +84,7 @@ const creatorCreditListFormSchema = (
       z.object({
         creatorPublicId: requiredTrimmedString(message),
         rolePublicId: requiredTrimmedString(message),
+        shareBps: creditShareBpsSchema(message),
       }),
       { error: message }
     )
