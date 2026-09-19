@@ -153,7 +153,7 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 	next := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	publishedAt := now.Add(-2 * time.Hour)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		subjectSeriesPublicID,
 		"2",
@@ -209,7 +209,7 @@ func TestCatalogListRelatedSeriesRejectsATokenFromAnotherSeries(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		"OTHERSERIES1",
 		"2",
@@ -277,7 +277,7 @@ func TestCatalogListRelatedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	subjectID := uuid.Must(uuid.NewV7())
 	boundary := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		subjectSeriesPublicID,
 		"3",

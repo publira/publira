@@ -777,8 +777,8 @@ type Querier interface {
 	//
 	// Every query also keeps only what the calling surface may show, through
 	// series_surfaces for the series and episode_surfaces for the episodes counted
-	// into them. The surface is not one of the filters the token is bound to: a
-	// client names the same surface on every read it makes.
+	// into them. The token names the surface it was built on as well, for the
+	// reason it names the filters.
 	//
 	// What counts as a free episode is the published_free_episodes view, which
 	// both stages read: stage one keeps only the series that have such an episode

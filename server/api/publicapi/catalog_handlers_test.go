@@ -189,7 +189,7 @@ func TestCatalogListPublishedSeriesFollowsNextToken(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	boundaryID := uuid.Must(uuid.NewV7())
 	boundaryPublishedAt := now.Add(-time.Second)
-	token := pagination.Encode(pagination.Forward, "published_at_desc", boundaryPublishedAt.Format(time.RFC3339Nano), boundaryID.String())
+	token := webToken(pagination.Forward, "published_at_desc", boundaryPublishedAt.Format(time.RFC3339Nano), boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
@@ -230,7 +230,7 @@ func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	boundaryID := uuid.Must(uuid.NewV7())
 	boundaryPublishedAt := now.Add(-10 * time.Second)
-	token := pagination.Encode(pagination.Backward, "published_at_desc", boundaryPublishedAt.Format(time.RFC3339Nano), boundaryID.String())
+	token := webToken(pagination.Backward, "published_at_desc", boundaryPublishedAt.Format(time.RFC3339Nano), boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// A backward page scans ascending, so the oldest id of the page comes first.
@@ -281,7 +281,7 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			boundaryID := uuid.Must(uuid.NewV7())
 			sortKey, sortArg := test.boundarySortKey(now)
-			token := pagination.Encode(test.direction, test.orderName, sortKey, boundaryID.String())
+			token := webToken(test.direction, test.orderName, sortKey, boundaryID.String())
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
@@ -317,7 +317,7 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 				recoveryToken = resp.Msg.NextToken
 				recoveryDirection = pagination.Forward
 			}
-			cursor, err := pagination.Decode(recoveryToken)
+			cursor, err := decodeSurfaceToken(recoveryToken, "web")
 			if err != nil {
 				t.Fatalf("decode recovery token: %v", err)
 			}
@@ -403,7 +403,7 @@ func TestCatalogListPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			boundaryID := uuid.Must(uuid.NewV7())
 			sortKey, sortArg := test.boundarySortKey(now)
-			token := pagination.Encode(
+			token := webToken(
 				test.direction,
 				test.orderName,
 				sortKey,
@@ -498,7 +498,7 @@ func TestCatalogListPublishedSeriesTitleTokenCarriesTheTitleKey(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "title_asc", "Series 001", boundaryID.String())
+	token := webToken(pagination.Forward, "title_asc", "Series 001", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByTitleAscQuery)).
@@ -522,7 +522,7 @@ func TestCatalogListPublishedSeriesRejectsTokenFromAnotherOrder(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
+	token := webToken(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -564,7 +564,7 @@ func TestCatalogListPublishedSeriesRejectsUnknownFourthKey(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		"published_at_desc",
 		now.Format(time.RFC3339Nano),

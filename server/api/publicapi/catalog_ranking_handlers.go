@@ -355,7 +355,7 @@ func (s *apiServer) ListRankedSeries(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRankedSeriesPageSize, maxRankedSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -450,5 +450,6 @@ func (s *apiServer) ListRankedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeRankedSeriesRecoveryToken(pagination.Forward, rankingKey, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }

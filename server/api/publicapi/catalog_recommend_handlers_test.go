@@ -135,7 +135,7 @@ func TestCatalogListRecommendedSeriesPagesPastTheRanking(t *testing.T) {
 	publishedAt := now.Add(-2 * time.Hour)
 	// The last row of the previous page was an unranked one, so its token sorts
 	// under the rank the query gives every series the snapshot does not name.
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		strconv.FormatInt(int64(unrankedSortRank), 10),
 		publishedAt.Format(time.RFC3339Nano),
@@ -252,7 +252,7 @@ func TestCatalogListRecommendedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	boundary := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		"1",
 		now.Format(time.RFC3339Nano),
@@ -299,7 +299,7 @@ func TestCatalogListRecommendedSeriesRejectsABrokenToken(t *testing.T) {
 	_, err := client.ListRecommendedSeries(context.Background(), connect.NewRequest(&publirav1.ListRecommendedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		// Three keys are the right count, but the rank is not a number.
-		Token: pagination.Encode(pagination.Forward, "first", now.Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String()),
+		Token: webToken(pagination.Forward, "first", now.Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String()),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))

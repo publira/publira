@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"math"
 	"regexp"
+	"strconv"
 	"testing"
 	"time"
 
@@ -99,7 +100,7 @@ func TestCatalogListPublishedSeriesTokenNamesTheFilteredList(t *testing.T) {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := decodeSurfaceToken(resp.Msg.NextToken, "web")
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -116,7 +117,7 @@ func TestCatalogListPublishedSeriesRefusesATokenFromAnotherFilterSet(t *testing.
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		"published_at_desc+genre:GENRE0000001",
 		now.Format(time.RFC3339Nano),
@@ -242,7 +243,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderCarriesTheEpisodeInstant(t *
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := decodeSurfaceToken(resp.Msg.NextToken, "web")
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -264,7 +265,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderReadsBackwardsAscending(t *t
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Backward,
 		"latest_episode_at_desc",
 		now.Format(time.RFC3339Nano),
@@ -340,7 +341,7 @@ func TestCatalogListPublishedGenresReadsBackwardsDescending(t *testing.T) {
 	boundaryID := uuid.Must(uuid.NewV7())
 	first := uuid.Must(uuid.NewV7())
 	second := uuid.Must(uuid.NewV7())
-	token := pagination.EncodeCountUUID(pagination.Backward, 5, boundaryID)
+	token := webToken(pagination.Backward, "5", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedGenresByTenantDescQuery)).
@@ -396,7 +397,7 @@ func TestCatalogListPublishedTagsCarriesTheCountInItsToken(t *testing.T) {
 	if len(resp.Msg.Tags) != 1 || resp.Msg.Tags[0].Slug != "swordplay" {
 		t.Fatalf("tags = %v, want the most-carried tag alone", resp.Msg.Tags)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := decodeSurfaceToken(resp.Msg.NextToken, "web")
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -415,7 +416,7 @@ func TestCatalogListPublishedTagsReadsBackwardsAscending(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Backward, "2", "rivals")
+	token := webToken(pagination.Backward, "2", "rivals")
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedTagsByTenantAscQuery)).
@@ -477,7 +478,7 @@ func TestCatalogListPublishedGenresRejectsACursorOutsideTheColumnRange(t *testin
 		client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 		_, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
 			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			Token:  pagination.EncodeCountUUID(pagination.Forward, count, uuid.Must(uuid.NewV7())),
+			Token:  webToken(pagination.Forward, strconv.FormatInt(int64(count), 10), uuid.Must(uuid.NewV7()).String()),
 		}))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("cursor count %d code = %v, want invalid_argument (err=%v)", count, connect.CodeOf(err), err)
@@ -496,7 +497,7 @@ func TestCatalogListPublishedSeriesLatestUpdateEmptyPageKeepsAWayBack(t *testing
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	token := pagination.Encode(
+	token := webToken(
 		pagination.Forward,
 		"latest_episode_at_desc",
 		now.Format(time.RFC3339Nano),
@@ -524,7 +525,7 @@ func TestCatalogListPublishedSeriesLatestUpdateEmptyPageKeepsAWayBack(t *testing
 		t.Fatalf("next_token = %q, want empty past the end of the list", resp.Msg.NextToken)
 	}
 
-	cursor, err := pagination.Decode(resp.Msg.PreviousToken)
+	cursor, err := decodeSurfaceToken(resp.Msg.PreviousToken, "web")
 	if err != nil {
 		t.Fatalf("decode previous_token: %v", err)
 	}

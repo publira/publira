@@ -155,7 +155,7 @@ func (s *apiServer) SearchPublishedSeries(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultSeriesPageSize, maxSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -196,6 +196,7 @@ func (s *apiServer) SearchPublishedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeSearchRecoveryToken(pagination.Forward, query, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }
 
@@ -270,7 +271,7 @@ func (s *apiServer) SearchPublishedCreators(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorPageSize, maxCreatorPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -312,6 +313,7 @@ func (s *apiServer) SearchPublishedCreators(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeSearchCreatorRecoveryToken(pagination.Forward, query, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }
 
@@ -442,7 +444,7 @@ func (s *apiServer) SearchPublishedLabels(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultLabelPageSize, maxLabelPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -484,5 +486,6 @@ func (s *apiServer) SearchPublishedLabels(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeSearchLabelRecoveryToken(pagination.Forward, query, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }

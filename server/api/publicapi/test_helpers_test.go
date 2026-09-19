@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/ageverification"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
@@ -271,4 +272,10 @@ func expectSeriesRating(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID, aver
 	mock.ExpectQuery("-- name: GetSeriesRating :one").
 		WithArgs(tenantID, seriesID).
 		WillReturnRows(sqlmock.NewRows([]string{"rating_count", "rating_average"}).AddRow(count, average))
+}
+
+// webToken builds a catalog token the way a read from the storefront hands one
+// back: the surface it was built on, then the list's own keys.
+func webToken(direction pagination.Direction, keys ...string) string {
+	return pagination.Encode(direction, append([]string{"surface:web"}, keys...)...)
 }

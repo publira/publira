@@ -334,3 +334,42 @@ func TestDBCatalogRejectsAnUnknownSurface(t *testing.T) {
 	}))
 	assertConnectCode(t, err, connect.CodeInvalidArgument)
 }
+
+// A token names the surface it was built on, so one carried from the app to the
+// storefront — a web URL opened through a deep link, say — is refused rather
+// than applied to a list it was not built from.
+func TestDBCatalogRefusesATokenFromAnotherSurface(t *testing.T) {
+	env := newPublicDBEnv(t)
+	catalog := env.seedSurfaceCatalog(t)
+	ctx := context.Background()
+	client := env.catalogClient()
+
+	first, err := client.ListPublishedSeries(ctx, connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant:  tenantContext(catalog.tenant),
+		Limit:   1,
+		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries in the app: %v", err)
+	}
+	if first.Msg.NextToken == "" {
+		t.Fatal("first app page carries no next token")
+	}
+
+	if _, err := client.ListPublishedSeries(ctx, connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant:  tenantContext(catalog.tenant),
+		Limit:   1,
+		Token:   first.Msg.NextToken,
+		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
+	})); err != nil {
+		t.Fatalf("ListPublishedSeries with the app token in the app: %v", err)
+	}
+
+	_, err = client.ListPublishedSeries(ctx, connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant:  tenantContext(catalog.tenant),
+		Limit:   1,
+		Token:   first.Msg.NextToken,
+		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB,
+	}))
+	assertConnectCode(t, err, connect.CodeInvalidArgument)
+}

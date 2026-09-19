@@ -159,7 +159,7 @@ func TestCatalogListPublishedCreatorsDropsCreatorsWhoseSeriesWentUnpublished(t *
 	if resp.Msg.NextToken == "" {
 		t.Fatal("next_token is empty, want a token built from the remaining row")
 	}
-	wantToken := pagination.Encode(pagination.Forward, "Akira", keptID.String())
+	wantToken := webToken(pagination.Forward, "Akira", keptID.String())
 	if resp.Msg.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the remaining creator's cursor, not the dropped row", resp.Msg.NextToken)
 	}
@@ -172,7 +172,7 @@ func TestCatalogListPublishedCreatorsFollowsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "Mika", boundaryID.String())
+	token := webToken(pagination.Forward, "Mika", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
@@ -210,7 +210,7 @@ func TestCatalogListPublishedCreatorsFollowsPreviousTokenBackwards(t *testing.T)
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Backward, "Yuki", boundaryID.String())
+	token := webToken(pagination.Backward, "Yuki", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	akiraID := uuid.Must(uuid.NewV7())
@@ -278,7 +278,7 @@ func TestCatalogListPublishedCreatorsEmptyPageKeepsAWayBack(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC()
 			boundaryID := uuid.Must(uuid.NewV7())
-			token := pagination.Encode(test.direction, "Mika", boundaryID.String())
+			token := webToken(test.direction, "Mika", boundaryID.String())
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
@@ -322,7 +322,7 @@ func TestCatalogListPublishedCreatorsEmptyRecoveryPageDropsBothTokens(t *testing
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "Mika", boundaryID.String(), creatorInclusiveKey)
+	token := webToken(pagination.Forward, "Mika", boundaryID.String(), creatorInclusiveKey)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsByNameAscQuery)).
@@ -368,7 +368,7 @@ func TestCatalogListPublishedCreatorsRejectsUnknownFourthKey(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	token := pagination.Encode(pagination.Forward, "Mika", uuid.Must(uuid.NewV7()).String(), "nope")
+	token := webToken(pagination.Forward, "Mika", uuid.Must(uuid.NewV7()).String(), "nope")
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
@@ -487,7 +487,7 @@ func TestCatalogGetPublishedCreatorDetailFirstPageReportsNextToken(t *testing.T)
 	if resp.Msg.NextToken == "" {
 		t.Fatal("next_token is empty, want a token for the next page")
 	}
-	wantToken := pagination.Encode(pagination.Forward, "title_asc", "Beta", ids[1].String())
+	wantToken := webToken(pagination.Forward, "title_asc", "Beta", ids[1].String())
 	if resp.Msg.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the last returned title cursor", resp.Msg.NextToken)
 	}
@@ -501,7 +501,7 @@ func TestCatalogGetPublishedCreatorDetailFollowsNextToken(t *testing.T) {
 	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "title_asc", "Beta", boundaryID.String())
+	token := webToken(pagination.Forward, "title_asc", "Beta", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
@@ -546,7 +546,7 @@ func TestCatalogGetPublishedCreatorDetailFollowsPreviousTokenBackwards(t *testin
 	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Backward, "title_asc", "Zeta", boundaryID.String())
+	token := webToken(pagination.Backward, "title_asc", "Zeta", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	alphaID := uuid.Must(uuid.NewV7())
@@ -620,7 +620,7 @@ func TestCatalogGetPublishedCreatorDetailEmptyPageKeepsAWayBack(t *testing.T) {
 			creatorID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC()
 			boundaryID := uuid.Must(uuid.NewV7())
-			token := pagination.Encode(test.direction, "title_asc", "Beta", boundaryID.String())
+			token := webToken(test.direction, "title_asc", "Beta", boundaryID.String())
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
@@ -670,7 +670,7 @@ func TestCatalogGetPublishedCreatorDetailEmptyRecoveryPageDropsBothTokens(t *tes
 	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "title_asc", "Beta", boundaryID.String(), seriesInclusiveKey)
+	token := webToken(pagination.Forward, "title_asc", "Beta", boundaryID.String(), seriesInclusiveKey)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
@@ -727,7 +727,7 @@ func TestCatalogGetPublishedCreatorDetailRejectsTokenFromAnotherOrder(t *testing
 
 	tenantID := uuid.Must(uuid.NewV7())
 	creatorID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
+	token := webToken(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
 		WithArgs("web", tenantID, "CREATOR00001").

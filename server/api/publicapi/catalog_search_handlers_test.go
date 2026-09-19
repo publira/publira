@@ -135,7 +135,7 @@ func TestCatalogSearchPublishedSeriesRejectsQueryMismatchOnToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	token := pagination.Encode(pagination.Forward, "Alpha", "Beta", boundaryID.String())
+	token := webToken(pagination.Forward, "Alpha", "Beta", boundaryID.String())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
@@ -180,7 +180,7 @@ func TestCatalogSearchPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	if got := len(resp.Msg.Series); got != 2 {
 		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
 	}
-	wantToken := pagination.Encode(pagination.Forward, "seed", "Beta Seed", ids[1].String())
+	wantToken := webToken(pagination.Forward, "seed", "Beta Seed", ids[1].String())
 	if resp.Msg.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
 	}
@@ -196,7 +196,7 @@ func TestCatalogSearchPublishedSeriesFollowsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "seed", "Beta Seed", boundaryID.String())
+	token := webToken(pagination.Forward, "seed", "Beta Seed", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
@@ -257,7 +257,7 @@ func TestCatalogSearchPublishedSeriesAcceptsRecasedQueryOnToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "seed", "Beta Seed", boundaryID.String())
+	token := webToken(pagination.Forward, "seed", "Beta Seed", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
@@ -290,7 +290,7 @@ func TestCatalogSearchPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T)
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Backward, "seed", "Zeta Seed", boundaryID.String())
+	token := webToken(pagination.Backward, "seed", "Zeta Seed", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	alphaID := uuid.Must(uuid.NewV7())
@@ -356,7 +356,7 @@ func TestCatalogSearchPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC()
 			boundaryID := uuid.Must(uuid.NewV7())
-			token := pagination.Encode(test.direction, "seed", "Beta Seed", boundaryID.String())
+			token := webToken(test.direction, "seed", "Beta Seed", boundaryID.String())
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
@@ -390,7 +390,7 @@ func TestCatalogSearchPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 				recoveryToken = resp.Msg.NextToken
 				recoveryDirection = pagination.Forward
 			}
-			cursor, err := pagination.Decode(recoveryToken)
+			cursor, err := decodeSurfaceToken(recoveryToken, "web")
 			if err != nil {
 				t.Fatalf("decode recovery token: %v", err)
 			}
@@ -409,7 +409,7 @@ func TestCatalogSearchPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Forward, "seed", "Beta Seed", boundaryID.String(), seriesInclusiveKey)
+	token := webToken(pagination.Forward, "seed", "Beta Seed", boundaryID.String(), seriesInclusiveKey)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsBySearchTitleAscQuery)).
@@ -503,7 +503,7 @@ func TestCatalogSearchPublishedCreatorsRejectsQueryMismatchOnToken(t *testing.T)
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	token := pagination.Encode(pagination.Forward, "akira", "Akira", boundaryID.String())
+	token := webToken(pagination.Forward, "akira", "Akira", boundaryID.String())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
@@ -547,7 +547,7 @@ func TestCatalogSearchPublishedCreatorsFirstPageReportsNextToken(t *testing.T) {
 	if got := len(resp.Msg.Creators); got != 2 {
 		t.Fatalf("creator count = %d, want the over-fetched row dropped", got)
 	}
-	wantToken := pagination.Encode(pagination.Forward, "a", "Mika", mikaID.String())
+	wantToken := webToken(pagination.Forward, "a", "Mika", mikaID.String())
 	if resp.Msg.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
 	}
@@ -563,7 +563,7 @@ func TestCatalogSearchPublishedCreatorsFollowsPreviousTokenBackwards(t *testing.
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Backward, "a", "Yuki", boundaryID.String())
+	token := webToken(pagination.Backward, "a", "Yuki", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	akiraID := uuid.Must(uuid.NewV7())
@@ -652,7 +652,7 @@ func TestCatalogSearchPublishedLabelsRejectsQueryMismatchOnToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	token := pagination.Encode(pagination.Forward, "jump", "Jump", boundaryID.String())
+	token := webToken(pagination.Forward, "jump", "Jump", boundaryID.String())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
@@ -694,7 +694,7 @@ func TestCatalogSearchPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
 	if got := len(resp.Msg.Labels); got != 2 {
 		t.Fatalf("label count = %d, want the over-fetched row dropped", got)
 	}
-	wantToken := pagination.Encode(pagination.Forward, "comics", "Beta Comics", betaID.String())
+	wantToken := webToken(pagination.Forward, "comics", "Beta Comics", betaID.String())
 	if resp.Msg.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
 	}
@@ -710,7 +710,7 @@ func TestCatalogSearchPublishedLabelsFollowsPreviousTokenBackwards(t *testing.T)
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := pagination.Encode(pagination.Backward, "comics", "Zeta Comics", boundaryID.String())
+	token := webToken(pagination.Backward, "comics", "Zeta Comics", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	alphaID := uuid.Must(uuid.NewV7())

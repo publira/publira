@@ -96,7 +96,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 ) ([]*publirattypesv1.Series, string, string, error) {
 	order := seriesOrders[publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC]
 	limit := pagination.NormalizeLimit(requestedLimit, defaultSeriesPageSize, maxSeriesPageSize)
-	cursor, err := pagination.Decode(token)
+	cursor, err := decodeSurfaceToken(token, surface)
 	if err != nil {
 		return nil, "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -137,6 +137,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, seriesFilters{}, keys)
 	}
+	bindSurfaceTokens(surface, &previousToken, &nextToken)
 	return items, previousToken, nextToken, nil
 }
 

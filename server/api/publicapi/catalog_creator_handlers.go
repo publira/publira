@@ -189,7 +189,7 @@ func (s *apiServer) ListPublishedCreators(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorPageSize, maxCreatorPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -231,6 +231,7 @@ func (s *apiServer) ListPublishedCreators(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeCreatorRecoveryToken(pagination.Forward, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }
 
@@ -291,7 +292,7 @@ func (s *apiServer) publishedCreatorSeriesPage(
 ) ([]*publirattypesv1.Series, string, string, error) {
 	order := seriesOrders[publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC]
 	limit := pagination.NormalizeLimit(requestedLimit, defaultSeriesPageSize, maxSeriesPageSize)
-	cursor, err := pagination.Decode(token)
+	cursor, err := decodeSurfaceToken(token, surface)
 	if err != nil {
 		return nil, "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -332,6 +333,7 @@ func (s *apiServer) publishedCreatorSeriesPage(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, seriesFilters{}, keys)
 	}
+	bindSurfaceTokens(surface, &previousToken, &nextToken)
 	return items, previousToken, nextToken, nil
 }
 

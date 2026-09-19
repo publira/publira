@@ -361,7 +361,7 @@ func TestCatalogGetPublishedLabelDetailFirstPageReportsNextToken(t *testing.T) {
 	if resp.Msg.PreviousToken != "" {
 		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
 	}
-	wantToken := pagination.Encode(pagination.Forward, "title_asc", "Beta", ids[1].String())
+	wantToken := webToken(pagination.Forward, "title_asc", "Beta", ids[1].String())
 	if resp.Msg.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the last returned title cursor", resp.Msg.NextToken)
 	}

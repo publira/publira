@@ -220,7 +220,7 @@ func (s *apiServer) ListRelatedSeries(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRelatedSeriesPageSize, maxRelatedSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -308,5 +308,6 @@ func (s *apiServer) ListRelatedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeRelatedSeriesRecoveryToken(pagination.Forward, seriesPublicID, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }

@@ -236,7 +236,7 @@ func (s *apiServer) ListRecommendedSeries(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRecommendedSeriesPageSize, maxRecommendedSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -312,5 +312,6 @@ func (s *apiServer) ListRecommendedSeries(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeRecommendedRecoveryToken(pagination.Forward, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
 }

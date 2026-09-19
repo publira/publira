@@ -337,7 +337,7 @@ func TestCatalogListRankedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	snapshotID := uuid.Must(uuid.NewV7())
 	boundary := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
-	token := pagination.Encode(pagination.Forward, "daily", snapshotID.String(), "1", boundary.String())
+	token := webToken(pagination.Forward, "daily", snapshotID.String(), "1", boundary.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectPinnedRankingSnapshotLookup(mock, tenantID, snapshotID, "daily", now, rankingItemsJSON(boundary), nil)
@@ -381,7 +381,7 @@ func TestCatalogListRankedSeriesRejectsATokenFromAnotherPeriod(t *testing.T) {
 	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
 		Period: publirav1.RankingPeriod_RANKING_PERIOD_DAILY,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Token: pagination.Encode(
+		Token: webToken(
 			pagination.Forward, "weekly", uuid.Must(uuid.NewV7()).String(), "1", uuid.Must(uuid.NewV7()).String()),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -401,7 +401,7 @@ func TestCatalogListRankedSeriesRejectsABrokenToken(t *testing.T) {
 	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		// Four keys are the right count, but the rank is not a number.
-		Token: pagination.Encode(
+		Token: webToken(
 			pagination.Forward, "daily", uuid.Must(uuid.NewV7()).String(), "first", uuid.Must(uuid.NewV7()).String()),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -428,7 +428,7 @@ func TestCatalogListRankedSeriesRejectsATokenWhoseRankingIsGone(t *testing.T) {
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Token: pagination.Encode(
+		Token: webToken(
 			pagination.Forward, "daily", snapshotID.String(), "1", uuid.Must(uuid.NewV7()).String()),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -445,7 +445,7 @@ func TestCatalogListRankedSeriesKeepsALaterPageInThePinnedSnapshot(t *testing.T)
 	boundary := uuid.Must(uuid.NewV7())
 	tail := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
-	token := pagination.Encode(pagination.Forward, "daily", pinned.String(), "1", boundary.String())
+	token := webToken(pagination.Forward, "daily", pinned.String(), "1", boundary.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// The batch wrote a newer ranking while the reader was on page 1. The token
