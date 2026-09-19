@@ -1,12 +1,16 @@
 import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { tenant_id } from "next/root-params";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { Message } from "#components/message";
+import { OfflineNotice } from "#components/offline-notice";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantName } from "#lib/public-api";
@@ -90,6 +94,11 @@ const TenantRootLayout = ({ children }: { children: ReactNode }) => (
     </head>
     <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
       {children}
+      <OfflineNotice>
+        <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+          <Message message="admin.shell.offline" />
+        </Suspense>
+      </OfflineNotice>
     </body>
   </html>
 );

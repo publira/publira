@@ -45,6 +45,7 @@ Add it as a workspace dependency and load the styles from the global CSS.
 - [EmptyState](./src/empty-state) - the empty state
 - [SectionError](./src/section-error) - one section of a page that failed to load
 - [sectionErrorFallback](./src/section-error-fallback) - the body of a section-level error boundary
+- [OfflineNotice](./src/offline-notice) - the floating notice shown while the connection is gone
 
 ## Usage
 

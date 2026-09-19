@@ -1,7 +1,11 @@
 import "./globals.css";
 import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
+import { Message } from "#components/message";
+import { OfflineNotice } from "#components/offline-notice";
 import { PlatformMessagesProvider } from "#components/platform-messages-provider";
 
 export const metadata: Metadata = {
@@ -36,6 +40,11 @@ const RootLayout = ({ children }: LayoutProps<"/">) => (
     </head>
     <body className="min-h-dvh font-sans antialiased">
       <PlatformMessagesProvider>{children}</PlatformMessagesProvider>
+      <OfflineNotice>
+        <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+          <Message message="platform.shell.offline" />
+        </Suspense>
+      </OfflineNotice>
     </body>
   </html>
 );

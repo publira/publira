@@ -19,6 +19,7 @@ export default defineConfig({
     "src/identifier/index.ts",
     "src/input/index.ts",
     "src/locale-switcher/index.ts",
+    "src/offline-notice/index.ts",
     "src/popover/index.ts",
     "src/radio-group/index.ts",
     "src/section-error/index.ts",

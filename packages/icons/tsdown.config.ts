@@ -32,6 +32,7 @@ export default defineConfig({
     "src/share-icon.tsx",
     "src/unfold-horizontal-icon.tsx",
     "src/user-icon.tsx",
+    "src/wifi-off-icon.tsx",
   ],
   format: "esm",
 });

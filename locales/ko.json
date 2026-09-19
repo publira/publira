@@ -1944,6 +1944,7 @@
       "navigation_open": "내비게이션 열기",
       "notifications_none": "알림, 읽지 않음 없음",
       "notifications_unread": "알림, 읽지 않음 {$count}건",
+      "offline": "오프라인 상태입니다. 연결이 복구되기를 기다리고 있습니다.",
       "tenant_title": "{$name} 관리자 콘솔",
       "title": "관리자 콘솔"
     },
@@ -2188,6 +2189,7 @@
       "mark_all_read": "모두 읽음으로 표시",
       "mark_read": "읽음으로 표시",
       "next_page": "다음 페이지",
+      "offline": "오프라인 상태입니다. 연결이 복구되기를 기다리고 있습니다.",
       "previous_page": "이전 페이지",
       "read": "읽음",
       "retry": "다시 시도",
@@ -3448,7 +3450,8 @@
       "navigation_close": "내비게이션 닫기",
       "navigation_open": "내비게이션 열기",
       "notifications_none": "알림, 읽지 않음 없음",
-      "notifications_unread": "알림, 읽지 않음 {$count}건"
+      "notifications_unread": "알림, 읽지 않음 {$count}건",
+      "offline": "오프라인 상태입니다. 연결이 복구되기를 기다리고 있습니다."
     },
     "tenants": {
       "add_member": "멤버 추가",
