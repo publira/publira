@@ -44,7 +44,7 @@ func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
 		Tenant:       tenant.tenantContext(),
 		PublicId:     defaulted,
 		Title:        "Default Availability",
-		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_WEB,
+		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_WEB.Enum(),
 	}))
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
@@ -57,6 +57,20 @@ func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
 	}
+	// An update that leaves the field out keeps what is stored, so a caller that
+	// predates it cannot put the series back on both surfaces.
+	kept, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: created.Msg.Series.PublicId,
+		Title:    "App Only, Retitled",
+	}))
+	if err != nil {
+		t.Fatalf("UpdateSeries without availability: %v", err)
+	}
+	if kept.Msg.Series.Availability != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP {
+		t.Fatalf("availability after an update that omits it = %s, want APP", kept.Msg.Series.Availability)
+	}
+
 	want := map[string]publirattypesv1.SurfaceAvailability{
 		defaulted:                   publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_WEB,
 		created.Msg.Series.PublicId: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
@@ -74,10 +88,25 @@ func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
 		Tenant:       tenant.tenantContext(),
 		PublicId:     defaulted,
 		Title:        "Default Availability",
-		Availability: publirattypesv1.SurfaceAvailability(99),
+		Availability: publirattypesv1.SurfaceAvailability(99).Enum(),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSeries with an unknown availability code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+
+	// An explicit unspecified value is a statement rather than an omission, and
+	// stores the column's default.
+	reset, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:       tenant.tenantContext(),
+		PublicId:     defaulted,
+		Title:        "Default Availability",
+		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED.Enum(),
+	}))
+	if err != nil {
+		t.Fatalf("UpdateSeries with an explicit unspecified availability: %v", err)
+	}
+	if reset.Msg.Series.Availability != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_ALL {
+		t.Fatalf("availability after an explicit unspecified value = %s, want ALL", reset.Msg.Series.Availability)
 	}
 }
 

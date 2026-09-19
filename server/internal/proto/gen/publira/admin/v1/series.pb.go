@@ -481,10 +481,12 @@ type UpdateSeriesRequest struct {
 	// pages. Absent stores the default the column carries, 1: the cover stands
 	// alone. Negative is invalid_argument.
 	SpreadStartIndex *int32 `protobuf:"varint,21,opt,name=spread_start_index,json=spreadStartIndex,proto3,oneof" json:"spread_start_index,omitempty"`
-	// Which surfaces this series may be shown on. SURFACE_AVAILABILITY_UNSPECIFIED
-	// stores the default the column carries, both surfaces. The stored value
-	// comes back as Series.availability.
-	Availability  v1.SurfaceAvailability `protobuf:"varint,22,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
+	// Which surfaces this series may be shown on. Unlike the listing fields
+	// above, an absent value keeps the one stored: a caller that predates the
+	// field would otherwise put a series kept to one surface back on both.
+	// SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly, stores both surfaces.
+	// The stored value comes back as Series.availability.
+	Availability  *v1.SurfaceAvailability `protobuf:"varint,22,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability,oneof" json:"availability,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -660,8 +662,8 @@ func (x *UpdateSeriesRequest) GetSpreadStartIndex() int32 {
 }
 
 func (x *UpdateSeriesRequest) GetAvailability() v1.SurfaceAvailability {
-	if x != nil {
-		return x.Availability
+	if x != nil && x.Availability != nil {
+		return *x.Availability
 	}
 	return v1.SurfaceAvailability(0)
 }
@@ -3628,7 +3630,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\fcomment_mode\x18\x02 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12O\n" +
 	"\x11reading_direction\x18\x03 \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x12,\n" +
 	"\x12spread_start_index\x18\x04 \x01(\x05R\x10spreadStartIndex\x12N\n" +
-	"\x0fcreator_credits\x18\x05 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\"\xe1\b\n" +
+	"\x0fcreator_credits\x18\x05 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\"\xf7\b\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -3651,9 +3653,10 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x0fcreator_credits\x18\x12 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\x12@\n" +
 	"\fcomment_mode\x18\x13 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12O\n" +
 	"\x11reading_direction\x18\x14 \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x121\n" +
-	"\x12spread_start_index\x18\x15 \x01(\x05H\x00R\x10spreadStartIndex\x88\x01\x01\x12I\n" +
-	"\favailability\x18\x16 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailabilityB\x15\n" +
-	"\x13_spread_start_indexJ\x04\b\a\x10\bR\x12creator_public_ids\"\xd9\x02\n" +
+	"\x12spread_start_index\x18\x15 \x01(\x05H\x00R\x10spreadStartIndex\x88\x01\x01\x12N\n" +
+	"\favailability\x18\x16 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityH\x01R\favailability\x88\x01\x01B\x15\n" +
+	"\x13_spread_start_indexB\x0f\n" +
+	"\r_availabilityJ\x04\b\a\x10\bR\x12creator_public_ids\"\xd9\x02\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x12@\n" +
 	"\fcomment_mode\x18\x02 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12O\n" +

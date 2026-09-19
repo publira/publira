@@ -127,10 +127,12 @@ message UpdateSeriesRequest {
   // pages. Absent stores the default the column carries, 1: the cover stands
   // alone. Negative is invalid_argument.
   optional int32 spread_start_index = 21;
-  // Which surfaces this series may be shown on. SURFACE_AVAILABILITY_UNSPECIFIED
-  // stores the default the column carries, both surfaces. The stored value
-  // comes back as Series.availability.
-  publira.types.v1.SurfaceAvailability availability = 22;
+  // Which surfaces this series may be shown on. Unlike the listing fields
+  // above, an absent value keeps the one stored: a caller that predates the
+  // field would otherwise put a series kept to one surface back on both.
+  // SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly, stores both surfaces.
+  // The stored value comes back as Series.availability.
+  optional publira.types.v1.SurfaceAvailability availability = 22;
 }
 
 message UpdateSeriesResponse {

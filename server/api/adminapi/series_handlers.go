@@ -787,10 +787,6 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, err
 	}
-	availability, err := protomapper.SeriesSurfaceAvailabilityToStored(req.Msg.Availability)
-	if err != nil {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
-	}
 	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
@@ -808,6 +804,13 @@ func (s *adminServer) UpdateSeries(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
 		return nil, s.internalDBError(ctx, "failed to get series for update", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
+	}
+	availability := current.Availability
+	if req.Msg.Availability != nil {
+		availability, err = protomapper.SeriesSurfaceAvailabilityToStored(req.Msg.GetAvailability())
+		if err != nil {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
+		}
 	}
 	labelPublicID := strings.TrimSpace(req.Msg.LabelPublicId)
 	if labelPublicID == "" && current.LabelPublicID.Valid {
