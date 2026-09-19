@@ -19,7 +19,7 @@
 # Dockerfile does not set GOOS/GOARCH. Buildx --platform must match the
 # builder (native per-arch builds).
 
-FROM golang:1.27-bookworm@sha256:6ed48491acfb40533f6970d9d8ce3cbfc6f2cc7d81413c2f01c871c927d98634 AS builder
+FROM golang:1.27-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195 AS builder
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libvips-dev pkg-config \
