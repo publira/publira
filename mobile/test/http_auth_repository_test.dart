@@ -104,6 +104,10 @@ void main() {
     expect(age.verification, AgeVerification.checked);
   });
 
+  test('readEmail reports the address the account holds', () async {
+    expect(await auth.readEmail(stored), ConnectFixtureServer.memberEmail);
+  });
+
   test('readReaderAge reports an account that holds none', () async {
     server.ageVerification = 'AGE_VERIFICATION_NONE';
 

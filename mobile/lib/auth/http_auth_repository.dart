@@ -79,6 +79,12 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<String> readEmail(AuthSession session) async {
+    final user = await _getMe(session);
+    return _readString(user, 'email');
+  }
+
+  @override
   Future<String> recordBirthDate(
     AuthSession session,
     DateTime birthDate,

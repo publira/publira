@@ -25,6 +25,15 @@ abstract class AuthRepository {
   /// Throws [AuthFailure].
   Future<ReaderAge> readReaderAge(AuthSession session);
 
+  /// The email address of the account behind [session], empty when the API
+  /// sent none.
+  ///
+  /// Read when it is asked for rather than carried on the session, because
+  /// the address can change on the website while the app stays signed in.
+  ///
+  /// Throws [AuthFailure].
+  Future<String> readEmail(AuthSession session);
+
   /// Writes [birthDate] to the account behind [session] and returns the date
   /// the account then holds, as `YYYY-MM-DD`.
   ///

@@ -163,6 +163,12 @@ abstract class AppMessages {
   /// `mobile.account.birth_date_set_help`
   String get accountBirthDateSetHelp;
 
+  /// `mobile.account.contact`
+  String get accountContact;
+
+  /// `mobile.account.contact_description`
+  String get accountContactDescription;
+
   /// `mobile.account.downloads`
   String get accountDownloads;
 
@@ -387,6 +393,57 @@ abstract class AppMessages {
 
   /// `mobile.common.sign_in`
   String get commonSignIn;
+
+  /// `mobile.contact.body_label`
+  String get contactBodyLabel;
+
+  /// `mobile.contact.body_required`
+  String get contactBodyRequired;
+
+  /// `mobile.contact.body_too_long`
+  String contactBodyTooLong({required String max});
+
+  /// `mobile.contact.description`
+  String get contactDescription;
+
+  /// `mobile.contact.done`
+  String get contactDone;
+
+  /// `mobile.contact.email_help`
+  String get contactEmailHelp;
+
+  /// `mobile.contact.email_invalid`
+  String get contactEmailInvalid;
+
+  /// `mobile.contact.email_label`
+  String get contactEmailLabel;
+
+  /// `mobile.contact.email_required`
+  String get contactEmailRequired;
+
+  /// `mobile.contact.email_too_long`
+  String get contactEmailTooLong;
+
+  /// `mobile.contact.sent_description`
+  String get contactSentDescription;
+
+  /// `mobile.contact.sent_heading`
+  String get contactSentHeading;
+
+  /// `mobile.contact.subject_label`
+  String get contactSubjectLabel;
+
+  /// `mobile.contact.subject_too_long`
+  String contactSubjectTooLong({required String max});
+
+  /// `mobile.contact.submit`
+  String get contactSubmit;
+
+  /// `mobile.contact.submit_failed`
+  String get contactSubmitFailed;
+
+  /// `mobile.contact.title`
+  String get contactTitle;
 
   /// `mobile.creator.load_failed`
   String get creatorLoadFailed;
@@ -947,6 +1004,16 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get accountContact {
+    return 'お問い合わせ';
+  }
+
+  @override
+  String get accountContactDescription {
+    return 'このサイトの運営者にメッセージを送ります。';
+  }
+
+  @override
   String get accountDownloads {
     return 'ダウンロード';
   }
@@ -1319,6 +1386,91 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get commonSignIn {
     return 'サインイン';
+  }
+
+  @override
+  String get contactBodyLabel {
+    return 'お問い合わせ内容';
+  }
+
+  @override
+  String get contactBodyRequired {
+    return 'お問い合わせ内容を入力してください。';
+  }
+
+  @override
+  String contactBodyTooLong({required String max}) {
+    return 'お問い合わせ内容は $max 文字以内で入力してください。';
+  }
+
+  @override
+  String get contactDescription {
+    return 'このサイトの運営者にメッセージを送ります。返信は入力したメールアドレスに届きます。';
+  }
+
+  @override
+  String get contactDone {
+    return '完了';
+  }
+
+  @override
+  String get contactEmailHelp {
+    return '返信はこのアドレスに届きます。';
+  }
+
+  @override
+  String get contactEmailInvalid {
+    return 'メールアドレスの形式が正しくありません。';
+  }
+
+  @override
+  String get contactEmailLabel {
+    return 'メールアドレス';
+  }
+
+  @override
+  String get contactEmailRequired {
+    return 'メールアドレスを入力してください';
+  }
+
+  @override
+  String get contactEmailTooLong {
+    return 'メールアドレスが長すぎます。';
+  }
+
+  @override
+  String get contactSentDescription {
+    return '返信は入力したメールアドレスに届きます。';
+  }
+
+  @override
+  String get contactSentHeading {
+    return 'お問い合わせを送信しました';
+  }
+
+  @override
+  String get contactSubjectLabel {
+    return '件名（任意）';
+  }
+
+  @override
+  String contactSubjectTooLong({required String max}) {
+    return '件名は $max 文字以内で入力してください。';
+  }
+
+  @override
+  String get contactSubmit {
+    return '送信する';
+  }
+
+  @override
+  String get contactSubmitFailed {
+    return '送信できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get contactTitle {
+    return 'お問い合わせ';
   }
 
   @override
@@ -2160,6 +2312,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get accountContact {
+    return 'Contact';
+  }
+
+  @override
+  String get accountContactDescription {
+    return 'Send a message to the people who run this site.';
+  }
+
+  @override
   String get accountDownloads {
     return 'Downloads';
   }
@@ -2532,6 +2694,91 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get commonSignIn {
     return 'Sign in';
+  }
+
+  @override
+  String get contactBodyLabel {
+    return 'Message';
+  }
+
+  @override
+  String get contactBodyRequired {
+    return 'Enter a message.';
+  }
+
+  @override
+  String contactBodyTooLong({required String max}) {
+    return 'Keep the message to $max characters or fewer.';
+  }
+
+  @override
+  String get contactDescription {
+    return 'Send a message to the people who run this site. They reply to the email address you give.';
+  }
+
+  @override
+  String get contactDone {
+    return 'Done';
+  }
+
+  @override
+  String get contactEmailHelp {
+    return 'Replies are sent to this address.';
+  }
+
+  @override
+  String get contactEmailInvalid {
+    return 'Enter a valid email address.';
+  }
+
+  @override
+  String get contactEmailLabel {
+    return 'Your email address';
+  }
+
+  @override
+  String get contactEmailRequired {
+    return 'Enter your email address.';
+  }
+
+  @override
+  String get contactEmailTooLong {
+    return 'The email address is too long.';
+  }
+
+  @override
+  String get contactSentDescription {
+    return 'Replies come to the email address you gave.';
+  }
+
+  @override
+  String get contactSentHeading {
+    return 'Your message has been sent';
+  }
+
+  @override
+  String get contactSubjectLabel {
+    return 'Subject (optional)';
+  }
+
+  @override
+  String contactSubjectTooLong({required String max}) {
+    return 'Keep the subject to $max characters or fewer.';
+  }
+
+  @override
+  String get contactSubmit {
+    return 'Send';
+  }
+
+  @override
+  String get contactSubmitFailed {
+    return 'Could not send your message. Please try again.';
+  }
+
+  @override
+  String get contactTitle {
+    return 'Contact';
   }
 
   @override
@@ -3373,6 +3620,16 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get accountContact {
+    return '문의하기';
+  }
+
+  @override
+  String get accountContactDescription {
+    return '이 사이트 운영자에게 메시지를 보냅니다.';
+  }
+
+  @override
   String get accountDownloads {
     return '다운로드';
   }
@@ -3745,6 +4002,91 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get commonSignIn {
     return '로그인';
+  }
+
+  @override
+  String get contactBodyLabel {
+    return '문의 내용';
+  }
+
+  @override
+  String get contactBodyRequired {
+    return '문의 내용을 입력해 주세요.';
+  }
+
+  @override
+  String contactBodyTooLong({required String max}) {
+    return '문의 내용은 $max자 이내로 입력해 주세요.';
+  }
+
+  @override
+  String get contactDescription {
+    return '이 사이트 운영자에게 메시지를 보냅니다. 답장은 입력한 이메일 주소로 전달됩니다.';
+  }
+
+  @override
+  String get contactDone {
+    return '완료';
+  }
+
+  @override
+  String get contactEmailHelp {
+    return '답장은 이 주소로 전달됩니다.';
+  }
+
+  @override
+  String get contactEmailInvalid {
+    return '올바른 이메일 주소를 입력해 주세요.';
+  }
+
+  @override
+  String get contactEmailLabel {
+    return '이메일 주소';
+  }
+
+  @override
+  String get contactEmailRequired {
+    return '이메일 주소를 입력해 주세요.';
+  }
+
+  @override
+  String get contactEmailTooLong {
+    return '이메일 주소가 너무 깁니다.';
+  }
+
+  @override
+  String get contactSentDescription {
+    return '답장은 입력한 이메일 주소로 전달됩니다.';
+  }
+
+  @override
+  String get contactSentHeading {
+    return '문의를 보냈습니다';
+  }
+
+  @override
+  String get contactSubjectLabel {
+    return '제목(선택)';
+  }
+
+  @override
+  String contactSubjectTooLong({required String max}) {
+    return '제목은 $max자 이내로 입력해 주세요.';
+  }
+
+  @override
+  String get contactSubmit {
+    return '보내기';
+  }
+
+  @override
+  String get contactSubmitFailed {
+    return '메시지를 보내지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get contactTitle {
+    return '문의하기';
   }
 
   @override
@@ -4586,6 +4928,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get accountContact {
+    return '联系我们';
+  }
+
+  @override
+  String get accountContactDescription {
+    return '向本站点的运营者发送消息。';
+  }
+
+  @override
   String get accountDownloads {
     return '下载';
   }
@@ -4958,6 +5310,91 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get commonSignIn {
     return '登录';
+  }
+
+  @override
+  String get contactBodyLabel {
+    return '留言内容';
+  }
+
+  @override
+  String get contactBodyRequired {
+    return '请输入留言内容。';
+  }
+
+  @override
+  String contactBodyTooLong({required String max}) {
+    return '留言内容不能超过 $max 个字符。';
+  }
+
+  @override
+  String get contactDescription {
+    return '向本站点的运营者发送消息。回复将发送到您填写的邮箱地址。';
+  }
+
+  @override
+  String get contactDone {
+    return '完成';
+  }
+
+  @override
+  String get contactEmailHelp {
+    return '回复将发送到此地址。';
+  }
+
+  @override
+  String get contactEmailInvalid {
+    return '请输入有效的邮箱地址。';
+  }
+
+  @override
+  String get contactEmailLabel {
+    return '您的邮箱地址';
+  }
+
+  @override
+  String get contactEmailRequired {
+    return '请输入邮箱地址。';
+  }
+
+  @override
+  String get contactEmailTooLong {
+    return '邮箱地址过长。';
+  }
+
+  @override
+  String get contactSentDescription {
+    return '回复将发送到您填写的邮箱地址。';
+  }
+
+  @override
+  String get contactSentHeading {
+    return '您的消息已发送';
+  }
+
+  @override
+  String get contactSubjectLabel {
+    return '主题（可选）';
+  }
+
+  @override
+  String contactSubjectTooLong({required String max}) {
+    return '主题不能超过 $max 个字符。';
+  }
+
+  @override
+  String get contactSubmit {
+    return '发送';
+  }
+
+  @override
+  String get contactSubmitFailed {
+    return '无法发送您的消息。请重试。';
+  }
+
+  @override
+  String get contactTitle {
+    return '联系我们';
   }
 
   @override
@@ -5799,6 +6236,16 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get accountContact {
+    return '聯絡我們';
+  }
+
+  @override
+  String get accountContactDescription {
+    return '向本網站的營運者傳送訊息。';
+  }
+
+  @override
   String get accountDownloads {
     return '下載';
   }
@@ -6171,6 +6618,91 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get commonSignIn {
     return '登入';
+  }
+
+  @override
+  String get contactBodyLabel {
+    return '留言內容';
+  }
+
+  @override
+  String get contactBodyRequired {
+    return '請輸入留言內容。';
+  }
+
+  @override
+  String contactBodyTooLong({required String max}) {
+    return '留言內容不能超過 $max 個字元。';
+  }
+
+  @override
+  String get contactDescription {
+    return '向本網站的營運者傳送訊息。回覆會寄到您填寫的電子郵件地址。';
+  }
+
+  @override
+  String get contactDone {
+    return '完成';
+  }
+
+  @override
+  String get contactEmailHelp {
+    return '回覆會寄到這個地址。';
+  }
+
+  @override
+  String get contactEmailInvalid {
+    return '請輸入有效的電子郵件地址。';
+  }
+
+  @override
+  String get contactEmailLabel {
+    return '您的電子郵件地址';
+  }
+
+  @override
+  String get contactEmailRequired {
+    return '請輸入電子郵件地址。';
+  }
+
+  @override
+  String get contactEmailTooLong {
+    return '電子郵件地址過長。';
+  }
+
+  @override
+  String get contactSentDescription {
+    return '回覆會寄到您填寫的電子郵件地址。';
+  }
+
+  @override
+  String get contactSentHeading {
+    return '您的訊息已傳送';
+  }
+
+  @override
+  String get contactSubjectLabel {
+    return '主旨（選填）';
+  }
+
+  @override
+  String contactSubjectTooLong({required String max}) {
+    return '主旨不能超過 $max 個字元。';
+  }
+
+  @override
+  String get contactSubmit {
+    return '傳送';
+  }
+
+  @override
+  String get contactSubmitFailed {
+    return '無法傳送您的訊息。請再試一次。';
+  }
+
+  @override
+  String get contactTitle {
+    return '聯絡我們';
   }
 
   @override

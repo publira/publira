@@ -14,6 +14,8 @@ import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/comments/http_comment_repository.dart';
 import 'package:publira/config.dart';
+import 'package:publira/contact/contact_repository.dart';
+import 'package:publira/contact/http_contact_repository.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/follow/http_follow_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -54,6 +56,7 @@ class PubliraApp extends StatefulWidget {
     required this.auth,
     this.comments,
     this.follows,
+    this.contact,
     this.purchases,
     this.checkoutLauncher,
     this.offline,
@@ -136,6 +139,7 @@ class PubliraApp extends StatefulWidget {
       auth: auth,
       comments: HttpCommentRepository(client: client, tenants: tenants),
       follows: HttpFollowRepository(client: client, tenants: tenants),
+      contact: HttpContactRepository(client: client, tenants: tenants),
       purchases: HttpPurchaseRepository(client: client, tenants: tenants),
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
       offline: library,
@@ -182,6 +186,13 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// follows at all, and no screen then offers to follow anything.
   final FollowRepository? follows;
+
+  /// The messages a reader sends the tenant's staff.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// contact form, and no screen then leads to one.
+  final ContactRepository? contact;
 
   /// Paid-episode checkout, and [checkoutLauncher] the page is opened with.
   ///
@@ -511,12 +522,15 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                 repository: widget.comments,
                 child: FollowScope(
                   repository: widget.follows,
-                  child: PurchaseScope(
-                    repository: widget.purchases,
-                    launcher: widget.checkoutLauncher,
-                    child: AgeRatingConfirmationScope(
-                      controller: _ageRating,
-                      child: app,
+                  child: ContactScope(
+                    repository: widget.contact,
+                    child: PurchaseScope(
+                      repository: widget.purchases,
+                      launcher: widget.checkoutLauncher,
+                      child: AgeRatingConfirmationScope(
+                        controller: _ageRating,
+                        child: app,
+                      ),
                     ),
                   ),
                 ),
