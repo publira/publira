@@ -9,11 +9,11 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -284,9 +284,9 @@ func TestDBContactMessageRefusesWhatTheColumnsCannotHold(t *testing.T) {
 // The client's allowance is the only one a guest spends, so it is what has to
 // stop a form nobody is signed in to.
 func TestDBContactMessageRefusesAGuestPastTheClientAllowance(t *testing.T) {
-	guards := openReaderGuards()
-	guards.rules[actionSubmitContactMessageFromClient] = []ratelimit.Rule{{Limit: 1, Window: time.Hour}}
-	env := newPublicDBEnvWithGuards(t, guards)
+	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.Community.ContactMessagePerClient = platformpolicy.HourDay{PerHour: 1, PerDay: 1}
+	}))
 	tenant := env.seedTenant(t, "CONTACT5", "contact5.example.com", "Aoto Press")
 
 	if err := env.submitContactMessage(t, tenant, &publirav1.SubmitContactMessageRequest{
@@ -308,9 +308,9 @@ func TestDBContactMessageRefusesAGuestPastTheClientAllowance(t *testing.T) {
 // The account's allowance is charged on top of the client's, so signing up does
 // not widen what one client may send.
 func TestDBContactMessageRefusesAReaderPastTheAccountAllowance(t *testing.T) {
-	guards := openReaderGuards()
-	guards.rules[actionSubmitContactMessage] = []ratelimit.Rule{{Limit: 1, Window: time.Hour}}
-	env := newPublicDBEnvWithGuards(t, guards)
+	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.Community.ContactMessagePerAccount = platformpolicy.HourDay{PerHour: 1, PerDay: 1}
+	}))
 	tenant := env.seedTenant(t, "CONTACT6", "contact6.example.com", "Aoto Press")
 	reader := env.PG.SeedEndUser(t, tenant.ID, "CONTACTRDR6", "reader@contact6.example.com", "Rin Amagai")
 	token := tokenFor(t, tenant, reader)

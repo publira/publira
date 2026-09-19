@@ -43,34 +43,14 @@ task server:build
 - `PUBLIRA_S3_ENDPOINT` (optional)
 - `PUBLIRA_S3_FORCE_PATH_STYLE` (optional)
 - `PUBLIRA_S3_PUBLIC_BASE_URL` (optional)
-- `PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN` (optional, `false` when unset. With `true`, a tenant admin that has not enrolled a TOTP authenticator gets no session from a password alone; see [server/README.md](../../README.md#admin-mfa-totp))
 - `PUBLIRA_COMMENT_WITHDRAWN_RETENTION_DAYS` (optional, `180` when unset. How long a comment its author withdrew is kept, which is the deadline `AdminCommentService.ListComments` reports as `purge_due_at`. `batch purge-withdrawn-comments` reads the same variable, so a value set for one has to be set for both, and anything below `1` or non-numeric stops the server rather than have the console count down to a deadline the batch refuses to enforce)
-- `PUBLIRA_REDIS_URL` (optional. Where the counters behind the reader write limits, the step-up password limit, and the mail limits below are kept. Unset / `disabled` / `off` / `false` limits each instance on its own, which is looser than a shared limit by the number of instances)
-- `PUBLIRA_COMMENT_POST_LIMIT_PER_MINUTE` (optional, `10` when unset. How many comments one reader may post in a minute)
-- `PUBLIRA_COMMENT_POST_LIMIT_PER_DAY` (optional, `100` when unset. How many comments one reader may post in a day)
-- `PUBLIRA_COMMENT_REPORT_LIMIT_PER_MINUTE` (optional, `10` when unset. How many comments one reader may report in a minute)
-- `PUBLIRA_COMMENT_REPORT_LIMIT_PER_DAY` (optional, `50` when unset. How many comments one reader may report in a day)
-- `PUBLIRA_COMMENT_DUPLICATE_WINDOW_MINUTES` (optional, `10` when unset. How long the same body by the same reader on the same episode is refused)
-- `PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_HOUR` (optional, `5` when unset. How much mail the forms that take an address may cause for one address in an hour, counted per tenant and shared by all of them)
-- `PUBLIRA_MAIL_REQUEST_LIMIT_PER_ADDRESS_PER_DAY` (optional, `20` when unset. The same allowance over a day)
-- `PUBLIRA_MAIL_REQUEST_LIMIT_PER_SOURCE_PER_HOUR` (optional, `30` when unset. How much such mail one origin may cause in an hour, across every address and tenant)
-- `PUBLIRA_MAIL_REQUEST_LIMIT_PER_SOURCE_PER_DAY` (optional, `150` when unset. The same allowance over a day)
-- `PUBLIRA_EPISODE_RATING_LIMIT_PER_MINUTE` (optional, `30` when unset. How many presses of the episode rating control one reader may make in a minute)
-- `PUBLIRA_EPISODE_RATING_LIMIT_PER_DAY` (optional, `300` when unset. The same allowance over a day)
-- `PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_MINUTE` (optional, `5` when unset. How many times one account's password may be verified in a minute by the RPCs that ask for it on top of the session — `ChangePassword`, `DeleteMe`, `RequestEmailChange` — counted across all three and cleared by a verification that succeeds)
-- `PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_DAY` (optional, `50` when unset. The same allowance over a day)
-- `PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_MINUTE` (optional, `30` when unset. How many times one reader may store how they want the viewer laid out in a minute)
-- `PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_DAY` (optional, `300` when unset. The same allowance over a day)
-- `PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_ACCOUNT_PER_HOUR` (optional, `3` when unset. How many contact messages one signed-in reader may send in an hour)
-- `PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_ACCOUNT_PER_DAY` (optional, `10` when unset. The same allowance over a day)
-- `PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_CLIENT_PER_HOUR` (optional, `10` when unset. How many contact messages one client may send in an hour, across every account and tenant. It is charged whoever is asking, and is the only allowance a guest spends)
-- `PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_CLIENT_PER_DAY` (optional, `30` when unset. The same allowance over a day)
+- `PUBLIRA_REDIS_URL` (optional. Where the counters behind the reader write limits, the step-up password limit, and the mail limits are kept. Unset / `disabled` / `off` / `false` limits each instance on its own, which is looser than a shared limit by the number of instances)
 - `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (all required when `PUBLIRA_REVALIDATE_TOKEN` is set. The private network URL of each Next.js app)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
-A reader write limit, a step-up password limit or a mail limit below `1`, or one that is not a whole number, stops the server at startup rather than taking effect: a limit of zero would refuse every reader, lock every account out of its own settings, and refuse every request for mail, and that is better caught before the server serves anything than by the first reader who runs into it.
+The tenant-admin MFA requirement, the reader write limits, the step-up password limit, and the mail limits are not environment variables: they are the platform policy, read and saved through `PlatformPolicyService`, and a platform that has saved none gets the built-in defaults. A saved change reaches a running server within ten seconds.
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 

@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/ratelimit"
@@ -75,30 +76,40 @@ func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard
 	return &publicDBEnv{Server: server, PG: pg}
 }
 
-// openReaderGuards allows far more than any case that is not about the flood
-// control reaches, so those cases assert the behaviour they are about rather
-// than the limit they happen to sit under.
+// openPolicy allows far more than any case that is not about a limit reaches,
+// so those cases assert the behaviour they are about rather than the limit they
+// happen to sit under. Every case in this package shares one loopback address,
+// which is what the per-client and per-origin allowances are keyed on.
+func openPolicy() platformpolicy.Policy {
+	open := platformpolicy.MinuteDay{PerMinute: 1000, PerDay: 1000}
+	openHourly := platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}
+	policy := platformpolicy.Defaults()
+	policy.PasswordVerification = open
+	policy.MailRequestsPerAddress = openHourly
+	policy.MailRequestsPerSource = openHourly
+	policy.Community.CommentPost = open
+	policy.Community.CommentReport = open
+	policy.Community.EpisodeRating = open
+	policy.Community.ContactMessagePerAccount = openHourly
+	policy.Community.ContactMessagePerClient = openHourly
+	policy.Community.ViewerPreferencesUpdate = open
+	return policy
+}
+
+// openReaderGuards is openPolicy over in-process counters.
 func openReaderGuards() readerGuards {
+	return guardsWith(func(*platformpolicy.Policy) {})
+}
+
+// guardsWith is openPolicy with the values a case is about tightened by adjust.
+// Tightening both halves of a limit keeps the allowance from refilling when a
+// case happens to run across the boundary of its shorter window.
+func guardsWith(adjust func(*platformpolicy.Policy)) readerGuards {
+	policy := openPolicy()
+	adjust(&policy)
 	return readerGuards{
 		limiter: ratelimit.New(ratelimit.NewMemoryStore()),
-		rules: map[readerAction][]ratelimit.Rule{
-			actionPostComment:   {{Limit: 1000, Window: time.Minute}},
-			actionReportComment: {{Limit: 1000, Window: time.Minute}},
-			actionRateEpisode:   {{Limit: 1000, Window: time.Minute}},
-			// Wide enough that the cases driving the account RPCs with a wrong
-			// password on purpose never reach the step-up limit.
-			actionVerifyPassword: {{Limit: 1000, Window: time.Minute}},
-			// The cases that drive the viewer settings assert what was stored,
-			// not how often it may be stored.
-			actionUpdateViewerPreferences: {{Limit: 1000, Window: time.Minute}},
-			// Both halves of the contact form's flood control, so the cases that
-			// are about what a message stores never meet either allowance. Every
-			// case in this package shares one loopback address, which is what the
-			// client half is keyed on.
-			actionSubmitContactMessage:           {{Limit: 1000, Window: time.Minute}},
-			actionSubmitContactMessageFromClient: {{Limit: 1000, Window: time.Minute}},
-		},
-		duplicateCommentWindow: defaultDuplicateCommentWindow,
+		policy:  platformpolicy.Fixed(policy),
 	}
 }
 
@@ -106,12 +117,7 @@ func openReaderGuards() readerGuards {
 // about it drive forms that would otherwise spend an allowance meant for a
 // person, and every one of them shares this process's loopback address.
 func openMailGuard() *mailguard.Guard {
-	return mailguard.New(
-		ratelimit.New(ratelimit.NewMemoryStore()),
-		mailguard.Rules(1000, 1000),
-		mailguard.Rules(1000, 1000),
-		slog.Default(),
-	)
+	return mailGuardWith(platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 }
 
 func (e *publicDBEnv) seedTenant(t *testing.T, publicID, domain, name string) testutil.Tenant {
@@ -273,4 +279,13 @@ func (e *publicDBEnv) countRows(t *testing.T, query string, args ...any) int {
 		t.Fatalf("query %q: %v", query, err)
 	}
 	return count
+}
+
+// mailGuardWith is a mail guard over in-process counters whose mail-request
+// limits are the ones given, and whose other values are the built-in defaults.
+func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guard {
+	policy := platformpolicy.Defaults()
+	policy.MailRequestsPerAddress = perAddress
+	policy.MailRequestsPerSource = perSource
+	return mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), slog.Default())
 }

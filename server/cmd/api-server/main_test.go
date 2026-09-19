@@ -33,10 +33,7 @@ func TestInternalListenerServesAllThreeNamespaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("adminapi.New: %v", err)
 	}
-	platformAPI, err := platformapi.New(nil, nil, slog.Default(), nil, nil, nil)
-	if err != nil {
-		t.Fatalf("platformapi.New: %v", err)
-	}
+	platformAPI := platformapi.New(nil, nil, slog.Default(), nil, nil, nil)
 
 	ts := httptest.NewServer(internalHandler(publicAPI, adminAPI, platformAPI, dbPools{}))
 	t.Cleanup(ts.Close)

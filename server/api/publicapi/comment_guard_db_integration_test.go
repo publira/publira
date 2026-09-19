@@ -2,12 +2,11 @@ package publicapi
 
 import (
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 )
 
 // The flood control as a reader meets it, on the real handler and the real
@@ -15,20 +14,9 @@ import (
 // request stores nothing, and that one reader spending their allowance leaves
 // every other reader's untouched.
 
-// guardsWith is the tight policy these cases need. A window of an hour keeps
-// the allowance from refilling while a case runs, so the count is what the
-// assertions are about rather than how long the database took.
-func guardsWith(rules map[readerAction][]ratelimit.Rule) readerGuards {
-	return readerGuards{
-		limiter:                ratelimit.New(ratelimit.NewMemoryStore()),
-		rules:                  rules,
-		duplicateCommentWindow: defaultDuplicateCommentWindow,
-	}
-}
-
 func TestDBPostEpisodeCommentSpendsAnAllowancePerReader(t *testing.T) {
-	fixture := newCommentFixtureWithGuards(t, "FLD", guardsWith(map[readerAction][]ratelimit.Rule{
-		actionPostComment: {{Limit: 2, Window: time.Hour}},
+	fixture := newCommentFixtureWithGuards(t, "FLD", guardsWith(func(policy *platformpolicy.Policy) {
+		policy.Community.CommentPost = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -51,9 +39,7 @@ func TestDBPostEpisodeCommentSpendsAnAllowancePerReader(t *testing.T) {
 }
 
 func TestDBPostEpisodeCommentRefusesARepeatedBody(t *testing.T) {
-	fixture := newCommentFixtureWithGuards(t, "DUP", guardsWith(map[readerAction][]ratelimit.Rule{
-		actionPostComment: {{Limit: 100, Window: time.Hour}},
-	}))
+	fixture := newCommentFixtureWithGuards(t, "DUP", openReaderGuards())
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
 
@@ -82,8 +68,8 @@ func TestDBPostEpisodeCommentRefusesARepeatedBody(t *testing.T) {
 }
 
 func TestDBReportEpisodeCommentSpendsAnAllowancePerReader(t *testing.T) {
-	fixture := newCommentFixtureWithGuards(t, "RFL", guardsWith(map[readerAction][]ratelimit.Rule{
-		actionReportComment: {{Limit: 1, Window: time.Hour}},
+	fixture := newCommentFixtureWithGuards(t, "RFL", guardsWith(func(policy *platformpolicy.Policy) {
+		policy.Community.CommentReport = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
 	}))
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")

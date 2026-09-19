@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/mfa"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretcrypto"
@@ -613,8 +614,8 @@ func TestAdminMfaStatusReportsTheEnrollmentAndWhatIsLeft(t *testing.T) {
 // session at all: the only thing its challenge can complete is the
 // enrollment, and doing so finishes the login.
 func TestAdminLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
-	t.Setenv("PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN", "true")
 	env := newAdminDBEnv(t)
+	requireTenantAdminMFA(t, env)
 	tenant := seedMfaTenant(t, env)
 
 	login := mfaLogin(t, env, tenant)
@@ -656,8 +657,8 @@ func TestAdminLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
 // Only tenant_admin is held back. An editor may enroll, and is never stopped
 // from signing in for not having.
 func TestAdminLoginDoesNotForceEnrollmentOnAnEditor(t *testing.T) {
-	t.Setenv("PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN", "true")
 	env := newAdminDBEnv(t)
+	requireTenantAdminMFA(t, env)
 	tenant := seedMfaTenant(t, env)
 	editor := tenant.as(env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TENANTUSER02", "editor@example.com", "Editor", auth.RoleTenantEditor))
 
@@ -717,4 +718,13 @@ func TestAdminMfaWritesTheAuditTrail(t *testing.T) {
 			t.Fatalf("no audit_logs row for action %q outcome %q", want.action, want.outcome)
 		}
 	}
+}
+
+// requireTenantAdminMFA saves a platform policy that makes the second factor a
+// condition of a tenant admin's login.
+func requireTenantAdminMFA(t *testing.T, env *adminDBEnv) {
+	t.Helper()
+	policy := platformpolicy.Defaults()
+	policy.MFARequiredForTenantAdmin = true
+	env.PG.SavePlatformPolicy(t, policy)
 }

@@ -9,8 +9,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -357,8 +357,8 @@ func TestDBEpisodeDetailCarriesTheStoredRatingCount(t *testing.T) {
 
 // The flood control the reader-writable RPCs share covers this one.
 func TestDBRateEpisodeChargesTheSharedFloodControl(t *testing.T) {
-	env := newPublicDBEnvWithGuards(t, guardsWith(map[readerAction][]ratelimit.Rule{
-		actionRateEpisode: {{Limit: 2, Window: time.Hour}},
+	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.Community.EpisodeRating = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))
 	tenant := env.seedTenant(t, "TENANTRATEH", "rate-h.example.com", "Rate H")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEM", "member-rate-m@example.com", "Member M", "tenant_member")

@@ -2,28 +2,21 @@ package platformapi
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 
 	"connectrpc.com/connect"
 
-	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
-	"github.com/publira/publira/server/internal/ratelimit"
 )
 
 // The platform console's password reset form belongs to no tenant, and takes an
 // address from anyone who can reach it, so the mail behind it is bounded the
 // same way a storefront's is.
 func TestDBPlatformRequestPasswordResetStopsAtTheLimit(t *testing.T) {
-	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailguard.New(
-		ratelimit.New(ratelimit.NewMemoryStore()),
-		mailguard.Rules(1, 100),
-		mailguard.Rules(1000, 1000),
-		slog.Default(),
-	))
+	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 

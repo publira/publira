@@ -4,13 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -235,8 +234,8 @@ func TestDBViewerPreferencesNeedASession(t *testing.T) {
 }
 
 func TestDBUpdateViewerPreferencesChargesTheReaderAllowance(t *testing.T) {
-	env := newPublicDBEnvWithGuards(t, guardsWith(map[readerAction][]ratelimit.Rule{
-		actionUpdateViewerPreferences: {{Limit: 2, Window: time.Hour}},
+	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.Community.ViewerPreferencesUpdate = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))
 	tenant := env.seedTenant(t, "TENANTVPJ", "viewer-pref-j.example.com", "Viewer Pref J")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPI", "member-viewer-pref-i@example.com", "Member I", "tenant_member")

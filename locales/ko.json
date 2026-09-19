@@ -3053,6 +3053,7 @@
         "operator_suspended": "운영자 정지",
         "operator_updated": "운영자 변경",
         "platform_email_settings_updated": "SMTP 설정 변경",
+        "platform_policy_updated": "플랫폼 정책 변경",
         "platform_settings_updated": "플랫폼 설정 변경",
         "platform_smtp_test_email_sent": "SMTP 테스트 메일 발송",
         "tenant_created": "테넌트 생성",

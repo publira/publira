@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/ratelimit"
@@ -116,12 +117,7 @@ func newTestHandler(db *sql.DB, queries Querier) http.Handler {
 // limit they happen to sit under. Every one of them shares this process's
 // loopback address, which is a single origin as far as the limit is concerned.
 func openMailGuard() *mailguard.Guard {
-	return mailguard.New(
-		ratelimit.New(ratelimit.NewMemoryStore()),
-		mailguard.Rules(1000, 1000),
-		mailguard.Rules(1000, 1000),
-		slog.Default(),
-	)
+	return mailGuardWith(platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 }
 
 func operatorTestUserColumns() []string {
@@ -355,4 +351,13 @@ func duplicateDomainError() error {
 
 func duplicateAdminDomainError() error {
 	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_admin_domain_key"}
+}
+
+// mailGuardWith is a mail guard over in-process counters whose mail-request
+// limits are the ones given, and whose other values are the built-in defaults.
+func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guard {
+	policy := platformpolicy.Defaults()
+	policy.MailRequestsPerAddress = perAddress
+	policy.MailRequestsPerSource = perSource
+	return mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), slog.Default())
 }

@@ -3,12 +3,11 @@ package publicapi
 import (
 	"context"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -19,14 +18,13 @@ import (
 // handlers, because what has to stop at the limit is the bcrypt verification
 // and the row behind it rather than the shape of the response.
 
-// newStepUpLimitedEnv starts a server that verifies a password limit times an
-// hour and refuses after that. The window is long enough that no allowance
-// refills while a case runs.
+// newStepUpLimitedEnv starts a server that verifies a password limit times a
+// day and refuses after that.
 func newStepUpLimitedEnv(t *testing.T, limit int) *publicDBEnv {
 	t.Helper()
 
-	return newPublicDBEnvWithGuards(t, guardsWith(map[readerAction][]ratelimit.Rule{
-		actionVerifyPassword: {{Limit: limit, Window: time.Hour}},
+	return newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.PasswordVerification = platformpolicy.MinuteDay{PerMinute: limit, PerDay: limit}
 	}))
 }
 

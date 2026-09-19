@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -113,25 +114,13 @@ type API struct {
 // New builds the platform console API over db, which must be the pool
 // connected as publira_platform, whose BYPASSRLS attribute lets it read past
 // row-level security.
-//
-// It fails rather than serves when the limit on the mail the console's forms
-// may cause is misconfigured, so a limit nobody can meet is caught at startup
-// instead of by the first operator who cannot get their password reset.
-func New(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (*API, error) {
-	mail, err := mailguard.NewFromEnv(logger)
-	if err != nil {
-		return nil, err
-	}
-	return newAPI(db, queries, logger, encryptor, tester, tokens, nil, mail), nil
+func New(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) *API {
+	return newAPI(db, queries, logger, encryptor, tester, tokens, nil, nil)
 }
 
 // NewWithAsyncRecorder is New with an AsyncRecorder.
-func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (*API, error) {
-	mail, err := mailguard.NewFromEnv(logger)
-	if err != nil {
-		return nil, err
-	}
-	return newAPI(db, queries, logger, encryptor, tester, tokens, recorder, mail), nil
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) *API {
+	return newAPI(db, queries, logger, encryptor, tester, tokens, recorder, nil)
 }
 
 // Register mounts the publira.platform.v1 services on mux. What a mux carries
@@ -150,8 +139,10 @@ func newAPI(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailset
 	if recorder == nil {
 		recorder = auditlog.New(queries, logger)
 	}
+	// A nil guard is the production one: the platform policy's limits over the
+	// counters the deployment shares.
 	if mail == nil {
-		mail = mailguard.NewDefault()
+		mail = mailguard.NewShared(platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger), logger)
 	}
 	server := &platformServer{
 		queries:   queries,
@@ -212,6 +203,12 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(settingsPath, settingsHandler)
+	policyPath, policyHandler := publirasplatformv1connect.NewPlatformPolicyServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(authInterceptor),
+	)
+	mux.Handle(policyPath, policyHandler)
 	operatorPath, operatorHandler := publirasplatformv1connect.NewPlatformOperatorServiceHandler(
 		server,
 		traced,

@@ -458,6 +458,33 @@ type PlatformNotificationRead struct {
 	ReadAt                 time.Time `json:"read_at"`
 }
 
+type PlatformPolicyConfig struct {
+	Singleton                            bool      `json:"singleton"`
+	MfaRequiredForTenantAdmin            bool      `json:"mfa_required_for_tenant_admin"`
+	PasswordVerifyLimitPerMinute         int32     `json:"password_verify_limit_per_minute"`
+	PasswordVerifyLimitPerDay            int32     `json:"password_verify_limit_per_day"`
+	MailRequestLimitPerAddressPerHour    int32     `json:"mail_request_limit_per_address_per_hour"`
+	MailRequestLimitPerAddressPerDay     int32     `json:"mail_request_limit_per_address_per_day"`
+	MailRequestLimitPerSourcePerHour     int32     `json:"mail_request_limit_per_source_per_hour"`
+	MailRequestLimitPerSourcePerDay      int32     `json:"mail_request_limit_per_source_per_day"`
+	CommentPostLimitPerMinute            int32     `json:"comment_post_limit_per_minute"`
+	CommentPostLimitPerDay               int32     `json:"comment_post_limit_per_day"`
+	CommentReportLimitPerMinute          int32     `json:"comment_report_limit_per_minute"`
+	CommentReportLimitPerDay             int32     `json:"comment_report_limit_per_day"`
+	CommentDuplicateWindowMinutes        int32     `json:"comment_duplicate_window_minutes"`
+	EpisodeRatingLimitPerMinute          int32     `json:"episode_rating_limit_per_minute"`
+	EpisodeRatingLimitPerDay             int32     `json:"episode_rating_limit_per_day"`
+	ContactMessageLimitPerAccountPerHour int32     `json:"contact_message_limit_per_account_per_hour"`
+	ContactMessageLimitPerAccountPerDay  int32     `json:"contact_message_limit_per_account_per_day"`
+	ContactMessageLimitPerClientPerHour  int32     `json:"contact_message_limit_per_client_per_hour"`
+	ContactMessageLimitPerClientPerDay   int32     `json:"contact_message_limit_per_client_per_day"`
+	ViewerPreferencesLimitPerMinute      int32     `json:"viewer_preferences_limit_per_minute"`
+	ViewerPreferencesLimitPerDay         int32     `json:"viewer_preferences_limit_per_day"`
+	Revision                             int64     `json:"revision"`
+	CreatedAt                            time.Time `json:"created_at"`
+	UpdatedAt                            time.Time `json:"updated_at"`
+}
+
 type PlatformSmtpConfig struct {
 	Singleton         bool           `json:"singleton"`
 	Host              string         `json:"host"`

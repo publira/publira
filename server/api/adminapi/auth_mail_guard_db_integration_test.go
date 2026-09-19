@@ -2,26 +2,19 @@ package adminapi
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 
 	"connectrpc.com/connect"
 
-	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 )
 
 // The console's password reset form takes an address from anyone who can reach
 // it, so the mail behind it is bounded like the storefront's.
 func TestDBAdminRequestPasswordResetStopsAtTheLimit(t *testing.T) {
-	env := newAdminDBEnvWithMailGuard(t, mailguard.New(
-		ratelimit.New(ratelimit.NewMemoryStore()),
-		mailguard.Rules(1, 100),
-		mailguard.Rules(1000, 1000),
-		slog.Default(),
-	))
+	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
 	requestReset := func() error {

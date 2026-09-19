@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -21,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/revalidate"
@@ -50,25 +50,15 @@ type adminServer struct {
 	logger                *slog.Logger
 	reval                 *revalidate.Client
 	tokens                *auth.TokenManager
-	// mfaRequiredForTenantAdmin turns the second factor from something a
-	// tenant admin may enroll in into something it has to before the login
-	// completes. Read from the environment at startup: it is a deployment
-	// decision, and a tenant cannot lock itself out of its own console.
-	mfaRequiredForTenantAdmin bool
+	// policy answers whether a tenant admin must enroll a second factor. It is
+	// the platform's decision, so a tenant cannot lock itself out of its own
+	// console.
+	policy platformpolicy.Source
 	// commentRetentionDays is how long a withdrawn comment survives before the
 	// purge batch deletes it, which is what the console counts down to.
 	commentRetentionDays int
 	// mail bounds how much mail the console's own forms may cause.
 	mail *mailguard.Guard
-}
-
-// mfaRequiredForTenantAdminFromEnv reads the deployment's stance on the
-// second factor. Unset, and anything that is not a boolean, means the factor
-// stays optional: a misspelled value must not lock every tenant admin out of
-// the console it is the only way into.
-func mfaRequiredForTenantAdminFromEnv() bool {
-	enabled, err := strconv.ParseBool(strings.TrimSpace(os.Getenv("PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN")))
-	return err == nil && enabled
 }
 
 func invalidSessionError() error {
@@ -235,21 +225,13 @@ type API struct {
 // as publira_admin: every handler here reads through that role's row-level
 // security.
 func New(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (*API, error) {
-	mail, err := mailguard.NewFromEnv(logger)
-	if err != nil {
-		return nil, err
-	}
-	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, nil, mail)
+	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, nil, nil)
 }
 
 // NewWithAsyncRecorder is New with an AsyncRecorder. The asynchronous writer
 // acquires a fresh tenant-scoped connection for every tenant audit entry.
 func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (*API, error) {
-	mail, err := mailguard.NewFromEnv(logger)
-	if err != nil {
-		return nil, err
-	}
-	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder, mail)
+	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder, nil)
 }
 
 // Register mounts the publira.admin.v1 services on mux. What a mux carries is
@@ -264,8 +246,11 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 	if logger == nil {
 		logger = slog.Default()
 	}
+	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
+	// A nil guard is the production one: the platform policy's limits over the
+	// counters the deployment shares.
 	if mail == nil {
-		mail = mailguard.NewDefault()
+		mail = mailguard.NewShared(policy, logger)
 	}
 	requestScopedRecorder := recorder == nil
 	if recorder == nil {
@@ -298,9 +283,9 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 		reval:                 revalidator,
 		tokens:                tokens,
 
-		mfaRequiredForTenantAdmin: mfaRequiredForTenantAdminFromEnv(),
-		commentRetentionDays:      commentRetentionDays,
-		mail:                      mail,
+		policy:               policy,
+		commentRetentionDays: commentRetentionDays,
+		mail:                 mail,
 	}
 	return &API{server: server}, nil
 }

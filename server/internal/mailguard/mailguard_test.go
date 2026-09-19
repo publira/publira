@@ -1,6 +1,7 @@
 package mailguard
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 )
 
@@ -30,12 +32,15 @@ func (c *fakeClock) advance(d time.Duration) {
 
 // newTestGuard drives the guard and its counters from one clock, so a window
 // passes exactly when the test says it does.
-func newTestGuard(t *testing.T, perAddress, perSource []ratelimit.Rule) (*Guard, *fakeClock) {
+func newTestGuard(t *testing.T, perAddress, perSource platformpolicy.HourDay) (*Guard, *fakeClock) {
 	t.Helper()
 
+	policy := platformpolicy.Defaults()
+	policy.MailRequestsPerAddress = perAddress
+	policy.MailRequestsPerSource = perSource
 	clock := &fakeClock{now: testStart}
 	limiter := ratelimit.NewWithClock(ratelimit.NewMemoryStoreWithClock(clock.Now), clock.Now)
-	return New(limiter, perAddress, perSource, slog.Default()), clock
+	return New(limiter, platformpolicy.Fixed(policy), slog.Default()), clock
 }
 
 // request stands for one submission of a form, arriving from source through the
@@ -57,7 +62,7 @@ const (
 
 func TestGuardRefusesPastTheMailboxAllowance(t *testing.T) {
 	const allowance = 3
-	guard, _ := newTestGuard(t, Rules(allowance, 100), Rules(1000, 1000))
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: allowance, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
 	for attempt := 1; attempt <= allowance; attempt++ {
 		if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
@@ -72,7 +77,7 @@ func TestGuardRefusesPastTheMailboxAllowance(t *testing.T) {
 }
 
 func TestGuardStartsAFreshAllowanceWhenTheWindowPasses(t *testing.T) {
-	guard, clock := newTestGuard(t, Rules(1, 100), Rules(1000, 1000))
+	guard, clock := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
 	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
@@ -97,7 +102,7 @@ func TestGuardStartsAFreshAllowanceWhenTheWindowPasses(t *testing.T) {
 // The daily budget is what a caller pacing itself under the hourly one still
 // runs into.
 func TestGuardKeepsTheDailyBudgetAcrossWindows(t *testing.T) {
-	guard, clock := newTestGuard(t, Rules(1, 2), Rules(1000, 1000))
+	guard, clock := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 2}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
 	for hour := range 2 {
 		if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
@@ -114,7 +119,7 @@ func TestGuardKeepsTheDailyBudgetAcrossWindows(t *testing.T) {
 // One mailbox holds one inbox however it is spelled, so the allowance follows
 // the mailbox rather than the spelling.
 func TestGuardTreatsOneMailboxWrittenTwoWaysAsOne(t *testing.T) {
-	guard, _ := newTestGuard(t, Rules(1, 100), Rules(1000, 1000))
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
 	if err := guard.Allow(t.Context(), request(testSource), testScope, " Member@Example.com "); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
@@ -127,7 +132,7 @@ func TestGuardTreatsOneMailboxWrittenTwoWaysAsOne(t *testing.T) {
 // A storefront's traffic must not spend the allowance the reader of another one
 // needs for their own password reset.
 func TestGuardKeepsScopesApart(t *testing.T) {
-	guard, _ := newTestGuard(t, Rules(1, 100), Rules(1000, 1000))
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
 	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
 		t.Fatalf("the first scope's request = %v, want it allowed", err)
@@ -143,7 +148,7 @@ func TestGuardKeepsScopesApart(t *testing.T) {
 // What bounds one origin spreading itself over addresses and scopes is the
 // origin's own allowance, which no scope is part of.
 func TestGuardChargesOneOriginAcrossAddressesAndScopes(t *testing.T) {
-	guard, _ := newTestGuard(t, Rules(1000, 1000), Rules(2, 100))
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 2, PerDay: 100})
 
 	if err := guard.Allow(t.Context(), request(testSource), testScope, "first@example.com"); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
@@ -162,7 +167,7 @@ func TestGuardChargesOneOriginAcrossAddressesAndScopes(t *testing.T) {
 // The forms this guards answer a registered address exactly as they answer a
 // free one, and a refusal that named one of them would give that away.
 func TestGuardRefusesEveryAddressTheSameWay(t *testing.T) {
-	guard, _ := newTestGuard(t, Rules(1000, 1000), Rules(1, 100))
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1, PerDay: 100})
 
 	if err := guard.Allow(t.Context(), request(testSource), testScope, "registered@example.com"); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
@@ -185,7 +190,7 @@ func TestGuardRefusesEveryAddressTheSameWay(t *testing.T) {
 // allowance of every address they named on the way there, or refusing them
 // would itself be the flood the mailbox rule exists to stop.
 func TestGuardDoesNotSpendTheMailboxAllowanceOnARefusedOrigin(t *testing.T) {
-	guard, _ := newTestGuard(t, Rules(1, 100), Rules(1, 100))
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1, PerDay: 100})
 
 	if err := guard.Allow(t.Context(), request(testSource), testScope, "first@example.com"); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
@@ -204,7 +209,7 @@ func TestGuardDoesNotSpendTheMailboxAllowanceOnARefusedOrigin(t *testing.T) {
 // A refusal says how long the wait is, so a reader can be told when to come
 // back instead of being left to guess.
 func TestGuardSaysHowLongToWait(t *testing.T) {
-	guard, _ := newTestGuard(t, Rules(1, 100), Rules(1000, 1000))
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
 	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
@@ -223,7 +228,7 @@ func TestGuardSaysHowLongToWait(t *testing.T) {
 // A request that reached a server without passing the edge still has an origin,
 // and every connection from it is that one origin rather than a fresh one.
 func TestGuardChargesThePeerWhenTheEdgeRecordedNothing(t *testing.T) {
-	guard, _ := newTestGuard(t, Rules(1000, 1000), Rules(1, 100))
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1, PerDay: 100})
 
 	if err := guard.Allow(t.Context(), peerRequest("192.0.2.5:41000"), testScope, "first@example.com"); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
@@ -242,7 +247,7 @@ func TestSourcePrefersTheAddressTheEdgeRecorded(t *testing.T) {
 }
 
 func TestRulesPairAnHourlyBurstWithADailyBudget(t *testing.T) {
-	rules := Rules(5, 20)
+	rules := Rules(platformpolicy.HourDay{PerHour: 5, PerDay: 20})
 
 	want := []ratelimit.Rule{
 		{Limit: 5, Window: time.Hour},
@@ -266,4 +271,36 @@ type peerOnlyRequest struct {
 
 func (r peerOnlyRequest) Peer() connect.Peer {
 	return connect.Peer{Addr: r.addr}
+}
+
+// A caller that reads no settings of its own still gets a limit, rather than a
+// form with no bound on the mail it causes.
+func TestNewDefaultLimitsAnUnconfiguredCaller(t *testing.T) {
+	guard := NewDefault()
+	allowance := platformpolicy.Defaults().MailRequestsPerAddress.PerHour
+
+	for attempt := 1; attempt <= allowance; attempt++ {
+		if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
+			t.Fatalf("attempt %d = %v, want the first %d allowed", attempt, err, allowance)
+		}
+	}
+	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("attempt %d = %v, want the default allowance to refuse it", allowance+1, err)
+	}
+}
+
+type failingPolicy struct{}
+
+func (failingPolicy) Policy(context.Context) (platformpolicy.Policy, error) {
+	return platformpolicy.Policy{}, errors.New("database unreachable")
+}
+
+// A policy that cannot be resolved sends no mail: guessing a limit would be
+// either no limit or one the operator never chose.
+func TestGuardRefusesWhenThePolicyCannotBeResolved(t *testing.T) {
+	guard := New(ratelimit.New(ratelimit.NewMemoryStore()), failingPolicy{}, slog.Default())
+
+	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("Allow = %v, want internal", err)
+	}
 }

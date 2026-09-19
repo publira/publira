@@ -18,6 +18,7 @@ var platformWriteProcedures = map[string]struct{}{
 	publirasplatformv1connect.PlatformEmailSettingsServiceUpdatePlatformEmailSettingsProcedure: {},
 	publirasplatformv1connect.PlatformEmailSettingsServiceSendPlatformSmtpTestEmailProcedure:   {},
 	publirasplatformv1connect.PlatformSettingsServiceUpdatePlatformSettingsProcedure:           {},
+	publirasplatformv1connect.PlatformPolicyServiceUpdatePlatformPolicyProcedure:               {},
 	publirasplatformv1connect.PlatformTenantServiceCreateTenantProcedure:                       {},
 	publirasplatformv1connect.PlatformTenantServiceUpdateTenantProcedure:                       {},
 	publirasplatformv1connect.PlatformTenantServiceSuspendTenantProcedure:                      {},

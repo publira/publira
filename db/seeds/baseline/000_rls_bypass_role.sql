@@ -168,6 +168,11 @@ BEGIN
 END
 $$;
 
+-- The storefront and the tenant console charge their rate limits, and decide
+-- whether a tenant admin owes a second factor, from the platform policy. It
+-- holds no secret, so both roles read it; neither may write it.
+GRANT SELECT ON platform_policy_config TO publira_public, publira_admin;
+
 -- outbox-worker composes the platform console's own mail — a password reset, an
 -- email change confirmation, the notice that follows one — and every mail it
 -- sends goes through the platform relay unless the tenant overrides it. So the
