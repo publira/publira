@@ -24,7 +24,108 @@ import (
 const (
 	defaultRoyaltyPageSize = 20
 	maxRoyaltyPageSize     = 100
+	royaltyCloseModeManual = "manual"
+	royaltyCloseModeAuto   = "automatic"
 )
+
+func royaltyConfigToProto(config dbmodels.TenantRoyaltyConfig) *publiraadminv1.RoyaltyConfig {
+	result := &publiraadminv1.RoyaltyConfig{
+		CloseMode: royaltyCloseModeToProto(config.CloseMode),
+	}
+	if config.AutoCloseDay.Valid {
+		day := config.AutoCloseDay.Int32
+		result.AutoCloseDay = &day
+	}
+	if config.AutomaticSince.Valid {
+		result.AutomaticSince = config.AutomaticSince.Time.Format(time.RFC3339)
+	}
+	return result
+}
+
+func royaltyCloseModeToProto(mode string) publiraadminv1.RoyaltyCloseMode {
+	if mode == royaltyCloseModeAuto {
+		return publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_AUTOMATIC
+	}
+	return publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL
+}
+
+func royaltyCloseModeFromProto(mode publiraadminv1.RoyaltyCloseMode) (string, error) {
+	switch mode {
+	case publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL:
+		return royaltyCloseModeManual, nil
+	case publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_AUTOMATIC:
+		return royaltyCloseModeAuto, nil
+	default:
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("close_mode must be manual or automatic"))
+	}
+}
+
+// GetRoyaltyConfig returns manual for tenants that have not chosen a policy.
+func (s *adminServer) GetRoyaltyConfig(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.GetRoyaltyConfigRequest],
+) (*connect.Response[publiraadminv1.GetRoyaltyConfigResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	config, err := s.queriesFor(ctx).GetTenantRoyaltyConfigByTenantID(ctx, tenant.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return connect.NewResponse(&publiraadminv1.GetRoyaltyConfigResponse{
+			Config: &publiraadminv1.RoyaltyConfig{CloseMode: publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL},
+		}), nil
+	}
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get royalty config", err, "tenant_id", tenant.ID.String())
+	}
+	return connect.NewResponse(&publiraadminv1.GetRoyaltyConfigResponse{Config: royaltyConfigToProto(config)}), nil
+}
+
+func (s *adminServer) UpdateRoyaltyConfig(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateRoyaltyConfigRequest],
+) (*connect.Response[publiraadminv1.UpdateRoyaltyConfigResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	closeMode, err := royaltyCloseModeFromProto(req.Msg.CloseMode)
+	if err != nil {
+		return nil, err
+	}
+	day := sql.NullInt32{}
+	if req.Msg.AutoCloseDay != nil {
+		day = sql.NullInt32{Int32: *req.Msg.AutoCloseDay, Valid: true}
+	}
+	if closeMode == royaltyCloseModeAuto && !day.Valid {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auto_close_day is required when close_mode is automatic"))
+	}
+	if day.Valid && (day.Int32 < 1 || day.Int32 > 28) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auto_close_day must be between 1 and 28"))
+	}
+
+	config, err := s.queriesFor(ctx).UpsertTenantRoyaltyConfig(ctx, dbmodels.UpsertTenantRoyaltyConfigParams{
+		TenantID: tenant.ID, CloseMode: closeMode, AutoCloseDay: day,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to update royalty config", err, "tenant_id", tenant.ID.String())
+	}
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
+		Action: "royalty_config_updated", TargetType: "royalty_config", TargetID: tenant.PublicID,
+		Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(req.Header()),
+	})
+	return connect.NewResponse(&publiraadminv1.UpdateRoyaltyConfigResponse{Config: royaltyConfigToProto(config)}), nil
+}
 
 // royaltyMonth resolves the requested period of the tenant in the tenant's
 // current zone.

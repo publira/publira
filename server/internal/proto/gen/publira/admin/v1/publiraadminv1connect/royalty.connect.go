@@ -33,6 +33,12 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// AdminRoyaltyServiceGetRoyaltyConfigProcedure is the fully-qualified name of the
+	// AdminRoyaltyService's GetRoyaltyConfig RPC.
+	AdminRoyaltyServiceGetRoyaltyConfigProcedure = "/publira.admin.v1.AdminRoyaltyService/GetRoyaltyConfig"
+	// AdminRoyaltyServiceUpdateRoyaltyConfigProcedure is the fully-qualified name of the
+	// AdminRoyaltyService's UpdateRoyaltyConfig RPC.
+	AdminRoyaltyServiceUpdateRoyaltyConfigProcedure = "/publira.admin.v1.AdminRoyaltyService/UpdateRoyaltyConfig"
 	// AdminRoyaltyServicePreviewRoyaltyStatementProcedure is the fully-qualified name of the
 	// AdminRoyaltyService's PreviewRoyaltyStatement RPC.
 	AdminRoyaltyServicePreviewRoyaltyStatementProcedure = "/publira.admin.v1.AdminRoyaltyService/PreviewRoyaltyStatement"
@@ -49,6 +55,10 @@ const (
 
 // AdminRoyaltyServiceClient is a client for the publira.admin.v1.AdminRoyaltyService service.
 type AdminRoyaltyServiceClient interface {
+	// Reads the close policy. Tenants that have not selected one read as manual.
+	GetRoyaltyConfig(context.Context, *connect.Request[v1.GetRoyaltyConfigRequest]) (*connect.Response[v1.GetRoyaltyConfigResponse], error)
+	// Updates the close policy. Automatic closing requires a day from 1 through 28.
+	UpdateRoyaltyConfig(context.Context, *connect.Request[v1.UpdateRoyaltyConfigRequest]) (*connect.Response[v1.UpdateRoyaltyConfigResponse], error)
 	// Computes a month that is not closed, exactly as closing it now would.
 	// failed_precondition for a month already closed, and for a month that has
 	// not started yet.
@@ -78,6 +88,18 @@ func NewAdminRoyaltyServiceClient(httpClient connect.HTTPClient, baseURL string,
 	baseURL = strings.TrimRight(baseURL, "/")
 	adminRoyaltyServiceMethods := v1.File_publira_admin_v1_royalty_proto.Services().ByName("AdminRoyaltyService").Methods()
 	return &adminRoyaltyServiceClient{
+		getRoyaltyConfig: connect.NewClient[v1.GetRoyaltyConfigRequest, v1.GetRoyaltyConfigResponse](
+			httpClient,
+			baseURL+AdminRoyaltyServiceGetRoyaltyConfigProcedure,
+			connect.WithSchema(adminRoyaltyServiceMethods.ByName("GetRoyaltyConfig")),
+			connect.WithClientOptions(opts...),
+		),
+		updateRoyaltyConfig: connect.NewClient[v1.UpdateRoyaltyConfigRequest, v1.UpdateRoyaltyConfigResponse](
+			httpClient,
+			baseURL+AdminRoyaltyServiceUpdateRoyaltyConfigProcedure,
+			connect.WithSchema(adminRoyaltyServiceMethods.ByName("UpdateRoyaltyConfig")),
+			connect.WithClientOptions(opts...),
+		),
 		previewRoyaltyStatement: connect.NewClient[v1.PreviewRoyaltyStatementRequest, v1.PreviewRoyaltyStatementResponse](
 			httpClient,
 			baseURL+AdminRoyaltyServicePreviewRoyaltyStatementProcedure,
@@ -107,10 +129,22 @@ func NewAdminRoyaltyServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // adminRoyaltyServiceClient implements AdminRoyaltyServiceClient.
 type adminRoyaltyServiceClient struct {
+	getRoyaltyConfig        *connect.Client[v1.GetRoyaltyConfigRequest, v1.GetRoyaltyConfigResponse]
+	updateRoyaltyConfig     *connect.Client[v1.UpdateRoyaltyConfigRequest, v1.UpdateRoyaltyConfigResponse]
 	previewRoyaltyStatement *connect.Client[v1.PreviewRoyaltyStatementRequest, v1.PreviewRoyaltyStatementResponse]
 	closeRoyaltyStatement   *connect.Client[v1.CloseRoyaltyStatementRequest, v1.CloseRoyaltyStatementResponse]
 	listRoyaltyStatements   *connect.Client[v1.ListRoyaltyStatementsRequest, v1.ListRoyaltyStatementsResponse]
 	getRoyaltyStatement     *connect.Client[v1.GetRoyaltyStatementRequest, v1.GetRoyaltyStatementResponse]
+}
+
+// GetRoyaltyConfig calls publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig.
+func (c *adminRoyaltyServiceClient) GetRoyaltyConfig(ctx context.Context, req *connect.Request[v1.GetRoyaltyConfigRequest]) (*connect.Response[v1.GetRoyaltyConfigResponse], error) {
+	return c.getRoyaltyConfig.CallUnary(ctx, req)
+}
+
+// UpdateRoyaltyConfig calls publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig.
+func (c *adminRoyaltyServiceClient) UpdateRoyaltyConfig(ctx context.Context, req *connect.Request[v1.UpdateRoyaltyConfigRequest]) (*connect.Response[v1.UpdateRoyaltyConfigResponse], error) {
+	return c.updateRoyaltyConfig.CallUnary(ctx, req)
 }
 
 // PreviewRoyaltyStatement calls publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement.
@@ -136,6 +170,10 @@ func (c *adminRoyaltyServiceClient) GetRoyaltyStatement(ctx context.Context, req
 // AdminRoyaltyServiceHandler is an implementation of the publira.admin.v1.AdminRoyaltyService
 // service.
 type AdminRoyaltyServiceHandler interface {
+	// Reads the close policy. Tenants that have not selected one read as manual.
+	GetRoyaltyConfig(context.Context, *connect.Request[v1.GetRoyaltyConfigRequest]) (*connect.Response[v1.GetRoyaltyConfigResponse], error)
+	// Updates the close policy. Automatic closing requires a day from 1 through 28.
+	UpdateRoyaltyConfig(context.Context, *connect.Request[v1.UpdateRoyaltyConfigRequest]) (*connect.Response[v1.UpdateRoyaltyConfigResponse], error)
 	// Computes a month that is not closed, exactly as closing it now would.
 	// failed_precondition for a month already closed, and for a month that has
 	// not started yet.
@@ -161,6 +199,18 @@ type AdminRoyaltyServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAdminRoyaltyServiceHandler(svc AdminRoyaltyServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	adminRoyaltyServiceMethods := v1.File_publira_admin_v1_royalty_proto.Services().ByName("AdminRoyaltyService").Methods()
+	adminRoyaltyServiceGetRoyaltyConfigHandler := connect.NewUnaryHandler(
+		AdminRoyaltyServiceGetRoyaltyConfigProcedure,
+		svc.GetRoyaltyConfig,
+		connect.WithSchema(adminRoyaltyServiceMethods.ByName("GetRoyaltyConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminRoyaltyServiceUpdateRoyaltyConfigHandler := connect.NewUnaryHandler(
+		AdminRoyaltyServiceUpdateRoyaltyConfigProcedure,
+		svc.UpdateRoyaltyConfig,
+		connect.WithSchema(adminRoyaltyServiceMethods.ByName("UpdateRoyaltyConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminRoyaltyServicePreviewRoyaltyStatementHandler := connect.NewUnaryHandler(
 		AdminRoyaltyServicePreviewRoyaltyStatementProcedure,
 		svc.PreviewRoyaltyStatement,
@@ -187,6 +237,10 @@ func NewAdminRoyaltyServiceHandler(svc AdminRoyaltyServiceHandler, opts ...conne
 	)
 	return "/publira.admin.v1.AdminRoyaltyService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case AdminRoyaltyServiceGetRoyaltyConfigProcedure:
+			adminRoyaltyServiceGetRoyaltyConfigHandler.ServeHTTP(w, r)
+		case AdminRoyaltyServiceUpdateRoyaltyConfigProcedure:
+			adminRoyaltyServiceUpdateRoyaltyConfigHandler.ServeHTTP(w, r)
 		case AdminRoyaltyServicePreviewRoyaltyStatementProcedure:
 			adminRoyaltyServicePreviewRoyaltyStatementHandler.ServeHTTP(w, r)
 		case AdminRoyaltyServiceCloseRoyaltyStatementProcedure:
@@ -203,6 +257,14 @@ func NewAdminRoyaltyServiceHandler(svc AdminRoyaltyServiceHandler, opts ...conne
 
 // UnimplementedAdminRoyaltyServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminRoyaltyServiceHandler struct{}
+
+func (UnimplementedAdminRoyaltyServiceHandler) GetRoyaltyConfig(context.Context, *connect.Request[v1.GetRoyaltyConfigRequest]) (*connect.Response[v1.GetRoyaltyConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig is not implemented"))
+}
+
+func (UnimplementedAdminRoyaltyServiceHandler) UpdateRoyaltyConfig(context.Context, *connect.Request[v1.UpdateRoyaltyConfigRequest]) (*connect.Response[v1.UpdateRoyaltyConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig is not implemented"))
+}
 
 func (UnimplementedAdminRoyaltyServiceHandler) PreviewRoyaltyStatement(context.Context, *connect.Request[v1.PreviewRoyaltyStatementRequest]) (*connect.Response[v1.PreviewRoyaltyStatementResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement is not implemented"))
