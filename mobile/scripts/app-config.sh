@@ -78,7 +78,7 @@ mobile_bind_device_ports() {
 
 # The serial of the device to use: the one MOBILE_DEVICE names, else the first
 # attached. Nothing at all when none is attached or `adb` is not installed --
-# which is the Dev Container, whose image ships no Android SDK.
+# which is the Dev Container until `task mobile:android-install` has run.
 mobile_attached_device() {
   if [[ -n "${MOBILE_DEVICE:-}" ]]; then
     printf '%s\n' "${MOBILE_DEVICE}"

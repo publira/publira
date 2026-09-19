@@ -3,9 +3,10 @@
 # profile, one PNG per route named on the command line.
 #
 # A device or emulator is the picture a reader would see, so an attached one is
-# what the screens are taken on. With none attached -- the Dev Container image
-# ships no Android SDK -- the same app is built for the web and served beside
-# its two backends on one origin (scripts/web_app_server.dart). What that draws
+# what the screens are taken on. With none attached -- a Dev Container where
+# `task mobile:android-install` has not run -- the same app is built for the
+# web and served beside its two backends on one origin
+# (scripts/web_app_server.dart). What that draws
 # is the app's own widgets against the profile's own data; what it cannot draw
 # is the platform around them, the status bar and the system navigation.
 set -euo pipefail
