@@ -12,7 +12,7 @@
 #
 #   docker run --rm publira/batch:local purge-content-events
 
-FROM golang:1.27-bookworm@sha256:74138d243a7968b954d70ab90c0927a4e87e814ffd554152e8b50b9973505c23 AS builder
+FROM golang:1.27-bookworm@sha256:6ed48491acfb40533f6970d9d8ce3cbfc6f2cc7d81413c2f01c871c927d98634 AS builder
 
 WORKDIR /src
 
