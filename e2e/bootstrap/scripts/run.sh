@@ -23,7 +23,7 @@ done
 
 # Phase 3 restarts containers, so the wait it relies on is checked first, before
 # anything is up and with `compose` stubbed.
-bash "${BOOTSTRAP_SCRIPTS_DIR}/lib_test.sh"
+bash "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/lib_test.sh"
 
 cleanup_done=0
 cleanup() {
@@ -35,7 +35,7 @@ cleanup() {
   if [[ "${status}" -ne 0 ]]; then
     collect_diagnostics
   fi
-  bash "${BOOTSTRAP_SCRIPTS_DIR}/down.sh" || true
+  bash "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/down.sh" || true
 }
 
 # A signal handler that just returns would let the script resume at the next
@@ -54,17 +54,17 @@ trap 'on_signal TERM' TERM
 
 bootstrap_log "=== bootstrap check start (project=${COMPOSE_PROJECT_NAME}) ==="
 
-bash "${BOOTSTRAP_SCRIPTS_DIR}/up.sh"
-bash "${BOOTSTRAP_SCRIPTS_DIR}/setup.sh"
-bash "${BOOTSTRAP_SCRIPTS_DIR}/restart-db.sh"
+bash "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/up.sh"
+bash "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/setup.sh"
+bash "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/restart-db.sh"
 
 # Local escape hatch: the dev ports are fixed, so a running `task dev` would
 # otherwise make phase 4 fail on the port preflight. Never set this in CI.
-if [[ "${BOOTSTRAP_SKIP_DEV:-0}" == "1" ]]; then
-  bootstrap_log "BOOTSTRAP_SKIP_DEV=1 — skipping phase 4 (task dev)"
+if [[ "${PUBLIRA_BOOTSTRAP_SKIP_DEV:-0}" == "1" ]]; then
+  bootstrap_log "PUBLIRA_BOOTSTRAP_SKIP_DEV=1 — skipping phase 4 (task dev)"
 else
-  bash "${BOOTSTRAP_SCRIPTS_DIR}/dev-up.sh"
-  bash "${BOOTSTRAP_SCRIPTS_DIR}/dev-wait.sh"
+  bash "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/dev-up.sh"
+  bash "${PUBLIRA_BOOTSTRAP_SCRIPTS_DIR}/dev-wait.sh"
 fi
 
 bootstrap_log "=== bootstrap check succeeded ==="

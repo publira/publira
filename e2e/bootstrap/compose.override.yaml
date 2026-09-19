@@ -18,7 +18,7 @@
 services:
   db:
     ports: !override
-      - "127.0.0.1:${BOOTSTRAP_POSTGRES_PORT:-5434}:5432"
+      - "127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT:-5434}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d publira"]
       interval: 2s
@@ -28,8 +28,8 @@ services:
 
   redis:
     ports: !override
-      - "127.0.0.1:${BOOTSTRAP_REDIS_PORT:-6381}:6379"
+      - "127.0.0.1:${PUBLIRA_BOOTSTRAP_REDIS_PORT:-6381}:6379"
 
   rustfs:
     ports: !override
-      - "127.0.0.1:${BOOTSTRAP_RUSTFS_PORT:-9002}:9000"
+      - "127.0.0.1:${PUBLIRA_BOOTSTRAP_RUSTFS_PORT:-9002}:9000"

@@ -2,7 +2,8 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 // Absolute path avoids PATH lookup (oxlint sonarjs/no-os-command-from-path).
-const bashBin = (): string => process.env.BASH_BIN?.trim() || "/usr/bin/bash";
+const bashBin = (): string =>
+  process.env.PUBLIRA_BASH_BIN?.trim() || "/usr/bin/bash";
 
 const uploadScript = fileURLToPath(
   new URL("../scripts/upload-episode-pages.sh", import.meta.url)

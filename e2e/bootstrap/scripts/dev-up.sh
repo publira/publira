@@ -11,7 +11,7 @@ ensure_run_dirs
 bootstrap_log "=== phase 4: task dev ==="
 
 busy=()
-for port in "${BOOTSTRAP_DEV_PORTS[@]}"; do
+for port in "${PUBLIRA_BOOTSTRAP_DEV_PORTS[@]}"; do
   if port_in_use "${port}"; then
     busy+=("${port}")
   fi

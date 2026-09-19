@@ -31,7 +31,7 @@ cleanup() {
     collect_diagnostics
   fi
   # Preserve the probe/signal status even if teardown itself fails.
-  bash "${ROUTING_SCRIPTS_DIR}/down.sh" ||
+  bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/down.sh" ||
     routing_err "teardown failed (exit $?); compose project ${COMPOSE_PROJECT_NAME} may still be up"
 }
 
@@ -50,8 +50,8 @@ trap 'on_signal TERM' TERM
 
 routing_log "=== routing check start (project=${COMPOSE_PROJECT_NAME}) ==="
 
-bash "${ROUTING_SCRIPTS_DIR}/up.sh"
-bash "${ROUTING_SCRIPTS_DIR}/wait-ready.sh"
-bash "${ROUTING_SCRIPTS_DIR}/test.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test.sh"
 
 routing_log "=== routing check succeeded ==="
