@@ -177,8 +177,8 @@ catalogs:
       specifier: 1.43.0
       version: 1.43.0
     '@publira/comic-viewer':
-      specifier: 0.8.0
-      version: 0.8.0
+      specifier: 0.9.0
+      version: 0.9.0
     '@tailwindcss/postcss':
       specifier: 4.3.3
       version: 4.3.3
@@ -440,7 +440,7 @@ importers:
         version: link:../../packages/brand
       '@publira/comic-viewer':
         specifier: 'catalog:'
-        version: 0.8.0(react@19.3.0)
+        version: 0.9.0(react@19.3.0)
       '@publira/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -2168,8 +2168,8 @@ packages:
   '@preact/signals-core@1.14.4':
     resolution: {integrity: sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA==}
 
-  '@publira/comic-viewer@0.8.0':
-    resolution: {integrity: sha512-KiV/FLtvOqzA8XmTLSapVCA4dfxumKfIuEx0tpr81/mpQk9m6rH7Fa6l4sPpCQ6wYeD2AYlsy53AvgbzCoheOQ==}
+  '@publira/comic-viewer@0.9.0':
+    resolution: {integrity: sha512-6m+c1Ol6/m1TX3c3pN2wxCaYlRHKZ0CK0KI/+cYNlKIl2/NHPyyQKcKRCJ6ynTQ7R3x/5tfkeJLMs71elv/N/A==}
     peerDependencies:
       react: '>=19'
 
@@ -6216,7 +6216,7 @@ snapshots:
 
   '@preact/signals-core@1.14.4': {}
 
-  '@publira/comic-viewer@0.8.0(react@19.3.0)':
+  '@publira/comic-viewer@0.9.0(react@19.3.0)':
     dependencies:
       react: 19.3.0
 
