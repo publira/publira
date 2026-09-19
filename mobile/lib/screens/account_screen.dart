@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -46,6 +47,7 @@ class AccountScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   const _DownloadsEntry(),
+                  const _ContactEntry(),
                 ],
               )
             : ListView(
@@ -66,6 +68,7 @@ class AccountScreen extends StatelessWidget {
                   const _FollowsEntry(),
                   const _DownloadsEntry(),
                   const _NotificationSwitch(),
+                  const _ContactEntry(),
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: OutlinedButton(
@@ -142,6 +145,36 @@ class _DownloadsEntry extends StatelessWidget {
           subtitle: Text(messages.accountDownloadsDescription),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push(AppRoutes.accountDownloads),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+/// The way to a message for the people who run the tenant, for a guest as
+/// much as for a signed-in reader.
+///
+/// A build carrying no [ContactScope] has nowhere to send one, so the row is
+/// left out.
+class _ContactEntry extends StatelessWidget {
+  const _ContactEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    if (ContactScope.maybeOf(context) == null) {
+      return const SizedBox.shrink();
+    }
+    final messages = AppMessages.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: const ValueKey('account-contact'),
+          title: Text(messages.accountContact),
+          subtitle: Text(messages.accountContactDescription),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push(AppRoutes.accountContact),
         ),
         const Divider(height: 1),
       ],
@@ -265,6 +298,9 @@ class _BirthDateRowState extends State<_BirthDateRow> {
         }
         final stored = parseBirthDate(age.birthDate);
         if (stored != null) {
+          // The copy asks a reader with a wrong date to get in touch, so the
+          // row leads to where they can.
+          final canContact = ContactScope.maybeOf(context) != null;
           return _section(
             ListTile(
               key: const ValueKey('account-birth-date'),
@@ -274,6 +310,10 @@ class _BirthDateRowState extends State<_BirthDateRow> {
                 '${messages.accountBirthDateSetHelp}',
               ),
               isThreeLine: true,
+              trailing: canContact ? const Icon(Icons.chevron_right) : null,
+              onTap: canContact
+                  ? () => context.push(AppRoutes.accountContact)
+                  : null,
             ),
           );
         }

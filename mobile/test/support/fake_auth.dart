@@ -47,6 +47,8 @@ class FakeAuthRepository implements AuthRepository {
     this.verification = AgeVerification.checked,
     this.birthDateFailure,
     this.recordFailure,
+    this.email = 'member@example.com',
+    this.emailFailure,
   });
 
   /// What [signIn] returns, and what [refresh] echoes the user of.
@@ -66,6 +68,13 @@ class FakeAuthRepository implements AuthRepository {
 
   /// Thrown by [recordBirthDate], standing in for an API that refuses it.
   AuthFailure? recordFailure;
+
+  /// What [readEmail] answers, and [emailFailure] what it throws instead.
+  String email;
+  AuthFailure? emailFailure;
+
+  /// Held open by a test that needs to act while [readEmail] is in flight.
+  Completer<void>? emailGate;
 
   /// The zone [readReaderAge] reports. Seoul has no daylight saving, so a
   /// test's arithmetic about its calendar day does not drift with the season.
@@ -117,6 +126,16 @@ class FakeAuthRepository implements AuthRepository {
       timeZone: timeZone,
       verification: verification,
     );
+  }
+
+  @override
+  Future<String> readEmail(AuthSession session) async {
+    await emailGate?.future;
+    final failure = emailFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return email;
   }
 
   @override

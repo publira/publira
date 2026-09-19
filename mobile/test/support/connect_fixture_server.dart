@@ -37,6 +37,8 @@ class ConnectFixtureServer {
     this.pushDeviceStatus = HttpStatus.ok,
     this.commentStatus = HttpStatus.ok,
     this.followStatus = HttpStatus.ok,
+    this.contactStatus = HttpStatus.ok,
+    this.contactErrorCode = 'unavailable',
     this.acceptsPayments = false,
     this.checkoutStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
@@ -418,6 +420,12 @@ class ConnectFixtureServer {
   /// that cannot be reached.
   int followStatus;
 
+  /// What `SubmitContactMessage` answers with, and the Connect code of the
+  /// error body when that is not 200, so a test can act out an API that
+  /// refuses a message for any of its reasons.
+  int contactStatus;
+  String contactErrorCode;
+
   /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
   /// another value to act out a token the API has stopped accepting.
   String? activeAccessToken;
@@ -610,8 +618,21 @@ class ConnectFixtureServer {
           // protojson omits an empty string, the way the API does for a
           // reader who has recorded no date.
           if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
+          'email': memberEmail,
         },
       });
+      return;
+    }
+
+    if (path.endsWith('/SubmitContactMessage')) {
+      // A session is optional, and the response deliberately empty.
+      await _write(
+        request,
+        contactStatus,
+        contactStatus == HttpStatus.ok
+            ? const <String, Object?>{}
+            : {'code': contactErrorCode, 'message': contactErrorCode},
+      );
       return;
     }
 

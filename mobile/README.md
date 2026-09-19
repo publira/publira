@@ -130,6 +130,7 @@ mobile/
 │   ├── auth/                     # Session, secure storage, AuthController
 │   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
 │   ├── comments/                 # CommentRepository, tenant comment mode, own-comment merge
+│   ├── contact/                  # ContactRepository: a reader's message to the tenant's staff
 │   ├── crypto/                   # HMAC-SHA256 keystream shared by delivery and storage
 │   ├── follow/                   # FollowRepository and the control a series or an author is followed with
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
@@ -138,7 +139,7 @@ mobile/
 │   ├── models/                   # Series / author / label / episode body / episode comment / follow
 │   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / account / follows / downloads
+│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / account / follows / downloads / contact
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
