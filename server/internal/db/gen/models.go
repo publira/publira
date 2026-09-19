@@ -745,6 +745,14 @@ type TenantRatingTotal struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+type TenantRoyaltyConfig struct {
+	TenantID       uuid.UUID     `json:"tenant_id"`
+	CloseMode      string        `json:"close_mode"`
+	AutoCloseDay   sql.NullInt32 `json:"auto_close_day"`
+	AutomaticSince sql.NullTime  `json:"automatic_since"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+}
+
 type TenantSmtpConfig struct {
 	TenantID            uuid.UUID      `json:"tenant_id"`
 	SmtpOverrideEnabled bool           `json:"smtp_override_enabled"`

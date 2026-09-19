@@ -2,8 +2,8 @@
 // @generated from file publira/admin/v1/royalty.proto (package publira.admin.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,119 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/royalty.proto.
  */
 export const file_publira_admin_v1_royalty: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3JveWFsdHkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiSQoWUm95YWx0eVN0YXRlbWVudFRvdGFscxINCgVncm9zcxgBIAEoAxIQCghyZWZ1bmRlZBgCIAEoAxIOCgZwYXlvdXQYAyABKAMiwQEKEFJveWFsdHlTdGF0ZW1lbnQSDgoGcGVyaW9kGAEgASgJEhEKCXRpbWVfem9uZRgCIAEoCRIRCgljbG9zZWRfYXQYAyABKAkSIAoYY2xvc2VkX2J5X3VzZXJfcHVibGljX2lkGAQgASgJEhsKE2Nsb3NlZF9ieV91c2VyX25hbWUYBSABKAkSOAoGdG90YWxzGAYgASgLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50VG90YWxzItYCChRSb3lhbHR5U3RhdGVtZW50TGluZRITCgtsaW5lX251bWJlchgBIAEoBRIZChFjcmVhdG9yX3B1YmxpY19pZBgCIAEoCRIUCgxjcmVhdG9yX25hbWUYAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIUCgxzZXJpZXNfdGl0bGUYBSABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYBiABKAkSFQoNZXBpc29kZV90aXRsZRgHIAEoCRIWCg5yb2xlX3B1YmxpY19pZBgIIAEoCRIRCglyb2xlX25hbWUYCSABKAkSEgoKc2FsZV9jb3VudBgKIAEoBRIUCgxncm9zc19hbW91bnQYCyABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAwgASgDEhEKCXNoYXJlX2JwcxgNIAEoBRIVCg1wYXlvdXRfYW1vdW50GA4gASgDImEKHlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJIrUBCh9QcmV2aWV3Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEg4KBnBlcmlvZBgBIAEoCRIRCgl0aW1lX3pvbmUYAiABKAkSOAoGdG90YWxzGAMgASgLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50VG90YWxzEjUKBWxpbmVzGAQgAygLMiYucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50TGluZSJfChxDbG9zZVJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAkiVgodQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USNQoJc3RhdGVtZW50GAEgASgLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50Im0KHExpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJIoMBCh1MaXN0Um95YWx0eVN0YXRlbWVudHNSZXNwb25zZRI2CgpzdGF0ZW1lbnRzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50EhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiewoaR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnBlcmlvZBgCIAEoCRINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCSK3AQobR2V0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEjUKCXN0YXRlbWVudBgBIAEoCzIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudBI1CgVsaW5lcxgCIAMoCzImLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudExpbmUSFgoOcHJldmlvdXNfdG9rZW4YAyABKAkSEgoKbmV4dF90b2tlbhgEIAEoCTKGBAoTQWRtaW5Sb3lhbHR5U2VydmljZRKAAQoXUHJldmlld1JveWFsdHlTdGF0ZW1lbnQSMC5wdWJsaXJhLmFkbWluLnYxLlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBoxLnB1YmxpcmEuYWRtaW4udjEuUHJldmlld1JveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAEnoKFUNsb3NlUm95YWx0eVN0YXRlbWVudBIuLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ6ChVMaXN0Um95YWx0eVN0YXRlbWVudHMSLi5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1Jlc3BvbnNlIgASdAoTR2V0Um95YWx0eVN0YXRlbWVudBIsLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3JveWFsdHkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEikAEKDVJveWFsdHlDb25maWcSNgoKY2xvc2VfbW9kZRgBIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUNsb3NlTW9kZRIbCg5hdXRvX2Nsb3NlX2RheRgCIAEoBUgAiAEBEhcKD2F1dG9tYXRpY19zaW5jZRgDIAEoCUIRCg9fYXV0b19jbG9zZV9kYXkiSgoXR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IksKGEdldFJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWcitQEKGlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI2CgpjbG9zZV9tb2RlGAIgASgOMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q2xvc2VNb2RlEhsKDmF1dG9fY2xvc2VfZGF5GAMgASgFSACIAQFCEQoPX2F1dG9fY2xvc2VfZGF5Ik4KG1VwZGF0ZVJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWciSQoWUm95YWx0eVN0YXRlbWVudFRvdGFscxINCgVncm9zcxgBIAEoAxIQCghyZWZ1bmRlZBgCIAEoAxIOCgZwYXlvdXQYAyABKAMiwQEKEFJveWFsdHlTdGF0ZW1lbnQSDgoGcGVyaW9kGAEgASgJEhEKCXRpbWVfem9uZRgCIAEoCRIRCgljbG9zZWRfYXQYAyABKAkSIAoYY2xvc2VkX2J5X3VzZXJfcHVibGljX2lkGAQgASgJEhsKE2Nsb3NlZF9ieV91c2VyX25hbWUYBSABKAkSOAoGdG90YWxzGAYgASgLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50VG90YWxzItYCChRSb3lhbHR5U3RhdGVtZW50TGluZRITCgtsaW5lX251bWJlchgBIAEoBRIZChFjcmVhdG9yX3B1YmxpY19pZBgCIAEoCRIUCgxjcmVhdG9yX25hbWUYAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIUCgxzZXJpZXNfdGl0bGUYBSABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYBiABKAkSFQoNZXBpc29kZV90aXRsZRgHIAEoCRIWCg5yb2xlX3B1YmxpY19pZBgIIAEoCRIRCglyb2xlX25hbWUYCSABKAkSEgoKc2FsZV9jb3VudBgKIAEoBRIUCgxncm9zc19hbW91bnQYCyABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAwgASgDEhEKCXNoYXJlX2JwcxgNIAEoBRIVCg1wYXlvdXRfYW1vdW50GA4gASgDImEKHlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJIrUBCh9QcmV2aWV3Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEg4KBnBlcmlvZBgBIAEoCRIRCgl0aW1lX3pvbmUYAiABKAkSOAoGdG90YWxzGAMgASgLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50VG90YWxzEjUKBWxpbmVzGAQgAygLMiYucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50TGluZSJfChxDbG9zZVJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAkiVgodQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USNQoJc3RhdGVtZW50GAEgASgLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50Im0KHExpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJIoMBCh1MaXN0Um95YWx0eVN0YXRlbWVudHNSZXNwb25zZRI2CgpzdGF0ZW1lbnRzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50EhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiewoaR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnBlcmlvZBgCIAEoCRINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCSK3AQobR2V0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEjUKCXN0YXRlbWVudBgBIAEoCzIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudBI1CgVsaW5lcxgCIAMoCzImLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudExpbmUSFgoOcHJldmlvdXNfdG9rZW4YAyABKAkSEgoKbmV4dF90b2tlbhgEIAEoCSp3ChBSb3lhbHR5Q2xvc2VNb2RlEiIKHlJPWUFMVFlfQ0xPU0VfTU9ERV9VTlNQRUNJRklFRBAAEh0KGVJPWUFMVFlfQ0xPU0VfTU9ERV9NQU5VQUwQARIgChxST1lBTFRZX0NMT1NFX01PREVfQVVUT01BVElDEAIy6QUKE0FkbWluUm95YWx0eVNlcnZpY2USawoQR2V0Um95YWx0eUNvbmZpZxIpLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlDb25maWdSZXNwb25zZSIAEnQKE1VwZGF0ZVJveWFsdHlDb25maWcSLC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVSb3lhbHR5Q29uZmlnUmVzcG9uc2UiABKAAQoXUHJldmlld1JveWFsdHlTdGF0ZW1lbnQSMC5wdWJsaXJhLmFkbWluLnYxLlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBoxLnB1YmxpcmEuYWRtaW4udjEuUHJldmlld1JveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAEnoKFUNsb3NlUm95YWx0eVN0YXRlbWVudBIuLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ6ChVMaXN0Um95YWx0eVN0YXRlbWVudHMSLi5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkxpc3RSb3lhbHR5U3RhdGVtZW50c1Jlc3BvbnNlIgASdAoTR2V0Um95YWx0eVN0YXRlbWVudBIsLnB1YmxpcmEuYWRtaW4udjEuR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+
+/**
+ * The tenant's policy for closing completed royalty months.
+ *
+ * @generated from message publira.admin.v1.RoyaltyConfig
+ */
+export type RoyaltyConfig = Message<"publira.admin.v1.RoyaltyConfig"> & {
+  /**
+   * @generated from field: publira.admin.v1.RoyaltyCloseMode close_mode = 1;
+   */
+  closeMode: RoyaltyCloseMode;
+
+  /**
+   * Day 1–28 of the following month when automatic closing runs. It is set
+   * only when close_mode is automatic.
+   *
+   * @generated from field: optional int32 auto_close_day = 2;
+   */
+  autoCloseDay?: number | undefined;
+
+  /**
+   * When automatic closing was most recently enabled, as RFC 3339.
+   *
+   * @generated from field: string automatic_since = 3;
+   */
+  automaticSince: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.RoyaltyConfig.
+ * Use `create(RoyaltyConfigSchema)` to create a new message.
+ */
+export const RoyaltyConfigSchema: GenMessage<RoyaltyConfig> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_royalty, 0);
+
+/**
+ * @generated from message publira.admin.v1.GetRoyaltyConfigRequest
+ */
+export type GetRoyaltyConfigRequest = Message<"publira.admin.v1.GetRoyaltyConfigRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetRoyaltyConfigRequest.
+ * Use `create(GetRoyaltyConfigRequestSchema)` to create a new message.
+ */
+export const GetRoyaltyConfigRequestSchema: GenMessage<GetRoyaltyConfigRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_royalty, 1);
+
+/**
+ * @generated from message publira.admin.v1.GetRoyaltyConfigResponse
+ */
+export type GetRoyaltyConfigResponse = Message<"publira.admin.v1.GetRoyaltyConfigResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.RoyaltyConfig config = 1;
+   */
+  config?: RoyaltyConfig | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetRoyaltyConfigResponse.
+ * Use `create(GetRoyaltyConfigResponseSchema)` to create a new message.
+ */
+export const GetRoyaltyConfigResponseSchema: GenMessage<GetRoyaltyConfigResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_royalty, 2);
+
+/**
+ * @generated from message publira.admin.v1.UpdateRoyaltyConfigRequest
+ */
+export type UpdateRoyaltyConfigRequest = Message<"publira.admin.v1.UpdateRoyaltyConfigRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: publira.admin.v1.RoyaltyCloseMode close_mode = 2;
+   */
+  closeMode: RoyaltyCloseMode;
+
+  /**
+   * @generated from field: optional int32 auto_close_day = 3;
+   */
+  autoCloseDay?: number | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateRoyaltyConfigRequest.
+ * Use `create(UpdateRoyaltyConfigRequestSchema)` to create a new message.
+ */
+export const UpdateRoyaltyConfigRequestSchema: GenMessage<UpdateRoyaltyConfigRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_royalty, 3);
+
+/**
+ * @generated from message publira.admin.v1.UpdateRoyaltyConfigResponse
+ */
+export type UpdateRoyaltyConfigResponse = Message<"publira.admin.v1.UpdateRoyaltyConfigResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.RoyaltyConfig config = 1;
+   */
+  config?: RoyaltyConfig | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateRoyaltyConfigResponse.
+ * Use `create(UpdateRoyaltyConfigResponseSchema)` to create a new message.
+ */
+export const UpdateRoyaltyConfigResponseSchema: GenMessage<UpdateRoyaltyConfigResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_royalty, 4);
 
 /**
  * The figures of one month: its own sales, and what its lines pay out.
@@ -50,7 +162,7 @@ export type RoyaltyStatementTotals = Message<"publira.admin.v1.RoyaltyStatementT
  * Use `create(RoyaltyStatementTotalsSchema)` to create a new message.
  */
 export const RoyaltyStatementTotalsSchema: GenMessage<RoyaltyStatementTotals> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 0);
+  messageDesc(file_publira_admin_v1_royalty, 5);
 
 /**
  * A closed month.
@@ -101,7 +213,7 @@ export type RoyaltyStatement = Message<"publira.admin.v1.RoyaltyStatement"> & {
  * Use `create(RoyaltyStatementSchema)` to create a new message.
  */
 export const RoyaltyStatementSchema: GenMessage<RoyaltyStatement> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 1);
+  messageDesc(file_publira_admin_v1_royalty, 6);
 
 /**
  * One creator's credit on one episode for one role, with that episode's sales
@@ -195,7 +307,7 @@ export type RoyaltyStatementLine = Message<"publira.admin.v1.RoyaltyStatementLin
  * Use `create(RoyaltyStatementLineSchema)` to create a new message.
  */
 export const RoyaltyStatementLineSchema: GenMessage<RoyaltyStatementLine> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 2);
+  messageDesc(file_publira_admin_v1_royalty, 7);
 
 /**
  * @generated from message publira.admin.v1.PreviewRoyaltyStatementRequest
@@ -219,7 +331,7 @@ export type PreviewRoyaltyStatementRequest = Message<"publira.admin.v1.PreviewRo
  * Use `create(PreviewRoyaltyStatementRequestSchema)` to create a new message.
  */
 export const PreviewRoyaltyStatementRequestSchema: GenMessage<PreviewRoyaltyStatementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 3);
+  messageDesc(file_publira_admin_v1_royalty, 8);
 
 /**
  * @generated from message publira.admin.v1.PreviewRoyaltyStatementResponse
@@ -251,7 +363,7 @@ export type PreviewRoyaltyStatementResponse = Message<"publira.admin.v1.PreviewR
  * Use `create(PreviewRoyaltyStatementResponseSchema)` to create a new message.
  */
 export const PreviewRoyaltyStatementResponseSchema: GenMessage<PreviewRoyaltyStatementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 4);
+  messageDesc(file_publira_admin_v1_royalty, 9);
 
 /**
  * @generated from message publira.admin.v1.CloseRoyaltyStatementRequest
@@ -275,7 +387,7 @@ export type CloseRoyaltyStatementRequest = Message<"publira.admin.v1.CloseRoyalt
  * Use `create(CloseRoyaltyStatementRequestSchema)` to create a new message.
  */
 export const CloseRoyaltyStatementRequestSchema: GenMessage<CloseRoyaltyStatementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 5);
+  messageDesc(file_publira_admin_v1_royalty, 10);
 
 /**
  * @generated from message publira.admin.v1.CloseRoyaltyStatementResponse
@@ -292,7 +404,7 @@ export type CloseRoyaltyStatementResponse = Message<"publira.admin.v1.CloseRoyal
  * Use `create(CloseRoyaltyStatementResponseSchema)` to create a new message.
  */
 export const CloseRoyaltyStatementResponseSchema: GenMessage<CloseRoyaltyStatementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 6);
+  messageDesc(file_publira_admin_v1_royalty, 11);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -325,7 +437,7 @@ export type ListRoyaltyStatementsRequest = Message<"publira.admin.v1.ListRoyalty
  * Use `create(ListRoyaltyStatementsRequestSchema)` to create a new message.
  */
 export const ListRoyaltyStatementsRequestSchema: GenMessage<ListRoyaltyStatementsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 7);
+  messageDesc(file_publira_admin_v1_royalty, 12);
 
 /**
  * @generated from message publira.admin.v1.ListRoyaltyStatementsResponse
@@ -352,7 +464,7 @@ export type ListRoyaltyStatementsResponse = Message<"publira.admin.v1.ListRoyalt
  * Use `create(ListRoyaltyStatementsResponseSchema)` to create a new message.
  */
 export const ListRoyaltyStatementsResponseSchema: GenMessage<ListRoyaltyStatementsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 8);
+  messageDesc(file_publira_admin_v1_royalty, 13);
 
 /**
  * Cursor pagination over the lines. Field shape and token rules:
@@ -394,7 +506,7 @@ export type GetRoyaltyStatementRequest = Message<"publira.admin.v1.GetRoyaltySta
  * Use `create(GetRoyaltyStatementRequestSchema)` to create a new message.
  */
 export const GetRoyaltyStatementRequestSchema: GenMessage<GetRoyaltyStatementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 9);
+  messageDesc(file_publira_admin_v1_royalty, 14);
 
 /**
  * @generated from message publira.admin.v1.GetRoyaltyStatementResponse
@@ -426,7 +538,33 @@ export type GetRoyaltyStatementResponse = Message<"publira.admin.v1.GetRoyaltySt
  * Use `create(GetRoyaltyStatementResponseSchema)` to create a new message.
  */
 export const GetRoyaltyStatementResponseSchema: GenMessage<GetRoyaltyStatementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_royalty, 10);
+  messageDesc(file_publira_admin_v1_royalty, 15);
+
+/**
+ * @generated from enum publira.admin.v1.RoyaltyCloseMode
+ */
+export enum RoyaltyCloseMode {
+  /**
+   * @generated from enum value: ROYALTY_CLOSE_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ROYALTY_CLOSE_MODE_MANUAL = 1;
+   */
+  MANUAL = 1,
+
+  /**
+   * @generated from enum value: ROYALTY_CLOSE_MODE_AUTOMATIC = 2;
+   */
+  AUTOMATIC = 2,
+}
+
+/**
+ * Describes the enum publira.admin.v1.RoyaltyCloseMode.
+ */
+export const RoyaltyCloseModeSchema: GenEnum<RoyaltyCloseMode> = /*@__PURE__*/
+  enumDesc(file_publira_admin_v1_royalty, 0);
 
 /**
  * Creator royalties. Every RPC here is limited to the tenant admin role.
@@ -434,6 +572,26 @@ export const GetRoyaltyStatementResponseSchema: GenMessage<GetRoyaltyStatementRe
  * @generated from service publira.admin.v1.AdminRoyaltyService
  */
 export const AdminRoyaltyService: GenService<{
+  /**
+   * Reads the close policy. Tenants that have not selected one read as manual.
+   *
+   * @generated from rpc publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig
+   */
+  getRoyaltyConfig: {
+    methodKind: "unary";
+    input: typeof GetRoyaltyConfigRequestSchema;
+    output: typeof GetRoyaltyConfigResponseSchema;
+  },
+  /**
+   * Updates the close policy. Automatic closing requires a day from 1 through 28.
+   *
+   * @generated from rpc publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig
+   */
+  updateRoyaltyConfig: {
+    methodKind: "unary";
+    input: typeof UpdateRoyaltyConfigRequestSchema;
+    output: typeof UpdateRoyaltyConfigResponseSchema;
+  },
   /**
    * Computes a month that is not closed, exactly as closing it now would.
    * failed_precondition for a month already closed, and for a month that has

@@ -572,6 +572,7 @@ type Querier interface {
 	// One reader in the shape ListTenantReaders* returns. A staff account and an
 	// account of another tenant are both no rows.
 	GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error)
+	GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantRoyaltyConfig, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	// Worker check: the recipient a notification names is a user of the tenant the
@@ -1956,6 +1957,7 @@ type Querier interface {
 	// failed.
 	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
+	UpsertTenantRoyaltyConfig(ctx context.Context, arg UpsertTenantRoyaltyConfigParams) (TenantRoyaltyConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 	// Starting enrollment replaces whatever unconfirmed secret was there and
