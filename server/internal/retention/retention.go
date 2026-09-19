@@ -293,7 +293,9 @@ type TableQuerier interface {
 }
 
 // Table holds what a batch spanning every tenant resolves each tenant's
-// periods from, read once at the start of the run.
+// periods from, read once at the start of the run. The zero Table resolves
+// every tenant to Builtin, as an installation that has saved nothing does, so
+// an omitted table can never mean periods of zero days.
 type Table struct {
 	defaults  Periods
 	overrides map[uuid.UUID]Overrides
@@ -324,6 +326,9 @@ func LoadTable(ctx context.Context, q TableQuerier) (Table, error) {
 
 // Defaults is the periods of every tenant that overrides nothing.
 func (t Table) Defaults() Periods {
+	if t.defaults == (Periods{}) {
+		return Builtin()
+	}
 	return t.defaults
 }
 
@@ -334,5 +339,5 @@ func (t Table) OverrideCount() int {
 
 // For is the periods that apply to tenantID.
 func (t Table) For(tenantID uuid.UUID) Periods {
-	return Settings{Overrides: t.overrides[tenantID], Defaults: t.defaults}.Effective()
+	return Settings{Overrides: t.overrides[tenantID], Defaults: t.Defaults()}.Effective()
 }

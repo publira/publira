@@ -238,3 +238,15 @@ func TestReadDefaults(t *testing.T) {
 		t.Fatalf("LoadTable error = %v, want it to wrap %v", err, boom)
 	}
 }
+
+// A purge handed no table must not read it as periods of zero days, which
+// would delete every row older than now.
+func TestZeroTableResolvesToBuiltin(t *testing.T) {
+	var table Table
+	if got := table.For(uuid.Must(uuid.NewV7())); got != Builtin() {
+		t.Fatalf("zero Table.For() = %+v, want Builtin %+v", got, Builtin())
+	}
+	if got := table.Defaults(); got != Builtin() {
+		t.Fatalf("zero Table.Defaults() = %+v, want Builtin %+v", got, Builtin())
+	}
+}
