@@ -23,7 +23,7 @@ readonly APK='build/app/outputs/flutter-apk/app-dev-debug.apk'
 out_dir="${MOBILE_DIR}/.run/screenshots"
 # Long enough for the app to boot, resolve the tenant, read its page of the
 # catalog, and fetch the covers on it.
-wait_ms="${MOBILE_SCREENSHOT_WAIT_MS:-8000}"
+wait_ms="${PUBLIRA_MOBILE_SCREENSHOT_WAIT_MS:-8000}"
 
 routes=("$@")
 if [[ "${#routes[@]}" -eq 0 ]]; then
@@ -126,7 +126,7 @@ screenshot_in_browser() {
     # go_router runs on Flutter's default URL strategy, which keeps the route
     # in the fragment, so the server is asked for the one page either way.
     pnpm --dir "${REPO_ROOT}/e2e" exec playwright screenshot \
-      --device="${MOBILE_SCREENSHOT_DEVICE:-Pixel 7}" \
+      --device="${PUBLIRA_MOBILE_SCREENSHOT_DEVICE:-Pixel 7}" \
       --block-service-workers \
       --wait-for-timeout="${wait_ms}" \
       "${origin}/#${route}" "${out_dir}/${name}.png"
