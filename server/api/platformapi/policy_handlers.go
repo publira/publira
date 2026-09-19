@@ -90,11 +90,13 @@ func (s *platformServer) GetPlatformPolicy(
 }
 
 // writePlatformPolicy locks the row, compares its revision with the one the
-// request states, and writes only when they match.
+// request states, and writes only when they match. The audit entry commits with
+// the write, so a change to the security policy never goes unrecorded.
 func (s *platformServer) writePlatformPolicy(
 	ctx context.Context,
 	policy platformpolicy.Policy,
 	expectedRevision int64,
+	audit *auditlog.PlatformEntry,
 ) (dbmodels.PlatformPolicyConfig, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -135,6 +137,11 @@ func (s *platformServer) writePlatformPolicy(
 		}
 	}
 
+	if audit != nil {
+		if err := auditlog.WritePlatform(ctx, txq, s.logger, *audit); err != nil {
+			return dbmodels.PlatformPolicyConfig{}, s.internalDBError(ctx, "failed to audit platform policy", err)
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return dbmodels.PlatformPolicyConfig{}, s.internalDBError(ctx, "failed to commit platform policy", err)
 	}
@@ -156,13 +163,9 @@ func (s *platformServer) UpdatePlatformPolicy(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("expected_revision must not be negative"))
 	}
 
-	updated, err := s.writePlatformPolicy(ctx, policy, req.Msg.ExpectedRevision)
-	if err != nil {
-		return nil, err
-	}
-
+	var audit *auditlog.PlatformEntry
 	if actor, ok := platformActorFromContext(ctx); ok {
-		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		audit = &auditlog.PlatformEntry{
 			ActorPlatformUserID: actor.UserID,
 			ActorRole:           actor.Role,
 			Action:              "platform_policy_updated",
@@ -170,7 +173,11 @@ func (s *platformServer) UpdatePlatformPolicy(
 			TargetID:            "platform",
 			Outcome:             auditlog.OutcomeSuccess,
 			ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
-		})
+		}
+	}
+	updated, err := s.writePlatformPolicy(ctx, policy, req.Msg.ExpectedRevision, audit)
+	if err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&publirasplatformv1.UpdatePlatformPolicyResponse{

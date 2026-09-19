@@ -2,12 +2,16 @@ package platformapi
 
 import (
 	"context"
+	"log/slog"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/auditlog"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
@@ -283,5 +287,32 @@ func TestDBUpdatePlatformPolicyConcurrentSavesOneWins(t *testing.T) {
 				t.Fatalf("platform_policy_config rows = %d, want 1", got)
 			}
 		})
+	}
+}
+
+// droppingRecorder loses every entry, as an asynchronous recorder with a full
+// queue would.
+type droppingRecorder struct{}
+
+func (droppingRecorder) RecordPlatform(context.Context, auditlog.PlatformEntry) {}
+func (droppingRecorder) RecordTenant(context.Context, auditlog.TenantEntry)     {}
+
+// The audit entry commits with the policy it records, so a recorder that drops
+// entries cannot leave a policy change unrecorded.
+func TestDBUpdatePlatformPolicyAuditsInTheSameTransaction(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	db := pg.OpenPlatformDB(t)
+	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), droppingRecorder{}, openMailGuard())
+	ts := httptest.NewServer(handlerFromServer(api.server))
+	t.Cleanup(ts.Close)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(ts.Client(), ts.URL)
+
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_audit_logs WHERE action = 'platform_policy_updated'`); got != 1 {
+		t.Fatalf("platform_policy_updated audit entries = %d, want 1", got)
 	}
 }

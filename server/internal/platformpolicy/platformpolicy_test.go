@@ -222,6 +222,35 @@ func TestResolverKeepsTheLastReadWhenARereadFails(t *testing.T) {
 	}
 }
 
+// While the database is down, the resolver retries once per TTL rather than on
+// every request.
+func TestResolverBacksOffAfterAFailedReread(t *testing.T) {
+	q := &fakeQuerier{config: savedRow(Defaults(), 1)}
+	resolver, now := newTestResolver(q, CacheTTL)
+
+	if _, err := resolver.Policy(t.Context()); err != nil {
+		t.Fatalf("Policy: %v", err)
+	}
+	q.err = errors.New("connection refused")
+	*now = now.Add(CacheTTL)
+	for range 3 {
+		if _, err := resolver.Policy(t.Context()); err != nil {
+			t.Fatalf("Policy during the outage: %v", err)
+		}
+	}
+	if q.reads != 2 {
+		t.Fatalf("reads = %d, want one failed reread for the whole TTL", q.reads)
+	}
+
+	*now = now.Add(CacheTTL)
+	if _, err := resolver.Policy(t.Context()); err != nil {
+		t.Fatalf("Policy after another TTL: %v", err)
+	}
+	if q.reads != 3 {
+		t.Fatalf("reads = %d, want another reread once the TTL passed", q.reads)
+	}
+}
+
 func TestResolverReportsAFailureWithNothingRead(t *testing.T) {
 	resolver, _ := newTestResolver(&fakeQuerier{err: errors.New("connection refused")}, CacheTTL)
 	if _, err := resolver.Policy(t.Context()); err == nil {

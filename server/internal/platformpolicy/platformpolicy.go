@@ -201,7 +201,10 @@ type Resolver struct {
 	mu        sync.Mutex
 	cached    Policy
 	hasCached bool
-	readAt    time.Time
+	// nextReadAt is when the row is read again. A failed reread pushes it a
+	// TTL out too, so an outage costs one query per TTL rather than one per
+	// request.
+	nextReadAt time.Time
 }
 
 // NewResolver returns a Resolver over queries that rereads the row once ttl has
@@ -220,17 +223,18 @@ func (r *Resolver) Policy(ctx context.Context) (Policy, error) {
 	defer r.mu.Unlock()
 
 	now := r.now()
-	if r.hasCached && now.Sub(r.readAt) < r.ttl {
+	if r.hasCached && now.Before(r.nextReadAt) {
 		return r.cached, nil
 	}
 	policy, _, err := Read(ctx, r.queries)
 	if err != nil {
 		if r.hasCached {
+			r.nextReadAt = now.Add(r.ttl)
 			r.logger.WarnContext(ctx, "serving the last platform policy read", "error", err)
 			return r.cached, nil
 		}
 		return Policy{}, err
 	}
-	r.cached, r.hasCached, r.readAt = policy, true, now
+	r.cached, r.hasCached, r.nextReadAt = policy, true, now.Add(r.ttl)
 	return policy, nil
 }
