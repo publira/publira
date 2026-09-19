@@ -246,6 +246,9 @@ catalogs:
       specifier: 4.6.5
       version: 4.6.5
 
+patchedDependencies:
+  '@connectrpc/connect-node@2.2.0': 9410b10e39ac6e5b1b22cd07a255b49d5bdc8efa070214b744d6af3a140aa5e7
+
 importers:
 
   .:
@@ -294,7 +297,7 @@ importers:
         version: 2.2.0(@bufbuild/protobuf@2.15.0)
       '@connectrpc/connect-node':
         specifier: 2.2.0
-        version: 2.2.0(@bufbuild/protobuf@2.15.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.15.0))
+        version: 2.2.0(patch_hash=9410b10e39ac6e5b1b22cd07a255b49d5bdc8efa070214b744d6af3a140aa5e7)(@bufbuild/protobuf@2.15.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.15.0))
       '@publira/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -649,7 +652,7 @@ importers:
         version: 2.2.0(@bufbuild/protobuf@2.15.0)
       '@connectrpc/connect-node':
         specifier: 2.2.0
-        version: 2.2.0(@bufbuild/protobuf@2.15.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.15.0))
+        version: 2.2.0(patch_hash=9410b10e39ac6e5b1b22cd07a255b49d5bdc8efa070214b744d6af3a140aa5e7)(@bufbuild/protobuf@2.15.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.15.0))
       '@connectrpc/connect-web':
         specifier: 2.2.0
         version: 2.2.0(@bufbuild/protobuf@2.15.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.15.0))
@@ -669,6 +672,9 @@ importers:
       '@publira/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.4
       tsdown:
         specifier: 'catalog:'
         version: 0.23.0(typescript@6.0.3)
@@ -5543,7 +5549,7 @@ snapshots:
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
 
-  '@connectrpc/connect-node@2.2.0(@bufbuild/protobuf@2.15.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.15.0))':
+  '@connectrpc/connect-node@2.2.0(patch_hash=9410b10e39ac6e5b1b22cd07a255b49d5bdc8efa070214b744d6af3a140aa5e7)(@bufbuild/protobuf@2.15.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.15.0))':
     dependencies:
       '@bufbuild/protobuf': 2.15.0
       '@connectrpc/connect': 2.2.0(@bufbuild/protobuf@2.15.0)

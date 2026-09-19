@@ -42,4 +42,8 @@ catalogMode: strict
 # the window that guards against a freshly published release.
 minimumReleaseAgeExclude:
   - "@publira/*"
+# Swallows the deferred error of a session destroyed on an idle GOAWAY, which
+# otherwise surfaces as an uncaughtException (connectrpc/connect-es#1768).
+patchedDependencies:
+  "@connectrpc/connect-node@2.2.0": patches/@connectrpc__connect-node@2.2.0.patch
 savePrefix: ""
