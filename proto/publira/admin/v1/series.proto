@@ -74,6 +74,9 @@ message CreateSeriesResponse {
   // comment mode it is always a value: a series has nothing above it to follow.
   publira.types.v1.ReadingDirection reading_direction = 3;
   int32 spread_start_index = 4;
+  // The series' credit records, share included, in the order `series.creators`
+  // lists them. Creator carries no share because the storefront reads it too.
+  repeated SeriesCreatorCredit creator_credits = 5;
 }
 
 message UpdateSeriesRequest {
@@ -129,6 +132,9 @@ message UpdateSeriesResponse {
   // The layout the series' episodes follow, as it was stored.
   publira.types.v1.ReadingDirection reading_direction = 3;
   int32 spread_start_index = 4;
+  // The series' credit records, share included, in the order `series.creators`
+  // lists them. Creator carries no share because the storefront reads it too.
+  repeated SeriesCreatorCredit creator_credits = 5;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -172,6 +178,9 @@ message GetSeriesResponse {
   // The layout the series' episodes follow.
   publira.types.v1.ReadingDirection reading_direction = 3;
   int32 spread_start_index = 4;
+  // The series' credit records, share included, in the order `series.creators`
+  // lists them. Creator carries no share because the storefront reads it too.
+  repeated SeriesCreatorCredit creator_credits = 5;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

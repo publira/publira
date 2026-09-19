@@ -508,6 +508,77 @@ func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
 	}
 }
 
+func TestDBSeriesCreditSharesReadBack(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+
+	creatorPublicIDs := make([]string, 0, 2)
+	for _, name := range []string{"Share Author", "Share Artist"} {
+		created, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+			Tenant: tenant.tenantContext(),
+			Name:   name,
+		}))
+		if err != nil {
+			t.Fatalf("CreateCreator %s: %v", name, err)
+		}
+		creatorPublicIDs = append(creatorPublicIDs, created.Msg.Creator.PublicId)
+	}
+	credits := env.creatorCredits(t, tenant, creatorPublicIDs...)
+	credits[0].ShareBps = 1000
+
+	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		Tenant:         tenant.tenantContext(),
+		Title:          "Shared Series",
+		CreatorCredits: credits,
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	if got := seriesCreditShares(created.Msg.CreatorCredits); !slices.Equal(got, []int32{1000, 0}) {
+		t.Fatalf("CreateSeries shares = %v, want [1000 0]", got)
+	}
+
+	credits[0].ShareBps = 3000
+	credits[1].ShareBps = 2000
+	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:         tenant.tenantContext(),
+		PublicId:       created.Msg.Series.PublicId,
+		Title:          "Shared Series",
+		CreatorCredits: credits,
+	}))
+	if err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+	if got := seriesCreditShares(updated.Msg.CreatorCredits); !slices.Equal(got, []int32{3000, 2000}) {
+		t.Fatalf("UpdateSeries shares = %v, want [3000 2000]", got)
+	}
+
+	got, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: created.Msg.Series.PublicId,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeries: %v", err)
+	}
+	for index, credit := range got.Msg.CreatorCredits {
+		if credit.CreatorPublicId != credits[index].CreatorPublicId || credit.RolePublicId != credits[index].RolePublicId {
+			t.Fatalf("GetSeries credit %d = %+v, want %+v", index, credit, credits[index])
+		}
+	}
+	if shares := seriesCreditShares(got.Msg.CreatorCredits); !slices.Equal(shares, []int32{3000, 2000}) {
+		t.Fatalf("GetSeries shares = %v, want [3000 2000]", shares)
+	}
+}
+
+func seriesCreditShares(credits []*publiraadminv1.SeriesCreatorCredit) []int32 {
+	shares := make([]int32, 0, len(credits))
+	for _, credit := range credits {
+		shares = append(shares, credit.ShareBps)
+	}
+	return shares
+}
+
 func TestDBListSeriesPaginatesWithTokens(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
