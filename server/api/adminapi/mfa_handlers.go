@@ -68,11 +68,19 @@ type mfaActor struct {
 	ChallengeExpiresAt time.Time
 }
 
-// mfaRequiredForRole reports whether this deployment makes the second factor
-// a condition of signing in for the given tenant role. Only tenant_admin is
-// covered: editors and auditors may enroll, and are never held back for it.
-func (s *adminServer) mfaRequiredForRole(role string) bool {
-	return s.mfaRequiredForTenantAdmin && role == auth.RoleTenantAdmin
+// mfaRequiredForRole reports whether the platform policy makes the second
+// factor a condition of signing in for the given tenant role. Only
+// tenant_admin is covered: editors and auditors may enroll, and are never held
+// back for it.
+func (s *adminServer) mfaRequiredForRole(ctx context.Context, role string) (bool, error) {
+	if role != auth.RoleTenantAdmin {
+		return false, nil
+	}
+	policy, err := s.policy.Policy(ctx)
+	if err != nil {
+		return false, s.internalError(ctx, "failed to resolve the platform policy", err)
+	}
+	return policy.MFARequiredForTenantAdmin, nil
 }
 
 // mfaChallengeKindFor decides what a correct password still leaves owed. An
@@ -88,14 +96,17 @@ func (s *adminServer) mfaChallengeKindFor(
 	if err != nil {
 		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED, err
 	}
-	switch {
-	case found && row.EnabledAt.Valid:
+	if found && row.EnabledAt.Valid {
 		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_VERIFY, nil
-	case s.mfaRequiredForRole(role):
-		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_ENROLL, nil
-	default:
-		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED, nil
 	}
+	required, err := s.mfaRequiredForRole(ctx, role)
+	if err != nil {
+		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED, err
+	}
+	if required {
+		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_ENROLL, nil
+	}
+	return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED, nil
 }
 
 // mfaChallengeFor mints the half-finished session a correct password earns.
@@ -401,7 +412,11 @@ func (s *adminServer) GetMfaStatus(
 	if err != nil {
 		return nil, err
 	}
-	resp := &publiraadminv1.AdminAuthServiceGetMfaStatusResponse{Required: s.mfaRequiredForRole(role)}
+	required, err := s.mfaRequiredForRole(ctx, role)
+	if err != nil {
+		return nil, err
+	}
+	resp := &publiraadminv1.AdminAuthServiceGetMfaStatusResponse{Required: required}
 	if found && row.EnabledAt.Valid {
 		remaining, err := s.remainingRecoveryCodes(ctx, user.ID)
 		if err != nil {

@@ -401,7 +401,7 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 
 ### The challenge that stands in for half a session
 
-`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator, `admin-mfa-enroll` when it has none and the deployment requires one. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
+`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator, `admin-mfa-enroll` when it has none and the platform policy requires one. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
 
 `VerifyMfa` exchanges a verify challenge and a code for the access token. `ConfirmMfaEnrollment` does the same for an enroll challenge: it returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
 
@@ -409,7 +409,7 @@ A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_chal
 
 ### Requiring the factor
 
-`PUBLIRA_MFA_REQUIRED_FOR_TENANT_ADMIN` (api-server, `false` when unset, and optional for any other value that is not a boolean) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
+`mfa_required_for_tenant_admin` in the platform policy (`PlatformPolicyService`, off when nothing is saved) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
 
 Taking the factor off needs the authenticator or a recovery code. Minting a new batch of recovery codes needs the authenticator.
 

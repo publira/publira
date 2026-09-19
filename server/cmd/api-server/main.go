@@ -115,11 +115,7 @@ func main() {
 	}
 
 	platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
-	platformAPI, err := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder)
-	if err != nil {
-		logger.Error("failed to initialize platform api handler", "error", err)
-		os.Exit(1)
-	}
+	platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder)
 
 	edgeAddr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultEdgeAddr)
 	internalAddr := addrFromEnv("PUBLIRA_PUBLIC_API_GRPC_ADDR", defaultInternalAddr)

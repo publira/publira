@@ -439,6 +439,9 @@ type Querier interface {
 	GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error)
 	GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
+	// Returns no rows when the platform has never saved its policy, which the
+	// server answers with its built-in defaults.
+	GetPlatformPolicyConfig(ctx context.Context) (PlatformPolicyConfig, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
 	GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error)
 	GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error)
@@ -682,6 +685,10 @@ type Querier interface {
 	// rows on conflict.
 	InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error)
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
+	// No ON CONFLICT clause: an absent row leaves LockPlatformPolicyConfig nothing
+	// to lock, so a losing racer must fail on the primary key rather than overwrite
+	// the row the winner just created.
+	InsertPlatformPolicyConfig(ctx context.Context, arg InsertPlatformPolicyConfigParams) (PlatformPolicyConfig, error)
 	// Creates the settings row with the platform default time zone and locale.
 	// No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
 	// absent, so a losing racer must fail on the primary key rather than overwrite
@@ -1584,6 +1591,9 @@ type Querier interface {
 	// revision it compares against cannot change between the comparison and the
 	// write. Returns no rows when the platform has never saved any settings.
 	LockPlatformConfig(ctx context.Context) (PlatformConfig, error)
+	// Reads the policy row for update, so the revision a save compares against
+	// cannot change between the comparison and the write.
+	LockPlatformPolicyConfig(ctx context.Context) (PlatformPolicyConfig, error)
 	// A series as one row: locked, read, written, and listed for the console. The
 	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
@@ -1889,6 +1899,9 @@ type Querier interface {
 	// display_in_footer keeps the stored value when the argument is omitted (NULL),
 	// so a title-only edit does not have to restate the footer flag.
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error)
+	// Writes every value over the existing row. The revision moves with every
+	// write, which is what makes a save based on an earlier read detectable.
+	UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlatformPolicyConfigParams) (PlatformPolicyConfig, error)
 	// Writes the platform default time zone and locale over the existing row. The
 	// revision moves with every write, which is what makes a save based on an
 	// earlier read detectable.

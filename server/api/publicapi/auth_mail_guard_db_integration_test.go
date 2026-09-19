@@ -2,14 +2,12 @@ package publicapi
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 
 	"connectrpc.com/connect"
 
-	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -24,12 +22,7 @@ import (
 func newMailLimitedEnv(t *testing.T) *publicDBEnv {
 	t.Helper()
 
-	return newPublicDBEnvWithMailGuard(t, mailguard.New(
-		ratelimit.New(ratelimit.NewMemoryStore()),
-		mailguard.Rules(1, 100),
-		mailguard.Rules(1000, 1000),
-		slog.Default(),
-	))
+	return newPublicDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 }
 
 // A stranger aiming the sign-up form at somebody's address gets one notice out

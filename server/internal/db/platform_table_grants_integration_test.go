@@ -75,10 +75,18 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 	}
 }
 
+// tenantReadableTables are the platform tables the storefront and the tenant
+// console read: the policy their rate limits and the tenant-admin MFA
+// requirement come from. It holds no secret.
+var tenantReadableTables = []string{
+	"platform_policy_config",
+}
+
 // The storefront and the tenant console reach the database as publira_public and
-// publira_admin. Neither serves the platform console, so neither may read a row
-// of it or write one — an injection or a handler bug on either would otherwise
-// be the ability to create a platform console account for itself.
+// publira_admin. Neither serves the platform console, so neither may write a row
+// of it or read one past the policy they enforce — an injection or a handler bug
+// on either would otherwise be the ability to create a platform console account
+// for itself.
 func TestPlatformTablesAreOutOfReachOfTheTenantRoles(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -94,7 +102,15 @@ func TestPlatformTablesAreOutOfReachOfTheTenantRoles(t *testing.T) {
 		"publira_content_stats": pg.OpenContentStatsDB(t),
 	} {
 		for _, table := range tables {
-			assertRefused(t, ctx, conn, role, fmt.Sprintf("SELECT count(*) FROM %s", table))
+			query := fmt.Sprintf("SELECT count(*) FROM %s", table)
+			if role != "publira_content_stats" && slices.Contains(tenantReadableTables, table) {
+				var count int
+				if err := conn.QueryRowContext(ctx, query).Scan(&count); err != nil {
+					t.Fatalf("read %s as %s: %v", table, role, err)
+				}
+			} else {
+				assertRefused(t, ctx, conn, role, query)
+			}
 			assertRefused(t, ctx, conn, role, fmt.Sprintf("INSERT INTO %s DEFAULT VALUES", table))
 			assertRefused(t, ctx, conn, role, fmt.Sprintf("DELETE FROM %s", table))
 		}

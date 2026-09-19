@@ -3053,6 +3053,7 @@
         "operator_suspended": "暂停了运营人员",
         "operator_updated": "更新了运营人员",
         "platform_email_settings_updated": "更新了 SMTP 设置",
+        "platform_policy_updated": "更新了平台策略",
         "platform_settings_updated": "更新了平台设置",
         "platform_smtp_test_email_sent": "发送了 SMTP 测试邮件",
         "tenant_created": "创建了租户",

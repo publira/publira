@@ -29,6 +29,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -40,18 +41,30 @@ const PlatformScope = "platform"
 
 // Guard is the flood control the mail-causing forms charge against.
 type Guard struct {
-	limiter    *ratelimit.Limiter
-	perAddress []ratelimit.Rule
-	perSource  []ratelimit.Rule
-	logger     *slog.Logger
+	limiter *ratelimit.Limiter
+	policy  platformpolicy.Source
+	logger  *slog.Logger
 }
 
-// New returns a guard that charges limiter against the rules given.
-func New(limiter *ratelimit.Limiter, perAddress, perSource []ratelimit.Rule, logger *slog.Logger) *Guard {
+// New returns a guard that charges limiter against the mail-request limits of
+// the platform policy.
+func New(limiter *ratelimit.Limiter, policy platformpolicy.Source, logger *slog.Logger) *Guard {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Guard{limiter: limiter, perAddress: perAddress, perSource: perSource, logger: logger}
+	return &Guard{limiter: limiter, policy: policy, logger: logger}
+}
+
+// NewShared returns a guard over the counters the deployment shares, which are
+// Redis's when PUBLIRA_REDIS_URL names one.
+func NewShared(policy platformpolicy.Source, logger *slog.Logger) *Guard {
+	return New(ratelimit.NewFromEnv(logger), policy, logger)
+}
+
+// NewDefault returns the guard a caller that reads no settings of its own gets:
+// the built-in policy over in-process counters, rather than no limit at all.
+func NewDefault() *Guard {
+	return New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(platformpolicy.Defaults()), nil)
 }
 
 // Allow spends one of the allowances standing in front of the mail address
@@ -70,18 +83,23 @@ func New(limiter *ratelimit.Limiter, perAddress, perSource []ratelimit.Rule, log
 // and charging it first is what keeps them from spending the mailbox allowance
 // of every address they name on the way there.
 func (g *Guard) Allow(ctx context.Context, req connect.AnyRequest, scope, address string) error {
+	policy, err := g.policy.Policy(ctx)
+	if err != nil {
+		g.logger.ErrorContext(ctx, "failed to resolve the mail rate limit", "scope", scope, "error", err)
+		return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	}
 	for _, charge := range []struct {
 		subject string
 		rules   []ratelimit.Rule
 	}{
-		{sourceSubject(source(req)), g.perSource},
-		{addressSubject(scope, address), g.perAddress},
+		{sourceSubject(source(req)), Rules(policy.MailRequestsPerSource)},
+		{addressSubject(scope, address), Rules(policy.MailRequestsPerAddress)},
 	} {
 		decision, err := g.limiter.Allow(ctx, charge.subject, charge.rules...)
 		if err != nil {
-			// The rules are validated at startup and the counters fall back to
-			// this process when the shared ones cannot be reached, so nothing is
-			// left here that sending the mail anyway would be the safe answer to.
+			// The counters fall back to this process when the shared ones cannot
+			// be reached, so nothing is left here that sending the mail anyway
+			// would be the safe answer to.
 			g.logger.ErrorContext(ctx, "failed to charge the mail rate limit", "scope", scope, "error", err)
 			return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 		}
@@ -124,9 +142,9 @@ func source(req connect.AnyRequest) string {
 // Rules pairs an hourly burst with a daily budget. The hour is what a person
 // resending themselves a link runs into and what a script empties in a breath;
 // the day is what the script pacing itself under the hour still meets.
-func Rules(perHour, perDay int) []ratelimit.Rule {
+func Rules(limit platformpolicy.HourDay) []ratelimit.Rule {
 	return []ratelimit.Rule{
-		{Limit: perHour, Window: time.Hour},
-		{Limit: perDay, Window: 24 * time.Hour},
+		{Limit: limit.PerHour, Window: time.Hour},
+		{Limit: limit.PerDay, Window: 24 * time.Hour},
 	}
 }

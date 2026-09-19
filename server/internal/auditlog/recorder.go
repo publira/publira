@@ -89,7 +89,15 @@ func New(queries Querier, logger *slog.Logger) Recorder {
 
 // RecordPlatform writes a platform audit entry. A DB error is logged but does not propagate.
 func (r *syncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
-	r.logger.InfoContext(ctx, "audit",
+	if err := WritePlatform(ctx, r.queries, r.logger, e); err != nil {
+		r.logger.ErrorContext(ctx, "auditlog: failed to persist", "error", err, "action", e.Action)
+	}
+}
+
+// logPlatformEntry emits the structured line every platform entry gets,
+// whether or not the row behind it lands.
+func logPlatformEntry(ctx context.Context, logger *slog.Logger, e PlatformEntry) {
+	logger.InfoContext(ctx, "audit",
 		"actor_platform_user_id", e.ActorPlatformUserID,
 		"actor_role", e.ActorRole,
 		"action", e.Action,
@@ -99,14 +107,15 @@ func (r *syncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
 		"reason", e.Reason,
 		"client_ip", e.ClientIP,
 	)
+}
 
+// platformEntryParams is the row one platform entry becomes.
+func platformEntryParams(e PlatformEntry) (dbmodels.InsertPlatformAuditLogParams, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		r.logger.ErrorContext(ctx, "auditlog: failed to generate id", "error", err)
-		return
+		return dbmodels.InsertPlatformAuditLogParams{}, err
 	}
-
-	err = r.queries.InsertPlatformAuditLog(ctx, dbmodels.InsertPlatformAuditLogParams{
+	return dbmodels.InsertPlatformAuditLogParams{
 		ID:                  id,
 		ActorPlatformUserID: e.ActorPlatformUserID,
 		ActorRole:           e.ActorRole,
@@ -116,10 +125,23 @@ func (r *syncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
 		Outcome:             e.Outcome,
 		Reason:              sql.NullString{String: e.Reason, Valid: e.Reason != ""},
 		ClientIp:            sql.NullString{String: e.ClientIP, Valid: e.ClientIP != ""},
-	})
-	if err != nil {
-		r.logger.ErrorContext(ctx, "auditlog: failed to persist", "error", err, "action", e.Action)
+	}, nil
+}
+
+// WritePlatform persists one platform entry on the supplied querier and reports
+// whether it landed. Passing a transaction's querier commits a change and its
+// entry together, for a change that must not go unrecorded.
+func WritePlatform(ctx context.Context, queries Querier, logger *slog.Logger, e PlatformEntry) error {
+	if logger == nil {
+		logger = slog.Default()
 	}
+	logPlatformEntry(ctx, logger, e)
+
+	params, err := platformEntryParams(e)
+	if err != nil {
+		return err
+	}
+	return queries.InsertPlatformAuditLog(ctx, params)
 }
 
 // logTenantEntry emits the structured line every tenant entry gets, whether or

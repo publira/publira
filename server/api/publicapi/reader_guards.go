@@ -5,16 +5,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"log/slog"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -64,237 +61,74 @@ const (
 	actionSubmitContactMessageFromClient readerAction = "contact.submit.client"
 )
 
-// The deployment settings, and the defaults a deployment that sets none of them
-// gets. The defaults are what a person writing in their own words can reach and
-// a script cannot live within: nobody composes ten comments in a minute, and a
-// reader who has posted a hundred in a day is no longer reading.
-const (
-	postCommentPerMinuteEnv             = "PUBLIRA_COMMENT_POST_LIMIT_PER_MINUTE"
-	postCommentPerDayEnv                = "PUBLIRA_COMMENT_POST_LIMIT_PER_DAY"
-	reportCommentPerMinuteEnv           = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_MINUTE"
-	reportCommentPerDayEnv              = "PUBLIRA_COMMENT_REPORT_LIMIT_PER_DAY"
-	duplicateCommentWindowEnv           = "PUBLIRA_COMMENT_DUPLICATE_WINDOW_MINUTES"
-	rateEpisodePerMinuteEnv             = "PUBLIRA_EPISODE_RATING_LIMIT_PER_MINUTE"
-	rateEpisodePerDayEnv                = "PUBLIRA_EPISODE_RATING_LIMIT_PER_DAY"
-	verifyPasswordPerMinuteEnv          = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_MINUTE"
-	verifyPasswordPerDayEnv             = "PUBLIRA_PASSWORD_VERIFY_LIMIT_PER_DAY"
-	updateViewerPreferencesPerMinuteEnv = "PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_MINUTE"
-	updateViewerPreferencesPerDayEnv    = "PUBLIRA_VIEWER_PREFERENCES_LIMIT_PER_DAY"
-	contactMessagePerAccountPerHourEnv  = "PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_ACCOUNT_PER_HOUR"
-	contactMessagePerAccountPerDayEnv   = "PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_ACCOUNT_PER_DAY"
-	contactMessagePerClientPerHourEnv   = "PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_CLIENT_PER_HOUR"
-	contactMessagePerClientPerDayEnv    = "PUBLIRA_CONTACT_MESSAGE_LIMIT_PER_CLIENT_PER_DAY"
-
-	defaultPostCommentPerMinute   = 10
-	defaultPostCommentPerDay      = 100
-	defaultReportCommentPerMinute = 10
-	defaultReportCommentPerDay    = 50
-
-	// A rating costs a tap rather than sentences, so its budget is wider than a
-	// comment's: a reader working through a series rates an episode each time
-	// they finish one, and a tenant that lets them press their way up spends
-	// several of these on one episode. A day of them is still far more presses
-	// than anyone reading makes.
-	defaultRateEpisodePerMinute = 30
-	defaultRateEpisodePerDay    = 300
-
-	// The password budget is the one a reader is meant to reach only by
-	// mistyping, so it is far narrower than the others: a handful of tries in a
-	// minute covers the typos, and a reader who cannot get it right after the
-	// day's worth has forgotten it and wants the reset form rather than another
-	// guess. Every try costs the API a bcrypt verification, which is the other
-	// reason the number is small.
-	defaultVerifyPasswordPerMinute = 5
-	defaultVerifyPasswordPerDay    = 50
-
-	// A reader settling on a layout presses the control a handful of times and
-	// then reads; nobody who is reading spends a day's worth of these.
-	defaultUpdateViewerPreferencesPerMinute = 30
-	defaultUpdateViewerPreferencesPerDay    = 300
-
-	// The contact form is the one place a reader writes a letter rather than a
-	// reaction, so its windows are the hour and the day rather than the minute:
-	// a minute is shorter than it takes to write one, and a budget nobody could
-	// reach would bound nothing. Somebody with three separate things to ask is
-	// unusual; somebody with a fourth in the same hour is filling a queue.
-	//
-	// The client's budget is wider than the account's because one address may
-	// stand for a whole office or campus, and because it is the only allowance
-	// a guest spends. It is still far below what makes a staff inbox worth
-	// flooding.
-	defaultContactMessagePerAccountPerHour = 3
-	defaultContactMessagePerAccountPerDay  = 10
-	defaultContactMessagePerClientPerHour  = 10
-	defaultContactMessagePerClientPerDay   = 30
-
-	// defaultDuplicateCommentWindow is long enough to cover a reader hammering
-	// the button and short enough that coming back to an episode hours later
-	// with the same short reaction is not refused.
-	defaultDuplicateCommentWindow = 10 * time.Minute
-)
-
 // readerGuards is the flood control the reader-writable RPCs charge against.
 type readerGuards struct {
 	limiter *ratelimit.Limiter
-	// rules is the policy per action. An action that names no rules is not rate
-	// limited at all, so adding an RPC to the flood control is an entry here and
-	// a charge in the handler.
-	rules map[readerAction][]ratelimit.Rule
-	// duplicateCommentWindow is how long the same body by the same reader on the
-	// same episode is refused.
-	duplicateCommentWindow time.Duration
+	// policy answers the limits in force. An action readerRules names no rules
+	// for is not rate limited at all, so adding an RPC to the flood control is
+	// an entry there and a charge in the handler.
+	policy platformpolicy.Source
 }
 
-// readerLimits is one budget per action, as a deployment configured it. It is a
-// struct rather than a widening list of ints so that adding an action cannot
-// silently swap two of them at a call site.
-type readerLimits struct {
-	postCommentPerMinute             int
-	postCommentPerDay                int
-	reportCommentPerMinute           int
-	reportCommentPerDay              int
-	rateEpisodePerMinute             int
-	rateEpisodePerDay                int
-	verifyPasswordPerMinute          int
-	verifyPasswordPerDay             int
-	updateViewerPreferencesPerMinute int
-	updateViewerPreferencesPerDay    int
-	contactMessagePerAccountPerHour  int
-	contactMessagePerAccountPerDay   int
-	contactMessagePerClientPerHour   int
-	contactMessagePerClientPerDay    int
-}
-
-// defaultReaderLimits is the policy a deployment that sets none of the settings
-// gets.
-func defaultReaderLimits() readerLimits {
-	return readerLimits{
-		postCommentPerMinute:             defaultPostCommentPerMinute,
-		postCommentPerDay:                defaultPostCommentPerDay,
-		reportCommentPerMinute:           defaultReportCommentPerMinute,
-		reportCommentPerDay:              defaultReportCommentPerDay,
-		rateEpisodePerMinute:             defaultRateEpisodePerMinute,
-		rateEpisodePerDay:                defaultRateEpisodePerDay,
-		verifyPasswordPerMinute:          defaultVerifyPasswordPerMinute,
-		verifyPasswordPerDay:             defaultVerifyPasswordPerDay,
-		updateViewerPreferencesPerMinute: defaultUpdateViewerPreferencesPerMinute,
-		updateViewerPreferencesPerDay:    defaultUpdateViewerPreferencesPerDay,
-		contactMessagePerAccountPerHour:  defaultContactMessagePerAccountPerHour,
-		contactMessagePerAccountPerDay:   defaultContactMessagePerAccountPerDay,
-		contactMessagePerClientPerHour:   defaultContactMessagePerClientPerHour,
-		contactMessagePerClientPerDay:    defaultContactMessagePerClientPerDay,
-	}
-}
-
-// newReaderGuardsFromEnv reads the deployment's settings. A value that is not a
-// whole number of at least one stops the server: a limit of zero refuses every
-// reader and a negative one is not a limit at all, and either is better caught
-// at startup than by the first reader who tries to post.
-func newReaderGuardsFromEnv(logger *slog.Logger) (readerGuards, error) {
-	var limits readerLimits
-	for _, setting := range []struct {
-		name     string
-		fallback int
-		into     *int
-	}{
-		{postCommentPerMinuteEnv, defaultPostCommentPerMinute, &limits.postCommentPerMinute},
-		{postCommentPerDayEnv, defaultPostCommentPerDay, &limits.postCommentPerDay},
-		{reportCommentPerMinuteEnv, defaultReportCommentPerMinute, &limits.reportCommentPerMinute},
-		{reportCommentPerDayEnv, defaultReportCommentPerDay, &limits.reportCommentPerDay},
-		{rateEpisodePerMinuteEnv, defaultRateEpisodePerMinute, &limits.rateEpisodePerMinute},
-		{rateEpisodePerDayEnv, defaultRateEpisodePerDay, &limits.rateEpisodePerDay},
-		{verifyPasswordPerMinuteEnv, defaultVerifyPasswordPerMinute, &limits.verifyPasswordPerMinute},
-		{verifyPasswordPerDayEnv, defaultVerifyPasswordPerDay, &limits.verifyPasswordPerDay},
-		{updateViewerPreferencesPerMinuteEnv, defaultUpdateViewerPreferencesPerMinute, &limits.updateViewerPreferencesPerMinute},
-		{updateViewerPreferencesPerDayEnv, defaultUpdateViewerPreferencesPerDay, &limits.updateViewerPreferencesPerDay},
-		{contactMessagePerAccountPerHourEnv, defaultContactMessagePerAccountPerHour, &limits.contactMessagePerAccountPerHour},
-		{contactMessagePerAccountPerDayEnv, defaultContactMessagePerAccountPerDay, &limits.contactMessagePerAccountPerDay},
-		{contactMessagePerClientPerHourEnv, defaultContactMessagePerClientPerHour, &limits.contactMessagePerClientPerHour},
-		{contactMessagePerClientPerDayEnv, defaultContactMessagePerClientPerDay, &limits.contactMessagePerClientPerDay},
-	} {
-		value, err := envLimit(setting.name, setting.fallback)
-		if err != nil {
-			return readerGuards{}, err
-		}
-		*setting.into = value
-	}
-	duplicateMinutes, err := envLimit(duplicateCommentWindowEnv, int(defaultDuplicateCommentWindow/time.Minute))
-	if err != nil {
-		return readerGuards{}, err
-	}
-	return readerGuards{
-		limiter:                ratelimit.NewFromEnv(logger),
-		rules:                  readerRules(limits),
-		duplicateCommentWindow: time.Duration(duplicateMinutes) * time.Minute,
-	}, nil
+// newReaderGuards charges the counters the deployment shares against the
+// platform policy.
+func newReaderGuards(policy platformpolicy.Source, logger *slog.Logger) readerGuards {
+	return readerGuards{limiter: ratelimit.NewFromEnv(logger), policy: policy}
 }
 
 // readerRules pairs a burst window with a daily budget for each action. The
 // minute keeps a script from emptying the day's budget in one breath, and the
-// day is what a script pacing itself under the minute still runs into.
-func readerRules(limits readerLimits) map[readerAction][]ratelimit.Rule {
+// day is what a script pacing itself under the minute still runs into. The
+// contact form counts in hours, because a minute is shorter than it takes to
+// write one.
+func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule {
+	community := policy.Community
 	return map[readerAction][]ratelimit.Rule{
-		actionPostComment: {
-			{Limit: limits.postCommentPerMinute, Window: time.Minute},
-			{Limit: limits.postCommentPerDay, Window: 24 * time.Hour},
-		},
-		actionReportComment: {
-			{Limit: limits.reportCommentPerMinute, Window: time.Minute},
-			{Limit: limits.reportCommentPerDay, Window: 24 * time.Hour},
-		},
-		actionRateEpisode: {
-			{Limit: limits.rateEpisodePerMinute, Window: time.Minute},
-			{Limit: limits.rateEpisodePerDay, Window: 24 * time.Hour},
-		},
-		actionVerifyPassword: {
-			{Limit: limits.verifyPasswordPerMinute, Window: time.Minute},
-			{Limit: limits.verifyPasswordPerDay, Window: 24 * time.Hour},
-		},
-		actionUpdateViewerPreferences: {
-			{Limit: limits.updateViewerPreferencesPerMinute, Window: time.Minute},
-			{Limit: limits.updateViewerPreferencesPerDay, Window: 24 * time.Hour},
-		},
-		actionSubmitContactMessage: {
-			{Limit: limits.contactMessagePerAccountPerHour, Window: time.Hour},
-			{Limit: limits.contactMessagePerAccountPerDay, Window: 24 * time.Hour},
-		},
-		actionSubmitContactMessageFromClient: {
-			{Limit: limits.contactMessagePerClientPerHour, Window: time.Hour},
-			{Limit: limits.contactMessagePerClientPerDay, Window: 24 * time.Hour},
-		},
+		actionPostComment:                    minuteDayRules(community.CommentPost),
+		actionReportComment:                  minuteDayRules(community.CommentReport),
+		actionRateEpisode:                    minuteDayRules(community.EpisodeRating),
+		actionVerifyPassword:                 minuteDayRules(policy.PasswordVerification),
+		actionUpdateViewerPreferences:        minuteDayRules(community.ViewerPreferencesUpdate),
+		actionSubmitContactMessage:           hourDayRules(community.ContactMessagePerAccount),
+		actionSubmitContactMessageFromClient: hourDayRules(community.ContactMessagePerClient),
+	}
+}
+
+func minuteDayRules(limit platformpolicy.MinuteDay) []ratelimit.Rule {
+	return []ratelimit.Rule{
+		{Limit: limit.PerMinute, Window: time.Minute},
+		{Limit: limit.PerDay, Window: 24 * time.Hour},
+	}
+}
+
+func hourDayRules(limit platformpolicy.HourDay) []ratelimit.Rule {
+	return []ratelimit.Rule{
+		{Limit: limit.PerHour, Window: time.Hour},
+		{Limit: limit.PerDay, Window: 24 * time.Hour},
 	}
 }
 
 // withDefaults fills in what a caller left unset. Handing the reader-writable
 // RPCs a limiter that is not there would take the guard off them silently, so
-// the zero value is the default policy over in-process counters rather than no
+// the zero value is the built-in policy over in-process counters rather than no
 // policy at all.
 func (g readerGuards) withDefaults() readerGuards {
 	if g.limiter == nil {
 		g.limiter = ratelimit.New(ratelimit.NewMemoryStore())
 	}
-	if g.rules == nil {
-		g.rules = readerRules(defaultReaderLimits())
-	}
-	if g.duplicateCommentWindow <= 0 {
-		g.duplicateCommentWindow = defaultDuplicateCommentWindow
+	if g.policy == nil {
+		g.policy = platformpolicy.Fixed(platformpolicy.Defaults())
 	}
 	return g
 }
 
-func envLimit(name string, fallback int) (int, error) {
-	raw := strings.TrimSpace(os.Getenv(name))
-	if raw == "" {
-		return fallback, nil
-	}
-	value, err := strconv.Atoi(raw)
+// readerPolicy resolves the policy in force for this request.
+func (s *apiServer) readerPolicy(ctx context.Context) (platformpolicy.Policy, error) {
+	policy, err := s.guards.policy.Policy(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("%s must be an integer, got %q", name, raw)
+		return platformpolicy.Policy{}, s.internalError(ctx, "failed to resolve the platform policy", err)
 	}
-	if value < 1 {
-		return 0, fmt.Errorf("%s must be at least 1, got %d", name, value)
-	}
-	return value, nil
+	return policy, nil
 }
 
 // readerActionSubject names whose budget is being spent. The tenant is part of
@@ -333,7 +167,11 @@ func (s *apiServer) chargeClientAction(ctx context.Context, action readerAction,
 }
 
 func (s *apiServer) chargeAction(ctx context.Context, action readerAction, subject string, logAttrs ...any) error {
-	rules := s.guards.rules[action]
+	policy, err := s.readerPolicy(ctx)
+	if err != nil {
+		return err
+	}
+	rules := readerRules(policy)[action]
 	if len(rules) == 0 {
 		return nil
 	}
@@ -356,7 +194,12 @@ func (s *apiServer) chargeAction(ctx context.Context, action readerAction, subje
 // what the limit is there for is the caller who does not know the password, and
 // that caller never gets this far.
 func (s *apiServer) clearReaderAction(ctx context.Context, action readerAction, tenantID, userID uuid.UUID) {
-	rules := s.guards.rules[action]
+	policy, err := s.guards.policy.Policy(ctx)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to resolve the platform policy to clear a reader allowance", "action", string(action), "error", err)
+		return
+	}
+	rules := readerRules(policy)[action]
 	if len(rules) == 0 {
 		return
 	}
@@ -380,10 +223,11 @@ func duplicateCommentKey(tenantID, userID, episodeID uuid.UUID, body string) str
 // the reader has not run out of anything, and what they meant to say is on the
 // page already.
 func (s *apiServer) claimCommentBody(ctx context.Context, key string) error {
-	if s.guards.duplicateCommentWindow <= 0 {
-		return nil
+	policy, err := s.readerPolicy(ctx)
+	if err != nil {
+		return err
 	}
-	fresh, err := s.guards.limiter.Claim(ctx, key, s.guards.duplicateCommentWindow)
+	fresh, err := s.guards.limiter.Claim(ctx, key, policy.Community.DuplicateCommentWindow)
 	if err != nil {
 		return s.internalError(ctx, "failed to claim the comment body", err)
 	}

@@ -21,6 +21,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
@@ -138,12 +139,7 @@ func newTestHandler(
 // limit they happen to sit under. Every one of them shares this process's
 // loopback address, which is a single origin as far as the limit is concerned.
 func openMailGuard() *mailguard.Guard {
-	return mailguard.New(
-		ratelimit.New(ratelimit.NewMemoryStore()),
-		mailguard.Rules(1000, 1000),
-		mailguard.Rules(1000, 1000),
-		slog.Default(),
-	)
+	return mailGuardWith(platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 }
 
 // revalidateRecorder stands in for the Next.js apps and collects the tags the
@@ -422,4 +418,13 @@ func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, te
 		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability"}).
 			AddRow(episodeID, seriesID, publicID, title, orderIndex, now, tenantID, nil, nil, nil))
 	expectPublicIDAttemptReleased(mock)
+}
+
+// mailGuardWith is a mail guard over in-process counters whose mail-request
+// limits are the ones given, and whose other values are the built-in defaults.
+func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guard {
+	policy := platformpolicy.Defaults()
+	policy.MailRequestsPerAddress = perAddress
+	policy.MailRequestsPerSource = perSource
+	return mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), slog.Default())
 }

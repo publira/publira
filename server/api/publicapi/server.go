@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/push"
@@ -146,25 +147,16 @@ type API struct {
 
 // New builds the public API over db, which must be the pool connected as
 // publira_public: the row-level security every handler here relies on is that
-// role's.
-//
-// It fails rather than serves when either flood control is misconfigured — the
-// one the reader-writable RPCs depend on, and the one that bounds the mail a
-// form can cause — so a limit nobody can meet is caught at startup instead of
-// by the first reader who runs into it.
+// role's. Both flood controls read their limits from the platform policy
+// through that same pool.
 func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (*API, error) {
 	if err := validateWebPushVAPIDFromEnv(); err != nil {
 		return nil, err
 	}
 	logger := slog.Default()
-	guards, err := newReaderGuardsFromEnv(logger)
-	if err != nil {
-		return nil, err
-	}
-	mail, err := mailguard.NewFromEnv(logger)
-	if err != nil {
-		return nil, err
-	}
+	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
+	guards := newReaderGuards(policy, logger)
+	mail := mailguard.NewShared(policy, logger)
 	return &API{server: newAPIServer(db, queries, storageProvider, encryptor, tokens, logger, guards, mail)}, nil
 }
 

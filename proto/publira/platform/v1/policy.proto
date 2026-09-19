@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+// A burst allowance per minute paired with a budget per day. Both are at least
+// one, and the day never allows fewer than the minute.
+message MinuteDayLimit {
+  int32 per_minute = 1;
+  int32 per_day = 2;
+}
+
+// An allowance per hour paired with a budget per day, for the actions whose
+// shortest sensible window is longer than a minute. Both are at least one, and
+// the day never allows fewer than the hour.
+message HourDayLimit {
+  int32 per_hour = 1;
+  int32 per_day = 2;
+}
+
+// The community limits every tenant starts from. Each value is also the
+// loosest one a tenant may set for itself.
+message CommunityLimitDefaults {
+  // Comments one reader may post.
+  MinuteDayLimit comment_post = 1;
+  // Comments one reader may report.
+  MinuteDayLimit comment_report = 2;
+  // How long the same body by the same reader on the same episode is refused,
+  // from 1 to 10080 (a week).
+  int32 duplicate_comment_window_minutes = 3;
+  // Presses of the episode rating control one reader may make.
+  MinuteDayLimit episode_rating = 4;
+  // Contact messages one signed-in reader may send.
+  HourDayLimit contact_message_per_account = 5;
+  // Contact messages one client may send across every account and tenant. It
+  // is the only allowance a guest spends.
+  HourDayLimit contact_message_per_client = 6;
+  // Times one reader may store how they want the viewer laid out.
+  MinuteDayLimit viewer_preferences = 7;
+}
+
+// The platform's security and abuse-control policy.
+message PlatformPolicy {
+  // Whether a tenant admin that has not enrolled a TOTP authenticator is
+  // refused a session on a password alone. Editors and auditors are never
+  // held back.
+  bool mfa_required_for_tenant_admin = 1;
+  // How often one account's password may be verified by the RPCs that ask for
+  // it on top of the session, counted across all of them and cleared by a
+  // verification that succeeds.
+  MinuteDayLimit password_verification = 2;
+  // Mail the forms that take an address may cause for one address, counted per
+  // tenant (or for the platform console) and shared by all of those forms.
+  HourDayLimit mail_requests_per_address = 3;
+  // Mail such forms may cause for one origin, across every address and tenant.
+  HourDayLimit mail_requests_per_source = 4;
+  CommunityLimitDefaults community_limit_defaults = 5;
+}
+
+message GetPlatformPolicyRequest {}
+
+message GetPlatformPolicyResponse {
+  // The effective policy: the saved values, or the built-in defaults when
+  // nothing has been saved.
+  PlatformPolicy policy = 1;
+  // Version of the saved row the policy was read at. Zero when nothing has
+  // been saved yet and the policy is the built-in defaults.
+  int64 revision = 2;
+}
+
+message UpdatePlatformPolicyRequest {
+  // Required: every value is written, so a screen that edits one of them sends
+  // the others back as it read them.
+  PlatformPolicy policy = 1;
+  // Required: the revision the values in this request were derived from, as
+  // read from GetPlatformPolicyResponse.revision. Zero states that nothing is
+  // expected to be saved yet. The write is refused with FAILED_PRECONDITION
+  // when the stored row moved on.
+  int64 expected_revision = 2;
+}
+
+message UpdatePlatformPolicyResponse {
+  PlatformPolicy policy = 1;
+  int64 revision = 2;
+}
+
+service PlatformPolicyService {
+  rpc GetPlatformPolicy(GetPlatformPolicyRequest) returns (GetPlatformPolicyResponse) {}
+  rpc UpdatePlatformPolicy(UpdatePlatformPolicyRequest) returns (UpdatePlatformPolicyResponse) {}
+}
