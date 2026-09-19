@@ -16,6 +16,7 @@ const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "announcements",
   "confirm-email",
   "confirm-password",
+  "contact",
   "creators",
   "genres",
   "labels",

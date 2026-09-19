@@ -2187,6 +2187,26 @@
       "updating": "正在更新…",
       "view_series_detail": "查看系列"
     },
+    "contact": {
+      "back_to_top": "返回首頁",
+      "body_label": "留言內容",
+      "body_required": "請輸入留言內容。",
+      "body_too_long": "留言內容不能超過 {$max} 個字元。",
+      "description": "向本網站的營運者傳送訊息。回覆會寄到您填寫的電子郵件地址。",
+      "email_help": "回覆會寄到這個地址。",
+      "email_label": "您的電子郵件地址",
+      "email_too_long": "電子郵件地址過長。",
+      "heading": "聯絡我們",
+      "sent_description": "感謝您聯絡 {$site}。回覆會寄到您填寫的電子郵件地址。",
+      "sent_heading": "您的訊息已傳送",
+      "sent_title": "已傳送",
+      "subject_label": "主旨（選填）",
+      "subject_too_long": "主旨不能超過 {$max} 個字元。",
+      "submit": "傳送",
+      "submit_failed": "無法傳送您的訊息。請再試一次。",
+      "submitting": "傳送中…",
+      "title": "聯絡我們"
+    },
     "creators": {
       "back_to_list": "返回作者列表",
       "detail_description": "{$name} 參與的已發布系列共 {$count} 部",
@@ -2427,6 +2447,7 @@
     "nav": {
       "account_menu": "帳戶選單",
       "announcements": "公告",
+      "contact": "聯絡我們",
       "footer_links": "頁尾連結",
       "genres": "類型",
       "labels": "品牌",
@@ -2604,9 +2625,10 @@
       "x": "分享到 X"
     },
     "settings": {
+      "birth_date_contact": "如有錯誤，請聯絡本網站。",
       "birth_date_help": "本網站在開啟有年齡限制的作品前會核對年齡。登錄後無法變更。",
       "birth_date_label": "出生日期",
-      "birth_date_set_help": "出生日期無法變更。如有錯誤，請聯絡本網站。",
+      "birth_date_set_help": "出生日期無法變更。",
       "browser_notifications_denied": "本站的通知已關閉。請在瀏覽器設定中開啟。",
       "browser_notifications_failed": "無法開啟通知。請重試。",
       "browser_notifications_heading": "瀏覽器通知",

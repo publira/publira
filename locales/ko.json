@@ -2187,6 +2187,26 @@
       "updating": "업데이트 중…",
       "view_series_detail": "시리즈 보기"
     },
+    "contact": {
+      "back_to_top": "첫 페이지로 돌아가기",
+      "body_label": "문의 내용",
+      "body_required": "문의 내용을 입력해 주세요.",
+      "body_too_long": "문의 내용은 {$max}자 이내로 입력해 주세요.",
+      "description": "이 사이트 운영자에게 메시지를 보냅니다. 답장은 입력한 이메일 주소로 전달됩니다.",
+      "email_help": "답장은 이 주소로 전달됩니다.",
+      "email_label": "이메일 주소",
+      "email_too_long": "이메일 주소가 너무 깁니다.",
+      "heading": "문의하기",
+      "sent_description": "{$site}에 문의해 주셔서 감사합니다. 답장은 입력한 이메일 주소로 전달됩니다.",
+      "sent_heading": "문의를 보냈습니다",
+      "sent_title": "전송 완료",
+      "subject_label": "제목(선택)",
+      "subject_too_long": "제목은 {$max}자 이내로 입력해 주세요.",
+      "submit": "보내기",
+      "submit_failed": "메시지를 보내지 못했습니다. 다시 시도해 주세요.",
+      "submitting": "보내는 중…",
+      "title": "문의하기"
+    },
     "creators": {
       "back_to_list": "작가 목록으로 돌아가기",
       "detail_description": "{$name}이(가) 참여한 공개 중인 시리즈 {$count}건",
@@ -2427,6 +2447,7 @@
     "nav": {
       "account_menu": "계정 메뉴",
       "announcements": "공지사항",
+      "contact": "문의하기",
       "footer_links": "푸터 링크",
       "genres": "장르",
       "labels": "레이블",
@@ -2604,9 +2625,10 @@
       "x": "X에 공유"
     },
     "settings": {
+      "birth_date_contact": "잘못되었다면 사이트 운영자에게 문의해 주세요.",
       "birth_date_help": "연령 제한이 있는 작품을 열 때 나이를 확인합니다. 한 번 등록하면 변경할 수 없습니다.",
       "birth_date_label": "생년월일",
-      "birth_date_set_help": "생년월일은 변경할 수 없습니다. 잘못되었다면 사이트 운영자에게 문의해 주세요.",
+      "birth_date_set_help": "생년월일은 변경할 수 없습니다.",
       "browser_notifications_denied": "이 사이트의 알림이 꺼져 있습니다. 브라우저 설정에서 켜 주세요.",
       "browser_notifications_failed": "알림을 켜지 못했습니다. 다시 시도해 주세요.",
       "browser_notifications_heading": "브라우저 알림",

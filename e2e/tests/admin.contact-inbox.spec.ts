@@ -12,9 +12,9 @@ import {
 /**
  * Reading the messages readers sent the tenant, and marking one dealt with.
  *
- * The messages are seeded rather than sent: the contact form readers write
- * them from is still to come, and the console reads whatever reached the
- * tenant either way.
+ * The messages are seeded rather than sent, so the states and senders the
+ * inbox tells apart are the same on every run. Sending one from the public
+ * site is `host.contact-form.spec.ts`.
  */
 test.describe("web-admin contact inbox", () => {
   test.describe.configure({ mode: "serial" });
