@@ -19,7 +19,7 @@
 # dist/index.mjs. Next.js apps use infra/docker/web/Dockerfile instead.
 
 # -----------------------------------------------------------------------------
-FROM node:24-bookworm-slim@sha256:a9d7043680f11d1229c0db1900b7f916719b1f0e4b47ed14a8c881e99767b8d2 AS base
+FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS base
 
 # renovate: datasource=npm depName=pnpm versioning=semver
 ARG PNPM_VERSION=12.4.2
