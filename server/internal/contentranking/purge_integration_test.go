@@ -9,14 +9,23 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// The cutoffs every purge test runs with. They are far apart so a period can
-// be expired under one ranking key and still current under the other.
+// The cutoffs every purge test runs with under the default periods: 92 and
+// 243 days before purgeNow. They are far apart so a period can be expired
+// under one ranking key and still current under the other.
 const (
 	dailyCutoffDate  = "2026-06-01"
 	weeklyCutoffDate = "2026-01-01"
+)
+
+var (
+	purgeNow             = time.Date(2026, time.September, 1, 6, 0, 0, 0, time.UTC)
+	defaultPurgePeriods  = retention.Periods{WithdrawnCommentDays: 180, ContentEventDays: 90, DailyRankingSnapshotDays: 92, WeeklyRankingSnapshotDays: 243}
+	overriddenDailyDays  = 30
+	overriddenDailyUntil = "2026-08-02"
 )
 
 func TestPurgeRunDeletesOnlyExpiredSnapshots(t *testing.T) {
@@ -35,6 +44,9 @@ func TestPurgeRunDeletesOnlyExpiredSnapshots(t *testing.T) {
 		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, periodEnd: "2025-12-31"}),
 		// A second tenant proves the sweep is not scoped to the first one.
 		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: other.ID, rankingKey: DailyRankingKey, periodEnd: "2026-05-01"}),
+		// The second tenant keeps daily snapshots for thirty days only, so a
+		// period the default would still keep is gone for it.
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: other.ID, rankingKey: DailyRankingKey, periodEnd: "2026-07-15"}),
 	}
 	retained := []uuid.UUID{
 		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-08-28"}),
@@ -49,27 +61,39 @@ func TestPurgeRunDeletesOnlyExpiredSnapshots(t *testing.T) {
 		// A ranking key with no retention configured is left alone.
 		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: "monthly", periodEnd: "2020-01-01"}),
 		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: other.ID, rankingKey: DailyRankingKey, periodEnd: "2026-08-28"}),
+		// The same period as the second tenant's expired one, kept under the
+		// first tenant's default.
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-07-15"}),
+		// Exactly at the second tenant's own cutoff.
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: other.ID, rankingKey: DailyRankingKey, periodEnd: overriddenDailyUntil}),
 	}
 
-	purger := NewPurger(pg.OpenPlatformDB(t))
+	// The batch connects as the content stats role.
+	purger := NewPurger(pg.OpenContentStatsDB(t))
+	options := purgeOptions(false)
+	options.Retention = retention.NewTable(defaultPurgePeriods, map[uuid.UUID]retention.Overrides{
+		other.ID: {DailyRankingSnapshotDays: &overriddenDailyDays},
+	})
 
 	// A dry run reports the candidates and leaves every row in place.
-	dry, err := purger.Run(context.Background(), purgeOptions(true))
+	dryOptions := options
+	dryOptions.DryRun = true
+	dry, err := purger.Run(context.Background(), dryOptions)
 	if err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
-	if want := (PurgeResult{RowCount: 4, DryRun: true}); dry != want {
+	if want := (PurgeResult{TenantCount: 2, RowCount: 5, DryRun: true}); dry != want {
 		t.Fatalf("dry run result = %+v, want %+v", dry, want)
 	}
-	if got := countSnapshots(t, pg.DB); got != 10 {
-		t.Fatalf("rows after dry run = %d, want 10", got)
+	if got := countSnapshots(t, pg.DB); got != 13 {
+		t.Fatalf("rows after dry run = %d, want 13", got)
 	}
 
-	result, err := purger.Run(context.Background(), purgeOptions(false))
+	result, err := purger.Run(context.Background(), options)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if want := (PurgeResult{RowCount: 4, ChunkCount: 1}); result != want {
+	if want := (PurgeResult{TenantCount: 2, RowCount: 5, ChunkCount: 2}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	for _, id := range expired {
@@ -84,11 +108,11 @@ func TestPurgeRunDeletesOnlyExpiredSnapshots(t *testing.T) {
 	}
 
 	// Re-running over the same cutoffs finds nothing left to delete.
-	repeat, err := purger.Run(context.Background(), purgeOptions(false))
+	repeat, err := purger.Run(context.Background(), options)
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
-	if want := (PurgeResult{ChunkCount: 1}); repeat != want {
+	if want := (PurgeResult{TenantCount: 2, ChunkCount: 2}); repeat != want {
 		t.Fatalf("second result = %+v, want %+v", repeat, want)
 	}
 	if got := countSnapshots(t, pg.DB); got != int64(len(retained)) {
@@ -108,12 +132,12 @@ func TestPurgeRunDeletesInChunks(t *testing.T) {
 
 	options := purgeOptions(false)
 	options.ChunkSize = 2
-	result, err := NewPurger(pg.OpenPlatformDB(t)).Run(context.Background(), options)
+	result, err := NewPurger(pg.OpenContentStatsDB(t)).Run(context.Background(), options)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	// Two full chunks, then a third that comes up short and ends the run.
-	if want := (PurgeResult{RowCount: 4, ChunkCount: 3}); result != want {
+	if want := (PurgeResult{TenantCount: 1, RowCount: 4, ChunkCount: 3}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	if got := countSnapshots(t, pg.DB); got != 1 {
@@ -134,11 +158,25 @@ func TestPurgeRunRejectsTenantScopedRole(t *testing.T) {
 
 func purgeOptions(dryRun bool) PurgeOptions {
 	return PurgeOptions{
-		Cutoffs: map[string]time.Time{
-			DailyRankingKey:  at(dailyCutoffDate),
-			WeeklyRankingKey: at(weeklyCutoffDate),
-		},
-		DryRun: dryRun,
+		Now:       purgeNow,
+		Retention: retention.NewTable(defaultPurgePeriods, nil),
+		DryRun:    dryRun,
+	}
+}
+
+// The default periods are what put the cutoffs on the dates the seeds are
+// written against.
+func TestDefaultPurgePeriodsLandOnTheSeededCutoffs(t *testing.T) {
+	cutoffs := retentionCutoffs(defaultPurgePeriods, purgeNow)
+	if got := cutoffs[DailyRankingKey]; !got.Equal(at(dailyCutoffDate)) {
+		t.Fatalf("daily cutoff = %s, want %s", got, dailyCutoffDate)
+	}
+	if got := cutoffs[WeeklyRankingKey]; !got.Equal(at(weeklyCutoffDate)) {
+		t.Fatalf("weekly cutoff = %s, want %s", got, weeklyCutoffDate)
+	}
+	overridden := retentionCutoffs(retention.Periods{DailyRankingSnapshotDays: overriddenDailyDays, WeeklyRankingSnapshotDays: 1}, purgeNow)
+	if got := overridden[DailyRankingKey]; !got.Equal(at(overriddenDailyUntil)) {
+		t.Fatalf("overridden daily cutoff = %s, want %s", got, overriddenDailyUntil)
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -311,12 +312,23 @@ func commentProjectionOfReport(row commentReportRow) commentProjection {
 	}
 }
 
+// commentRetention resolves the tenant's retention periods for one response.
+// It is read on every request rather than held by the server, so a saved change
+// reaches the next response the way it reaches the next purge.
+func (s *adminServer) commentRetention(ctx context.Context, tenantID uuid.UUID) (retention.Periods, error) {
+	settings, err := retention.ReadTenant(ctx, s.queriesFor(ctx), tenantID)
+	if err != nil {
+		return retention.Periods{}, s.internalDBError(ctx, "failed to read retention periods", err, "tenant_id", tenantID.String())
+	}
+	return settings.Effective(), nil
+}
+
 // adminComment projects one stored comment for the console.
 //
-// purge_due_at is derived here rather than stored: the retention window is a
-// deployment setting, so a deadline written into the row when the author
-// withdrew it would keep promising a date the purge batch no longer honours.
-func (s *adminServer) adminComment(row commentProjection) *publiraadminv1.AdminComment {
+// purge_due_at is derived here rather than stored: the retention period is a
+// setting, so a deadline written into the row when the author withdrew it
+// would keep promising a date the purge batch no longer honours.
+func adminComment(row commentProjection, periods retention.Periods) *publiraadminv1.AdminComment {
 	comment := &publiraadminv1.AdminComment{
 		PublicId:        row.publicID,
 		Body:            row.body,
@@ -336,13 +348,13 @@ func (s *adminServer) adminComment(row commentProjection) *publiraadminv1.AdminC
 		OpenReportCount: row.openReportCount,
 	}
 	if row.withdrawnAt.Valid {
-		comment.PurgeDueAt = row.withdrawnAt.Time.UTC().AddDate(0, 0, s.commentRetentionDays).Format(time.RFC3339)
+		comment.PurgeDueAt = periods.WithdrawnCommentPurgeDueAt(row.withdrawnAt.Time).Format(time.RFC3339)
 	}
 	return comment
 }
 
 // adminCommentReport projects one stored report, with the comment it is about.
-func (s *adminServer) adminCommentReport(row commentReportRow) *publiraadminv1.CommentReport {
+func adminCommentReport(row commentReportRow, periods retention.Periods) *publiraadminv1.CommentReport {
 	return &publiraadminv1.CommentReport{
 		ReportId:         row.ReportID.String(),
 		Reason:           row.Reason,
@@ -352,7 +364,7 @@ func (s *adminServer) adminCommentReport(row commentReportRow) *publiraadminv1.C
 		ResolvedAt:       formatOptionalTime(row.ResolvedAt),
 		ReporterPublicId: row.ReporterPublicID,
 		ReporterName:     row.ReporterName,
-		Comment:          s.adminComment(commentProjectionOfReport(row)),
+		Comment:          adminComment(commentProjectionOfReport(row), periods),
 	}
 }
 
@@ -546,9 +558,13 @@ func (s *adminServer) ListComments(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
+	periods, err := s.commentRetention(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 	comments := make([]*publiraadminv1.AdminComment, 0, len(rows))
 	for _, row := range rows {
-		comments = append(comments, s.adminComment(commentProjectionOf(row)))
+		comments = append(comments, adminComment(commentProjectionOf(row), periods))
 	}
 
 	res := &publiraadminv1.ListCommentsResponse{Comments: comments}
@@ -616,6 +632,12 @@ func (s *adminServer) ApproveComment(
 	if err != nil {
 		return nil, err
 	}
+	// Read before the write, so a failed read cannot report a moderation that
+	// has already committed as an error.
+	periods, err := s.commentRetention(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	current, err := s.loadCommentForModeration(ctx, tenant.ID, publicID)
 	if err != nil {
@@ -656,7 +678,7 @@ func (s *adminServer) ApproveComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_approved", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	return connect.NewResponse(&publiraadminv1.ApproveCommentResponse{Comment: s.adminComment(commentProjectionOf(updated))}), nil
+	return connect.NewResponse(&publiraadminv1.ApproveCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
 
 // HideComment removes one comment from every reader-facing response but its
@@ -667,6 +689,12 @@ func (s *adminServer) HideComment(
 	req *connect.Request[publiraadminv1.HideCommentRequest],
 ) (*connect.Response[publiraadminv1.HideCommentResponse], error) {
 	tenant, sessionCtx, publicID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
+	}
+	// Read before the write, so a failed read cannot report a moderation that
+	// has already committed as an error.
+	periods, err := s.commentRetention(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -708,7 +736,7 @@ func (s *adminServer) HideComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_hidden", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	return connect.NewResponse(&publiraadminv1.HideCommentResponse{Comment: s.adminComment(commentProjectionOf(updated))}), nil
+	return connect.NewResponse(&publiraadminv1.HideCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
 
 // RestoreComment puts a removed comment back into the state its removal
@@ -721,6 +749,12 @@ func (s *adminServer) RestoreComment(
 	req *connect.Request[publiraadminv1.RestoreCommentRequest],
 ) (*connect.Response[publiraadminv1.RestoreCommentResponse], error) {
 	tenant, sessionCtx, publicID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
+	}
+	// Read before the write, so a failed read cannot report a moderation that
+	// has already committed as an error.
+	periods, err := s.commentRetention(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -778,7 +812,7 @@ func (s *adminServer) RestoreComment(
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_restored", publicID, strings.TrimSpace(req.Msg.Reason))
 	s.revalidateCommentList(ctx, tenant.ID, updated.EpisodePublicID)
 
-	return connect.NewResponse(&publiraadminv1.RestoreCommentResponse{Comment: s.adminComment(commentProjectionOf(updated))}), nil
+	return connect.NewResponse(&publiraadminv1.RestoreCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
 }
 
 // PurgeComment deletes one comment for good, whatever state it is in.
@@ -879,9 +913,13 @@ func (s *adminServer) ListCommentReports(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
+	periods, err := s.commentRetention(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 	reports := make([]*publiraadminv1.CommentReport, 0, len(rows))
 	for _, row := range rows {
-		reports = append(reports, s.adminCommentReport(row))
+		reports = append(reports, adminCommentReport(row, periods))
 	}
 
 	res := &publiraadminv1.ListCommentReportsResponse{Reports: reports}
@@ -932,6 +970,12 @@ func (s *adminServer) ResolveCommentReport(
 		return nil, err
 	}
 	resolution, err := commentReportResolutionArg(req.Msg.Resolution)
+	if err != nil {
+		return nil, err
+	}
+	// Read before the write, so a failed read cannot report a moderation that
+	// has already committed as an error.
+	periods, err := s.commentRetention(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -988,7 +1032,7 @@ func (s *adminServer) ResolveCommentReport(
 	// target. The action says which way this decision went.
 	s.recordCommentAction(ctx, req.Header(), sessionCtx, commentReportAuditAction(resolution), updated.PublicID, strings.TrimSpace(req.Msg.Reason))
 
-	return connect.NewResponse(&publiraadminv1.ResolveCommentReportResponse{Report: s.adminCommentReport(updated)}), nil
+	return connect.NewResponse(&publiraadminv1.ResolveCommentReportResponse{Report: adminCommentReport(updated, periods)}), nil
 }
 
 // commentReportAuditAction names the decision in the audit log.

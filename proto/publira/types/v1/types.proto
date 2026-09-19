@@ -419,3 +419,17 @@ enum AgeVerification {
   // `r15` series demand a proven 15 and `r18` series a proven 18.
   AGE_VERIFICATION_R15_AND_R18 = 3;
 }
+
+// How long each kind of record that expires is kept before a purge batch
+// deletes it, in whole days. Each value is from 1 to 36500.
+message RetentionPeriods {
+  // A comment its author withdrew, counted from the withdrawal.
+  int32 withdrawn_comment_days = 1;
+  // A raw engagement event, counted from when it occurred.
+  int32 content_event_days = 2;
+  // A daily ranking snapshot, counted from the end of its period. The newest
+  // period is kept whatever its age.
+  int32 daily_ranking_snapshot_days = 3;
+  // A weekly ranking snapshot, counted like a daily one.
+  int32 weekly_ranking_snapshot_days = 4;
+}

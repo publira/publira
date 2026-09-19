@@ -485,6 +485,17 @@ type PlatformPolicyConfig struct {
 	UpdatedAt                            time.Time `json:"updated_at"`
 }
 
+type PlatformRetentionConfig struct {
+	Singleton                 bool      `json:"singleton"`
+	WithdrawnCommentDays      int32     `json:"withdrawn_comment_days"`
+	ContentEventDays          int32     `json:"content_event_days"`
+	DailyRankingSnapshotDays  int32     `json:"daily_ranking_snapshot_days"`
+	WeeklyRankingSnapshotDays int32     `json:"weekly_ranking_snapshot_days"`
+	Revision                  int64     `json:"revision"`
+	CreatedAt                 time.Time `json:"created_at"`
+	UpdatedAt                 time.Time `json:"updated_at"`
+}
+
 type PlatformSmtpConfig struct {
 	Singleton         bool           `json:"singleton"`
 	Host              string         `json:"host"`
@@ -770,6 +781,17 @@ type TenantRatingTotal struct {
 	Points         int64     `json:"points"`
 	CompletedReads int64     `json:"completed_reads"`
 	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type TenantRetentionSetting struct {
+	TenantID                  uuid.UUID     `json:"tenant_id"`
+	WithdrawnCommentDays      sql.NullInt32 `json:"withdrawn_comment_days"`
+	ContentEventDays          sql.NullInt32 `json:"content_event_days"`
+	DailyRankingSnapshotDays  sql.NullInt32 `json:"daily_ranking_snapshot_days"`
+	WeeklyRankingSnapshotDays sql.NullInt32 `json:"weekly_ranking_snapshot_days"`
+	Revision                  int64         `json:"revision"`
+	CreatedAt                 time.Time     `json:"created_at"`
+	UpdatedAt                 time.Time     `json:"updated_at"`
 }
 
 type TenantRoyaltyConfig struct {

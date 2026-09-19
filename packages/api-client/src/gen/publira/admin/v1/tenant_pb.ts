@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { AgeVerification, CommentMode, TenantContext } from "../../types/v1/types_pb";
+import type { AgeVerification, CommentMode, RetentionPeriods, TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/tenant.proto.
  */
 export const file_publira_admin_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCSJSCh9HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJ7CiBHZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXNwb25zZRIzCgxjb21tZW50X21vZGUYASABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAIgASgNIq4BCiJVcGRhdGVUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIzCgxjb21tZW50X21vZGUYAiABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAMgASgNIn4KI1VwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjMKDGNvbW1lbnRfbW9kZRgBIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSIgoaYXV0b19oaWRlX3JlcG9ydF90aHJlc2hvbGQYAiABKA0iUgofR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiXwogR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2USOwoQYWdlX3ZlcmlmaWNhdGlvbhgBIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uIpIBCiJVcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI7ChBhZ2VfdmVyaWZpY2F0aW9uGAIgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24iYgojVXBkYXRlVGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2USOwoQYWdlX3ZlcmlmaWNhdGlvbhgBIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uMrIIChVUZW5hbnRTZXR0aW5nc1NlcnZpY2USbgoRR2V0VGVuYW50VGltZXpvbmUSKi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRpbWV6b25lUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGltZXpvbmVSZXNwb25zZSIAEncKFFVwZGF0ZVRlbmFudFRpbWV6b25lEi0ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRUaW1lem9uZVJlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFRpbWV6b25lUmVzcG9uc2UiABJ9ChZHZXRUZW5hbnREZWZhdWx0TG9jYWxlEi8ucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50RGVmYXVsdExvY2FsZVJlc3BvbnNlIgAShgEKGVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGUSMi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0GjMucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2UiABKDAQoYR2V0VGVuYW50Q29tbWVudFNldHRpbmdzEjEucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0GjIucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXNwb25zZSIAEowBChtVcGRhdGVUZW5hbnRDb21tZW50U2V0dGluZ3MSNC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1JlcXVlc3QaNS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgASgwEKGEdldFRlbmFudEFnZVZlcmlmaWNhdGlvbhIxLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVxdWVzdBoyLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2UiABKMAQobVXBkYXRlVGVuYW50QWdlVmVyaWZpY2F0aW9uEjQucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXF1ZXN0GjUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCSJSCh9HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJ7CiBHZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXNwb25zZRIzCgxjb21tZW50X21vZGUYASABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAIgASgNIq4BCiJVcGRhdGVUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIzCgxjb21tZW50X21vZGUYAiABKA4yHS5wdWJsaXJhLnR5cGVzLnYxLkNvbW1lbnRNb2RlEiIKGmF1dG9faGlkZV9yZXBvcnRfdGhyZXNob2xkGAMgASgNIn4KI1VwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjMKDGNvbW1lbnRfbW9kZRgBIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSIgoaYXV0b19oaWRlX3JlcG9ydF90aHJlc2hvbGQYAiABKA0iUgofR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiXwogR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2USOwoQYWdlX3ZlcmlmaWNhdGlvbhgBIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uIpIBCiJVcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI7ChBhZ2VfdmVyaWZpY2F0aW9uGAIgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24iYgojVXBkYXRlVGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2USOwoQYWdlX3ZlcmlmaWNhdGlvbhgBIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uIqgCChhUZW5hbnRSZXRlbnRpb25PdmVycmlkZXMSIwoWd2l0aGRyYXduX2NvbW1lbnRfZGF5cxgBIAEoBUgAiAEBEh8KEmNvbnRlbnRfZXZlbnRfZGF5cxgCIAEoBUgBiAEBEigKG2RhaWx5X3Jhbmtpbmdfc25hcHNob3RfZGF5cxgDIAEoBUgCiAEBEikKHHdlZWtseV9yYW5raW5nX3NuYXBzaG90X2RheXMYBCABKAVIA4gBAUIZChdfd2l0aGRyYXduX2NvbW1lbnRfZGF5c0IVChNfY29udGVudF9ldmVudF9kYXlzQh4KHF9kYWlseV9yYW5raW5nX3NuYXBzaG90X2RheXNCHwodX3dlZWtseV9yYW5raW5nX3NuYXBzaG90X2RheXMiVAohR2V0VGVuYW50UmV0ZW50aW9uU2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCLrAQoiR2V0VGVuYW50UmV0ZW50aW9uU2V0dGluZ3NSZXNwb25zZRI9CglvdmVycmlkZXMYASABKAsyKi5wdWJsaXJhLmFkbWluLnYxLlRlbmFudFJldGVudGlvbk92ZXJyaWRlcxI9ChFwbGF0Zm9ybV9kZWZhdWx0cxgCIAEoCzIiLnB1YmxpcmEudHlwZXMudjEuUmV0ZW50aW9uUGVyaW9kcxI1CgllZmZlY3RpdmUYAyABKAsyIi5wdWJsaXJhLnR5cGVzLnYxLlJldGVudGlvblBlcmlvZHMSEAoIcmV2aXNpb24YBCABKAMisQEKJFVwZGF0ZVRlbmFudFJldGVudGlvblNldHRpbmdzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSPQoJb3ZlcnJpZGVzGAIgASgLMioucHVibGlyYS5hZG1pbi52MS5UZW5hbnRSZXRlbnRpb25PdmVycmlkZXMSGQoRZXhwZWN0ZWRfcmV2aXNpb24YAyABKAMi7gEKJVVwZGF0ZVRlbmFudFJldGVudGlvblNldHRpbmdzUmVzcG9uc2USPQoJb3ZlcnJpZGVzGAEgASgLMioucHVibGlyYS5hZG1pbi52MS5UZW5hbnRSZXRlbnRpb25PdmVycmlkZXMSPQoRcGxhdGZvcm1fZGVmYXVsdHMYAiABKAsyIi5wdWJsaXJhLnR5cGVzLnYxLlJldGVudGlvblBlcmlvZHMSNQoJZWZmZWN0aXZlGAMgASgLMiIucHVibGlyYS50eXBlcy52MS5SZXRlbnRpb25QZXJpb2RzEhAKCHJldmlzaW9uGAQgASgDMtMKChVUZW5hbnRTZXR0aW5nc1NlcnZpY2USbgoRR2V0VGVuYW50VGltZXpvbmUSKi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRpbWV6b25lUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGltZXpvbmVSZXNwb25zZSIAEncKFFVwZGF0ZVRlbmFudFRpbWV6b25lEi0ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRUaW1lem9uZVJlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFRpbWV6b25lUmVzcG9uc2UiABJ9ChZHZXRUZW5hbnREZWZhdWx0TG9jYWxlEi8ucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50RGVmYXVsdExvY2FsZVJlc3BvbnNlIgAShgEKGVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGUSMi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0GjMucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2UiABKDAQoYR2V0VGVuYW50Q29tbWVudFNldHRpbmdzEjEucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXF1ZXN0GjIucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRDb21tZW50U2V0dGluZ3NSZXNwb25zZSIAEowBChtVcGRhdGVUZW5hbnRDb21tZW50U2V0dGluZ3MSNC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1JlcXVlc3QaNS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudENvbW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgASgwEKGEdldFRlbmFudEFnZVZlcmlmaWNhdGlvbhIxLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVxdWVzdBoyLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50QWdlVmVyaWZpY2F0aW9uUmVzcG9uc2UiABKMAQobVXBkYXRlVGVuYW50QWdlVmVyaWZpY2F0aW9uEjQucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXF1ZXN0GjUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRBZ2VWZXJpZmljYXRpb25SZXNwb25zZSIAEokBChpHZXRUZW5hbnRSZXRlbnRpb25TZXR0aW5ncxIzLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50UmV0ZW50aW9uU2V0dGluZ3NSZXF1ZXN0GjQucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRSZXRlbnRpb25TZXR0aW5nc1Jlc3BvbnNlIgASkgEKHVVwZGF0ZVRlbmFudFJldGVudGlvblNldHRpbmdzEjYucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRSZXRlbnRpb25TZXR0aW5nc1JlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFJldGVudGlvblNldHRpbmdzUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetTenantTimezoneRequest
@@ -351,6 +351,169 @@ export const UpdateTenantAgeVerificationResponseSchema: GenMessage<UpdateTenantA
   messageDesc(file_publira_admin_v1_tenant, 15);
 
 /**
+ * A tenant's own retention periods, in whole days. An absent field follows the
+ * platform default; a present one is from 1 to 36500, and may be longer or
+ * shorter than that default.
+ *
+ * @generated from message publira.admin.v1.TenantRetentionOverrides
+ */
+export type TenantRetentionOverrides = Message<"publira.admin.v1.TenantRetentionOverrides"> & {
+  /**
+   * @generated from field: optional int32 withdrawn_comment_days = 1;
+   */
+  withdrawnCommentDays?: number | undefined;
+
+  /**
+   * @generated from field: optional int32 content_event_days = 2;
+   */
+  contentEventDays?: number | undefined;
+
+  /**
+   * @generated from field: optional int32 daily_ranking_snapshot_days = 3;
+   */
+  dailyRankingSnapshotDays?: number | undefined;
+
+  /**
+   * @generated from field: optional int32 weekly_ranking_snapshot_days = 4;
+   */
+  weeklyRankingSnapshotDays?: number | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.TenantRetentionOverrides.
+ * Use `create(TenantRetentionOverridesSchema)` to create a new message.
+ */
+export const TenantRetentionOverridesSchema: GenMessage<TenantRetentionOverrides> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 16);
+
+/**
+ * @generated from message publira.admin.v1.GetTenantRetentionSettingsRequest
+ */
+export type GetTenantRetentionSettingsRequest = Message<"publira.admin.v1.GetTenantRetentionSettingsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantRetentionSettingsRequest.
+ * Use `create(GetTenantRetentionSettingsRequestSchema)` to create a new message.
+ */
+export const GetTenantRetentionSettingsRequestSchema: GenMessage<GetTenantRetentionSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 17);
+
+/**
+ * @generated from message publira.admin.v1.GetTenantRetentionSettingsResponse
+ */
+export type GetTenantRetentionSettingsResponse = Message<"publira.admin.v1.GetTenantRetentionSettingsResponse"> & {
+  /**
+   * What the tenant has saved. Every field is absent for a tenant that has
+   * saved nothing.
+   *
+   * @generated from field: publira.admin.v1.TenantRetentionOverrides overrides = 1;
+   */
+  overrides?: TenantRetentionOverrides | undefined;
+
+  /**
+   * What an absent override follows.
+   *
+   * @generated from field: publira.types.v1.RetentionPeriods platform_defaults = 2;
+   */
+  platformDefaults?: RetentionPeriods | undefined;
+
+  /**
+   * The periods the console and the purge batches apply to this tenant.
+   *
+   * @generated from field: publira.types.v1.RetentionPeriods effective = 3;
+   */
+  effective?: RetentionPeriods | undefined;
+
+  /**
+   * Version of the saved row the overrides were read at. Zero when the tenant
+   * has saved nothing yet.
+   *
+   * @generated from field: int64 revision = 4;
+   */
+  revision: bigint;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantRetentionSettingsResponse.
+ * Use `create(GetTenantRetentionSettingsResponseSchema)` to create a new message.
+ */
+export const GetTenantRetentionSettingsResponseSchema: GenMessage<GetTenantRetentionSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 18);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantRetentionSettingsRequest
+ */
+export type UpdateTenantRetentionSettingsRequest = Message<"publira.admin.v1.UpdateTenantRetentionSettingsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * Required: every override is written, and a field left absent clears that
+   * override, so a screen that edits one of them sends the others back as it
+   * read them.
+   *
+   * @generated from field: publira.admin.v1.TenantRetentionOverrides overrides = 2;
+   */
+  overrides?: TenantRetentionOverrides | undefined;
+
+  /**
+   * Required: the revision the values in this request were derived from, as
+   * read from GetTenantRetentionSettingsResponse.revision. Zero states that
+   * nothing is expected to be saved yet. The write is refused with
+   * FAILED_PRECONDITION when the stored row moved on.
+   *
+   * @generated from field: int64 expected_revision = 3;
+   */
+  expectedRevision: bigint;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantRetentionSettingsRequest.
+ * Use `create(UpdateTenantRetentionSettingsRequestSchema)` to create a new message.
+ */
+export const UpdateTenantRetentionSettingsRequestSchema: GenMessage<UpdateTenantRetentionSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 19);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantRetentionSettingsResponse
+ */
+export type UpdateTenantRetentionSettingsResponse = Message<"publira.admin.v1.UpdateTenantRetentionSettingsResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.TenantRetentionOverrides overrides = 1;
+   */
+  overrides?: TenantRetentionOverrides | undefined;
+
+  /**
+   * @generated from field: publira.types.v1.RetentionPeriods platform_defaults = 2;
+   */
+  platformDefaults?: RetentionPeriods | undefined;
+
+  /**
+   * @generated from field: publira.types.v1.RetentionPeriods effective = 3;
+   */
+  effective?: RetentionPeriods | undefined;
+
+  /**
+   * @generated from field: int64 revision = 4;
+   */
+  revision: bigint;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantRetentionSettingsResponse.
+ * Use `create(UpdateTenantRetentionSettingsResponseSchema)` to create a new message.
+ */
+export const UpdateTenantRetentionSettingsResponseSchema: GenMessage<UpdateTenantRetentionSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 20);
+
+/**
  * Per-tenant operational settings, separate from TenantConfig (site copy) and
  * TenantTheme (colors).
  *
@@ -420,6 +583,22 @@ export const TenantSettingsService: GenService<{
     methodKind: "unary";
     input: typeof UpdateTenantAgeVerificationRequestSchema;
     output: typeof UpdateTenantAgeVerificationResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings
+   */
+  getTenantRetentionSettings: {
+    methodKind: "unary";
+    input: typeof GetTenantRetentionSettingsRequestSchema;
+    output: typeof GetTenantRetentionSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings
+   */
+  updateTenantRetentionSettings: {
+    methodKind: "unary";
+    input: typeof UpdateTenantRetentionSettingsRequestSchema;
+    output: typeof UpdateTenantRetentionSettingsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_tenant, 0);

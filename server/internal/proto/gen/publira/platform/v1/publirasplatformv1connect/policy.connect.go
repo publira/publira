@@ -39,6 +39,12 @@ const (
 	// PlatformPolicyServiceUpdatePlatformPolicyProcedure is the fully-qualified name of the
 	// PlatformPolicyService's UpdatePlatformPolicy RPC.
 	PlatformPolicyServiceUpdatePlatformPolicyProcedure = "/publira.platform.v1.PlatformPolicyService/UpdatePlatformPolicy"
+	// PlatformPolicyServiceGetPlatformRetentionDefaultsProcedure is the fully-qualified name of the
+	// PlatformPolicyService's GetPlatformRetentionDefaults RPC.
+	PlatformPolicyServiceGetPlatformRetentionDefaultsProcedure = "/publira.platform.v1.PlatformPolicyService/GetPlatformRetentionDefaults"
+	// PlatformPolicyServiceUpdatePlatformRetentionDefaultsProcedure is the fully-qualified name of the
+	// PlatformPolicyService's UpdatePlatformRetentionDefaults RPC.
+	PlatformPolicyServiceUpdatePlatformRetentionDefaultsProcedure = "/publira.platform.v1.PlatformPolicyService/UpdatePlatformRetentionDefaults"
 )
 
 // PlatformPolicyServiceClient is a client for the publira.platform.v1.PlatformPolicyService
@@ -46,6 +52,8 @@ const (
 type PlatformPolicyServiceClient interface {
 	GetPlatformPolicy(context.Context, *connect.Request[v1.GetPlatformPolicyRequest]) (*connect.Response[v1.GetPlatformPolicyResponse], error)
 	UpdatePlatformPolicy(context.Context, *connect.Request[v1.UpdatePlatformPolicyRequest]) (*connect.Response[v1.UpdatePlatformPolicyResponse], error)
+	GetPlatformRetentionDefaults(context.Context, *connect.Request[v1.GetPlatformRetentionDefaultsRequest]) (*connect.Response[v1.GetPlatformRetentionDefaultsResponse], error)
+	UpdatePlatformRetentionDefaults(context.Context, *connect.Request[v1.UpdatePlatformRetentionDefaultsRequest]) (*connect.Response[v1.UpdatePlatformRetentionDefaultsResponse], error)
 }
 
 // NewPlatformPolicyServiceClient constructs a client for the
@@ -71,13 +79,27 @@ func NewPlatformPolicyServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(platformPolicyServiceMethods.ByName("UpdatePlatformPolicy")),
 			connect.WithClientOptions(opts...),
 		),
+		getPlatformRetentionDefaults: connect.NewClient[v1.GetPlatformRetentionDefaultsRequest, v1.GetPlatformRetentionDefaultsResponse](
+			httpClient,
+			baseURL+PlatformPolicyServiceGetPlatformRetentionDefaultsProcedure,
+			connect.WithSchema(platformPolicyServiceMethods.ByName("GetPlatformRetentionDefaults")),
+			connect.WithClientOptions(opts...),
+		),
+		updatePlatformRetentionDefaults: connect.NewClient[v1.UpdatePlatformRetentionDefaultsRequest, v1.UpdatePlatformRetentionDefaultsResponse](
+			httpClient,
+			baseURL+PlatformPolicyServiceUpdatePlatformRetentionDefaultsProcedure,
+			connect.WithSchema(platformPolicyServiceMethods.ByName("UpdatePlatformRetentionDefaults")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // platformPolicyServiceClient implements PlatformPolicyServiceClient.
 type platformPolicyServiceClient struct {
-	getPlatformPolicy    *connect.Client[v1.GetPlatformPolicyRequest, v1.GetPlatformPolicyResponse]
-	updatePlatformPolicy *connect.Client[v1.UpdatePlatformPolicyRequest, v1.UpdatePlatformPolicyResponse]
+	getPlatformPolicy               *connect.Client[v1.GetPlatformPolicyRequest, v1.GetPlatformPolicyResponse]
+	updatePlatformPolicy            *connect.Client[v1.UpdatePlatformPolicyRequest, v1.UpdatePlatformPolicyResponse]
+	getPlatformRetentionDefaults    *connect.Client[v1.GetPlatformRetentionDefaultsRequest, v1.GetPlatformRetentionDefaultsResponse]
+	updatePlatformRetentionDefaults *connect.Client[v1.UpdatePlatformRetentionDefaultsRequest, v1.UpdatePlatformRetentionDefaultsResponse]
 }
 
 // GetPlatformPolicy calls publira.platform.v1.PlatformPolicyService.GetPlatformPolicy.
@@ -90,11 +112,25 @@ func (c *platformPolicyServiceClient) UpdatePlatformPolicy(ctx context.Context, 
 	return c.updatePlatformPolicy.CallUnary(ctx, req)
 }
 
+// GetPlatformRetentionDefaults calls
+// publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults.
+func (c *platformPolicyServiceClient) GetPlatformRetentionDefaults(ctx context.Context, req *connect.Request[v1.GetPlatformRetentionDefaultsRequest]) (*connect.Response[v1.GetPlatformRetentionDefaultsResponse], error) {
+	return c.getPlatformRetentionDefaults.CallUnary(ctx, req)
+}
+
+// UpdatePlatformRetentionDefaults calls
+// publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults.
+func (c *platformPolicyServiceClient) UpdatePlatformRetentionDefaults(ctx context.Context, req *connect.Request[v1.UpdatePlatformRetentionDefaultsRequest]) (*connect.Response[v1.UpdatePlatformRetentionDefaultsResponse], error) {
+	return c.updatePlatformRetentionDefaults.CallUnary(ctx, req)
+}
+
 // PlatformPolicyServiceHandler is an implementation of the
 // publira.platform.v1.PlatformPolicyService service.
 type PlatformPolicyServiceHandler interface {
 	GetPlatformPolicy(context.Context, *connect.Request[v1.GetPlatformPolicyRequest]) (*connect.Response[v1.GetPlatformPolicyResponse], error)
 	UpdatePlatformPolicy(context.Context, *connect.Request[v1.UpdatePlatformPolicyRequest]) (*connect.Response[v1.UpdatePlatformPolicyResponse], error)
+	GetPlatformRetentionDefaults(context.Context, *connect.Request[v1.GetPlatformRetentionDefaultsRequest]) (*connect.Response[v1.GetPlatformRetentionDefaultsResponse], error)
+	UpdatePlatformRetentionDefaults(context.Context, *connect.Request[v1.UpdatePlatformRetentionDefaultsRequest]) (*connect.Response[v1.UpdatePlatformRetentionDefaultsResponse], error)
 }
 
 // NewPlatformPolicyServiceHandler builds an HTTP handler from the service implementation. It
@@ -116,12 +152,28 @@ func NewPlatformPolicyServiceHandler(svc PlatformPolicyServiceHandler, opts ...c
 		connect.WithSchema(platformPolicyServiceMethods.ByName("UpdatePlatformPolicy")),
 		connect.WithHandlerOptions(opts...),
 	)
+	platformPolicyServiceGetPlatformRetentionDefaultsHandler := connect.NewUnaryHandler(
+		PlatformPolicyServiceGetPlatformRetentionDefaultsProcedure,
+		svc.GetPlatformRetentionDefaults,
+		connect.WithSchema(platformPolicyServiceMethods.ByName("GetPlatformRetentionDefaults")),
+		connect.WithHandlerOptions(opts...),
+	)
+	platformPolicyServiceUpdatePlatformRetentionDefaultsHandler := connect.NewUnaryHandler(
+		PlatformPolicyServiceUpdatePlatformRetentionDefaultsProcedure,
+		svc.UpdatePlatformRetentionDefaults,
+		connect.WithSchema(platformPolicyServiceMethods.ByName("UpdatePlatformRetentionDefaults")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.platform.v1.PlatformPolicyService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlatformPolicyServiceGetPlatformPolicyProcedure:
 			platformPolicyServiceGetPlatformPolicyHandler.ServeHTTP(w, r)
 		case PlatformPolicyServiceUpdatePlatformPolicyProcedure:
 			platformPolicyServiceUpdatePlatformPolicyHandler.ServeHTTP(w, r)
+		case PlatformPolicyServiceGetPlatformRetentionDefaultsProcedure:
+			platformPolicyServiceGetPlatformRetentionDefaultsHandler.ServeHTTP(w, r)
+		case PlatformPolicyServiceUpdatePlatformRetentionDefaultsProcedure:
+			platformPolicyServiceUpdatePlatformRetentionDefaultsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -137,4 +189,12 @@ func (UnimplementedPlatformPolicyServiceHandler) GetPlatformPolicy(context.Conte
 
 func (UnimplementedPlatformPolicyServiceHandler) UpdatePlatformPolicy(context.Context, *connect.Request[v1.UpdatePlatformPolicyRequest]) (*connect.Response[v1.UpdatePlatformPolicyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy is not implemented"))
+}
+
+func (UnimplementedPlatformPolicyServiceHandler) GetPlatformRetentionDefaults(context.Context, *connect.Request[v1.GetPlatformRetentionDefaultsRequest]) (*connect.Response[v1.GetPlatformRetentionDefaultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults is not implemented"))
+}
+
+func (UnimplementedPlatformPolicyServiceHandler) UpdatePlatformRetentionDefaults(context.Context, *connect.Request[v1.UpdatePlatformRetentionDefaultsRequest]) (*connect.Response[v1.UpdatePlatformRetentionDefaultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults is not implemented"))
 }

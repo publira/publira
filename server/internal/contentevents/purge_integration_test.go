@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -16,7 +17,7 @@ func TestRunDeletesOnlyExpiredEvents(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
-	cutoff := time.Date(2026, time.August, 30, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2026, time.August, 30, 0, 0, 0, 0, time.UTC)
 	tenant := pg.SeedTenant(t, "PURGETENANT1", "purge.example.com", "Purge Tenant")
 	otherTenant := pg.SeedTenant(t, "PURGETENANT2", "other-purge.example.com", "Other Purge Tenant")
 	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "PURGESERIES1"})
@@ -25,38 +26,56 @@ func TestRunDeletesOnlyExpiredEvents(t *testing.T) {
 	viewer := pg.SeedEndUser(t, tenant.ID, "PURGEVIEWER1", "viewer@purge.example.com", "Purge Viewer")
 	otherViewer := pg.SeedEndUser(t, otherTenant.ID, "PURGEVIEWER2", "viewer@other-purge.example.com", "Other Purge Viewer")
 
-	// Three expired rows across two tenants, plus two rows that must survive:
-	// one exactly at the cutoff (the window is exclusive) and one after it.
+	// The first tenant overrides the period down to ten days; the other
+	// follows a forty-day default.
+	table := retention.NewTable(
+		retention.Periods{WithdrawnCommentDays: 180, ContentEventDays: 40, DailyRankingSnapshotDays: 90, WeeklyRankingSnapshotDays: 400},
+		map[uuid.UUID]retention.Overrides{tenant.ID: {ContentEventDays: new(10)}},
+	)
+	cutoff := now.AddDate(0, 0, -10)
+	otherCutoff := now.AddDate(0, 0, -40)
+
+	// Three expired rows across two tenants, plus three rows that must
+	// survive: one exactly at the cutoff (the period is exclusive), one after
+	// it, and one the first tenant's shorter period would have taken but the
+	// other tenant's does not.
 	expired := []uuid.UUID{
 		insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, userID: viewer.ID, seriesID: series.ID, episodeID: episode.ID, debounceBucket: 1, occurredAt: cutoff.Add(-72 * time.Hour)}),
 		insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, userID: viewer.ID, seriesID: series.ID, episodeID: episode.ID, debounceBucket: 2, occurredAt: cutoff.Add(-time.Second)}),
-		insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, userID: otherViewer.ID, seriesID: otherSeries.ID, debounceBucket: 3, eventType: "series_view", occurredAt: cutoff.Add(-24 * time.Hour)}),
+		insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, userID: otherViewer.ID, seriesID: otherSeries.ID, debounceBucket: 3, eventType: "series_view", occurredAt: otherCutoff.Add(-24 * time.Hour)}),
 	}
 	retained := []uuid.UUID{
 		insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, userID: viewer.ID, seriesID: series.ID, episodeID: episode.ID, debounceBucket: 4, occurredAt: cutoff}),
-		insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, userID: otherViewer.ID, seriesID: otherSeries.ID, debounceBucket: 5, eventType: "series_view", occurredAt: cutoff.Add(time.Hour)}),
+		insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, userID: otherViewer.ID, seriesID: otherSeries.ID, debounceBucket: 5, eventType: "series_view", occurredAt: otherCutoff.Add(time.Hour)}),
+		insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, userID: otherViewer.ID, seriesID: otherSeries.ID, debounceBucket: 6, eventType: "series_view", occurredAt: cutoff.Add(-24 * time.Hour)}),
 	}
 
-	purger := New(pg.OpenPlatformDB(t))
+	// The batch connects as the content stats role.
+	purger := New(pg.OpenContentStatsDB(t))
+	opts := Options{Now: now, Retention: table}
 
 	// A dry run reports the candidates and leaves every row in place.
-	dry, err := purger.Run(context.Background(), Options{Cutoff: cutoff, DryRun: true})
+	dryOpts := opts
+	dryOpts.DryRun = true
+	dry, err := purger.Run(context.Background(), dryOpts)
 	if err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
-	if want := (Result{RowCount: 3, DryRun: true}); dry != want {
+	if want := (Result{TenantCount: 2, RowCount: 3, DryRun: true}); dry != want {
 		t.Fatalf("dry run result = %+v, want %+v", dry, want)
 	}
-	if got := countEvents(t, pg.DB); got != 5 {
-		t.Fatalf("rows after dry run = %d, want 5", got)
+	if got := countEvents(t, pg.DB); got != 6 {
+		t.Fatalf("rows after dry run = %d, want 6", got)
 	}
 
-	// ChunkSize below the candidate count forces the loop to iterate.
-	result, err := purger.Run(context.Background(), Options{Cutoff: cutoff, ChunkSize: 2})
+	// ChunkSize below the first tenant's candidate count forces its loop to
+	// iterate: two chunks there, one for the tenant with a single candidate.
+	opts.ChunkSize = 2
+	result, err := purger.Run(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if want := (Result{RowCount: 3, ChunkCount: 2}); result != want {
+	if want := (Result{TenantCount: 2, RowCount: 3, ChunkCount: 3}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	for _, id := range expired {
@@ -70,12 +89,12 @@ func TestRunDeletesOnlyExpiredEvents(t *testing.T) {
 		}
 	}
 
-	// Re-running finds nothing left to delete but still probes once.
-	again, err := purger.Run(context.Background(), Options{Cutoff: cutoff, ChunkSize: 2})
+	// Re-running finds nothing left to delete but still probes each tenant once.
+	again, err := purger.Run(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
-	if want := (Result{ChunkCount: 1}); again != want {
+	if want := (Result{TenantCount: 2, ChunkCount: 2}); again != want {
 		t.Fatalf("second result = %+v, want %+v", again, want)
 	}
 }
@@ -85,7 +104,7 @@ func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg.Reset(t)
 	pg.SeedTenant(t, "PURGERLS0001", "rls-purge.example.com", "RLS Purge")
 
-	_, err := New(pg.OpenAdminDB(t)).Run(context.Background(), Options{Cutoff: time.Now().UTC()})
+	_, err := New(pg.OpenAdminDB(t)).Run(context.Background(), Options{Now: time.Now().UTC()})
 	if err == nil || !strings.Contains(err.Error(), "BYPASSRLS") {
 		t.Fatalf("Run error = %v, want BYPASSRLS requirement", err)
 	}
@@ -107,7 +126,7 @@ func TestChunkQueryHasEligibleIndex(t *testing.T) {
 	if _, err := tx.ExecContext(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
 		t.Fatalf("disable sequential scans: %v", err)
 	}
-	rows, err := tx.QueryContext(ctx, "EXPLAIN (COSTS OFF) "+deleteChunkSQL, time.Now().UTC(), 10)
+	rows, err := tx.QueryContext(ctx, "EXPLAIN (COSTS OFF) "+deleteChunkSQL, uuid.Must(uuid.NewV7()), time.Now().UTC(), 10)
 	if err != nil {
 		t.Fatalf("explain chunk query: %v", err)
 	}
@@ -125,8 +144,8 @@ func TestChunkQueryHasEligibleIndex(t *testing.T) {
 	if err := rows.Err(); err != nil {
 		t.Fatalf("iterate plan: %v", err)
 	}
-	if !strings.Contains(plan.String(), "idx_content_events_occurred_at") {
-		t.Fatalf("plan does not use idx_content_events_occurred_at:\n%s", plan.String())
+	if !strings.Contains(plan.String(), "idx_content_events_tenant_occurred_at") {
+		t.Fatalf("plan does not use idx_content_events_tenant_occurred_at:\n%s", plan.String())
 	}
 }
 

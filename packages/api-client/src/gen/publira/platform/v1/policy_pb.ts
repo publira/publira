@@ -4,13 +4,15 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { RetentionPeriods } from "../../types/v1/types_pb";
+import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file publira/platform/v1/policy.proto.
  */
 export const file_publira_platform_v1_policy: GenFile = /*@__PURE__*/
-  fileDesc("CiBwdWJsaXJhL3BsYXRmb3JtL3YxL3BvbGljeS5wcm90bxITcHVibGlyYS5wbGF0Zm9ybS52MSI1Cg5NaW51dGVEYXlMaW1pdBISCgpwZXJfbWludXRlGAEgASgFEg8KB3Blcl9kYXkYAiABKAUiMQoMSG91ckRheUxpbWl0EhAKCHBlcl9ob3VyGAEgASgFEg8KB3Blcl9kYXkYAiABKAUixwMKFkNvbW11bml0eUxpbWl0RGVmYXVsdHMSOQoMY29tbWVudF9wb3N0GAEgASgLMiMucHVibGlyYS5wbGF0Zm9ybS52MS5NaW51dGVEYXlMaW1pdBI7Cg5jb21tZW50X3JlcG9ydBgCIAEoCzIjLnB1YmxpcmEucGxhdGZvcm0udjEuTWludXRlRGF5TGltaXQSKAogZHVwbGljYXRlX2NvbW1lbnRfd2luZG93X21pbnV0ZXMYAyABKAUSOwoOZXBpc29kZV9yYXRpbmcYBCABKAsyIy5wdWJsaXJhLnBsYXRmb3JtLnYxLk1pbnV0ZURheUxpbWl0EkYKG2NvbnRhY3RfbWVzc2FnZV9wZXJfYWNjb3VudBgFIAEoCzIhLnB1YmxpcmEucGxhdGZvcm0udjEuSG91ckRheUxpbWl0EkUKGmNvbnRhY3RfbWVzc2FnZV9wZXJfY2xpZW50GAYgASgLMiEucHVibGlyYS5wbGF0Zm9ybS52MS5Ib3VyRGF5TGltaXQSPwoSdmlld2VyX3ByZWZlcmVuY2VzGAcgASgLMiMucHVibGlyYS5wbGF0Zm9ybS52MS5NaW51dGVEYXlMaW1pdCLVAgoOUGxhdGZvcm1Qb2xpY3kSJQodbWZhX3JlcXVpcmVkX2Zvcl90ZW5hbnRfYWRtaW4YASABKAgSQgoVcGFzc3dvcmRfdmVyaWZpY2F0aW9uGAIgASgLMiMucHVibGlyYS5wbGF0Zm9ybS52MS5NaW51dGVEYXlMaW1pdBJEChltYWlsX3JlcXVlc3RzX3Blcl9hZGRyZXNzGAMgASgLMiEucHVibGlyYS5wbGF0Zm9ybS52MS5Ib3VyRGF5TGltaXQSQwoYbWFpbF9yZXF1ZXN0c19wZXJfc291cmNlGAQgASgLMiEucHVibGlyYS5wbGF0Zm9ybS52MS5Ib3VyRGF5TGltaXQSTQoYY29tbXVuaXR5X2xpbWl0X2RlZmF1bHRzGAUgASgLMisucHVibGlyYS5wbGF0Zm9ybS52MS5Db21tdW5pdHlMaW1pdERlZmF1bHRzIhoKGEdldFBsYXRmb3JtUG9saWN5UmVxdWVzdCJiChlHZXRQbGF0Zm9ybVBvbGljeVJlc3BvbnNlEjMKBnBvbGljeRgBIAEoCzIjLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1Qb2xpY3kSEAoIcmV2aXNpb24YAiABKAMibQobVXBkYXRlUGxhdGZvcm1Qb2xpY3lSZXF1ZXN0EjMKBnBvbGljeRgBIAEoCzIjLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1Qb2xpY3kSGQoRZXhwZWN0ZWRfcmV2aXNpb24YAiABKAMiZQocVXBkYXRlUGxhdGZvcm1Qb2xpY3lSZXNwb25zZRIzCgZwb2xpY3kYASABKAsyIy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtUG9saWN5EhAKCHJldmlzaW9uGAIgASgDMowCChVQbGF0Zm9ybVBvbGljeVNlcnZpY2USdAoRR2V0UGxhdGZvcm1Qb2xpY3kSLS5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldFBsYXRmb3JtUG9saWN5UmVxdWVzdBouLnB1YmxpcmEucGxhdGZvcm0udjEuR2V0UGxhdGZvcm1Qb2xpY3lSZXNwb25zZSIAEn0KFFVwZGF0ZVBsYXRmb3JtUG9saWN5EjAucHVibGlyYS5wbGF0Zm9ybS52MS5VcGRhdGVQbGF0Zm9ybVBvbGljeVJlcXVlc3QaMS5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtUG9saWN5UmVzcG9uc2UiAEJdWltnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
+  fileDesc("CiBwdWJsaXJhL3BsYXRmb3JtL3YxL3BvbGljeS5wcm90bxITcHVibGlyYS5wbGF0Zm9ybS52MSI1Cg5NaW51dGVEYXlMaW1pdBISCgpwZXJfbWludXRlGAEgASgFEg8KB3Blcl9kYXkYAiABKAUiMQoMSG91ckRheUxpbWl0EhAKCHBlcl9ob3VyGAEgASgFEg8KB3Blcl9kYXkYAiABKAUixwMKFkNvbW11bml0eUxpbWl0RGVmYXVsdHMSOQoMY29tbWVudF9wb3N0GAEgASgLMiMucHVibGlyYS5wbGF0Zm9ybS52MS5NaW51dGVEYXlMaW1pdBI7Cg5jb21tZW50X3JlcG9ydBgCIAEoCzIjLnB1YmxpcmEucGxhdGZvcm0udjEuTWludXRlRGF5TGltaXQSKAogZHVwbGljYXRlX2NvbW1lbnRfd2luZG93X21pbnV0ZXMYAyABKAUSOwoOZXBpc29kZV9yYXRpbmcYBCABKAsyIy5wdWJsaXJhLnBsYXRmb3JtLnYxLk1pbnV0ZURheUxpbWl0EkYKG2NvbnRhY3RfbWVzc2FnZV9wZXJfYWNjb3VudBgFIAEoCzIhLnB1YmxpcmEucGxhdGZvcm0udjEuSG91ckRheUxpbWl0EkUKGmNvbnRhY3RfbWVzc2FnZV9wZXJfY2xpZW50GAYgASgLMiEucHVibGlyYS5wbGF0Zm9ybS52MS5Ib3VyRGF5TGltaXQSPwoSdmlld2VyX3ByZWZlcmVuY2VzGAcgASgLMiMucHVibGlyYS5wbGF0Zm9ybS52MS5NaW51dGVEYXlMaW1pdCLVAgoOUGxhdGZvcm1Qb2xpY3kSJQodbWZhX3JlcXVpcmVkX2Zvcl90ZW5hbnRfYWRtaW4YASABKAgSQgoVcGFzc3dvcmRfdmVyaWZpY2F0aW9uGAIgASgLMiMucHVibGlyYS5wbGF0Zm9ybS52MS5NaW51dGVEYXlMaW1pdBJEChltYWlsX3JlcXVlc3RzX3Blcl9hZGRyZXNzGAMgASgLMiEucHVibGlyYS5wbGF0Zm9ybS52MS5Ib3VyRGF5TGltaXQSQwoYbWFpbF9yZXF1ZXN0c19wZXJfc291cmNlGAQgASgLMiEucHVibGlyYS5wbGF0Zm9ybS52MS5Ib3VyRGF5TGltaXQSTQoYY29tbXVuaXR5X2xpbWl0X2RlZmF1bHRzGAUgASgLMisucHVibGlyYS5wbGF0Zm9ybS52MS5Db21tdW5pdHlMaW1pdERlZmF1bHRzIhoKGEdldFBsYXRmb3JtUG9saWN5UmVxdWVzdCJiChlHZXRQbGF0Zm9ybVBvbGljeVJlc3BvbnNlEjMKBnBvbGljeRgBIAEoCzIjLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1Qb2xpY3kSEAoIcmV2aXNpb24YAiABKAMibQobVXBkYXRlUGxhdGZvcm1Qb2xpY3lSZXF1ZXN0EjMKBnBvbGljeRgBIAEoCzIjLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1Qb2xpY3kSGQoRZXhwZWN0ZWRfcmV2aXNpb24YAiABKAMiZQocVXBkYXRlUGxhdGZvcm1Qb2xpY3lSZXNwb25zZRIzCgZwb2xpY3kYASABKAsyIy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtUG9saWN5EhAKCHJldmlzaW9uGAIgASgDIiUKI0dldFBsYXRmb3JtUmV0ZW50aW9uRGVmYXVsdHNSZXF1ZXN0Im4KJEdldFBsYXRmb3JtUmV0ZW50aW9uRGVmYXVsdHNSZXNwb25zZRI0CghkZWZhdWx0cxgBIAEoCzIiLnB1YmxpcmEudHlwZXMudjEuUmV0ZW50aW9uUGVyaW9kcxIQCghyZXZpc2lvbhgCIAEoAyJ5CiZVcGRhdGVQbGF0Zm9ybVJldGVudGlvbkRlZmF1bHRzUmVxdWVzdBI0CghkZWZhdWx0cxgBIAEoCzIiLnB1YmxpcmEudHlwZXMudjEuUmV0ZW50aW9uUGVyaW9kcxIZChFleHBlY3RlZF9yZXZpc2lvbhgCIAEoAyJxCidVcGRhdGVQbGF0Zm9ybVJldGVudGlvbkRlZmF1bHRzUmVzcG9uc2USNAoIZGVmYXVsdHMYASABKAsyIi5wdWJsaXJhLnR5cGVzLnYxLlJldGVudGlvblBlcmlvZHMSEAoIcmV2aXNpb24YAiABKAMyxQQKFVBsYXRmb3JtUG9saWN5U2VydmljZRJ0ChFHZXRQbGF0Zm9ybVBvbGljeRItLnB1YmxpcmEucGxhdGZvcm0udjEuR2V0UGxhdGZvcm1Qb2xpY3lSZXF1ZXN0Gi4ucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVBvbGljeVJlc3BvbnNlIgASfQoUVXBkYXRlUGxhdGZvcm1Qb2xpY3kSMC5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtUG9saWN5UmVxdWVzdBoxLnB1YmxpcmEucGxhdGZvcm0udjEuVXBkYXRlUGxhdGZvcm1Qb2xpY3lSZXNwb25zZSIAEpUBChxHZXRQbGF0Zm9ybVJldGVudGlvbkRlZmF1bHRzEjgucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVJldGVudGlvbkRlZmF1bHRzUmVxdWVzdBo5LnB1YmxpcmEucGxhdGZvcm0udjEuR2V0UGxhdGZvcm1SZXRlbnRpb25EZWZhdWx0c1Jlc3BvbnNlIgASngEKH1VwZGF0ZVBsYXRmb3JtUmV0ZW50aW9uRGVmYXVsdHMSOy5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtUmV0ZW50aW9uRGVmYXVsdHNSZXF1ZXN0GjwucHVibGlyYS5wbGF0Zm9ybS52MS5VcGRhdGVQbGF0Zm9ybVJldGVudGlvbkRlZmF1bHRzUmVzcG9uc2UiAEJdWltnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * A burst allowance per minute paired with a budget per day. Both are at least
@@ -275,6 +277,99 @@ export const UpdatePlatformPolicyResponseSchema: GenMessage<UpdatePlatformPolicy
   messageDesc(file_publira_platform_v1_policy, 7);
 
 /**
+ * @generated from message publira.platform.v1.GetPlatformRetentionDefaultsRequest
+ */
+export type GetPlatformRetentionDefaultsRequest = Message<"publira.platform.v1.GetPlatformRetentionDefaultsRequest"> & {
+};
+
+/**
+ * Describes the message publira.platform.v1.GetPlatformRetentionDefaultsRequest.
+ * Use `create(GetPlatformRetentionDefaultsRequestSchema)` to create a new message.
+ */
+export const GetPlatformRetentionDefaultsRequestSchema: GenMessage<GetPlatformRetentionDefaultsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_policy, 8);
+
+/**
+ * @generated from message publira.platform.v1.GetPlatformRetentionDefaultsResponse
+ */
+export type GetPlatformRetentionDefaultsResponse = Message<"publira.platform.v1.GetPlatformRetentionDefaultsResponse"> & {
+  /**
+   * The retention periods of every tenant that has not overridden them: the
+   * saved values, or the built-in defaults when nothing has been saved.
+   *
+   * @generated from field: publira.types.v1.RetentionPeriods defaults = 1;
+   */
+  defaults?: RetentionPeriods | undefined;
+
+  /**
+   * Version of the saved row the defaults were read at. Zero when nothing has
+   * been saved yet and the defaults are the built-in ones.
+   *
+   * @generated from field: int64 revision = 2;
+   */
+  revision: bigint;
+};
+
+/**
+ * Describes the message publira.platform.v1.GetPlatformRetentionDefaultsResponse.
+ * Use `create(GetPlatformRetentionDefaultsResponseSchema)` to create a new message.
+ */
+export const GetPlatformRetentionDefaultsResponseSchema: GenMessage<GetPlatformRetentionDefaultsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_policy, 9);
+
+/**
+ * @generated from message publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
+ */
+export type UpdatePlatformRetentionDefaultsRequest = Message<"publira.platform.v1.UpdatePlatformRetentionDefaultsRequest"> & {
+  /**
+   * Required: every period is written, so a screen that edits one of them
+   * sends the others back as it read them.
+   *
+   * @generated from field: publira.types.v1.RetentionPeriods defaults = 1;
+   */
+  defaults?: RetentionPeriods | undefined;
+
+  /**
+   * Required: the revision the values in this request were derived from, as
+   * read from GetPlatformRetentionDefaultsResponse.revision. Zero states that
+   * nothing is expected to be saved yet. The write is refused with
+   * FAILED_PRECONDITION when the stored row moved on.
+   *
+   * @generated from field: int64 expected_revision = 2;
+   */
+  expectedRevision: bigint;
+};
+
+/**
+ * Describes the message publira.platform.v1.UpdatePlatformRetentionDefaultsRequest.
+ * Use `create(UpdatePlatformRetentionDefaultsRequestSchema)` to create a new message.
+ */
+export const UpdatePlatformRetentionDefaultsRequestSchema: GenMessage<UpdatePlatformRetentionDefaultsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_policy, 10);
+
+/**
+ * @generated from message publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
+ */
+export type UpdatePlatformRetentionDefaultsResponse = Message<"publira.platform.v1.UpdatePlatformRetentionDefaultsResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.RetentionPeriods defaults = 1;
+   */
+  defaults?: RetentionPeriods | undefined;
+
+  /**
+   * @generated from field: int64 revision = 2;
+   */
+  revision: bigint;
+};
+
+/**
+ * Describes the message publira.platform.v1.UpdatePlatformRetentionDefaultsResponse.
+ * Use `create(UpdatePlatformRetentionDefaultsResponseSchema)` to create a new message.
+ */
+export const UpdatePlatformRetentionDefaultsResponseSchema: GenMessage<UpdatePlatformRetentionDefaultsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_policy, 11);
+
+/**
  * @generated from service publira.platform.v1.PlatformPolicyService
  */
 export const PlatformPolicyService: GenService<{
@@ -293,6 +388,22 @@ export const PlatformPolicyService: GenService<{
     methodKind: "unary";
     input: typeof UpdatePlatformPolicyRequestSchema;
     output: typeof UpdatePlatformPolicyResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults
+   */
+  getPlatformRetentionDefaults: {
+    methodKind: "unary";
+    input: typeof GetPlatformRetentionDefaultsRequestSchema;
+    output: typeof GetPlatformRetentionDefaultsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults
+   */
+  updatePlatformRetentionDefaults: {
+    methodKind: "unary";
+    input: typeof UpdatePlatformRetentionDefaultsRequestSchema;
+    output: typeof UpdatePlatformRetentionDefaultsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_platform_v1_policy, 0);

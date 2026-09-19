@@ -3054,6 +3054,7 @@
         "operator_updated": "Updated an operator",
         "platform_email_settings_updated": "Updated SMTP settings",
         "platform_policy_updated": "Updated the platform policy",
+        "platform_retention_defaults_updated": "Updated the retention defaults",
         "platform_settings_updated": "Updated platform settings",
         "platform_smtp_test_email_sent": "Sent an SMTP test email",
         "tenant_created": "Created a tenant",

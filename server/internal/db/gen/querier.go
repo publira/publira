@@ -442,6 +442,9 @@ type Querier interface {
 	// Returns no rows when the platform has never saved its policy, which the
 	// server answers with its built-in defaults.
 	GetPlatformPolicyConfig(ctx context.Context) (PlatformPolicyConfig, error)
+	// Returns no rows when the platform has never saved its retention defaults,
+	// which the server answers with its built-in defaults.
+	GetPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
 	GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error)
 	GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error)
@@ -575,6 +578,8 @@ type Querier interface {
 	// One reader in the shape ListTenantReaders* returns. A staff account and an
 	// account of another tenant are both no rows.
 	GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error)
+	// Returns no rows when the tenant has never saved an override.
+	GetTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
 	GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantRoyaltyConfig, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
@@ -689,6 +694,10 @@ type Querier interface {
 	// to lock, so a losing racer must fail on the primary key rather than overwrite
 	// the row the winner just created.
 	InsertPlatformPolicyConfig(ctx context.Context, arg InsertPlatformPolicyConfigParams) (PlatformPolicyConfig, error)
+	// No ON CONFLICT clause: an absent row leaves LockPlatformRetentionConfig
+	// nothing to lock, so a losing racer must fail on the primary key rather than
+	// overwrite the row the winner just created.
+	InsertPlatformRetentionConfig(ctx context.Context, arg InsertPlatformRetentionConfigParams) (PlatformRetentionConfig, error)
 	// Creates the settings row with the platform default time zone and locale.
 	// No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
 	// absent, so a losing racer must fail on the primary key rather than overwrite
@@ -721,6 +730,8 @@ type Querier interface {
 	// JSON array because several of their columns are nullable, which a typed
 	// array parameter per column cannot carry.
 	InsertRoyaltyStatementLines(ctx context.Context, arg InsertRoyaltyStatementLinesParams) error
+	// No ON CONFLICT clause, for the same reason as InsertPlatformRetentionConfig.
+	InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so idx_access_tickets_tenant_created_at can be
@@ -1474,6 +1485,9 @@ type Querier interface {
 	// The birth date is a NULL placeholder: a list has no use for it, so only the
 	// single read hands it out.
 	ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error)
+	// Every tenant's overrides, for a batch that spans all tenants. A tenant with
+	// no row follows the platform defaults.
+	ListTenantRetentionSettings(ctx context.Context) ([]TenantRetentionSetting, error)
 	// Who the mail announcing a message goes to: every member of staff the tenant
 	// has, with the address their own account is reached at.
 	//
@@ -1594,6 +1608,9 @@ type Querier interface {
 	// Reads the policy row for update, so the revision a save compares against
 	// cannot change between the comparison and the write.
 	LockPlatformPolicyConfig(ctx context.Context) (PlatformPolicyConfig, error)
+	// Reads the defaults row for update, so the revision a save compares against
+	// cannot change between the comparison and the write.
+	LockPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error)
 	// A series as one row: locked, read, written, and listed for the console. The
 	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
@@ -1608,6 +1625,7 @@ type Querier interface {
 	// so waiting for the lock in the same statement would still see the pre-wait
 	// row.
 	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	LockTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
 	// Removing the tags a save let go of takes two statements, because one cannot
 	// be trusted on its own.
 	//
@@ -1902,6 +1920,7 @@ type Querier interface {
 	// Writes every value over the existing row. The revision moves with every
 	// write, which is what makes a save based on an earlier read detectable.
 	UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlatformPolicyConfigParams) (PlatformPolicyConfig, error)
+	UpdatePlatformRetentionConfig(ctx context.Context, arg UpdatePlatformRetentionConfigParams) (PlatformRetentionConfig, error)
 	// Writes the platform default time zone and locale over the existing row. The
 	// revision moves with every write, which is what makes a save based on an
 	// earlier read detectable.
@@ -1917,6 +1936,7 @@ type Querier interface {
 	UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error)
 	// Update the tenant name and its domains.
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
+	UpdateTenantRetentionSettings(ctx context.Context, arg UpdateTenantRetentionSettingsParams) (TenantRetentionSetting, error)
 	// Update the tenant status (active / suspended).
 	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)
 	// Update the tenant display time zone (an IANA name).

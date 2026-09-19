@@ -3054,6 +3054,7 @@
         "operator_updated": "オペレーターを更新",
         "platform_email_settings_updated": "SMTP設定を更新",
         "platform_policy_updated": "プラットフォームのポリシーを更新",
+        "platform_retention_defaults_updated": "保持期間の既定値を更新",
         "platform_settings_updated": "プラットフォーム設定を更新",
         "platform_smtp_test_email_sent": "SMTP 接続テストメールを送信",
         "tenant_created": "テナントを作成",

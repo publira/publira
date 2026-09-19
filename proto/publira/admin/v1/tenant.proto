@@ -96,6 +96,53 @@ message UpdateTenantAgeVerificationResponse {
   publira.types.v1.AgeVerification age_verification = 1;
 }
 
+// A tenant's own retention periods, in whole days. An absent field follows the
+// platform default; a present one is from 1 to 36500, and may be longer or
+// shorter than that default.
+message TenantRetentionOverrides {
+  optional int32 withdrawn_comment_days = 1;
+  optional int32 content_event_days = 2;
+  optional int32 daily_ranking_snapshot_days = 3;
+  optional int32 weekly_ranking_snapshot_days = 4;
+}
+
+message GetTenantRetentionSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantRetentionSettingsResponse {
+  // What the tenant has saved. Every field is absent for a tenant that has
+  // saved nothing.
+  TenantRetentionOverrides overrides = 1;
+  // What an absent override follows.
+  publira.types.v1.RetentionPeriods platform_defaults = 2;
+  // The periods the console and the purge batches apply to this tenant.
+  publira.types.v1.RetentionPeriods effective = 3;
+  // Version of the saved row the overrides were read at. Zero when the tenant
+  // has saved nothing yet.
+  int64 revision = 4;
+}
+
+message UpdateTenantRetentionSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Required: every override is written, and a field left absent clears that
+  // override, so a screen that edits one of them sends the others back as it
+  // read them.
+  TenantRetentionOverrides overrides = 2;
+  // Required: the revision the values in this request were derived from, as
+  // read from GetTenantRetentionSettingsResponse.revision. Zero states that
+  // nothing is expected to be saved yet. The write is refused with
+  // FAILED_PRECONDITION when the stored row moved on.
+  int64 expected_revision = 3;
+}
+
+message UpdateTenantRetentionSettingsResponse {
+  TenantRetentionOverrides overrides = 1;
+  publira.types.v1.RetentionPeriods platform_defaults = 2;
+  publira.types.v1.RetentionPeriods effective = 3;
+  int64 revision = 4;
+}
+
 // Per-tenant operational settings, separate from TenantConfig (site copy) and
 // TenantTheme (colors).
 service TenantSettingsService {
@@ -107,4 +154,6 @@ service TenantSettingsService {
   rpc UpdateTenantCommentSettings(UpdateTenantCommentSettingsRequest) returns (UpdateTenantCommentSettingsResponse) {}
   rpc GetTenantAgeVerification(GetTenantAgeVerificationRequest) returns (GetTenantAgeVerificationResponse) {}
   rpc UpdateTenantAgeVerification(UpdateTenantAgeVerificationRequest) returns (UpdateTenantAgeVerificationResponse) {}
+  rpc GetTenantRetentionSettings(GetTenantRetentionSettingsRequest) returns (GetTenantRetentionSettingsResponse) {}
+  rpc UpdateTenantRetentionSettings(UpdateTenantRetentionSettingsRequest) returns (UpdateTenantRetentionSettingsResponse) {}
 }

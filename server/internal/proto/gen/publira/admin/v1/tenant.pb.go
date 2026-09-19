@@ -801,6 +801,330 @@ func (x *UpdateTenantAgeVerificationResponse) GetAgeVerification() v1.AgeVerific
 	return v1.AgeVerification(0)
 }
 
+// A tenant's own retention periods, in whole days. An absent field follows the
+// platform default; a present one is from 1 to 36500, and may be longer or
+// shorter than that default.
+type TenantRetentionOverrides struct {
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	WithdrawnCommentDays      *int32                 `protobuf:"varint,1,opt,name=withdrawn_comment_days,json=withdrawnCommentDays,proto3,oneof" json:"withdrawn_comment_days,omitempty"`
+	ContentEventDays          *int32                 `protobuf:"varint,2,opt,name=content_event_days,json=contentEventDays,proto3,oneof" json:"content_event_days,omitempty"`
+	DailyRankingSnapshotDays  *int32                 `protobuf:"varint,3,opt,name=daily_ranking_snapshot_days,json=dailyRankingSnapshotDays,proto3,oneof" json:"daily_ranking_snapshot_days,omitempty"`
+	WeeklyRankingSnapshotDays *int32                 `protobuf:"varint,4,opt,name=weekly_ranking_snapshot_days,json=weeklyRankingSnapshotDays,proto3,oneof" json:"weekly_ranking_snapshot_days,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *TenantRetentionOverrides) Reset() {
+	*x = TenantRetentionOverrides{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantRetentionOverrides) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantRetentionOverrides) ProtoMessage() {}
+
+func (x *TenantRetentionOverrides) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantRetentionOverrides.ProtoReflect.Descriptor instead.
+func (*TenantRetentionOverrides) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *TenantRetentionOverrides) GetWithdrawnCommentDays() int32 {
+	if x != nil && x.WithdrawnCommentDays != nil {
+		return *x.WithdrawnCommentDays
+	}
+	return 0
+}
+
+func (x *TenantRetentionOverrides) GetContentEventDays() int32 {
+	if x != nil && x.ContentEventDays != nil {
+		return *x.ContentEventDays
+	}
+	return 0
+}
+
+func (x *TenantRetentionOverrides) GetDailyRankingSnapshotDays() int32 {
+	if x != nil && x.DailyRankingSnapshotDays != nil {
+		return *x.DailyRankingSnapshotDays
+	}
+	return 0
+}
+
+func (x *TenantRetentionOverrides) GetWeeklyRankingSnapshotDays() int32 {
+	if x != nil && x.WeeklyRankingSnapshotDays != nil {
+		return *x.WeeklyRankingSnapshotDays
+	}
+	return 0
+}
+
+type GetTenantRetentionSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantRetentionSettingsRequest) Reset() {
+	*x = GetTenantRetentionSettingsRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantRetentionSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantRetentionSettingsRequest) ProtoMessage() {}
+
+func (x *GetTenantRetentionSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantRetentionSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantRetentionSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetTenantRetentionSettingsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type GetTenantRetentionSettingsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the tenant has saved. Every field is absent for a tenant that has
+	// saved nothing.
+	Overrides *TenantRetentionOverrides `protobuf:"bytes,1,opt,name=overrides,proto3" json:"overrides,omitempty"`
+	// What an absent override follows.
+	PlatformDefaults *v1.RetentionPeriods `protobuf:"bytes,2,opt,name=platform_defaults,json=platformDefaults,proto3" json:"platform_defaults,omitempty"`
+	// The periods the console and the purge batches apply to this tenant.
+	Effective *v1.RetentionPeriods `protobuf:"bytes,3,opt,name=effective,proto3" json:"effective,omitempty"`
+	// Version of the saved row the overrides were read at. Zero when the tenant
+	// has saved nothing yet.
+	Revision      int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantRetentionSettingsResponse) Reset() {
+	*x = GetTenantRetentionSettingsResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantRetentionSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantRetentionSettingsResponse) ProtoMessage() {}
+
+func (x *GetTenantRetentionSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantRetentionSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantRetentionSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetTenantRetentionSettingsResponse) GetOverrides() *TenantRetentionOverrides {
+	if x != nil {
+		return x.Overrides
+	}
+	return nil
+}
+
+func (x *GetTenantRetentionSettingsResponse) GetPlatformDefaults() *v1.RetentionPeriods {
+	if x != nil {
+		return x.PlatformDefaults
+	}
+	return nil
+}
+
+func (x *GetTenantRetentionSettingsResponse) GetEffective() *v1.RetentionPeriods {
+	if x != nil {
+		return x.Effective
+	}
+	return nil
+}
+
+func (x *GetTenantRetentionSettingsResponse) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+type UpdateTenantRetentionSettingsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Required: every override is written, and a field left absent clears that
+	// override, so a screen that edits one of them sends the others back as it
+	// read them.
+	Overrides *TenantRetentionOverrides `protobuf:"bytes,2,opt,name=overrides,proto3" json:"overrides,omitempty"`
+	// Required: the revision the values in this request were derived from, as
+	// read from GetTenantRetentionSettingsResponse.revision. Zero states that
+	// nothing is expected to be saved yet. The write is refused with
+	// FAILED_PRECONDITION when the stored row moved on.
+	ExpectedRevision int64 `protobuf:"varint,3,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *UpdateTenantRetentionSettingsRequest) Reset() {
+	*x = UpdateTenantRetentionSettingsRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantRetentionSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantRetentionSettingsRequest) ProtoMessage() {}
+
+func (x *UpdateTenantRetentionSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantRetentionSettingsRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTenantRetentionSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *UpdateTenantRetentionSettingsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UpdateTenantRetentionSettingsRequest) GetOverrides() *TenantRetentionOverrides {
+	if x != nil {
+		return x.Overrides
+	}
+	return nil
+}
+
+func (x *UpdateTenantRetentionSettingsRequest) GetExpectedRevision() int64 {
+	if x != nil {
+		return x.ExpectedRevision
+	}
+	return 0
+}
+
+type UpdateTenantRetentionSettingsResponse struct {
+	state            protoimpl.MessageState    `protogen:"open.v1"`
+	Overrides        *TenantRetentionOverrides `protobuf:"bytes,1,opt,name=overrides,proto3" json:"overrides,omitempty"`
+	PlatformDefaults *v1.RetentionPeriods      `protobuf:"bytes,2,opt,name=platform_defaults,json=platformDefaults,proto3" json:"platform_defaults,omitempty"`
+	Effective        *v1.RetentionPeriods      `protobuf:"bytes,3,opt,name=effective,proto3" json:"effective,omitempty"`
+	Revision         int64                     `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *UpdateTenantRetentionSettingsResponse) Reset() {
+	*x = UpdateTenantRetentionSettingsResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantRetentionSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantRetentionSettingsResponse) ProtoMessage() {}
+
+func (x *UpdateTenantRetentionSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantRetentionSettingsResponse.ProtoReflect.Descriptor instead.
+func (*UpdateTenantRetentionSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *UpdateTenantRetentionSettingsResponse) GetOverrides() *TenantRetentionOverrides {
+	if x != nil {
+		return x.Overrides
+	}
+	return nil
+}
+
+func (x *UpdateTenantRetentionSettingsResponse) GetPlatformDefaults() *v1.RetentionPeriods {
+	if x != nil {
+		return x.PlatformDefaults
+	}
+	return nil
+}
+
+func (x *UpdateTenantRetentionSettingsResponse) GetEffective() *v1.RetentionPeriods {
+	if x != nil {
+		return x.Effective
+	}
+	return nil
+}
+
+func (x *UpdateTenantRetentionSettingsResponse) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
 var File_publira_admin_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_tenant_proto_rawDesc = "" +
@@ -844,7 +1168,33 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12L\n" +
 	"\x10age_verification\x18\x02 \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification\"s\n" +
 	"#UpdateTenantAgeVerificationResponse\x12L\n" +
-	"\x10age_verification\x18\x01 \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification2\xb2\b\n" +
+	"\x10age_verification\x18\x01 \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification\"\x85\x03\n" +
+	"\x18TenantRetentionOverrides\x129\n" +
+	"\x16withdrawn_comment_days\x18\x01 \x01(\x05H\x00R\x14withdrawnCommentDays\x88\x01\x01\x121\n" +
+	"\x12content_event_days\x18\x02 \x01(\x05H\x01R\x10contentEventDays\x88\x01\x01\x12B\n" +
+	"\x1bdaily_ranking_snapshot_days\x18\x03 \x01(\x05H\x02R\x18dailyRankingSnapshotDays\x88\x01\x01\x12D\n" +
+	"\x1cweekly_ranking_snapshot_days\x18\x04 \x01(\x05H\x03R\x19weeklyRankingSnapshotDays\x88\x01\x01B\x19\n" +
+	"\x17_withdrawn_comment_daysB\x15\n" +
+	"\x13_content_event_daysB\x1e\n" +
+	"\x1c_daily_ranking_snapshot_daysB\x1f\n" +
+	"\x1d_weekly_ranking_snapshot_days\"\\\n" +
+	"!GetTenantRetentionSettingsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\x9d\x02\n" +
+	"\"GetTenantRetentionSettingsResponse\x12H\n" +
+	"\toverrides\x18\x01 \x01(\v2*.publira.admin.v1.TenantRetentionOverridesR\toverrides\x12O\n" +
+	"\x11platform_defaults\x18\x02 \x01(\v2\".publira.types.v1.RetentionPeriodsR\x10platformDefaults\x12@\n" +
+	"\teffective\x18\x03 \x01(\v2\".publira.types.v1.RetentionPeriodsR\teffective\x12\x1a\n" +
+	"\brevision\x18\x04 \x01(\x03R\brevision\"\xd6\x01\n" +
+	"$UpdateTenantRetentionSettingsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12H\n" +
+	"\toverrides\x18\x02 \x01(\v2*.publira.admin.v1.TenantRetentionOverridesR\toverrides\x12+\n" +
+	"\x11expected_revision\x18\x03 \x01(\x03R\x10expectedRevision\"\xa0\x02\n" +
+	"%UpdateTenantRetentionSettingsResponse\x12H\n" +
+	"\toverrides\x18\x01 \x01(\v2*.publira.admin.v1.TenantRetentionOverridesR\toverrides\x12O\n" +
+	"\x11platform_defaults\x18\x02 \x01(\v2\".publira.types.v1.RetentionPeriodsR\x10platformDefaults\x12@\n" +
+	"\teffective\x18\x03 \x01(\v2\".publira.types.v1.RetentionPeriodsR\teffective\x12\x1a\n" +
+	"\brevision\x18\x04 \x01(\x03R\brevision2\xd3\n" +
+	"\n" +
 	"\x15TenantSettingsService\x12n\n" +
 	"\x11GetTenantTimezone\x12*.publira.admin.v1.GetTenantTimezoneRequest\x1a+.publira.admin.v1.GetTenantTimezoneResponse\"\x00\x12w\n" +
 	"\x14UpdateTenantTimezone\x12-.publira.admin.v1.UpdateTenantTimezoneRequest\x1a..publira.admin.v1.UpdateTenantTimezoneResponse\"\x00\x12}\n" +
@@ -853,7 +1203,9 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\x18GetTenantCommentSettings\x121.publira.admin.v1.GetTenantCommentSettingsRequest\x1a2.publira.admin.v1.GetTenantCommentSettingsResponse\"\x00\x12\x8c\x01\n" +
 	"\x1bUpdateTenantCommentSettings\x124.publira.admin.v1.UpdateTenantCommentSettingsRequest\x1a5.publira.admin.v1.UpdateTenantCommentSettingsResponse\"\x00\x12\x83\x01\n" +
 	"\x18GetTenantAgeVerification\x121.publira.admin.v1.GetTenantAgeVerificationRequest\x1a2.publira.admin.v1.GetTenantAgeVerificationResponse\"\x00\x12\x8c\x01\n" +
-	"\x1bUpdateTenantAgeVerification\x124.publira.admin.v1.UpdateTenantAgeVerificationRequest\x1a5.publira.admin.v1.UpdateTenantAgeVerificationResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x1bUpdateTenantAgeVerification\x124.publira.admin.v1.UpdateTenantAgeVerificationRequest\x1a5.publira.admin.v1.UpdateTenantAgeVerificationResponse\"\x00\x12\x89\x01\n" +
+	"\x1aGetTenantRetentionSettings\x123.publira.admin.v1.GetTenantRetentionSettingsRequest\x1a4.publira.admin.v1.GetTenantRetentionSettingsResponse\"\x00\x12\x92\x01\n" +
+	"\x1dUpdateTenantRetentionSettings\x126.publira.admin.v1.UpdateTenantRetentionSettingsRequest\x1a7.publira.admin.v1.UpdateTenantRetentionSettingsResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_tenant_proto_rawDescOnce sync.Once
@@ -867,64 +1219,83 @@ func file_publira_admin_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_tenant_proto_rawDescData
 }
 
-var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_publira_admin_v1_tenant_proto_goTypes = []any{
-	(*GetTenantTimezoneRequest)(nil),            // 0: publira.admin.v1.GetTenantTimezoneRequest
-	(*GetTenantTimezoneResponse)(nil),           // 1: publira.admin.v1.GetTenantTimezoneResponse
-	(*UpdateTenantTimezoneRequest)(nil),         // 2: publira.admin.v1.UpdateTenantTimezoneRequest
-	(*UpdateTenantTimezoneResponse)(nil),        // 3: publira.admin.v1.UpdateTenantTimezoneResponse
-	(*GetTenantDefaultLocaleRequest)(nil),       // 4: publira.admin.v1.GetTenantDefaultLocaleRequest
-	(*GetTenantDefaultLocaleResponse)(nil),      // 5: publira.admin.v1.GetTenantDefaultLocaleResponse
-	(*UpdateTenantDefaultLocaleRequest)(nil),    // 6: publira.admin.v1.UpdateTenantDefaultLocaleRequest
-	(*UpdateTenantDefaultLocaleResponse)(nil),   // 7: publira.admin.v1.UpdateTenantDefaultLocaleResponse
-	(*GetTenantCommentSettingsRequest)(nil),     // 8: publira.admin.v1.GetTenantCommentSettingsRequest
-	(*GetTenantCommentSettingsResponse)(nil),    // 9: publira.admin.v1.GetTenantCommentSettingsResponse
-	(*UpdateTenantCommentSettingsRequest)(nil),  // 10: publira.admin.v1.UpdateTenantCommentSettingsRequest
-	(*UpdateTenantCommentSettingsResponse)(nil), // 11: publira.admin.v1.UpdateTenantCommentSettingsResponse
-	(*GetTenantAgeVerificationRequest)(nil),     // 12: publira.admin.v1.GetTenantAgeVerificationRequest
-	(*GetTenantAgeVerificationResponse)(nil),    // 13: publira.admin.v1.GetTenantAgeVerificationResponse
-	(*UpdateTenantAgeVerificationRequest)(nil),  // 14: publira.admin.v1.UpdateTenantAgeVerificationRequest
-	(*UpdateTenantAgeVerificationResponse)(nil), // 15: publira.admin.v1.UpdateTenantAgeVerificationResponse
-	(*v1.TenantContext)(nil),                    // 16: publira.types.v1.TenantContext
-	(v1.CommentMode)(0),                         // 17: publira.types.v1.CommentMode
-	(v1.AgeVerification)(0),                     // 18: publira.types.v1.AgeVerification
+	(*GetTenantTimezoneRequest)(nil),              // 0: publira.admin.v1.GetTenantTimezoneRequest
+	(*GetTenantTimezoneResponse)(nil),             // 1: publira.admin.v1.GetTenantTimezoneResponse
+	(*UpdateTenantTimezoneRequest)(nil),           // 2: publira.admin.v1.UpdateTenantTimezoneRequest
+	(*UpdateTenantTimezoneResponse)(nil),          // 3: publira.admin.v1.UpdateTenantTimezoneResponse
+	(*GetTenantDefaultLocaleRequest)(nil),         // 4: publira.admin.v1.GetTenantDefaultLocaleRequest
+	(*GetTenantDefaultLocaleResponse)(nil),        // 5: publira.admin.v1.GetTenantDefaultLocaleResponse
+	(*UpdateTenantDefaultLocaleRequest)(nil),      // 6: publira.admin.v1.UpdateTenantDefaultLocaleRequest
+	(*UpdateTenantDefaultLocaleResponse)(nil),     // 7: publira.admin.v1.UpdateTenantDefaultLocaleResponse
+	(*GetTenantCommentSettingsRequest)(nil),       // 8: publira.admin.v1.GetTenantCommentSettingsRequest
+	(*GetTenantCommentSettingsResponse)(nil),      // 9: publira.admin.v1.GetTenantCommentSettingsResponse
+	(*UpdateTenantCommentSettingsRequest)(nil),    // 10: publira.admin.v1.UpdateTenantCommentSettingsRequest
+	(*UpdateTenantCommentSettingsResponse)(nil),   // 11: publira.admin.v1.UpdateTenantCommentSettingsResponse
+	(*GetTenantAgeVerificationRequest)(nil),       // 12: publira.admin.v1.GetTenantAgeVerificationRequest
+	(*GetTenantAgeVerificationResponse)(nil),      // 13: publira.admin.v1.GetTenantAgeVerificationResponse
+	(*UpdateTenantAgeVerificationRequest)(nil),    // 14: publira.admin.v1.UpdateTenantAgeVerificationRequest
+	(*UpdateTenantAgeVerificationResponse)(nil),   // 15: publira.admin.v1.UpdateTenantAgeVerificationResponse
+	(*TenantRetentionOverrides)(nil),              // 16: publira.admin.v1.TenantRetentionOverrides
+	(*GetTenantRetentionSettingsRequest)(nil),     // 17: publira.admin.v1.GetTenantRetentionSettingsRequest
+	(*GetTenantRetentionSettingsResponse)(nil),    // 18: publira.admin.v1.GetTenantRetentionSettingsResponse
+	(*UpdateTenantRetentionSettingsRequest)(nil),  // 19: publira.admin.v1.UpdateTenantRetentionSettingsRequest
+	(*UpdateTenantRetentionSettingsResponse)(nil), // 20: publira.admin.v1.UpdateTenantRetentionSettingsResponse
+	(*v1.TenantContext)(nil),                      // 21: publira.types.v1.TenantContext
+	(v1.CommentMode)(0),                           // 22: publira.types.v1.CommentMode
+	(v1.AgeVerification)(0),                       // 23: publira.types.v1.AgeVerification
+	(*v1.RetentionPeriods)(nil),                   // 24: publira.types.v1.RetentionPeriods
 }
 var file_publira_admin_v1_tenant_proto_depIdxs = []int32{
-	16, // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16, // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16, // 2: publira.admin.v1.GetTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16, // 3: publira.admin.v1.UpdateTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16, // 4: publira.admin.v1.GetTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	17, // 5: publira.admin.v1.GetTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	16, // 6: publira.admin.v1.UpdateTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	17, // 7: publira.admin.v1.UpdateTenantCommentSettingsRequest.comment_mode:type_name -> publira.types.v1.CommentMode
-	17, // 8: publira.admin.v1.UpdateTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	16, // 9: publira.admin.v1.GetTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	18, // 10: publira.admin.v1.GetTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
-	16, // 11: publira.admin.v1.UpdateTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	18, // 12: publira.admin.v1.UpdateTenantAgeVerificationRequest.age_verification:type_name -> publira.types.v1.AgeVerification
-	18, // 13: publira.admin.v1.UpdateTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
-	0,  // 14: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
-	2,  // 15: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
-	4,  // 16: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
-	6,  // 17: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
-	8,  // 18: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
-	10, // 19: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
-	12, // 20: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:input_type -> publira.admin.v1.GetTenantAgeVerificationRequest
-	14, // 21: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:input_type -> publira.admin.v1.UpdateTenantAgeVerificationRequest
-	1,  // 22: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
-	3,  // 23: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
-	5,  // 24: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
-	7,  // 25: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
-	9,  // 26: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
-	11, // 27: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
-	13, // 28: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:output_type -> publira.admin.v1.GetTenantAgeVerificationResponse
-	15, // 29: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:output_type -> publira.admin.v1.UpdateTenantAgeVerificationResponse
-	22, // [22:30] is the sub-list for method output_type
-	14, // [14:22] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	21, // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 2: publira.admin.v1.GetTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 3: publira.admin.v1.UpdateTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 4: publira.admin.v1.GetTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	22, // 5: publira.admin.v1.GetTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	21, // 6: publira.admin.v1.UpdateTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	22, // 7: publira.admin.v1.UpdateTenantCommentSettingsRequest.comment_mode:type_name -> publira.types.v1.CommentMode
+	22, // 8: publira.admin.v1.UpdateTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	21, // 9: publira.admin.v1.GetTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	23, // 10: publira.admin.v1.GetTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	21, // 11: publira.admin.v1.UpdateTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	23, // 12: publira.admin.v1.UpdateTenantAgeVerificationRequest.age_verification:type_name -> publira.types.v1.AgeVerification
+	23, // 13: publira.admin.v1.UpdateTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	21, // 14: publira.admin.v1.GetTenantRetentionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 15: publira.admin.v1.GetTenantRetentionSettingsResponse.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
+	24, // 16: publira.admin.v1.GetTenantRetentionSettingsResponse.platform_defaults:type_name -> publira.types.v1.RetentionPeriods
+	24, // 17: publira.admin.v1.GetTenantRetentionSettingsResponse.effective:type_name -> publira.types.v1.RetentionPeriods
+	21, // 18: publira.admin.v1.UpdateTenantRetentionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 19: publira.admin.v1.UpdateTenantRetentionSettingsRequest.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
+	16, // 20: publira.admin.v1.UpdateTenantRetentionSettingsResponse.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
+	24, // 21: publira.admin.v1.UpdateTenantRetentionSettingsResponse.platform_defaults:type_name -> publira.types.v1.RetentionPeriods
+	24, // 22: publira.admin.v1.UpdateTenantRetentionSettingsResponse.effective:type_name -> publira.types.v1.RetentionPeriods
+	0,  // 23: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
+	2,  // 24: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
+	4,  // 25: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
+	6,  // 26: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
+	8,  // 27: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
+	10, // 28: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
+	12, // 29: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:input_type -> publira.admin.v1.GetTenantAgeVerificationRequest
+	14, // 30: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:input_type -> publira.admin.v1.UpdateTenantAgeVerificationRequest
+	17, // 31: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:input_type -> publira.admin.v1.GetTenantRetentionSettingsRequest
+	19, // 32: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:input_type -> publira.admin.v1.UpdateTenantRetentionSettingsRequest
+	1,  // 33: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
+	3,  // 34: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
+	5,  // 35: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
+	7,  // 36: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
+	9,  // 37: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
+	11, // 38: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
+	13, // 39: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:output_type -> publira.admin.v1.GetTenantAgeVerificationResponse
+	15, // 40: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:output_type -> publira.admin.v1.UpdateTenantAgeVerificationResponse
+	18, // 41: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:output_type -> publira.admin.v1.GetTenantRetentionSettingsResponse
+	20, // 42: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:output_type -> publira.admin.v1.UpdateTenantRetentionSettingsResponse
+	33, // [33:43] is the sub-list for method output_type
+	23, // [23:33] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_tenant_proto_init() }
@@ -932,13 +1303,14 @@ func file_publira_admin_v1_tenant_proto_init() {
 	if File_publira_admin_v1_tenant_proto != nil {
 		return
 	}
+	file_publira_admin_v1_tenant_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_tenant_proto_rawDesc), len(file_publira_admin_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

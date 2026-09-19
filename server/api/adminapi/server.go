@@ -15,7 +15,6 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
-	"github.com/publira/publira/server/internal/commentretention"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
@@ -54,9 +53,6 @@ type adminServer struct {
 	// the platform's decision, so a tenant cannot lock itself out of its own
 	// console.
 	policy platformpolicy.Source
-	// commentRetentionDays is how long a withdrawn comment survives before the
-	// purge batch deletes it, which is what the console counts down to.
-	commentRetentionDays int
 	// mail bounds how much mail the console's own forms may cause.
 	mail *mailguard.Guard
 }
@@ -263,14 +259,6 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 	} else if revalidator == nil {
 		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
-	// The purge batch refuses to run on a window it cannot parse, so falling
-	// back to the default here would have the console count down to a deadline
-	// nothing enforces. Both processes read the same variable and both refuse
-	// the same values, which is what keeps the promise and the deletion in step.
-	commentRetentionDays, err := commentretention.WithdrawnDays()
-	if err != nil {
-		return nil, err
-	}
 	server := &adminServer{
 		db:                    db,
 		queries:               queries,
@@ -283,9 +271,8 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 		reval:                 revalidator,
 		tokens:                tokens,
 
-		policy:               policy,
-		commentRetentionDays: commentRetentionDays,
-		mail:                 mail,
+		policy: policy,
+		mail:   mail,
 	}
 	return &API{server: server}, nil
 }

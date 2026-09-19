@@ -134,15 +134,28 @@ Each entry of `items`:
 - **An empty leaderboard is the normal case, not an error.** A tenant with no traffic in the period, and every tenant before the first run, has nothing to show. Fall back to new releases.
 - **A snapshot only holds the top `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT` entities.** An entity's absence means it did not place, not that it saw no engagement.
 - **The entity may be gone.** `items` stores ids, and nothing keeps a snapshot in step with an unpublished or deleted series. Resolve the ids and drop what no longer exists.
-- **A past period may be gone.** Retention keeps a bounded history — 90 days of daily snapshots and 400 of weekly ones by default — so a period further back than that has been purged. Only the newest period of a ranking key is guaranteed to be there.
+- **A past period may be gone.** Retention keeps a bounded history — 90 days of daily snapshots and 400 of weekly ones unless the platform or the tenant sets otherwise — so a period further back than that has been purged. Only the newest period of a ranking key is guaranteed to be there.
 - **The snapshot is up to a day stale**, and only as good as its input: a period whose `aggregate-content-stats` run never happened ranks the days that did run.
 - **`algorithm_version` may not be the one you compiled against.** Scores are only comparable inside one row, so never compare a score across two snapshots or two versions.
 
+## Retention periods
+
+`purge-content-events`, `purge-ranking-snapshots`, and `purge-withdrawn-comments` read how long to keep each tenant's rows from the database at the start of every run, not from the environment. A tenant's period is its own override in `tenant_retention_settings` (`TenantSettingsService.UpdateTenantRetentionSettings`), else the platform default in `platform_retention_config` (`PlatformPolicyService.UpdatePlatformRetentionDefaults`), else the built-in default:
+
+| Period                   | Built-in default |
+| ------------------------ | ---------------- |
+| Withdrawn comments       | 180 days         |
+| Content events           | 90 days          |
+| Daily ranking snapshots  | 90 days          |
+| Weekly ranking snapshots | 400 days         |
+
+Every period is from 1 to 36500 days. The batches' role, `publira_content_stats`, may read `platform_retention_config` and nothing else under the `platform_` prefix.
+
 ## purge-content-events
 
-Deletes `content_events` rows past their retention window across every tenant, in chunked `DELETE`s.
+Deletes `content_events` rows past their tenant's retention period, one tenant at a time, in chunked `DELETE`s.
 
-Raw events are dropped on a deadline (90 days by default) while the durable numbers live on in the `content_daily_stats` rows `aggregate-content-stats` builds.
+Raw events are dropped on a deadline (90 days unless the platform or the tenant sets otherwise) while the durable numbers live on in the `content_daily_stats` rows `aggregate-content-stats` builds.
 
 For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
@@ -154,26 +167,25 @@ PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-conten
 Environment variables:
 
 - `PUBLIRA_CONTENT_EVENTS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`. The two batches that touch `content_events` run as the same `publira_content_stats` role.
-- `PUBLIRA_CONTENT_EVENTS_RETENTION_DAYS`: retention in days. Defaults to `90`. Anything below `1` fails at startup, because the cutoff would land at or after now and take the whole table.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
-The cutoff is the run's UTC timestamp minus `PUBLIRA_CONTENT_EVENTS_RETENTION_DAYS`, compared exclusively (`occurred_at < cutoff`). The structured log records the cutoff, retention, chunk size, rows deleted, chunk count, and elapsed time.
+A tenant's cutoff is the run's UTC timestamp minus its content-event retention period (see [Retention periods](#retention-periods)), compared exclusively (`occurred_at < cutoff`). One tenant's failure does not stop the others. The structured log records the run's timestamp, the default period, how many tenants override it, the chunk size, the tenants drained, rows deleted, chunk count, and elapsed time.
 
 ## purge-ranking-snapshots
 
-Deletes `content_ranking_snapshots` rows whose period fell out of its retention window, across every tenant, in chunked `DELETE`s.
+Deletes `content_ranking_snapshots` rows whose period fell out of its tenant's retention period, one tenant at a time, in chunked `DELETE`s.
 
-`aggregate-rankings` files a new period rather than replacing the last one, so the table grows by four rows per tenant per day. Only the newest period is ever rendered; the rest exist for trend analysis, which is what the retention windows are sized for.
+`aggregate-rankings` files a new period rather than replacing the last one, so the table grows by four rows per tenant per day. Only the newest period is ever rendered; the rest exist for trend analysis, which is what the retention periods are sized for.
 
-Retention is per `ranking_key`. A weekly snapshot compresses seven days into one row, so it earns a much longer window than a daily one:
+Retention is per `ranking_key` (see [Retention periods](#retention-periods)). A weekly snapshot compresses seven days into one row, so it earns a much longer period than a daily one:
 
-| Ranking key | Default retention | What the window buys |
+| Ranking key | Built-in retention | What the period buys |
 | --- | --- | --- |
 | `daily` | 90 days | A quarter of day-over-day movement |
 | `weekly` | 400 days | A year, plus the margin to compare a week against the same week a year earlier |
 
-A snapshot expires when its `period_end` is before the cutoff for its `ranking_key` — the run's UTC date minus that key's retention, compared exclusively. **The newest period a tenant holds always survives, whatever the retention says**, and a `ranking_key` this build does not configure is never deleted at all.
+A snapshot expires when its `period_end` is before the cutoff for its `ranking_key` — the run's UTC date minus the tenant's period for that key, compared exclusively. **The newest period a tenant holds always survives, whatever the retention says**, and a `ranking_key` this build does not configure is never deleted at all.
 
 For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
@@ -185,12 +197,10 @@ PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-ranki
 Environment variables:
 
 - `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL, shared with `aggregate-rankings`. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
-- `PUBLIRA_CONTENT_RANKING_DAILY_RETENTION_DAYS`: retention for `daily` snapshots. Defaults to `90`. Anything below `1` fails at startup.
-- `PUBLIRA_CONTENT_RANKING_WEEKLY_RETENTION_DAYS`: retention for `weekly` snapshots. Defaults to `400`. Anything below `1` fails at startup.
 - `PUBLIRA_CONTENT_RANKING_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `1000`, an order of magnitude below the `content_events` chunk because a snapshot row carries a whole leaderboard.
 - `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
-The structured log records both cutoffs and retentions, the chunk size, the rows deleted, the chunk count, and the elapsed time.
+One tenant's failure does not stop the others. The structured log records the run's timestamp, both default periods, how many tenants override them, the chunk size, the tenants drained, the rows deleted, the chunk count, and the elapsed time.
 
 The first run against a table that has accumulated since before this batch existed deletes a backlog rather than a day, so it takes many chunks. `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true` reports how large that backlog is before anything is deleted.
 
@@ -217,13 +227,13 @@ The structured log records the cutoff, the chunk size, the rows deleted, the chu
 
 ## purge-withdrawn-comments
 
-Deletes the `episode_comments` rows whose authors withdrew them longer ago than the retention window allows, one tenant at a time, in chunked `DELETE`s. The reports filed on a deleted comment go with it, through the foreign key from `episode_comment_reports`.
+Deletes the `episode_comments` rows whose authors withdrew them longer ago than their tenant's retention period allows, one tenant at a time, in chunked `DELETE`s. The reports filed on a deleted comment go with it, through the foreign key from `episode_comment_reports`.
 
-A withdrawal is the author's own deletion, and the row outlives it only so staff can still read the comment while a report or a dispute about it is open. The cutoff is the run's UTC timestamp minus `PUBLIRA_COMMENT_WITHDRAWN_RETENTION_DAYS`, compared exclusively (`withdrawn_at < cutoff`).
+A withdrawal is the author's own deletion, and the row outlives it only so staff can still read the comment while a report or a dispute about it is open. A tenant's cutoff is the run's UTC timestamp minus its withdrawn-comment retention period (see [Retention periods](#retention-periods)), compared exclusively (`withdrawn_at < cutoff`).
 
 **A `hidden` comment is never deleted, whatever its age**: a removal by staff or by the report threshold is the record of a moderation decision, and nothing here takes it away.
 
-The admin console reads the same retention variable to show staff the `purge_due_at` of a withdrawn comment, so a value set for this batch has to be set for `api-server` too, or the console counts down to a deadline this batch does not keep.
+The admin console resolves the same period to show staff the `purge_due_at` of a withdrawn comment.
 
 One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero with every failure in its log.
 
@@ -237,11 +247,10 @@ PUBLIRA_COMMENT_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-withdrawn-com
 Environment variables:
 
 - `PUBLIRA_COMMENT_PURGE_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
-- `PUBLIRA_COMMENT_WITHDRAWN_RETENTION_DAYS`: how long a withdrawn comment is kept. Defaults to `180`. Anything below `1` or non-numeric fails at startup, because the cutoff would land at or after now and take every withdrawn comment with it.
 - `PUBLIRA_COMMENT_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `1000`, below the `content_events` chunk because deleting a comment cascades into the reports filed on it.
 - `PUBLIRA_COMMENT_PURGE_DRY_RUN`: `true` counts the comments that would be deleted, logs the total, and exits without deleting anything.
 
-The structured log records the cutoff, the retention, the chunk size, the tenants drained, the rows deleted, the chunk count, and the elapsed time.
+The structured log records the run's timestamp, the default period, how many tenants override it, the chunk size, the tenants drained, the rows deleted, the chunk count, and the elapsed time.
 
 ## purge-orphan-images
 
