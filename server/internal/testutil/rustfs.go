@@ -158,3 +158,16 @@ func (e *RustFSEnv) CreateBucket(t *testing.T) {
 		t.Fatalf("rustfs: create bucket %q: %v", e.Bucket, err)
 	}
 }
+
+// DeploymentEnv returns the variables a process reads this object store from.
+// Storage stays in the environment until #2511 moves it into platform settings.
+func (e *RustFSEnv) DeploymentEnv() map[string]string {
+	return map[string]string{
+		"PUBLIRA_S3_BUCKET":           e.Bucket,
+		"PUBLIRA_S3_ENDPOINT":         e.Endpoint,
+		"PUBLIRA_S3_FORCE_PATH_STYLE": "true",
+		"AWS_REGION":                  e.Region,
+		"AWS_ACCESS_KEY_ID":           e.AccessKey,
+		"AWS_SECRET_ACCESS_KEY":       e.SecretKey,
+	}
+}
