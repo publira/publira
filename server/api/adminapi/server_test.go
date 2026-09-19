@@ -9,9 +9,6 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-
-	"github.com/publira/publira/server/internal/commentretention"
-	"github.com/publira/publira/server/internal/testutil"
 )
 
 // TestAdminHandlerExposesOnlyAdminRoutes asserts that NewHandler serves the
@@ -45,20 +42,6 @@ func newAdminRouteTestServer(t *testing.T) *httptest.Server {
 		t.Fatalf("new admin handler: %v", err)
 	}
 	return httptest.NewServer(handler)
-}
-
-// TestAdminHandlerRefusesAnInvalidCommentRetentionWindow pins the half of the
-// withdrawn-comment deadline that lives here. The purge batch refuses a window
-// it cannot parse, so an admin API that started anyway would count ListComments
-// down to a date nothing enforces; both processes read the variable and both
-// refuse the same values.
-func TestAdminHandlerRefusesAnInvalidCommentRetentionWindow(t *testing.T) {
-	for _, raw := range []string{"0", "-1", "six months"} {
-		t.Setenv(commentretention.WithdrawnDaysEnv, raw)
-		if _, err := New(nil, nil, nil, slog.Default(), nil, nil, testutil.TokenManager()); err == nil {
-			t.Fatalf("New with a retention window of %q error = nil, want an error", raw)
-		}
-	}
 }
 
 func TestInternalDBErrorPreservesContextErrors(t *testing.T) {

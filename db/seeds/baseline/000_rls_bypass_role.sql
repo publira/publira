@@ -173,6 +173,12 @@ $$;
 -- holds no secret, so both roles read it; neither may write it.
 GRANT SELECT ON platform_policy_config TO publira_public, publira_admin;
 
+-- The tenant console tells staff when a withdrawn comment is deleted, and the
+-- purge batches delete by the same period, so both resolve a tenant's retention
+-- from the platform defaults. They hold no secret, and neither role may write
+-- them.
+GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stats;
+
 -- outbox-worker composes the platform console's own mail — a password reset, an
 -- email change confirmation, the notice that follows one — and every mail it
 -- sends goes through the platform relay unless the tenant overrides it. So the

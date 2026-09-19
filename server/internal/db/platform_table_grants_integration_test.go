@@ -75,18 +75,22 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 	}
 }
 
-// tenantReadableTables are the platform tables the storefront and the tenant
-// console read: the policy their rate limits and the tenant-admin MFA
-// requirement come from. It holds no secret.
-var tenantReadableTables = []string{
-	"platform_policy_config",
+// readablePlatformTables are, per role, the platform tables it reads: the
+// policy the storefront's and the tenant console's rate limits and the
+// tenant-admin MFA requirement come from, and the retention defaults the tenant
+// console and the purge batches resolve a tenant's periods from. Neither holds
+// a secret.
+var readablePlatformTables = map[string][]string{
+	"publira_public":        {"platform_policy_config"},
+	"publira_admin":         {"platform_policy_config", "platform_retention_config"},
+	"publira_content_stats": {"platform_retention_config"},
 }
 
 // The storefront and the tenant console reach the database as publira_public and
-// publira_admin. Neither serves the platform console, so neither may write a row
-// of it or read one past the policy they enforce — an injection or a handler bug
-// on either would otherwise be the ability to create a platform console account
-// for itself.
+// publira_admin, and the daily batches as publira_content_stats. None of them
+// serves the platform console, so none may write a row of it or read one past
+// the settings they enforce — an injection or a handler bug on either would
+// otherwise be the ability to create a platform console account for itself.
 func TestPlatformTablesAreOutOfReachOfTheTenantRoles(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -103,7 +107,7 @@ func TestPlatformTablesAreOutOfReachOfTheTenantRoles(t *testing.T) {
 	} {
 		for _, table := range tables {
 			query := fmt.Sprintf("SELECT count(*) FROM %s", table)
-			if role != "publira_content_stats" && slices.Contains(tenantReadableTables, table) {
+			if slices.Contains(readablePlatformTables[role], table) {
 				var count int
 				if err := conn.QueryRowContext(ctx, query).Scan(&count); err != nil {
 					t.Fatalf("read %s as %s: %v", table, role, err)

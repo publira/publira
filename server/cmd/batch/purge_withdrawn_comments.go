@@ -12,15 +12,12 @@ import (
 
 	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/commentretention"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/sqldb"
 )
 
 func runPurgeWithdrawnComments(ctx context.Context, logger *slog.Logger, cfg *config.Config) error {
-	retentionDays, err := commentretention.WithdrawnDays()
-	if err != nil {
-		logger.Error("invalid retention window", "error", err)
-		return err
-	}
 	chunkSize, err := resolveCommentPurgeChunkSize()
 	if err != nil {
 		logger.Error("invalid chunk size", "error", err)
@@ -39,16 +36,23 @@ func runPurgeWithdrawnComments(ctx context.Context, logger *slog.Logger, cfg *co
 	}
 	defer db.Close() //nolint:errcheck
 
-	cutoff := time.Now().UTC().AddDate(0, 0, -retentionDays)
+	table, err := retention.LoadTable(ctx, dbmodels.New(db))
+	if err != nil {
+		logger.Error("failed to read retention periods", "error", err)
+		return err
+	}
+
+	now := time.Now().UTC()
 	started := time.Now()
 	result, err := commentretention.NewPurger(db).Run(ctx, commentretention.PurgeOptions{
-		Cutoff:    cutoff,
+		Now:       now,
+		Retention: table,
 		ChunkSize: chunkSize,
 		DryRun:    dryRun,
 	})
 	if err != nil {
 		logger.Error("withdrawn comment purge failed",
-			"cutoff", cutoff.Format(time.RFC3339),
+			"now", now.Format(time.RFC3339),
 			"dry_run", dryRun,
 			"tenant_count", result.TenantCount,
 			"row_count", result.RowCount,
@@ -59,8 +63,9 @@ func runPurgeWithdrawnComments(ctx context.Context, logger *slog.Logger, cfg *co
 		return err
 	}
 	logger.Info("withdrawn comment purge completed",
-		"cutoff", cutoff.Format(time.RFC3339),
-		"retention_days", retentionDays,
+		"now", now.Format(time.RFC3339),
+		"default_retention_days", table.Defaults().WithdrawnCommentDays,
+		"tenant_override_count", table.OverrideCount(),
 		"chunk_size", chunkSize,
 		"dry_run", result.DryRun,
 		"tenant_count", result.TenantCount,

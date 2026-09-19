@@ -2267,6 +2267,81 @@ func (x *PageVersion) GetPublishedAt() string {
 	return ""
 }
 
+// How long each kind of record that expires is kept before a purge batch
+// deletes it, in whole days. Each value is from 1 to 36500.
+type RetentionPeriods struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A comment its author withdrew, counted from the withdrawal.
+	WithdrawnCommentDays int32 `protobuf:"varint,1,opt,name=withdrawn_comment_days,json=withdrawnCommentDays,proto3" json:"withdrawn_comment_days,omitempty"`
+	// A raw engagement event, counted from when it occurred.
+	ContentEventDays int32 `protobuf:"varint,2,opt,name=content_event_days,json=contentEventDays,proto3" json:"content_event_days,omitempty"`
+	// A daily ranking snapshot, counted from the end of its period. The newest
+	// period is kept whatever its age.
+	DailyRankingSnapshotDays int32 `protobuf:"varint,3,opt,name=daily_ranking_snapshot_days,json=dailyRankingSnapshotDays,proto3" json:"daily_ranking_snapshot_days,omitempty"`
+	// A weekly ranking snapshot, counted like a daily one.
+	WeeklyRankingSnapshotDays int32 `protobuf:"varint,4,opt,name=weekly_ranking_snapshot_days,json=weeklyRankingSnapshotDays,proto3" json:"weekly_ranking_snapshot_days,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *RetentionPeriods) Reset() {
+	*x = RetentionPeriods{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetentionPeriods) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetentionPeriods) ProtoMessage() {}
+
+func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetentionPeriods.ProtoReflect.Descriptor instead.
+func (*RetentionPeriods) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *RetentionPeriods) GetWithdrawnCommentDays() int32 {
+	if x != nil {
+		return x.WithdrawnCommentDays
+	}
+	return 0
+}
+
+func (x *RetentionPeriods) GetContentEventDays() int32 {
+	if x != nil {
+		return x.ContentEventDays
+	}
+	return 0
+}
+
+func (x *RetentionPeriods) GetDailyRankingSnapshotDays() int32 {
+	if x != nil {
+		return x.DailyRankingSnapshotDays
+	}
+	return 0
+}
+
+func (x *RetentionPeriods) GetWeeklyRankingSnapshotDays() int32 {
+	if x != nil {
+		return x.WeeklyRankingSnapshotDays
+	}
+	return 0
+}
+
 var File_publira_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_publira_types_v1_types_proto_rawDesc = "" +
@@ -2437,7 +2512,12 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"publish_at\x18\a \x01(\tR\tpublishAt\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12!\n" +
-	"\fpublished_at\x18\t \x01(\tR\vpublishedAt*\x81\x01\n" +
+	"\fpublished_at\x18\t \x01(\tR\vpublishedAt\"\xf6\x01\n" +
+	"\x10RetentionPeriods\x124\n" +
+	"\x16withdrawn_comment_days\x18\x01 \x01(\x05R\x14withdrawnCommentDays\x12,\n" +
+	"\x12content_event_days\x18\x02 \x01(\x05R\x10contentEventDays\x12=\n" +
+	"\x1bdaily_ranking_snapshot_days\x18\x03 \x01(\x05R\x18dailyRankingSnapshotDays\x12?\n" +
+	"\x1cweekly_ranking_snapshot_days\x18\x04 \x01(\x05R\x19weeklyRankingSnapshotDays*\x81\x01\n" +
 	"\x13CreatorCreditSource\x12%\n" +
 	"!CREATOR_CREDIT_SOURCE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cCREATOR_CREDIT_SOURCE_SERIES\x10\x01\x12!\n" +
@@ -2489,7 +2569,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
 	(SeriesStatus)(0),             // 1: publira.types.v1.SeriesStatus
@@ -2516,6 +2596,7 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*TenantTheme)(nil),           // 22: publira.types.v1.TenantTheme
 	(*Page)(nil),                  // 23: publira.types.v1.Page
 	(*PageVersion)(nil),           // 24: publira.types.v1.PageVersion
+	(*RetentionPeriods)(nil),      // 25: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	11, // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
@@ -2552,7 +2633,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

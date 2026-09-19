@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -23,47 +24,64 @@ func TestPurgerRunDeletesOnlyExpiredWithdrawnComments(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
-	cutoff := time.Date(2026, time.September, 8, 12, 0, 0, 0, time.UTC)
+	now := time.Date(2026, time.September, 18, 12, 0, 0, 0, time.UTC)
 	first := seedCommentTenant(t, pg, "CMTA", "comment-purge.example.com", "Comment Purge Tenant")
 	second := seedCommentTenant(t, pg, "CMTB", "other-comment-purge.example.com", "Other Comment Purge Tenant")
 
-	// Three withdrawn comments past the window, across two tenants.
+	// The first tenant overrides the period down to ten days; the second
+	// follows a forty-day default.
+	table := retention.NewTable(
+		retention.Periods{WithdrawnCommentDays: 40, ContentEventDays: 90, DailyRankingSnapshotDays: 90, WeeklyRankingSnapshotDays: 400},
+		map[uuid.UUID]retention.Overrides{first.tenantID: {WithdrawnCommentDays: new(10)}},
+	)
+	firstCutoff := now.AddDate(0, 0, -10)
+	secondCutoff := now.AddDate(0, 0, -40)
+
+	// Three withdrawn comments past their tenant's period.
 	expired := []uuid.UUID{
-		insertWithdrawnComment(t, pg.DB, first, "CMTEXPIRED01", cutoff.AddDate(0, 0, -2)),
-		insertWithdrawnComment(t, pg.DB, first, "CMTEXPIRED02", cutoff.Add(-time.Second)),
-		insertWithdrawnComment(t, pg.DB, second, "CMTEXPIRED03", cutoff.AddDate(0, 0, -30)),
+		insertWithdrawnComment(t, pg.DB, first, "CMTEXPIRED01", firstCutoff.AddDate(0, 0, -2)),
+		insertWithdrawnComment(t, pg.DB, first, "CMTEXPIRED02", firstCutoff.Add(-time.Second)),
+		insertWithdrawnComment(t, pg.DB, second, "CMTEXPIRED03", secondCutoff.Add(-time.Second)),
 	}
-	// One withdrawn exactly at the cutoff (the window is exclusive), one still
-	// inside it, and the two removals the purge must never touch: a comment
-	// staff hid long ago is the record of a moderation decision.
+	// One withdrawn exactly at the cutoff (the period is exclusive), one still
+	// inside it, one the first tenant's shorter period would have taken but the
+	// second tenant's does not, and the two removals the purge must never
+	// touch: a comment staff hid long ago is the record of a moderation
+	// decision.
 	retained := []uuid.UUID{
-		insertWithdrawnComment(t, pg.DB, first, "CMTATCUTOFF1", cutoff),
-		insertWithdrawnComment(t, pg.DB, second, "CMTRECENT001", cutoff.Add(time.Hour)),
-		insertHiddenComment(t, pg.DB, first, "CMTHIDDEN001", cutoff.AddDate(0, 0, -365)),
-		insertPublishedComment(t, pg.DB, second, "CMTPUBLISHED", cutoff.AddDate(0, 0, -365)),
+		insertWithdrawnComment(t, pg.DB, first, "CMTATCUTOFF1", firstCutoff),
+		insertWithdrawnComment(t, pg.DB, second, "CMTRECENT001", secondCutoff.Add(time.Hour)),
+		insertWithdrawnComment(t, pg.DB, second, "CMTLONGERPER", firstCutoff.AddDate(0, 0, -1)),
+		insertHiddenComment(t, pg.DB, first, "CMTHIDDEN001", now.AddDate(0, 0, -365)),
+		insertPublishedComment(t, pg.DB, second, "CMTPUBLISHED", now.AddDate(0, 0, -365)),
 	}
 	// A report on a comment that expires goes with it; one on a comment that
 	// survives stays.
 	expiredReport := insertReport(t, pg.DB, first, expired[0])
 	retainedReport := insertReport(t, pg.DB, first, retained[0])
 
-	purger := NewPurger(pg.OpenPlatformDB(t))
+	opts := PurgeOptions{Now: now, Retention: table}
+	// The batch connects as the content stats role.
+	purger := NewPurger(pg.OpenContentStatsDB(t))
 
 	// A dry run reports the candidates of every tenant and deletes nothing.
-	dry, err := purger.Run(context.Background(), PurgeOptions{Cutoff: cutoff, DryRun: true})
+	dryOpts := opts
+	dryOpts.DryRun = true
+	dry, err := purger.Run(context.Background(), dryOpts)
 	if err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
 	if want := (PurgeResult{TenantCount: 2, RowCount: 3, DryRun: true}); dry != want {
 		t.Fatalf("dry run result = %+v, want %+v", dry, want)
 	}
-	if got := countComments(t, pg.DB); got != 7 {
-		t.Fatalf("comments after dry run = %d, want 7", got)
+	if got := countComments(t, pg.DB); got != 8 {
+		t.Fatalf("comments after dry run = %d, want 8", got)
 	}
 
 	// ChunkSize below the first tenant's candidate count forces its loop to
 	// iterate: two chunks there, one for the tenant with a single candidate.
-	result, err := purger.Run(context.Background(), PurgeOptions{Cutoff: cutoff, ChunkSize: 2})
+	opts.ChunkSize = 2
+	result, err := purger.Run(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -88,7 +106,7 @@ func TestPurgerRunDeletesOnlyExpiredWithdrawnComments(t *testing.T) {
 	}
 
 	// Re-running deletes nothing but still probes each tenant once.
-	again, err := purger.Run(context.Background(), PurgeOptions{Cutoff: cutoff, ChunkSize: 2})
+	again, err := purger.Run(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
@@ -102,7 +120,7 @@ func TestPurgerRunRejectsTenantScopedRole(t *testing.T) {
 	pg.Reset(t)
 	pg.SeedTenant(t, "CMTPURGERLS1", "rls-comment-purge.example.com", "RLS Comment Purge")
 
-	_, err := NewPurger(pg.OpenAdminDB(t)).Run(context.Background(), PurgeOptions{Cutoff: time.Now().UTC()})
+	_, err := NewPurger(pg.OpenAdminDB(t)).Run(context.Background(), PurgeOptions{Now: time.Now().UTC()})
 	if err == nil || !strings.Contains(err.Error(), "BYPASSRLS") {
 		t.Fatalf("Run error = %v, want BYPASSRLS requirement", err)
 	}

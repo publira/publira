@@ -1,3 +1,7 @@
+// Package commentretention deletes the comments whose authors withdrew them
+// longer ago than their tenant's retention period. The period itself, and the
+// deadline the admin console shows for it, come from internal/retention, so
+// the console never promises a date this purge does not keep.
 package commentretention
 
 import (
@@ -10,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/retention"
 )
 
 // DefaultPurgeChunkSize bounds one DELETE statement. Every chunk is its own
@@ -25,8 +30,8 @@ type purgeQuerier interface {
 	PurgeWithdrawnEpisodeComments(ctx context.Context, arg dbmodels.PurgeWithdrawnEpisodeCommentsParams) (int64, error)
 }
 
-// Purger deletes the comments whose authors withdrew them longer ago than the
-// retention window allows, and with each one the reports filed on it, which the
+// Purger deletes the comments whose authors withdrew them longer ago than their
+// tenant's retention period allows, and with each one the reports filed on it, which the
 // foreign key from episode_comment_reports takes along.
 //
 // A comment staff removed is not its business: 'hidden' is the record of a
@@ -41,9 +46,11 @@ type Purger struct {
 
 // PurgeOptions describes one purge run.
 type PurgeOptions struct {
-	// Cutoff is exclusive: a comment withdrawn before it has outlived the
-	// window. A scheduled run passes the current time minus WithdrawnDays.
-	Cutoff time.Time
+	// Now is the instant each tenant's cutoff is counted back from. A comment
+	// withdrawn before its tenant's cutoff has outlived the period.
+	Now time.Time
+	// Retention answers each tenant's period.
+	Retention retention.Table
 	// ChunkSize is the row limit of a single DELETE. Zero means
 	// DefaultPurgeChunkSize. It is int32 because it becomes a PostgreSQL
 	// LIMIT: a wider type would let a caller wrap into a negative limit that
@@ -77,7 +84,7 @@ func NewPurger(db *sql.DB) *Purger {
 	return &Purger{db: db, queries: dbmodels.New(db)}
 }
 
-// Run deletes every comment withdrawn before opts.Cutoff, one tenant at a time,
+// Run deletes every comment withdrawn before its tenant's cutoff, one tenant at a time,
 // in chunks of opts.ChunkSize. Each chunk commits on its own: a cancelled or
 // timed-out run keeps the chunks it already finished, and the next run resumes
 // from there, which is also why running it again after it has caught up deletes
@@ -92,8 +99,8 @@ func (p *Purger) Run(ctx context.Context, opts PurgeOptions) (PurgeResult, error
 	if p == nil || p.db == nil {
 		return PurgeResult{}, errors.New("withdrawn comment purge requires a database")
 	}
-	if opts.Cutoff.IsZero() {
-		return PurgeResult{}, errors.New("withdrawn comment purge requires a cutoff")
+	if opts.Now.IsZero() {
+		return PurgeResult{}, errors.New("withdrawn comment purge requires a current time")
 	}
 	chunkSize := opts.ChunkSize
 	if chunkSize <= 0 {
@@ -111,7 +118,8 @@ func (p *Purger) Run(ctx context.Context, opts PurgeOptions) (PurgeResult, error
 	result := PurgeResult{DryRun: opts.DryRun}
 	var failures []error
 	for _, tenantID := range tenantIDs {
-		rows, chunks, err := p.purgeTenant(ctx, tenantID, opts.Cutoff, chunkSize, opts.DryRun)
+		cutoff := opts.Retention.For(tenantID).WithdrawnCommentCutoff(opts.Now)
+		rows, chunks, err := p.purgeTenant(ctx, tenantID, cutoff, chunkSize, opts.DryRun)
 		result.RowCount += rows
 		result.ChunkCount += chunks
 		if err != nil {
@@ -161,7 +169,7 @@ func (p *Purger) purgeTenant(
 		chunkCount++
 		// A short chunk means the scan hit the end of the expired range. This
 		// tenant is done; anything an author withdraws next belongs to a run
-		// a window from now.
+		// a period from now.
 		if deleted < int64(chunkSize) {
 			return rowCount, chunkCount, nil
 		}

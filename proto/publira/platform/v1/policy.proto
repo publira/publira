@@ -4,6 +4,8 @@ package publira.platform.v1;
 
 option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
 
+import "publira/types/v1/types.proto";
+
 // A burst allowance per minute paired with a budget per day. Both are at least
 // one, and the day never allows fewer than the minute.
 message MinuteDayLimit {
@@ -85,7 +87,36 @@ message UpdatePlatformPolicyResponse {
   int64 revision = 2;
 }
 
+message GetPlatformRetentionDefaultsRequest {}
+
+message GetPlatformRetentionDefaultsResponse {
+  // The retention periods of every tenant that has not overridden them: the
+  // saved values, or the built-in defaults when nothing has been saved.
+  publira.types.v1.RetentionPeriods defaults = 1;
+  // Version of the saved row the defaults were read at. Zero when nothing has
+  // been saved yet and the defaults are the built-in ones.
+  int64 revision = 2;
+}
+
+message UpdatePlatformRetentionDefaultsRequest {
+  // Required: every period is written, so a screen that edits one of them
+  // sends the others back as it read them.
+  publira.types.v1.RetentionPeriods defaults = 1;
+  // Required: the revision the values in this request were derived from, as
+  // read from GetPlatformRetentionDefaultsResponse.revision. Zero states that
+  // nothing is expected to be saved yet. The write is refused with
+  // FAILED_PRECONDITION when the stored row moved on.
+  int64 expected_revision = 2;
+}
+
+message UpdatePlatformRetentionDefaultsResponse {
+  publira.types.v1.RetentionPeriods defaults = 1;
+  int64 revision = 2;
+}
+
 service PlatformPolicyService {
   rpc GetPlatformPolicy(GetPlatformPolicyRequest) returns (GetPlatformPolicyResponse) {}
   rpc UpdatePlatformPolicy(UpdatePlatformPolicyRequest) returns (UpdatePlatformPolicyResponse) {}
+  rpc GetPlatformRetentionDefaults(GetPlatformRetentionDefaultsRequest) returns (GetPlatformRetentionDefaultsResponse) {}
+  rpc UpdatePlatformRetentionDefaults(UpdatePlatformRetentionDefaultsRequest) returns (UpdatePlatformRetentionDefaultsResponse) {}
 }

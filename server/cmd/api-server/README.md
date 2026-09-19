@@ -43,7 +43,6 @@ task server:build
 - `PUBLIRA_S3_ENDPOINT` (optional)
 - `PUBLIRA_S3_FORCE_PATH_STYLE` (optional)
 - `PUBLIRA_S3_PUBLIC_BASE_URL` (optional)
-- `PUBLIRA_COMMENT_WITHDRAWN_RETENTION_DAYS` (optional, `180` when unset. How long a comment its author withdrew is kept, which is the deadline `AdminCommentService.ListComments` reports as `purge_due_at`. `batch purge-withdrawn-comments` reads the same variable, so a value set for one has to be set for both, and anything below `1` or non-numeric stops the server rather than have the console count down to a deadline the batch refuses to enforce)
 - `PUBLIRA_REDIS_URL` (optional. Where the counters behind the reader write limits, the step-up password limit, and the mail limits are kept. Unset / `disabled` / `off` / `false` limits each instance on its own, which is looser than a shared limit by the number of instances)
 - `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (all required when `PUBLIRA_REVALIDATE_TOKEN` is set. The private network URL of each Next.js app)

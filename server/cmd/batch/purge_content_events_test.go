@@ -6,28 +6,6 @@ import (
 	"github.com/publira/publira/server/internal/contentevents"
 )
 
-func TestResolveRetentionDays(t *testing.T) {
-	t.Setenv("PUBLIRA_CONTENT_EVENTS_RETENTION_DAYS", "")
-	if got, err := resolveRetentionDays(); err != nil || got != defaultRetentionDays {
-		t.Fatalf("default retention = (%d, %v), want (%d, nil)", got, err, defaultRetentionDays)
-	}
-
-	t.Setenv("PUBLIRA_CONTENT_EVENTS_RETENTION_DAYS", " 30 ")
-	if got, err := resolveRetentionDays(); err != nil || got != 30 {
-		t.Fatalf("retention = (%d, %v), want (30, nil)", got, err)
-	}
-
-	t.Setenv("PUBLIRA_CONTENT_EVENTS_RETENTION_DAYS", "0")
-	if _, err := resolveRetentionDays(); err == nil {
-		t.Fatal("zero retention error = nil, want an error")
-	}
-
-	t.Setenv("PUBLIRA_CONTENT_EVENTS_RETENTION_DAYS", "ninety")
-	if _, err := resolveRetentionDays(); err == nil {
-		t.Fatal("non-numeric retention error = nil, want an error")
-	}
-}
-
 func TestResolveChunkSize(t *testing.T) {
 	t.Setenv("PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE", "")
 	if got, err := resolveChunkSize(); err != nil || got != contentevents.DefaultChunkSize {

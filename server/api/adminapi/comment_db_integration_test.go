@@ -12,10 +12,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
-	"github.com/publira/publira/server/internal/commentretention"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -419,7 +419,7 @@ func TestDBAdminWithdrawnCommentIsReadableButNotMovable(t *testing.T) {
 	if got := adminCommentPublicIDs(listed.Comments); !slices.Equal(got, []string{comment.PublicID}) {
 		t.Fatalf("withdrawn list = %v, want %s", got, comment.PublicID)
 	}
-	wantPurgeDueAt := withdrawn.WithdrawnAt.Time.UTC().AddDate(0, 0, commentretention.DefaultWithdrawnDays).Format(time.RFC3339)
+	wantPurgeDueAt := withdrawn.WithdrawnAt.Time.UTC().AddDate(0, 0, retention.Builtin().WithdrawnCommentDays).Format(time.RFC3339)
 	if listed.Comments[0].PurgeDueAt != wantPurgeDueAt {
 		t.Fatalf("purge_due_at = %q, want %q", listed.Comments[0].PurgeDueAt, wantPurgeDueAt)
 	}

@@ -12,6 +12,8 @@ const auditActionKeys = {
   platform_email_settings_updated:
     "platform.audit.actions.platform_email_settings_updated",
   platform_policy_updated: "platform.audit.actions.platform_policy_updated",
+  platform_retention_defaults_updated:
+    "platform.audit.actions.platform_retention_defaults_updated",
   platform_settings_updated: "platform.audit.actions.platform_settings_updated",
   platform_smtp_test_email_sent:
     "platform.audit.actions.platform_smtp_test_email_sent",

@@ -7,6 +7,7 @@
 package publirasplatformv1
 
 import (
+	v1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -521,11 +522,213 @@ func (x *UpdatePlatformPolicyResponse) GetRevision() int64 {
 	return 0
 }
 
+type GetPlatformRetentionDefaultsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPlatformRetentionDefaultsRequest) Reset() {
+	*x = GetPlatformRetentionDefaultsRequest{}
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPlatformRetentionDefaultsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPlatformRetentionDefaultsRequest) ProtoMessage() {}
+
+func (x *GetPlatformRetentionDefaultsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPlatformRetentionDefaultsRequest.ProtoReflect.Descriptor instead.
+func (*GetPlatformRetentionDefaultsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{8}
+}
+
+type GetPlatformRetentionDefaultsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The retention periods of every tenant that has not overridden them: the
+	// saved values, or the built-in defaults when nothing has been saved.
+	Defaults *v1.RetentionPeriods `protobuf:"bytes,1,opt,name=defaults,proto3" json:"defaults,omitempty"`
+	// Version of the saved row the defaults were read at. Zero when nothing has
+	// been saved yet and the defaults are the built-in ones.
+	Revision      int64 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPlatformRetentionDefaultsResponse) Reset() {
+	*x = GetPlatformRetentionDefaultsResponse{}
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPlatformRetentionDefaultsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPlatformRetentionDefaultsResponse) ProtoMessage() {}
+
+func (x *GetPlatformRetentionDefaultsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPlatformRetentionDefaultsResponse.ProtoReflect.Descriptor instead.
+func (*GetPlatformRetentionDefaultsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetPlatformRetentionDefaultsResponse) GetDefaults() *v1.RetentionPeriods {
+	if x != nil {
+		return x.Defaults
+	}
+	return nil
+}
+
+func (x *GetPlatformRetentionDefaultsResponse) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+type UpdatePlatformRetentionDefaultsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required: every period is written, so a screen that edits one of them
+	// sends the others back as it read them.
+	Defaults *v1.RetentionPeriods `protobuf:"bytes,1,opt,name=defaults,proto3" json:"defaults,omitempty"`
+	// Required: the revision the values in this request were derived from, as
+	// read from GetPlatformRetentionDefaultsResponse.revision. Zero states that
+	// nothing is expected to be saved yet. The write is refused with
+	// FAILED_PRECONDITION when the stored row moved on.
+	ExpectedRevision int64 `protobuf:"varint,2,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *UpdatePlatformRetentionDefaultsRequest) Reset() {
+	*x = UpdatePlatformRetentionDefaultsRequest{}
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdatePlatformRetentionDefaultsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdatePlatformRetentionDefaultsRequest) ProtoMessage() {}
+
+func (x *UpdatePlatformRetentionDefaultsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdatePlatformRetentionDefaultsRequest.ProtoReflect.Descriptor instead.
+func (*UpdatePlatformRetentionDefaultsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UpdatePlatformRetentionDefaultsRequest) GetDefaults() *v1.RetentionPeriods {
+	if x != nil {
+		return x.Defaults
+	}
+	return nil
+}
+
+func (x *UpdatePlatformRetentionDefaultsRequest) GetExpectedRevision() int64 {
+	if x != nil {
+		return x.ExpectedRevision
+	}
+	return 0
+}
+
+type UpdatePlatformRetentionDefaultsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Defaults      *v1.RetentionPeriods   `protobuf:"bytes,1,opt,name=defaults,proto3" json:"defaults,omitempty"`
+	Revision      int64                  `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdatePlatformRetentionDefaultsResponse) Reset() {
+	*x = UpdatePlatformRetentionDefaultsResponse{}
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdatePlatformRetentionDefaultsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdatePlatformRetentionDefaultsResponse) ProtoMessage() {}
+
+func (x *UpdatePlatformRetentionDefaultsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdatePlatformRetentionDefaultsResponse.ProtoReflect.Descriptor instead.
+func (*UpdatePlatformRetentionDefaultsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UpdatePlatformRetentionDefaultsResponse) GetDefaults() *v1.RetentionPeriods {
+	if x != nil {
+		return x.Defaults
+	}
+	return nil
+}
+
+func (x *UpdatePlatformRetentionDefaultsResponse) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
 var File_publira_platform_v1_policy_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\n" +
-	" publira/platform/v1/policy.proto\x12\x13publira.platform.v1\"H\n" +
+	" publira/platform/v1/policy.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"H\n" +
 	"\x0eMinuteDayLimit\x12\x1d\n" +
 	"\n" +
 	"per_minute\x18\x01 \x01(\x05R\tperMinute\x12\x17\n" +
@@ -556,10 +759,22 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x11expected_revision\x18\x02 \x01(\x03R\x10expectedRevision\"w\n" +
 	"\x1cUpdatePlatformPolicyResponse\x12;\n" +
 	"\x06policy\x18\x01 \x01(\v2#.publira.platform.v1.PlatformPolicyR\x06policy\x12\x1a\n" +
-	"\brevision\x18\x02 \x01(\x03R\brevision2\x8c\x02\n" +
+	"\brevision\x18\x02 \x01(\x03R\brevision\"%\n" +
+	"#GetPlatformRetentionDefaultsRequest\"\x82\x01\n" +
+	"$GetPlatformRetentionDefaultsResponse\x12>\n" +
+	"\bdefaults\x18\x01 \x01(\v2\".publira.types.v1.RetentionPeriodsR\bdefaults\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\x03R\brevision\"\x95\x01\n" +
+	"&UpdatePlatformRetentionDefaultsRequest\x12>\n" +
+	"\bdefaults\x18\x01 \x01(\v2\".publira.types.v1.RetentionPeriodsR\bdefaults\x12+\n" +
+	"\x11expected_revision\x18\x02 \x01(\x03R\x10expectedRevision\"\x85\x01\n" +
+	"'UpdatePlatformRetentionDefaultsResponse\x12>\n" +
+	"\bdefaults\x18\x01 \x01(\v2\".publira.types.v1.RetentionPeriodsR\bdefaults\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\x03R\brevision2\xc5\x04\n" +
 	"\x15PlatformPolicyService\x12t\n" +
 	"\x11GetPlatformPolicy\x12-.publira.platform.v1.GetPlatformPolicyRequest\x1a..publira.platform.v1.GetPlatformPolicyResponse\"\x00\x12}\n" +
-	"\x14UpdatePlatformPolicy\x120.publira.platform.v1.UpdatePlatformPolicyRequest\x1a1.publira.platform.v1.UpdatePlatformPolicyResponse\"\x00B]Z[github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
+	"\x14UpdatePlatformPolicy\x120.publira.platform.v1.UpdatePlatformPolicyRequest\x1a1.publira.platform.v1.UpdatePlatformPolicyResponse\"\x00\x12\x95\x01\n" +
+	"\x1cGetPlatformRetentionDefaults\x128.publira.platform.v1.GetPlatformRetentionDefaultsRequest\x1a9.publira.platform.v1.GetPlatformRetentionDefaultsResponse\"\x00\x12\x9e\x01\n" +
+	"\x1fUpdatePlatformRetentionDefaults\x12;.publira.platform.v1.UpdatePlatformRetentionDefaultsRequest\x1a<.publira.platform.v1.UpdatePlatformRetentionDefaultsResponse\"\x00B]Z[github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
 
 var (
 	file_publira_platform_v1_policy_proto_rawDescOnce sync.Once
@@ -573,16 +788,21 @@ func file_publira_platform_v1_policy_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_policy_proto_rawDescData
 }
 
-var file_publira_platform_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_publira_platform_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_publira_platform_v1_policy_proto_goTypes = []any{
-	(*MinuteDayLimit)(nil),               // 0: publira.platform.v1.MinuteDayLimit
-	(*HourDayLimit)(nil),                 // 1: publira.platform.v1.HourDayLimit
-	(*CommunityLimitDefaults)(nil),       // 2: publira.platform.v1.CommunityLimitDefaults
-	(*PlatformPolicy)(nil),               // 3: publira.platform.v1.PlatformPolicy
-	(*GetPlatformPolicyRequest)(nil),     // 4: publira.platform.v1.GetPlatformPolicyRequest
-	(*GetPlatformPolicyResponse)(nil),    // 5: publira.platform.v1.GetPlatformPolicyResponse
-	(*UpdatePlatformPolicyRequest)(nil),  // 6: publira.platform.v1.UpdatePlatformPolicyRequest
-	(*UpdatePlatformPolicyResponse)(nil), // 7: publira.platform.v1.UpdatePlatformPolicyResponse
+	(*MinuteDayLimit)(nil),                          // 0: publira.platform.v1.MinuteDayLimit
+	(*HourDayLimit)(nil),                            // 1: publira.platform.v1.HourDayLimit
+	(*CommunityLimitDefaults)(nil),                  // 2: publira.platform.v1.CommunityLimitDefaults
+	(*PlatformPolicy)(nil),                          // 3: publira.platform.v1.PlatformPolicy
+	(*GetPlatformPolicyRequest)(nil),                // 4: publira.platform.v1.GetPlatformPolicyRequest
+	(*GetPlatformPolicyResponse)(nil),               // 5: publira.platform.v1.GetPlatformPolicyResponse
+	(*UpdatePlatformPolicyRequest)(nil),             // 6: publira.platform.v1.UpdatePlatformPolicyRequest
+	(*UpdatePlatformPolicyResponse)(nil),            // 7: publira.platform.v1.UpdatePlatformPolicyResponse
+	(*GetPlatformRetentionDefaultsRequest)(nil),     // 8: publira.platform.v1.GetPlatformRetentionDefaultsRequest
+	(*GetPlatformRetentionDefaultsResponse)(nil),    // 9: publira.platform.v1.GetPlatformRetentionDefaultsResponse
+	(*UpdatePlatformRetentionDefaultsRequest)(nil),  // 10: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
+	(*UpdatePlatformRetentionDefaultsResponse)(nil), // 11: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
+	(*v1.RetentionPeriods)(nil),                     // 12: publira.types.v1.RetentionPeriods
 }
 var file_publira_platform_v1_policy_proto_depIdxs = []int32{
 	0,  // 0: publira.platform.v1.CommunityLimitDefaults.comment_post:type_name -> publira.platform.v1.MinuteDayLimit
@@ -598,15 +818,22 @@ var file_publira_platform_v1_policy_proto_depIdxs = []int32{
 	3,  // 10: publira.platform.v1.GetPlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
 	3,  // 11: publira.platform.v1.UpdatePlatformPolicyRequest.policy:type_name -> publira.platform.v1.PlatformPolicy
 	3,  // 12: publira.platform.v1.UpdatePlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
-	4,  // 13: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:input_type -> publira.platform.v1.GetPlatformPolicyRequest
-	6,  // 14: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:input_type -> publira.platform.v1.UpdatePlatformPolicyRequest
-	5,  // 15: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:output_type -> publira.platform.v1.GetPlatformPolicyResponse
-	7,  // 16: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:output_type -> publira.platform.v1.UpdatePlatformPolicyResponse
-	15, // [15:17] is the sub-list for method output_type
-	13, // [13:15] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	12, // 13: publira.platform.v1.GetPlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
+	12, // 14: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest.defaults:type_name -> publira.types.v1.RetentionPeriods
+	12, // 15: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
+	4,  // 16: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:input_type -> publira.platform.v1.GetPlatformPolicyRequest
+	6,  // 17: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:input_type -> publira.platform.v1.UpdatePlatformPolicyRequest
+	8,  // 18: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:input_type -> publira.platform.v1.GetPlatformRetentionDefaultsRequest
+	10, // 19: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:input_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
+	5,  // 20: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:output_type -> publira.platform.v1.GetPlatformPolicyResponse
+	7,  // 21: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:output_type -> publira.platform.v1.UpdatePlatformPolicyResponse
+	9,  // 22: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:output_type -> publira.platform.v1.GetPlatformRetentionDefaultsResponse
+	11, // 23: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:output_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
+	20, // [20:24] is the sub-list for method output_type
+	16, // [16:20] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_policy_proto_init() }
@@ -620,7 +847,7 @@ func file_publira_platform_v1_policy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_policy_proto_rawDesc), len(file_publira_platform_v1_policy_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
