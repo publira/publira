@@ -32,6 +32,34 @@ cd mobile
 flutter pub get
 ```
 
+### Android emulator in the Dev Container
+
+The Dev Container carries no Android SDK, because nothing outside `mobile/` needs one. The integration tests and device screenshots do, and install it on demand:
+
+```bash
+task mobile:android-install   # once per container; asks you to accept the Android SDK license
+task mobile:emulator-start    # boots the emulator headless and waits until Android has booted
+task mobile:emulator-stop
+```
+
+`task mobile:android-install` runs `scripts/android-install.sh`, which installs only what is missing:
+
+- the Temurin build `ci.yml` sets up, under `~/Android/`, set as Flutter's JDK with `flutter config --jdk-dir`. Renovate updates the version in the script and in `ci.yml` together
+- the Android command-line tools, `platform-tools`, `emulator`, and `system-images;android-34;default;x86_64` under `~/Android/Sdk`, the directory Flutter finds without configuration
+- the `publira-pixel-7` AVD (Pixel 7 hardware profile, with a 4 GB data partition)
+- a group for the GID `/dev/kvm` belongs to, with you in it
+- `adb` linked into `~/.local/bin`
+- a Gradle heap cap in `~/.gradle/gradle.properties`, unless that file already sets `org.gradle.jvmargs`
+
+`sdkmanager` shows the [Android SDK License Agreement](https://developer.android.com/studio/terms) and asks you to accept it, so run the task from a terminal; without one it stops before installing any package. Everything is downloaded from Google by you rather than shipped in the image, which the license does not allow.
+
+The emulator needs KVM. The task stops before downloading anything when the container has no `/dev/kvm`, which is the case whenever the host does not pass one through. The platforms, build tools, NDK, and CMake a build needs are fetched by Gradle on the first build.
+
+| Variable | Meaning |
+| --- | --- |
+| `ANDROID_HOME` | Where the SDK is installed and read from. `~/Android/Sdk` when unset |
+| `MOBILE_AVD_NAME` | The AVD to create and boot. `publira-pixel-7` when unset |
+
 ### Local machine (outside the Dev Container)
 
 After installing the Flutter SDK:
@@ -380,7 +408,7 @@ task mobile:screenshot -- /series/SeedSERSAAA1 /series/SeedSERSAAA1/episodes/See
 
 Every route named on the command line becomes one PNG under `.run/screenshots/`; with no route named, the catalog the app opens on.
 
-The screens are taken on an attached device or emulator, which the app is built and installed on. With none attached — the Dev Container image ships no Android SDK ([#2148](https://github.com/publira/publira/issues/2148)) — the same app is built for the web instead, served by `scripts/web_app_server.dart`, and photographed at the viewport and pixel ratio of a Pixel 7 by the browser `e2e/` already depends on; such a picture carries no status bar and no system navigation.
+The screens are taken on an attached device or emulator, which the app is built and installed on; in the Dev Container that is the one [`task mobile:emulator-start`](#android-emulator-in-the-dev-container) boots. With none attached, the same app is built for the web instead, served by `scripts/web_app_server.dart`, and photographed at the viewport and pixel ratio of a Pixel 7 by the browser `e2e/` already depends on; such a picture carries no status bar and no system navigation.
 
 | Variable | Meaning |
 | --- | --- |
@@ -414,6 +442,9 @@ The screens are taken on an attached device or emulator, which the app is built 
 By default, it uses an on-device Connect fixture server. When `PUBLIRA_LIVE_API=true`, it also runs against the public API for the development seed (`Seed Series 001` / `SeedSERSAAA1`), signing in as `member@example.com`, who holds a seeded access ticket for the paid episode.
 
 ```bash
+# In the Dev Container, boot the emulator first (see "Android emulator in the Dev Container")
+task mobile:emulator-start
+
 # Start stack + integration tests + teardown (requires an emulator or device)
 task mobile:e2e
 

@@ -7,6 +7,12 @@ tasks:
     cmds:
       - flutter analyze --fatal-infos
 
+  android-install:
+    desc: Install a JDK, the Android SDK, and an emulator into the Dev Container (asks you to accept the SDK license)
+    interactive: true
+    cmds:
+      - bash scripts/android-install.sh
+
   check:
     desc: Run format, analyze, and unit tests (CI-equivalent gate)
     cmds:
@@ -18,6 +24,16 @@ tasks:
     desc: Install Flutter package dependencies for the mobile app
     cmds:
       - flutter pub get
+
+  emulator-start:
+    desc: Boot the Android emulator android-install created, headless, and wait until it has booted
+    cmds:
+      - bash scripts/emulator.sh start
+
+  emulator-stop:
+    desc: Shut down the running Android emulators
+    cmds:
+      - bash scripts/emulator.sh stop
 
   format:
     desc: Check Dart formatting (fails if files would change)
