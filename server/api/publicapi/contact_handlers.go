@@ -158,7 +158,7 @@ func (s *apiServer) SubmitContactMessage(
 	// one a sender signed in to nothing spends. The account's goes on top of it
 	// rather than instead of it, so signing up does not widen what one client may
 	// send.
-	if err := s.chargeClientAction(ctx, actionSubmitContactMessageFromClient, req); err != nil {
+	if err := s.chargeClientAction(ctx, actionSubmitContactMessageFromClient, tenant.ID, req); err != nil {
 		return nil, err
 	}
 	if reader.Valid {

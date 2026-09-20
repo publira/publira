@@ -572,6 +572,7 @@ type Querier interface {
 	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
+	GetTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
@@ -730,6 +731,7 @@ type Querier interface {
 	// JSON array because several of their columns are nullable, which a typed
 	// array parameter per column cannot carry.
 	InsertRoyaltyStatementLines(ctx context.Context, arg InsertRoyaltyStatementLinesParams) error
+	InsertTenantCommunityLimitOverrides(ctx context.Context, arg InsertTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	// No ON CONFLICT clause, for the same reason as InsertPlatformRetentionConfig.
 	InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
@@ -1619,6 +1621,7 @@ type Querier interface {
 	// freezes its snapshot at statement start, so waiting for the lock in
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
+	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Lock the tenant row so concurrent tenant branding image uploads and deletes
 	// (icon, logo) serialize. The following read of the current image must be a
 	// separate statement: READ COMMITTED freezes its snapshot at statement start,
@@ -1932,6 +1935,7 @@ type Querier interface {
 	UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSeriesEyeCatchImageIDParams) error
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
+	UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error)
 	UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error)
 	// Update the tenant name and its domains.

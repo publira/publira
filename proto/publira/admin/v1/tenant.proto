@@ -5,6 +5,7 @@ package publira.admin.v1;
 option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
 
 import "publira/types/v1/types.proto";
+import "publira/platform/v1/policy.proto";
 
 message GetTenantTimezoneRequest {
   publira.types.v1.TenantContext tenant = 1;
@@ -143,6 +144,34 @@ message UpdateTenantRetentionSettingsResponse {
   int64 revision = 4;
 }
 
+message TenantCommunityLimitOverrides {
+  publira.platform.v1.MinuteDayLimit comment_post = 1;
+  publira.platform.v1.MinuteDayLimit comment_report = 2;
+  optional int32 duplicate_comment_window_minutes = 3;
+  publira.platform.v1.MinuteDayLimit episode_rating = 4;
+  publira.platform.v1.HourDayLimit contact_message_per_account = 5;
+  publira.platform.v1.HourDayLimit contact_message_per_client = 6;
+  publira.platform.v1.MinuteDayLimit viewer_preferences = 7;
+}
+message GetTenantCommunityLimitSettingsRequest { publira.types.v1.TenantContext tenant = 1; }
+message GetTenantCommunityLimitSettingsResponse {
+  TenantCommunityLimitOverrides overrides = 1;
+  publira.platform.v1.CommunityLimitDefaults platform_defaults = 2;
+  publira.platform.v1.CommunityLimitDefaults effective = 3;
+  int64 revision = 4;
+}
+message UpdateTenantCommunityLimitSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  TenantCommunityLimitOverrides overrides = 2;
+  int64 expected_revision = 3;
+}
+message UpdateTenantCommunityLimitSettingsResponse {
+  TenantCommunityLimitOverrides overrides = 1;
+  publira.platform.v1.CommunityLimitDefaults platform_defaults = 2;
+  publira.platform.v1.CommunityLimitDefaults effective = 3;
+  int64 revision = 4;
+}
+
 // Per-tenant operational settings, separate from TenantConfig (site copy) and
 // TenantTheme (colors).
 service TenantSettingsService {
@@ -156,4 +185,6 @@ service TenantSettingsService {
   rpc UpdateTenantAgeVerification(UpdateTenantAgeVerificationRequest) returns (UpdateTenantAgeVerificationResponse) {}
   rpc GetTenantRetentionSettings(GetTenantRetentionSettingsRequest) returns (GetTenantRetentionSettingsResponse) {}
   rpc UpdateTenantRetentionSettings(UpdateTenantRetentionSettingsRequest) returns (UpdateTenantRetentionSettingsResponse) {}
+  rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}
+  rpc UpdateTenantCommunityLimitSettings(UpdateTenantCommunityLimitSettingsRequest) returns (UpdateTenantCommunityLimitSettingsResponse) {}
 }
