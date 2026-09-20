@@ -175,6 +175,8 @@ GRANT SELECT ON platform_policy_config TO publira_public, publira_admin;
 
 -- The storefront resolves each tenant's stricter community limits alongside
 -- the platform policy. RLS confines the tenant-console role to its own row.
+REVOKE INSERT, UPDATE, DELETE ON tenant_community_limit_overrides FROM publira_public;
+REVOKE DELETE ON tenant_community_limit_overrides FROM publira_admin;
 GRANT SELECT ON tenant_community_limit_overrides TO publira_public;
 GRANT SELECT, INSERT, UPDATE ON tenant_community_limit_overrides TO publira_admin;
 
