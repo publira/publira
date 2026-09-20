@@ -5,6 +5,12 @@ export type { DashboardRecentEvent } from "../gen/publira/platform/v1/dashboard_
 export type { PlatformEmailSettings } from "../gen/publira/platform/v1/email_pb.js";
 export type { PlatformNotification } from "../gen/publira/platform/v1/notification_pb.js";
 export type { PlatformOperator } from "../gen/publira/platform/v1/operator_pb.js";
+export type {
+  CommunityLimitDefaults,
+  HourDayLimit,
+  MinuteDayLimit,
+  PlatformPolicy,
+} from "../gen/publira/platform/v1/policy_pb.js";
 export type { PlatformSettings } from "../gen/publira/platform/v1/settings_pb.js";
 export type {
   Tenant,
@@ -12,3 +18,5 @@ export type {
   TenantMember,
 } from "../gen/publira/platform/v1/tenant_pb.js";
 export type { EndUser } from "../gen/publira/platform/v1/user_pb.js";
+// A types.v1 message the platform policy service returns.
+export type { RetentionPeriods } from "../gen/publira/types/v1/types_pb.js";

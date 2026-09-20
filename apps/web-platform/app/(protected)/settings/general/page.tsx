@@ -31,7 +31,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const tabLabel = (
-  message: "platform.settings.email_tab" | "platform.settings.general_tab",
+  message:
+    | "platform.policy.community.tab"
+    | "platform.policy.retention.tab"
+    | "platform.policy.security.tab"
+    | "platform.settings.email_tab"
+    | "platform.settings.general_tab",
   fallbackClassName: string
 ) => (
   <Suspense fallback={<SkeletonLine className={fallbackClassName} />}>
@@ -94,9 +99,12 @@ const GeneralSettingsContent = async () => {
   return (
     <div className="grid gap-6">
       <SettingsTabNav
+        communityLabel={tabLabel("platform.policy.community.tab", "h-4 w-20")}
         current="general"
         emailLabel={tabLabel("platform.settings.email_tab", "h-4 w-20")}
         generalLabel={tabLabel("platform.settings.general_tab", "h-4 w-8")}
+        retentionLabel={tabLabel("platform.policy.retention.tab", "h-4 w-16")}
+        securityLabel={tabLabel("platform.policy.security.tab", "h-4 w-14")}
       />
       <Suspense fallback={<SettingsFormSkeleton />}>
         <DefaultLocaleSection

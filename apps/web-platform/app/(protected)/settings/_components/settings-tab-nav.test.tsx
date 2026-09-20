@@ -22,23 +22,29 @@ describe("SettingsTabNav", () => {
   it("lists only platform settings tabs", () => {
     render(
       <SettingsTabNav
+        communityLabel="Community"
         current="general"
         emailLabel="Email"
         generalLabel="General"
+        retentionLabel="Retention"
+        securityLabel="Security"
       />
     );
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
-      ["General", "Email"]
+      ["General", "Email", "Security", "Community", "Retention"]
     );
   });
 
   it("does not include personal account settings tabs", () => {
     render(
       <SettingsTabNav
+        communityLabel="Community"
         current="general"
         emailLabel="Email"
         generalLabel="General"
+        retentionLabel="Retention"
+        securityLabel="Security"
       />
     );
 

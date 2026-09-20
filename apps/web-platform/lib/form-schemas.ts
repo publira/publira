@@ -72,6 +72,28 @@ export const intFormSchema = (
 };
 
 /**
+ * A required whole number within `[min, max]`. Unlike {@link intFormSchema}, a
+ * blank or out-of-range value is an error rather than a default or a clamp, so
+ * the operator is told instead of having a different value saved.
+ * `maxMessage` words a value above `max`; `message` covers everything else.
+ */
+export const boundedIntFormSchema = (
+  message: string,
+  options: { max: number; maxMessage?: string; min: number }
+): z.ZodType<number, unknown> =>
+  z.preprocess(
+    (value) => {
+      const raw = typeof value === "string" ? value.trim() : "";
+      return INTEGER_RE.test(raw) ? Number(raw) : undefined;
+    },
+    z
+      .number({ error: message })
+      .int(message)
+      .min(options.min, message)
+      .max(options.max, options.maxMessage ?? message)
+  );
+
+/**
  * One text field that accepts a comma- or newline-separated list. Empty
  * entries are dropped; format checks stay on the consumer.
  */

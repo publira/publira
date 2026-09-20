@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  boundedIntFormSchema,
   commaOrNewlineStringListFormSchema,
   intFormSchema,
   optionalTrimmedString,
@@ -80,5 +81,46 @@ describe("commaOrNewlineStringListFormSchema", () => {
 
   it("turns a missing value into an empty list", () => {
     expect(commaOrNewlineStringListFormSchema.parse(null)).toEqual([]);
+  });
+});
+
+describe("boundedIntFormSchema", () => {
+  const schema = boundedIntFormSchema("Enter a whole number of at least 1.", {
+    max: 100,
+    maxMessage: "Enter 100 or less.",
+    min: 1,
+  });
+
+  it("accepts a whole number within the range", () => {
+    expect(schema.parse(" 42 ")).toBe(42);
+    expect(schema.parse("1")).toBe(1);
+    expect(schema.parse("100")).toBe(100);
+  });
+
+  it("rejects a blank or missing value instead of defaulting it", () => {
+    expect(schema.safeParse("").error?.issues[0]?.message).toBe(
+      "Enter a whole number of at least 1."
+    );
+    expect(schema.safeParse(null).error?.issues[0]?.message).toBe(
+      "Enter a whole number of at least 1."
+    );
+  });
+
+  it("rejects a value below the range instead of clamping it", () => {
+    expect(schema.safeParse("0").error?.issues[0]?.message).toBe(
+      "Enter a whole number of at least 1."
+    );
+  });
+
+  it("words a value above the range with the max message", () => {
+    expect(schema.safeParse("101").error?.issues[0]?.message).toBe(
+      "Enter 100 or less."
+    );
+  });
+
+  it("rejects fractions and non-decimal notation", () => {
+    expect(schema.safeParse("1.5").success).toBe(false);
+    expect(schema.safeParse("1e2").success).toBe(false);
+    expect(schema.safeParse("0x10").success).toBe(false);
   });
 });
