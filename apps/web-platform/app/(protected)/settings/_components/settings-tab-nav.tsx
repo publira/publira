@@ -3,15 +3,21 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 interface SettingsTabNavProps {
-  current: "email" | "general";
+  communityLabel: ReactNode;
+  current: "community" | "email" | "general" | "retention" | "security";
   emailLabel: ReactNode;
   generalLabel: ReactNode;
+  retentionLabel: ReactNode;
+  securityLabel: ReactNode;
 }
 
 export const SettingsTabNav = ({
+  communityLabel,
   current,
   emailLabel,
   generalLabel,
+  retentionLabel,
+  securityLabel,
 }: SettingsTabNavProps) => (
   <div className="flex flex-wrap gap-2">
     <LinkButton
@@ -25,6 +31,24 @@ export const SettingsTabNav = ({
       variant={current === "email" ? "default" : "outline"}
     >
       {emailLabel}
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/security" />}
+      variant={current === "security" ? "default" : "outline"}
+    >
+      {securityLabel}
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/community" />}
+      variant={current === "community" ? "default" : "outline"}
+    >
+      {communityLabel}
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/retention" />}
+      variant={current === "retention" ? "default" : "outline"}
+    >
+      {retentionLabel}
     </LinkButton>
   </div>
 );
