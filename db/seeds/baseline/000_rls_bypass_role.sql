@@ -186,7 +186,7 @@ GRANT SELECT, INSERT, UPDATE ON tenant_community_limit_overrides TO publira_admi
 -- them.
 GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stats;
 
--- outbox-worker composes the platform console's own mail — a password reset, an
+-- The worker composes the platform console's own mail — a password reset, an
 -- email change confirmation, the notice that follows one — and every mail it
 -- sends goes through the platform relay unless the tenant overrides it. So the
 -- five tables those paths read are granted back one by one, the way the ticker
@@ -200,7 +200,7 @@ GRANT SELECT ON
     platform_user_password_reset_tokens
 TO publira_outbox;
 
--- River versions its own schema (river_job and the rest) and outbox-worker
+-- River versions its own schema (river_job and the rest) and the worker
 -- applies it with rivermigrate at startup, so that role needs to create tables,
 -- types, indexes, and functions in the schema. No other app role does.
 GRANT CREATE ON SCHEMA public TO publira_outbox;

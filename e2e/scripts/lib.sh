@@ -26,7 +26,7 @@ export PUBLIRA_E2E_WEB_ADMIN_PORT="${PUBLIRA_E2E_WEB_ADMIN_PORT:-4000}"
 export PUBLIRA_E2E_WEB_PLATFORM_PORT="${PUBLIRA_E2E_WEB_PLATFORM_PORT:-4100}"
 export PUBLIRA_E2E_PUBLIC_API_PORT="${PUBLIRA_E2E_PUBLIC_API_PORT:-8000}"
 export PUBLIRA_E2E_PUBLIC_API_GRPC_PORT="${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT:-8100}"
-export PUBLIRA_E2E_OUTBOX_WORKER_PORT="${PUBLIRA_E2E_OUTBOX_WORKER_PORT:-8003}"
+export PUBLIRA_E2E_WORKER_PORT="${PUBLIRA_E2E_WORKER_PORT:-8003}"
 export PUBLIRA_E2E_IMAGE_SERVER_PORT="${PUBLIRA_E2E_IMAGE_SERVER_PORT:-8200}"
 export PUBLIRA_E2E_EMAIL_RENDERER_PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT:-8300}"
 # Traefik entrypoint. `/images` belongs to image-server and everything else to
@@ -74,7 +74,7 @@ export PUBLIRA_E2E_MAILPIT_BASE_URL="${PUBLIRA_E2E_MAILPIT_BASE_URL:-http://127.
 # reach that stack's browser rather than the first one's.
 export PUBLIRA_E2E_BROWSER_WS_ENDPOINT="${PUBLIRA_E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${PUBLIRA_E2E_BROWSER_PORT}}"
 
-# The three periodic jobs the outbox worker runs, in seconds. Short so a
+# The three periodic jobs the worker runs, in seconds. Short so a
 # scheduled episode, a free window boundary, and a tenant's midnight all land
 # within the same Playwright run instead of after multi-minute waits.
 export PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC="${PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2}"
@@ -111,7 +111,7 @@ export PUBLIRA_WEB_HOST_INTERNAL_URL="http://localhost:${PUBLIRA_E2E_WEB_HOST_PO
 export PUBLIRA_WEB_ADMIN_INTERNAL_URL="http://127.0.0.1:${PUBLIRA_E2E_WEB_ADMIN_PORT}"
 export PUBLIRA_WEB_PLATFORM_INTERNAL_URL="http://127.0.0.1:${PUBLIRA_E2E_WEB_PLATFORM_PORT}"
 
-# Where the outbox worker renders its mail. Always built from the E2E port, for
+# Where the worker renders its mail. Always built from the E2E port, for
 # the same reason as PUBLIRA_REDIS_URL above: the isolated dev profile exports
 # PUBLIRA_EMAIL_RENDERER_URL for its own renderer, so an inherited value would
 # have this stack's worker render through a process it neither starts nor stops.
@@ -132,7 +132,7 @@ export PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${PUBLIRA_SECRET_ENCRYPTION_PRI
 # Web Push. Without these the public API publishes no VAPID key and the browser
 # notification switch is left out of `/settings/notifications`, so the screen
 # `host.browser-notifications.spec.ts` drives would not exist. A matching P-256
-# pair, because the outbox worker validates the pair at startup and refuses to
+# pair, because the worker validates the pair at startup and refuses to
 # run on a broken one. Nothing is ever delivered through it: that spec stubs the
 # Push API, so the endpoint it registers belongs to no push service.
 export PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY="${PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY:-BLA9H4ThVuX8uYA1HMTOe0q51POeLNEvc-TtqSb5TKuztJM_UfKKQLLfbpm9Kr7jzikhThqoipdhx0NQgzfBDs0}"
@@ -162,7 +162,7 @@ else
     [[ "${PUBLIRA_E2E_WEB_PLATFORM_PORT}" != "4100" ]] ||
     [[ "${PUBLIRA_E2E_PUBLIC_API_PORT}" != "8000" ]] ||
     [[ "${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}" != "8100" ]] ||
-    [[ "${PUBLIRA_E2E_OUTBOX_WORKER_PORT}" != "8003" ]] ||
+    [[ "${PUBLIRA_E2E_WORKER_PORT}" != "8003" ]] ||
     [[ "${PUBLIRA_E2E_IMAGE_SERVER_PORT}" != "8200" ]] ||
     [[ "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" != "8300" ]] ||
     [[ "${PUBLIRA_E2E_EDGE_PORT}" != "3080" ]]; then
@@ -173,7 +173,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_HOST_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-ow${PUBLIRA_E2E_OUTBOX_WORKER_PORT}-img${PUBLIRA_E2E_IMAGE_SERVER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
+    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_HOST_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-img${PUBLIRA_E2E_IMAGE_SERVER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi

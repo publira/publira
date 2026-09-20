@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start/stop only the email-renderer process.
 #
-# The outbox worker renders every mail it sends through this service, so a stack
+# The worker renders every mail it sends through this service, so a stack
 # without it delivers nothing: the worker retries until the event dead-letters.
 set -euo pipefail
 

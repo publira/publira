@@ -17,7 +17,7 @@ This page answers three questions for a first-time contributor: what to install,
 │   ├── cmd/
 │   │   ├── api-server/       # ConnectRPC API server
 │   │   ├── batch/            # Single binary bundling every batch job (selected by subcommand)
-│   │   └── outbox-worker/    # Outbox + River resident worker
+│   │   └── worker/           # Long-lived background worker (Outbox drain + River periodic jobs)
 │   └── internal/
 │       ├── db/gen/     # sqlc generated code (DB/Go)
 │       └── proto/gen/  # buf generated code (Go)

@@ -121,7 +121,7 @@ tasks:
       - task: build:api
         vars: { CMD_NAME: api-server, PORT: "8000" }
       - task: build:api
-        vars: { CMD_NAME: outbox-worker, PORT: "8003" }
+        vars: { CMD_NAME: worker, PORT: "8003" }
       - task: build:batch
       - task: build:node
         vars: { APP_NAME: email-renderer, PORT: "8080" }

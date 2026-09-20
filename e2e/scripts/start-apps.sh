@@ -77,7 +77,7 @@ start_web_app() {
 for port in \
   "${PUBLIRA_E2E_PUBLIC_API_PORT}" \
   "${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}" \
-  "${PUBLIRA_E2E_OUTBOX_WORKER_PORT}" \
+  "${PUBLIRA_E2E_WORKER_PORT}" \
   "${PUBLIRA_E2E_IMAGE_SERVER_PORT}" \
   "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
   "${PUBLIRA_E2E_WEB_HOST_PORT}" \
@@ -93,12 +93,12 @@ done
 # appends to the same log; truncate here so a run starts from a clean file.
 : > "${LOG_DIR}/api-server.log"
 : > "${LOG_DIR}/email-renderer.log"
-: > "${LOG_DIR}/outbox-worker.log"
+: > "${LOG_DIR}/worker.log"
 : > "${LOG_DIR}/image-server.log"
 
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/api-server.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/email-renderer.sh" start
-bash "${PUBLIRA_E2E_SCRIPTS_DIR}/outbox-worker.sh" start
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/worker.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/image-server.sh" start
 
 # Bind hostname must match browser Host so Next internal rewrites are not

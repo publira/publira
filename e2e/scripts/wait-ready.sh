@@ -72,8 +72,8 @@ wait_http "email-renderer/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_EMAIL_RENDERER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
-wait_http "outbox-worker/readyz" \
-  "http://127.0.0.1:${PUBLIRA_E2E_OUTBOX_WORKER_PORT}/readyz" \
+wait_http "worker/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_WORKER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 wait_http "image-server/readyz" \

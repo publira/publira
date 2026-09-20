@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	serviceName = "publira-outbox-worker"
+	serviceName = "publira-worker"
 
 	defaultWorkerAddr  = ":8003"
 	defaultWorkerDBURL = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
@@ -151,7 +151,7 @@ func main() {
 	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger}))
 	if err != nil {
-		logger.Error("failed to start outbox worker", "error", err)
+		logger.Error("failed to start the outbox drain", "error", err)
 		os.Exit(1)
 	}
 
@@ -172,7 +172,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	logger.Info("starting outbox worker", "addr", addr)
+	logger.Info("starting worker", "addr", addr)
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
 		httpserver.New(addr, mux),
 	}, func(ctx context.Context) error {
@@ -180,7 +180,7 @@ func main() {
 	}, shutdownTracing, func(context.Context) error {
 		return errors.Join(db.Close(), tickerDB.Close())
 	}); err != nil {
-		logger.Error("outbox worker failed", "error", err)
+		logger.Error("worker failed", "error", err)
 		os.Exit(1)
 	}
 }

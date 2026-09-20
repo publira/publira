@@ -86,7 +86,7 @@ start_profile() {
     "${PUBLIRA_WEB_HOST_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_WEB_PLATFORM_PORT}" \
     "${PUBLIRA_PUBLIC_API_PORT}" "${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
     "${PUBLIRA_IMAGE_SERVER_PORT}" \
-    "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_OUTBOX_WORKER_PORT}" \
+    "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_WORKER_PORT}" \
     "${PUBLIRA_EDGE_PORT}"; do
     if ss -ltn 2> /dev/null | grep -qE ":${port}\\b" || netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"; then
       dev_env_die "port ${port} is already in use; select a different profile"
@@ -128,10 +128,10 @@ start_profile() {
   # The worker also runs the three periodic jobs that promote due episodes,
   # apply free window boundaries, and turn over each tenant's calendar day, so
   # it carries the ticker role's connection and the revalidate targets too.
-  dev_env_start_background "${run_dir}" outbox-worker env \
+  dev_env_start_background "${run_dir}" worker env \
     PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
     PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL}" \
-    PUBLIRA_WORKER_ADDR=":${PUBLIRA_OUTBOX_WORKER_PORT}" \
+    PUBLIRA_WORKER_ADDR=":${PUBLIRA_WORKER_PORT}" \
     PUBLIRA_EMAIL_RENDERER_URL="${PUBLIRA_EMAIL_RENDERER_URL}" \
     PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
     PUBLIRA_SECRET_ENCRYPTION_KEYS="${DEV_ENV_SECRET_ENCRYPTION_KEYS}" \
@@ -140,7 +140,7 @@ start_profile() {
     PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
-    "${REPO_ROOT}/server/bin/outbox-worker"
+    "${REPO_ROOT}/server/bin/worker"
   # The Node.js services run through the repository root's own scripts, which
   # are `turbo run`: the task graph is the only thing that builds the `dist/` of
   # the workspace packages they import, and a worktree that has never built them

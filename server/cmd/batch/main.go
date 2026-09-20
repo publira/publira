@@ -3,7 +3,7 @@
 // or purges a period of data, and exits.
 //
 // The jobs that have to act the moment a stored instant passes are not here:
-// they run as River periodic jobs inside outbox-worker (internal/tickerjobs).
+// they run as River periodic jobs inside the worker (internal/tickerjobs).
 package main
 
 import (
@@ -150,7 +150,7 @@ func usage() string {
 // processes, and falls back to the shared connection string when none is set.
 //
 // PUBLIRA_WORKER_DB_URL belongs to no chain here. The batches once shared it
-// with outbox-worker because both ran on the same connection, but it now names
+// with the worker because both ran on the same connection, but it now names
 // publira_outbox, a role that owns River's schema and that the daily batches
 // must not be able to alter. A batch left unconfigured falls through to
 // PUBLIRA_DB_URL, which is where it ran before the dedicated stats role existed.

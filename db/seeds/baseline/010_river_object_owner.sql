@@ -1,6 +1,6 @@
 -- Hand River's own objects to publira_outbox.
 --
--- outbox-worker applies River's schema with rivermigrate at startup, so on a
+-- The worker applies River's schema with rivermigrate at startup, so on a
 -- database it has always connected to as publira_outbox that role already owns
 -- river_job and the rest, and this file finds nothing to do.
 --
