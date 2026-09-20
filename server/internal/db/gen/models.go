@@ -729,6 +729,26 @@ type TenantAdminInvitation struct {
 	UpdatedAt  time.Time    `json:"updated_at"`
 }
 
+type TenantCommunityLimitOverride struct {
+	TenantID                             uuid.UUID     `json:"tenant_id"`
+	CommentPostLimitPerMinute            sql.NullInt32 `json:"comment_post_limit_per_minute"`
+	CommentPostLimitPerDay               sql.NullInt32 `json:"comment_post_limit_per_day"`
+	CommentReportLimitPerMinute          sql.NullInt32 `json:"comment_report_limit_per_minute"`
+	CommentReportLimitPerDay             sql.NullInt32 `json:"comment_report_limit_per_day"`
+	CommentDuplicateWindowMinutes        sql.NullInt32 `json:"comment_duplicate_window_minutes"`
+	EpisodeRatingLimitPerMinute          sql.NullInt32 `json:"episode_rating_limit_per_minute"`
+	EpisodeRatingLimitPerDay             sql.NullInt32 `json:"episode_rating_limit_per_day"`
+	ContactMessageLimitPerAccountPerHour sql.NullInt32 `json:"contact_message_limit_per_account_per_hour"`
+	ContactMessageLimitPerAccountPerDay  sql.NullInt32 `json:"contact_message_limit_per_account_per_day"`
+	ContactMessageLimitPerClientPerHour  sql.NullInt32 `json:"contact_message_limit_per_client_per_hour"`
+	ContactMessageLimitPerClientPerDay   sql.NullInt32 `json:"contact_message_limit_per_client_per_day"`
+	ViewerPreferencesLimitPerMinute      sql.NullInt32 `json:"viewer_preferences_limit_per_minute"`
+	ViewerPreferencesLimitPerDay         sql.NullInt32 `json:"viewer_preferences_limit_per_day"`
+	Revision                             int64         `json:"revision"`
+	CreatedAt                            time.Time     `json:"created_at"`
+	UpdatedAt                            time.Time     `json:"updated_at"`
+}
+
 type TenantConfig struct {
 	TenantID                       uuid.UUID      `json:"tenant_id"`
 	CopyrightText                  sql.NullString `json:"copyright_text"`

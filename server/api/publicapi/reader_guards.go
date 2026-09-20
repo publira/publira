@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"log/slog"
@@ -131,6 +132,60 @@ func (s *apiServer) readerPolicy(ctx context.Context) (platformpolicy.Policy, er
 	return policy, nil
 }
 
+// readerPolicyForTenant resolves the community half against the tenant's
+// stored override. The platform value is still the ceiling: an older override
+// can never become looser when an operator lowers that ceiling later.
+func (s *apiServer) readerPolicyForTenant(ctx context.Context, tenantID uuid.UUID) (platformpolicy.Policy, error) {
+	policy, err := s.readerPolicy(ctx)
+	if err != nil {
+		return platformpolicy.Policy{}, err
+	}
+	override, err := s.queriesFor(ctx).GetTenantCommunityLimitOverrides(ctx, tenantID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return policy, nil
+	}
+	if err != nil {
+		return platformpolicy.Policy{}, s.internalDBError(ctx, "failed to read tenant community limits", err, "tenant_id", tenantID.String())
+	}
+	min := func(a, b int) int {
+		if b < a {
+			return b
+		}
+		return a
+	}
+	if override.CommentPostLimitPerMinute.Valid {
+		policy.Community.CommentPost.PerMinute = min(policy.Community.CommentPost.PerMinute, int(override.CommentPostLimitPerMinute.Int32))
+		policy.Community.CommentPost.PerDay = min(policy.Community.CommentPost.PerDay, int(override.CommentPostLimitPerDay.Int32))
+	}
+	if override.CommentReportLimitPerMinute.Valid {
+		policy.Community.CommentReport.PerMinute = min(policy.Community.CommentReport.PerMinute, int(override.CommentReportLimitPerMinute.Int32))
+		policy.Community.CommentReport.PerDay = min(policy.Community.CommentReport.PerDay, int(override.CommentReportLimitPerDay.Int32))
+	}
+	if override.CommentDuplicateWindowMinutes.Valid {
+		d := time.Duration(override.CommentDuplicateWindowMinutes.Int32) * time.Minute
+		if d > policy.Community.DuplicateCommentWindow {
+			policy.Community.DuplicateCommentWindow = d
+		}
+	}
+	if override.EpisodeRatingLimitPerMinute.Valid {
+		policy.Community.EpisodeRating.PerMinute = min(policy.Community.EpisodeRating.PerMinute, int(override.EpisodeRatingLimitPerMinute.Int32))
+		policy.Community.EpisodeRating.PerDay = min(policy.Community.EpisodeRating.PerDay, int(override.EpisodeRatingLimitPerDay.Int32))
+	}
+	if override.ContactMessageLimitPerAccountPerHour.Valid {
+		policy.Community.ContactMessagePerAccount.PerHour = min(policy.Community.ContactMessagePerAccount.PerHour, int(override.ContactMessageLimitPerAccountPerHour.Int32))
+		policy.Community.ContactMessagePerAccount.PerDay = min(policy.Community.ContactMessagePerAccount.PerDay, int(override.ContactMessageLimitPerAccountPerDay.Int32))
+	}
+	if override.ContactMessageLimitPerClientPerHour.Valid {
+		policy.Community.ContactMessagePerClient.PerHour = min(policy.Community.ContactMessagePerClient.PerHour, int(override.ContactMessageLimitPerClientPerHour.Int32))
+		policy.Community.ContactMessagePerClient.PerDay = min(policy.Community.ContactMessagePerClient.PerDay, int(override.ContactMessageLimitPerClientPerDay.Int32))
+	}
+	if override.ViewerPreferencesLimitPerMinute.Valid {
+		policy.Community.ViewerPreferencesUpdate.PerMinute = min(policy.Community.ViewerPreferencesUpdate.PerMinute, int(override.ViewerPreferencesLimitPerMinute.Int32))
+		policy.Community.ViewerPreferencesUpdate.PerDay = min(policy.Community.ViewerPreferencesUpdate.PerDay, int(override.ViewerPreferencesLimitPerDay.Int32))
+	}
+	return policy, nil
+}
+
 // readerActionSubject names whose budget is being spent. The tenant is part of
 // it as well as the reader: a user row belongs to one tenant, but a limit that
 // left the tenant out would be one storefront's flood spending another's
@@ -153,7 +208,7 @@ func clientActionSubject(action readerAction, client string) string {
 // chargeReaderAction spends one of the reader's allowances for action, and
 // answers resource_exhausted once they are out of them.
 func (s *apiServer) chargeReaderAction(ctx context.Context, action readerAction, tenantID, userID uuid.UUID) error {
-	return s.chargeAction(ctx, action, readerActionSubject(action, tenantID, userID), "tenant_id", tenantID.String())
+	return s.chargeTenantAction(ctx, action, tenantID, readerActionSubject(action, tenantID, userID), "tenant_id", tenantID.String())
 }
 
 // chargeClientAction spends one of the calling client's allowances for action.
@@ -161,13 +216,13 @@ func (s *apiServer) chargeReaderAction(ctx context.Context, action readerAction,
 // It is charged alongside the reader's rather than instead of it: a sender who
 // is signed in spends both, so neither a borrowed account nor a fresh one taken
 // out for the purpose widens what one client can send.
-func (s *apiServer) chargeClientAction(ctx context.Context, action readerAction, req connect.AnyRequest) error {
+func (s *apiServer) chargeClientAction(ctx context.Context, action readerAction, tenantID uuid.UUID, req connect.AnyRequest) error {
 	client := requestmeta.ClientSource(req.Header(), req.Peer().Addr)
-	return s.chargeAction(ctx, action, clientActionSubject(action, client))
+	return s.chargeTenantAction(ctx, action, tenantID, clientActionSubject(action, client))
 }
 
-func (s *apiServer) chargeAction(ctx context.Context, action readerAction, subject string, logAttrs ...any) error {
-	policy, err := s.readerPolicy(ctx)
+func (s *apiServer) chargeTenantAction(ctx context.Context, action readerAction, tenantID uuid.UUID, subject string, logAttrs ...any) error {
+	policy, err := s.readerPolicyForTenant(ctx, tenantID)
 	if err != nil {
 		return err
 	}
@@ -222,8 +277,8 @@ func duplicateCommentKey(tenantID, userID, episodeID uuid.UUID, body string) str
 // A refusal is already_exists rather than the rate limit's resource_exhausted:
 // the reader has not run out of anything, and what they meant to say is on the
 // page already.
-func (s *apiServer) claimCommentBody(ctx context.Context, key string) error {
-	policy, err := s.readerPolicy(ctx)
+func (s *apiServer) claimCommentBody(ctx context.Context, tenantID uuid.UUID, key string) error {
+	policy, err := s.readerPolicyForTenant(ctx, tenantID)
 	if err != nil {
 		return err
 	}

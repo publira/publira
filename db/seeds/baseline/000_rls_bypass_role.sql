@@ -173,6 +173,11 @@ $$;
 -- holds no secret, so both roles read it; neither may write it.
 GRANT SELECT ON platform_policy_config TO publira_public, publira_admin;
 
+-- The storefront resolves each tenant's stricter community limits alongside
+-- the platform policy. RLS confines the tenant-console role to its own row.
+GRANT SELECT ON tenant_community_limit_overrides TO publira_public;
+GRANT SELECT, INSERT, UPDATE ON tenant_community_limit_overrides TO publira_admin;
+
 -- The tenant console tells staff when a withdrawn comment is deleted, and the
 -- purge batches delete by the same period, so both resolve a tenant's retention
 -- from the platform defaults. They hold no secret, and neither role may write
@@ -235,4 +240,3 @@ GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
 -- would let a ticker job rewrite any announcement of any tenant.
 GRANT UPDATE (pinned) ON announcements TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;
-

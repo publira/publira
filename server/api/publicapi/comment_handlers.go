@@ -501,7 +501,7 @@ func (s *apiServer) PostEpisodeComment(
 	// The reader takes their place for this body before it is written, so two
 	// requests carrying the same text cannot both find nothing to repeat.
 	duplicateKey := duplicateCommentKey(tenant.ID, user.ID, episode.ID, body)
-	if err := s.claimCommentBody(ctx, duplicateKey); err != nil {
+	if err := s.claimCommentBody(ctx, tenant.ID, duplicateKey); err != nil {
 		return nil, err
 	}
 
