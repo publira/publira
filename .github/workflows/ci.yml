@@ -365,7 +365,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup / pnpm
-        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
 
       - name: Validate / Lint and Format
         run: pnpm check
@@ -393,7 +393,7 @@ jobs:
           version: ${{ env.TASK_VERSION }}
 
       - name: Setup / pnpm
-        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           # Dependencies are installed by `task deps`, which also runs
           # `task server:deps`. Keep a single install path per job.
@@ -607,7 +607,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup / pnpm
-        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
 
       - name: Build / Packages
         run: pnpm build --filter "./packages/*"
@@ -797,7 +797,7 @@ jobs:
           version: ${{ env.TASK_VERSION }}
 
       - name: Setup / pnpm
-        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           # Dependencies are installed by `task deps`, which also runs
           # `task server:deps`. Keep a single install path per job.
@@ -892,7 +892,7 @@ jobs:
           version: ${{ env.TASK_VERSION }}
 
       - name: Setup / pnpm
-        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           # Dependencies are installed by `task deps`, which also runs
           # `task server:deps`. Keep a single install path per job.
@@ -1009,7 +1009,7 @@ jobs:
           version: ${{ env.TASK_VERSION }}
 
       - name: Setup / pnpm
-        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           # Dependencies are installed by `task deps`, which also runs
           # `task server:deps`. Keep a single install path per job.
