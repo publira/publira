@@ -341,18 +341,7 @@ func (s *adminServer) UpsertTenantTheme(
 		return nil, err
 	}
 
-	if s.reval != nil {
-		tags := themeRevalidateTags(tenant.ID.String())
-		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
-			s.logger.Warn("failed to request next revalidate after theme upsert",
-				"tenant_id", tenant.ID.String(),
-				"tenant_public_id", tenant.PublicID,
-				"tenant_domain", tenant.Domain,
-				"revalidate_tags", tags,
-				"error", err,
-			)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, themeRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.UpsertTenantThemeResponse{Theme: theme}), nil
 }
@@ -513,22 +502,13 @@ func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmod
 		return nil, err
 	}
 
+	owed, _ := s.recordRevalidation(txCtx, tenant.ID, themeBrandingRevalidateTags(tenant.ID.String()))
+
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit tenant "+image.name+" change", err, "tenant_id", tenant.ID.String())
 	}
 
-	if s.reval != nil {
-		tags := themeBrandingRevalidateTags(tenant.ID.String())
-		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
-			s.logger.Warn("failed to request next revalidate after tenant "+image.name+" change",
-				"tenant_id", tenant.ID.String(),
-				"tenant_public_id", tenant.PublicID,
-				"tenant_domain", tenant.Domain,
-				"revalidate_tags", tags,
-				"error", err,
-			)
-		}
-	}
+	s.reval.Send(ctx, owed)
 
 	return theme, nil
 }

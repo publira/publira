@@ -23,6 +23,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
@@ -711,9 +712,16 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, err
 	}
+	// The drop is recorded in the transaction that publishes the series, so a
+	// rollback takes it back and a crash after the commit still owes it.
+	var owed revalidate.Owed
+	if publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC()) {
+		owed, _ = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), base.PublicID))
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
@@ -725,11 +733,6 @@ func (s *adminServer) CreateSeries(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
-	}
-	if publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC()) && s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, seriesRevalidateTags(tenant.ID.String(), base.PublicID)); err != nil {
-			s.logger.Warn("failed to request next revalidate after series create", "tenant_public_id", tenant.PublicID, "series_public_id", base.PublicID, "error", err)
-		}
 	}
 	created, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: base.PublicID})
 	if err != nil {
@@ -911,9 +914,14 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, err
 	}
+	var owed revalidate.Owed
+	if current.IsPublished || (publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC())) {
+		owed, _ = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), current.PublicID))
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 	updated, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get updated series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
@@ -929,13 +937,6 @@ func (s *adminServer) UpdateSeries(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
-	}
-	if s.reval != nil {
-		if current.IsPublished || (publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC())) {
-			if err := s.reval.RevalidateTags(ctx, seriesRevalidateTags(tenant.ID.String(), current.PublicID)); err != nil {
-				s.logger.Warn("failed to request next revalidate after series update", "tenant_public_id", tenant.PublicID, "series_public_id", current.PublicID, "error", err)
-			}
-		}
 	}
 	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(updated)
 	if err != nil {

@@ -97,10 +97,12 @@ func ServiceNames() []string {
 type Config struct {
 	// DB is the ticker role's own pool. Every query below runs on it.
 	DB *sql.DB
-	// Revalidate drops the Next.js cache tags each job answers for. A nil
-	// client makes every drop a no-op, which is what a deployment without a
-	// revalidate token gets.
-	Revalidate *revalidate.Client
+	// Revalidate records the Next.js cache tags each job answers for. A nil
+	// requester makes every drop a no-op, which is what a deployment without a
+	// revalidate token gets. These jobs run inside the outbox worker's own
+	// process, so the record is all they do: the drain that sends it is seconds
+	// away, and an attempt from here would only send the same tags twice.
+	Revalidate *revalidate.Requester
 	Logger     *slog.Logger
 
 	PublishInterval time.Duration

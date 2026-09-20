@@ -1677,6 +1677,17 @@ type Querier interface {
 	// the same budget and every window ends here.
 	MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventRetryParams) (OutboxEvent, error)
+	// Complete an event whose producer did the work itself before the
+	// worker ever claimed it. The cache invalidation is the one that does:
+	// the API server attempts the drop as soon as the write commits, and
+	// marks the row done so the worker does not send the same tags a
+	// second time. A row already claimed matches nothing here and is left
+	// to the worker, which is the honest outcome of that race.
+	//
+	// No token is dropped from payload: this statement is only for an
+	// event whose payload holds no secret. An auth-mail event reaches its
+	// terminal update through MarkOutboxEventDone, which strips it.
+	MarkPendingOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	MarkPlatformNotificationAsRead(ctx context.Context, arg MarkPlatformNotificationAsReadParams) (PlatformNotificationRead, error)
 	MarkPlatformUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error

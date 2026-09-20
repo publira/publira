@@ -146,9 +146,11 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episode credits after replacing them", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
+	owed, _ := s.recordRevalidation(txCtx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit replace episode credits", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -161,11 +163,6 @@ func (s *adminServer) ReplaceEpisodeCredits(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
-	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after episode credits replace", "tenant_public_id", tenant.PublicID, "episode_public_id", episode.PublicID, "error", err)
-		}
 	}
 
 	return connect.NewResponse(&publiraadminv1.ReplaceEpisodeCreditsResponse{

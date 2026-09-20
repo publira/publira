@@ -1,6 +1,11 @@
-// Package revalidate sends Next.js cache tags to the internal revalidation
-// route of every web app, from api-server and from the scheduled publication
-// batch.
+// Package revalidate records the Next.js cache tags a write leaves stale and
+// sends them to the internal revalidation route of every web app.
+//
+// A writer goes through [Requester]: the tags are written down as an outbox
+// event first, so nothing after that point can lose the drop, and the immediate
+// attempt on top of it never makes a caller wait on a web app. [Client] is the
+// sender underneath, held by the outbox handler that retries what the immediate
+// attempt could not finish.
 //
 // The three destinations are private network addresses
 // (PUBLIRA_WEB_*_INTERNAL_URL), never the public domain a browser uses and

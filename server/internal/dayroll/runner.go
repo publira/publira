@@ -33,10 +33,10 @@ var tracer = otel.Tracer("github.com/publira/publira/server/internal/dayroll")
 // tenantday.List satisfies it once its database handle is bound.
 type Lister func(ctx context.Context) ([]tenantday.Tenant, error)
 
-// Revalidator drops Next.js cache tags. *revalidate.Client satisfies it, and a
-// nil client of that type is a no-op.
+// Revalidator records Next.js cache tags as owed. *revalidate.Requester
+// satisfies it, and a nil requester of that type is a no-op.
 type Revalidator interface {
-	RevalidateTags(ctx context.Context, tags []string) error
+	RevalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) error
 }
 
 // Runner drops each tenant's day-dependent caches when that tenant's calendar
@@ -127,11 +127,10 @@ func (r *Runner) rollTenant(ctx context.Context, tenant tenantday.Tenant, now ti
 	}
 
 	if r.reval != nil {
-		// Recorded only once the drop went through, so a failed revalidation
-		// is retried on the next pass instead of leaving the site on the day
-		// before.
-		if err := r.reval.RevalidateTags(ctx, RevalidateTags(tenant.ID)); err != nil {
-			r.logger.WarnContext(ctx, "failed to revalidate after a tenant's day turned",
+		// Noted only once the drop is owed, so a failed record is retried on
+		// the next pass instead of leaving the site on the day before.
+		if err := r.reval.RevalidateTags(ctx, tenant.ID, RevalidateTags(tenant.ID)); err != nil {
+			r.logger.WarnContext(ctx, "failed to record a revalidation after a tenant's day turned",
 				"tenant_id", tenant.ID.String(),
 				"date", date,
 				"error", err,

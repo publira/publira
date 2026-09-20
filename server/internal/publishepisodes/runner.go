@@ -41,7 +41,7 @@ var tracer = otel.Tracer("github.com/publira/publira/server/internal/publishepis
 type Runner struct {
 	db         *sql.DB
 	queries    *dbmodels.Queries
-	reval      *revalidate.Client
+	reval      *revalidate.Requester
 	logger     *slog.Logger
 	maxRetries int
 	// followerPageSize bounds one recipient query. New sets it to
@@ -72,7 +72,7 @@ type episodePublishFailedPayload struct {
 }
 
 // New constructs a worker that publishes due episodes against db.
-func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Client, logger *slog.Logger, maxRetries int) *Runner {
+func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Requester, logger *slog.Logger, maxRetries int) *Runner {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -435,23 +435,18 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 		_ = tx.Rollback()
 		return fmt.Errorf("notify followers: %w", err)
 	}
+	// The drop rides the transaction that promotes the listing: a run that dies
+	// between the two would otherwise leave an episode published behind a cache
+	// still answering with the schedule.
+	if _, err := r.reval.Record(ctx, qtx, row.TenantID, []string{
+		fmt.Sprintf("tenant:%s:series:detail", row.TenantID.String()),
+	}); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("record cache invalidation: %w", err)
+	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit transaction: %w", err)
-	}
-
-	if r.reval != nil {
-		tenantID := row.TenantID.String()
-		tags := []string{
-			fmt.Sprintf("tenant:%s:series:detail", tenantID),
-		}
-		if err := r.reval.RevalidateTags(ctx, tags); err != nil {
-			r.logger.WarnContext(ctx, "failed to revalidate after episode publish",
-				"episode_id", row.EpisodeID,
-				"tenant_id", tenantID,
-				"error", err,
-			)
-		}
 	}
 
 	return nil

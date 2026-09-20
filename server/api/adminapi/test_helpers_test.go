@@ -21,6 +21,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -157,6 +158,23 @@ func (r *revalidateRecorder) requestedTags() []string {
 	unique := slices.Clone(r.tags)
 	slices.Sort(unique)
 	return slices.Compact(unique)
+}
+
+// waitForTags waits for the tags a write recorded to arrive. The attempt is
+// made off the request now, so a handler can answer before the apps have been
+// asked anything.
+func (r *revalidateRecorder) waitForTags(t *testing.T, want []string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	var got []string
+	for time.Now().Before(deadline) {
+		got = r.requestedTags()
+		if slices.Equal(got, want) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("revalidated tags = %v, want %v", got, want)
 }
 
 // newRevalidateRecorder points all three revalidate targets at one recording
@@ -361,6 +379,31 @@ func assertAdminMediaToken(t *testing.T, imageURL string, tenantID, episodeID uu
 func expectAdminAuditLogInsert(mock sqlmock.Sqlmock) {
 	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+// expectRevalidationRecord expects the outbox row a write records before the
+// tags it owes are sent.
+func expectRevalidationRecord(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: InsertOutboxEvent :one\n")).
+		WithArgs(
+			sqlmock.AnyArg(),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeNextCacheRevalidation,
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+		).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "event_type", "payload", "idempotency_key",
+			"status", "attempts", "available_at", "last_error", "created_at", "updated_at",
+		}).AddRow(
+			uuid.Must(uuid.NewV7()),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeNextCacheRevalidation,
+			json.RawMessage(`{"tags":[]}`),
+			"next_cache_revalidation:"+uuid.Must(uuid.NewV7()).String(),
+			"pending", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(),
+		))
 }
 
 func expectPublicIDAttempt(mock sqlmock.Sqlmock) {

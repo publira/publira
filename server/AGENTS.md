@@ -82,6 +82,16 @@ A public RPC a **guest** may write through charges a second action keyed on the 
 
 No lint covers this — nothing can tell an RPC that writes on a reader's behalf from one that does not, or one that asks for a password from one that does not.
 
+## A cache invalidation is recorded before anything sends it
+
+A write that leaves a Next.js cache entry stale goes through `revalidate.Requester`, never through `revalidate.Client` directly: the client is the sender, and the two places that drive it are the requester's own immediate attempt and the outbox handler behind it. `Record` writes the tags down as a `next_cache_revalidation` outbox event, on the querier of the write it answers for, so a handler inside a transaction commits the debt with the row it is about and a rollback takes both. `Send` then attempts the drop on a context of its own, off the caller's goroutine, and marks the event done once every app has answered.
+
+The order is the whole rule: record first, on the write's own querier, and send only once that write has committed. A send before the commit fills the cache back up with the answer the write is replacing, and a record after it is a drop a crash can lose — which is the state this replaced, where the row committed and an HTTP call nothing remembered followed it.
+
+A caller that marks work done on the strength of the invalidation — the free window boundaries, the day roll — keys that on the record rather than on the send, because the record is what guarantees the drop will happen. A caller inside the `worker` process itself records and stops there: the drain that sends it is seconds away, and `publira_ticker` may insert an outbox event and not update one, so an attempt from there could not be marked done and would be sent twice.
+
+No lint covers this. `revalidate.Client` has to stay exported for the worker's handler, so nothing can tell a handler that took one from the worker that owns it.
+
 ## A form that mails an address charges the mail guard
 
 An RPC that queues mail for an address the request has not authenticated spends two allowances first, through `internal/mailguard`: one held by the mailbox, one held by the request's origin. `CreateUser`, `RequestEmailVerification`, `RequestPasswordReset` and `RequestEmailChange` all do, on every API surface that has them, and a new form of the same shape is a `Guard.Allow` call with the tenant's id as its scope — `mailguard.PlatformScope` for the console that has no tenant.

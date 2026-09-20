@@ -33,12 +33,14 @@ func (s *stubQueries) ClearAnnouncementPin(_ context.Context, id uuid.UUID) erro
 }
 
 type stubRevalidator struct {
-	calls [][]string
-	err   error
+	calls   [][]string
+	tenants []uuid.UUID
+	err     error
 }
 
-func (s *stubRevalidator) RevalidateTags(_ context.Context, tags []string) error {
+func (s *stubRevalidator) RevalidateTags(_ context.Context, tenantID uuid.UUID, tags []string) error {
 	s.calls = append(s.calls, tags)
+	s.tenants = append(s.tenants, tenantID)
 	return s.err
 }
 

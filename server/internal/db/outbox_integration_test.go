@@ -57,6 +57,46 @@ func insertTenantOutboxEvent(
 	return event
 }
 
+// The immediate attempt an API server makes completes the row it recorded, and
+// only while nothing else holds it: a drain that claimed it first is already
+// sending the same tags, and marking it done underneath that worker would
+// strand the row it is about to finish.
+func TestMarkPendingOutboxEventDoneLeavesAClaimedEventAlone(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "OUTBOXTEN010", "outbox-done.example.com", "admin-outbox-done.example.com", "Outbox Done Tenant")
+	queries := dbmodels.New(pg.DB)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+
+	pending := insertTenantOutboxEvent(t, ctx, queries, tenantID, "next_cache_revalidation:"+uuid.Must(uuid.NewV7()).String(), now)
+	done, err := queries.MarkPendingOutboxEventDone(ctx, pending.ID)
+	if err != nil {
+		t.Fatalf("MarkPendingOutboxEventDone: %v", err)
+	}
+	if done.Status != "done" {
+		t.Fatalf("status = %q, want done", done.Status)
+	}
+
+	claimed := insertTenantOutboxEvent(t, ctx, queries, tenantID, "next_cache_revalidation:"+uuid.Must(uuid.NewV7()).String(), now)
+	if _, err := queries.ClaimPendingOutboxEvents(ctx, 100); err != nil {
+		t.Fatalf("ClaimPendingOutboxEvents: %v", err)
+	}
+	if _, err := queries.MarkPendingOutboxEventDone(ctx, claimed.ID); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("MarkPendingOutboxEventDone on a claimed event = %v, want sql.ErrNoRows", err)
+	}
+	still, err := queries.GetOutboxEvent(ctx, claimed.ID)
+	if err != nil {
+		t.Fatalf("GetOutboxEvent: %v", err)
+	}
+	if still.Status != "processing" {
+		t.Fatalf("status = %q, want the claim left in place", still.Status)
+	}
+}
+
 func TestInsertOutboxEventIgnoresDuplicateIdempotencyKey(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

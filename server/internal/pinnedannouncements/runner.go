@@ -30,11 +30,12 @@ type Queries interface {
 	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
 }
 
-// Revalidator drops Next.js cache tags. *revalidate.Client satisfies it, and a
-// nil client of that type is a no-op, so a deployment with revalidation turned
-// off still clears the flags instead of collecting them.
+// Revalidator records Next.js cache tags as owed. *revalidate.Requester
+// satisfies it, and a nil requester of that type is a no-op, so a deployment
+// with revalidation turned off still clears the flags instead of collecting
+// them.
 type Revalidator interface {
-	RevalidateTags(ctx context.Context, tags []string) error
+	RevalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) error
 }
 
 // Runner clears every pinned window that has closed.
@@ -97,14 +98,14 @@ func (r *Runner) RunOnce(ctx context.Context) {
 	}
 }
 
-// applyTenant drops one tenant's cached banner and then clears the flags that
-// drop answered for. The order matters: a flag cleared before the cache is
-// dropped would never be retried, and the site would keep showing a banner
-// whose window has closed.
+// applyTenant records one tenant's drop and then clears the flags that drop
+// answers for. The order matters: a flag cleared before the drop is owed would
+// never be retried, and the site would keep showing a banner whose window has
+// closed.
 func (r *Runner) applyTenant(ctx context.Context, tenantID uuid.UUID, rows []dbmodels.ListPinnedAnnouncementsDueRow) {
 	if r.reval != nil {
-		if err := r.reval.RevalidateTags(ctx, RevalidateTags(tenantID)); err != nil {
-			r.logger.WarnContext(ctx, "failed to revalidate after a pinned window closed",
+		if err := r.reval.RevalidateTags(ctx, tenantID, RevalidateTags(tenantID)); err != nil {
+			r.logger.WarnContext(ctx, "failed to record a revalidation after a pinned window closed",
 				"tenant_id", tenantID.String(),
 				"announcements", len(rows),
 				"error", err,

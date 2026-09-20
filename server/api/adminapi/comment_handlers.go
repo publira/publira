@@ -449,13 +449,8 @@ func commentAuditEntry(
 // entry expires, and failing the action the moderator already performed would
 // be worse.
 func (s *adminServer) revalidateCommentList(ctx context.Context, tenantID uuid.UUID, episodePublicID string) {
-	if s.reval == nil {
-		return
-	}
 	tag := fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
-	if err := s.reval.RevalidateTags(ctx, []string{tag}); err != nil {
-		s.logger.Warn("failed to request next revalidate after a comment moderation action", "tenant_id", tenantID.String(), "episode_public_id", episodePublicID, "error", err)
-	}
+	s.revalidateTags(ctx, tenantID, []string{tag})
 }
 
 // recordCommentAction writes that row the ordinary way: best-effort, so a

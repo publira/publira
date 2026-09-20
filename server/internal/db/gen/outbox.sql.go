@@ -356,6 +356,46 @@ func (q *Queries) MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventR
 	return i, err
 }
 
+const markPendingOutboxEventDone = `-- name: MarkPendingOutboxEventDone :one
+UPDATE outbox_events
+SET
+    status = 'done',
+    last_error = NULL,
+    updated_at = NOW()
+WHERE id = $1
+    AND status = 'pending'
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+`
+
+// Complete an event whose producer did the work itself before the
+// worker ever claimed it. The cache invalidation is the one that does:
+// the API server attempts the drop as soon as the write commits, and
+// marks the row done so the worker does not send the same tags a
+// second time. A row already claimed matches nothing here and is left
+// to the worker, which is the honest outcome of that race.
+//
+// No token is dropped from payload: this statement is only for an
+// event whose payload holds no secret. An auth-mail event reaches its
+// terminal update through MarkOutboxEventDone, which strips it.
+func (q *Queries) MarkPendingOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
+	row := q.db.QueryRowContext(ctx, markPendingOutboxEventDone, id)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.Payload,
+		&i.IdempotencyKey,
+		&i.Status,
+		&i.Attempts,
+		&i.AvailableAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const recoverStaleProcessingAuthMailOutboxEvents = `-- name: RecoverStaleProcessingAuthMailOutboxEvents :many
 UPDATE outbox_events
 SET

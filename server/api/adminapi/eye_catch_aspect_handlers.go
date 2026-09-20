@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/imageproc"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
@@ -206,16 +207,16 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	if err := s.queriesFor(txCtx).TouchSeriesImage(txCtx, imageID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to touch series image", err, "tenant_id", tenant.ID.String(), "series_image_id", imageID.String())
 	}
+	var owed revalidate.Owed
+	if current.IsPublished {
+		owed, _ = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), current.PublicID))
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit series eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "series", current.PublicID, "series_eye_catch_aspect_image_uploaded", aspect.VariantType)
-	if s.reval != nil && current.IsPublished {
-		if revalErr := s.reval.RevalidateTags(ctx, seriesRevalidateTags(tenant.ID.String(), current.PublicID)); revalErr != nil {
-			s.logger.Warn("failed to request next revalidate after series eye catch aspect upload", "tenant_public_id", tenant.PublicID, "series_public_id", current.PublicID, "error", revalErr)
-		}
-	}
 
 	series, err := s.seriesWithEyeCatchVariants(ctx, tenant.ID, req.Msg.PublicId)
 	if err != nil {
@@ -355,16 +356,13 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	if err := s.queriesFor(txCtx).TouchLabelImage(txCtx, imageID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to touch label image", err, "tenant_id", tenant.ID.String(), "label_image_id", imageID.String())
 	}
+	owed, _ := s.recordRevalidation(txCtx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit label eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "label", current.PublicID, "label_eye_catch_aspect_image_uploaded", aspect.VariantType)
-	if s.reval != nil {
-		if revalErr := s.reval.RevalidateTags(ctx, labelRevalidateTags(tenant.ID.String())); revalErr != nil {
-			s.logger.Warn("failed to request next revalidate after label eye catch aspect upload", "tenant_public_id", tenant.PublicID, "label_public_id", current.PublicID, "error", revalErr)
-		}
-	}
 
 	label, err := s.labelWithEyeCatchVariants(ctx, tenant.ID, req.Msg.PublicId)
 	if err != nil {

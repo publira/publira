@@ -91,15 +91,6 @@ func (s *adminServer) recordGenreChange(ctx context.Context, tenantID uuid.UUID,
 	})
 }
 
-func (s *adminServer) revalidateGenres(ctx context.Context, tenant dbmodels.Tenant, action string) {
-	if s.reval == nil {
-		return
-	}
-	if err := s.reval.RevalidateTags(ctx, genreRevalidateTags(tenant.ID.String())); err != nil {
-		s.logger.Warn("failed to request next revalidate after genre change", "tenant_public_id", tenant.PublicID, "action", action, "error", err)
-	}
-}
-
 // genrePageRow is one row of a genre page, shared by the ascending and
 // descending keyset queries so the handler reads a single shape.
 type genrePageRow struct {
@@ -283,7 +274,7 @@ func (s *adminServer) CreateGenre(
 	}
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_created", created.PublicID)
-	s.revalidateGenres(ctx, tenant, "create")
+	s.revalidateTags(ctx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.CreateGenreResponse{
 		Genre: &publirattypesv1.Genre{PublicId: created.PublicID, Name: created.Name, Slug: created.Slug},
@@ -330,7 +321,7 @@ func (s *adminServer) UpdateGenre(
 	}
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_updated", current.PublicID)
-	s.revalidateGenres(ctx, tenant, "update")
+	s.revalidateTags(ctx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.UpdateGenreResponse{
 		Genre: &publirattypesv1.Genre{PublicId: current.PublicID, Name: normalized.name, Slug: normalized.slug},
@@ -390,12 +381,13 @@ func (s *adminServer) ReorderGenres(
 		}
 		genres = append(genres, &publirattypesv1.Genre{PublicId: row.PublicID, Name: row.Name, Slug: row.Slug})
 	}
+	owed, _ := s.recordRevalidation(txCtx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit reorder genres", err, "tenant_id", tenant.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genres_reordered", tenant.PublicID)
-	s.revalidateGenres(ctx, tenant, "reorder")
 
 	return connect.NewResponse(&publiraadminv1.ReorderGenresResponse{Genres: genres}), nil
 }
@@ -433,7 +425,7 @@ func (s *adminServer) DeleteGenre(
 	}
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_deleted", current.PublicID)
-	s.revalidateGenres(ctx, tenant, "delete")
+	s.revalidateTags(ctx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.DeleteGenreResponse{}), nil
 }

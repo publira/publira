@@ -72,11 +72,7 @@ func (s *adminServer) UpdateTenantTimezone(
 		return nil, s.internalDBError(ctx, "failed to update tenant timezone", err, "tenant_id", tenant.ID.String())
 	}
 
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenantTimezoneRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after tenant timezone update", "tenant_public_id", tenant.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, tenantTimezoneRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.UpdateTenantTimezoneResponse{
 		Timezone: tenanttz.Resolve(updated.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
@@ -136,11 +132,7 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 		return nil, s.internalDBError(ctx, "failed to update tenant default locale", err, "tenant_id", tenant.ID.String())
 	}
 
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenantDefaultLocaleRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after tenant default locale update", "tenant_public_id", tenant.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, tenantDefaultLocaleRevalidateTags(tenant.ID.String()))
 
 	// The stored row rather than the request: what the console renders next is
 	// what the update actually persisted.
@@ -272,11 +264,7 @@ func (s *adminServer) UpdateTenantCommentSettings(
 		return nil, s.internalDBError(ctx, "failed to update tenant comment settings", err, "tenant_id", tenant.ID.String())
 	}
 
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenantCommentSettingsRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after tenant comment settings update", "tenant_public_id", tenant.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, tenantCommentSettingsRevalidateTags(tenant.ID.String()))
 
 	// The stored row rather than the request: what the console renders next is
 	// what the update actually persisted.
@@ -367,11 +355,7 @@ func (s *adminServer) UpdateTenantAgeVerification(
 		return nil, s.internalDBError(ctx, "failed to update tenant age verification", err, "tenant_id", tenant.ID.String())
 	}
 
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenantAgeVerificationRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after tenant age verification update", "tenant_public_id", tenant.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, tenantAgeVerificationRevalidateTags(tenant.ID.String()))
 
 	// The stored row rather than the request: what the console renders next is
 	// what the update actually persisted.

@@ -42,12 +42,14 @@ func (s *stubQueries) MarkEpisodeFreeWindowEndRevalidated(_ context.Context, id 
 }
 
 type stubRevalidator struct {
-	calls [][]string
-	err   error
+	calls   [][]string
+	tenants []uuid.UUID
+	err     error
 }
 
-func (s *stubRevalidator) RevalidateTags(_ context.Context, tags []string) error {
+func (s *stubRevalidator) RevalidateTags(_ context.Context, tenantID uuid.UUID, tags []string) error {
 	s.calls = append(s.calls, tags)
+	s.tenants = append(s.tenants, tenantID)
 	return s.err
 }
 
@@ -83,9 +85,12 @@ func TestRunOnceRevalidatesOncePerTenantAndMarksEveryBoundary(t *testing.T) {
 		RevalidateTags(tenantA)[0]: true,
 		RevalidateTags(tenantB)[0]: true,
 	}
-	for _, call := range reval.calls {
+	for index, call := range reval.calls {
 		if len(call) != 1 || !wantTags[call[0]] {
 			t.Fatalf("revalidated %v, want one of the two tenant tags", call)
+		}
+		if call[0] != RevalidateTags(reval.tenants[index])[0] {
+			t.Fatalf("revalidated %v under tenant %s, want the tenant the tag names", call, reval.tenants[index])
 		}
 	}
 
