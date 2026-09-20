@@ -13,7 +13,7 @@ bootstrap_log "=== phase 2: task setup ==="
 # `task setup` = deps + mobile:deps + db:setup + storage:seed. Without a Flutter SDK (CI hosts
 # other than Test / Mobile) run the halves that do not need it; mobile deps
 # are covered by the Test / Mobile job.
-if command -v flutter >/dev/null 2>&1; then
+if command -v flutter > /dev/null 2>&1; then
   bootstrap_log "running task setup"
   (cd "${REPO_ROOT}" && task setup)
 else
@@ -40,12 +40,12 @@ assert_equals "seed tenant domain=localhost" "Seed Tenant" \
 
 snapshot="$(seed_snapshot)"
 bootstrap_log "seed row counts:"
-sed 's/^/  /' <<<"${snapshot}"
+sed 's/^/  /' <<< "${snapshot}"
 while IFS='=' read -r table count; do
   if [[ "${count}" -lt 1 ]]; then
     bootstrap_fail "dev seed left ${table} empty"
   fi
-done <<<"${snapshot}"
+done <<< "${snapshot}"
 
 # Re-running the seed must neither fail nor duplicate rows (db/seeds/README.md).
 bootstrap_log "re-applying the dev seed (idempotency)"

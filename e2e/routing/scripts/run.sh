@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-read -ra proxies <<<"${PUBLIRA_ROUTING_PROXY:-traefik nginx caddy}"
+read -ra proxies <<< "${PUBLIRA_ROUTING_PROXY:-traefik nginx caddy}"
 
 for proxy in "${proxies[@]}"; do
   PUBLIRA_ROUTING_PROXY="${proxy}" bash "${SCRIPTS_DIR}/run-one.sh"

@@ -24,7 +24,7 @@ if [[ -z "${episode_public_id}" ]]; then
   exit 1
 fi
 
-if ! command -v aws >/dev/null 2>&1; then
+if ! command -v aws > /dev/null 2>&1; then
   e2e_err "aws CLI is required to upload viewer page fixtures"
   exit 1
 fi
@@ -58,7 +58,7 @@ if [[ -z "${rows_text}" ]]; then
   exit 1
 fi
 
-mapfile -t rows <<<"${rows_text}"
+mapfile -t rows <<< "${rows_text}"
 
 for row in "${rows[@]}"; do
   display_order="${row%% *}"

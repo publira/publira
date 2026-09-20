@@ -16,7 +16,7 @@ image_readyz_url() {
 }
 
 image_is_ready() {
-  curl -sS --max-time 3 "$(image_readyz_url)" 2>/dev/null |
+  curl -sS --max-time 3 "$(image_readyz_url)" 2> /dev/null |
     grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'
 }
 
@@ -52,7 +52,7 @@ start_image_server() {
       AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}" \
       AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}" \
       "${image_bin}"
-  ) >>"${LOG_DIR}/image-server.log" 2>&1 &
+  ) >> "${LOG_DIR}/image-server.log" 2>&1 &
   write_pid "image-server" $!
 }
 

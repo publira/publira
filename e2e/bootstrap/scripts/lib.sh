@@ -4,7 +4,7 @@
 # The check runs the documented developer workflow end to end against a fresh
 # Compose project and an empty Postgres volume:
 #   up → task setup → DB restart → task dev → readiness of every service.
-# shellcheck shell=bash
+# shellcheck shell=bash disable=SC2034 # read by scripts that source this file
 
 set -euo pipefail
 
@@ -125,7 +125,7 @@ wait_until_stopped() {
 }
 
 db_container_id() {
-  compose ps -q db 2>/dev/null || true
+  compose ps -q db 2> /dev/null || true
 }
 
 # Single-value query against the bootstrap database as the superuser.
@@ -152,7 +152,7 @@ seed_snapshot() {
 # Clients currently attached to the bootstrap Redis (includes the redis-cli
 # that runs this query).
 redis_connected_clients() {
-  compose exec -T redis redis-cli info clients 2>/dev/null |
+  compose exec -T redis redis-cli info clients 2> /dev/null |
     tr -d '\r' | sed -n 's/^connected_clients:\([0-9]\{1,\}\)$/\1/p'
 }
 
@@ -168,7 +168,7 @@ assert_equals() {
 # `localhost` (not 127.0.0.1) for the Next.js apps so the Host header matches
 # the seed tenant domain.
 bootstrap_probes() {
-  cat <<'EOF'
+  cat << 'EOF'
 api-server/edge	http://127.0.0.1:8000/readyz	json
 api-server/internal	http://127.0.0.1:8100/readyz	json
 image-server	http://127.0.0.1:8200/readyz	json
@@ -184,15 +184,15 @@ EOF
 # Without either tool every port check would silently answer "free", turning
 # the preflight and the listen assertion into no-ops.
 require_port_tool() {
-  command -v ss >/dev/null 2>&1 || command -v netstat >/dev/null 2>&1 ||
+  command -v ss > /dev/null 2>&1 || command -v netstat > /dev/null 2>&1 ||
     bootstrap_fail "neither ss nor netstat is available; port checks cannot run"
 }
 
 port_in_use() {
   local port="$1"
   require_port_tool
-  ss -ltn 2>/dev/null | grep -qE ":${port}\\b" ||
-    netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"
+  ss -ltn 2> /dev/null | grep -qE ":${port}\\b" ||
+    netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"
 }
 
 # Compose state + service logs, for a failed run (CI uploads LOG_DIR).
@@ -202,8 +202,8 @@ collect_diagnostics() {
 
   # `--all`, so a service that exited — the state a failure is most likely to
   # be about — is named instead of being left out of the listing.
-  compose ps --all >"${LOG_DIR}/compose-ps.log" 2>&1 || true
-  compose logs --no-color --tail 200 >"${LOG_DIR}/compose.log" 2>&1 || true
+  compose ps --all > "${LOG_DIR}/compose-ps.log" 2>&1 || true
+  compose logs --no-color --tail 200 > "${LOG_DIR}/compose.log" 2>&1 || true
 
   local f
   for f in "${LOG_DIR}"/*.log; do

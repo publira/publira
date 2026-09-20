@@ -71,9 +71,9 @@ mobile_bind_device_ports() {
   esac
   # A name adb does not answer for is a target of another kind -- `chrome`,
   # `linux`, an iOS simulator -- and each of those already runs here.
-  adb -s "${device}" get-state >/dev/null 2>&1 || return 0
-  adb -s "${device}" reverse "tcp:${PUBLIRA_PUBLIC_API_PORT}" "tcp:${PUBLIRA_PUBLIC_API_PORT}" >/dev/null
-  adb -s "${device}" reverse "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" >/dev/null
+  adb -s "${device}" get-state > /dev/null 2>&1 || return 0
+  adb -s "${device}" reverse "tcp:${PUBLIRA_PUBLIC_API_PORT}" "tcp:${PUBLIRA_PUBLIC_API_PORT}" > /dev/null
+  adb -s "${device}" reverse "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" > /dev/null
 }
 
 # The serial of the device to use: the one PUBLIRA_MOBILE_DEVICE names, else the
@@ -84,6 +84,6 @@ mobile_attached_device() {
     printf '%s\n' "${PUBLIRA_MOBILE_DEVICE}"
     return 0
   fi
-  command -v adb >/dev/null 2>&1 || return 0
-  adb devices 2>/dev/null | awk '$2 == "device" { print $1; exit }' || true
+  command -v adb > /dev/null 2>&1 || return 0
+  adb devices 2> /dev/null | awk '$2 == "device" { print $1; exit }' || true
 }

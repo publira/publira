@@ -36,7 +36,7 @@ start_web_app() {
     cp -a "${app_dir}/public" "${standalone_app_dir}/public"
   fi
 
-  if ss -ltn 2>/dev/null | grep -qE ":${app_port}\\b" || netstat -ltn 2>/dev/null | grep -qE ":${app_port}\\b"; then
+  if ss -ltn 2> /dev/null | grep -qE ":${app_port}\\b" || netstat -ltn 2> /dev/null | grep -qE ":${app_port}\\b"; then
     e2e_err "port ${app_port} is already in use; free it or override PUBLIRA_E2E_*_PORT"
     exit 1
   fi
@@ -56,7 +56,7 @@ start_web_app() {
         PUBLIRA_CACHE_APP="${cache_app}" \
         PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
         pnpm exec next dev --port "${app_port}" --hostname "${bind_host}"
-    ) >"${LOG_DIR}/${app_name}.log" 2>&1 &
+    ) > "${LOG_DIR}/${app_name}.log" 2>&1 &
   else
     (
       cd "${standalone_app_dir}"
@@ -69,7 +69,7 @@ start_web_app() {
         PUBLIRA_CACHE_APP="${cache_app}" \
         PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
         node server.js
-    ) >"${LOG_DIR}/${app_name}.log" 2>&1 &
+    ) > "${LOG_DIR}/${app_name}.log" 2>&1 &
   fi
   write_pid "${app_name}" $!
 }
@@ -83,7 +83,7 @@ for port in \
   "${PUBLIRA_E2E_WEB_HOST_PORT}" \
   "${PUBLIRA_E2E_WEB_ADMIN_PORT}" \
   "${PUBLIRA_E2E_WEB_PLATFORM_PORT}"; do
-  if ss -ltn 2>/dev/null | grep -qE ":${port}\\b" || netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"; then
+  if ss -ltn 2> /dev/null | grep -qE ":${port}\\b" || netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"; then
     e2e_err "port ${port} is already in use; free it or override PUBLIRA_E2E_*_PORT"
     exit 1
   fi
@@ -91,10 +91,10 @@ done
 
 # Shared with the outage scenario, which restarts api-server on its own and
 # appends to the same log; truncate here so a run starts from a clean file.
-: >"${LOG_DIR}/api-server.log"
-: >"${LOG_DIR}/email-renderer.log"
-: >"${LOG_DIR}/outbox-worker.log"
-: >"${LOG_DIR}/image-server.log"
+: > "${LOG_DIR}/api-server.log"
+: > "${LOG_DIR}/email-renderer.log"
+: > "${LOG_DIR}/outbox-worker.log"
+: > "${LOG_DIR}/image-server.log"
 
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/api-server.sh" start
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/email-renderer.sh" start

@@ -11,12 +11,12 @@ ensure_run_dirs
 bootstrap_log "=== phase 1: fresh compose project (${COMPOSE_PROJECT_NAME}) ==="
 
 # A leftover project from an interrupted run would hide "starts from empty".
-compose down -v --remove-orphans >/dev/null 2>&1 || true
+compose down -v --remove-orphans > /dev/null 2>&1 || true
 
-if docker volume inspect "${EXPECTED_POSTGRES_VOLUME}" >/dev/null 2>&1; then
+if docker volume inspect "${EXPECTED_POSTGRES_VOLUME}" > /dev/null 2>&1; then
   bootstrap_fail "volume ${EXPECTED_POSTGRES_VOLUME} still exists after teardown; remove it and retry"
 fi
-if docker volume inspect "${EXPECTED_RUSTFS_VOLUME}" >/dev/null 2>&1; then
+if docker volume inspect "${EXPECTED_RUSTFS_VOLUME}" > /dev/null 2>&1; then
   bootstrap_fail "volume ${EXPECTED_RUSTFS_VOLUME} still exists after teardown; remove it and retry"
 fi
 
@@ -37,7 +37,7 @@ fi
 # The volume must be mounted where PostgreSQL expects it.
 mounts="$(docker inspect -f '{{range .Mounts}}{{.Type}} {{.Name}} {{.Destination}}{{"\n"}}{{end}}' "${container_id}")"
 expected_mount="volume ${EXPECTED_POSTGRES_VOLUME} ${EXPECTED_PGDATA_MOUNT}"
-if ! grep -qxF "${expected_mount}" <<<"${mounts}"; then
+if ! grep -qxF "${expected_mount}" <<< "${mounts}"; then
   bootstrap_err "db mounts:"
   printf '%s\n' "${mounts}" >&2
   bootstrap_fail "expected mount '${expected_mount}' on the db container"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shared helpers for E2E lifecycle scripts.
-# shellcheck shell=bash
+# shellcheck shell=bash disable=SC2034 # read by scripts that source this file
 
 set -euo pipefail
 
@@ -212,24 +212,24 @@ ensure_run_dirs() {
 
 is_pid_running() {
   local pid="$1"
-  [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null
+  [[ -n "${pid}" ]] && kill -0 "${pid}" 2> /dev/null
 }
 
 # Process start time as a fingerprint to detect PID reuse (see stop_pid_file).
 pid_start_time() {
   local pid="$1"
-  ps -o lstart= -p "${pid}" 2>/dev/null | xargs || true
+  ps -o lstart= -p "${pid}" 2> /dev/null | xargs || true
 }
 
 e2e_lease_run_dir() {
-  sed -n '1p' "${PUBLIRA_E2E_LEASE_FILE}" 2>/dev/null || true
+  sed -n '1p' "${PUBLIRA_E2E_LEASE_FILE}" 2> /dev/null || true
 }
 
 e2e_lease_holder_alive() {
   local pid recorded_start
   [[ -f "${PUBLIRA_E2E_LEASE_FILE}" ]] || return 1
-  pid="$(sed -n '2p' "${PUBLIRA_E2E_LEASE_FILE}" 2>/dev/null || true)"
-  recorded_start="$(sed -n '3p' "${PUBLIRA_E2E_LEASE_FILE}" 2>/dev/null || true)"
+  pid="$(sed -n '2p' "${PUBLIRA_E2E_LEASE_FILE}" 2> /dev/null || true)"
+  recorded_start="$(sed -n '3p' "${PUBLIRA_E2E_LEASE_FILE}" 2> /dev/null || true)"
   is_pid_running "${pid}" || return 1
   [[ -n "${recorded_start}" && "$(pid_start_time "${pid}")" == "${recorded_start}" ]]
 }
@@ -258,7 +258,7 @@ PUBLIRA_E2E_STACK_PORT_PROJECT=""
 e2e_find_foreign_stack() {
   local run_dir
   PUBLIRA_E2E_STACK_OWNER=""
-  if ! command -v docker >/dev/null 2>&1; then
+  if ! command -v docker > /dev/null 2>&1; then
     return 1
   fi
   while read -r run_dir; do
@@ -269,7 +269,7 @@ e2e_find_foreign_stack() {
     return 0
   done < <(docker ps --all \
     --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}" \
-    --format '{{.Label "com.publira.e2e.run-dir"}}' 2>/dev/null | sort -u)
+    --format '{{.Label "com.publira.e2e.run-dir"}}' 2> /dev/null | sort -u)
   return 1
 }
 
@@ -284,7 +284,7 @@ e2e_find_foreign_port_publisher() {
   local port project
   PUBLIRA_E2E_STACK_PORT=""
   PUBLIRA_E2E_STACK_PORT_PROJECT=""
-  if ! command -v docker >/dev/null 2>&1; then
+  if ! command -v docker > /dev/null 2>&1; then
     return 1
   fi
   for port in \
@@ -302,7 +302,7 @@ e2e_find_foreign_port_publisher() {
       return 0
     done < <(docker ps \
       --filter "publish=${port}" \
-      --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null | sort -u)
+      --format '{{.Label "com.docker.compose.project"}}' 2> /dev/null | sort -u)
   done
   return 1
 }
@@ -327,13 +327,13 @@ require_no_foreign_stack() {
 
 # True while nothing holds the compose-project lock.
 e2e_lock_is_free() {
-  if ! command -v flock >/dev/null 2>&1; then
+  if ! command -v flock > /dev/null 2>&1; then
     return 0
   fi
   if [[ ! -e "${PUBLIRA_E2E_LOCK_FILE}" ]]; then
     return 0
   fi
-  flock -n "${PUBLIRA_E2E_LOCK_FILE}" true 2>/dev/null
+  flock -n "${PUBLIRA_E2E_LOCK_FILE}" true 2> /dev/null
 }
 
 # PUBLIRA_E2E_LOCK_FILE keeps whatever path the caller reached the repository through,
@@ -341,7 +341,7 @@ e2e_lock_is_free() {
 # with `pwd -P` so the two can be compared (`readlink -f` is GNU-only).
 e2e_lock_file_physical() {
   local dir
-  dir="$(cd "$(dirname "${PUBLIRA_E2E_LOCK_FILE}")" 2>/dev/null && pwd -P)" || return 1
+  dir="$(cd "$(dirname "${PUBLIRA_E2E_LOCK_FILE}")" 2> /dev/null && pwd -P)" || return 1
   printf '%s/%s\n' "${dir}" "$(basename "${PUBLIRA_E2E_LOCK_FILE}")"
 }
 
@@ -357,7 +357,7 @@ e2e_lock_holder_pids() {
   physical="$(e2e_lock_file_physical || true)"
   physical="${physical:-${PUBLIRA_E2E_LOCK_FILE}}"
   for fd in /proc/[0-9]*/fd/*; do
-    target="$(readlink "${fd}" 2>/dev/null || true)"
+    target="$(readlink "${fd}" 2> /dev/null || true)"
     if [[ "${target}" != "${PUBLIRA_E2E_LOCK_FILE}" && "${target}" != "${physical}" ]]; then
       continue
     fi
@@ -381,14 +381,14 @@ e2e_terminate_pid() {
   if [[ -z "${pid}" ]]; then
     return 0
   fi
-  kill "${pid}" 2>/dev/null || true
+  kill "${pid}" 2> /dev/null || true
   for _ in $(seq 1 30); do
     if ! is_pid_running "${pid}"; then
       return 0
     fi
     sleep 0.1
   done
-  kill -9 "${pid}" 2>/dev/null || true
+  kill -9 "${pid}" 2> /dev/null || true
 }
 
 # Teardown removes the lease file, so a holder that outlives it can never be
@@ -416,14 +416,14 @@ e2e_reclaim_orphan_lock() {
     fi
     e2e_log "reclaiming ${COMPOSE_PROJECT_NAME} lock from orphaned holder (pid ${pid})"
     e2e_terminate_pid "${pid}"
-  done <<<"${pids}"
+  done <<< "${pids}"
   for _ in $(seq 1 30); do
     if e2e_lock_is_free; then
       return 0
     fi
     sleep 0.1
   done
-  e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${PUBLIRA_E2E_LOCK_FILE} is still held after killing $(tr '\n' ' ' <<<"${pids}" | sed 's/ $//'); $(e2e_lock_holder_hint)"
+  e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${PUBLIRA_E2E_LOCK_FILE} is still held after killing $(tr '\n' ' ' <<< "${pids}" | sed 's/ $//'); $(e2e_lock_holder_hint)"
   return 1
 }
 
@@ -436,7 +436,7 @@ e2e_report_lock_holders() {
     e2e_err "lock ${PUBLIRA_E2E_LOCK_FILE} is held but no lease file names the owner; $(e2e_lock_holder_hint)"
     return 0
   fi
-  e2e_err "lock ${PUBLIRA_E2E_LOCK_FILE} is held by pid(s) $(tr '\n' ' ' <<<"${pids}" | sed 's/ $//') with no lease file; run 'task e2e:down' to reclaim it"
+  e2e_err "lock ${PUBLIRA_E2E_LOCK_FILE} is held by pid(s) $(tr '\n' ' ' <<< "${pids}" | sed 's/ $//') with no lease file; run 'task e2e:down' to reclaim it"
 }
 
 # Detached holder so the lease outlives up.sh / start-apps.sh. Leftover-stack
@@ -448,20 +448,20 @@ e2e_spawn_lease_holder() {
   # Detached from the caller's stdio: the holder outlives up.sh, and keeping the
   # inherited pipe open blocks whoever reads its output until teardown.
   (
-    if command -v flock >/dev/null 2>&1; then
-      exec 9>"${PUBLIRA_E2E_LOCK_FILE}"
+    if command -v flock > /dev/null 2>&1; then
+      exec 9> "${PUBLIRA_E2E_LOCK_FILE}"
       flock -n 9 || exit 1
     fi
-    printf '%s\n' "${BASHPID}" >"${ready}"
+    printf '%s\n' "${BASHPID}" > "${ready}"
     # exec so the recorded pid *is* the process holding fd 9. A `sleep` child
     # would inherit the descriptor and keep the flock alive after the holder is
     # killed, stranding the project with no lease file to recover from.
     # The delay is ~68 years; `sleep infinity` is GNU-only.
     exec sleep 2147483647
-  ) </dev/null >/dev/null 2>&1 &
+  ) < /dev/null > /dev/null 2>&1 &
   waited=0
   while [[ ! -s "${ready}" ]]; do
-    if ! kill -0 $! 2>/dev/null && [[ ! -s "${ready}" ]]; then
+    if ! kill -0 $! 2> /dev/null && [[ ! -s "${ready}" ]]; then
       rm -f "${ready}"
       e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set COMPOSE_PROJECT_NAME and PUBLIRA_E2E_*_PORT"
       e2e_report_lock_holders
@@ -477,7 +477,7 @@ e2e_spawn_lease_holder() {
   done
   pid="$(cat "${ready}")"
   rm -f "${ready}"
-  printf '%s\n%s\n%s\n' "${PUBLIRA_E2E_RUN_DIR}" "${pid}" "$(pid_start_time "${pid}")" >"${PUBLIRA_E2E_LEASE_FILE}"
+  printf '%s\n%s\n%s\n' "${PUBLIRA_E2E_RUN_DIR}" "${pid}" "$(pid_start_time "${pid}")" > "${PUBLIRA_E2E_LEASE_FILE}"
 }
 
 # Spawn a holder or join the existing owner. Children inherit PUBLIRA_E2E_LOCK_HELD=1
@@ -529,7 +529,7 @@ release_e2e_lease() {
     if [[ "$(e2e_lease_run_dir)" != "${PUBLIRA_E2E_RUN_DIR}" ]]; then
       e2e_refuse_foreign_lease
     fi
-    pid="$(sed -n '2p' "${PUBLIRA_E2E_LEASE_FILE}" 2>/dev/null || true)"
+    pid="$(sed -n '2p' "${PUBLIRA_E2E_LEASE_FILE}" 2> /dev/null || true)"
     e2e_terminate_pid "${pid}"
   fi
   rm -f "${PUBLIRA_E2E_LEASE_FILE}"
@@ -549,7 +549,7 @@ read_pid() {
 write_pid() {
   local name="$1"
   local pid="$2"
-  printf '%s\n%s\n' "${pid}" "$(pid_start_time "${pid}")" >"${PID_DIR}/${name}.pid"
+  printf '%s\n%s\n' "${pid}" "$(pid_start_time "${pid}")" > "${PID_DIR}/${name}.pid"
 }
 
 stop_pid_file() {
@@ -559,8 +559,8 @@ stop_pid_file() {
     return 0
   fi
   local pid recorded_start
-  pid="$(sed -n '1p' "${file}" 2>/dev/null || true)"
-  recorded_start="$(sed -n '2p' "${file}" 2>/dev/null || true)"
+  pid="$(sed -n '1p' "${file}" 2> /dev/null || true)"
+  recorded_start="$(sed -n '2p' "${file}" 2> /dev/null || true)"
   if ! is_pid_running "${pid}"; then
     rm -f "${file}"
     return 0
@@ -572,7 +572,7 @@ stop_pid_file() {
     return 0
   fi
   e2e_log "stopping ${name} (pid ${pid})"
-  kill "${pid}" 2>/dev/null || true
+  kill "${pid}" 2> /dev/null || true
   local _
   for _ in $(seq 1 30); do
     if ! is_pid_running "${pid}"; then
@@ -582,7 +582,7 @@ stop_pid_file() {
   done
   if is_pid_running "${pid}"; then
     e2e_log "force-killing ${name} (pid ${pid})"
-    kill -9 "${pid}" 2>/dev/null || true
+    kill -9 "${pid}" 2> /dev/null || true
   fi
   rm -f "${file}"
 }

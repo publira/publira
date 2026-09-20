@@ -15,7 +15,7 @@ email_renderer_readyz_url() {
 }
 
 email_renderer_is_ready() {
-  curl -sS --max-time 3 "$(email_renderer_readyz_url)" 2>/dev/null |
+  curl -sS --max-time 3 "$(email_renderer_readyz_url)" 2> /dev/null |
     grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'
 }
 
@@ -43,7 +43,7 @@ start_email_renderer() {
       HOST="127.0.0.1" \
       PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
       node dist/index.mjs
-  ) >>"${LOG_DIR}/email-renderer.log" 2>&1 &
+  ) >> "${LOG_DIR}/email-renderer.log" 2>&1 &
   write_pid "email-renderer" $!
 }
 

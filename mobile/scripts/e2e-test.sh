@@ -18,7 +18,7 @@ export PUBLIRA_LIVE_API="${PUBLIRA_LIVE_API:-true}"
 # itself. image-server needs the same treatment as the API: every seeded episode
 # carries a body, so the reader fetches pages on any run that opens one.
 host_address="127.0.0.1"
-if adb devices 2>/dev/null | grep -q 'emulator'; then
+if adb devices 2> /dev/null | grep -q 'emulator'; then
   host_address="10.0.2.2"
 fi
 export PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_PUBLIC_API_PORT}}"
@@ -54,11 +54,11 @@ collect_failure_artifacts() {
     (cd "${MOBILE_DIR}" && flutter devices) || true
     echo "=== adb devices ==="
     adb devices -l || true
-  } >"${ART_DIR}/devices.txt" 2>&1 || true
-  adb logcat -d >"${ART_DIR}/logcat.txt" 2>/dev/null || true
-  adb exec-out screencap -p >"${ART_DIR}/emulator.png" 2>/dev/null || true
+  } > "${ART_DIR}/devices.txt" 2>&1 || true
+  adb logcat -d > "${ART_DIR}/logcat.txt" 2> /dev/null || true
+  adb exec-out screencap -p > "${ART_DIR}/emulator.png" 2> /dev/null || true
   adb pull /sdcard/Documents/publira-integration "${ART_DIR}/screenshots" \
-    >/dev/null 2>&1 || true
+    > /dev/null 2>&1 || true
 }
 
 set +e

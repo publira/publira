@@ -15,7 +15,7 @@ ensure_run_dirs
 acquire_routing_lock
 
 for cmd in docker curl; do
-  if ! command -v "${cmd}" >/dev/null 2>&1; then
+  if ! command -v "${cmd}" > /dev/null 2>&1; then
     routing_fail "required command not found: ${cmd}"
   fi
 done

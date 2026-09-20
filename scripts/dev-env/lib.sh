@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shared, deliberately small state layer for isolated local development profiles.
-# shellcheck shell=bash
+# shellcheck shell=bash disable=SC2034 # read by scripts that source this file
 
 set -euo pipefail
 
@@ -28,7 +28,7 @@ dev_env_die() {
 dev_env_require_commands() {
   local required
   for required in "$@"; do
-    command -v "${required}" >/dev/null 2>&1 || dev_env_die "required command not found: ${required}"
+    command -v "${required}" > /dev/null 2>&1 || dev_env_die "required command not found: ${required}"
   done
 }
 
@@ -66,7 +66,7 @@ dev_env_validate_name() {
 dev_env_read_selection() {
   [[ -f "${DEV_ENV_SELECTION_FILE}" ]] || return 1
   local selected
-  selected="$(<"${DEV_ENV_SELECTION_FILE}")"
+  selected="$(< "${DEV_ENV_SELECTION_FILE}")"
   dev_env_identifier_is_valid "${selected}" || return 1
   printf '%s\n' "${selected}"
 }
@@ -75,7 +75,7 @@ dev_env_select() {
   local name="$1"
   dev_env_validate_name "${name}"
   [[ -f "$(dev_env_profile_path "${name}")" ]] || dev_env_die "profile does not exist: ${name}"
-  printf '%s\n' "${name}" >"${DEV_ENV_SELECTION_FILE}"
+  printf '%s\n' "${name}" > "${DEV_ENV_SELECTION_FILE}"
 }
 
 dev_env_profile_value() {
@@ -90,7 +90,7 @@ dev_env_profile_value() {
       printf '%s\n' "${value}"
       return 0
     fi
-  done <"${profile_path}"
+  done < "${profile_path}"
   return 1
 }
 
@@ -105,7 +105,7 @@ dev_env_load_required_profile_value() {
     dev_env_die "profile has an empty ${key}: ${profile_path}"
   fi
   printf -v "${key}" '%s' "${value}"
-  export "${key}"
+  export "${key?}"
 }
 
 dev_env_profile_in_use() {
@@ -114,7 +114,7 @@ dev_env_profile_in_use() {
   while IFS= read -r worktree; do
     selection="${worktree}/.publira-dev-env"
     [[ -f "${selection}" ]] || continue
-    if [[ "$(<"${selection}")" == "${name}" ]]; then
+    if [[ "$(< "${selection}")" == "${name}" ]]; then
       printf '%s\n' "${worktree}"
     fi
   done < <(git -C "${REPO_ROOT}" worktree list --porcelain | awk '/^worktree / {print $2}')
@@ -126,7 +126,7 @@ dev_env_profile_in_use() {
 dev_env_lock_profiles() {
   local lock_path="${DEV_ENV_HOME}/profiles.lock"
   dev_env_require_commands python3
-  exec 9>>"${lock_path}"
+  exec 9>> "${lock_path}"
   python3 -c 'import fcntl, sys; fcntl.flock(int(sys.argv[1]), fcntl.LOCK_EX)' 9 ||
     dev_env_die "cannot lock ${lock_path}"
 }
@@ -230,8 +230,8 @@ dev_env_url_authority() {
 # from them and falls back to the service names when none is exported.
 dev_env_postgres_authority() {
   if [[ -n "${PUBLIRA_DB_URL:-}" ]]; then
-    dev_env_url_authority "${PUBLIRA_DB_URL}" 5432 \
-      || dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${PUBLIRA_DB_URL}"
+    dev_env_url_authority "${PUBLIRA_DB_URL}" 5432 ||
+      dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${PUBLIRA_DB_URL}"
     return 0
   fi
   printf 'db:5432\n'
@@ -239,8 +239,8 @@ dev_env_postgres_authority() {
 
 dev_env_redis_authority() {
   if [[ -n "${PUBLIRA_REDIS_URL:-}" ]]; then
-    dev_env_url_authority "${PUBLIRA_REDIS_URL}" 6379 \
-      || dev_env_die "cannot derive the Valkey host from PUBLIRA_REDIS_URL: ${PUBLIRA_REDIS_URL}"
+    dev_env_url_authority "${PUBLIRA_REDIS_URL}" 6379 ||
+      dev_env_die "cannot derive the Valkey host from PUBLIRA_REDIS_URL: ${PUBLIRA_REDIS_URL}"
     return 0
   fi
   printf 'redis:6379\n'
@@ -255,7 +255,7 @@ dev_env_redis_authority() {
 dev_env_redis_cli() {
   local client
   for client in valkey-cli redis-cli; do
-    if command -v "${client}" >/dev/null 2>&1; then
+    if command -v "${client}" > /dev/null 2>&1; then
       printf '%s\n' "${client}"
       return 0
     fi
@@ -293,8 +293,8 @@ dev_env_postgres_admin_url() {
     return 0
   fi
   local authority
-  authority="$(dev_env_url_authority "${PUBLIRA_DB_URL}" 5432)" \
-    || dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${PUBLIRA_DB_URL}"
+  authority="$(dev_env_url_authority "${PUBLIRA_DB_URL}" 5432)" ||
+    dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${PUBLIRA_DB_URL}"
   printf 'postgres://postgres:password@%s/postgres?sslmode=disable\n' "${authority}"
 }
 
@@ -352,7 +352,7 @@ dev_env_write_profile() {
     printf 'PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 2))"
     printf 'PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:%s\n' "$((port_base + 50))"
     printf 'PUBLIRA_EMAIL_RENDERER_URL=http://127.0.0.1:%s\n' "$((port_base + 30))"
-  } >"${tmp_path}"
+  } > "${tmp_path}"
   chmod 600 "${tmp_path}"
   mv "${tmp_path}" "${profile_path}"
 }
@@ -393,8 +393,8 @@ dev_env_load_profile() {
   # dev_env_write_profile emitted for this profile's own database, so a worker
   # URL a developer pointed somewhere else is left alone.
   local postgres database
-  postgres="$(dev_env_url_authority "${PUBLIRA_DB_URL}" 5432)" \
-    || dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${profile_path}"
+  postgres="$(dev_env_url_authority "${PUBLIRA_DB_URL}" 5432)" ||
+    dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${profile_path}"
   database="publira_${DEV_ENV_NAME//-/_}"
   if [[ "${PUBLIRA_WORKER_DB_URL}" == "postgres://postgres:password@${postgres}/${database}?sslmode=disable" ]]; then
     PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@${postgres}/${database}?sslmode=disable"
@@ -488,7 +488,7 @@ dev_env_profile_run_dir() {
 # edge answers it with the services file it is given, which a stop removes once
 # the container is down.
 dev_env_profile_has_running_processes() {
-  compgen -G "$(dev_env_profile_run_dir "$1")/*.pid" >/dev/null ||
+  compgen -G "$(dev_env_profile_run_dir "$1")/*.pid" > /dev/null ||
     [[ -f "$(dev_env_edge_services_file "$1")" ]]
 }
 
@@ -518,7 +518,7 @@ dev_env_start_edge() {
   local name="$1" services_file
   dev_env_require_commands docker
   services_file="$(dev_env_edge_services_file "${name}")"
-  cat >"${services_file}" <<EOF
+  cat > "${services_file}" << EOF
 # Written by scripts/dev-env.sh for profile ${name}. Edits are overwritten by
 # the next start.
 http:
@@ -545,7 +545,7 @@ http:
           - url: "http://127.0.0.1:${PUBLIRA_IMAGE_SERVER_PORT}"
 EOF
   COMPOSE_PROJECT_NAME="$(dev_env_edge_project "${name}")" \
-    PUBLIRA_DEV_ENV_EDGE_SERVICES_FILE="${services_file}" \
+  PUBLIRA_DEV_ENV_EDGE_SERVICES_FILE="${services_file}" \
     docker compose --file "${DEV_ENV_EDGE_COMPOSE_FILE}" up --detach --wait
 }
 
@@ -556,7 +556,7 @@ dev_env_stop_edge() {
   local name="$1" services_file
   services_file="$(dev_env_edge_services_file "${name}")"
   [[ -f "${services_file}" ]] || return 0
-  if ! command -v docker >/dev/null 2>&1; then
+  if ! command -v docker > /dev/null 2>&1; then
     dev_env_error "docker is not installed; the edge of profile ${name} is still running"
     return 1
   fi
@@ -578,24 +578,24 @@ dev_env_start_background() {
   local run_dir="$1" process_name="$2" pid
   shift 2
   set -m
-  nohup "$@" >"${run_dir}/${process_name}.log" 2>&1 </dev/null &
+  nohup "$@" > "${run_dir}/${process_name}.log" 2>&1 < /dev/null &
   pid="$!"
   set +m
   # The pid file is the only handle the profile keeps, so the job is dropped
   # from this shell rather than reported back over whatever it prints next.
   disown "%%"
-  printf '%s\n' "${pid}" >"${run_dir}/${process_name}.pid"
+  printf '%s\n' "${pid}" > "${run_dir}/${process_name}.pid"
 }
 
 dev_env_process_group_is_running() {
-  kill -0 -- "-$1" 2>/dev/null
+  kill -0 -- "-$1" 2> /dev/null
 }
 
 # Prints the command line of every process in a process group. `ps -A -o
 # pgid=,args=` is the portable spelling; pgrep's process group selector takes
 # a different option letter on the BSD side.
 dev_env_process_group_commands() {
-  ps -A -o pgid=,args= 2>/dev/null | awk -v pgid="$1" '$1 == pgid { $1 = ""; print }'
+  ps -A -o pgid=,args= 2> /dev/null | awk -v pgid="$1" '$1 == pgid { $1 = ""; print }'
 }
 
 # A recorded pid stands for a profile's service only while some member of its
@@ -625,9 +625,9 @@ dev_env_stop_process_group() {
     dev_env_error "not signalling process group ${pgid}; it no longer belongs to ${REPO_ROOT}"
     return 0
   fi
-  kill -s TERM -- "-${pgid}" 2>/dev/null || true
+  kill -s TERM -- "-${pgid}" 2> /dev/null || true
   dev_env_wait_for_process_group "${pgid}" "${DEV_ENV_STOP_TERM_SECONDS}" && return 0
-  kill -s KILL -- "-${pgid}" 2>/dev/null || true
+  kill -s KILL -- "-${pgid}" 2> /dev/null || true
   dev_env_wait_for_process_group "${pgid}" "${DEV_ENV_STOP_KILL_SECONDS}"
 }
 
@@ -638,7 +638,7 @@ dev_env_stop_profile() {
   dev_env_stop_edge "${name}" || survivors=1
   for pid_file in "${run_dir}"/*.pid; do
     [[ -f "${pid_file}" ]] || continue
-    pgid="$(<"${pid_file}")"
+    pgid="$(< "${pid_file}")"
     if [[ ! "${pgid}" =~ ^[0-9]+$ ]]; then
       dev_env_error "removing ${pid_file}; it does not name a process"
       rm -f "${pid_file}"
@@ -654,6 +654,6 @@ dev_env_stop_profile() {
     fi
   done
   ((survivors == 0)) || dev_env_die "profile ${name} was not fully stopped; run: task dev-env:stop"
-  rmdir "${run_dir}" 2>/dev/null || true
+  rmdir "${run_dir}" 2> /dev/null || true
   printf 'stopped profile %q\n' "${name}"
 }

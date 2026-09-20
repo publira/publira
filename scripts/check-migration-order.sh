@@ -20,7 +20,7 @@ base_ref="${BASE_REF:-origin/main}"
 repo_root="$(git rev-parse --show-toplevel)"
 cd "${repo_root}"
 
-if ! git rev-parse --verify --quiet "${base_ref}^{commit}" >/dev/null; then
+if ! git rev-parse --verify --quiet "${base_ref}^{commit}" > /dev/null; then
   echo "${base_ref} is not in this repository. Run 'git fetch origin main' first, or set BASE_REF." >&2
   exit 1
 fi

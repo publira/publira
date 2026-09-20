@@ -61,6 +61,7 @@ jobs:
       lint_go: ${{ steps.plan.outputs.lint_go }}
       test_go: ${{ steps.plan.outputs.test_go }}
       test_ts: ${{ steps.plan.outputs.test_ts }}
+      test_bash: ${{ steps.plan.outputs.test_bash }}
       test_db_migrations: ${{ steps.plan.outputs.test_db_migrations }}
       test_mobile: ${{ steps.plan.outputs.test_mobile }}
       test_mobile_e2e: ${{ steps.plan.outputs.test_mobile_e2e }}
@@ -158,6 +159,16 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'turbo.jsonc'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_bash:
+              - *docs_excluded
+              - '**/*.sh'
+              - 'scripts/dev-env.sh'
+              - 'scripts/dev-env/**'
+              - 'e2e/scripts/**'
+              - 'Taskfile.yaml'
+              - 'e2e/Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_db_migrations:
@@ -338,6 +349,7 @@ jobs:
           FILTER_LINT_GO: ${{ steps.filter.outputs.lint_go }}
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
+          FILTER_TEST_BASH: ${{ steps.filter.outputs.test_bash }}
           FILTER_TEST_DB_MIGRATIONS: ${{ steps.filter.outputs.test_db_migrations }}
           FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
           FILTER_TEST_MOBILE_E2E: ${{ steps.filter.outputs.test_mobile_e2e }}
@@ -617,6 +629,35 @@ jobs:
 
       - name: Validate / Script Tests
         run: pnpm test:scripts
+
+  test-bash:
+    name: Test / Bash
+    needs: changes
+    if: needs.changes.outputs.test_bash == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Install / Bash Tools
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends shellcheck shfmt
+
+      - name: Validate / Bash Style
+        run: |
+          shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')
+          shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')
+
+      - name: Validate / Bash Library Tests
+        run: |
+          task dev-env:test
+          task e2e:test-lib
 
   test-mobile:
     name: Test / Mobile
@@ -1091,6 +1132,7 @@ jobs:
       - lint-go
       - test-go
       - test-ts
+      - test-bash
       - test-db-migrations
       - test-mobile
       - test-mobile-e2e
@@ -1109,6 +1151,7 @@ jobs:
           LINT_GO: ${{ needs.lint-go.result }}
           TEST_GO: ${{ needs.test-go.result }}
           TEST_TS: ${{ needs.test-ts.result }}
+          TEST_BASH: ${{ needs.test-bash.result }}
           TEST_DB_MIGRATIONS: ${{ needs.test-db-migrations.result }}
           TEST_MOBILE: ${{ needs.test-mobile.result }}
           TEST_MOBILE_E2E: ${{ needs.test-mobile-e2e.result }}
@@ -1127,6 +1170,7 @@ jobs:
             "Lint / Go=${LINT_GO}" \
             "Test / Go=${TEST_GO}" \
             "Test / TypeScript=${TEST_TS}" \
+            "Test / Bash=${TEST_BASH}" \
             "Test / DB Migrations=${TEST_DB_MIGRATIONS}" \
             "Test / Mobile=${TEST_MOBILE}" \
             "Test / Mobile E2E=${TEST_MOBILE_E2E}" \

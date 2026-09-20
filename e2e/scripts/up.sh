@@ -19,7 +19,7 @@ acquire_e2e_lock
 # binds every address. Only a name covers both, and it keeps working when
 # PUBLIRA_E2E_WEB_BIND_HOST moves web-host to an IPv4 address instead.
 e2e_log "writing traefik services to ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml"
-cat >"${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml" <<EOF
+cat > "${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml" << EOF
 http:
   services:
     web-host:

@@ -11,14 +11,14 @@ JSON_OK_REGEX='"status"[[:space:]]*:[[:space:]]*"ok"'
 # Whole-body `ok`, matching the previous check_http_text_ok (exact line).
 LIVEZ_REGEX='^[[:space:]]*ok[[:space:]]*$'
 
-if ! command -v wait4x >/dev/null 2>&1; then
+if ! command -v wait4x > /dev/null 2>&1; then
   bootstrap_fail "required command not found: wait4x"
 fi
 
 dev_is_running() {
   local pgid
-  pgid="$(cat "${DEV_PGID_FILE}" 2>/dev/null || true)"
-  [[ -n "${pgid}" ]] && kill -0 "-${pgid}" 2>/dev/null
+  pgid="$(cat "${DEV_PGID_FILE}" 2> /dev/null || true)"
+  [[ -n "${pgid}" ]] && kill -0 "-${pgid}" 2> /dev/null
 }
 
 # wait4x cannot abort when `task dev` dies mid-wait (that would need a second
