@@ -69,7 +69,7 @@ screenshot_on_device() {
     # Android embedding reads off the intent, and a resumed activity would
     # keep the screen it was left on instead.
     adb -s "${device}" shell am force-stop "${APP_ID}"
-    adb -s "${device}" shell am start -n "${activity}" --es route "${route}" >/dev/null
+    adb -s "${device}" shell am start -n "${activity}" --es route "${route}" > /dev/null
     for attempt in $(seq 60); do
       if adb -s "${device}" shell dumpsys window | grep -q "mCurrentFocus.*${APP_ID}"; then
         break
@@ -81,7 +81,7 @@ screenshot_on_device() {
       sleep 1
     done
     sleep "$(awk -v milliseconds="${wait_ms}" 'BEGIN { print milliseconds / 1000 }')"
-    adb -s "${device}" exec-out screencap -p >"${out_dir}/${name}.png"
+    adb -s "${device}" exec-out screencap -p > "${out_dir}/${name}.png"
     printf 'captured %s\n' "${out_dir}/${name}.png"
   done
 }
@@ -92,7 +92,7 @@ screenshot_on_device() {
 server_pid=''
 
 stop_web_app_server() {
-  [[ -z "${server_pid}" ]] || kill "${server_pid}" 2>/dev/null || true
+  [[ -z "${server_pid}" ]] || kill "${server_pid}" 2> /dev/null || true
 }
 
 screenshot_in_browser() {

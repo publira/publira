@@ -24,12 +24,12 @@ err() {
   printf '[storage-seed] ERROR: %s\n' "$*" >&2
 }
 
-if ! command -v aws >/dev/null 2>&1; then
+if ! command -v aws > /dev/null 2>&1; then
   err "aws CLI is required (Dev Container: devcontainer feature aws-cli)"
   exit 1
 fi
 
-if ! command -v psql >/dev/null 2>&1; then
+if ! command -v psql > /dev/null 2>&1; then
   err "psql is required to read the object keys the seed rows name"
   exit 1
 fi
@@ -64,7 +64,7 @@ if [[ -z "${object_keys_text}" ]]; then
   exit 1
 fi
 
-mapfile -t object_keys <<<"${object_keys_text}"
+mapfile -t object_keys <<< "${object_keys_text}"
 
 # Both directions before anything is uploaded. A row naming a file that is not
 # there would leave a reader with a broken image, and a file no row names is a
@@ -117,6 +117,6 @@ aws s3 sync \
   --delete \
   "${endpoint_args[@]}" \
   "${OBJECT_DIR}" \
-  "s3://${bucket}/${prefix}" >/dev/null
+  "s3://${bucket}/${prefix}" > /dev/null
 
 log "uploaded ${#object_keys[@]} seed images to s3://${bucket}/${prefix}"

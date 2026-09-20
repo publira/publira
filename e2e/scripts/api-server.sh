@@ -19,7 +19,7 @@ api_readyz_url() {
 }
 
 api_is_ready() {
-  curl -sS --max-time 3 "$(api_readyz_url)" 2>/dev/null |
+  curl -sS --max-time 3 "$(api_readyz_url)" 2> /dev/null |
     grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'
 }
 
@@ -64,7 +64,7 @@ start_api_server() {
       AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}" \
       AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}" \
       "${api_bin}"
-  ) >>"${LOG_DIR}/api-server.log" 2>&1 &
+  ) >> "${LOG_DIR}/api-server.log" 2>&1 &
   write_pid "api-server" $!
 }
 

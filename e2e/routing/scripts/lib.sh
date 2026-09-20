@@ -5,7 +5,7 @@
 # echo.py, which answers on the six backend ports, so each probe can assert
 # the backend and the path the edge forwarded. The configuration under test is
 # always the repository's own, in infra/proxy/<proxy>.
-# shellcheck shell=bash
+# shellcheck shell=bash disable=SC2034 # read by scripts that source this file
 
 set -euo pipefail
 
@@ -20,12 +20,12 @@ _PUBLIRA_ROUTING_RUN_DIR_FROM_ENV="${PUBLIRA_ROUTING_RUN_DIR-}"
 # individual tasks take one at a time.
 export PUBLIRA_ROUTING_PROXY="${PUBLIRA_ROUTING_PROXY:-traefik}"
 case "${PUBLIRA_ROUTING_PROXY}" in
-traefik | nginx | caddy) ;;
-*)
-  printf '[routing] ERROR: unknown PUBLIRA_ROUTING_PROXY %s (traefik, nginx, or caddy)\n' \
-    "${PUBLIRA_ROUTING_PROXY}" >&2
-  exit 1
-  ;;
+  traefik | nginx | caddy) ;;
+  *)
+    printf '[routing] ERROR: unknown PUBLIRA_ROUTING_PROXY %s (traefik, nginx, or caddy)\n' \
+      "${PUBLIRA_ROUTING_PROXY}" >&2
+    exit 1
+    ;;
 esac
 
 # Dedicated project name, one per proxy: a run never touches the Dev Container
@@ -78,21 +78,21 @@ PUBLIRA_ROUTING_READY_INTERVAL_SEC="${PUBLIRA_ROUTING_READY_INTERVAL_SEC:-1}"
 # wiring; nginx and Caddy have no environment of their own and get the echo
 # backends plus a proxy container.
 case "${PUBLIRA_ROUTING_PROXY}" in
-traefik)
-  # The Dev Container file is an overlay: on its own it leaves the dependency
-  # services with nothing but `ports: !reset []`, which is not a valid project.
-  PUBLIRA_ROUTING_COMPOSE_FILES=(
-    "${REPO_ROOT}/compose.yaml"
-    "${REPO_ROOT}/.devcontainer/compose.yaml"
-    "${PUBLIRA_ROUTING_DIR}/compose.traefik.yaml"
-  )
-  ;;
-*)
-  PUBLIRA_ROUTING_COMPOSE_FILES=(
-    "${PUBLIRA_ROUTING_DIR}/compose.echo.yaml"
-    "${PUBLIRA_ROUTING_DIR}/compose.${PUBLIRA_ROUTING_PROXY}.yaml"
-  )
-  ;;
+  traefik)
+    # The Dev Container file is an overlay: on its own it leaves the dependency
+    # services with nothing but `ports: !reset []`, which is not a valid project.
+    PUBLIRA_ROUTING_COMPOSE_FILES=(
+      "${REPO_ROOT}/compose.yaml"
+      "${REPO_ROOT}/.devcontainer/compose.yaml"
+      "${PUBLIRA_ROUTING_DIR}/compose.traefik.yaml"
+    )
+    ;;
+  *)
+    PUBLIRA_ROUTING_COMPOSE_FILES=(
+      "${PUBLIRA_ROUTING_DIR}/compose.echo.yaml"
+      "${PUBLIRA_ROUTING_DIR}/compose.${PUBLIRA_ROUTING_PROXY}.yaml"
+    )
+    ;;
 esac
 
 # Ports one run publishes. Only Traefik answers an API.
@@ -171,10 +171,10 @@ acquire_routing_lock() {
   if [[ "${PUBLIRA_ROUTING_LOCK_HELD:-0}" == "1" ]]; then
     return 0
   fi
-  command -v flock >/dev/null 2>&1 ||
+  command -v flock > /dev/null 2>&1 ||
     routing_fail "flock is not available; compose project lock cannot be taken"
   mkdir -p "$(dirname "${PUBLIRA_ROUTING_LOCK_FILE}")"
-  exec {PUBLIRA_ROUTING_LOCK_FD}>"${PUBLIRA_ROUTING_LOCK_FILE}"
+  exec {PUBLIRA_ROUTING_LOCK_FD}> "${PUBLIRA_ROUTING_LOCK_FILE}"
   if ! flock -n "${PUBLIRA_ROUTING_LOCK_FD}"; then
     routing_fail "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set PUBLIRA_ROUTING_PROJECT_NAME"
   fi
@@ -182,15 +182,15 @@ acquire_routing_lock() {
 }
 
 require_port_tool() {
-  command -v ss >/dev/null 2>&1 || command -v netstat >/dev/null 2>&1 ||
+  command -v ss > /dev/null 2>&1 || command -v netstat > /dev/null 2>&1 ||
     routing_fail "neither ss nor netstat is available; port checks cannot run"
 }
 
 port_in_use() {
   local port="$1"
   require_port_tool
-  ss -ltn 2>/dev/null | grep -qE ":${port}\\b" ||
-    netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"
+  ss -ltn 2> /dev/null | grep -qE ":${port}\\b" ||
+    netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"
 }
 
 # Compact JSON field. Values we emit are identifiers or paths, never quotes.
@@ -228,10 +228,10 @@ http_probe() {
       -X "${method}" \
       -H "Host: ${host}" \
       ${header_args[@]+"${header_args[@]}"} \
-      "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}" 2>/dev/null || true
+      "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}" 2> /dev/null || true
   )"
   printf '%s\n' "${code}"
-  cat "${tmpfile}" 2>/dev/null || true
+  cat "${tmpfile}" 2> /dev/null || true
   rm -f "${tmpfile}"
 }
 
@@ -361,15 +361,15 @@ collect_diagnostics() {
   routing_err "collecting diagnostics into ${LOG_DIR}"
   mkdir -p "${LOG_DIR}"
 
-  compose ps >"${LOG_DIR}/compose-ps.log" 2>&1 || true
-  compose logs --no-color --tail 200 >"${LOG_DIR}/compose.log" 2>&1 || true
+  compose ps > "${LOG_DIR}/compose-ps.log" 2>&1 || true
+  compose logs --no-color --tail 200 > "${LOG_DIR}/compose.log" 2>&1 || true
   if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
     curl -fsS --max-time 3 \
       "http://127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT}/api/http/routers" \
-      >"${LOG_DIR}/traefik-routers.json" 2>&1 || true
+      > "${LOG_DIR}/traefik-routers.json" 2>&1 || true
     curl -fsS --max-time 3 \
       "http://127.0.0.1:${PUBLIRA_ROUTING_TRAEFIK_API_PORT}/api/http/middlewares" \
-      >"${LOG_DIR}/traefik-middlewares.json" 2>&1 || true
+      > "${LOG_DIR}/traefik-middlewares.json" 2>&1 || true
   fi
 
   local f

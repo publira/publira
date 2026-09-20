@@ -48,7 +48,7 @@ install_jdk() {
     local archive link sha256 work
     archive="$(temurin_archive)"
     [[ -n "${archive}" ]] || android_die "Adoptium lists no Linux x64 build of Temurin ${JDK_VERSION}"
-    read -r link sha256 <<<"${archive}"
+    read -r link sha256 <<< "${archive}"
     work="$(mktemp -d)"
     android_log "downloading Temurin ${JDK_VERSION}"
     curl -fsSL -o "${work}/jdk.tar.gz" "${link}"
@@ -62,13 +62,13 @@ install_jdk() {
   # sdkmanager and avdmanager below run on JAVA_HOME; Flutter hands the JDK it is
   # configured with to Gradle.
   export JAVA_HOME="${JDK_HOME}"
-  flutter config --jdk-dir "${JDK_HOME}" >/dev/null
+  flutter config --jdk-dir "${JDK_HOME}" > /dev/null
 }
 
 # Prints the archive and SHA-1 of the newest stable command-line tools for Linux
 # in the manifest at $1.
 latest_cmdline_tools() {
-  python3 - "$1" <<'PY'
+  python3 - "$1" << 'PY'
 import sys
 import xml.etree.ElementTree as ET
 
@@ -96,7 +96,7 @@ install_cmdline_tools() {
   work="$(mktemp -d)"
   curl -fsSL -o "${work}/repository.xml" "${REPOSITORY_URL}/repository2-3.xml"
   latest="$(latest_cmdline_tools "${work}/repository.xml")"
-  read -r archive sha1 <<<"${latest}"
+  read -r archive sha1 <<< "${latest}"
   android_log "downloading ${archive}"
   curl -fsSL -o "${work}/tools.zip" "${REPOSITORY_URL}/${archive}"
   printf '%s  %s\n' "${sha1}" "${work}/tools.zip" | sha1sum -c --quiet -
@@ -123,7 +123,7 @@ install_packages() {
 }
 
 create_avd() {
-  if "${avdmanager}" list avd -c 2>/dev/null | grep -qx "${ANDROID_AVD_NAME}"; then
+  if "${avdmanager}" list avd -c 2> /dev/null | grep -qx "${ANDROID_AVD_NAME}"; then
     return 0
   fi
   android_log "creating the ${ANDROID_AVD_NAME} emulator (${ANDROID_DEVICE_PROFILE})"
@@ -132,8 +132,8 @@ create_avd() {
   printf 'no\n' | "${avdmanager}" create avd \
     --name "${ANDROID_AVD_NAME}" \
     --package "${ANDROID_SYSTEM_IMAGE}" \
-    --device "${ANDROID_DEVICE_PROFILE}" >/dev/null 2>&1 || true
-  "${avdmanager}" list avd -c 2>/dev/null | grep -qx "${ANDROID_AVD_NAME}" ||
+    --device "${ANDROID_DEVICE_PROFILE}" > /dev/null 2>&1 || true
+  "${avdmanager}" list avd -c 2> /dev/null | grep -qx "${ANDROID_AVD_NAME}" ||
     android_die "avdmanager did not create ${ANDROID_AVD_NAME}"
   # The profile's 10 GB data partition makes the emulator refuse to boot with
   # less than 12 GB free, and the app needs a fraction of it.
@@ -149,7 +149,7 @@ grant_kvm() {
   group="$(getent group "${gid}" | cut -d: -f1 || true)"
   if [[ -z "${group}" ]]; then
     group='kvm'
-    getent group "${group}" >/dev/null &&
+    getent group "${group}" > /dev/null &&
       android_die "a group named ${group} exists with a GID other than /dev/kvm's ${gid}"
     sudo groupadd --gid "${gid}" "${group}"
   fi
@@ -174,7 +174,7 @@ limit_gradle_heap() {
     return 0
   fi
   mkdir -p "$(dirname "${properties}")"
-  cat >>"${properties}" <<'EOF'
+  cat >> "${properties}" << 'EOF'
 org.gradle.jvmargs=-Xmx3G -XX:MaxMetaspaceSize=1G -XX:+HeapDumpOnOutOfMemoryError
 kotlin.daemon.jvmargs=-Xmx1536m
 EOF

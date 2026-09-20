@@ -130,6 +130,7 @@ Implementation:
 | `Lint / Go` | `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test` after package builds, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. Starts a Valkey service so `@publira/next-cache-handlers` Redis integration tests run. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
+| `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test` and `task e2e:test-lib` for the isolated development-profile and E2E-stack Bash libraries. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed. | [`mobile/README.md`](../../mobile/README.md) |
@@ -173,6 +174,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Lint / Go` | `server/**` |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, and generator config |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
+| `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
 | `Test / Mobile E2E` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh` |
@@ -252,6 +254,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, package build, `pnpm typegen`, `node scripts/check-design-tokens.ts`, and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm build --filter "./packages/*"`, then `pnpm test` and `pnpm test:scripts` |
+   | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, and `task e2e:test-lib` |
    | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. `scripts/check-migration-order.sh` reproduces the ordering guard; an append-only failure is not reproduced locally — restore the migration and add a new one instead |
    | `Test / Mobile` | `task mobile:check` |
    | `Test / Mobile E2E` | `task mobile:e2e` |

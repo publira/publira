@@ -5,7 +5,7 @@
 # is safe to run repeatedly (idempotent).
 set -euo pipefail
 
-if ! command -v aws >/dev/null 2>&1; then
+if ! command -v aws > /dev/null 2>&1; then
   echo "aws CLI is required (Dev Container: devcontainer feature aws-cli)" >&2
   exit 1
 fi
@@ -23,11 +23,11 @@ fi
 # attempt fail loudly with the real error.
 deadline=$((SECONDS + 30))
 while ((SECONDS < deadline)); do
-  if aws s3api head-bucket --bucket "${bucket}" "${endpoint_args[@]}" 2>/dev/null; then
+  if aws s3api head-bucket --bucket "${bucket}" "${endpoint_args[@]}" 2> /dev/null; then
     echo "storage initialized successfully (bucket=${bucket} already exists)"
     exit 0
   fi
-  if aws s3 mb "s3://${bucket}" "${endpoint_args[@]}" 2>/dev/null; then
+  if aws s3 mb "s3://${bucket}" "${endpoint_args[@]}" 2> /dev/null; then
     echo "storage initialized successfully (bucket=${bucket} created)"
     exit 0
   fi

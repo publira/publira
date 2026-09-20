@@ -11,7 +11,7 @@ cleanup() {
   local pgid
   for pgid in "${started_groups[@]:-}"; do
     [[ -n "${pgid}" ]] || continue
-    kill -s KILL -- "-${pgid}" 2>/dev/null || true
+    kill -s KILL -- "-${pgid}" 2> /dev/null || true
   done
   rm -rf "${test_dir}"
 }
@@ -67,7 +67,7 @@ pass "slot allocation avoids active profile slots"
 write_stub() {
   local path="$1" body="$2"
   mkdir -p "$(dirname "${path}")"
-  printf '#!/bin/sh\n%s\n' "${body}" >"${path}"
+  printf '#!/bin/sh\n%s\n' "${body}" > "${path}"
   chmod +x "${path}"
 }
 no_such_bucket='echo "fatal error: An error occurred (NoSuchBucket) when calling the ListObjectsV2 operation: The specified bucket does not exist" >&2; exit 255'
@@ -85,7 +85,7 @@ write_stub "${unflushable_bin_dir}/valkey-cli" 'echo "Could not connect to Valke
   fail "removing a bucket that is there was reported as a failure"
 (PATH="${test_dir}/aws-gone:${PATH}" dev_env_remove_bucket publira-gone http://127.0.0.1:9000) ||
   fail "removing a bucket that is already gone was reported as a failure"
-if unreachable_message="$( (PATH="${test_dir}/aws-unreachable:${PATH}" dev_env_remove_bucket publira-present http://127.0.0.1:9000) 2>&1 )"; then
+if unreachable_message="$( (PATH="${test_dir}/aws-unreachable:${PATH}" dev_env_remove_bucket publira-present http://127.0.0.1:9000) 2>&1)"; then
   fail "removing a bucket succeeded where the endpoint could not be reached"
 fi
 [[ "${unreachable_message}" == *"Could not connect"* ]] ||
@@ -102,10 +102,16 @@ full_home="${test_dir}/full-home"
     dev_env_write_profile "held-${slot}" "${slot}"
   done
 )
-if full_slot="$( DEV_ENV_PROFILES_DIR="${full_home}/profiles"; dev_env_next_slot )"; then
+if full_slot="$(
+  DEV_ENV_PROFILES_DIR="${full_home}/profiles"
+  dev_env_next_slot
+)"; then
   fail "a slot was allocated from a table in which every one is held: ${full_slot}"
 fi
-held_profiles="$( DEV_ENV_PROFILES_DIR="${full_home}/profiles"; dev_env_slot_holders )"
+held_profiles="$(
+  DEV_ENV_PROFILES_DIR="${full_home}/profiles"
+  dev_env_slot_holders
+)"
 [[ "$(printf '%s\n' "${held_profiles}" | wc -l)" == "${DEV_ENV_SLOT_MAX}" ]] ||
   fail "the profiles holding the slots were not all named"
 [[ "$(printf '%s\n' "${held_profiles}" | head -1)" == "held-1 (slot 1)" ]] ||
@@ -115,7 +121,7 @@ held_profiles="$( DEV_ENV_PROFILES_DIR="${full_home}/profiles"; dev_env_slot_hol
 pass "a full slot table yields no slot and names every profile holding one"
 
 for refused_slot in "" 0 "$((DEV_ENV_SLOT_MAX + 1))" 18446744073709551617; do
-  if (dev_env_write_profile "slotless" "${refused_slot}") >/dev/null 2>&1; then
+  if (dev_env_write_profile "slotless" "${refused_slot}") > /dev/null 2>&1; then
     fail "a profile was written with slot '${refused_slot}'"
   fi
   [[ ! -e "$(dev_env_profile_path slotless)" ]] ||
@@ -144,7 +150,7 @@ concurrent_creates=8
 
 start_create() {
   local home="$1" name="$2" output="$3"
-  PUBLIRA_DEV_ENV_HOME="${home}" bash "${create_root}/scripts/dev-env.sh" create "${name}" >"${output}" 2>&1 &
+  PUBLIRA_DEV_ENV_HOME="${home}" bash "${create_root}/scripts/dev-env.sh" create "${name}" > "${output}" 2>&1 &
 }
 
 distinct_home="${test_dir}/distinct-home"
@@ -154,7 +160,7 @@ for i in $(seq "${concurrent_creates}"); do
   create_pids+=("$!")
 done
 for i in "${!create_pids[@]}"; do
-  wait "${create_pids[${i}]}" || fail "a concurrent create failed: $(<"${test_dir}/distinct-$((i + 1)).log")"
+  wait "${create_pids[${i}]}" || fail "a concurrent create failed: $(< "${test_dir}/distinct-$((i + 1)).log")"
 done
 distinct_slots="$(
   for i in $(seq "${concurrent_creates}"); do
@@ -176,8 +182,8 @@ for i in "${!create_pids[@]}"; do
   if wait "${create_pids[${i}]}"; then
     same_created=$((same_created + 1))
   else
-    [[ "$(<"${test_dir}/same-$((i + 1)).log")" == *"profile already exists: shared"* ]] ||
-      fail "a losing concurrent create did not report the existing profile: $(<"${test_dir}/same-$((i + 1)).log")"
+    [[ "$(< "${test_dir}/same-$((i + 1)).log")" == *"profile already exists: shared"* ]] ||
+      fail "a losing concurrent create did not report the existing profile: $(< "${test_dir}/same-$((i + 1)).log")"
   fi
 done
 ((same_created == 1)) || fail "${same_created} concurrent creates with one name succeeded"
@@ -208,19 +214,19 @@ done
 start_create "${interrupted_home}" waiting "${test_dir}/waiting.log"
 waiting_pid="$!"
 sleep 1
-kill -0 "${waiting_pid}" 2>/dev/null || fail "a create did not wait for the lock: $(<"${test_dir}/waiting.log")"
+kill -0 "${waiting_pid}" 2> /dev/null || fail "a create did not wait for the lock: $(< "${test_dir}/waiting.log")"
 [[ ! -e "${interrupted_home}/profiles/waiting.env" ]] || fail "a create wrote its profile while the lock was held"
 kill -s KILL -- "-${holder_pgid}"
-wait "${holder_pgid}" 2>/dev/null || true
+wait "${holder_pgid}" 2> /dev/null || true
 for _ in $(seq 100); do
-  kill -0 "${waiting_pid}" 2>/dev/null || break
+  kill -0 "${waiting_pid}" 2> /dev/null || break
   sleep 0.1
 done
-if kill -0 "${waiting_pid}" 2>/dev/null; then
+if kill -0 "${waiting_pid}" 2> /dev/null; then
   kill -s KILL "${waiting_pid}"
   fail "a create stayed blocked after the lock holder was killed"
 fi
-wait "${waiting_pid}" || fail "the create behind a killed lock holder failed: $(<"${test_dir}/waiting.log")"
+wait "${waiting_pid}" || fail "the create behind a killed lock holder failed: $(< "${test_dir}/waiting.log")"
 [[ -e "${interrupted_home}/profiles/waiting.env" ]] || fail "the create behind a killed lock holder wrote no profile"
 pass "a create waits for the lock and goes on once a holder killed inside it is gone"
 
@@ -235,7 +241,7 @@ client_bin_dir="${test_dir}/bin"
 empty_bin_dir="${test_dir}/empty-bin"
 mkdir -p "${client_bin_dir}" "${empty_bin_dir}"
 for client_name in valkey-cli redis-cli; do
-  printf '#!/bin/sh\nexit 0\n' >"${client_bin_dir}/${client_name}"
+  printf '#!/bin/sh\nexit 0\n' > "${client_bin_dir}/${client_name}"
   chmod +x "${client_bin_dir}/${client_name}"
 done
 
@@ -245,12 +251,12 @@ mkdir -p "${client_bin_dir}/redis-only"
 mv "${client_bin_dir}/redis-cli" "${client_bin_dir}/redis-only/redis-cli"
 [[ "$(PATH="${client_bin_dir}/redis-only" dev_env_redis_cli)" == "redis-cli" ]] ||
   fail "Redis's client was not used where it is the only one installed"
-if (PATH="${empty_bin_dir}" dev_env_redis_cli) >/dev/null; then
+if (PATH="${empty_bin_dir}" dev_env_redis_cli) > /dev/null; then
   fail "resolving a client succeeded where neither is installed"
 fi
 pass "the Redis-protocol client is whichever of Valkey's and Redis's is installed"
 
-if missing_message="$( (PATH="${client_bin_dir}" dev_env_require_commands valkey-cli not-an-installed-command) 2>&1 )"; then
+if missing_message="$( (PATH="${client_bin_dir}" dev_env_require_commands valkey-cli not-an-installed-command) 2>&1)"; then
   fail "a command that is not installed was accepted"
 fi
 [[ "${missing_message}" == *"not-an-installed-command"* ]] ||
@@ -297,10 +303,10 @@ pass "a new profile carries the port of an edge of its own and names the platfor
 echo_path="$(dev_env_profile_path echo)"
 grep -v '^PUBLIRA_EDGE_PORT=' "${echo_path}" |
   sed 's|^PUBLIRA_PLATFORM_APP_URL=.*$|PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:13502|' \
-    >"${echo_path}.before-the-edge"
+    > "${echo_path}.before-the-edge"
 mv "${echo_path}.before-the-edge" "${echo_path}"
 echo_edge="$(
-  dev_env_load_profile echo >/dev/null
+  dev_env_load_profile echo > /dev/null
   printf '%s %s\n' "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}"
 )"
 [[ "${echo_edge}" == "13550 http://platform.localhost:13550" ]] ||
@@ -310,7 +316,7 @@ echo_edge="$(
 # so the repair above leaves it alone.
 sed -i 's|^PUBLIRA_PLATFORM_APP_URL=.*$|PUBLIRA_PLATFORM_APP_URL=http://platform.example.com|' "${echo_path}"
 echo_platform_url="$(
-  dev_env_load_profile echo >/dev/null
+  dev_env_load_profile echo > /dev/null
   printf '%s\n' "${PUBLIRA_PLATFORM_APP_URL}"
 )"
 [[ "${echo_platform_url}" == "http://platform.example.com" ]] ||
@@ -328,10 +334,10 @@ pass "a profile written before the edge takes its port and its platform URL from
   dev_env_write_profile "delta" 4
 )
 delta_path="$(dev_env_profile_path delta)"
-grep -v '^PUBLIRA_TICKER_DB_URL=' "${delta_path}" >"${delta_path}.without-ticker"
+grep -v '^PUBLIRA_TICKER_DB_URL=' "${delta_path}" > "${delta_path}.without-ticker"
 mv "${delta_path}.without-ticker" "${delta_path}"
 delta_ticker_url="$(
-  dev_env_load_profile delta >/dev/null
+  dev_env_load_profile delta > /dev/null
   printf '%s\n' "${PUBLIRA_TICKER_DB_URL}"
 )"
 [[ "${delta_ticker_url}" == "postgres://publira_ticker:tickerpass@127.0.0.1:5432/publira_delta?sslmode=disable" ]] ||
@@ -343,7 +349,7 @@ pass "a profile written before the ticker role still loads that role's login, ne
 [[ "$(dev_env_url_authority "postgres://u:p@db/publira?sslmode=disable" 5432)" == "db:5432" ]] || fail "userinfo or query was not stripped"
 for malformed in "postgres://" "postgres://:5432/publira" "postgres://127.0.0.1:/publira" \
   "postgres://127.0.0.1:not-a-port/publira" "redis://127.0.0.1:0" "redis://127.0.0.1:65536"; do
-  if dev_env_url_authority "${malformed}" 5432 >/dev/null; then
+  if dev_env_url_authority "${malformed}" 5432 > /dev/null; then
     fail "a URL without a host or with a malformed port was accepted: ${malformed}"
   fi
 done
@@ -382,7 +388,7 @@ padded="${padded//_//}"
 while ((${#padded} % 4 != 0)); do
   padded+="="
 done
-decoded_length="$(printf '%s' "${padded}" | base64 -d 2>/dev/null | wc -c)"
+decoded_length="$(printf '%s' "${padded}" | base64 -d 2> /dev/null | wc -c)"
 [[ "${decoded_length}" == "32" ]] || fail "the development encryption key decodes to ${decoded_length} bytes, expected 32"
 pass "the development encryption key is one AES-256 key named by the primary key id"
 
@@ -396,7 +402,7 @@ start_fake_service() {
   shift 2
   mkdir -p "${run_dir}"
   dev_env_start_background "${run_dir}" "${process_name}" "$@"
-  fake_service_pgid="$(<"${run_dir}/${process_name}.pid")"
+  fake_service_pgid="$(< "${run_dir}/${process_name}.pid")"
   started_groups+=("${fake_service_pgid}")
 }
 
@@ -417,7 +423,7 @@ chain_run_dir="$(dev_env_profile_run_dir chain)"
 start_fake_service "${chain_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
 chain_pgid="${fake_service_pgid}"
 wait_for_process_group_members "${chain_pgid}" 2 || fail "the started service did not reach a process group of its own"
-dev_env_stop_profile chain >/dev/null
+dev_env_stop_profile chain > /dev/null
 if dev_env_process_group_is_running "${chain_pgid}"; then
   fail "a descendant of the recorded pid survived the stop"
 fi
@@ -430,19 +436,19 @@ finished_pgid="${fake_service_pgid}"
 wait_for_process_group_members "${finished_pgid}" 2 || fail "the started service did not reach a process group of its own"
 kill -s KILL -- "-${finished_pgid}"
 wait_for_process_group_members "${finished_pgid}" 0 || fail "the killed process group did not exit"
-dev_env_stop_profile finished >/dev/null
+dev_env_stop_profile finished > /dev/null
 [[ ! -e "${finished_run_dir}/web.pid" ]] || fail "the pid file of a process that is already gone was kept"
 pass "a stop removes the pid file of a process an earlier stop already ended"
 
-printf 'not-a-pid\n' >"${finished_run_dir}/web.pid"
-dev_env_stop_profile finished >/dev/null 2>&1
+printf 'not-a-pid\n' > "${finished_run_dir}/web.pid"
+dev_env_stop_profile finished > /dev/null 2>&1
 [[ ! -e "${finished_run_dir}/web.pid" ]] || fail "a pid file naming no process was kept"
 pass "a pid file that does not name a process is removed"
 
 foreign_run_dir="$(dev_env_profile_run_dir foreign)"
 start_fake_service "${foreign_run_dir}" web sleep 300
 foreign_pgid="${fake_service_pgid}"
-dev_env_stop_profile foreign >/dev/null 2>&1
+dev_env_stop_profile foreign > /dev/null 2>&1
 dev_env_process_group_is_running "${foreign_pgid}" || fail "a process group outside this repository was signalled"
 [[ ! -e "${foreign_run_dir}/web.pid" ]] || fail "the pid file of a pid taken over by another process was kept"
 kill -s KILL -- "-${foreign_pgid}"
@@ -455,7 +461,7 @@ pass "a pid whose process group no longer belongs to this repository is not sign
 logged_run_dir="$(dev_env_profile_run_dir logged)"
 start_fake_service "${logged_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
 dev_env_profile_has_running_processes logged || fail "a profile whose service is running was not reported as running"
-dev_env_stop_profile logged >/dev/null
+dev_env_stop_profile logged > /dev/null
 [[ -f "${logged_run_dir}/web.log" ]] || fail "the log of a stopped service was removed"
 if dev_env_profile_has_running_processes logged; then
   fail "a stopped profile whose logs are still on disk was reported as running"
@@ -473,7 +479,7 @@ pass "a profile that was never started is not reported as running"
 # start would put the next edge on.
 edged_services_file="$(dev_env_edge_services_file edged)"
 mkdir -p "$(dev_env_profile_run_dir edged)"
-: >"${edged_services_file}"
+: > "${edged_services_file}"
 dev_env_profile_has_running_processes edged || fail "a profile whose edge is up was not reported as running"
 rm -f "${edged_services_file}"
 if dev_env_profile_has_running_processes edged; then

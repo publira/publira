@@ -30,7 +30,7 @@ compose() {
   local polls
   if [[ "$*" == *--status* ]]; then
     polls=$(($(cat "${poll_count_file}") + 1))
-    printf '%s' "${polls}" >"${poll_count_file}"
+    printf '%s' "${polls}" > "${poll_count_file}"
     if ((polls <= STUB_RUNNING_POLLS)); then
       printf 'db\n'
     fi
@@ -45,13 +45,13 @@ compose() {
 
 reset_stub() {
   STUB_RUNNING_POLLS="$1"
-  printf '0' >"${poll_count_file}"
+  printf '0' > "${poll_count_file}"
 }
 
 PUBLIRA_BOOTSTRAP_STOP_INTERVAL_SEC=0.05
 
 reset_stub 0
-if wait_until_stopped db rustfs >"${test_dir}/stopped.log" 2>&1; then
+if wait_until_stopped db rustfs > "${test_dir}/stopped.log" 2>&1; then
   if [[ "$(cat "${poll_count_file}")" == "1" ]]; then
     pass "a stack already down is not polled twice"
   else
@@ -67,7 +67,7 @@ else
 fi
 
 reset_stub 3
-if wait_until_stopped db rustfs >/dev/null 2>&1; then
+if wait_until_stopped db rustfs > /dev/null 2>&1; then
   if [[ "$(cat "${poll_count_file}")" == "4" ]]; then
     pass "a service still running is polled until it leaves the running state"
   else
@@ -81,7 +81,7 @@ reset_stub 1000
 if (
   PUBLIRA_BOOTSTRAP_STOP_TIMEOUT_SEC=0
   wait_until_stopped db rustfs
-) >/dev/null 2>"${test_dir}/timeout.log"; then
+) > /dev/null 2> "${test_dir}/timeout.log"; then
   fail "wait_until_stopped returned while db was still running"
 elif grep -q 'timed out' "${test_dir}/timeout.log" && grep -q 'db=running' "${test_dir}/timeout.log"; then
   pass "a service that never stops fails the phase and names its state"

@@ -4,7 +4,7 @@
 #
 # Inputs (env):
 #   EVENT_NAME, DOCKER_MODE_INPUT
-#   FILTER_FORMAT, FILTER_CHECK, FILTER_LINT_GO, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_MOBILE_E2E, FILTER_TEST_E2E,
+#   FILTER_FORMAT, FILTER_CHECK, FILTER_LINT_GO, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_BASH, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_MOBILE_E2E, FILTER_TEST_E2E,
 #   FILTER_TEST_BOOTSTRAP, FILTER_TEST_ROUTING, FILTER_BUILD
 #   FILTER_DOCKER_WEB, FILTER_DOCKER_API, FILTER_DOCKER_IMAGE, FILTER_DOCKER_BATCH, FILTER_DOCKER_NODE, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
@@ -63,6 +63,7 @@ check=false
 lint_go=false
 test_go=false
 test_ts=false
+test_bash=false
 test_db_migrations=false
 test_mobile=false
 test_mobile_e2e=false
@@ -96,6 +97,7 @@ case "${event}" in
     lint_go=true
     test_go=true
     test_ts=true
+    test_bash=true
     test_db_migrations=true
     test_mobile=true
     test_mobile_e2e=true
@@ -125,6 +127,7 @@ case "${event}" in
     if flag FILTER_LINT_GO; then lint_go=true; fi
     if flag FILTER_TEST_GO; then test_go=true; fi
     if flag FILTER_TEST_TS; then test_ts=true; fi
+    if flag FILTER_TEST_BASH; then test_bash=true; fi
     if flag FILTER_TEST_DB_MIGRATIONS; then test_db_migrations=true; fi
     if flag FILTER_TEST_MOBILE; then test_mobile=true; fi
     if flag FILTER_TEST_MOBILE_E2E; then test_mobile_e2e=true; fi
@@ -168,6 +171,7 @@ fi
   echo "lint_go=${lint_go}"
   echo "test_go=${test_go}"
   echo "test_ts=${test_ts}"
+  echo "test_bash=${test_bash}"
   echo "test_db_migrations=${test_db_migrations}"
   echo "test_mobile=${test_mobile}"
   echo "test_mobile_e2e=${test_mobile_e2e}"
@@ -177,15 +181,15 @@ fi
   echo "build=${build}"
   echo "docker_any=${docker_any}"
   echo "docker_matrix=${docker_matrix}"
-} >>"${GITHUB_OUTPUT}"
+} >> "${GITHUB_OUTPUT}"
 
 echo "event=${event}"
-echo "format=${format} check=${check} lint_go=${lint_go} test_go=${test_go} test_ts=${test_ts} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_mobile_e2e=${test_mobile_e2e} test_e2e=${test_e2e} test_bootstrap=${test_bootstrap} test_routing=${test_routing} build=${build} docker_any=${docker_any}"
+echo "format=${format} check=${check} lint_go=${lint_go} test_go=${test_go} test_ts=${test_ts} test_bash=${test_bash} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_mobile_e2e=${test_mobile_e2e} test_e2e=${test_e2e} test_bootstrap=${test_bootstrap} test_routing=${test_routing} build=${build} docker_any=${docker_any}"
 if ((${#matrix_items[@]} > 0)); then
   for item in "${matrix_items[@]}"; do
     # shellcheck disable=SC2001
-    role="$(sed -n 's/.*"role":"\([^"]*\)".*/\1/p' <<<"${item}")"
-    target="$(sed -n 's/.*"target":"\([^"]*\)".*/\1/p' <<<"${item}")"
+    role="$(sed -n 's/.*"role":"\([^"]*\)".*/\1/p' <<< "${item}")"
+    target="$(sed -n 's/.*"target":"\([^"]*\)".*/\1/p' <<< "${item}")"
     echo "  docker: ${role}/${target}"
   done
 fi

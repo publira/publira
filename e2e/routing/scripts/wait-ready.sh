@@ -18,14 +18,14 @@ all_advertised() {
   shift
   local name
   for name in "$@"; do
-    grep -qx "${name}@file" <<<"${advertised}" || return 1
+    grep -qx "${name}@file" <<< "${advertised}" || return 1
   done
 }
 
 traefik_ready() {
   local routers middlewares
-  routers="$(traefik_router_names 2>/dev/null || true)"
-  middlewares="$(traefik_middleware_names 2>/dev/null || true)"
+  routers="$(traefik_router_names 2> /dev/null || true)"
+  middlewares="$(traefik_middleware_names 2> /dev/null || true)"
   all_advertised "${routers}" "${PUBLIRA_ROUTING_ROUTERS[@]}" &&
     all_advertised "${middlewares}" "${PUBLIRA_ROUTING_MIDDLEWARES[@]}"
 }

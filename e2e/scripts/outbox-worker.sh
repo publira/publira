@@ -13,7 +13,7 @@ outbox_worker_readyz_url() {
 }
 
 outbox_worker_is_ready() {
-  curl -sS --max-time 3 "$(outbox_worker_readyz_url)" 2>/dev/null |
+  curl -sS --max-time 3 "$(outbox_worker_readyz_url)" 2> /dev/null |
     grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'
 }
 
@@ -53,7 +53,7 @@ start_outbox_worker() {
       PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
       PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
       "${bin}"
-  ) >>"${LOG_DIR}/outbox-worker.log" 2>&1 &
+  ) >> "${LOG_DIR}/outbox-worker.log" 2>&1 &
   write_pid "outbox-worker" $!
 }
 

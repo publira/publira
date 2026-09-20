@@ -5,7 +5,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dev-env/lib.sh"
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: scripts/dev-env.sh <command> [name]
 
 Commands:
@@ -88,7 +88,7 @@ start_profile() {
     "${PUBLIRA_IMAGE_SERVER_PORT}" \
     "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_OUTBOX_WORKER_PORT}" \
     "${PUBLIRA_EDGE_PORT}"; do
-    if ss -ltn 2>/dev/null | grep -qE ":${port}\\b" || netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"; then
+    if ss -ltn 2> /dev/null | grep -qE ":${port}\\b" || netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"; then
       dev_env_die "port ${port} is already in use; select a different profile"
     fi
   done
@@ -242,13 +242,13 @@ print_env() {
   for key in $(awk -F= '/^[A-Z0-9_]+=/{print $1}' "${profile_path}"); do
     printf 'export %s=%q\n' "${key}" "${!key}"
   done
-  if ! dev_env_profile_value "${profile_path}" PUBLIRA_CONTENT_STATS_DB_URL >/dev/null; then
+  if ! dev_env_profile_value "${profile_path}" PUBLIRA_CONTENT_STATS_DB_URL > /dev/null; then
     printf 'export PUBLIRA_CONTENT_STATS_DB_URL=%q\n' "${PUBLIRA_CONTENT_STATS_DB_URL}"
   fi
-  if ! dev_env_profile_value "${profile_path}" PUBLIRA_TICKER_DB_URL >/dev/null; then
+  if ! dev_env_profile_value "${profile_path}" PUBLIRA_TICKER_DB_URL > /dev/null; then
     printf 'export PUBLIRA_TICKER_DB_URL=%q\n' "${PUBLIRA_TICKER_DB_URL}"
   fi
-  if ! dev_env_profile_value "${profile_path}" PUBLIRA_EDGE_PORT >/dev/null; then
+  if ! dev_env_profile_value "${profile_path}" PUBLIRA_EDGE_PORT > /dev/null; then
     printf 'export PUBLIRA_EDGE_PORT=%q\n' "${PUBLIRA_EDGE_PORT}"
   fi
 }
@@ -271,11 +271,17 @@ command="${1:-}"
 shift || true
 case "${command}" in
   create)
-    [[ $# -eq 1 ]] || { usage; exit 2; }
+    [[ $# -eq 1 ]] || {
+      usage
+      exit 2
+    }
     create_profile "$1"
     ;;
   select)
-    [[ $# -eq 1 ]] || { usage; exit 2; }
+    [[ $# -eq 1 ]] || {
+      usage
+      exit 2
+    }
     dev_env_select "$1"
     ;;
   init)
@@ -291,7 +297,10 @@ case "${command}" in
     dev_env_stop_profile "${profile_name}"
     ;;
   destroy)
-    [[ $# -eq 1 ]] || { usage; exit 2; }
+    [[ $# -eq 1 ]] || {
+      usage
+      exit 2
+    }
     destroy_profile "$1"
     ;;
   list) list_profiles ;;
@@ -303,5 +312,8 @@ case "${command}" in
     profile_name="$(profile_name_or_selected "$@")" || exit 1
     print_env "${profile_name}"
     ;;
-  *) usage; exit 2 ;;
+  *)
+    usage
+    exit 2
+    ;;
 esac

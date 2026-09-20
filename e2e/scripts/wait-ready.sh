@@ -28,7 +28,7 @@ fail_readiness() {
 }
 
 require_wait4x() {
-  if command -v wait4x >/dev/null 2>&1; then
+  if command -v wait4x > /dev/null 2>&1; then
     return 0
   fi
   e2e_err "wait4x is not installed (needed to wait for HTTP readiness probes)"

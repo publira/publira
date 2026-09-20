@@ -20,7 +20,7 @@ if ((${#busy[@]} > 0)); then
   bootstrap_fail "ports already in use: ${busy[*]} — stop the running dev stack first (the app ports are fixed in apps/*/package.json)"
 fi
 
-: >"${DEV_LOG}"
+: > "${DEV_LOG}"
 rm -f "${DEV_PGID_FILE}"
 
 # `task dev` fans out to `go run` and Turbopack children; a new session makes
@@ -29,7 +29,7 @@ rm -f "${DEV_PGID_FILE}"
 (
   cd "${REPO_ROOT}"
   setsid bash -c 'echo $$ >"$1"; exec task dev' _ "${DEV_PGID_FILE}" \
-    >"${DEV_LOG}" 2>&1 &
+    > "${DEV_LOG}" 2>&1 &
 )
 
 for _ in $(seq 1 50); do

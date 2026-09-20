@@ -184,8 +184,8 @@ pid_a=$!
 sleep 120 &
 pid_b=$!
 cleanup_sleeps() {
-  kill "${pid_a}" "${pid_b}" 2>/dev/null || true
-  wait "${pid_a}" "${pid_b}" 2>/dev/null || true
+  kill "${pid_a}" "${pid_b}" 2> /dev/null || true
+  wait "${pid_a}" "${pid_b}" 2> /dev/null || true
   rm -rf "${pid_root}"
 }
 trap cleanup_sleeps EXIT
@@ -206,19 +206,19 @@ stack_env PUBLIRA_E2E_RUN_DIR="${dir_a}" bash -c '
   stop_pid_file api-server
 ' bash "${LIB}"
 
-if kill -0 "${pid_a}" 2>/dev/null; then
+if kill -0 "${pid_a}" 2> /dev/null; then
   fail "stack A api-server stand-in (pid ${pid_a}) still running after stop"
 else
   pass "stop_pid_file kills only the matching RUN_DIR process"
 fi
-if kill -0 "${pid_b}" 2>/dev/null; then
+if kill -0 "${pid_b}" 2> /dev/null; then
   pass "stop_pid_file leaves the other RUN_DIR process running"
 else
   fail "stack B api-server stand-in (pid ${pid_b}) was stopped by stack A"
 fi
 
-kill "${pid_b}" 2>/dev/null || true
-wait "${pid_a}" "${pid_b}" 2>/dev/null || true
+kill "${pid_b}" 2> /dev/null || true
+wait "${pid_a}" "${pid_b}" 2> /dev/null || true
 rm -rf "${pid_root}"
 trap - EXIT
 
@@ -233,11 +233,11 @@ cleanup_lease() {
   stack_env PUBLIRA_E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
     source "$1"
     release_e2e_lease || true
-  ' bash "${LIB}" >/dev/null 2>&1 || true
+  ' bash "${LIB}" > /dev/null 2>&1 || true
   stack_env PUBLIRA_E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}-other" bash -c '
     source "$1"
     release_e2e_lease || true
-  ' bash "${LIB}" >/dev/null 2>&1 || true
+  ' bash "${LIB}" > /dev/null 2>&1 || true
   rm -rf "${lease_root}"
   rm -f "${lock_err}"
   rm -f "${PUBLIRA_E2E_DIR}/.run/locks/${lock_project}.lock" "${PUBLIRA_E2E_DIR}/.run/locks/${lock_project}.lease"
@@ -266,7 +266,7 @@ fi
 if stack_env PUBLIRA_E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
   source "$1"
   acquire_e2e_lock
-' bash "${LIB}" >"${lock_err}" 2>&1; then
+' bash "${LIB}" > "${lock_err}" 2>&1; then
   fail "foreign PUBLIRA_E2E_RUN_DIR acquire succeeded after owner up"
 else
   if grep -q "already in use" "${lock_err}"; then
@@ -280,7 +280,7 @@ if stack_env PUBLIRA_E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_proje
   source "$1"
   require_e2e_owner_or_free
   release_e2e_lease
-' bash "${LIB}" >"${lock_err}" 2>&1; then
+' bash "${LIB}" > "${lock_err}" 2>&1; then
   fail "foreign down/release succeeded after owner up"
 else
   if grep -q "already in use" "${lock_err}"; then
@@ -329,7 +329,7 @@ take_lease() {
   if stack_env PUBLIRA_E2E_RUN_DIR="$1" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
     source "$1"
     acquire_e2e_lock
-  ' bash "${LIB}" >"${lock_err}" 2>&1; then
+  ' bash "${LIB}" > "${lock_err}" 2>&1; then
     return 0
   fi
   fail "could not take the ${lock_project} lease for $1: $(cat "${lock_err}")"
@@ -337,7 +337,7 @@ take_lease() {
 }
 
 lock_is_free() {
-  flock -n "${lock_file}" true 2>/dev/null
+  flock -n "${lock_file}" true 2> /dev/null
 }
 
 wait_lock_free() {
@@ -351,14 +351,14 @@ wait_lock_free() {
   return 1
 }
 
-if ! command -v flock >/dev/null 2>&1; then
+if ! command -v flock > /dev/null 2>&1; then
   printf '[e2e] lib_test skip: flock unavailable, lock reclaim checks not run\n'
 else
   # The recorded pid must be the only process with the lock open. A `sleep`
   # child would inherit fd 9 and keep the flock after teardown kills the holder.
   if take_lease "${lease_a}"; then
     holder_pid="$(sed -n '2p' "${lease_file}")"
-    kill -9 "${holder_pid}" 2>/dev/null || true
+    kill -9 "${holder_pid}" 2> /dev/null || true
     if wait_lock_free; then
       pass "killing the lease holder frees the compose-project lock"
     else
@@ -375,7 +375,7 @@ else
       source "$1"
       require_e2e_owner_or_free
       release_e2e_lease
-    ' bash "${LIB}" >"${lock_err}" 2>&1 && lock_is_free; then
+    ' bash "${LIB}" > "${lock_err}" 2>&1 && lock_is_free; then
       pass "down reclaims a lock holder orphaned by a missing lease file"
     else
       fail "orphaned holder ${orphan_pid} survived down: $(cat "${lock_err}")"
@@ -400,7 +400,7 @@ else
     if stack_env PUBLIRA_E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
       source "$1"
       acquire_e2e_lock
-    ' bash "${LIB}" >"${lock_err}" 2>&1; then
+    ' bash "${LIB}" > "${lock_err}" 2>&1; then
       fail "acquire succeeded while an orphaned holder still held the lock"
     elif grep -q "held by pid(s) .*${stuck_pid}" "${lock_err}" && grep -q "task e2e:down" "${lock_err}"; then
       pass "acquire refusal names the orphaned holder and the recovery command"
@@ -410,7 +410,7 @@ else
     stack_env PUBLIRA_E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
       source "$1"
       release_e2e_lease
-    ' bash "${LIB}" >/dev/null 2>&1 || true
+    ' bash "${LIB}" > /dev/null 2>&1 || true
   fi
 
   # Reached through a symlinked repository path, PUBLIRA_E2E_LOCK_FILE keeps the logical
@@ -423,14 +423,14 @@ else
     acquire_e2e_lock
     rm -f "${PUBLIRA_E2E_LEASE_FILE}"
     release_e2e_lease
-  ' bash "${link_root}/e2e/scripts/lib.sh" >"${lock_err}" 2>&1; then
+  ' bash "${link_root}/e2e/scripts/lib.sh" > "${lock_err}" 2>&1; then
     pass "orphan reclaim works through a symlinked repository path"
   else
     fail "symlinked repository path could not reclaim: $(cat "${lock_err}")"
     stack_env PUBLIRA_E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${link_project}" bash -c '
       source "$1"
       release_e2e_lease
-    ' bash "${LIB}" >/dev/null 2>&1 || true
+    ' bash "${LIB}" > /dev/null 2>&1 || true
   fi
   rm -rf "${link_root}"
   rm -f "${PUBLIRA_E2E_DIR}/.run/locks/${link_project}.lock" "${PUBLIRA_E2E_DIR}/.run/locks/${link_project}.lease"
@@ -442,7 +442,7 @@ fi
 # the check still needs no daemon.
 stack_project="${lock_project}-stack"
 stub_dir="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-docker.XXXXXX")"
-cat >"${stub_dir}/docker" <<'STUB'
+cat > "${stub_dir}/docker" << 'STUB'
 #!/usr/bin/env bash
 # Answers the two `docker ps` queries lib.sh makes. STUB_STACK_PRESENT=1 gives
 # the compose project containers, whose run-directory label is
@@ -494,11 +494,11 @@ release_stack_lease() {
     bash -c '
       source "$1"
       release_e2e_lease
-    ' bash "${LIB}" >/dev/null 2>&1 || true
+    ' bash "${LIB}" > /dev/null 2>&1 || true
 }
 
 if acquire_with_stub "${lease_b}" STUB_STACK_PRESENT=1 STUB_STACK_RUN_DIR="${lease_a}" \
-  >"${lock_err}" 2>&1; then
+  > "${lock_err}" 2>&1; then
   fail "acquire took the project while another run's stack was up"
   release_stack_lease "${lease_b}"
 elif grep -q "stack owned by ${lease_a}" "${lock_err}" &&
@@ -508,7 +508,7 @@ else
   fail "foreign stack refusal does not name the owner and the way out: $(cat "${lock_err}")"
 fi
 
-if acquire_with_stub "${lease_b}" STUB_STACK_PRESENT=1 >"${lock_err}" 2>&1; then
+if acquire_with_stub "${lease_b}" STUB_STACK_PRESENT=1 > "${lock_err}" 2>&1; then
   fail "acquire took the project while unlabelled containers were up"
   release_stack_lease "${lease_b}"
 elif grep -q "did not create" "${lock_err}" && grep -q "task e2e:down" "${lock_err}"; then
@@ -518,7 +518,7 @@ else
 fi
 
 if acquire_with_stub "${lease_b}" STUB_PORT_PROJECT="${stack_project}-other" \
-  >"${lock_err}" 2>&1; then
+  > "${lock_err}" 2>&1; then
   fail "acquire took the project while another one published its Postgres port"
   release_stack_lease "${lease_b}"
 elif grep -q "port 5433 is published by compose project ${stack_project}-other" "${lock_err}"; then
@@ -528,14 +528,14 @@ else
 fi
 
 if acquire_with_stub "${lease_a}" STUB_STACK_PRESENT=1 STUB_STACK_RUN_DIR="${lease_a}" \
-  >"${lock_err}" 2>&1; then
+  > "${lock_err}" 2>&1; then
   pass "the run that owns the stack acquires after its lease holder is gone"
   release_stack_lease "${lease_a}"
 else
   fail "owner was refused its own stack: $(cat "${lock_err}")"
 fi
 
-if acquire_with_stub "${lease_a}" >"${lock_err}" 2>&1; then
+if acquire_with_stub "${lease_a}" > "${lock_err}" 2>&1; then
   pass "a run on a project with no stack is unaffected"
   release_stack_lease "${lease_a}"
 else
