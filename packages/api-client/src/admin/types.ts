@@ -15,6 +15,18 @@ export type { EpisodeReadThrough } from "../gen/publira/admin/v1/engagement_pb.j
 export type { AdminNotification } from "../gen/publira/admin/v1/notification_pb.js";
 export type { TenantPaymentSettings } from "../gen/publira/admin/v1/payment_pb.js";
 export type {
+  TenantCommunityLimitOverrides,
+  TenantRetentionOverrides,
+} from "../gen/publira/admin/v1/tenant_pb.js";
+export type {
   AdminReader,
   AdminTenantUser,
 } from "../gen/publira/admin/v1/user_pb.js";
+
+// platform.v1 limit messages, which the tenant settings RPCs embed as the
+// platform values a tenant's own limits are read and bounded against.
+export type {
+  CommunityLimitDefaults,
+  HourDayLimit,
+  MinuteDayLimit,
+} from "../gen/publira/platform/v1/policy_pb.js";

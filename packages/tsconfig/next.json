@@ -2,7 +2,9 @@
   "extends": "./base.json",
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2017",
+    // Matches `base.json`. Nothing is emitted from here, and `ES2017` rejects
+    // the bigint literals oxlint's `unicorn/prefer-bigint-literals` requires.
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,

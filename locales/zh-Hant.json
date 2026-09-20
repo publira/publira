@@ -1642,7 +1642,8 @@
         "creator_roles": "作者角色",
         "theme": "主題",
         "email": "郵件",
-        "payment": "付款"
+        "payment": "付款",
+        "policy": "限制與保留"
       },
       "image": {
         "file_required": "請選擇圖片檔案。",
@@ -1886,6 +1887,73 @@
         "validation": {
           "secret_key_required": "請輸入密鑰。",
           "webhook_secret_required": "請輸入 webhook 簽章密鑰。"
+        }
+      },
+      "policy_title": "設定 — 限制與保留",
+      "policy_description": "管理該租戶的社群限制以及記錄的保留期限。",
+      "policy": {
+        "use_platform_default": "使用平台預設值",
+        "save_conflict": "在此頁面開啟期間，該設定已在他處被變更。請重新載入頁面後再次輸入。",
+        "revision_invalid": "請重新載入頁面後再次輸入。",
+        "community": {
+          "title": "社群限制",
+          "description": "讀者發表留言、檢舉、評分或聯絡您的頻率。每項限制以平台值為起點，只能設得更嚴格。",
+          "platform_minute_day": "平台上限：每分鐘 {$per_minute} 次，每天 {$per_day} 次",
+          "platform_hour_day": "平台上限：每小時 {$per_hour} 次，每天 {$per_day} 次",
+          "platform_window": "平台判定時間：{$minutes} 分鐘",
+          "comment_post_legend": "發表留言",
+          "comment_post_per_minute": "每分鐘留言數",
+          "comment_post_per_day": "每天留言數",
+          "comment_report_legend": "檢舉留言",
+          "comment_report_per_minute": "每分鐘檢舉數",
+          "comment_report_per_day": "每天檢舉數",
+          "episode_rating_legend": "話數評分",
+          "episode_rating_per_minute": "每分鐘評分數",
+          "episode_rating_per_day": "每天評分數",
+          "contact_per_account_legend": "每個帳號的聯絡訊息",
+          "contact_account_per_hour": "每個帳號每小時聯絡訊息數",
+          "contact_account_per_day": "每個帳號每天聯絡訊息數",
+          "contact_per_client_legend": "每個用戶端的聯絡訊息",
+          "contact_client_per_hour": "每個用戶端每小時聯絡訊息數",
+          "contact_client_per_day": "每個用戶端每天聯絡訊息數",
+          "viewer_preferences_legend": "閱讀器偏好更新",
+          "viewer_preferences_per_minute": "每分鐘偏好更新數",
+          "viewer_preferences_per_day": "每天偏好更新數",
+          "duplicate_window_legend": "重複留言判定時間",
+          "duplicate_window_label": "分鐘",
+          "duplicate_window_description": "讀者在這段時間內無法再次發表相同的留言。時間越長，設定越嚴格。",
+          "submit": "儲存社群限制",
+          "saved": "已儲存社群限制。",
+          "load_failed": "無法載入社群限制。請稍後再試。",
+          "save_failed": "無法儲存社群限制。請稍後再試。",
+          "load_error_hint": "此時儲存會覆蓋已儲存的限制。請先重新載入頁面再進行變更。",
+          "too_loose": "{$setting}不能比平台上限更寬鬆。請輸入不低於旁邊所示平台上限的嚴格程度的值。",
+          "validation": {
+            "limit_invalid": "請為{$setting}輸入不小於 1 的整數。",
+            "limit_too_large": "請為{$setting}輸入更小的數值。",
+            "day_below_minute": "{$setting}的每天上限不能低於每分鐘上限。",
+            "day_below_hour": "{$setting}的每天上限不能低於每小時上限。",
+            "incomplete": "請為{$setting}輸入兩個值，或使用平台預設值。",
+            "window_invalid": "重複留言判定時間請輸入 1 至 10080 的整數。"
+          }
+        },
+        "retention": {
+          "title": "保留期限",
+          "description": "該租戶的已撤回留言、內容事件與排行榜快照在被清除前保留的時長。每個期限以平台預設值為起點，可設定得更長或更短。",
+          "platform_days": "平台預設值：{$days} 天",
+          "submit": "儲存保留期限",
+          "saved": "已儲存保留期限。",
+          "load_failed": "無法載入保留期限。請稍後再試。",
+          "save_failed": "無法儲存保留期限。請稍後再試。",
+          "load_error_hint": "此時儲存會覆蓋已儲存的期限。請先重新載入頁面再進行變更。",
+          "validation": {
+            "days_invalid": "請為{$setting}輸入 1 至 36500 之間的整數天數。"
+          },
+          "withdrawn_comment_legend": "已撤回留言",
+          "content_event_legend": "內容事件",
+          "daily_ranking_legend": "每日排行榜快照",
+          "weekly_ranking_legend": "每週排行榜快照",
+          "days_label": "保留天數"
         }
       }
     },

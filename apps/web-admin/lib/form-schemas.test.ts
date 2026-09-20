@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  boundedIntFormSchema,
   checkboxOnFormSchema,
   flagOneFormSchema,
   jsonStringArrayFormSchema,
   nonNegativeIntFormSchema,
+  optionalBoundedIntFormSchema,
   optionalCropRectFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
@@ -111,5 +113,65 @@ describe("optionalCropRectFormSchema", () => {
   it("rejects a rectangle that lost a side rather than re-centring the cut", () => {
     expect(schema.safeParse("0,925,2400").success).toBe(false);
     expect(schema.safeParse("0,925,2400,0").success).toBe(false);
+  });
+});
+
+describe("boundedIntFormSchema", () => {
+  const schema = boundedIntFormSchema("Enter a whole number of at least 1.", {
+    max: 100,
+    maxMessage: "Enter 100 or less.",
+    min: 1,
+  });
+
+  it("accepts a whole number within the range", () => {
+    expect(schema.parse(" 42 ")).toBe(42);
+    expect(schema.parse("1")).toBe(1);
+    expect(schema.parse("100")).toBe(100);
+  });
+
+  it("rejects a blank value instead of defaulting it", () => {
+    expect(schema.safeParse("").error?.issues[0]?.message).toBe(
+      "Enter a whole number of at least 1."
+    );
+  });
+
+  it("rejects a value below the range instead of clamping it", () => {
+    expect(schema.safeParse("0").error?.issues[0]?.message).toBe(
+      "Enter a whole number of at least 1."
+    );
+  });
+
+  it("words a value above the range with the max message", () => {
+    expect(schema.safeParse("101").error?.issues[0]?.message).toBe(
+      "Enter 100 or less."
+    );
+  });
+
+  it("rejects fractions and non-decimal notation", () => {
+    expect(schema.safeParse("1.5").success).toBe(false);
+    expect(schema.safeParse("1e2").success).toBe(false);
+    expect(schema.safeParse("0x10").success).toBe(false);
+  });
+});
+
+describe("optionalBoundedIntFormSchema", () => {
+  const schema = optionalBoundedIntFormSchema(
+    "Enter a whole number of at least 1.",
+    { max: 100, min: 1 }
+  );
+
+  it("reads a control the form did not submit as no value at all", () => {
+    const notSubmitted: unknown = undefined;
+
+    expect(schema.parse(notSubmitted)).toBeUndefined();
+    expect(schema.parse("")).toBeUndefined();
+    expect(schema.parse("  ")).toBeUndefined();
+  });
+
+  it("still checks a value that was submitted", () => {
+    expect(schema.parse("42")).toBe(42);
+    expect(schema.safeParse("0").success).toBe(false);
+    expect(schema.safeParse("101").success).toBe(false);
+    expect(schema.safeParse("abc").success).toBe(false);
   });
 });
