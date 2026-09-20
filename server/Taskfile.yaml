@@ -31,7 +31,7 @@ tasks:
     deps:
       - task: dev-api
       - task: dev-image-server
-      - task: dev-outbox-worker
+      - task: dev-worker
 
   dev-api:
     desc: Run the API server in development mode
@@ -41,9 +41,9 @@ tasks:
     desc: Run the image server in development mode
     cmds: [{ task: run, vars: { NAME: image-server } }]
 
-  dev-outbox-worker:
-    desc: Run the outbox/River worker in development mode
-    cmds: [{ task: run, vars: { NAME: outbox-worker } }]
+  dev-worker:
+    desc: Run the background worker in development mode
+    cmds: [{ task: run, vars: { NAME: worker } }]
 
   lint:
     desc: Run golangci-lint over the server module

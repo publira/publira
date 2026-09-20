@@ -37,7 +37,7 @@ full_web_host='{"role":"web","target":"web-host","port":"3000","task":"docker:bu
 full_web_admin='{"role":"web","target":"web-admin","port":"4000","task":"docker:build:web","arg":"APP_NAME=web-admin","extra":"PORT=4000"}'
 full_web_platform='{"role":"web","target":"web-platform","port":"4100","task":"docker:build:web","arg":"APP_NAME=web-platform","extra":"PORT=4100"}'
 full_api='{"role":"api","target":"api-server","port":"8000","task":"docker:build:api","arg":"CMD_NAME=api-server","extra":"PORT=8000"}'
-full_outbox_worker='{"role":"api","target":"outbox-worker","port":"8003","task":"docker:build:api","arg":"CMD_NAME=outbox-worker","extra":"PORT=8003"}'
+full_worker='{"role":"api","target":"worker","port":"8003","task":"docker:build:api","arg":"CMD_NAME=worker","extra":"PORT=8003"}'
 full_batch='{"role":"batch","target":"batch","port":"","task":"docker:build:batch","arg":"","extra":""}'
 full_image='{"role":"image","target":"image-server","port":"8200","task":"docker:build:image","arg":"CMD_NAME=image-server","extra":"PORT=8200"}'
 full_node_email_renderer='{"role":"node","target":"email-renderer","port":"8080","task":"docker:build:node","arg":"APP_NAME=email-renderer","extra":"PORT=8080"}'
@@ -84,7 +84,7 @@ case "${event}" in
       "${full_web_admin}"
       "${full_web_platform}"
       "${full_api}"
-      "${full_outbox_worker}"
+      "${full_worker}"
       "${full_batch}"
       "${full_image}"
       "${full_node_email_renderer}"
@@ -111,7 +111,7 @@ case "${event}" in
         "${full_web_admin}"
         "${full_web_platform}"
         "${full_api}"
-        "${full_outbox_worker}"
+        "${full_worker}"
         "${full_batch}"
         "${full_image}"
         "${full_node_email_renderer}"
@@ -141,7 +141,7 @@ case "${event}" in
         "${full_web_admin}"
         "${full_web_platform}"
         "${full_api}"
-        "${full_outbox_worker}"
+        "${full_worker}"
         "${full_batch}"
         "${full_image}"
         "${full_node_email_renderer}"

@@ -375,8 +375,8 @@ override="$(
 [[ "${override}" == "postgres://admin:secret@10.0.0.1:5433/postgres" ]] || fail "PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL was not honoured"
 pass "the administrator connection follows the profile's PostgreSQL host unless overridden"
 
-# The outbox worker rejects key material config.parseEncryption cannot read, and
-# a profile that starts with an unusable one only says so in a retry log, long
+# The worker rejects key material config.parseEncryption cannot read, and a
+# profile that starts with an unusable one only says so in a retry log, long
 # after the mail it dropped. Decode it here the way that parser does instead.
 [[ "${DEV_ENV_SECRET_ENCRYPTION_KEYS}" == *:* ]] || fail "the development encryption key is not id:key"
 encryption_key_id="${DEV_ENV_SECRET_ENCRYPTION_KEYS%%:*}"

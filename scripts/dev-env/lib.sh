@@ -183,8 +183,8 @@ dev_env_random_secret() {
   openssl rand -base64 48 | tr -d '\n'
 }
 
-# Secret decryption for the SMTP password a profile's outbox worker reads. A
-# worker started without keys reports an unusable secret manager, and every mail
+# Secret decryption for the SMTP password a profile's worker reads. A worker
+# started without keys reports an unusable secret manager, and every mail
 # handler stops there before it reaches Mailpit, so the mailbox stays empty while
 # the event retries until it is dead. The seeded password is not an encrypted
 # envelope and the manager hands such a value back unchanged, so the key itself
@@ -341,7 +341,7 @@ dev_env_write_profile() {
     printf 'PUBLIRA_PUBLIC_API_GRPC_PORT=%s\n' "$((port_base + 11))"
     printf 'PUBLIRA_IMAGE_SERVER_PORT=%s\n' "$((port_base + 20))"
     printf 'PUBLIRA_EMAIL_RENDERER_PORT=%s\n' "$((port_base + 30))"
-    printf 'PUBLIRA_OUTBOX_WORKER_PORT=%s\n' "$((port_base + 40))"
+    printf 'PUBLIRA_WORKER_PORT=%s\n' "$((port_base + 40))"
     # The profile's front door: a browser asks for `/images…` on the origin the
     # page it is reading came from, and only the edge knows that path is the
     # image server's. The platform console URL below is therefore the edge's.
@@ -379,13 +379,13 @@ dev_env_load_profile() {
     PUBLIRA_AUTH_JWT_SECRET PUBLIRA_REVALIDATE_TOKEN PUBLIRA_WEB_HOST_PORT \
     PUBLIRA_WEB_ADMIN_PORT PUBLIRA_WEB_PLATFORM_PORT PUBLIRA_PUBLIC_API_PORT \
     PUBLIRA_PUBLIC_API_GRPC_PORT PUBLIRA_IMAGE_SERVER_PORT \
-    PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_OUTBOX_WORKER_PORT \
+    PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_WORKER_PORT \
     PUBLIRA_WEB_HOST_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \
     PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
     dev_env_load_required_profile_value "${profile_path}" "${key}"
   done
 
-  # A profile written before outbox-worker had a role of its own stored the
+  # A profile written before the worker had a role of its own stored the
   # superuser connection as the worker URL. Loading it unchanged would keep
   # running the worker as the superuser, which is the whole defect the dedicated
   # role removes, so the stored value is replaced with the login this profile

@@ -79,12 +79,12 @@ task storage:seed        # The images the development seed's rows name
 | `publira_rls_bypass` | NOLOGIN, BYPASSRLS | Named privilege used to grant a dedicated role in production |
 | `publira_platform` | LOGIN, BYPASSRLS | Login user for the platform API; bypasses RLS to access every tenant |
 | `publira_content_stats` | LOGIN, BYPASSRLS | Login user for the daily stats batches; bypasses RLS to aggregate across every tenant |
-| `publira_outbox` | LOGIN, BYPASSRLS | Login user for outbox-worker; bypasses RLS to claim pending rows across every tenant, and owns River's schema |
+| `publira_outbox` | LOGIN, BYPASSRLS | Login user for the worker's Outbox drain; bypasses RLS to claim pending rows across every tenant, and owns River's schema |
 | `publira_ticker` | LOGIN, BYPASSRLS | Login user for the three ticker batches; bypasses RLS to publish, apply free windows, and roll days across every tenant |
 | `publira_admin` | LOGIN | Login user for the admin API; RLS enabled (tenant-scoped) |
 | `publira_public` | LOGIN | Login user for the public API; RLS enabled (tenant-scoped) |
 
-`publira_outbox` is the only one of them with `CREATE` on the `public` schema: outbox-worker applies River's own schema (`river_job` and the rest) with `rivermigrate` at startup.
+`publira_outbox` is the only one of them with `CREATE` on the `public` schema: the worker applies River's own schema (`river_job` and the rest) with `rivermigrate` at startup.
 
 `publira_ticker` is the only one of them without the blanket table grants the others share. Its jobs touch a known set of catalog, follow, and recipient tables, so the seed names those tables one by one and leaves the role out of the `ALTER DEFAULT PRIVILEGES` that hands every future table to the rest.
 

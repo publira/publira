@@ -66,7 +66,7 @@ tasks:
       - bash {{.PUBLIRA_E2E_DIR}}/scripts/db-setup.sh
 
   start-apps:
-    desc: Start API servers, email-renderer, outbox-worker, web-host, web-admin, web-platform (background, logs in $PUBLIRA_E2E_RUN_DIR/logs)
+    desc: Start API servers, email-renderer, worker, web-host, web-admin, web-platform (background, logs in $PUBLIRA_E2E_RUN_DIR/logs)
     cmds:
       - bash {{.PUBLIRA_E2E_DIR}}/scripts/start-apps.sh
 

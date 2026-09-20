@@ -9,7 +9,7 @@ task server:build
 
 Without an argument, or with a name that is not one of the nine below, the binary prints its usage to stderr and exits non-zero.
 
-Each one rebuilds or purges a period of data and exits, which is what makes an external schedule the right thing to invoke it. The jobs that instead have to act the moment a stored instant passes — promoting due episodes, applying free window boundaries, turning over a tenant's calendar day — are River periodic jobs inside [outbox-worker](../outbox-worker/README.md).
+Each one rebuilds or purges a period of data and exits, which is what makes an external schedule the right thing to invoke it. The jobs that instead have to act the moment a stored instant passes — promoting due episodes, applying free window boundaries, turning over a tenant's calendar day — are River periodic jobs inside the [worker](../worker/README.md).
 
 | Subcommand | What it does |
 | --- | --- |

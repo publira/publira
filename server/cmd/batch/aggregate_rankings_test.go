@@ -72,7 +72,7 @@ func TestResolveRankingDBURL(t *testing.T) {
 		t.Fatalf("content stats URL = %q, want content-stats-url", got)
 	}
 
-	// PUBLIRA_WORKER_DB_URL stays set. It names outbox-worker's own role, which
+	// PUBLIRA_WORKER_DB_URL stays set. It names the worker's own role, which
 	// owns River's schema, so this batch must fall through it to the shared
 	// connection rather than adopt it.
 	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", "")

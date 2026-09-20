@@ -1,6 +1,6 @@
-# outbox-worker
+# worker
 
-A long-lived worker that drains the Outbox and processes the entries as River jobs, and runs the three [periodic jobs](#periodic-jobs) below on the same River client. It runs as a separate process from the API processes. Besides `outbox_test`, it handles these email events:
+The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, and runs the four [periodic jobs](#periodic-jobs) below. It runs as a separate process from the API processes. Besides `outbox_test`, the Outbox drain handles these email events:
 
 | Event type | Mail |
 | --- | --- |
@@ -72,26 +72,26 @@ They connect as `publira_ticker` rather than on the pool above. The worker's own
 From the repository root:
 
 ```bash
-task server:dev-outbox-worker
+task server:dev-worker
 ```
 
 From the `server` directory:
 
 ```bash
-go run ./cmd/outbox-worker
+go run ./cmd/worker
 ```
 
 Using a pre-built binary:
 
 ```bash
 task server:build
-./server/bin/outbox-worker
+./server/bin/worker
 ```
 
 The production image uses the API role (a long-lived HTTP process).
 
 ```bash
-task docker:build:api CMD_NAME=outbox-worker PORT=8003
+task docker:build:api CMD_NAME=worker PORT=8003
 ```
 
 ## Main environment variables
@@ -123,7 +123,7 @@ River's schema (`river_job` and the rest) is applied with `rivermigrate` at star
 
 ## Logs and metrics
 
-OpenTelemetry reports `service.name` as `publira-outbox-worker` for the drain, and as `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for the span each periodic run hangs off — the names those jobs reported when each had a process of its own.
+OpenTelemetry reports `service.name` as `publira-worker` for the process, and as `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for the span each periodic run hangs off — the names those jobs reported when each had a process of its own.
 
 The structured logs (slog) carry `event_id` / `event_type` / `idempotency_key` / `attempts`. The OpenTelemetry counters are:
 
