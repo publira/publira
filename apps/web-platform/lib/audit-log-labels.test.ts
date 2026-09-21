@@ -22,6 +22,25 @@ describe("audit-log-labels", () => {
     await expect(
       getAuditActionLabel("platform_settings_updated", en)
     ).resolves.toBe("Updated platform settings");
+    await expect(
+      getAuditActionLabel("platform_storage_settings_updated", en)
+    ).resolves.toBe("Updated storage settings");
+    await expect(
+      getAuditActionLabel("platform_storage_connection_tested", en)
+    ).resolves.toBe("Tested the storage connection");
+  });
+
+  it("offers the storage actions in the action filter", async () => {
+    const options = await getAuditActionOptions(en);
+
+    expect(options).toContainEqual({
+      label: "Updated storage settings",
+      value: "platform_storage_settings_updated",
+    });
+    expect(options).toContainEqual({
+      label: "Tested the storage connection",
+      value: "platform_storage_connection_tested",
+    });
   });
 
   it("returns original action for unknown values", async () => {

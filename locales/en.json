@@ -3346,6 +3346,14 @@
       "page_description": "Track important operations across tenants and open the affected resource.",
       "pagination_aria": "Audit log pagination",
       "showing": "Showing {$count}",
+      "targets": {
+        "platform_config": "Platform settings",
+        "platform_policy": "Platform policy",
+        "platform_retention": "Retention defaults",
+        "smtp_config": "SMTP settings",
+        "storage_config": "Storage settings",
+        "webpush_config": "Web Push settings"
+      },
       "title": "Audit logs",
       "unset": "Not set"
     },
