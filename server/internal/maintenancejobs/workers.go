@@ -95,6 +95,16 @@ func (PurgeOrphanImagesArgs) InsertOpts() river.InsertOpts {
 	return purgeInsertOpts(orphanImagePurgeInterval)
 }
 
+// CloseRoyaltyStatementsArgs closes the royalty statement of every month a
+// tenant that chose automatic closing is owed. Like the rebuild chain it keeps
+// no completed run as a reason to skip one: a pass closes only what is owed,
+// so one that finds nothing to close is the answer rather than a waste.
+type CloseRoyaltyStatementsArgs struct{}
+
+func (CloseRoyaltyStatementsArgs) Kind() string { return kindCloseRoyaltyStatements }
+
+func (CloseRoyaltyStatementsArgs) InsertOpts() river.InsertOpts { return insertOpts() }
+
 type projectEpisodeReadsWorker struct {
 	river.WorkerDefaults[ProjectEpisodeReadsArgs]
 	jobs *Jobs
@@ -233,6 +243,21 @@ func (w *purgeOrphanImagesWorker) Work(ctx context.Context, job *river.Job[Purge
 			return river.JobCancel(err)
 		}
 		return err
+	})
+}
+
+type closeRoyaltyStatementsWorker struct {
+	river.WorkerDefaults[CloseRoyaltyStatementsArgs]
+	jobs *Jobs
+}
+
+func (w *closeRoyaltyStatementsWorker) Timeout(*river.Job[CloseRoyaltyStatementsArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *closeRoyaltyStatementsWorker) Work(ctx context.Context, job *river.Job[CloseRoyaltyStatementsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameCloseRoyaltyStatements, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.royaltyStatements.Run(ctx, deps)
 	})
 }
 

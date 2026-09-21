@@ -862,6 +862,9 @@ type Querier interface {
 	// index order, so each scan direction gets its own query.
 	// cursor rules: proto/README.md.
 	ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error)
+	// Every tenant that chose automatic closing, for the maintenance pass that
+	// closes their months across tenants.
+	ListAutomaticRoyaltyConfigs(ctx context.Context) ([]TenantRoyaltyConfig, error)
 	// The previous-page half of ListContactMessagesByCreatedAtDesc. The handler
 	// reverses the returned rows to preserve the newest-first order.
 	ListContactMessagesByCreatedAtAsc(ctx context.Context, arg ListContactMessagesByCreatedAtAscParams) ([]ListContactMessagesByCreatedAtAscRow, error)
@@ -1459,6 +1462,9 @@ type Querier interface {
 	// Every line of a statement as it was closed, for the CSV export. It reads the
 	// stored columns only, so the export of a closed month never changes.
 	ListRoyaltyStatementLinesForExport(ctx context.Context, arg ListRoyaltyStatementLinesForExportParams) ([]RoyaltyStatementLine, error)
+	// The months of a tenant already closed, from a month on, for the automatic
+	// close to tell which of the months it owes are still open.
+	ListRoyaltyStatementPeriodsFrom(ctx context.Context, arg ListRoyaltyStatementPeriodsFromParams) ([]time.Time, error)
 	// ListRoyaltyStatementsDesc walked backwards, for a previous-page token.
 	ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyStatementsAscParams) ([]ListRoyaltyStatementsAscRow, error)
 	// Newest month first. The period is unique per tenant, so it alone is the

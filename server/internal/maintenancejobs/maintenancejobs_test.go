@@ -72,6 +72,7 @@ func TestTheRebuildChainIsUniqueOnlyWhileInFlight(t *testing.T) {
 		AggregateContentStatsArgs{},
 		AggregateRankingsArgs{},
 		BuildRecommendFeaturesArgs{},
+		CloseRoyaltyStatementsArgs{},
 	} {
 		opts := insertOptsOf(t, args)
 		if !slices.Equal(opts.UniqueOpts.ByState, inFlight()) {
@@ -127,12 +128,13 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 }
 
 // Only the head of the daily rebuild chain is scheduled, since each link
-// enqueues the next, and every purge is scheduled on its own.
-func TestTheChainHeadAndEveryPurgeAreScheduled(t *testing.T) {
+// enqueues the next, and every purge and the automatic royalty close are
+// scheduled on their own.
+func TestTheChainHeadEveryPurgeAndTheRoyaltyCloseAreScheduled(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
-	if got, want := len(jobs.PeriodicJobs()), 6; got != want {
-		t.Fatalf("periodic jobs = %d, want %d: the chain head and five purges", got, want)
+	if got, want := len(jobs.PeriodicJobs()), 7; got != want {
+		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, and the royalty close", got, want)
 	}
 }
 
@@ -300,6 +302,7 @@ func everyArgs() []river.JobArgs {
 		PurgeMfaChallengesArgs{},
 		PurgeWithdrawnCommentsArgs{},
 		PurgeOrphanImagesArgs{},
+		CloseRoyaltyStatementsArgs{},
 	}
 }
 
@@ -334,6 +337,9 @@ func probes() map[string]func(*river.Workers) error {
 		},
 		kindPurgeOrphanImages: func(w *river.Workers) error {
 			return river.AddWorkerSafely(w, &purgeOrphanImagesWorker{})
+		},
+		kindCloseRoyaltyStatements: func(w *river.Workers) error {
+			return river.AddWorkerSafely(w, &closeRoyaltyStatementsWorker{})
 		},
 	}
 }

@@ -4,6 +4,14 @@ FROM tenant_royalty_config
 WHERE tenant_id = $1
 LIMIT 1;
 
+-- name: ListAutomaticRoyaltyConfigs :many
+-- Every tenant that chose automatic closing, for the maintenance pass that
+-- closes their months across tenants.
+SELECT *
+FROM tenant_royalty_config
+WHERE close_mode = 'automatic'
+ORDER BY tenant_id;
+
 -- name: UpsertTenantRoyaltyConfig :one
 INSERT INTO tenant_royalty_config (
     tenant_id,

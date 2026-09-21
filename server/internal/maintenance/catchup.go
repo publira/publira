@@ -314,7 +314,7 @@ func requireBypassRLS(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("check database role: %w", err)
 	}
 	if !bypasses {
-		return errors.New("daily rebuild catch-up requires a database role with BYPASSRLS")
+		return errors.New("maintenance requires a database role with BYPASSRLS")
 	}
 	return nil
 }
