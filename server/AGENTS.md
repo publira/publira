@@ -169,10 +169,11 @@ Then re-run `task server:test-short` (or full `task server:test`).
 ### When Go module deps change
 
 ```bash
-task server:tidy  # go mod tidy
+task server:tidy                # go mod tidy
+scripts/check-go-mod-tidy.sh    # CI parity (`Lint / Go`)
 ```
 
-Ensure `go.mod` / `go.sum` stay consistent; do not leave unused or missing requires.
+Commit `go.mod` / `go.sum` exactly as `go mod tidy` leaves them; CI fails when tidy would change either file.
 
 ### Optional quick compile check
 

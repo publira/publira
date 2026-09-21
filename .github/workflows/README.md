@@ -127,7 +127,7 @@ Implementation:
 | `Detect changes` | Evaluate path filters and select jobs and Docker matrix entries. | This file |
 | `Lint and Format` | `pnpm check` across every file type that oxfmt supports. | [`AGENTS.md`](../../AGENTS.md) |
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; package builds; `pnpm typegen`, literal-`<svg>` grep, the design-token guard, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
-| `Lint / Go` | `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
+| `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test` after package builds, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. Starts a Valkey service so `@publira/next-cache-handlers` Redis integration tests run. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test` and `task e2e:test-lib` for the isolated development-profile and E2E-stack Bash libraries. | This file |
@@ -171,7 +171,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | --- | --- |
 | `Lint and Format` | Every path (including documentation); oxfmt ignores unsupported and configured-ignored files. |
 | `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config |
-| `Lint / Go` | `server/**` |
+| `Lint / Go` | `server/**`, `scripts/check-go-mod-tidy.sh` |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, and generator config |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
@@ -217,7 +217,7 @@ Separate Go, TypeScript, migration, mobile, mobile E2E, E2E, bootstrap, and rout
 
 ## Lint, migrations, and Docker
 
-`Lint / Go` is independent from `Test / Go` so static-analysis results arrive before Testcontainers tests, and front-end-only PRs do not run it. Its rules and version are [`server/.golangci.yml`](../../server/.golangci.yml) and `GOLANGCI_LINT_VERSION` in `ci.yml`; reproduce it with `task server:lint`.
+`Lint / Go` is independent from `Test / Go` so static-analysis results arrive before Testcontainers tests, and front-end-only PRs do not run it. Its rules and version are [`server/.golangci.yml`](../../server/.golangci.yml) and `GOLANGCI_LINT_VERSION` in `ci.yml`; reproduce it with `task server:lint`. Before golangci-lint it runs [`scripts/check-go-mod-tidy.sh`](../../scripts/check-go-mod-tidy.sh), which fails when `go mod tidy` would change `server/go.mod` or `server/go.sum`; run the same script locally, and fix a failure with `task server:tidy`.
 
 `Test / DB Migrations` first checks that the PR only adds files under `db/migrations/` — an applied migration is immutable, so a modified, renamed, or deleted one fails the job before Postgres is touched.
 
