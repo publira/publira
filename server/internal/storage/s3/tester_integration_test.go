@@ -63,7 +63,7 @@ func TestConnectionTesterPerformsEveryOperationAndTakesItsProbeAway_Integration(
 	if err != nil {
 		t.Fatalf("s3.New: %v", err)
 	}
-	listed, err := store.List(context.Background(), storage.ListRequest{Prefix: "publira-connection-test/"})
+	listed, err := store.List(context.Background(), storage.ListRequest{Prefix: "tenants/_connection-test/"})
 	if err != nil {
 		t.Fatalf("store.List: %v", err)
 	}

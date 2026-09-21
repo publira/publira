@@ -6,14 +6,30 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 
+	"github.com/publira/publira/server/internal/orphanimages"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
+
+// A probe whose delete was refused is reclaimed by the orphan sweep, which
+// walks nothing outside its own prefix.
+func TestProbeKeysAreWhereTheOrphanSweepReclaimsThem(t *testing.T) {
+	t.Parallel()
+
+	key, err := probeKey()
+	if err != nil {
+		t.Fatalf("probeKey: %v", err)
+	}
+	if !strings.HasPrefix(key, orphanimages.DefaultPrefix) {
+		t.Fatalf("probe key %q is outside %q, which the orphan sweep walks", key, orphanimages.DefaultPrefix)
+	}
+}
 
 // forbiddenResponseError is the shape a store's 403 with no error code in its
 // body arrives in.

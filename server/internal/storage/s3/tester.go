@@ -27,11 +27,11 @@ const (
 	// waiting on the answer, so a store that never replies has to give up
 	// sooner than an upload behind a request would.
 	connectionTestTimeout = 10 * time.Second
-	// probeKeyPrefix keeps the probe out of tenants/, which the orphan sweep
-	// walks: an object there that no database row names is deleted a day
-	// later, and a probe left behind by a failed delete would look like
-	// exactly that.
-	probeKeyPrefix = "publira-connection-test/"
+	// probeKeyPrefix puts the probe where the orphan sweep reclaims it, so a
+	// probe a refused or timed-out delete leaves behind is gone a day later
+	// rather than kept forever. No row ever names it, and the segment cannot
+	// be a tenant's public ID, whose Base58 alphabet has no "_" or "-".
+	probeKeyPrefix = "tenants/_connection-test/"
 )
 
 var probeBody = []byte("publira storage connection test\n")
