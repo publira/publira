@@ -676,9 +676,19 @@ test.describe("web-host episode reading", () => {
     );
     await nextEpisode.click();
     await refused;
-    // Held rather than failed: the error boundary stays away for as long as
-    // the connection is gone.
+    // The retry checks for the connection with a `HEAD` against the current
+    // URL, so one of those refused after the navigation is what says it is
+    // being held rather than failed. Only then is the absence of the error
+    // boundary, and of a document load, worth asserting.
+    await page.waitForEvent(
+      "requestfailed",
+      (request) => request.method() === "HEAD"
+    );
     await expect(page.getByText("Could not show this page")).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-e2e-soft-navigation",
+      "pending"
+    );
 
     await page.context().setOffline(false);
 
