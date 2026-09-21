@@ -1,7 +1,12 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { querySql, quoteSqlLiteral, runSql } from "../src/db";
+import {
+  querySql,
+  restorePlatformSettingsRow,
+  runSql,
+  snapshotPlatformSettingsRow,
+} from "../src/db";
 import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
 
 const WEBPUSH_PATH = "/settings/webpush";
@@ -15,33 +20,8 @@ const UNCONFIGURED_MESSAGE = /^Web Push isn't configured yet\./u;
 const INVALID_SUBJECT_MESSAGE =
   "Enter a mailto: URI with one email address, such as mailto:push@example.com, or an https:// URL, such as https://example.com/contact.";
 
-const storedRow = (): string =>
-  querySql(`SELECT row_to_json(c) FROM platform_webpush_config c;`);
-
 const storedSubject = (): string =>
   querySql(`SELECT COALESCE(subject, '') FROM platform_webpush_config;`);
-
-/**
- * Put back the row `task e2e:db` saved, whose key pair the storefront suites
- * subscribe against. The revision moves past whatever the suite left.
- */
-const restoreRow = (snapshot: string): void => {
-  const revision = Number(
-    querySql(
-      `SELECT COALESCE(MAX(revision), 0) FROM platform_webpush_config;`
-    ) || "0"
-  );
-  runSql(`
-    DELETE FROM platform_webpush_config;
-    INSERT INTO platform_webpush_config
-    SELECT * FROM json_populate_record(
-      NULL::platform_webpush_config,
-      ${quoteSqlLiteral(snapshot)}::json
-    );
-    UPDATE platform_webpush_config
-    SET revision = ${revision + 1}, updated_at = NOW();
-  `);
-};
 
 const subjectField = (page: Page) =>
   page.getByRole("textbox", { name: /^Contact \(VAPID subject\)/u });
@@ -72,7 +52,7 @@ test.describe("web-platform Web Push settings", () => {
   let snapshot = "";
 
   test.beforeAll(() => {
-    snapshot = storedRow();
+    snapshot = snapshotPlatformSettingsRow("platform_webpush_config");
     runSql(`
       UPDATE platform_webpush_config
       SET subject = NULL, revision = revision + 1, updated_at = NOW();
@@ -81,7 +61,7 @@ test.describe("web-platform Web Push settings", () => {
 
   test.afterAll(() => {
     if (snapshot) {
-      restoreRow(snapshot);
+      restorePlatformSettingsRow("platform_webpush_config", snapshot);
     }
   });
 

@@ -26,7 +26,7 @@ const hrefs = [
   "/",
   "/tenants",
   "/tenants/new",
-  "/settings/general",
+  "/settings",
   "/operators",
   "/users",
   "/audit-logs",
@@ -95,7 +95,7 @@ export const PlatformNavigation = () => (
         </Suspense>
       </ConsoleSidebarNavigationTitle>
       <ConsoleSidebarNavigationItems>
-        <ConsoleSidebarNavigationItem href="/settings/general">
+        <ConsoleSidebarNavigationItem href="/settings">
           <ConsoleSidebarNavigationItemIcon>
             <SettingsIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>

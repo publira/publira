@@ -179,3 +179,14 @@ export const confirmDangerAction = async (
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { exact: true, name: confirmLabel }).click();
 };
+
+/**
+ * The object store the stack runs against, as `scripts/lib.sh` exports it. A
+ * suite that re-saves the storage settings keeps addressing this bucket, so an
+ * upload another project makes afterwards still lands somewhere.
+ */
+export const STACK_STORAGE = {
+  bucket: process.env.PUBLIRA_S3_BUCKET?.trim() || "publira",
+  endpoint: process.env.PUBLIRA_S3_ENDPOINT?.trim() || "http://127.0.0.1:9003",
+  region: process.env.AWS_REGION?.trim() || "us-east-1",
+} as const;

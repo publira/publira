@@ -4146,6 +4146,61 @@
         "subject_required": "请输入供推送服务使用的联系方式。",
         "subject_invalid": "请输入包含一个电子邮件地址的 mailto: URI（例如 mailto:push@example.com），或 https:// URL（例如 https://example.com/contact）。"
       }
+    },
+    "configuration": {
+      "tab": "概览",
+      "page_title": "设置 - 概览",
+      "heading": "设置",
+      "page_description": "查看平台的哪些功能已可使用，并完成尚缺的设置。",
+      "summary_ready": "平台所需的设置均已完成。可选功能可以在需要之前保持关闭。",
+      "summary_needs_setup": "平台所需的部分设置尚未完成。请打开标记为“需要设置”的项目完成设置。",
+      "columns": {
+        "setting": "设置项",
+        "status": "状态",
+        "details": "详情"
+      },
+      "necessity": {
+        "required": "必需",
+        "optional": "可选"
+      },
+      "status": {
+        "configured": "已配置",
+        "needs_setup": "需要设置",
+        "not_configured": "未配置",
+        "defaults": "内置默认值",
+        "unavailable": "无法检查"
+      },
+      "actions": {
+        "set_up": "去设置",
+        "manage": "管理"
+      },
+      "general": {
+        "name": "语言和时区",
+        "detail": "控制台的默认语言为 {$language}，新租户默认使用 {$time_zone} 时区。"
+      },
+      "email": {
+        "name": "邮件发送",
+        "configured": "注册确认、密码重置和邀请邮件从 {$from_address} 发送。",
+        "unconfigured": "尚未保存邮件服务器，因此无法发送注册确认、密码重置和邀请邮件。",
+        "password_missing": "尚未保存邮件服务器的密码，因此无法发送任何邮件。"
+      },
+      "storage": {
+        "name": "图片存储",
+        "configured": "上传的图片保存在 {$bucket} 存储桶中。",
+        "unconfigured": "尚未保存存储设置，因此无法上传或显示图片。"
+      },
+      "webpush": {
+        "name": "浏览器通知",
+        "configured": "读者可以在店面开启浏览器通知。",
+        "unconfigured": "不会向读者提供浏览器通知。仅在需要发送通知时进行设置。"
+      },
+      "policies": {
+        "name": "安全与数据策略",
+        "defaults": "登录、防滥用和数据保留限制使用内置默认值。仅在不适合本平台时更改。",
+        "configured": "已应用你保存的登录、防滥用和数据保留限制。"
+      },
+      "dashboard_notice": "平台所需的部分设置尚未完成，部分功能将无法使用。",
+      "dashboard_notice_link": "查看设置"
     }
   }
 }

@@ -8,6 +8,7 @@ import { SettingsTabNav } from "./settings-tab-nav";
 
 const label = (
   message:
+    | "platform.configuration.tab"
     | "platform.policy.community.tab"
     | "platform.policy.retention.tab"
     | "platform.policy.security.tab"
@@ -32,6 +33,7 @@ export const SettingsNavigation = ({
     current={current}
     emailLabel={label("platform.settings.email_tab", "h-4 w-12")}
     generalLabel={label("platform.settings.general_tab", "h-4 w-14")}
+    overviewLabel={label("platform.configuration.tab", "h-4 w-16")}
     retentionLabel={label("platform.policy.retention.tab", "h-4 w-16")}
     securityLabel={label("platform.policy.security.tab", "h-4 w-14")}
     storageLabel={label("platform.storage.tab", "h-4 w-14")}

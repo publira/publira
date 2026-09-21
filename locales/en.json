@@ -4146,6 +4146,61 @@
         "subject_required": "Enter a contact for push services.",
         "subject_invalid": "Enter a mailto: URI with one email address, such as mailto:push@example.com, or an https:// URL, such as https://example.com/contact."
       }
+    },
+    "configuration": {
+      "tab": "Overview",
+      "page_title": "Settings - Overview",
+      "heading": "Settings",
+      "page_description": "See which parts of the platform are ready to use, and set up whatever is still missing.",
+      "summary_ready": "Everything the platform needs is set up. Optional features can stay off until you want them.",
+      "summary_needs_setup": "Some settings the platform needs aren't set up yet. Open each item marked Needs setup to finish it.",
+      "columns": {
+        "setting": "Setting",
+        "status": "Status",
+        "details": "Details"
+      },
+      "necessity": {
+        "required": "Required",
+        "optional": "Optional"
+      },
+      "status": {
+        "configured": "Configured",
+        "needs_setup": "Needs setup",
+        "not_configured": "Not set up",
+        "defaults": "Built-in defaults",
+        "unavailable": "Couldn't check"
+      },
+      "actions": {
+        "set_up": "Set up",
+        "manage": "Manage"
+      },
+      "general": {
+        "name": "Language and time zone",
+        "detail": "The console defaults to {$language}, and new tenants start in the {$time_zone} time zone."
+      },
+      "email": {
+        "name": "Email delivery",
+        "configured": "Sign-up confirmations, password resets, and invitations are sent from {$from_address}.",
+        "unconfigured": "No mail server is saved, so sign-up confirmations, password resets, and invitations can't be sent.",
+        "password_missing": "The mail server's password isn't saved, so no email can be sent."
+      },
+      "storage": {
+        "name": "Image storage",
+        "configured": "Uploaded images are stored in the {$bucket} bucket.",
+        "unconfigured": "No storage is saved, so images can't be uploaded or shown."
+      },
+      "webpush": {
+        "name": "Browser notifications",
+        "configured": "Readers can turn on browser notifications on the storefront.",
+        "unconfigured": "Readers aren't offered browser notifications. Set this up only if you want to send them."
+      },
+      "policies": {
+        "name": "Security and data policies",
+        "defaults": "The built-in sign-in, abuse-control, and data retention limits apply. Change them only if they don't suit this platform.",
+        "configured": "Your saved sign-in, abuse-control, and data retention limits apply."
+      },
+      "dashboard_notice": "Some settings the platform needs aren't set up yet, so parts of it won't work.",
+      "dashboard_notice_link": "Review settings"
     }
   }
 }
