@@ -23,10 +23,15 @@ import {
 } from "#lib/payment-settings";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { TenantPaymentSettingsForm } from "../_components/tenant-payment-settings-form";
-import { updateTenantPaymentSettingsAction } from "../_lib/actions";
+import { TenantPurchaseSettingsForm } from "../_components/tenant-purchase-settings-form";
+import {
+  updateTenantPaymentSettingsAction,
+  updateTenantPurchaseSettingsAction,
+} from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -100,6 +105,47 @@ const SettingsPaymentForm = async () => {
   );
 };
 
+const SettingsPurchaseFormSkeleton = () => (
+  <div className="grid gap-4">
+    <SkeletonLine className="h-5 w-40" />
+    <div className="grid gap-3">
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+    </div>
+  </div>
+);
+
+const SettingsPurchaseForm = async () => {
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+
+  const [purchaseSettingsResult, currentUserResult] = await Promise.all([
+    getTenantPurchaseSettings(tenantId, locale),
+    getAdminCurrentUser(tenantId),
+  ]);
+
+  await redirectToLoginIfSessionRejected(
+    purchaseSettingsResult,
+    currentUserResult
+  );
+
+  return (
+    <TenantPurchaseSettingsForm
+      action={updateTenantPurchaseSettingsAction}
+      canEdit={isTenantAdminRole(
+        currentUserResult.ok ? currentUserResult.user.role : undefined
+      )}
+      initialSettings={
+        purchaseSettingsResult.ok ? purchaseSettingsResult.settings : undefined
+      }
+      loadErrorMessage={
+        purchaseSettingsResult.ok ? undefined : purchaseSettingsResult.message
+      }
+    />
+  );
+};
+
 const SettingsPaymentPage = () => (
   <AdminPage>
     <AdminPageHeader>
@@ -128,6 +174,17 @@ const SettingsPaymentPage = () => (
         >
           <Suspense fallback={<SettingsPaymentFormSkeleton />}>
             <SettingsPaymentForm />
+          </Suspense>
+        </SectionErrorBoundary>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.purchase.section_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<SettingsPurchaseFormSkeleton />}>
+            <SettingsPurchaseForm />
           </Suspense>
         </SectionErrorBoundary>
       </div>

@@ -68,6 +68,7 @@ const createEpisodeFormData = (): FormData => {
   formData.set("price", "0");
   formData.set("reading_period_hours", "24");
   formData.set("availability", "");
+  formData.set("purchase_availability", "");
   return formData;
 };
 
@@ -142,6 +143,39 @@ describe("episode create actions", () => {
 
     expect(result).toEqual({
       message: "Choose where the episode is shown, or follow the series.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateEpisode).not.toHaveBeenCalled();
+  });
+
+  it("sends where an episode is created to be sold", async () => {
+    mockCreateEpisode.mockResolvedValueOnce({
+      episode: { publicId: "EP001" },
+      ok: true,
+    });
+
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("purchase_availability", "app");
+
+    await createEpisodeAction(null, formData);
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ purchaseAvailability: "app" }),
+      "en"
+    );
+  });
+
+  it("refuses a place of sale the form could not have offered", async () => {
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("purchase_availability", "everywhere");
+
+    const result = await createEpisodeAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Choose where the episode is sold, or follow the series.",
       mode: "create",
       ok: false,
     });

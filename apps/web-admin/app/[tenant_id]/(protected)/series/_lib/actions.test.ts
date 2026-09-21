@@ -96,6 +96,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01T10:00");
@@ -118,6 +119,7 @@ describe("series actions", () => {
         // "2030-01-01T10:00" is a zone-less wall clock, read in the tenant zone
         // (Asia/Seoul here) — never as the server process's local zone.
         publishedAt: "2030-01-01T01:00:00Z",
+        purchaseAvailability: "",
         readingDirection: "rtl",
         readingPeriodHours: 24,
         scheduleWeekdays: [],
@@ -162,6 +164,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01T10:00:00-08:00");
@@ -204,6 +207,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01T10:00");
@@ -240,6 +244,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01");
@@ -266,6 +271,7 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.set("clear_eye_catch_image", "0");
@@ -308,6 +314,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
 
@@ -335,6 +342,7 @@ describe("series actions", () => {
     formData.set("age_rating", "r18");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.append("schedule_weekdays", "5");
@@ -377,6 +385,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.append("schedule_weekdays", "7");
@@ -405,6 +414,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     for (let index = 0; index <= 20; index += 1) {
@@ -440,6 +450,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "approval_required");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
 
@@ -463,6 +474,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "moderated");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
 
@@ -494,6 +506,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "app");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
 
@@ -517,6 +530,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
 
@@ -549,6 +563,7 @@ describe("series actions", () => {
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.set("clear_eye_catch_image", "1");
@@ -559,6 +574,66 @@ describe("series actions", () => {
     expect(mockUpdateSeries.mock.calls[0]?.[0]).not.toHaveProperty(
       "availability"
     );
+    expect(mockUpdateSeries.mock.calls[0]?.[0]).not.toHaveProperty(
+      "purchaseAvailability"
+    );
+  });
+
+  it("sends where the series' episodes are sold", async () => {
+    mockUpdateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { publicId: "SERIES001" },
+    });
+
+    const { updateSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("public_id", "SERIES001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("availability", "all");
+    formData.set("comment_mode", "");
+    formData.set("purchase_availability", "web");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+
+    await updateSeriesAction(null, formData);
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ purchaseAvailability: "web" }),
+      "en"
+    );
+  });
+
+  // A save that named no place of sale would otherwise put the series back on
+  // the tenant's default without anyone choosing that.
+  it("refuses a save that says nothing about where the series is sold", async () => {
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("availability", "all");
+    formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+
+    const result = await createSeriesAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Choose where the series is sold, or follow the tenant setting.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateSeries).not.toHaveBeenCalled();
   });
 
   // The form counts pages from 1 and the API indexes them from 0.
@@ -580,6 +655,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "ltr");
     formData.set("spread_start_page", "1");
 
@@ -609,6 +685,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("spread_start_page", "2");
 
     const result = await updateSeriesAction(null, formData);
@@ -635,6 +712,7 @@ describe("series actions", () => {
       formData.set("age_rating", "all");
       formData.set("availability", "all");
       formData.set("comment_mode", "");
+      formData.set("purchase_availability", "");
       formData.set("reading_direction", "rtl");
       formData.set("spread_start_page", page);
 
@@ -667,6 +745,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     // One person credited twice under two roles, which is what the pair being
@@ -728,6 +807,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.set(
@@ -761,6 +841,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
     formData.set(
@@ -788,6 +869,7 @@ describe("series actions", () => {
     formData.set("age_rating", "all");
     formData.set("availability", "all");
     formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
 

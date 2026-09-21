@@ -43,6 +43,7 @@ import { getSeries } from "#lib/series";
 import { listTagSuggestions } from "#lib/tag";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { SeriesEyeCatchForm } from "../_components/series-eye-catch-form";
@@ -201,6 +202,7 @@ const EditSeriesFormData = async ({
     genresResult,
     tagsResult,
     commentSettingsResult,
+    purchaseSettingsResult,
     timeZone,
   ] = await Promise.all([
     getSeries({ publicId: seriesId, tenantId }, locale),
@@ -216,6 +218,8 @@ const EditSeriesFormData = async ({
     // a read that failed leaves that option unnamed rather than the form
     // unusable.
     getTenantCommentSettings(tenantId, locale),
+    // Likewise for the tenant's default place of sale.
+    getTenantPurchaseSettings(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -249,6 +253,7 @@ const EditSeriesFormData = async ({
       genres={genresResult.genres}
       genresErrorMessage={genresResult.ok ? undefined : genresResult.message}
       initialCommentMode={result.commentMode}
+      initialPurchaseAvailability={result.purchaseAvailability}
       initialReadingLayout={result.readingLayout}
       initialSeries={result.series}
       key={result.series.publicId}
@@ -261,6 +266,11 @@ const EditSeriesFormData = async ({
       }
       tenantCommentMode={
         commentSettingsResult.ok ? commentSettingsResult.commentMode : undefined
+      }
+      tenantPurchaseAvailability={
+        purchaseSettingsResult.ok
+          ? purchaseSettingsResult.settings.purchaseAvailability
+          : undefined
       }
       timeZone={timeZone}
     />

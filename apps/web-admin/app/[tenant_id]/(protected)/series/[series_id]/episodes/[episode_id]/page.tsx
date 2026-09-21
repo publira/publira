@@ -39,20 +39,24 @@ import {
 } from "#lib/episode";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { resolvePurchaseAvailability } from "#lib/purchase-availability";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeAvailabilityForm } from "./_components/episode-availability-form";
 import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits-form";
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
+import { EpisodePurchaseAvailabilityForm } from "./_components/episode-purchase-availability-form";
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
 import {
   reorderEpisodeImagesAction,
   updateEpisodeAvailabilityAction,
   updateEpisodeLayoutAction,
+  updateEpisodePurchaseAvailabilityAction,
   replaceEpisodeCreditsAction,
   updateEpisodeScheduleAction,
   uploadEpisodePagesAction,
@@ -95,6 +99,7 @@ const EditEpisodePage = async ({
     creditsResult,
     creatorsResult,
     creatorRolesResult,
+    purchaseSettingsResult,
     timeZone,
     t,
   ] = await Promise.all([
@@ -113,13 +118,14 @@ const EditEpisodePage = async ({
       },
       locale
     ),
-    // Only to name what the layout and availability options that follow the
-    // series follow, so a read that failed leaves them unnamed rather than the
-    // forms unusable.
+    // Only to name what the options that follow the series follow, so a read
+    // that failed leaves them unnamed rather than the forms unusable. The
+    // tenant's default is what a series that sets no place of sale follows.
     getSeries({ publicId: series_id, tenantId }, locale),
     listEpisodeCredits({ episodePublicId: episode_id, tenantId }, locale),
     listAllCreators(tenantId, locale),
     listCreatorRoles(tenantId, locale),
+    getTenantPurchaseSettings(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
   ]);
@@ -133,7 +139,8 @@ const EditEpisodePage = async ({
     seriesResult,
     creditsResult,
     creatorsResult,
-    creatorRolesResult
+    creatorRolesResult,
+    purchaseSettingsResult
   );
 
   return (
@@ -185,6 +192,10 @@ const EditEpisodePage = async ({
         <FlashToast
           keyName="availability_updated"
           title={t("admin.series.episodes.availability.updated")}
+        />
+        <FlashToast
+          keyName="purchase_availability_updated"
+          title={t("admin.series.episodes.purchase_availability.updated")}
         />
         <FlashToast
           keyName="layout_updated"
@@ -248,6 +259,37 @@ const EditEpisodePage = async ({
                 <SectionErrorTitle>
                   <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                     <Message message="admin.series.episodes.availability.error" />
+                  </Suspense>
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {episodeResult.message}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
+          )}
+          {episodeResult.ok ? (
+            <EpisodePurchaseAvailabilityForm
+              action={updateEpisodePurchaseAvailabilityAction}
+              episodePublicId={episode_id}
+              initialPurchaseAvailability={episodeResult.purchaseAvailability}
+              key={`${episode_id}:purchase:${episodeResult.purchaseAvailability}`}
+              seriesPublicId={series_id}
+              seriesPurchaseAvailability={
+                seriesResult.ok && purchaseSettingsResult.ok
+                  ? resolvePurchaseAvailability(
+                      purchaseSettingsResult.settings.purchaseAvailability,
+                      seriesResult.purchaseAvailability
+                    )
+                  : undefined
+              }
+              tenantId={tenantId}
+            />
+          ) : (
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.series.episodes.purchase_availability.error" />
                   </Suspense>
                 </SectionErrorTitle>
                 <SectionErrorDescription>

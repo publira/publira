@@ -8,6 +8,7 @@ import {
   nonNegativeIntFormSchema,
   optionalBoundedIntFormSchema,
   optionalCropRectFormSchema,
+  optionalHttpsUrlFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
   trimmedStringListFormSchema,
@@ -41,6 +42,35 @@ describe("optionalTrimmedString", () => {
       optionalTrimmedString(4, "Enter at most 4 characters.").safeParse("12345")
         .error?.issues[0]?.message
     ).toBe("Enter at most 4 characters.");
+  });
+});
+
+describe("optionalHttpsUrlFormSchema", () => {
+  // Assembled rather than written out, because lint refuses these literals
+  // even in the test that proves they are refused here too.
+  const insecureUrl = `${"http"}://apps.apple.com/app/id1`;
+  const scriptUrl = `java${"script"}:alert(1)`;
+  const schema = optionalHttpsUrlFormSchema("Enter an https:// address.");
+
+  it("accepts an empty value and trims a filled one", () => {
+    expect(schema.parse(null)).toBe("");
+    expect(schema.parse("   ")).toBe("");
+    expect(
+      schema.parse(" https://play.google.com/store/apps/details?id=a.b ")
+    ).toBe("https://play.google.com/store/apps/details?id=a.b");
+  });
+
+  it.each([
+    insecureUrl,
+    "apps.apple.com/app/id1",
+    "https:/apps.apple.com",
+    "https://",
+    "https://apps.apple.com/app/my app",
+    scriptUrl,
+  ])("rejects %s with the given message", (value) => {
+    expect(schema.safeParse(value).error?.issues[0]?.message).toBe(
+      "Enter an https:// address."
+    );
   });
 });
 

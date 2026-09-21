@@ -25,6 +25,7 @@ import { listSeries } from "#lib/series";
 import { listTagSuggestions } from "#lib/tag";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { SeriesForm } from "../_components/series-form";
@@ -61,6 +62,7 @@ const NewSeriesFormData = async () => {
     genresResult,
     tagsResult,
     commentSettingsResult,
+    purchaseSettingsResult,
     timeZone,
   ] = await Promise.all([
     // Only `defaultReadingPeriodHours` is read here, and that comes from the
@@ -79,6 +81,8 @@ const NewSeriesFormData = async () => {
     // a read that failed leaves that option unnamed rather than the form
     // unusable.
     getTenantCommentSettings(tenantId, locale),
+    // Likewise for the tenant's default place of sale.
+    getTenantPurchaseSettings(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
@@ -113,6 +117,11 @@ const NewSeriesFormData = async () => {
       }
       tenantCommentMode={
         commentSettingsResult.ok ? commentSettingsResult.commentMode : undefined
+      }
+      tenantPurchaseAvailability={
+        purchaseSettingsResult.ok
+          ? purchaseSettingsResult.settings.purchaseAvailability
+          : undefined
       }
       timeZone={timeZone}
     />

@@ -22,8 +22,10 @@ import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { resolvePurchaseAvailability } from "#lib/purchase-availability";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeForm } from "../_components/episode-form";
@@ -87,20 +89,28 @@ const NewEpisodeFormData = async ({
     getTenantId(),
   ]);
   const locale = await getLocale(tenantId);
-  const [timeZone, seriesResult] = await Promise.all([
+  const [timeZone, seriesResult, purchaseSettingsResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
-    // Only to name what the availability option that follows the series
-    // follows, so a read that failed leaves it unnamed rather than the form
-    // unusable.
+    // Only to name what the options that follow the series follow, so a read
+    // that failed leaves them unnamed rather than the form unusable.
     getSeries({ publicId: seriesId, tenantId }, locale),
+    getTenantPurchaseSettings(tenantId, locale),
   ]);
-  await redirectToLoginIfSessionRejected(seriesResult);
+  await redirectToLoginIfSessionRejected(seriesResult, purchaseSettingsResult);
 
   return (
     <EpisodeForm
       action={createEpisodeAction}
       seriesAvailability={
         seriesResult.ok ? seriesResult.series.availability : undefined
+      }
+      seriesPurchaseAvailability={
+        seriesResult.ok && purchaseSettingsResult.ok
+          ? resolvePurchaseAvailability(
+              purchaseSettingsResult.settings.purchaseAvailability,
+              seriesResult.purchaseAvailability
+            )
+          : undefined
       }
       seriesPublicId={seriesId}
       timeZone={timeZone}

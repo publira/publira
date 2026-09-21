@@ -752,6 +752,132 @@ describe("the surfaces a series is shown on", () => {
   });
 });
 
+/**
+ * `series.purchase_availability` replaces the tenant's default for where the
+ * series' episodes may be bought, and NULL — unspecified over the wire — is
+ * the series following the tenant.
+ */
+describe("where a series' episodes may be bought", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  const updateInput: Parameters<typeof UpdateSeries>[0] = {
+    ageRating: "all",
+    commentMode: "",
+    creatorCredits: [],
+    genrePublicIds: [],
+    isPublished: true,
+    labelPublicId: "LABEL001",
+    publicId: "SERIES001",
+    readingDirection: "rtl",
+    readingPeriodHours: 24,
+    scheduleWeekdays: [],
+    spreadStartIndex: 1,
+    status: "ongoing",
+    synopsis: "A synopsis",
+    tagNames: [],
+    tenantId: "TENANT001",
+    title: "Series title",
+  };
+
+  it("reads the series' own value beside it", async () => {
+    mockGetSeries.mockResolvedValue({
+      purchaseAvailability: SurfaceAvailability.APP,
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: true, purchaseAvailability: "app" });
+  });
+
+  it("reads a series that states nothing as following the tenant", async () => {
+    mockGetSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: true, purchaseAvailability: "" });
+  });
+
+  // Opening the form on following the tenant for a value this build cannot
+  // name would write that over the series' own value on the next save.
+  it("reports a value it cannot name", async () => {
+    mockGetSeries.mockResolvedValue({
+      purchaseAvailability: 99,
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("sends the value the form chose", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries({ ...updateInput, purchaseAvailability: "web" }, "en");
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purchaseAvailability: SurfaceAvailability.WEB,
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  // The field is optional on the wire, so following the tenant has to be sent
+  // as unspecified: an absent value would keep the override stored.
+  it("sends unspecified to return the series to the tenant's default", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries({ ...updateInput, purchaseAvailability: "" }, "en");
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purchaseAvailability: SurfaceAvailability.UNSPECIFIED,
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("sends nothing when the save names nothing, keeping the stored value", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries(updateInput, "en");
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ purchaseAvailability: undefined }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+});
+
 describe("the shares a series' credits carry", () => {
   beforeEach(() => {
     vi.clearAllMocks();

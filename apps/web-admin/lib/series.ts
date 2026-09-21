@@ -36,6 +36,7 @@ import {
   mentionsStorageNotConfigured,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
+import type { PurchaseAvailabilityOverride } from "./purchase-availability";
 import {
   READING_DIRECTION_ENUM,
   toReadingDirectionValue,
@@ -62,6 +63,7 @@ import { DEFAULT_SURFACE_AVAILABILITY } from "./surface-availability";
 import type { SurfaceAvailabilityValue } from "./surface-availability";
 import {
   SURFACE_AVAILABILITY_ENUM,
+  toSurfaceAvailabilityOverrideEnum,
   toSurfaceAvailabilityValue,
 } from "./surface-availability-enum";
 
@@ -194,6 +196,12 @@ export type GetSeriesResult =
        * the reason the comment mode does: the API answers it beside `Series`.
        */
       readingLayout: ReadingLayout;
+      /**
+       * Where the series' episodes may be bought, empty while it follows its
+       * tenant's default. It rides beside the series for the reason the
+       * comment mode does.
+       */
+      purchaseAvailability: PurchaseAvailabilityOverride;
     }
   | { notFound: true; ok: false }
   | {
@@ -643,11 +651,16 @@ export const getSeries = async (
 
     const commentMode = toSeriesCommentMode(response.commentMode);
     const readingLayout = toSeriesReadingLayout(response);
-    // An unknown availability would open the form on both surfaces, and the
-    // next save would write that over the one the series is kept to.
+    const purchaseAvailability = toSurfaceAvailabilityValue(
+      response.purchaseAvailability
+    );
+    // An unknown availability would open the form on both surfaces, or on
+    // following the tenant, and the next save would write that over the value
+    // the series holds.
     if (
       commentMode === undefined ||
       readingLayout === undefined ||
+      purchaseAvailability === undefined ||
       toSurfaceAvailabilityValue(response.series.availability) === undefined
     ) {
       return {
@@ -659,6 +672,7 @@ export const getSeries = async (
     return {
       commentMode,
       ok: true,
+      purchaseAvailability,
       readingLayout,
       series: mapSeries(response.series, response.creatorCredits),
     };
@@ -725,6 +739,8 @@ export const createSeries = async (
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
     availability: SurfaceAvailabilityValue;
+    /** The empty value follows the tenant's default. */
+    purchaseAvailability: PurchaseAvailabilityOverride;
   } & SeriesClassificationInput &
     SeriesCommentModeInput &
     SeriesReadingLayoutInput,
@@ -754,6 +770,9 @@ export const createSeries = async (
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
         publishedAt: input.publishedAt,
+        purchaseAvailability: toSurfaceAvailabilityOverrideEnum(
+          input.purchaseAvailability
+        ),
         readingDirection: READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
         scheduleWeekdays: input.scheduleWeekdays,
@@ -814,6 +833,11 @@ export const updateSeries = async (
      * relies on: it saves the series without offering this choice.
      */
     availability?: SurfaceAvailabilityValue;
+    /**
+     * The empty value returns the series to following the tenant's default;
+     * absent keeps the value stored, for the reason `availability` gives.
+     */
+    purchaseAvailability?: PurchaseAvailabilityOverride;
   } & SeriesClassificationInput &
     SeriesCommentModeInput &
     SeriesReadingLayoutInput,
@@ -848,6 +872,10 @@ export const updateSeries = async (
         labelPublicId: input.labelPublicId,
         publicId: input.publicId,
         publishedAt: input.publishedAt,
+        purchaseAvailability:
+          input.purchaseAvailability === undefined
+            ? undefined
+            : toSurfaceAvailabilityOverrideEnum(input.purchaseAvailability),
         readingDirection: READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
         scheduleWeekdays: input.scheduleWeekdays,

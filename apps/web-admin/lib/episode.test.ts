@@ -20,6 +20,7 @@ const {
   mockReorderEpisodes,
   mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
+  mockUpdateEpisodePurchaseAvailability,
 } = vi.hoisted(() => ({
   mockBulkEditEpisodeCredits: vi.fn(),
   mockCreateEpisode: vi.fn(),
@@ -30,6 +31,7 @@ const {
   mockReorderEpisodes: vi.fn(),
   mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
+  mockUpdateEpisodePurchaseAvailability: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -47,6 +49,7 @@ vi.mock("./api", () => ({
       reorderEpisodes: mockReorderEpisodes,
       updateEpisodeAvailability: mockUpdateEpisodeAvailability,
       updateEpisodeLayout: mockUpdateEpisodeLayout,
+      updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -307,6 +310,7 @@ describe("getEpisode", () => {
       },
       layout: { readingDirection: "" },
       ok: true,
+      purchaseAvailability: "",
     });
   });
 
@@ -451,6 +455,7 @@ describe("the surfaces an episode is shown on", () => {
         availability: "",
         price: 0,
         publishAt: "",
+        purchaseAvailability: "",
         readingPeriodHours: 0,
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
@@ -474,6 +479,7 @@ describe("the surfaces an episode is shown on", () => {
         availability: "web",
         price: 0,
         publishAt: "",
+        purchaseAvailability: "",
         readingPeriodHours: 0,
         seriesPublicId: "SERIES001",
         tenantId: "TENANT001",
@@ -539,6 +545,145 @@ describe("the surfaces an episode is shown on", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(result).toEqual({ availability: "", ok: true });
+  });
+});
+
+describe("where an episode may be bought", () => {
+  it("reads the episode's own value apart from the one it resolves to", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE001", 1),
+        purchaseAvailability: SurfaceAvailability.WEB,
+      },
+      purchaseAvailability: SurfaceAvailability.APP,
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: true, purchaseAvailability: "app" });
+  });
+
+  it("reads an episode that states nothing as following its series", async () => {
+    mockGetEpisode.mockResolvedValue({ episode: episode("EPISODE001", 1) });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: true, purchaseAvailability: "" });
+  });
+
+  // Opening the form on following the series for a value this build cannot
+  // name would write that over the episode's own value on the next save.
+  it("reports a value it cannot name", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+      purchaseAvailability: 99,
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("creates an episode sold where it names", async () => {
+    mockCreateEpisode.mockResolvedValue({ episode: episode("EPISODE001", 1) });
+
+    const { createEpisode } = await import("./episode");
+    await createEpisode(
+      {
+        availability: "",
+        price: 100,
+        publishAt: "",
+        purchaseAvailability: "app",
+        readingPeriodHours: 0,
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+        title: "Episode title",
+      },
+      "en"
+    );
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purchaseAvailability: SurfaceAvailability.APP,
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("sends the override and reads back what was stored", async () => {
+    mockUpdateEpisodePurchaseAvailability.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+      purchaseAvailability: SurfaceAvailability.WEB,
+    });
+
+    const { updateEpisodePurchaseAvailability } = await import("./episode");
+    const result = await updateEpisodePurchaseAvailability(
+      {
+        episodePublicId: "EPISODE001",
+        purchaseAvailability: "web",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodePurchaseAvailability).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EPISODE001",
+        purchaseAvailability: SurfaceAvailability.WEB,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true, purchaseAvailability: "web" });
+  });
+
+  it("sends unspecified to return the episode to its series", async () => {
+    mockUpdateEpisodePurchaseAvailability.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+      purchaseAvailability: SurfaceAvailability.UNSPECIFIED,
+    });
+
+    const { updateEpisodePurchaseAvailability } = await import("./episode");
+    const result = await updateEpisodePurchaseAvailability(
+      {
+        episodePublicId: "EPISODE001",
+        purchaseAvailability: "",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodePurchaseAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purchaseAvailability: SurfaceAvailability.UNSPECIFIED,
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true, purchaseAvailability: "" });
   });
 });
 

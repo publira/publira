@@ -32,6 +32,7 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -57,6 +58,12 @@ const createEpisodeSchema = async (locale: Locale) => {
       t("admin.series.episodes.validation.price_invalid")
     ),
     publishAt: optionalTrimmedString(),
+    // The empty value is the episode following its series.
+    purchaseAvailability: z.enum(PURCHASE_AVAILABILITY_OVERRIDES, {
+      error: t(
+        "admin.series.episodes.validation.purchase_availability_invalid"
+      ),
+    }),
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.episodes.validation.reading_period_invalid")
     ),
@@ -140,6 +147,7 @@ export const createEpisodeAction = async (
       availability: "value",
       price: "value",
       publishAt: { kind: "value", name: "publish_at" },
+      purchaseAvailability: { kind: "value", name: "purchase_availability" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
       seriesPublicId: { kind: "value", name: "series_public_id" },
       tenantId: { kind: "value", name: "tenant_id" },
@@ -168,6 +176,7 @@ export const createEpisodeAction = async (
         availability: parsed.data.availability,
         price: parsed.data.price,
         publishAt: scheduledAt.value,
+        purchaseAvailability: parsed.data.purchaseAvailability,
         readingPeriodHours: parsed.data.readingPeriodHours,
         seriesPublicId: parsed.data.seriesPublicId,
         tenantId: parsed.data.tenantId,

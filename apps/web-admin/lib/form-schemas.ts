@@ -208,3 +208,22 @@ export const creditShareBpsSchema = (message: string) =>
     .int(message)
     .min(0, message)
     .max(MAX_CREDIT_SHARE_BPS, message);
+
+/**
+ * An absolute `https://` URL, or empty. It mirrors the API's own check, which
+ * reads the text as written: `URL` alone would accept `https:/host` by
+ * repairing it into an address the API then refuses.
+ */
+export const optionalHttpsUrlFormSchema = (
+  message: string,
+  maxLength = 2048
+): z.ZodType<string, unknown> =>
+  optionalTrimmedString(maxLength, message).refine((value) => {
+    if (value === "") {
+      return true;
+    }
+    if (/\s/u.test(value) || !value.toLowerCase().startsWith("https://")) {
+      return false;
+    }
+    return URL.canParse(value) && new URL(value).host !== "";
+  }, message);

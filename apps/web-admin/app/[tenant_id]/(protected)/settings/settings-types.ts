@@ -7,6 +7,7 @@ import type { RoyaltyClosePolicy } from "#lib/royalty-period";
 import type { TenantAgeVerification } from "#lib/tenant-age-verification-shared";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
+import type { TenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
 export type SiteSettingsActionState =
   | {
@@ -154,6 +155,23 @@ export type TenantPaymentSettingsFormState =
       ok: false;
       message: string;
       fieldErrors?: TenantPaymentSettingsFieldErrors;
+    }
+  | null;
+
+export type TenantPurchaseSettingsFieldErrors = Partial<
+  Record<"appStoreUrl" | "googlePlayUrl" | "purchaseAvailability", string>
+>;
+
+export type TenantPurchaseSettingsFormState =
+  | {
+      ok: true;
+      message: string;
+      settings: TenantPurchaseSettings;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: TenantPurchaseSettingsFieldErrors;
     }
   | null;
 
