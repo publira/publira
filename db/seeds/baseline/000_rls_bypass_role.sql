@@ -197,6 +197,12 @@ GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stat
 -- keys the database never holds, and neither role may write the row.
 GRANT SELECT ON platform_storage_config TO publira_admin, publira_content_stats;
 
+-- tenant_fcm_config holds a sealed service account key. The tenant console
+-- writes it under RLS and the worker reads it to send mobile push; no reader's
+-- request and no maintenance job has any use for it.
+REVOKE ALL ON tenant_fcm_config FROM publira_platform, publira_content_stats, publira_public;
+REVOKE INSERT, UPDATE, DELETE ON tenant_fcm_config FROM publira_outbox;
+
 -- daily_rebuild_progress records how far the worker's daily rebuilds have got,
 -- and only the maintenance role that runs them reads or moves it. A request
 -- that moved it would make the worker skip a day or rebuild one again.

@@ -796,6 +796,15 @@ type TenantConfig struct {
 	AgeVerification                string         `json:"age_verification"`
 }
 
+type TenantFcmConfig struct {
+	TenantID                    uuid.UUID `json:"tenant_id"`
+	ProjectID                   string    `json:"project_id"`
+	ClientEmail                 string    `json:"client_email"`
+	ServiceAccountJsonEncrypted string    `json:"service_account_json_encrypted"`
+	CreatedAt                   time.Time `json:"created_at"`
+	UpdatedAt                   time.Time `json:"updated_at"`
+}
+
 type TenantImage struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`

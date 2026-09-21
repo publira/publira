@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fcmsettings"
 	"github.com/publira/publira/server/internal/push"
 )
 
@@ -39,6 +40,11 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 	}
 	if queries.listed.TenantID != tenantID {
 		t.Fatalf("listed tenant_id = %s, want %s", queries.listed.TenantID, tenantID)
+	}
+	for i, sentFor := range sender.tenants {
+		if sentFor != tenantID {
+			t.Fatalf("message %d sent with the credentials of %s, want %s", i, sentFor, tenantID)
+		}
 	}
 
 	message := sender.sent[0]
@@ -84,6 +90,51 @@ func TestMemberPushNotificationSendsWebPushAndDeletesGoneEndpoint(t *testing.T) 
 	}
 	if len(queries.deleted) != 1 || queries.deleted[0] != endpoint {
 		t.Fatalf("deleted tokens = %v, want [%s]", queries.deleted, endpoint)
+	}
+}
+
+// A tenant that has not connected a Firebase project has mobile push off: its
+// app devices are skipped and kept, and its browsers are still notified.
+func TestMemberPushNotificationSkipsMobileDevicesOfATenantWithoutFCM(t *testing.T) {
+	endpoint := "https://push.example.test/subscription"
+	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{
+		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-a", Platform: "android"},
+		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-b", Platform: "ios"},
+		{
+			NotificationID: uuid.New(), UserID: uuid.New(), Token: endpoint, Platform: "web",
+			Endpoint: sql.NullString{String: endpoint, Valid: true}, P256dh: sql.NullString{String: "p256dh", Valid: true}, Auth: sql.NullString{String: "auth", Valid: true},
+		},
+	}}
+	sender := &stubPushSender{errs: map[string]error{
+		"token-a": fcmsettings.ErrNotConfigured,
+		"token-b": fcmsettings.ErrNotConfigured,
+	}}
+	webSender := &stubWebPushSender{}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender, WebSender: webSender}, queries)
+	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(webSender.sent) != 1 {
+		t.Fatalf("web messages = %d, want 1", len(webSender.sent))
+	}
+	if len(queries.deleted) != 0 {
+		t.Fatalf("deleted tokens = %v, want none", queries.deleted)
+	}
+}
+
+// With only app devices and no credentials there is nothing to deliver, which
+// is not an outage to retry.
+func TestMemberPushNotificationCompletesWhenTheTenantHasNoFCM(t *testing.T) {
+	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{
+		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-a", Platform: "android"},
+	}}
+	sender := &stubPushSender{errs: map[string]error{"token-a": fcmsettings.ErrNotConfigured}}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.deleted) != 0 {
+		t.Fatalf("deleted tokens = %v, want none", queries.deleted)
 	}
 }
 
@@ -252,8 +303,9 @@ func (s *stubPushDeviceQuerier) DeleteUserPushDeviceByToken(_ context.Context, t
 }
 
 type stubPushSender struct {
-	sent []push.Message
-	errs map[string]error
+	sent    []push.Message
+	tenants []uuid.UUID
+	errs    map[string]error
 }
 
 type sentWebPush struct {
@@ -271,10 +323,11 @@ func (s *stubWebPushSender) Send(_ context.Context, subscription push.WebPushSub
 	return s.err
 }
 
-func (s *stubPushSender) Send(_ context.Context, message push.Message) error {
+func (s *stubPushSender) Send(_ context.Context, tenantID uuid.UUID, message push.Message) error {
 	if err, ok := s.errs[message.Token]; ok {
 		return err
 	}
 	s.sent = append(s.sent, message)
+	s.tenants = append(s.tenants, tenantID)
 	return nil
 }

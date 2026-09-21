@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// The Firebase Cloud Messaging credentials a tenant's mobile push is sent
+// with. The service account key itself is never returned: what a caller sees is
+// whether one is stored and which project and account it names.
+message TenantFcmSettings {
+  // Whether credentials are stored. A tenant without them has mobile push
+  // disabled, and its other notifications are delivered as usual.
+  bool configured = 1;
+  // The Firebase project the tenant's mobile app is built with. Empty while
+  // configured is false.
+  string project_id = 2;
+  // The service account's address, the client_email of the stored key. Empty
+  // while configured is false.
+  string client_email = 3;
+  // When the stored credentials were last saved, RFC3339. Empty while
+  // configured is false.
+  string updated_at = 4;
+}
+
+message GetTenantFcmSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantFcmSettingsResponse {
+  TenantFcmSettings settings = 1;
+}
+
+// Saves credentials, replacing any already stored. Both fields are required,
+// and the request is refused with INVALID_ARGUMENT when the key is not a
+// service account key or names a project other than project_id.
+message SaveTenantFcmCredentialsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string project_id = 2;
+  // The service account key file, as Firebase downloads it.
+  string service_account_json = 3;
+}
+
+message SaveTenantFcmCredentialsResponse {
+  TenantFcmSettings settings = 1;
+}
+
+// Removes the stored credentials, disabling mobile push for the tenant. It
+// succeeds when none are stored.
+message DeleteTenantFcmCredentialsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message DeleteTenantFcmCredentialsResponse {
+  TenantFcmSettings settings = 1;
+}
+
+service AdminFcmSettingsService {
+  rpc GetTenantFcmSettings(GetTenantFcmSettingsRequest) returns (GetTenantFcmSettingsResponse) {}
+  rpc SaveTenantFcmCredentials(SaveTenantFcmCredentialsRequest) returns (SaveTenantFcmCredentialsResponse) {}
+  rpc DeleteTenantFcmCredentials(DeleteTenantFcmCredentialsRequest) returns (DeleteTenantFcmCredentialsResponse) {}
+}

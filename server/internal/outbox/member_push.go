@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fcmsettings"
 	"github.com/publira/publira/server/internal/push"
 )
 
@@ -54,10 +55,11 @@ type MemberPushNotificationPayload struct {
 	EpisodeTitle     string `json:"episode_title"`
 }
 
-// PushSender is the part of [push.Client] this handler uses, so a test can
-// stand in for Firebase.
+// PushSender sends to a device with the Firebase credentials of the tenant it
+// belongs to. It reports [fcmsettings.ErrNotConfigured] for a tenant with none,
+// which the handler takes as mobile push being off for that tenant.
 type PushSender interface {
-	Send(ctx context.Context, message push.Message) error
+	Send(ctx context.Context, tenantID uuid.UUID, message push.Message) error
 }
 
 // WebPushSender delivers to a browser subscription. The worker's reports Web
@@ -67,8 +69,7 @@ type WebPushSender interface {
 }
 
 // PushHandlerConfig is what the worker resolves once at startup for the push
-// handler. Sender is nil in a process with no Firebase credential, which fails
-// every mobile delivery.
+// handler. Both senders resolve their credentials per delivery.
 type PushHandlerConfig struct {
 	DB        *sql.DB
 	Sender    PushSender
@@ -145,7 +146,7 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 		}
 
 		var failures []error
-		settled := 0
+		settled, skipped := 0, 0
 		for _, device := range devices {
 			data := memberPushData(device.NotificationID, notificationType, payload)
 			var sendErr error
@@ -154,7 +155,7 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 				if cfg.Sender == nil {
 					sendErr = errors.New("FCM sender is not configured")
 				} else {
-					sendErr = cfg.Sender.Send(ctx, push.Message{Token: device.Token, Title: payload.SeriesTitle, Body: payload.EpisodeTitle, Data: data})
+					sendErr = cfg.Sender.Send(ctx, tenantID, push.Message{Token: device.Token, Title: payload.SeriesTitle, Body: payload.EpisodeTitle, Data: data})
 				}
 			case "web":
 				if cfg.WebSender == nil {
@@ -168,6 +169,10 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 			switch {
 			case sendErr == nil:
 				settled++
+			case errors.Is(sendErr, fcmsettings.ErrNotConfigured):
+				// The device stays registered: the tenant may connect its
+				// Firebase project later, and its app is still installed.
+				skipped++
 			case errors.Is(sendErr, push.ErrTokenGone), errors.Is(sendErr, push.ErrEndpointGone):
 				if _, delErr := queries.DeleteUserPushDeviceByToken(ctx, device.Token); delErr != nil {
 					failures = append(failures, fmt.Errorf("delete revoked push device: %w", delErr))
@@ -179,6 +184,10 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 			default:
 				failures = append(failures, sendErr)
 			}
+		}
+		if skipped > 0 {
+			logPush(ctx, cfg.Logger, "skipped mobile devices; the tenant has no FCM credentials", event,
+				"skipped", skipped)
 		}
 		if len(failures) == 0 {
 			return nil
