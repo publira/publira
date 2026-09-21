@@ -31,6 +31,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { mentionsStorageNotConfigured } from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import {
   READING_DIRECTION_ENUM,
@@ -438,6 +439,9 @@ const mapEpisodeUploadErrorMessage = async (
       "invalid-argument":
         (await archiveRejectionMessage(error, locale)) ??
         t("errors.rpc.invalid-argument"),
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : undefined,
     },
   });
 };

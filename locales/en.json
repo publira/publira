@@ -737,7 +737,8 @@
       "console_description": "Please try again later. If it keeps happening, contact an administrator with the error ID.",
       "console_title": "Could not display this page",
       "root_description": "Failed to load the admin console. Please try again later.",
-      "root_title": "Could not display the admin console"
+      "root_title": "Could not display the admin console",
+      "storage_not_configured": "Images cannot be uploaded because image storage has not been set up on the platform yet. Ask a platform operator to set it up."
     },
     "eye_catch": {
       "label": "Eye-catch image",

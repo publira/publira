@@ -16,6 +16,7 @@ import { apiClient, withSessionHeaders } from "./api";
 import {
   mentionsIconRejection,
   mentionsLogoRejection,
+  mentionsStorageNotConfigured,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
@@ -108,9 +109,14 @@ const parseIconErrorMessage = async (
 
   return rpcErrorMessage(error, fallback, {
     locale,
-    overrides: mentionsIconRejection(error)
-      ? { "invalid-argument": t("admin.settings.icon.rejected") }
-      : undefined,
+    overrides: {
+      "invalid-argument": mentionsIconRejection(error)
+        ? t("admin.settings.icon.rejected")
+        : undefined,
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : undefined,
+    },
   });
 };
 
@@ -124,9 +130,14 @@ const parseLogoErrorMessage = async (
 
   return rpcErrorMessage(error, fallback, {
     locale,
-    overrides: mentionsLogoRejection(error)
-      ? { "invalid-argument": t("admin.settings.logo.rejected") }
-      : undefined,
+    overrides: {
+      "invalid-argument": mentionsLogoRejection(error)
+        ? t("admin.settings.logo.rejected")
+        : undefined,
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : undefined,
+    },
   });
 };
 

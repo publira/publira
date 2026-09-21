@@ -1,4 +1,8 @@
-import { rpcErrorHasFieldViolation } from "@publira/api-client/errors";
+import {
+  RPC_ERROR_REASON,
+  rpcErrorHasFieldViolation,
+  rpcErrorHasReason,
+} from "@publira/api-client/errors";
 
 /**
  * Series and label forms both submit metadata and an eye-catch image in one
@@ -37,3 +41,11 @@ export const mentionsAspectImageRejection = (error: unknown): boolean =>
   rpcErrorHasFieldViolation(error, "image_data") ||
   rpcErrorHasFieldViolation(error, "image_content_type") ||
   rpcErrorHasFieldViolation(error, "crop");
+
+/**
+ * Whether an upload was refused because the platform has no object store saved
+ * yet. Only a platform operator can fix that, so every upload surface words it
+ * apart from the "try again later" failure a retry could clear.
+ */
+export const mentionsStorageNotConfigured = (error: unknown): boolean =>
+  rpcErrorHasReason(error, RPC_ERROR_REASON.storageNotConfigured);
