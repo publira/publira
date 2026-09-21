@@ -7,6 +7,8 @@ package csvexport
 import (
 	"bytes"
 	"encoding/csv"
+	"strconv"
+	"strings"
 )
 
 // bom is the UTF-8 byte order mark.
@@ -28,11 +30,29 @@ func New(header ...string) *Writer {
 	return w
 }
 
-// Row appends one record.
+// Row appends one record. A field a spreadsheet would read as a formula is
+// written with a leading apostrophe, since the text can come from a less
+// privileged account than the one opening the file.
 func (w *Writer) Row(fields ...string) {
+	cells := make([]string, len(fields))
+	for i, field := range fields {
+		cells[i] = neutralize(field)
+	}
 	// Writing to a bytes.Buffer cannot fail, so the error Bytes reports is the
 	// only one there is.
-	_ = w.csv.Write(fields)
+	_ = w.csv.Write(cells)
+}
+
+// neutralize leaves a number as it is: a signed number is a value, not a
+// formula.
+func neutralize(field string) string {
+	if field == "" || !strings.ContainsRune("=+-@\t\r", rune(field[0])) {
+		return field
+	}
+	if _, err := strconv.ParseFloat(field, 64); err == nil {
+		return field
+	}
+	return "'" + field
 }
 
 // Bytes ends the file and returns its content.
