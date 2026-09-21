@@ -22,7 +22,7 @@ import (
 // A push never exists without its `notifications` row: the row is the record
 // and the push is one delivery of it, so a Firebase outage loses the alert and
 // not the notification. That is also why the event is drained here rather than
-// sent inline by `batch publish-episodes` — the retries, the backoff, and the
+// sent inline by the scheduled publication job — the retries, the backoff, and the
 // dead state already live in this worker, and a publish run must not wait on
 // Firebase.
 const EventTypeMemberPushNotification = "member_push_notification"

@@ -1,18 +1,18 @@
 # syntax=docker/dockerfile:1.27@sha256:bde3983e9c939224420ddaf6b784cc30e09b035a4dea01f581230c50809f372e
 
-# Image for server/cmd/batch, which runs a maintenance job by hand. Every job
-# ships in this one image; the subcommand passed as a container argument selects
-# the job to run. The worker schedules the same jobs, so nothing runs this on a
-# timer.
+# Image for server/cmd/publiractl, the command that operates a Publira install.
+# Every maintenance job ships in this one image; `job <kind>` passed as container
+# arguments selects the job to run. The worker schedules the same jobs, so
+# nothing runs this on a timer.
 #
 # Build from the repository root:
 #
 #   docker build \
-#     -f infra/docker/batch/Dockerfile \
-#     -t publira/batch:local \
+#     -f infra/docker/publiractl/Dockerfile \
+#     -t publira/publiractl:local \
 #     .
 #
-#   docker run --rm publira/batch:local purge-content-events
+#   docker run --rm publira/publiractl:local job purge-content-events
 
 FROM golang:1.27-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195 AS builder
 
@@ -35,14 +35,14 @@ ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" \
   go build -trimpath \
   -ldflags="-s -w -X github.com/publira/publira/server/internal/buildinfo.version=${VERSION}" \
-  -o /out/job ./cmd/batch
+  -o /out/publiractl ./cmd/publiractl
 
 FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
 
 WORKDIR /app
 
-COPY --from=builder /out/job /app/job
+COPY --from=builder /out/publiractl /app/publiractl
 
 USER nonroot
 
-ENTRYPOINT ["/app/job"]
+ENTRYPOINT ["/app/publiractl"]

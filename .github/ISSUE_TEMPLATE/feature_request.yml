@@ -37,7 +37,7 @@ body:
         - Web host, the tenant-facing site readers use (area/web-host)
         - Web admin, the submission and management console for publishers and editors (area/web-admin)
         - Web platform, the cross-tenant console for platform operators (area/web-platform)
-        - Server, the Go API, batch, and outbox processes (area/server)
+        - Server, the Go API, the worker, and publiractl (area/server)
         - Mobile, the Flutter app (area/mobile)
         - Infrastructure, meaning Docker, CI, the Dev Container, and Compose (area/infra)
     validations:

@@ -80,7 +80,7 @@ func eyeCatchAspectBuildError(err error) error {
 // aspectImageObjectKey names the object of one delivered size of a ratio.
 // `uploadID` is new on every upload, so replacing a ratio writes new objects
 // instead of overwriting the ones the previous rows still name — those rows
-// are what `batch purge-orphan-images` reads to decide an object is garbage.
+// are what `publiractl job purge-orphan-images` reads to decide an object is garbage.
 func aspectImageObjectKey(tenantPublicID, entityPath, entityPublicID string, imageID, uploadID uuid.UUID, variant imageproc.Variant) string {
 	return fmt.Sprintf(
 		"tenants/%s/%s/%s/%s-%s-%s%s",

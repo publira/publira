@@ -1,4 +1,4 @@
-package batchlock
+package tenantlock
 
 import (
 	"context"
@@ -7,14 +7,14 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// lockKey stands in for the "<tenant>:<batch>" keys the batches compose. What
+// lockKey stands in for the "<tenant>:<job>" keys the jobs compose. What
 // it says does not matter here; that two sessions agree on it does.
-const lockKey = "batchlock-test:tenant"
+const lockKey = "tenantlock-test:tenant"
 
 // The wait has to be bounded before the lock is taken, and the bound has to
 // leave with the transaction: a pooled connection that kept lock_timeout set
 // would impose it on every statement that ran next on it.
-func TestTakeTenantBoundsTheWaitForOneTransaction(t *testing.T) {
+func TestTakeBoundsTheWaitForOneTransaction(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	db := pg.OpenPlatformDB(t)
 	ctx := context.Background()
@@ -31,8 +31,8 @@ func TestTakeTenantBoundsTheWaitForOneTransaction(t *testing.T) {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if err := TakeTenant(ctx, tx, lockKey); err != nil {
-		t.Fatalf("TakeTenant: %v", err)
+	if err := Take(ctx, tx, lockKey); err != nil {
+		t.Fatalf("Take: %v", err)
 	}
 
 	var setting string
@@ -57,7 +57,7 @@ func TestTakeTenantBoundsTheWaitForOneTransaction(t *testing.T) {
 
 // The bound must not come at the cost of the exclusion the lock exists for:
 // while one transaction holds the key, nobody else gets it.
-func TestTakeTenantHoldsTheKeyUntilTheTransactionEnds(t *testing.T) {
+func TestTakeHoldsTheKeyUntilTheTransactionEnds(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	db := pg.OpenPlatformDB(t)
 	ctx := context.Background()
@@ -68,8 +68,8 @@ func TestTakeTenantHoldsTheKeyUntilTheTransactionEnds(t *testing.T) {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if err := TakeTenant(ctx, tx, lockKey); err != nil {
-		t.Fatalf("TakeTenant: %v", err)
+	if err := Take(ctx, tx, lockKey); err != nil {
+		t.Fatalf("Take: %v", err)
 	}
 
 	// A try rather than a wait, so a regression is a failed assertion instead

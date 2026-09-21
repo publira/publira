@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/publira/publira/server/internal/batchlock"
 	"github.com/publira/publira/server/internal/tenantday"
+	"github.com/publira/publira/server/internal/tenantlock"
 )
 
 // Aggregator rebuilds content_daily_stats from content_events, purchases and
@@ -140,7 +140,7 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 	// replacement from a concurrent run for the same tenant/day.
 	// Its bounded wait turns an overlapping run into a failed run rather than
 	// one that waits out the day holding a transaction open.
-	if err := batchlock.TakeTenant(ctx, tx, tenantID.String()+":"+statDate); err != nil {
+	if err := tenantlock.Take(ctx, tx, tenantID.String()+":"+statDate); err != nil {
 		return 0, err
 	}
 

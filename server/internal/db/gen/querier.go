@@ -273,7 +273,7 @@ type Querier interface {
 	DeleteSeriesGenresBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch so a newly uploaded image for that
 	// ratio can take its place. The objects the deleted rows named are left to
-	// `batch purge-orphan-images`.
+	// `publiractl job purge-orphan-images`.
 	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
 	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (int64, error)
@@ -1396,7 +1396,7 @@ type Querier interface {
 	// ListRecommendedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
 	ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]ListRecommendedSeriesIDsReversedRow, error)
-	// Orphan image reclamation (cmd/batch purge-orphan-images).
+	// Orphan image reclamation (publiractl job purge-orphan-images).
 	//
 	// Every image this repository stores lives in two places: an `*_images` row
 	// with its `*_image_variants` children, and one object per variant in the S3

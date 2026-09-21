@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.27@sha256:bde3983e9c939224420ddaf6b784cc30e09b035a4dea01f581230c50809f372e
 
 # Next.js monorepo image (turbo prune + standalone).
-# Build on Debian (glibc); run on distroless — same split as api/batch.
+# Build on Debian (glibc); run on distroless — same split as api/publiractl.
 # https://turborepo.dev/docs/guides/tools/docker
 #
 # Build from the repository root:

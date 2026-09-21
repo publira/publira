@@ -119,7 +119,7 @@ type DeleteSeriesImageVariantsByTypeParams struct {
 
 // Clears one aspect ratio of an eye-catch so a newly uploaded image for that
 // ratio can take its place. The objects the deleted rows named are left to
-// `batch purge-orphan-images`.
+// `publiractl job purge-orphan-images`.
 func (q *Queries) DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, deleteSeriesImageVariantsByType, arg.SeriesImageID, arg.VariantType)
 	if err != nil {

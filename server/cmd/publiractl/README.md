@@ -1,19 +1,21 @@
-# batch
+# publiractl
 
-The manual interface to the maintenance jobs: each one ships in this single binary, and the first argument names the job.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group; `job` is the only one, the manual interface to the maintenance jobs, and the second argument names the job.
 
 ```bash
 task server:build
-./server/bin/batch aggregate-content-stats
+./server/bin/publiractl job aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the ten below, the binary prints its usage to stderr and exits non-zero.
+Without a command, with a command other than `job`, or with a job name that is not one of the ten below, the binary prints its usage to stderr and exits non-zero.
 
-Nothing needs to schedule it. The [worker](../worker/README.md) runs all ten jobs on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. This binary is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds, purges, or closes once and exits.
+Nothing needs to schedule it. The [worker](../worker/README.md) runs all ten jobs on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. `publiractl job` is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds, purges, or closes once and exits.
 
-Every subcommand here is a thin invocation of `internal/maintenance`, and the worker registers the same ten jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge. A run here neither reads nor moves the worker's `daily_rebuild_progress`, and it may overlap a scheduled pass of the same job. The three dated rebuilds take a per-tenant advisory lock, so one of two overlapping runs waits for the other, and fails after 30 seconds, rather than both restating the same rows; the projection and the purges are safe to run twice at once, because the second finds nothing left to file or delete, and so is the royalty close, because a month is closed once and the second close of it finds it closed.
+Every job here is a thin invocation of `internal/maintenance`, and the worker registers the same ten jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge. A run here neither reads nor moves the worker's `daily_rebuild_progress`, and it may overlap a scheduled pass of the same job. The three dated rebuilds take a per-tenant advisory lock, so one of two overlapping runs waits for the other, and fails after 30 seconds, rather than both restating the same rows; the projection and the purges are safe to run twice at once, because the second finds nothing left to file or delete, and so is the royalty close, because a month is closed once and the second close of it finds it closed.
 
-| Subcommand | What it does |
+The worker's ticker jobs — publishing due episodes, applying free window boundaries, rolling a tenant's day, expiring pinned announcements — have no `job` subcommand. They act on every instant that has passed each time they run, including the first run after the worker starts, so there is nothing a manual run could do that the worker does not.
+
+| Job | What it does |
 | --- | --- |
 | `project-episode-reads` | Files the missing `episode_complete` events for stored `episode_reads` |
 | `aggregate-content-stats` | Rebuilds one calendar day of `content_daily_stats` per tenant |
@@ -26,13 +28,13 @@ Every subcommand here is a thin invocation of `internal/maintenance`, and the wo
 | `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
 | `close-royalty-statements` | Closes the royalty statements the tenants on automatic closing are owed |
 
-Each subcommand reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<subcommand>`, still overridable with `OTEL_SERVICE_NAME`.
+Each job reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<job>`, the name the worker's runs of the same job report as well, still overridable with `OTEL_SERVICE_NAME`.
 
-The container image carries the same binary, with the subcommand passed as a container argument:
+The container image carries the same binary, with the command passed as container arguments:
 
 ```bash
-task docker:build:batch
-docker run --rm publira/batch:local purge-content-events
+task docker:build:publiractl
+docker run --rm publira/publiractl:local job purge-content-events
 ```
 
 ## project-episode-reads
@@ -41,7 +43,7 @@ Files the analytics counterpart of every stored episode read that does not have 
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/batch project-episode-reads
+go run ./server/cmd/publiractl job project-episode-reads
 ```
 
 Environment variables:
@@ -63,7 +65,7 @@ For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_CONTENT_STATS_DATE=2026-08-28 go run ./server/cmd/batch aggregate-content-stats
+PUBLIRA_CONTENT_STATS_DATE=2026-08-28 go run ./server/cmd/publiractl job aggregate-content-stats
 ```
 
 Environment variables:
@@ -81,7 +83,7 @@ For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_CONTENT_RANKING_DATE=2026-08-28 go run ./server/cmd/batch aggregate-rankings
+PUBLIRA_CONTENT_RANKING_DATE=2026-08-28 go run ./server/cmd/publiractl job aggregate-rankings
 ```
 
 Environment variables:
@@ -152,7 +154,7 @@ Each entry of `items`:
 | Daily ranking snapshots  | 90 days          |
 | Weekly ranking snapshots | 400 days         |
 
-Every period is from 1 to 36500 days. The batches' role, `publira_content_stats`, may read `platform_retention_config` and nothing else under the `platform_` prefix.
+Every period is from 1 to 36500 days. The jobs' role, `publira_content_stats`, may read `platform_retention_config` and nothing else under the `platform_` prefix.
 
 ## purge-content-events
 
@@ -164,12 +166,12 @@ For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-content-events
+PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-content-events
 ```
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_EVENTS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`. The two batches that touch `content_events` run as the same `publira_content_stats` role.
+- `PUBLIRA_CONTENT_EVENTS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`. The two jobs that touch `content_events` run as the same `publira_content_stats` role.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
@@ -194,7 +196,7 @@ For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-ranking-snapshots
+PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-ranking-snapshots
 ```
 
 Environment variables:
@@ -205,7 +207,7 @@ Environment variables:
 
 One tenant's failure does not stop the others. The structured log records the run's timestamp, both default periods, how many tenants override them, the chunk size, the tenants drained, the rows deleted, the chunk count, and the elapsed time.
 
-The first run against a table that has accumulated since before this batch existed deletes a backlog rather than a day, so it takes many chunks. `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true` reports how large that backlog is before anything is deleted.
+The first run against a table that has accumulated since before this job existed deletes a backlog rather than a day, so it takes many chunks. `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true` reports how large that backlog is before anything is deleted.
 
 ## purge-mfa-challenges
 
@@ -217,7 +219,7 @@ For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-mfa-challenges
+PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-mfa-challenges
 ```
 
 Environment variables:
@@ -244,7 +246,7 @@ For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_COMMENT_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-withdrawn-comments
+PUBLIRA_COMMENT_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-withdrawn-comments
 ```
 
 Environment variables:
@@ -265,7 +267,7 @@ Both a database and a bucket are needed. The bucket is the one saved in the plat
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-orphan-images
+PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN=true go run ./server/cmd/publiractl job purge-orphan-images
 ```
 
 Environment variables:
@@ -289,7 +291,7 @@ For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent
 
 ```bash
 eval "$(task --silent dev-env:env)"
-PUBLIRA_RECOMMEND_FEATURES_DATE=2026-08-28 go run ./server/cmd/batch build-recommend-features
+PUBLIRA_RECOMMEND_FEATURES_DATE=2026-08-28 go run ./server/cmd/publiractl job build-recommend-features
 ```
 
 Environment variables:
@@ -298,7 +300,7 @@ Environment variables:
 - `PUBLIRA_RECOMMEND_FEATURES_DATE`: last day of the window, as `YYYY-MM-DD`, read as each tenant's own local date. Unset ends every tenant's window on its own yesterday.
 - `PUBLIRA_RECOMMEND_FEATURES_WINDOW_DAYS`: window length in days, ending on that date and including it. Defaults to 28, and must be at least 1.
 
-Run it after `aggregate-content-stats` for the same day: the item snapshot reads the daily stats that batch produces.
+Run it after `aggregate-content-stats` for the same day: the item snapshot reads the daily stats that job produces.
 
 The structured log records the reference date, window, feature version, and how many tenants and user and item rows the run finished — on failure too, since each tenant commits on its own.
 
@@ -336,7 +338,7 @@ Both tables carry `feature_version`, the version of the code that wrote the row.
 
 Neither table is complete, and an inference path that assumes otherwise breaks on ordinary traffic:
 
-- **A missing row is the normal case, not an error.** A tenant that has never run the batch, a reader in their first session, and a series published after the window closed all have no row. Treat absence as "no signal" and fall back to the ranking snapshot or new releases.
+- **A missing row is the normal case, not an error.** A tenant the job has never run for, a reader in their first session, and a series published after the window closed all have no row. Treat absence as "no signal" and fall back to the ranking snapshot or new releases.
 - **Anonymous readers never have a row.** Signed-out traffic is always a fallback case.
 - **Rows can disappear between runs.** A reader whose activity aged out of the window loses their row on the next build. Nothing about a previously present row is durable.
 - **The snapshot is up to a day stale.** Same-day behaviour is out of scope for v1; a reader's very first sessions are invisible to it.
@@ -354,7 +356,7 @@ For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent
 
 ```bash
 eval "$(task --silent dev-env:env)"
-go run ./server/cmd/batch close-royalty-statements
+go run ./server/cmd/publiractl job close-royalty-statements
 ```
 
 Environment variables:

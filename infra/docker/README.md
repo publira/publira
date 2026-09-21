@@ -13,10 +13,10 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
 | API (long-running) | [`api/Dockerfile`](./api/Dockerfile) | HTTP servers in `server/cmd/*` without CGO | `CMD_NAME`, `PORT` |
 | Image (long-running) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` (Manael / libvips) | `CMD_NAME`, `PORT` |
-| Batch | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/batch` (manual runs of every maintenance job) | none |
+| publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line, including manual runs of every maintenance job) | none |
 | Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
 
-A deployment runs the long-running images and nothing on a timer: the worker (the API role with `CMD_NAME=worker`) schedules every recurring job, the maintenance jobs included. The batch image is for an operator running one of those jobs by hand — a backfill of a named date, a recovery, a dry-run purge — so it is published for that and is not something a deployment has to schedule.
+A deployment runs the long-running images and nothing on a timer: the worker (the API role with `CMD_NAME=worker`) schedules every recurring job, the maintenance jobs included. The publiractl image is for an operator running one of those jobs by hand — a backfill of a named date, a recovery, a dry-run purge — so it is published for that and is not something a deployment has to schedule.
 
 Keep the Dev Container separate from production images.
 
@@ -57,8 +57,8 @@ What is being containerized?
 │    → Set PORT when needed (default: 8200)
 │
 ├─ A Go maintenance job (run by hand; the worker schedules it)
-│    → infra/docker/batch/Dockerfile (no build ARG)
-│    → Select the job with a container argument: docker run publira/batch:local <subcommand>
+│    → infra/docker/publiractl/Dockerfile (no build ARG)
+│    → Select the job with container arguments: docker run publira/publiractl:local job <kind>
 │
 ├─ A long-running non-Next.js Node.js service (apps/<name>)
 │    → infra/docker/node/Dockerfile
@@ -72,7 +72,7 @@ What is being containerized?
 
 ### Naming
 
-- **Role directories** use a short category name (`web` / `api` / `image` / `batch` / `node`), never a service name.
+- **Role directories** use a short category name (`web` / `api` / `image` / `node`), never a service name. `publiractl` is the exception: it carries one binary, which the directory is named for.
 - **`APP_NAME`** is the directory name directly under `apps/` (for example, `web-admin` or `email-renderer`). The Dockerfile adds the `@publira/` prefix.
 - **`CMD_NAME`** is the directory name directly under `server/cmd/` (for example, `api-server`).
 - **Example image tags** use `publira/<service-name>:local`, a build-time convention. Deployment defines registry policy separately.
@@ -119,11 +119,11 @@ docker build -f infra/docker/image/Dockerfile \
   --build-arg CMD_NAME=image-server --build-arg PORT=8200 \
   -t publira/image-server:local .
 
-# Batch (all jobs share one image; choose the job with a container argument)
-docker build -f infra/docker/batch/Dockerfile \
-  -t publira/batch:local .
+# publiractl (all jobs share one image; choose the job with container arguments)
+docker build -f infra/docker/publiractl/Dockerfile \
+  -t publira/publiractl:local .
 
-docker run --rm publira/batch:local purge-content-events
+docker run --rm publira/publiractl:local job purge-content-events
 
 # Node
 docker build -f infra/docker/node/Dockerfile \
@@ -136,7 +136,7 @@ docker build -f infra/docker/node/Dockerfile \
 | Stage | Contents |
 | --- | --- |
 | Build | Debian-based image with the full toolchain (Node bookworm-slim / golang bookworm) |
-| Runtime | distroless (Web / Node: `nodejs24-debian12:nonroot`; Go API / batch: `static:nonroot`). Image servers alone use `debian:bookworm-slim` plus `libvips42` (CGO). |
+| Runtime | distroless (Web / Node: `nodejs24-debian12:nonroot`; Go API / publiractl: `static:nonroot`). Image servers alone use `debian:bookworm-slim` plus `libvips42` (CGO). |
 | Base image | Pin the digest as `tag@sha256:…` (tracked by Renovate). |
 | Tool versions (`turbo`, `pnpm`, and more) | `ARG *_VERSION` plus `# renovate: datasource=…`, in the same form as [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) |
 
@@ -175,13 +175,13 @@ Prerequisites: run from the repository root with Docker Engine and Buildx availa
 The five primary build paths for Issues and CI are the following representatives, one for each role:
 
 ```bash
-# All at once (web-host / api-server / batch / email-renderer / image-server)
+# All at once (web-host / api-server / publiractl / email-renderer / image-server)
 task docker:verify
 
 # Or individually
 task docker:build:web APP_NAME=web-host PORT=3000
 task docker:build:api CMD_NAME=api-server PORT=8000
-task docker:build:batch
+task docker:build:publiractl
 task docker:build:node APP_NAME=email-renderer PORT=8080
 task docker:build:image CMD_NAME=image-server PORT=8200
 ```
@@ -193,7 +193,7 @@ task docker:smoke:web APP_NAME=web-host PORT=3000
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
-`smoke:web` checks `/livez`; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. API and batch runtime smoke tests need dependencies such as the database and object storage, so **a successful image build is their gate**. Check startup through the orchestrator or an integration environment.
+`smoke:web` checks `/livez`; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. API and publiractl runtime smoke tests need dependencies such as the database and object storage, so **a successful image build is their gate**. Check startup through the orchestrator or an integration environment.
 
 ### All images (before release or after large Dockerfile changes)
 
@@ -243,12 +243,12 @@ Use **change detection (role representatives) plus nightly full builds**.
 | web | `web-host` | `apps/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/web/**` |
 | api | `api-server` | `server/**`, `infra/docker/api/**` |
 | image | `image-server` | `server/**`, `infra/docker/image/**` |
-| batch | `batch` | `server/**`, `infra/docker/batch/**` |
+| publiractl | `publiractl` | `server/**`, `infra/docker/publiractl/**` |
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
 
-Changes under `server/**` build the api, batch, and image representatives because they share modules. `locales/**` is used by web and node because `@publira/i18n/catalog` and `@publira/email-templates` bundle repository-root message catalogs through relative imports.
+Changes under `server/**` build the api, publiractl, and image representatives because they share modules. `locales/**` is used by web and node because `@publira/i18n/catalog` and `@publira/email-templates` bundle repository-root message catalogs through relative imports.
 
-Implementation: the `docker` job in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Job planning: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), which turns path-filter results into the Docker matrix. The local commands are the same: `task docker:build:web|api|image|batch|node` (Web then runs `task docker:smoke:web`, and Node then runs `task docker:smoke:node`).
+Implementation: the `docker` job in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Job planning: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), which turns path-filter results into the Docker matrix. The local commands are the same: `task docker:build:web|api|image|publiractl|node` (Web then runs `task docker:smoke:web`, and Node then runs `task docker:smoke:node`).
 
 Like other jobs, `Docker / <target>` can be skipped by its path filter. The only required check in the branch ruleset is the final aggregation job **`Summary`** (shown as `CI / Summary` in the UI); skipped intermediate jobs count as success.
 

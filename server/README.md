@@ -9,7 +9,7 @@ server/
 ├── cmd/
 │   ├── api-server/        # ConnectRPC API server (public / admin / platform namespaces)
 │   ├── image-server/      # Image delivery for both host names (Manael conversion)
-│   ├── batch/             # Single binary bundling every batch job (selected by subcommand)
+│   ├── publiractl/        # The command that operates an install (`job <kind>` runs a maintenance job by hand)
 │   └── worker/            # Long-lived background worker (Outbox drain + River periodic jobs)
 ├── bin/                   # Binaries produced by task build
 └── internal/
@@ -33,7 +33,7 @@ server/
 
 1. Schema-first development: change `proto/` or the golang-migrate files under `db/migrations/` (`.up.sql` / `.down.sql`) first, then run `task gen`
 2. Keep `cmd/` thin and put the implementation in `internal/`
-3. The background worker (`cmd/worker`) is a long-lived process separated from the APIs, where River executes every recurring job — the Outbox drain, the periodic jobs that promote due episodes, apply free window boundaries, turn over each tenant's calendar day, and expire pinned announcements, and the maintenance jobs that rebuild and purge stored data. Running it is all the scheduling a deployment needs. The single `cmd/batch` binary runs one of those maintenance jobs by hand, with the subcommand in the first argument picking the job
+3. The background worker (`cmd/worker`) is a long-lived process separated from the APIs, where River executes every recurring job — the Outbox drain, the periodic jobs that promote due episodes, apply free window boundaries, turn over each tenant's calendar day, and expire pinned announcements, and the maintenance jobs that rebuild and purge stored data. Running it is all the scheduling a deployment needs. `cmd/publiractl` runs one of those maintenance jobs by hand as `publiractl job <kind>`
 
 ## Development commands
 
@@ -70,7 +70,7 @@ task server:test
 
 - API server: [cmd/api-server/README.md](cmd/api-server/README.md)
 - Image server: [cmd/image-server/README.md](cmd/image-server/README.md)
-- Batch (manual runs of the maintenance jobs: backfills, recovery, dry-run purges): [cmd/batch/README.md](cmd/batch/README.md)
+- publiractl (manual runs of the maintenance jobs: backfills, recovery, dry-run purges): [cmd/publiractl/README.md](cmd/publiractl/README.md)
 - Worker (Outbox drain / scheduled publishing / free window boundaries / tenant day roll / pinned announcement expiry / scheduled maintenance): [cmd/worker/README.md](cmd/worker/README.md)
 
 ## Graceful shutdown
@@ -99,7 +99,7 @@ Save the `whsec_...` it prints as that tenant's webhook signing secret through `
 
 ## Image storage configuration
 
-The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `api-server` (uploads), `image-server` (reads), the worker's `maintenance.purge_orphan_images`, and `batch purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
+The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `api-server` (uploads), `image-server` (reads), the worker's `maintenance.purge_orphan_images`, and `publiractl job purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
 
 Every process starts with nothing saved. Until something is, an upload fails with `FailedPrecondition` and the `STORAGE_NOT_CONFIGURED` reason, the image server answers `503`, and the orphan sweep fails (the worker cancels the job).
 
@@ -241,7 +241,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-image-server` / `publira-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `worker` adds one per periodic job on top of its own default — `publira-publish-episodes` / `publira-apply-free-windows` / `publira-roll-tenant-day` / `publira-expire-pinned-announcements` — and one per maintenance job, the same name `cmd/batch` reports for that job's subcommand, carried by the span each run hangs off, so they stay apart in a trace UI now that they share a process. `cmd/batch` resolves it per subcommand, so it becomes `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features` / `publira-close-royalty-statements`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | A default per process (`publira-image-server` / `publira-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `worker` adds one per periodic job on top of its own default — `publira-publish-episodes` / `publira-apply-free-windows` / `publira-roll-tenant-day` / `publira-expire-pinned-announcements` — and one per maintenance job, the same name `publiractl job` reports for that job, carried by the span each run hangs off, so they stay apart in a trace UI now that they share a process. `publiractl job` resolves it per job, so it becomes `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features` / `publira-close-royalty-statements`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
@@ -392,7 +392,7 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 
 `VerifyMfa` exchanges a verify challenge and a code for the access token. `ConfirmMfaEnrollment` does the same for an enroll challenge: it returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
 
-A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `batch purge-mfa-challenges` deletes those rows once their token has expired. An enroll challenge is presented twice by design and is not recorded — once it enables the factor, the same token is refused with `mfa is already enabled`.
+A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `publiractl job purge-mfa-challenges` deletes those rows once their token has expired. An enroll challenge is presented twice by design and is not recorded — once it enables the factor, the same token is refused with `mfa is already enabled`.
 
 ### Requiring the factor
 
@@ -469,7 +469,7 @@ A series is rated by the episodes it is made of. `CatalogService.GetSeriesDetail
 | Source | `source_table = 'episode_reads'`, `source_id = episode_reads.id`. The partial UNIQUE index on `(tenant_id, source_table, source_id)` is what makes the projection replayable |
 | `occurred_at` | The read's own `read_at`, so a late projection still files the event on the day the member finished |
 | `series_id` | Resolved from `episodes` rather than taken from client input |
-| Failure | Swallowed. The read is already stored, and `batch project-episode-reads` files whatever the request path lost |
+| Failure | Swallowed. The read is already stored, and `publiractl job project-episode-reads` files whatever the request path lost |
 
 ### The member's own reading history
 
@@ -546,16 +546,16 @@ Each namespace connects with its own dedicated PostgreSQL login user, which keep
 | worker | `publira_outbox` (BYPASSRLS) | `PUBLIRA_WORKER_DB_URL` | `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable` |
 | worker periodic jobs | `publira_ticker` (BYPASSRLS) | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
 | worker maintenance jobs | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch project-episode-reads | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`, falling back to `PUBLIRA_CONTENT_EVENTS_DB_URL` → `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch aggregate-content-stats | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch aggregate-rankings | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch purge-content-events | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_EVENTS_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch purge-ranking-snapshots | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch purge-mfa-challenges | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_MFA_CHALLENGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch purge-withdrawn-comments | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_COMMENT_PURGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| batch close-royalty-statements | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job project-episode-reads | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`, falling back to `PUBLIRA_CONTENT_EVENTS_DB_URL` → `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job aggregate-content-stats | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job aggregate-rankings | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-content-events | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_EVENTS_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-ranking-snapshots | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-mfa-challenges | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_MFA_CHALLENGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-withdrawn-comments | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_COMMENT_PURGE_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job purge-orphan-images | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_ORPHAN_IMAGES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job build-recommend-features | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_RECOMMEND_FEATURES_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job close-royalty-statements | `publira_content_stats` (BYPASSRLS) | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 
 `publira_platform`, `publira_content_stats`, `publira_outbox`, and `publira_ticker` carry the BYPASSRLS attribute and access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID.
 
@@ -584,7 +584,7 @@ ALTER ROLE publira_admin    PASSWORD '<secure_password>';
 ALTER ROLE publira_public   PASSWORD '<secure_password>';
 ```
 
-Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and each of the worker's three pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the `batch` subcommands an operator runs by hand fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
+Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and each of the worker's three pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the `publiractl job` subcommands an operator runs by hand fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
 
 ## Notes on initial data
 

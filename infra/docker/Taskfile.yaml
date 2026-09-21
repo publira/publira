@@ -6,7 +6,7 @@ version: "3"
 # Examples:
 #   task docker:build:web APP_NAME=web-host PORT=3000
 #   task docker:build:api CMD_NAME=api-server PORT=8000
-#   task docker:build:batch
+#   task docker:build:publiractl
 #   task docker:build:node APP_NAME=email-renderer PORT=8080
 #   task docker:verify
 
@@ -58,16 +58,16 @@ tasks:
           -t "publira/{{.CMD_NAME}}:local" \
           .
 
-  build:batch:
-    desc: Build the Go batch image that carries every batch subcommand (VERSION optional)
+  build:publiractl:
+    desc: Build the publiractl image that carries every maintenance job (VERSION optional)
     vars:
       VERSION: '{{.VERSION | default "dev"}}'
     cmds:
       - |
         docker build \
-          -f infra/docker/batch/Dockerfile \
+          -f infra/docker/publiractl/Dockerfile \
           --build-arg "VERSION={{.VERSION}}" \
-          -t "publira/batch:local" \
+          -t "publira/publiractl:local" \
           .
 
   build:node:
@@ -86,9 +86,9 @@ tasks:
           .
 
   # Representative set shared by local checks and CI (path-filtered / PR).
-  # Covers each role once: web / api / batch / node / image.
+  # Covers each role once: web / api / publiractl / node / image.
   verify:
-    desc: Build representative images (web-host, api-server, batch, email-renderer, image-server)
+    desc: Build representative images (web-host, api-server, publiractl, email-renderer, image-server)
     cmds:
       - task: build:web
         vars:
@@ -98,7 +98,7 @@ tasks:
         vars:
           CMD_NAME: api-server
           PORT: "8000"
-      - task: build:batch
+      - task: build:publiractl
       - task: build:node
         vars:
           APP_NAME: email-renderer
@@ -122,7 +122,7 @@ tasks:
         vars: { CMD_NAME: api-server, PORT: "8000" }
       - task: build:api
         vars: { CMD_NAME: worker, PORT: "8003" }
-      - task: build:batch
+      - task: build:publiractl
       - task: build:node
         vars: { APP_NAME: email-renderer, PORT: "8080" }
       - task: build:image

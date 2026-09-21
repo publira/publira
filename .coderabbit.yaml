@@ -61,7 +61,7 @@ reviews:
         - Keep cmd/ thin; real logic in api/ and internal/.
         - Emphasize error handling, context propagation, authz (tenant / role).
         - Flag queries or handlers that break multi-tenant isolation.
-        - Batches are one-shot (run and exit), not long-lived daemons.
+        - publiractl commands are one-shot (run and exit), not long-lived daemons.
 
     - path: "server/api/**/*.go"
       instructions: |

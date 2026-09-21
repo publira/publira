@@ -3,7 +3,7 @@
 // one pass, and records what the pass covered in the structured log.
 //
 // Who invokes a pass is the caller's business. An operator invokes one from the
-// command line through cmd/batch, and the worker invokes the same one on
+// command line through cmd/publiractl, and the worker invokes the same one on
 // River's schedule through internal/maintenancejobs, so the two cannot drift
 // into separate implementations of the same maintenance.
 //

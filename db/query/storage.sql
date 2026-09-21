@@ -1,4 +1,4 @@
--- Orphan image reclamation (cmd/batch purge-orphan-images).
+-- Orphan image reclamation (publiractl job purge-orphan-images).
 --
 -- Every image this repository stores lives in two places: an `*_images` row
 -- with its `*_image_variants` children, and one object per variant in the S3

@@ -65,7 +65,7 @@ export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 ```
 
-The role users and their development passwords come from `db/seeds/baseline`; every server reads only the variables named for the roles it connects as, so each of them has to be set. `PUBLIRA_DB_URL` is the migration tooling's connection, and only the `batch` subcommands fall back to it. `e2e/bootstrap/scripts/lib.sh` exports the same set against its own ports and is a working reference.
+The role users and their development passwords come from `db/seeds/baseline`; every server reads only the variables named for the roles it connects as, so each of them has to be set. `PUBLIRA_DB_URL` is the migration tooling's connection, and only the `publiractl job` subcommands fall back to it. `e2e/bootstrap/scripts/lib.sh` exports the same set against its own ports and is a working reference.
 
 Two things stay Dev Container only.
 

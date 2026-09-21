@@ -1,11 +1,16 @@
-// Command batch runs one of this repository's maintenance jobs by hand. The
-// first argument names the job; every job is configured through environment
-// variables, rebuilds, purges, or closes a period of data once, and exits. The worker
-// schedules the same jobs, so nothing needs to schedule this command.
+// Command publiractl operates a Publira install from a command line. It
+// connects to PostgreSQL directly rather than through ConnectRPC, so it works
+// on a deployment that serves no platform API.
 //
-// Each subcommand is a thin invocation of internal/maintenance, which the
-// worker's River jobs invoke as well, so an operator's explicit run and a
-// scheduled one are the same implementation.
+// The first argument names a command group. The only one is job, which runs
+// one of the worker's maintenance jobs by hand: the second argument names the
+// job, which is configured through environment variables, rebuilds, purges, or
+// closes a period of data once, and exits. The worker schedules the same jobs,
+// so nothing needs to schedule this command.
+//
+// Each job is a thin invocation of internal/maintenance, which the worker's
+// River jobs invoke as well, so an operator's explicit run and a scheduled one
+// are the same implementation.
 //
 // The jobs that have to act the moment a stored instant passes are not here:
 // they run as River periodic jobs inside the worker (internal/tickerjobs).
@@ -27,8 +32,8 @@ import (
 	"github.com/publira/publira/server/internal/tracing"
 )
 
-// subcommand is one batch job.
-type subcommand struct {
+// job is one maintenance job the job group runs.
+type job struct {
 	name    string
 	summary string
 	// run logs its own failure with the context that matters for that job, so
@@ -37,7 +42,7 @@ type subcommand struct {
 	run func(ctx context.Context, logger *slog.Logger, cfg *config.Config) error
 }
 
-var subcommands = []subcommand{
+var jobs = []job{
 	{
 		name:    "project-episode-reads",
 		summary: "File the missing episode_complete events for stored episode reads",
@@ -96,22 +101,34 @@ func main() {
 
 func run(args []string, stderr io.Writer) int {
 	if len(args) == 0 {
-		return usageError(stderr, "a subcommand is required")
+		return usageError(stderr, "a command is required", usage())
 	}
-	cmd := lookup(args[0])
-	if cmd == nil {
-		return usageError(stderr, fmt.Sprintf("unknown subcommand %q", args[0]))
+	switch args[0] {
+	case "job":
+		return runJob(args[1:], stderr)
+	default:
+		return usageError(stderr, fmt.Sprintf("unknown command %q", args[0]), usage())
+	}
+}
+
+func runJob(args []string, stderr io.Writer) int {
+	if len(args) == 0 {
+		return usageError(stderr, "a job is required", jobUsage())
+	}
+	j := lookup(args[0])
+	if j == nil {
+		return usageError(stderr, fmt.Sprintf("unknown job %q", args[0]), jobUsage())
 	}
 	if len(args) > 1 {
-		return usageError(stderr, fmt.Sprintf("%s takes no arguments, got %q", cmd.name, strings.Join(args[1:], " ")))
+		return usageError(stderr, fmt.Sprintf("job %s takes no arguments, got %q", j.name, strings.Join(args[1:], " ")), jobUsage())
 	}
 
 	logger := logging.New(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	slog.SetDefault(logger)
 
-	shutdownTracing, err := tracing.Setup(context.Background(), "publira-"+cmd.name)
+	shutdownTracing, err := tracing.Setup(context.Background(), "publira-"+j.name)
 	if err != nil {
-		// Telemetry is not worth refusing to run the batch over.
+		// Telemetry is not worth refusing to run the job over.
 		logger.Error("failed to initialize tracing", "error", err)
 	}
 	defer func() {
@@ -126,45 +143,51 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 
-	if err := cmd.run(context.Background(), logger, cfg); err != nil {
+	if err := j.run(context.Background(), logger, cfg); err != nil {
 		return 1
 	}
 	return 0
 }
 
-func lookup(name string) *subcommand {
-	for i := range subcommands {
-		if subcommands[i].name == name {
-			return &subcommands[i]
+func lookup(name string) *job {
+	for i := range jobs {
+		if jobs[i].name == name {
+			return &jobs[i]
 		}
 	}
 	return nil
 }
 
-// usageError reports a bad invocation on w and returns the exit status for it.
-func usageError(w io.Writer, reason string) int {
-	_, _ = io.WriteString(w, "batch: "+reason+"\n"+usage())
+// usageError reports a bad invocation on w, followed by the usage text for the
+// level it happened at, and returns the exit status for it.
+func usageError(w io.Writer, reason, usage string) int {
+	_, _ = io.WriteString(w, "publiractl: "+reason+"\n"+usage)
 	return 2
 }
 
 func usage() string {
+	return "\nUsage: publiractl <command>\n\nCommands:\n" +
+		"  job                       Run one of the worker's maintenance jobs by hand\n"
+}
+
+func jobUsage() string {
 	var b strings.Builder
-	b.WriteString("\nUsage: batch <subcommand>\n\nSubcommands:\n")
-	for _, cmd := range subcommands {
-		fmt.Fprintf(&b, "  %-25s %s\n", cmd.name, cmd.summary)
+	b.WriteString("\nUsage: publiractl job <kind>\n\nJobs:\n")
+	for _, j := range jobs {
+		fmt.Fprintf(&b, "  %-25s %s\n", j.name, j.summary)
 	}
-	b.WriteString("\nEvery subcommand reads its settings from the environment.\n")
+	b.WriteString("\nEvery job reads its settings from the environment.\n")
 	return b.String()
 }
 
 // resolveDBURL returns the first non-empty environment variable in names, so a
-// batch can be pointed at the role it needs without disturbing the other
+// job can be pointed at the role it needs without disturbing the other
 // processes, and falls back to the shared connection string when none is set.
 //
-// PUBLIRA_WORKER_DB_URL belongs to no chain here. The batches once shared it
+// PUBLIRA_WORKER_DB_URL belongs to no chain here. The jobs once shared it
 // with the worker because both ran on the same connection, but it now names
-// publira_outbox, a role that owns River's schema and that the daily batches
-// must not be able to alter. A batch left unconfigured falls through to
+// publira_outbox, a role that owns River's schema and that the daily jobs
+// must not be able to alter. A job left unconfigured falls through to
 // PUBLIRA_DB_URL, which is where it ran before the dedicated stats role existed.
 func resolveDBURL(fallback string, names ...string) string {
 	for _, name := range names {
@@ -175,10 +198,10 @@ func resolveDBURL(fallback string, names ...string) string {
 	return fallback
 }
 
-// resolveTenantLocalDate reads the calendar date a daily batch covers from the
+// resolveTenantLocalDate reads the calendar date a daily job covers from the
 // named variable. The date is each tenant's own local one, so an unset variable
 // cannot be answered here with a single day: it yields the zero time, and the
-// batch resolves every tenant's yesterday in that tenant's zone.
+// job resolves every tenant's yesterday in that tenant's zone.
 func resolveTenantLocalDate(name string) (time.Time, error) {
 	raw := strings.TrimSpace(os.Getenv(name))
 	if raw == "" {

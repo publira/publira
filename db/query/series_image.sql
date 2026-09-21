@@ -60,7 +60,7 @@ WHERE id = $1;
 -- name: DeleteSeriesImageVariantsByType :execrows
 -- Clears one aspect ratio of an eye-catch so a newly uploaded image for that
 -- ratio can take its place. The objects the deleted rows named are left to
--- `batch purge-orphan-images`.
+-- `publiractl job purge-orphan-images`.
 DELETE FROM series_image_variants
 WHERE series_image_id = $1
     AND variant_type = $2;
