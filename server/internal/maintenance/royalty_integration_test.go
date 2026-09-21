@@ -149,6 +149,21 @@ func TestRoyaltyStatementCloseRefusesARoleUnderRowLevelSecurity(t *testing.T) {
 	}
 }
 
+// A pass counts a tenant's owed months from when it chose automatic closing,
+// so the schema refuses an automatic row that does not say when that was.
+func TestAutomaticRoyaltyConfigRequiresItsStart(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	tenant := seedRoyaltyTenant(t, pg, "ROYALTYNOSN1")
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_royalty_config (tenant_id, close_mode, auto_close_day)
+		VALUES ($1, 'automatic', 5)
+	`, tenant); err == nil {
+		t.Fatal("automatic closing without automatic_since was stored, want it refused")
+	}
+}
+
 func seedRoyaltyTenant(t *testing.T, pg *testutil.PostgresEnv, publicID string) uuid.UUID {
 	t.Helper()
 	tenant := pg.SeedTenant(t, publicID, publicID+".example.com", "Royalty "+publicID)
