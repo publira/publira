@@ -88,6 +88,8 @@ task storage:seed        # The images the development seed's rows name
 
 `publira_ticker` is the only one of them without the blanket table grants the others share. Its jobs touch a known set of catalog, follow, and recipient tables, so the seed names those tables one by one and leaves the role out of the `ALTER DEFAULT PRIVILEGES` that hands every future table to the rest.
 
+The same file takes the blanket grants back from two families of table — every `platform_*` relation, from the tenant-scoped and worker roles, and the writes on `episode_rating_counts` and `series_rating_counts`, from `publira_admin` and `publira_public` — and creates the `publira_take_back_default_grants` event trigger, which applies the same rule to each relation a later migration creates. A database that receives migrations after the seed ran therefore needs no second seed run to keep them.
+
 `baseline/010_river_object_owner.sql` follows it and hands any existing `river_*` table, sequence, enum, or function to `publira_outbox`. On a database the worker has always connected to as that role there is nothing to move; on one whose River schema another role created, the transfer is what keeps `rivermigrate` able to alter those objects on the next River release.
 
 The development passwords are `platformpass`, `contentstatspass`, `outboxpass`, `tickerpass`, `adminpass`, and `publicpass`. After seeding a production environment, change them to secure values with `ALTER ROLE ... PASSWORD`.
