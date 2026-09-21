@@ -33,7 +33,7 @@ server/
 
 1. Schema-first development: change `proto/` or the golang-migrate files under `db/migrations/` (`.up.sql` / `.down.sql`) first, then run `task gen`
 2. Keep `cmd/` thin and put the implementation in `internal/`
-3. Every one-shot batch lives in the single `cmd/batch` binary, and the subcommand in the first argument picks the job to run. The background worker (`cmd/worker`) is a long-lived process separated from the APIs, where River executes the jobs — the Outbox drain and the periodic jobs that promote due episodes, apply free window boundaries, turn over each tenant's calendar day, and expire pinned announcements
+3. The background worker (`cmd/worker`) is a long-lived process separated from the APIs, where River executes every recurring job — the Outbox drain, the periodic jobs that promote due episodes, apply free window boundaries, turn over each tenant's calendar day, and expire pinned announcements, and the maintenance jobs that rebuild and purge stored data. Running it is all the scheduling a deployment needs. The single `cmd/batch` binary runs one of those maintenance jobs by hand, with the subcommand in the first argument picking the job
 
 ## Development commands
 
@@ -70,8 +70,8 @@ task server:test
 
 - API server: [cmd/api-server/README.md](cmd/api-server/README.md)
 - Image server: [cmd/image-server/README.md](cmd/image-server/README.md)
-- Batch (daily content stats / ranking aggregation / content event purge / recommend feature build): [cmd/batch/README.md](cmd/batch/README.md)
-- Worker (Outbox drain / scheduled publishing / free window boundaries / tenant day roll / pinned announcement expiry): [cmd/worker/README.md](cmd/worker/README.md)
+- Batch (manual runs of the maintenance jobs: backfills, recovery, dry-run purges): [cmd/batch/README.md](cmd/batch/README.md)
+- Worker (Outbox drain / scheduled publishing / free window boundaries / tenant day roll / pinned announcement expiry / scheduled maintenance): [cmd/worker/README.md](cmd/worker/README.md)
 
 ## Graceful shutdown
 
@@ -208,6 +208,7 @@ Every process under `cmd/*` emits OpenTelemetry traces. **It is disabled by defa
 | Inbound plain HTTP (image-server) | `otelhttp` | One per route pattern (`GET /images/creators/{media_id}`). `/livez` and `/readyz` are excluded |
 | DB queries | `XSAM/otelsql` (wrapping the pgx driver in `internal/sqldb`) | One `db.query` per statement |
 | The scheduled publication batch | `internal/publishepisodes` | One parent span per `RunOnce` cycle |
+| A maintenance job's run on the worker | `internal/maintenancejobs` | One parent span per pass, named by its River kind (`maintenance.aggregate_content_stats`) and carrying `river.job.id` and `river.job.attempt`. A failed pass sets the span's status to error |
 | The Outbox worker | `internal/outbox` | One per drain and one per processed event (`outbox.drain` / `outbox.process`) |
 | Outbound HTTP (Next.js revalidation / email-renderer) | The `otelhttp` Transport | A client span and `traceparent` propagation |
 
@@ -248,7 +249,7 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-image-server` / `publira-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `worker` adds one per periodic job on top of its own default — `publira-publish-episodes` / `publira-apply-free-windows` / `publira-roll-tenant-day` / `publira-expire-pinned-announcements` — carried by the span each run hangs off, so they stay apart in a trace UI now that they share a process. `cmd/batch` resolves it per subcommand, so it becomes `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | A default per process (`publira-image-server` / `publira-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `worker` adds one per periodic job on top of its own default — `publira-publish-episodes` / `publira-apply-free-windows` / `publira-roll-tenant-day` / `publira-expire-pinned-announcements` — and one per maintenance job, the same name `cmd/batch` reports for that job's subcommand, carried by the span each run hangs off, so they stay apart in a trace UI now that they share a process. `cmd/batch` resolves it per subcommand, so it becomes `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
@@ -590,7 +591,7 @@ ALTER ROLE publira_admin    PASSWORD '<secure_password>';
 ALTER ROLE publira_public   PASSWORD '<secure_password>';
 ```
 
-Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and both of the worker's pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the one-shot batches fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
+Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and each of the worker's three pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the `batch` subcommands an operator runs by hand fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
 
 ## Notes on initial data
 

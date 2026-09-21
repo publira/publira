@@ -13,8 +13,10 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
 | API (long-running) | [`api/Dockerfile`](./api/Dockerfile) | HTTP servers in `server/cmd/*` without CGO | `CMD_NAME`, `PORT` |
 | Image (long-running) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` (Manael / libvips) | `CMD_NAME`, `PORT` |
-| Batch | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/batch` (all batch jobs) | none |
+| Batch | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/batch` (manual runs of every maintenance job) | none |
 | Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
+
+A deployment runs the long-running images and nothing on a timer: the worker (the API role with `CMD_NAME=worker`) schedules every recurring job, the maintenance jobs included. The batch image is for an operator running one of those jobs by hand — a backfill of a named date, a recovery, a dry-run purge — so it is published for that and is not something a deployment has to schedule.
 
 Keep the Dev Container separate from production images.
 
@@ -54,7 +56,7 @@ What is being containerized?
 │    → --build-arg CMD_NAME=<name>
 │    → Set PORT when needed (default: 8200)
 │
-├─ A Go batch job
+├─ A Go maintenance job (run by hand; the worker schedules it)
 │    → infra/docker/batch/Dockerfile (no build ARG)
 │    → Select the job with a container argument: docker run publira/batch:local <subcommand>
 │

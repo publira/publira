@@ -107,7 +107,7 @@ func New(db *sql.DB, store storage.Reclaimer) *Reclaimer {
 // object is listed and every key checked whether or not anything is deleted,
 // which is one ListObjectsV2 and one reference lookup per PageSize objects.
 // The trigger to reconsider that shape — sweeping one tenant at a time, or
-// staggering prefixes across days — is a run that stops fitting the cron
+// staggering prefixes across days — is a run that stops fitting its
 // interval, which the elapsed time in its completion log reports.
 func (r *Reclaimer) Run(ctx context.Context, opts Options) (Result, error) {
 	if r == nil || r.db == nil {

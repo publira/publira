@@ -92,7 +92,7 @@ func NewPurger(db *sql.DB) *Purger {
 //
 // The newest period a tenant has for a ranking key and entity type always
 // survives, whatever the cutoff says. That row is what the public site reads,
-// and a tenant whose cron has been stopped longer than its retention period
+// and a tenant whose rebuilds have stopped for longer than its retention period
 // would otherwise lose its ranking entirely rather than serve a stale one.
 //
 // One tenant's failure does not stop the others; the run finishes what it can
@@ -247,7 +247,7 @@ WITH retention AS (
 //
 // The tenant filter narrows the scan through the tenant-leading indexes, and
 // retention itself keeps a tenant to roughly a thousand rows, so nothing here
-// needs an index of its own. A purge that stops fitting the cron interval,
+// needs an index of its own. A purge that stops fitting its interval,
 // judged from the elapsed time in its completion log, is the trigger to add
 // one.
 const expiredSnapshots = `

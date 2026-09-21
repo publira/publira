@@ -221,8 +221,8 @@ func requireBypassRLS(ctx context.Context, db *sql.DB, task string) error {
 // The eight window scans behind those snapshots are bounded by the daily rows
 // the tenant produced — at most one per entity per day, capped by the size of
 // the catalogue — rather than by raw event volume, so they stay small next to
-// the aggregate-content-stats run that feeds them. The budget is the daily
-// cron interval, shared with the batches that run before and after; judge one
+// the aggregate-content-stats run that feeds them. The budget is the day,
+// shared with the links of the rebuild chain before and after it; judge one
 // run from the elapsed time in its completion log. If a run stops fitting, the
 // fix is upstream of the scan — fewer tenants per invocation, or a
 // materialised per-entity window rollup — because the item limit bounds only
@@ -239,10 +239,11 @@ func (a *Aggregator) rankTenant(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	// This lock belongs inside the transaction: it keeps a concurrent cron
-	// invocation from rewriting the same tenant's snapshots underneath this
-	// one. Its bounded wait turns an overlapping run into a failed run rather
-	// than one that waits out the day holding a transaction open.
+	// This lock belongs inside the transaction: it keeps a concurrent run — a
+	// manual batch beside the worker's — from rewriting the same tenant's
+	// snapshots underneath this one. Its bounded wait turns an overlapping run
+	// into a failed run rather than one that waits out the day holding a
+	// transaction open.
 	if err := batchlock.TakeTenant(ctx, tx, tenantID.String()+":content-ranking"); err != nil {
 		return 0, 0, err
 	}

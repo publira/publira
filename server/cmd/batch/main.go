@@ -1,6 +1,7 @@
-// Command batch runs this repository's one-shot batch jobs. The first argument
-// names the job; every job is configured through environment variables, rebuilds
-// or purges a period of data, and exits.
+// Command batch runs one of this repository's maintenance jobs by hand. The
+// first argument names the job; every job is configured through environment
+// variables, rebuilds or purges a period of data once, and exits. The worker
+// schedules the same jobs, so nothing needs to schedule this command.
 //
 // Each subcommand is a thin invocation of internal/maintenance, which the
 // worker's River jobs invoke as well, so an operator's explicit run and a

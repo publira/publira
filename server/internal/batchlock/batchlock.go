@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// Timeout bounds how long one tenant waits for the advisory lock. A cron
-// one-shot has no deadline of its own, so without this an overlapping run
+// Timeout bounds how long one tenant waits for the advisory lock. A manual
+// batch run has no deadline of its own, so without this an overlapping run
 // would block forever with a transaction open instead of exiting.
 const Timeout = 30 * time.Second
 

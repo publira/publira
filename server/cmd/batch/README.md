@@ -1,6 +1,6 @@
 # batch
 
-Every one-shot batch job ships in this single binary. The first argument names the job:
+The manual interface to the maintenance jobs: each one ships in this single binary, and the first argument names the job.
 
 ```bash
 task server:build
@@ -9,9 +9,9 @@ task server:build
 
 Without an argument, or with a name that is not one of the nine below, the binary prints its usage to stderr and exits non-zero.
 
-Each one rebuilds or purges a period of data and exits, which is what makes an external schedule the right thing to invoke it. The jobs that instead have to act the moment a stored instant passes — promoting due episodes, applying free window boundaries, turning over a tenant's calendar day — are River periodic jobs inside the [worker](../worker/README.md).
+Nothing needs to schedule it. The [worker](../worker/README.md) runs all nine jobs on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. This binary is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds or purges once and exits.
 
-Every subcommand here is a thin invocation of `internal/maintenance`, and the worker registers the same nine jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge.
+Every subcommand here is a thin invocation of `internal/maintenance`, and the worker registers the same nine jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge. A run here neither reads nor moves the worker's `daily_rebuild_progress`, and it may overlap a scheduled pass of the same job. The three dated rebuilds take a per-tenant advisory lock, so one of two overlapping runs waits for the other, and fails after 30 seconds, rather than both restating the same rows; the projection and the purges are safe to run twice at once, because the second finds nothing left to file or delete.
 
 | Subcommand | What it does |
 | --- | --- |
