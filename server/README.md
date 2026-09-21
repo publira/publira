@@ -176,17 +176,9 @@ These are URLs reachable inside the private network, not the public ones meant f
 
 The worker mirrors member notifications onto the devices the mobile app registered, over FCM HTTP v1. Firebase relays to APNs for iOS once the APNs auth key is uploaded to the project, so one integration covers both platforms.
 
-- `PUBLIRA_FCM_PROJECT_ID`
-  - The Firebase project the messages are sent to
-  - When unset, the project the credentials name is used
-- `PUBLIRA_FCM_CREDENTIALS_JSON`
-  - A service account key, inline as JSON. The key has to be a `service_account` credential; FCM HTTP v1 accepts no other kind
-- `GOOGLE_APPLICATION_CREDENTIALS`
-  - The path form of the same key. It keeps its outside name because the Google library performs that lookup itself
+No environment variable configures it. Each tenant ships its own build of the app with its own Firebase project, so the credentials are a tenant setting: a tenant administrator saves the project id and a service account key through the Admin API's `AdminFcmSettingsService`, and the key is sealed with `PUBLIRA_SECRET_ENCRYPTION_KEYS` before it is stored. The key is refused unless it is a `service_account` credential for that same project, since FCM HTTP v1 accepts no other kind. No RPC returns it: a read answers whether credentials are stored and which project and service account they name.
 
-Any one of the three turns push on. The project id counts on its own because Application Default Credentials resolves more than an explicit key file — a well-known `gcloud` file, and the metadata server of an instance with an attached service account — and a deployment relying on either leaves both credential variables empty. Naming the project is what it can still say.
-
-With none of them set, mobile push is off, so a local stack without Firebase still runs. The `member_push_notification` handler stays registered for Web Push, and a mobile device it cannot reach counts as a failed delivery: a row whose recipients have only mobile devices retries and then goes dead without affecting the publish.
+The worker reads the tenant's credentials for each delivery and rereads them at most every ten seconds, so a replacement or a removal reaches it without a restart. A tenant with no credentials has mobile push off: its devices are skipped and kept, and its Web Push and bell notifications are delivered as usual.
 
 A send reaches the devices it can. A run that reached none of them is retried as an outage; one that reached some completes, because a retry re-runs the whole send and FCM keeps no delivery record, so the devices that already took the message would take it again once per remaining attempt. The devices a partial run could not reach lose that alert and keep the `notifications` row behind it.
 

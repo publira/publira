@@ -34,14 +34,11 @@ const defaultTimeout = 15 * time.Second
 // than retrying, because no later attempt can succeed.
 var ErrTokenGone = errors.New("push: registration token is no longer valid")
 
-// Config builds a [Client]. Credentials are resolved once, at construction.
+// Config builds a [Client].
 type Config struct {
-	// ProjectID is the Firebase project the messages are sent to. Empty takes
-	// the project the credentials name.
+	// ProjectID is the Firebase project the messages are sent to.
 	ProjectID string
-	// CredentialsJSON is a service account key. Empty falls back to
-	// Application Default Credentials, which is what
-	// GOOGLE_APPLICATION_CREDENTIALS configures.
+	// CredentialsJSON is the service account key the messages are sent as.
 	CredentialsJSON []byte
 	// Endpoint replaces the FCM host, which is how the tests point a client at
 	// a local server. Empty uses the real one.
@@ -69,24 +66,28 @@ type Client struct {
 	http      *http.Client
 }
 
-// New resolves the credentials and returns a client for cfg.
+// New returns a client for cfg. The credentials are checked with
+// [ParseServiceAccount] before anything is built from them.
 func New(ctx context.Context, cfg Config) (*Client, error) {
-	creds, err := resolveCredentials(ctx, cfg.CredentialsJSON)
-	if err != nil {
-		return nil, err
-	}
-
 	projectID := strings.TrimSpace(cfg.ProjectID)
 	if projectID == "" {
-		projectID = strings.TrimSpace(creds.ProjectID)
+		return nil, errors.New("push: no FCM project id")
 	}
-	if projectID == "" {
-		return nil, errors.New("push: no FCM project id, and the credentials name none")
+	if _, err := ParseServiceAccount(cfg.CredentialsJSON); err != nil {
+		return nil, err
 	}
 
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
-		httpClient = oauth2.NewClient(ctx, creds.TokenSource)
+		jwtConfig, err := google.JWTConfigFromJSON(cfg.CredentialsJSON, messagingScope)
+		if err != nil {
+			return nil, fmt.Errorf("push: read FCM credentials: %w", err)
+		}
+		// The token exchange goes to Google's endpoint whatever the key file
+		// names, so a key cannot aim the worker's signed assertion elsewhere.
+		jwtConfig.TokenURL = google.JWTTokenURL
+		tokenCtx := context.WithValue(context.WithoutCancel(ctx), oauth2.HTTPClient, &http.Client{Timeout: defaultTimeout})
+		httpClient = oauth2.NewClient(tokenCtx, jwtConfig.TokenSource(tokenCtx))
 		httpClient.Timeout = defaultTimeout
 	}
 
@@ -96,24 +97,6 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 	}
 
 	return &Client{projectID: projectID, endpoint: endpoint, http: httpClient}, nil
-}
-
-func resolveCredentials(ctx context.Context, credentialsJSON []byte) (*google.Credentials, error) {
-	if len(bytes.TrimSpace(credentialsJSON)) > 0 {
-		// Pinned to a service account key rather than accepting any credential
-		// shape: that is the only kind FCM HTTP v1 is authorized with, and the
-		// library refuses an unvalidated configuration from anywhere else.
-		creds, err := google.CredentialsFromJSONWithType(ctx, credentialsJSON, google.ServiceAccount, messagingScope)
-		if err != nil {
-			return nil, fmt.Errorf("push: read FCM credentials: %w", err)
-		}
-		return creds, nil
-	}
-	creds, err := google.FindDefaultCredentials(ctx, messagingScope)
-	if err != nil {
-		return nil, fmt.Errorf("push: find default FCM credentials: %w", err)
-	}
-	return creds, nil
 }
 
 // ProjectID is the Firebase project this client sends to.

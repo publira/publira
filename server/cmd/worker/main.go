@@ -16,13 +16,13 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/fcmsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformstorage"
-	"github.com/publira/publira/server/internal/push"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -152,26 +152,14 @@ func main() {
 	}
 	logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
 
-	// No Firebase credential means no FCM sender. Web Push is decided per
-	// delivery instead, because an operator turns it on while this runs.
+	// Both senders read their credentials per delivery, so a tenant connecting
+	// its Firebase project or an operator saving the Web Push subject takes
+	// effect while this runs.
 	pushHandlers := outbox.PushHandlerConfig{
 		DB:        db,
 		Logger:    logger,
+		Sender:    fcmsettings.NewSenders(dbmodels.New(db), encryptor, fcmsettings.NewPushClient, fcmsettings.CacheTTL, logger),
 		WebSender: webpushsettings.NewSenders(dbmodels.New(db), encryptor, webpushsettings.CacheTTL, logger),
-	}
-	if cfg.Push.Configured() {
-		sender, senderErr := push.New(context.Background(), push.Config{
-			ProjectID:       cfg.Push.FCMProjectID,
-			CredentialsJSON: cfg.Push.FCMCredentialsJSON,
-		})
-		if senderErr != nil {
-			logger.Error("failed to initialize FCM client", "error", senderErr)
-			os.Exit(1)
-		}
-		pushHandlers.Sender = sender
-		logger.Info("mobile push is enabled", "fcm_project_id", sender.ProjectID())
-	} else {
-		logger.Info("mobile push is disabled", "reason", "no FCM credential is configured")
 	}
 
 	// Declared as the interface, never as *revalidate.Client: a typed nil

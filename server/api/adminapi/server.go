@@ -455,6 +455,17 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		),
 	)
 	mux.Handle(paymentPath, paymentHandler)
+	fcmPath, fcmHandler := publiraadminv1connect.NewAdminFcmSettingsServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(fcmPath, fcmHandler)
 	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(
 		server,
 		traced,
