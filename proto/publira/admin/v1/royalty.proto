@@ -149,6 +149,37 @@ message GetRoyaltyStatementResponse {
   string next_token = 4;
 }
 
+message ExportRoyaltyStatementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // YYYY-MM of a closed month.
+  string period = 2;
+}
+
+message ExportRoyaltyStatementResponse {
+  // The statement as CSV: UTF-8 with a byte order mark, CRLF line endings,
+  // RFC 4180 quoting. A header row, then one row per line in line order, with
+  // no summary row; the totals are those of GetRoyaltyStatement. Columns:
+  //
+  //   period            YYYY-MM
+  //   creator_id        the creator's ID, as closed
+  //   creator_name      as closed
+  //   role_id           the role's ID, as closed; empty for a credit with no role
+  //   role_name         as closed; empty for a credit with no role
+  //   series_id         the series' ID, as closed
+  //   series_title      as closed
+  //   episode_id        the episode's ID, as closed
+  //   episode_title     as closed
+  //   sale_count        integer
+  //   gross_amount      whole yen, no currency symbol
+  //   refunded_amount   whole yen, no currency symbol
+  //   share_percent     the share with two decimals, 12.50 for 1250 bps
+  //   payout_amount     whole yen, no currency symbol
+  //
+  // The IDs are the rows' internal IDs, not their public IDs, and they stay
+  // on the line after the row is deleted.
+  bytes csv = 1;
+}
+
 // Creator royalties. Every RPC here is limited to the tenant admin role.
 service AdminRoyaltyService {
   // Reads the close policy. Tenants that have not selected one read as manual.
@@ -171,4 +202,8 @@ service AdminRoyaltyService {
   // Reads a closed month and a page of its lines. not_found for a month that
   // is not closed.
   rpc GetRoyaltyStatement(GetRoyaltyStatementRequest) returns (GetRoyaltyStatementResponse) {}
+  // Exports a closed month as CSV, built from the stored lines alone, so the
+  // same month exports the same bytes every time. failed_precondition for a
+  // month that is not closed; the console previews an open month instead.
+  rpc ExportRoyaltyStatement(ExportRoyaltyStatementRequest) returns (ExportRoyaltyStatementResponse) {}
 }

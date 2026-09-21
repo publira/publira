@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/csvexport"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
@@ -453,6 +455,88 @@ func (s *adminServer) GetRoyaltyStatement(
 		}
 	}
 	return connect.NewResponse(res), nil
+}
+
+// ExportRoyaltyStatement encodes a closed month as CSV from its stored lines
+// alone, so the same month always exports the same bytes.
+func (s *adminServer) ExportRoyaltyStatement(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ExportRoyaltyStatementRequest],
+) (*connect.Response[publiraadminv1.ExportRoyaltyStatementResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	period, err := royalties.ParsePeriod(req.Msg.Period)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "period")
+	}
+	periodKey := royalties.FormatPeriod(period)
+
+	header, err := s.queriesFor(ctx).GetRoyaltyStatementByPeriod(ctx, dbmodels.GetRoyaltyStatementByPeriodParams{
+		TenantID: tenant.ID,
+		Period:   period,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the month is not closed"))
+		}
+		return nil, s.internalDBError(ctx, "failed to get royalty statement", err, "tenant_id", tenant.ID.String(), "period", periodKey)
+	}
+	lines, err := s.queriesFor(ctx).ListRoyaltyStatementLinesForExport(ctx, dbmodels.ListRoyaltyStatementLinesForExportParams{
+		TenantID:    tenant.ID,
+		StatementID: header.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list royalty statement lines", err, "tenant_id", tenant.ID.String(), "period", periodKey)
+	}
+
+	body := royaltyStatementCSV(periodKey, lines)
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
+		Action: "royalty_statement_exported", TargetType: "royalty_statement", TargetID: periodKey,
+		Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(req.Header()),
+	})
+	return connect.NewResponse(&publiraadminv1.ExportRoyaltyStatementResponse{Csv: body}), nil
+}
+
+// royaltyStatementCSV writes the columns ExportRoyaltyStatementResponse
+// documents, in that order.
+func royaltyStatementCSV(period string, lines []dbmodels.RoyaltyStatementLine) []byte {
+	w := csvexport.New(
+		"period",
+		"creator_id", "creator_name",
+		"role_id", "role_name",
+		"series_id", "series_title",
+		"episode_id", "episode_title",
+		"sale_count", "gross_amount", "refunded_amount", "share_percent", "payout_amount",
+	)
+	for _, line := range lines {
+		w.Row(
+			period,
+			nullUUIDString(line.CreatorID), line.CreatorName,
+			nullUUIDString(line.RoleID), line.RoleName.String,
+			nullUUIDString(line.SeriesID), line.SeriesTitle,
+			nullUUIDString(line.EpisodeID), line.EpisodeTitle,
+			strconv.Itoa(int(line.SaleCount)),
+			strconv.FormatInt(line.GrossAmount, 10),
+			strconv.FormatInt(line.RefundedAmount, 10),
+			fmt.Sprintf("%d.%02d", line.ShareBps/100, line.ShareBps%100),
+			strconv.FormatInt(line.PayoutAmount, 10),
+		)
+	}
+	return w.Bytes()
+}
+
+func nullUUIDString(id uuid.NullUUID) string {
+	if !id.Valid {
+		return ""
+	}
+	return id.UUID.String()
 }
 
 func invalidRoyaltyTokenError() error {

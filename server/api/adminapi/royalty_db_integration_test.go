@@ -521,3 +521,106 @@ func TestDBRoyaltyStatementCannotBeRewrittenButGoesWithItsTenant(t *testing.T) {
 		t.Fatalf("statements after deleting the tenant = %d, want 0", count)
 	}
 }
+
+func (e *adminDBEnv) exportRoyalties(t *testing.T, tenant adminDBTenant, period string) string {
+	t.Helper()
+
+	res, err := e.royaltyClient().ExportRoyaltyStatement(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ExportRoyaltyStatementRequest{
+		Tenant: tenant.tenantContext(),
+		Period: period,
+	}))
+	if err != nil {
+		t.Fatalf("ExportRoyaltyStatement %s: %v", period, err)
+	}
+	return string(res.Msg.Csv)
+}
+
+func TestDBAdminExportRoyaltyStatementWritesTheClosedLines(t *testing.T) {
+	env := newAdminDBEnv(t)
+	f := env.seedRoyaltyFixture(t, "RYX")
+	ctx := context.Background()
+	// Japanese titles are the point here: the file has to open readable in a
+	// spreadsheet, which is what the byte order mark is for.
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE series SET title = '星の図書館' WHERE id = $1", f.series.ID); err != nil {
+		t.Fatalf("title series: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episodes SET title = '第1話, \"はじまり\"' WHERE id = $1", f.episode.ID); err != nil {
+		t.Fatalf("title episode: %v", err)
+	}
+	artist := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYXARTIST001", Name: `Kim, "Ink" Lee`})
+	guest := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYXGUEST0001", Name: "Guest"})
+	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, artist.ID, "Artist", "series", 1250)
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO episode_creators (tenant_id, episode_id, creator_id, role_id, display_order, source, share_bps)
+		VALUES ($1, $2, $3, NULL, 1, 'episode', 0)
+	`, f.admin.Tenant.ID, f.episode.ID, guest.ID); err != nil {
+		t.Fatalf("credit guest without a role: %v", err)
+	}
+	role := env.PG.CreatorRoleByName(t, f.admin.Tenant.ID, "Artist")
+	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.July, 3, 9, 0, 0)})
+	env.seedSale(t, f, f.episode.ID, royaltySale{
+		price:          500,
+		purchasedAt:    inRoyaltyZone(2026, time.July, 4, 9, 0, 0),
+		refundedAmount: sql.NullInt32{Int32: 100, Valid: true},
+	})
+	env.closeRoyalties(t, f.admin, "2026-07")
+
+	want := "\xEF\xBB\xBF" +
+		"period,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount\r\n" +
+		"2026-07," + artist.ID.String() + `,"Kim, ""Ink"" Lee",` + role.ID.String() + ",Artist," + f.series.ID.String() + ",星の図書館," +
+		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,12.50,112` + "\r\n" +
+		"2026-07," + guest.ID.String() + ",Guest,,," + f.series.ID.String() + ",星の図書館," +
+		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,0.00,0` + "\r\n"
+	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != want {
+		t.Fatalf("csv =\n%q\nwant\n%q", got, want)
+	}
+
+	// The export reads the lines as closed: a rename and a deleted creator leave
+	// every byte, the deleted creator's ID included, as it was.
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episodes SET title = 'Renamed' WHERE id = $1", f.episode.ID); err != nil {
+		t.Fatalf("rename episode: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(ctx, "DELETE FROM creators WHERE id = $1", guest.ID); err != nil {
+		t.Fatalf("delete creator: %v", err)
+	}
+	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != want {
+		t.Fatalf("csv after catalog edits =\n%q\nwant it unchanged\n%q", got, want)
+	}
+
+	if count := env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'royalty_statement_exported' AND target_id = '2026-07'",
+		f.admin.Tenant.ID); count != 2 {
+		t.Fatalf("export audit entries = %d, want one per export", count)
+	}
+}
+
+func TestDBAdminExportRoyaltyStatementRefusesOpenMonthsAndOtherCallers(t *testing.T) {
+	env := newAdminDBEnv(t)
+	f := env.seedRoyaltyFixture(t, "RYE")
+	editor := env.PG.SeedTenantUser(t, f.admin.Tenant.ID, "RYEEDITOR01", "editor@rye.example.com", "Editor", auth.RoleTenantEditor)
+	client := env.royaltyClient()
+	ctx := context.Background()
+	export := func(tenant adminDBTenant, period string) error {
+		_, err := client.ExportRoyaltyStatement(ctx, newAdminDBRequest(tenant, &publiraadminv1.ExportRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: period}))
+		return err
+	}
+
+	current := time.Now().In(royaltyZone).Format("2006-01")
+	for _, period := range []string{current, "2026-07"} {
+		if err := export(f.admin, period); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("export of open month %s error = %v, want failed_precondition", period, err)
+		}
+	}
+	if err := export(f.admin, "2026-7"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("export of a malformed period error = %v, want invalid_argument", err)
+	}
+
+	env.closeRoyalties(t, f.admin, "2026-07")
+	if err := export(f.admin.as(editor), "2026-07"); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("export by an editor error = %v, want permission_denied", err)
+	}
+	// A month with no sales closes into a header alone.
+	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != "\xEF\xBB\xBFperiod,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount\r\n" {
+		t.Fatalf("csv of a month with no sales = %q, want the header row alone", got)
+	}
+}

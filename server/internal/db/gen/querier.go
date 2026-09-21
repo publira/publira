@@ -1450,6 +1450,9 @@ type Querier interface {
 	ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoyaltyStatementLinesAscParams) ([]ListRoyaltyStatementLinesAscRow, error)
 	// ListRoyaltyStatementLinesAsc walked backwards, for a previous-page token.
 	ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoyaltyStatementLinesDescParams) ([]ListRoyaltyStatementLinesDescRow, error)
+	// Every line of a statement as it was closed, for the CSV export. It reads the
+	// stored columns only, so the export of a closed month never changes.
+	ListRoyaltyStatementLinesForExport(ctx context.Context, arg ListRoyaltyStatementLinesForExportParams) ([]RoyaltyStatementLine, error)
 	// ListRoyaltyStatementsDesc walked backwards, for a previous-page token.
 	ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyStatementsAscParams) ([]ListRoyaltyStatementsAscRow, error)
 	// Newest month first. The period is unique per tenant, so it alone is the

@@ -536,6 +536,61 @@ func (q *Queries) ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoy
 	return items, nil
 }
 
+const listRoyaltyStatementLinesForExport = `-- name: ListRoyaltyStatementLinesForExport :many
+SELECT tenant_id, statement_id, line_number, creator_id, creator_name, series_id, series_title, episode_id, episode_title, role_id, role_name, sale_count, gross_amount, refunded_amount, share_bps, payout_amount
+FROM royalty_statement_lines
+WHERE tenant_id = $1
+    AND statement_id = $2
+ORDER BY line_number ASC
+`
+
+type ListRoyaltyStatementLinesForExportParams struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	StatementID uuid.UUID `json:"statement_id"`
+}
+
+// Every line of a statement as it was closed, for the CSV export. It reads the
+// stored columns only, so the export of a closed month never changes.
+func (q *Queries) ListRoyaltyStatementLinesForExport(ctx context.Context, arg ListRoyaltyStatementLinesForExportParams) ([]RoyaltyStatementLine, error) {
+	rows, err := q.db.QueryContext(ctx, listRoyaltyStatementLinesForExport, arg.TenantID, arg.StatementID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RoyaltyStatementLine
+	for rows.Next() {
+		var i RoyaltyStatementLine
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.StatementID,
+			&i.LineNumber,
+			&i.CreatorID,
+			&i.CreatorName,
+			&i.SeriesID,
+			&i.SeriesTitle,
+			&i.EpisodeID,
+			&i.EpisodeTitle,
+			&i.RoleID,
+			&i.RoleName,
+			&i.SaleCount,
+			&i.GrossAmount,
+			&i.RefundedAmount,
+			&i.ShareBps,
+			&i.PayoutAmount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoyaltyStatementsAsc = `-- name: ListRoyaltyStatementsAsc :many
 SELECT
     rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout,
