@@ -3346,6 +3346,14 @@
       "page_description": "重要操作を横断的に追跡し、対象リソースの詳細へ遷移できる監査ログ画面です。",
       "pagination_aria": "監査ログ一覧のページ送り",
       "showing": "{$count}件を表示",
+      "targets": {
+        "platform_config": "プラットフォーム設定",
+        "platform_policy": "プラットフォームのポリシー",
+        "platform_retention": "保持期間の既定値",
+        "smtp_config": "SMTP設定",
+        "storage_config": "ストレージ設定",
+        "webpush_config": "Web Push 設定"
+      },
       "title": "監査ログ",
       "unset": "未設定"
     },

@@ -3346,6 +3346,14 @@
       "page_description": "테넌트를 가로지르는 중요한 작업을 추적하고 대상 리소스를 열 수 있습니다.",
       "pagination_aria": "감사 로그 페이지 이동",
       "showing": "{$count}건 표시",
+      "targets": {
+        "platform_config": "플랫폼 설정",
+        "platform_policy": "플랫폼 정책",
+        "platform_retention": "보존 기간 기본값",
+        "smtp_config": "SMTP 설정",
+        "storage_config": "스토리지 설정",
+        "webpush_config": "Web Push 설정"
+      },
       "title": "감사 로그",
       "unset": "미설정"
     },

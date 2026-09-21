@@ -3346,6 +3346,14 @@
       "page_description": "追踪跨租户的重要操作，并打开受影响的资源。",
       "pagination_aria": "审计日志分页",
       "showing": "显示 {$count} 条",
+      "targets": {
+        "platform_config": "平台设置",
+        "platform_policy": "平台策略",
+        "platform_retention": "保留期限默认值",
+        "smtp_config": "SMTP 设置",
+        "storage_config": "存储设置",
+        "webpush_config": "Web Push 设置"
+      },
       "title": "审计日志",
       "unset": "未设置"
     },

@@ -3346,6 +3346,14 @@
       "page_description": "追蹤跨租戶的重要操作，並開啟受影響的資源。",
       "pagination_aria": "稽核記錄分頁",
       "showing": "顯示 {$count} 筆",
+      "targets": {
+        "platform_config": "平台設定",
+        "platform_policy": "平台政策",
+        "platform_retention": "保留期限預設值",
+        "smtp_config": "SMTP 設定",
+        "storage_config": "儲存設定",
+        "webpush_config": "Web Push 設定"
+      },
       "title": "稽核記錄",
       "unset": "未設定"
     },
