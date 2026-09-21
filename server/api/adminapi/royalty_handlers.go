@@ -495,10 +495,7 @@ func (s *adminServer) ExportRoyaltyStatement(
 		return nil, s.internalDBError(ctx, "failed to list royalty statement lines", err, "tenant_id", tenant.ID.String(), "period", periodKey)
 	}
 
-	body, err := royaltyStatementCSV(periodKey, lines)
-	if err != nil {
-		return nil, s.internalError(ctx, "failed to encode royalty statement", err, "tenant_id", tenant.ID.String(), "period", periodKey)
-	}
+	body := royaltyStatementCSV(periodKey, lines)
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
 		Action: "royalty_statement_exported", TargetType: "royalty_statement", TargetID: periodKey,
@@ -509,7 +506,7 @@ func (s *adminServer) ExportRoyaltyStatement(
 
 // royaltyStatementCSV writes the columns ExportRoyaltyStatementResponse
 // documents, in that order.
-func royaltyStatementCSV(period string, lines []dbmodels.RoyaltyStatementLine) ([]byte, error) {
+func royaltyStatementCSV(period string, lines []dbmodels.RoyaltyStatementLine) []byte {
 	w := csvexport.New(
 		"period",
 		"creator_id", "creator_name",

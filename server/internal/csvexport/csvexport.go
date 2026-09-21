@@ -6,7 +6,6 @@ package csvexport
 
 import (
 	"bytes"
-	"encoding/csv"
 	"strconv"
 	"strings"
 )
@@ -14,18 +13,17 @@ import (
 // bom is the UTF-8 byte order mark.
 const bom = "\xEF\xBB\xBF"
 
-// Writer builds one CSV file in memory.
+// Writer builds one CSV file in memory. It quotes fields itself rather than
+// through encoding/csv, whose CRLF mode drops a lone \r and rewrites \n inside
+// a field, so a field would no longer be the value it was given.
 type Writer struct {
 	buf bytes.Buffer
-	csv *csv.Writer
 }
 
 // New starts a file with its header row.
 func New(header ...string) *Writer {
 	w := &Writer{}
 	w.buf.WriteString(bom)
-	w.csv = csv.NewWriter(&w.buf)
-	w.csv.UseCRLF = true
 	w.Row(header...)
 	return w
 }
@@ -34,13 +32,25 @@ func New(header ...string) *Writer {
 // written with a leading apostrophe, since the text can come from a less
 // privileged account than the one opening the file.
 func (w *Writer) Row(fields ...string) {
-	cells := make([]string, len(fields))
 	for i, field := range fields {
-		cells[i] = neutralize(field)
+		if i > 0 {
+			w.buf.WriteByte(',')
+		}
+		field = neutralize(field)
+		if !strings.ContainsAny(field, ",\"\r\n") {
+			w.buf.WriteString(field)
+			continue
+		}
+		w.buf.WriteByte('"')
+		w.buf.WriteString(strings.ReplaceAll(field, `"`, `""`))
+		w.buf.WriteByte('"')
 	}
-	// Writing to a bytes.Buffer cannot fail, so the error Bytes reports is the
-	// only one there is.
-	_ = w.csv.Write(cells)
+	w.buf.WriteString("\r\n")
+}
+
+// Bytes returns the file.
+func (w *Writer) Bytes() []byte {
+	return w.buf.Bytes()
 }
 
 // neutralize leaves a number as it is: a signed number is a value, not a
@@ -53,13 +63,4 @@ func neutralize(field string) string {
 		return field
 	}
 	return "'" + field
-}
-
-// Bytes ends the file and returns its content.
-func (w *Writer) Bytes() ([]byte, error) {
-	w.csv.Flush()
-	if err := w.csv.Error(); err != nil {
-		return nil, err
-	}
-	return w.buf.Bytes(), nil
 }
