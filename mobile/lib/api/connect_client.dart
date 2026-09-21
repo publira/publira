@@ -46,7 +46,11 @@ class ConnectClient {
     String? tenantId,
     String? accessToken,
   }) async {
-    final uri = Uri.parse(baseUrl).resolve(procedure);
+    // Appended rather than resolved: every procedure is an absolute path, and
+    // resolving one would drop a base path such as the edge's `/api` prefix.
+    final base = Uri.parse(baseUrl);
+    final prefix = base.path.replaceFirst(RegExp(r'/+$'), '');
+    final uri = base.replace(path: '$prefix$procedure');
     final headers = <String, String>{
       'content-type': 'application/json',
       'connect-protocol-version': '1',
