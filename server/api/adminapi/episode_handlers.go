@@ -167,6 +167,22 @@ func setEpisodeAvailability(episode *publirattypesv1.Episode, stored sql.NullStr
 	return nil
 }
 
+// episodePurchaseAvailability puts where the episode may be bought, resolved,
+// onto it and answers the episode's own override beside it, the pair the
+// console's single-episode reads respond with.
+func episodePurchaseAvailability(
+	episode *publirattypesv1.Episode,
+	override sql.NullString,
+	resolved string,
+) (publirattypesv1.SurfaceAvailability, error) {
+	resolvedAvailability, err := protomapper.SurfaceAvailabilityFromStored(resolved)
+	if err != nil {
+		return publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED, err
+	}
+	episode.PurchaseAvailability = resolvedAvailability
+	return protomapper.SurfaceAvailabilityOverrideFromStored(override)
+}
+
 func mapEpisodeAscRows(rows []dbmodels.ListEpisodesBySeriesForTenantAscRow) []episodePageRow {
 	mapped := make([]episodePageRow, 0, len(rows))
 	for _, row := range rows {
@@ -351,11 +367,16 @@ func (s *adminServer) GetEpisode(
 	if err := setEpisodeAvailability(episode, row.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", row.PublicID)
 	}
+	purchaseAvailability, err := episodePurchaseAvailability(episode, row.PurchaseAvailability, row.ResolvedPurchaseAvailability)
+	if err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", row.PublicID)
+	}
 
 	return connect.NewResponse(&publiraadminv1.GetEpisodeResponse{
-		Episode:          episode,
-		ReadingDirection: readingDirection,
-		SpreadStartIndex: spreadStartIndex,
+		Episode:              episode,
+		ReadingDirection:     readingDirection,
+		SpreadStartIndex:     spreadStartIndex,
+		PurchaseAvailability: purchaseAvailability,
 	}), nil
 }
 
@@ -503,6 +524,10 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
 	}
+	purchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.PurchaseAvailability)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
+	}
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -547,13 +572,14 @@ func (s *adminServer) CreateEpisode(
 	}
 	base, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Episode, error) {
 		return q.CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{
-			ID:           episodeID,
-			OrderIndex:   orderIndex,
-			PublicID:     publicID,
-			SeriesID:     seriesID,
-			TenantID:     tenant.ID,
-			Title:        req.Msg.Title,
-			Availability: availability,
+			ID:                   episodeID,
+			OrderIndex:           orderIndex,
+			PublicID:             publicID,
+			SeriesID:             seriesID,
+			TenantID:             tenant.ID,
+			Title:                req.Msg.Title,
+			Availability:         availability,
+			PurchaseAvailability: purchaseAvailability,
 		})
 	})
 	if err != nil {
@@ -587,6 +613,13 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to bake series credits onto episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
+	resolvedPurchaseAvailability, err := q.GetResolvedEpisodePurchaseAvailability(ctx, dbmodels.GetResolvedEpisodePurchaseAvailabilityParams{
+		TenantID:  tenant.ID,
+		EpisodeID: base.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to resolve created episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
@@ -603,6 +636,10 @@ func (s *adminServer) CreateEpisode(
 	if err := setEpisodeAvailability(episode, base.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", base.PublicID)
 	}
+	savedPurchaseAvailability, err := episodePurchaseAvailability(episode, base.PurchaseAvailability, resolvedPurchaseAvailability)
+	if err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", base.PublicID)
+	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
@@ -615,7 +652,7 @@ func (s *adminServer) CreateEpisode(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	return connect.NewResponse(&publiraadminv1.CreateEpisodeResponse{Episode: episode}), nil
+	return connect.NewResponse(&publiraadminv1.CreateEpisodeResponse{Episode: episode, PurchaseAvailability: savedPurchaseAvailability}), nil
 }
 
 func (s *adminServer) UploadEpisodeImages(
@@ -840,6 +877,9 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	if err := setEpisodeAvailability(mapped, ep.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", ep.PublicID)
 	}
+	if _, err := episodePurchaseAvailability(mapped, ep.PurchaseAvailability, ep.ResolvedPurchaseAvailability); err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", ep.PublicID)
+	}
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: mapped}), nil
 }
 
@@ -912,6 +952,9 @@ func (s *adminServer) UpdateEpisodeLayout(
 	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
 	}
+	if _, err := episodePurchaseAvailability(mapped, updated.PurchaseAvailability, updated.ResolvedPurchaseAvailability); err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
 
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -972,6 +1015,9 @@ func (s *adminServer) UpdateEpisodeAvailability(
 	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
 	}
+	if _, err := episodePurchaseAvailability(mapped, updated.PurchaseAvailability, updated.ResolvedPurchaseAvailability); err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
 
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -987,4 +1033,67 @@ func (s *adminServer) UpdateEpisodeAvailability(
 	}
 	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodeAvailabilityResponse{Episode: mapped}), nil
+}
+
+func (s *adminServer) UpdateEpisodePurchaseAvailability(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest],
+) (*connect.Response[publiraadminv1.UpdateEpisodePurchaseAvailabilityResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
+	if episodePublicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	}
+	purchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.PurchaseAvailability)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
+	}
+
+	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to get episode for purchase availability update", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+	}
+	if err := s.queriesFor(ctx).UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx, dbmodels.UpdateEpisodePurchaseAvailabilityByIDForTenantParams{
+		TenantID:             tenant.ID,
+		ID:                   episode.ID,
+		PurchaseAvailability: purchaseAvailability,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to update episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	updated, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get episode after purchase availability update", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(updated)
+	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
+		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
+	savedPurchaseAvailability, err := episodePurchaseAvailability(mapped, updated.PurchaseAvailability, updated.ResolvedPurchaseAvailability)
+	if err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
+
+	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "episode_updated",
+			TargetType:  "episode",
+			TargetID:    updated.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		})
+	}
+	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
+	return connect.NewResponse(&publiraadminv1.UpdateEpisodePurchaseAvailabilityResponse{
+		Episode:              mapped,
+		PurchaseAvailability: savedPurchaseAvailability,
+	}), nil
 }

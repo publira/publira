@@ -2717,6 +2717,11 @@ export const RecordContentViewResponseSchema: GenMessage<RecordContentViewRespon
  * A one-time paid-episode checkout. Purchases are created only by the Stripe
  * webhook after a successful payment, never by the browser's return URL.
  *
+ * `client` also names the surface the checkout is started from: CLIENT_MOBILE
+ * is the app, and every other value the storefront. An episode that surface
+ * may not show is not_found, as it is in the catalog, and one it shows but may
+ * not sell (Episode.purchase_availability) is failed_precondition.
+ *
  * @generated from message publira.v1.StartEpisodeCheckoutRequest
  */
 export type StartEpisodeCheckoutRequest = Message<"publira.v1.StartEpisodeCheckoutRequest"> & {
@@ -2731,8 +2736,8 @@ export type StartEpisodeCheckoutRequest = Message<"publira.v1.StartEpisodeChecko
   episodePublicId: string;
 
   /**
-   * Where Stripe should return the reader after checkout. Unspecified keeps
-   * the existing web return URL for backwards compatibility.
+   * Where Stripe should return the reader after checkout, and the surface the
+   * episode has to be sold on. Unspecified is the storefront.
    *
    * @generated from field: publira.v1.StartEpisodeCheckoutRequest.Client client = 3;
    */

@@ -612,6 +612,10 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
 	}
+	purchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.PurchaseAvailability)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
+	}
 	publishedAt, err := parsePublishedAtOrZero(req.Msg.PublishedAt)
 	if err != nil {
 		return nil, err
@@ -665,6 +669,7 @@ func (s *adminServer) CreateSeries(
 	base, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.Series, error) {
 		return s.queriesFor(txCtx).CreateSeriesBase(txCtx, dbmodels.CreateSeriesBaseParams{
 			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Title: req.Msg.Title, Availability: availability,
+			PurchaseAvailability: purchaseAvailability,
 		})
 	})
 	if err != nil {
@@ -767,12 +772,17 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
 	}
+	savedPurchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideFromStored(created.PurchaseAvailability)
+	if err != nil {
+		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
+	}
 	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{
-		Series:           series,
-		CommentMode:      commentMode,
-		ReadingDirection: readingDirection,
-		SpreadStartIndex: spreadStartIndex,
-		CreatorCredits:   creatorCredits,
+		Series:               series,
+		CommentMode:          commentMode,
+		ReadingDirection:     readingDirection,
+		SpreadStartIndex:     spreadStartIndex,
+		CreatorCredits:       creatorCredits,
+		PurchaseAvailability: savedPurchaseAvailability,
 	}), nil
 }
 
@@ -822,6 +832,13 @@ func (s *adminServer) UpdateSeries(
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
 		}
 	}
+	purchaseAvailability := current.PurchaseAvailability
+	if req.Msg.PurchaseAvailability != nil {
+		purchaseAvailability, err = protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.GetPurchaseAvailability())
+		if err != nil {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
+		}
+	}
 	labelPublicID := strings.TrimSpace(req.Msg.LabelPublicId)
 	if labelPublicID == "" && current.LabelPublicID.Valid {
 		labelPublicID = current.LabelPublicID.String
@@ -865,7 +882,7 @@ func (s *adminServer) UpdateSeries(
 	defer tx.Rollback() //nolint:errcheck
 
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
-	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID, Availability: availability})
+	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID, Availability: availability, PurchaseAvailability: purchaseAvailability})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
@@ -970,12 +987,17 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
 	}
+	savedPurchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideFromStored(updated.PurchaseAvailability)
+	if err != nil {
+		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
+	}
 	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{
-		Series:           series,
-		CommentMode:      commentMode,
-		ReadingDirection: readingDirection,
-		SpreadStartIndex: spreadStartIndex,
-		CreatorCredits:   creatorCredits,
+		Series:               series,
+		CommentMode:          commentMode,
+		ReadingDirection:     readingDirection,
+		SpreadStartIndex:     spreadStartIndex,
+		CreatorCredits:       creatorCredits,
+		PurchaseAvailability: savedPurchaseAvailability,
 	}), nil
 }
 
@@ -1390,11 +1412,16 @@ func (s *adminServer) GetSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
 	}
+	purchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideFromStored(row.PurchaseAvailability)
+	if err != nil {
+		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
+	}
 	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{
-		Series:           series,
-		CommentMode:      commentMode,
-		ReadingDirection: readingDirection,
-		SpreadStartIndex: spreadStartIndex,
-		CreatorCredits:   seriesCreatorCreditsFromRows(creatorRows),
+		Series:               series,
+		CommentMode:          commentMode,
+		ReadingDirection:     readingDirection,
+		SpreadStartIndex:     spreadStartIndex,
+		CreatorCredits:       seriesCreatorCreditsFromRows(creatorRows),
+		PurchaseAvailability: purchaseAvailability,
 	}), nil
 }

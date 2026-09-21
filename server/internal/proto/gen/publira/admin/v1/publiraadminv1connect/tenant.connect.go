@@ -57,6 +57,12 @@ const (
 	// TenantSettingsServiceUpdateTenantAgeVerificationProcedure is the fully-qualified name of the
 	// TenantSettingsService's UpdateTenantAgeVerification RPC.
 	TenantSettingsServiceUpdateTenantAgeVerificationProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantAgeVerification"
+	// TenantSettingsServiceGetTenantPurchaseSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsService's GetTenantPurchaseSettings RPC.
+	TenantSettingsServiceGetTenantPurchaseSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantPurchaseSettings"
+	// TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsService's UpdateTenantPurchaseSettings RPC.
+	TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantPurchaseSettings"
 	// TenantSettingsServiceGetTenantRetentionSettingsProcedure is the fully-qualified name of the
 	// TenantSettingsService's GetTenantRetentionSettings RPC.
 	TenantSettingsServiceGetTenantRetentionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantRetentionSettings"
@@ -81,6 +87,8 @@ type TenantSettingsServiceClient interface {
 	UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error)
 	GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error)
 	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
+	GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error)
+	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
@@ -146,6 +154,18 @@ func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantAgeVerification")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantPurchaseSettings: connect.NewClient[v1.GetTenantPurchaseSettingsRequest, v1.GetTenantPurchaseSettingsResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceGetTenantPurchaseSettingsProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantPurchaseSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantPurchaseSettings: connect.NewClient[v1.UpdateTenantPurchaseSettingsRequest, v1.UpdateTenantPurchaseSettingsResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantPurchaseSettings")),
+			connect.WithClientOptions(opts...),
+		),
 		getTenantRetentionSettings: connect.NewClient[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse](
 			httpClient,
 			baseURL+TenantSettingsServiceGetTenantRetentionSettingsProcedure,
@@ -183,6 +203,8 @@ type tenantSettingsServiceClient struct {
 	updateTenantCommentSettings        *connect.Client[v1.UpdateTenantCommentSettingsRequest, v1.UpdateTenantCommentSettingsResponse]
 	getTenantAgeVerification           *connect.Client[v1.GetTenantAgeVerificationRequest, v1.GetTenantAgeVerificationResponse]
 	updateTenantAgeVerification        *connect.Client[v1.UpdateTenantAgeVerificationRequest, v1.UpdateTenantAgeVerificationResponse]
+	getTenantPurchaseSettings          *connect.Client[v1.GetTenantPurchaseSettingsRequest, v1.GetTenantPurchaseSettingsResponse]
+	updateTenantPurchaseSettings       *connect.Client[v1.UpdateTenantPurchaseSettingsRequest, v1.UpdateTenantPurchaseSettingsResponse]
 	getTenantRetentionSettings         *connect.Client[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse]
 	updateTenantRetentionSettings      *connect.Client[v1.UpdateTenantRetentionSettingsRequest, v1.UpdateTenantRetentionSettingsResponse]
 	getTenantCommunityLimitSettings    *connect.Client[v1.GetTenantCommunityLimitSettingsRequest, v1.GetTenantCommunityLimitSettingsResponse]
@@ -231,6 +253,17 @@ func (c *tenantSettingsServiceClient) UpdateTenantAgeVerification(ctx context.Co
 	return c.updateTenantAgeVerification.CallUnary(ctx, req)
 }
 
+// GetTenantPurchaseSettings calls publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings.
+func (c *tenantSettingsServiceClient) GetTenantPurchaseSettings(ctx context.Context, req *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error) {
+	return c.getTenantPurchaseSettings.CallUnary(ctx, req)
+}
+
+// UpdateTenantPurchaseSettings calls
+// publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings.
+func (c *tenantSettingsServiceClient) UpdateTenantPurchaseSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error) {
+	return c.updateTenantPurchaseSettings.CallUnary(ctx, req)
+}
+
 // GetTenantRetentionSettings calls
 // publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings.
 func (c *tenantSettingsServiceClient) GetTenantRetentionSettings(ctx context.Context, req *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {
@@ -266,6 +299,8 @@ type TenantSettingsServiceHandler interface {
 	UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error)
 	GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error)
 	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
+	GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error)
+	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
@@ -327,6 +362,18 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantAgeVerification")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantSettingsServiceGetTenantPurchaseSettingsHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceGetTenantPurchaseSettingsProcedure,
+		svc.GetTenantPurchaseSettings,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantPurchaseSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantSettingsServiceUpdateTenantPurchaseSettingsHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure,
+		svc.UpdateTenantPurchaseSettings,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantPurchaseSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tenantSettingsServiceGetTenantRetentionSettingsHandler := connect.NewUnaryHandler(
 		TenantSettingsServiceGetTenantRetentionSettingsProcedure,
 		svc.GetTenantRetentionSettings,
@@ -369,6 +416,10 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 			tenantSettingsServiceGetTenantAgeVerificationHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantAgeVerificationProcedure:
 			tenantSettingsServiceUpdateTenantAgeVerificationHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceGetTenantPurchaseSettingsProcedure:
+			tenantSettingsServiceGetTenantPurchaseSettingsHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure:
+			tenantSettingsServiceUpdateTenantPurchaseSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceGetTenantRetentionSettingsProcedure:
 			tenantSettingsServiceGetTenantRetentionSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantRetentionSettingsProcedure:
@@ -416,6 +467,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantAgeVerification(contex
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings is not implemented"))
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {

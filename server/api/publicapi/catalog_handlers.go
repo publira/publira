@@ -540,6 +540,8 @@ type episodeJSON struct {
 	Status             string  `json:"status"`
 	ScheduledAt        *string `json:"scheduled_at"`
 	PublishedAt        *string `json:"published_at"`
+	// Resolved through the series and the tenant, so never empty.
+	PurchaseAvailability string `json:"purchase_availability"`
 }
 
 func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
@@ -1095,6 +1097,11 @@ func (s *apiServer) GetSeriesDetail(
 		if episode.PublishedAt != nil {
 			item.PublishedAt = *episode.PublishedAt
 		}
+		purchaseAvailability, purchaseErr := protomapper.SurfaceAvailabilityFromStored(episode.PurchaseAvailability)
+		if purchaseErr != nil {
+			return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", purchaseErr, "tenant_id", tenant.ID.String(), "episode_public_id", episode.PublicID)
+		}
+		item.PurchaseAvailability = purchaseAvailability
 		res.Msg.Episodes = append(res.Msg.Episodes, item)
 	}
 
@@ -1264,6 +1271,10 @@ func (s *apiServer) GetEpisodeDetail(
 		SeriesSpreadStartIndex: row.SeriesSpreadStartIndex,
 	}); err != nil {
 		return nil, s.internalError(ctx, "episode layout holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+	}
+	episode.PurchaseAvailability, err = protomapper.SurfaceAvailabilityFromStored(row.PurchaseAvailability)
+	if err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 	}
 	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
 		Episode:         episode,

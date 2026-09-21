@@ -97,6 +97,36 @@ message UpdateTenantAgeVerificationResponse {
   publira.types.v1.AgeVerification age_verification = 1;
 }
 
+// Where this tenant's episodes may be bought unless a series or an episode
+// states otherwise, and the store listings of its app.
+message TenantPurchaseSettings {
+  // Never SURFACE_AVAILABILITY_UNSPECIFIED on a read: a tenant that has chosen
+  // nothing sells on both surfaces.
+  publira.types.v1.SurfaceAvailability purchase_availability = 1;
+  // An https:// URL, or empty where the app has no listing in that store.
+  string app_store_url = 2;
+  string google_play_url = 3;
+}
+
+message GetTenantPurchaseSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantPurchaseSettingsResponse {
+  TenantPurchaseSettings settings = 1;
+}
+
+message UpdateTenantPurchaseSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Every field is written. SURFACE_AVAILABILITY_UNSPECIFIED stores both
+  // surfaces, and a store URL that is not an https:// URL is invalid_argument.
+  TenantPurchaseSettings settings = 2;
+}
+
+message UpdateTenantPurchaseSettingsResponse {
+  TenantPurchaseSettings settings = 1;
+}
+
 // A tenant's own retention periods, in whole days. An absent field follows the
 // platform default; a present one is from 1 to 36500, and may be longer or
 // shorter than that default.
@@ -183,6 +213,8 @@ service TenantSettingsService {
   rpc UpdateTenantCommentSettings(UpdateTenantCommentSettingsRequest) returns (UpdateTenantCommentSettingsResponse) {}
   rpc GetTenantAgeVerification(GetTenantAgeVerificationRequest) returns (GetTenantAgeVerificationResponse) {}
   rpc UpdateTenantAgeVerification(UpdateTenantAgeVerificationRequest) returns (UpdateTenantAgeVerificationResponse) {}
+  rpc GetTenantPurchaseSettings(GetTenantPurchaseSettingsRequest) returns (GetTenantPurchaseSettingsResponse) {}
+  rpc UpdateTenantPurchaseSettings(UpdateTenantPurchaseSettingsRequest) returns (UpdateTenantPurchaseSettingsResponse) {}
   rpc GetTenantRetentionSettings(GetTenantRetentionSettingsRequest) returns (GetTenantRetentionSettingsResponse) {}
   rpc UpdateTenantRetentionSettings(UpdateTenantRetentionSettingsRequest) returns (UpdateTenantRetentionSettingsResponse) {}
   rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}

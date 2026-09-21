@@ -173,6 +173,88 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 	assertPublicExpectations(t, env.mock)
 }
 
+// expectPurchasableEpisode stands in for the checkout's read of a paid episode
+// the named surface may show, sold where purchaseAvailability says.
+func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability string) {
+	mock.ExpectQuery(regexp.QuoteMeta(getPurchasableEpisodeByPublicIDForTenantQuery)).
+		WithArgs("EPISODE001", tenantID, surface).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "purchase_availability"}).
+			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
+}
+
+func TestStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testing.T) {
+	cases := []struct {
+		name                 string
+		client               publirav1.StartEpisodeCheckoutRequest_Client
+		surface              string
+		purchaseAvailability string
+	}{
+		{name: "an app-only episode from the storefront", client: publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB, surface: "web", purchaseAvailability: "app"},
+		{name: "an app-only episode from an unnamed client", client: publirav1.StartEpisodeCheckoutRequest_CLIENT_UNSPECIFIED, surface: "web", purchaseAvailability: "app"},
+		{name: "a web-only episode from the app", client: publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE, surface: "app", purchaseAvailability: "web"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			encryptor := newPublicTestEncryptor(t)
+			env := newPublicPaymentServer(t, encryptor)
+
+			now := time.Now()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			episodeID := uuid.Must(uuid.NewV7())
+			expectTenantLookup(env.mock, tenantID, "TENANT", now)
+			expectAuthSession(env.mock, tenantID, userID, now)
+			expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+			expectPurchasableEpisode(env.mock, tenantID, episodeID, tc.surface, tc.purchaseAvailability)
+
+			client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+			_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+				EpisodePublicId: "EPISODE001",
+				Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Client:          tc.client,
+			}, tenantID.String()))
+			if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+				t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
+			}
+			if env.checkout.input.successURL != "" {
+				t.Fatalf("checkout created a Stripe session returning to %q, want none", env.checkout.input.successURL)
+			}
+			assertPublicExpectations(t, env.mock)
+		})
+	}
+}
+
+func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
+	encryptor := newPublicTestEncryptor(t)
+	env := newPublicPaymentServer(t, encryptor)
+
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
+	expectAuthSession(env.mock, tenantID, userID, now)
+	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "app")
+	env.mock.ExpectQuery(regexp.QuoteMeta(userHasValidPurchaseForEpisodeQuery)).
+		WithArgs(tenantID, userID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+
+	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	resp, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+		EpisodePublicId: "EPISODE001",
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
+	}, tenantID.String()))
+	if err != nil {
+		t.Fatalf("StartEpisodeCheckout: %v", err)
+	}
+	if resp.Msg.CheckoutUrl != "https://checkout.stripe.test/cs_test" {
+		t.Fatalf("checkout_url = %q", resp.Msg.CheckoutUrl)
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
 func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	encryptor := newPublicTestEncryptor(t)
 	env := newPublicPaymentServer(t, encryptor)
@@ -184,10 +266,7 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getPurchasableEpisodeByPublicIDForTenantQuery)).
-		WithArgs("EPISODE001", tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours"}).
-			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}))
+	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
 	env.mock.ExpectQuery(regexp.QuoteMeta(userHasValidPurchaseForEpisodeQuery)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
@@ -228,10 +307,7 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getPurchasableEpisodeByPublicIDForTenantQuery)).
-		WithArgs("EPISODE001", tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours"}).
-			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}))
+	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "all")
 	env.mock.ExpectQuery(regexp.QuoteMeta(userHasValidPurchaseForEpisodeQuery)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))

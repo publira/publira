@@ -6,9 +6,10 @@ INSERT INTO episodes (
         title,
         order_index,
         tenant_id,
-        availability
+        availability,
+        purchase_availability
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: UpsertEpisodeListing :one
@@ -248,10 +249,15 @@ SELECT e.id,
     sl.reading_direction AS series_reading_direction,
     sl.spread_start_index AS series_spread_start_index,
     -- The episode's own availability, NULL where it follows the series.
-    e.availability
+    e.availability,
+    -- Where the episode may be bought: its own value, NULL where it follows
+    -- the series, beside the value resolved through the series and the tenant.
+    e.purchase_availability,
+    epa.purchase_availability AS resolved_purchase_availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND e.public_id = $2
@@ -272,10 +278,13 @@ SELECT e.id,
     e.spread_start_index,
     sl.reading_direction AS series_reading_direction,
     sl.spread_start_index AS series_spread_start_index,
-    e.availability
+    e.availability,
+    e.purchase_availability,
+    epa.purchase_availability AS resolved_purchase_availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND s.public_id = $2
@@ -320,10 +329,14 @@ SELECT e.id,
     -- How many readers have rated this episode. The stored tally, so the join
     -- is one row rather than a scan of the ratings, and an episode nobody has
     -- rated has no row at all and reads as 0.
-    COALESCE(erc.count, 0)::bigint AS rating_count
+    COALESCE(erc.count, 0)::bigint AS rating_count,
+    -- Where the episode may be bought, resolved through its series and the
+    -- tenant, so a client draws the purchase action without resolving it.
+    epa.purchase_availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
     -- At most one window can cover an instant of an episode, so this join
@@ -644,6 +657,20 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 -- NULL returns the episode to following its series.
 UPDATE episodes
 SET availability = sqlc.narg('availability')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
+
+-- name: GetResolvedEpisodePurchaseAvailability :one
+-- Where one episode may be bought, resolved through its series and the tenant.
+SELECT purchase_availability
+FROM episode_purchase_availability
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = sqlc.arg('episode_id');
+
+-- name: UpdateEpisodePurchaseAvailabilityByIDForTenant :exec
+-- NULL returns the episode to following its series.
+UPDATE episodes
+SET purchase_availability = sqlc.narg('purchase_availability')
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id');
 

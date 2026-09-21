@@ -524,6 +524,8 @@ type Querier interface {
 	// staff notification the report raises names what the queue is about, and
 	// reading it here keeps the report one round trip.
 	GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error)
+	// Where one episode may be bought, resolved through its series and the tenant.
+	GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error)
 	// Totals the month's sales once each, however many creators a sale is
 	// credited to. The month and the refund rule are those of
 	// ListRoyaltyLinesForPeriod.
@@ -1962,6 +1964,8 @@ type Querier interface {
 	UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
+	// NULL returns the episode to following its series.
+	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
 	UpdateGenre(ctx context.Context, arg UpdateGenreParams) error
 	UpdateGenreDisplayOrder(ctx context.Context, arg UpdateGenreDisplayOrderParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
@@ -2046,6 +2050,10 @@ type Querier interface {
 	// failed.
 	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives. The default and
+	// the store listings are written together because the console offers them as
+	// one card, and the listings are where an app-only purchase sends a reader.
+	UpsertTenantPurchaseSettings(ctx context.Context, arg UpsertTenantPurchaseSettingsParams) (TenantConfig, error)
 	UpsertTenantRoyaltyConfig(ctx context.Context, arg UpsertTenantRoyaltyConfigParams) (TenantRoyaltyConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)

@@ -51,6 +51,8 @@ func (s *apiServer) GetTenant(
 	// which reads the rule itself and refuses the read rather than answering
 	// around it.
 	ageVerification := publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE
+	appStoreURL := ""
+	googlePlayURL := ""
 
 	if err == nil {
 		if config.CopyrightText.Valid {
@@ -62,6 +64,8 @@ func (s *apiServer) GetTenant(
 		if config.SiteTagline.Valid {
 			siteTagline = config.SiteTagline.String
 		}
+		appStoreURL = config.AppStoreUrl.String
+		googlePlayURL = config.GooglePlayUrl.String
 		commentMode, err = protomapper.CommentModeFromStored(config.CommentMode)
 		if err != nil {
 			return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
@@ -100,6 +104,8 @@ func (s *apiServer) GetTenant(
 		AgeVerification:       ageVerification,
 		CommentMode:           commentMode,
 		WebPushVapidPublicKey: s.publishedWebPushPublicKey(ctx),
+		AppStoreUrl:           appStoreURL,
+		GooglePlayUrl:         googlePlayURL,
 	}), nil
 }
 

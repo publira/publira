@@ -42,8 +42,17 @@ func ClientSurfaceToStored(surface publirattypesv1.ClientSurface) (string, error
 	}
 }
 
-// SurfaceAvailabilityFromStored maps series.availability, or an episode's
-// override where it states one.
+// PurchasableOn reports whether an episode whose resolved purchase availability
+// is stored may be bought on surface, a value ClientSurfaceToStored answers.
+func PurchasableOn(stored, surface string) (bool, error) {
+	if _, err := SurfaceAvailabilityFromStored(stored); err != nil {
+		return false, err
+	}
+	return stored == availabilityAll || stored == surface, nil
+}
+
+// SurfaceAvailabilityFromStored maps series.availability, an episode's override
+// where it states one, or a purchase availability.
 func SurfaceAvailabilityFromStored(stored string) (publirattypesv1.SurfaceAvailability, error) {
 	switch stored {
 	case availabilityAll:

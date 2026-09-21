@@ -66,6 +66,9 @@ type SeriesSeed struct {
 	// Availability is series.availability: all, web, or app. Empty takes the
 	// column's default, both surfaces.
 	Availability string
+	// PurchaseAvailability is series.purchase_availability: all, web, or app.
+	// Empty stores no override, which leaves the series following the tenant.
+	PurchaseAvailability string
 }
 
 // Episode is a seeded episode together with the listing that prices it.
@@ -95,6 +98,9 @@ type EpisodeSeed struct {
 	// Availability is episodes.availability: all, web, or app. Empty stores no
 	// override, which leaves the episode following its series.
 	Availability string
+	// PurchaseAvailability is episodes.purchase_availability, likewise: empty
+	// leaves the episode sold wherever its series is.
+	PurchaseAvailability string
 }
 
 // Page is a seeded page together with the version the seed created.
@@ -166,6 +172,13 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 			UPDATE series SET availability = $2 WHERE id = $1
 		`, seriesID, seed.Availability); err != nil {
 			t.Fatalf("set series availability %s: %v", publicID, err)
+		}
+	}
+	if seed.PurchaseAvailability != "" {
+		if _, err := e.DB.ExecContext(ctx, `
+			UPDATE series SET purchase_availability = $2 WHERE id = $1
+		`, seriesID, seed.PurchaseAvailability); err != nil {
+			t.Fatalf("set series purchase availability %s: %v", publicID, err)
 		}
 	}
 	if seed.CommentMode != "" {
@@ -531,6 +544,13 @@ func (e *PostgresEnv) SeedEpisode(t *testing.T, tenantID, seriesID uuid.UUID, se
 			UPDATE episodes SET availability = $2 WHERE id = $1
 		`, episodeID, seed.Availability); err != nil {
 			t.Fatalf("set episode availability %s: %v", publicID, err)
+		}
+	}
+	if seed.PurchaseAvailability != "" {
+		if _, err := e.DB.ExecContext(ctx, `
+			UPDATE episodes SET purchase_availability = $2 WHERE id = $1
+		`, episodeID, seed.PurchaseAvailability); err != nil {
+			t.Fatalf("set episode purchase availability %s: %v", publicID, err)
 		}
 	}
 

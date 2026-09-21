@@ -37,19 +37,21 @@ INSERT INTO series (
         label_id,
         public_id,
         title,
-        availability
+        availability,
+        purchase_availability
     )
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at, eye_catch_image_id, availability
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at, eye_catch_image_id, availability, purchase_availability
 `
 
 type CreateSeriesBaseParams struct {
-	ID           uuid.UUID     `json:"id"`
-	TenantID     uuid.UUID     `json:"tenant_id"`
-	LabelID      uuid.NullUUID `json:"label_id"`
-	PublicID     string        `json:"public_id"`
-	Title        string        `json:"title"`
-	Availability string        `json:"availability"`
+	ID                   uuid.UUID      `json:"id"`
+	TenantID             uuid.UUID      `json:"tenant_id"`
+	LabelID              uuid.NullUUID  `json:"label_id"`
+	PublicID             string         `json:"public_id"`
+	Title                string         `json:"title"`
+	Availability         string         `json:"availability"`
+	PurchaseAvailability sql.NullString `json:"purchase_availability"`
 }
 
 func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error) {
@@ -60,6 +62,7 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		arg.PublicID,
 		arg.Title,
 		arg.Availability,
+		arg.PurchaseAvailability,
 	)
 	var i Series
 	err := row.Scan(
@@ -74,6 +77,7 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		&i.UpdatedAt,
 		&i.EyeCatchImageID,
 		&i.Availability,
+		&i.PurchaseAvailability,
 	)
 	return i, err
 }
@@ -172,7 +176,9 @@ SELECT s.id,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
-    s.availability
+    s.availability,
+    -- The series' own purchase availability, NULL where it follows the tenant.
+    s.purchase_availability
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -214,6 +220,7 @@ type GetSeriesByPublicIDForTenantRow struct {
 	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
 	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
 	Availability               string         `json:"availability"`
+	PurchaseAvailability       sql.NullString `json:"purchase_availability"`
 }
 
 func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error) {
@@ -239,6 +246,7 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		&i.EyeCatchImageUpdatedAt,
 		&i.EyeCatchImageFileSizeBytes,
 		&i.Availability,
+		&i.PurchaseAvailability,
 	)
 	return i, err
 }
@@ -366,7 +374,9 @@ SELECT s.id,
                         'scheduled_at',
                         el.scheduled_at,
                         'published_at',
-                        el.published_at
+                        el.published_at,
+                        'purchase_availability',
+                        epa.purchase_availability
                     )
                     -- order_index can tie, so the UUIDv7 id is the
                     -- tiebreaker that keeps the order unique. It is the order
@@ -379,6 +389,7 @@ SELECT s.id,
             FROM episodes e
                 JOIN episode_listings el ON el.episode_id = e.id
                 JOIN episode_surfaces es ON es.episode_id = e.id
+                JOIN episode_purchase_availability epa ON epa.episode_id = e.id
             WHERE e.series_id = s.id
                 AND es.surface = $1::text
                 AND el.status = 'published'
@@ -771,15 +782,17 @@ UPDATE series
 SET title = $2,
     label_id = $3,
     availability = $4,
+    purchase_availability = $5,
     updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateSeriesBaseParams struct {
-	ID           uuid.UUID     `json:"id"`
-	Title        string        `json:"title"`
-	LabelID      uuid.NullUUID `json:"label_id"`
-	Availability string        `json:"availability"`
+	ID                   uuid.UUID      `json:"id"`
+	Title                string         `json:"title"`
+	LabelID              uuid.NullUUID  `json:"label_id"`
+	Availability         string         `json:"availability"`
+	PurchaseAvailability sql.NullString `json:"purchase_availability"`
 }
 
 func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error {
@@ -788,6 +801,7 @@ func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBasePara
 		arg.Title,
 		arg.LabelID,
 		arg.Availability,
+		arg.PurchaseAvailability,
 	)
 	return err
 }

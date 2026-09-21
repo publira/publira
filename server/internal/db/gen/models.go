@@ -180,16 +180,17 @@ type DailyRebuildProgress struct {
 }
 
 type Episode struct {
-	ID               uuid.UUID      `json:"id"`
-	SeriesID         uuid.UUID      `json:"series_id"`
-	PublicID         string         `json:"public_id"`
-	Title            string         `json:"title"`
-	OrderIndex       int32          `json:"order_index"`
-	CreatedAt        time.Time      `json:"created_at"`
-	TenantID         uuid.UUID      `json:"tenant_id"`
-	ReadingDirection sql.NullString `json:"reading_direction"`
-	SpreadStartIndex sql.NullInt32  `json:"spread_start_index"`
-	Availability     sql.NullString `json:"availability"`
+	ID                   uuid.UUID      `json:"id"`
+	SeriesID             uuid.UUID      `json:"series_id"`
+	PublicID             string         `json:"public_id"`
+	Title                string         `json:"title"`
+	OrderIndex           int32          `json:"order_index"`
+	CreatedAt            time.Time      `json:"created_at"`
+	TenantID             uuid.UUID      `json:"tenant_id"`
+	ReadingDirection     sql.NullString `json:"reading_direction"`
+	SpreadStartIndex     sql.NullInt32  `json:"spread_start_index"`
+	Availability         sql.NullString `json:"availability"`
+	PurchaseAvailability sql.NullString `json:"purchase_availability"`
 }
 
 type EpisodeComment struct {
@@ -285,6 +286,12 @@ type EpisodeListing struct {
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
+}
+
+type EpisodePurchaseAvailability struct {
+	EpisodeID            uuid.UUID `json:"episode_id"`
+	TenantID             uuid.UUID `json:"tenant_id"`
+	PurchaseAvailability string    `json:"purchase_availability"`
 }
 
 type EpisodeRating struct {
@@ -636,17 +643,18 @@ type RoyaltyStatementLine struct {
 }
 
 type Series struct {
-	ID              uuid.UUID     `json:"id"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	LabelID         uuid.NullUUID `json:"label_id"`
-	PublicID        string        `json:"public_id"`
-	Title           string        `json:"title"`
-	CreatedAt       time.Time     `json:"created_at"`
-	IsPublished     bool          `json:"is_published"`
-	PublishedAt     sql.NullTime  `json:"published_at"`
-	UpdatedAt       time.Time     `json:"updated_at"`
-	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
-	Availability    string        `json:"availability"`
+	ID                   uuid.UUID      `json:"id"`
+	TenantID             uuid.UUID      `json:"tenant_id"`
+	LabelID              uuid.NullUUID  `json:"label_id"`
+	PublicID             string         `json:"public_id"`
+	Title                string         `json:"title"`
+	CreatedAt            time.Time      `json:"created_at"`
+	IsPublished          bool           `json:"is_published"`
+	PublishedAt          sql.NullTime   `json:"published_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+	EyeCatchImageID      uuid.NullUUID  `json:"eye_catch_image_id"`
+	Availability         string         `json:"availability"`
+	PurchaseAvailability sql.NullString `json:"purchase_availability"`
 }
 
 type SeriesCreator struct {
@@ -794,6 +802,9 @@ type TenantConfig struct {
 	CommentAutoHideReportThreshold int32          `json:"comment_auto_hide_report_threshold"`
 	EpisodeRatingMode              string         `json:"episode_rating_mode"`
 	AgeVerification                string         `json:"age_verification"`
+	PurchaseAvailability           string         `json:"purchase_availability"`
+	AppStoreUrl                    sql.NullString `json:"app_store_url"`
+	GooglePlayUrl                  sql.NullString `json:"google_play_url"`
 }
 
 type TenantImage struct {

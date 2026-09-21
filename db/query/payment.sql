@@ -39,10 +39,14 @@ SELECT e.id,
     e.title,
     s.public_id AS series_public_id,
     el.price,
-    el.reading_period_hours
+    el.reading_period_hours,
+    -- Where the episode may be bought, which the caller holds against the
+    -- surface the checkout is started from.
+    epa.purchase_availability
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
 WHERE e.public_id = sqlc.arg('public_id')
     AND e.tenant_id = sqlc.arg('tenant_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
@@ -52,6 +56,14 @@ WHERE e.public_id = sqlc.arg('public_id')
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    -- An episode the calling surface may not show is no row, as it is in the
+    -- catalog: a surface cannot sell what it cannot show.
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
 LIMIT 1;
 
 -- name: UserHasValidPurchaseForEpisode :one

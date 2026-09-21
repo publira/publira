@@ -5586,12 +5586,17 @@ func (*RecordContentViewResponse) Descriptor() ([]byte, []int) {
 
 // A one-time paid-episode checkout. Purchases are created only by the Stripe
 // webhook after a successful payment, never by the browser's return URL.
+//
+// `client` also names the surface the checkout is started from: CLIENT_MOBILE
+// is the app, and every other value the storefront. An episode that surface
+// may not show is not_found, as it is in the catalog, and one it shows but may
+// not sell (Episode.purchase_availability) is failed_precondition.
 type StartEpisodeCheckoutRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
-	// Where Stripe should return the reader after checkout. Unspecified keeps
-	// the existing web return URL for backwards compatibility.
+	// Where Stripe should return the reader after checkout, and the surface the
+	// episode has to be sold on. Unspecified is the storefront.
 	Client        StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

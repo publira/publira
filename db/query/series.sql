@@ -136,7 +136,9 @@ SELECT s.id,
                         'scheduled_at',
                         el.scheduled_at,
                         'published_at',
-                        el.published_at
+                        el.published_at,
+                        'purchase_availability',
+                        epa.purchase_availability
                     )
                     -- order_index can tie, so the UUIDv7 id is the
                     -- tiebreaker that keeps the order unique. It is the order
@@ -149,6 +151,7 @@ SELECT s.id,
             FROM episodes e
                 JOIN episode_listings el ON el.episode_id = e.id
                 JOIN episode_surfaces es ON es.episode_id = e.id
+                JOIN episode_purchase_availability epa ON epa.episode_id = e.id
             WHERE e.series_id = s.id
                 AND es.surface = sqlc.arg('surface')::text
                 AND el.status = 'published'
@@ -190,9 +193,10 @@ INSERT INTO series (
         label_id,
         public_id,
         title,
-        availability
+        availability,
+        purchase_availability
     )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: UpdateSeriesBase :exec
@@ -200,6 +204,7 @@ UPDATE series
 SET title = $2,
     label_id = $3,
     availability = $4,
+    purchase_availability = $5,
     updated_at = NOW()
 WHERE id = $1;
 
@@ -422,7 +427,9 @@ SELECT s.id,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
-    s.availability
+    s.availability,
+    -- The series' own purchase availability, NULL where it follows the tenant.
+    s.purchase_availability
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
