@@ -78,15 +78,14 @@ test.describe("web-host public API outage", () => {
   }) => {
     // Tenant resolution must be the thing that still works, so warm it against
     // a healthy API and assert it before the outage starts. A URL that matches
-    // no published page warms the tenant lookup without filling any catalog
-    // cache entry, which is what keeps the reads below cold.
+    // no published page and no route is still resolved to the tenant by
+    // `proxy` before it answers "not found", and fills no catalog cache entry,
+    // which is what keeps the reads below cold.
     startApiServer();
-    await page.goto(hostPath("/no-such-page-in-any-spec"));
+    const warmup = await page.goto(hostPath("/no-such-page-in-any-spec"));
+    expect(warmup?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { exact: true, name: "Labels" })
     ).toBeVisible();
 
     try {

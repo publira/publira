@@ -4,7 +4,9 @@ import {
   Code,
   isMissingResourceRpcError,
   isRpcError,
+  RPC_FIELD_VIOLATION_REASON,
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -89,9 +91,13 @@ export type ListPageVersionsResult =
       requiresSignIn: boolean;
     };
 
+/**
+ * `field` names the input a failure belongs to, so the form can show the
+ * message beside it rather than above the save button.
+ */
 export type CreatePageResult =
   | { ok: true; page: PageItem }
-  | { ok: false; message: string };
+  | { field?: "slug"; ok: false; message: string };
 
 export type UpdatePageResult =
   | { ok: true; page: PageItem }
@@ -113,6 +119,29 @@ export type RollbackPageVersionResult =
   | { ok: true; version: PageVersionItem }
   | { ok: false; message: string };
 
+const slugInvalidMessage = (
+  error: unknown,
+  t: Awaited<ReturnType<typeof getMessagesFor>>
+): string => {
+  if (
+    rpcErrorHasFieldViolation(
+      error,
+      "slug",
+      RPC_FIELD_VIOLATION_REASON.pageSlugReserved
+    )
+  ) {
+    return t("admin.pages.slug_reserved");
+  }
+  return rpcErrorHasFieldViolation(error, "slug")
+    ? t("admin.pages.slug_invalid")
+    : t("errors.validation");
+};
+
+/** Whether a failed save is about the slug: its format, a reserved path, or a duplicate. */
+const isSlugError = (error: unknown): boolean =>
+  rpcErrorHasFieldViolation(error, "slug") ||
+  rpcErrorDisposition(error) === "conflict";
+
 const mapErrorToMessage = async (
   error: unknown,
   fallbackMessage: string,
@@ -124,11 +153,9 @@ const mapErrorToMessage = async (
     locale,
     overrides: {
       conflict: t("admin.pages.slug_conflict"),
-      // A page form is slug + title + body; only the slug has a format rule
-      // worth spelling out, and the server identifies it in BadRequest details.
-      "invalid-argument": rpcErrorHasFieldViolation(error, "slug")
-        ? t("admin.pages.slug_invalid")
-        : t("errors.validation"),
+      // A page form is slug + title + body; only the slug has rules worth
+      // spelling out, and the server identifies it in BadRequest details.
+      "invalid-argument": slugInvalidMessage(error, t),
       "not-found": t("admin.pages.not_found"),
     },
   });
@@ -406,6 +433,7 @@ export const createPage = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
+      ...(isSlugError(error) ? { field: "slug" as const } : {}),
       message: await mapErrorToMessage(
         error,
         t("admin.pages.save_failed"),

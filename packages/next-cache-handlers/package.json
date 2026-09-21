@@ -23,6 +23,10 @@
     "./revalidate": {
       "types": "./dist/revalidate.d.mts",
       "default": "./dist/revalidate.mjs"
+    },
+    "./tags": {
+      "types": "./dist/tags.d.mts",
+      "default": "./dist/tags.mjs"
     }
   },
   "scripts": {

@@ -27,9 +27,10 @@ const NOT_FOUND_LOCALE: Locale = "en";
  * nothing else to hydrate.
  *
  * The locale is a constant rather than the `[locale]` segment every other page
- * follows. An unmatched URL never reached `proxy.ts`'s rewrite, so there is no
- * tenant behind it and no saved default language to word this page in, and this
- * document renders as a static page with no layout to resolve one in. The copy
+ * follows. An unmatched URL — including a path `proxy.ts` rewrote because no
+ * published page has it — reaches no layout under `[tenant_id]/[locale]`, so
+ * this document renders as a static page with nothing to resolve the tenant's
+ * language in. The copy
  * comes from the shared catalog, which carries every locale, so the constant
  * chooses a language rather than reporting one: `en` is the repository's
  * default for a page that has no reader-specific answer to give.

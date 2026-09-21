@@ -4,7 +4,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { RedisIncrementalCacheHandler } from "./incremental-cache-handler";
 import { getRedisClient, resetRedisClientsForTests } from "./redis-client";
 import { streamToBuffer } from "./serialize";
-import { createUseCacheHandler } from "./use-cache-handler";
+import {
+  createUseCacheHandler,
+  readTagRevalidatedAt,
+} from "./use-cache-handler";
 
 const configuredRedisUrl = process.env.PUBLIRA_REDIS_URL?.trim();
 const redisUrl = configuredRedisUrl || "redis://localhost:6379";
@@ -109,6 +112,37 @@ describe("Redis handlers integration", () => {
     await handler.refreshTags();
     const missed = await handler.get(cacheKey, []);
     expect(missed).toBeUndefined();
+  });
+
+  it("reports when another handler instance revalidated a tag", async ({
+    skip,
+  }) => {
+    if (!available) {
+      skip();
+    }
+
+    const tag = "tenant:t-read:pages";
+    expect(await readTagRevalidatedAt(tag, { keyPrefix, redisUrl })).toBe(0);
+
+    const before = Date.now();
+    await createUseCacheHandler({ keyPrefix, redisUrl }).updateTags([tag], {
+      expire: 3600,
+    });
+
+    const revalidatedAt = await readTagRevalidatedAt(tag, {
+      keyPrefix,
+      redisUrl,
+    });
+    expect(revalidatedAt).toBeGreaterThanOrEqual(before);
+  });
+
+  it("reports an unreadable tag when Redis is disabled", async () => {
+    expect(
+      await readTagRevalidatedAt("tenant:t-read:pages", {
+        keyPrefix,
+        redisUrl: "",
+      })
+    ).toBeUndefined();
   });
 
   it("use-cache handler serves a revalidated tag within its serve-stale window", async ({

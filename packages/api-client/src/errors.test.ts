@@ -13,6 +13,7 @@ import {
   isUnauthenticatedRpcError,
   rpcErrorCode,
   rpcErrorDisposition,
+  RPC_FIELD_VIOLATION_REASON,
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
   rpcErrorReasonMetadataNumber,
@@ -161,6 +162,37 @@ describe("Connect error details", () => {
     );
     expect(rpcErrorHasFieldViolation(error, "slug")).toBe(true);
     expect(rpcErrorHasFieldViolation(error, "title")).toBe(false);
+    expect(
+      rpcErrorHasFieldViolation(
+        error,
+        "slug",
+        RPC_FIELD_VIOLATION_REASON.pageSlugReserved
+      )
+    ).toBe(false);
+  });
+
+  it("reads the reason a BadRequest field violation carries", () => {
+    const error = new ConnectError(
+      "reserved slug",
+      Code.InvalidArgument,
+      undefined,
+      [
+        {
+          desc: BadRequestSchema,
+          value: {
+            fieldViolations: [{ field: "slug", reason: "PAGE_SLUG_RESERVED" }],
+          },
+        },
+      ]
+    );
+    expect(
+      rpcErrorHasFieldViolation(
+        error,
+        "slug",
+        RPC_FIELD_VIOLATION_REASON.pageSlugReserved
+      )
+    ).toBe(true);
+    expect(rpcErrorHasFieldViolation(error, "slug")).toBe(true);
   });
 
   it("reads a Publira reason from ErrorInfo with its type", () => {

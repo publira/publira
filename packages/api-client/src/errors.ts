@@ -29,6 +29,17 @@ export const RPC_ERROR_REASON = {
   storageNotConfigured: "STORAGE_NOT_CONFIGURED",
 } as const;
 
+/**
+ * Stable reasons Publira APIs set on a `google.rpc.BadRequest` field violation,
+ * for a field that can be refused for more than one cause.
+ */
+export const RPC_FIELD_VIOLATION_REASON = {
+  pageSlugReserved: "PAGE_SLUG_RESERVED",
+} as const;
+
+export type RpcFieldViolationReason =
+  (typeof RPC_FIELD_VIOLATION_REASON)[keyof typeof RPC_FIELD_VIOLATION_REASON];
+
 /** ErrorInfo metadata keys Publira APIs attach. Values are always strings. */
 export const RPC_ERROR_METADATA = {
   creditCount: "credit_count",
@@ -247,16 +258,24 @@ export const rpcErrorRawMessage = (error: unknown): string | null => {
   return null;
 };
 
-/** Whether a Connect error has a `google.rpc.BadRequest` violation for `field`. */
+/**
+ * Whether a Connect error has a `google.rpc.BadRequest` violation for `field`,
+ * and, when `reason` is given, one that carries that reason.
+ */
 export const rpcErrorHasFieldViolation = (
   error: unknown,
-  field: string
+  field: string,
+  reason?: RpcFieldViolationReason
 ): boolean =>
   error instanceof ConnectError &&
   error
     .findDetails(BadRequestSchema)
     .some((detail) =>
-      detail.fieldViolations.some((violation) => violation.field === field)
+      detail.fieldViolations.some(
+        (violation) =>
+          violation.field === field &&
+          (reason === undefined || violation.reason === reason)
+      )
     );
 
 /**

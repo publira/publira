@@ -9,6 +9,8 @@ The shared package that puts **both** of Next.js's server caches on Redis. It is
 
 Wire both: with only `cacheHandlers`, the ISR family stays local in a multi-instance deploy.
 
+`@publira/next-cache-handlers/tags` exports `readTagRevalidatedAt(tag)`, the moment a tag was last revalidated as every instance sharing the Redis sees it. It is for a value held outside Next.js's caches — in `proxy.ts`, where none of them run — that `revalidateTag` still has to reach.
+
 ## Environment variables
 
 | Variable | Description |

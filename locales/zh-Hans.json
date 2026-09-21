@@ -952,6 +952,7 @@
       "save_failed": "无法保存该页面。请稍后再试。",
       "slug_conflict": "已存在相同 slug 的页面。请换一个 slug。",
       "slug_invalid": "slug 必须为空，或以 / 开头并且只包含小写字母、数字和连字符。",
+      "slug_reserved": "该 slug 的路径已留给站点的登录、注册、邮件中的链接或账户设置。请换一个 slug。",
       "not_found": "找不到该页面或版本。请重新加载页面。",
       "workspace": {
         "slug_description": "公开 URL。它会影响公开链接，因此为只读。",

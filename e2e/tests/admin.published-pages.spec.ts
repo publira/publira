@@ -95,7 +95,8 @@ const deleteSeedTenantPageBySlug = (slug: string): void => {
  * page they put up at `/page/[...slug]` on the same tenant's web-host.
  *
  * `apps/web-host/lib/published-page-path.ts` and its unit test hold the
- * slug-matching rules; this is their end-to-end counterpart, not a replacement.
+ * path-matching rules, and the reserved slugs live in `server/internal/pageslug`;
+ * this is their end-to-end counterpart, not a replacement.
  *
  * Every page is created through the console with a unique slug and deleted in
  * `afterEach`, so `task e2e:test` against a long-lived stack neither depends on
@@ -144,8 +145,10 @@ test.describe("admin published pages", () => {
       page.locator("tr", { hasText: title }).getByText("Draft", { exact: true })
     ).toBeVisible();
 
+    // No published page has the slug, so the path goes to the app's routes and
+    // matches none of them.
     const response = await page.goto(hostUrl(slug));
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
@@ -322,6 +325,58 @@ test.describe("admin published pages", () => {
         .filter({ hasText: "A page with the same slug already exists" })
     ).toBeVisible();
     // Still on the create form — no redirect, and no second page.
+    await expect(page).toHaveURL(/\/pages\/new/u);
+  });
+
+  test("a page is served at a path the site also routes, and its footer link leads there", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    // `/series/<id>` is the series screen's route, so without the page this
+    // path is that screen answering "not found". A unique id keeps the page off
+    // every path another spec reads while it runs.
+    const slug = `/series/e2e-page-${suffix}`;
+    const title = `E2E Series Path Page ${suffix}`;
+    const body = `Served in place of the series screen ${suffix}`;
+
+    trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: body,
+        displayInFooter: true,
+        slug,
+        title,
+      })
+    );
+    await publishVersion(page, 1);
+
+    await expectPublicPageHeading(page, slug, title);
+    await expect(page.getByText(body)).toBeVisible();
+
+    await page.goto(hostUrl("/"));
+    await footerLinks(page).getByRole("link", { name: title }).click();
+    await expect(page).toHaveURL(new RegExp(`${slug}$`, "u"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: title })
+    ).toBeVisible();
+  });
+
+  test("a slug that would take over the sign-in screen is refused beside the field", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+
+    await page.goto(adminUrl("/pages/new"));
+    const fields = pageFormFields(page);
+    await fillField(fields.slug, "/login");
+    await fillField(fields.title, `E2E Reserved Slug ${suffix}`);
+    await page.getByRole("button", { name: "Create page" }).click();
+
+    await expect(
+      page.getByText(
+        "The site keeps this path for signing in, signing up, the links in its emails, or account settings."
+      )
+    ).toBeVisible();
+    await expect(fields.slug).toHaveAttribute("aria-invalid", "true");
     await expect(page).toHaveURL(/\/pages\/new/u);
   });
 

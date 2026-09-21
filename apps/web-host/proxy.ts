@@ -17,11 +17,16 @@ import {
   splitLocalePathname,
   withLocalePrefix,
 } from "./lib/locale-path";
-import { buildTenantRewritePathname } from "./lib/published-page-path";
+import {
+  buildTenantRewritePathname,
+  getPublishedPageSlugFromPathname,
+} from "./lib/published-page-path";
+import { createPublishedPageSlugResolver } from "./lib/published-page-slugs";
 import { createTenantResolver } from "./lib/tenant-resolution";
 import type { ResolvedTenant } from "./lib/tenant-resolution";
 
 const resolveTenantByDomain = createTenantResolver(apiClient);
+const resolvePublishedPageSlugs = createPublishedPageSlugResolver(apiClient);
 
 // `/notifications` is the personal inbox. `/settings/notifications` is the
 // email-preference screen and stays under `/settings`.
@@ -89,6 +94,23 @@ const movedPublicPathname = (pathname: string): string | null => {
     : null;
 };
 
+/** The permanent redirect for a retired path, or `null` for a path that never moved. */
+const redirectMovedPathname = (
+  request: NextRequest,
+  requestedLocale: Locale | null,
+  pathname: string
+): NextResponse | null => {
+  const movedPathname = movedPublicPathname(pathname);
+  if (!movedPathname) {
+    return null;
+  }
+  return redirectToPathname(
+    request,
+    requestedLocale ? `/${requestedLocale}${movedPathname}` : movedPathname,
+    308
+  );
+};
+
 /** The tenant this host resolves to, or the response that says why not. */
 const resolveTenant = async (
   request: NextRequest
@@ -152,20 +174,22 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const withResolvedLocale = (response: NextResponse) =>
     applyResolvedLocaleCookie(request, response, tenant.defaultLocale);
 
+  // A published page is served at its slug in place of the redirects and
+  // session rules below; the admin API keeps the paths they must hold.
+  const publishedSlugs = await resolvePublishedPageSlugs(tenant.tenantId);
+  const isPublishedPagePath =
+    getPublishedPageSlugFromPathname(publicPath, publishedSlugs) !== null;
+
   // `/authors` moved to `/creators`, so it answers permanently — unlike the
   // locale prefix below, which follows a tenant setting that can change. It is
   // decided first so what a browser caches forever names the path alone: the
   // prefix the reader asked for rides along, and whether that prefix is
   // redundant stays the temporary redirect's decision.
-  const movedPathname = movedPublicPathname(publicPath);
-  if (movedPathname) {
-    return withResolvedLocale(
-      redirectToPathname(
-        request,
-        requestedLocale ? `/${requestedLocale}${movedPathname}` : movedPathname,
-        308
-      )
-    );
+  const movedResponse = isPublishedPagePath
+    ? null
+    : redirectMovedPathname(request, requestedLocale, publicPath);
+  if (movedResponse) {
+    return withResolvedLocale(movedResponse);
   }
 
   // A prefix is only canonical for a locale other than this tenant's default.
@@ -178,6 +202,16 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   // the old compatibility redirect, this keeps the reader on the canonical
   // URL while the App Router receives its required `[locale]` segment.
   const locale = requestedLocale ?? tenant.defaultLocale;
+  const rewritePathname = buildTenantRewritePathname(
+    tenant.tenantId,
+    locale,
+    publicPath,
+    publishedSlugs
+  );
+
+  if (isPublishedPagePath) {
+    return withResolvedLocale(rewriteTo(request, rewritePathname));
+  }
 
   const sessionCookie = request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value;
   const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
@@ -212,11 +246,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     );
   }
 
-  // Single-segment published pages (admin slugs) rewrite to /page/[slug].
-  const response = rewriteTo(
-    request,
-    buildTenantRewritePathname(tenant.tenantId, locale, publicPath)
-  );
+  const response = rewriteTo(request, rewritePathname);
   if (isRejectedSession && hasStoredSessionCookie) {
     response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
   }
