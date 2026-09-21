@@ -799,8 +799,8 @@ jobs:
       - name: Build / Tenant Android app
         run: task mobile:build -- mobile/config/app.example.yaml apk
         env:
-          PUBLIRA_API_BASE_URL: https://reader.example.jp/api
-          PUBLIRA_IMAGE_BASE_URL: https://reader.example.jp
+          PUBLIRA_API_BASE_URL: https://reader.example.com/api
+          PUBLIRA_IMAGE_BASE_URL: https://reader.example.com
 
       - name: Teardown / Public API stack
         if: always()

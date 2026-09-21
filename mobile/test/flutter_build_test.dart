@@ -5,14 +5,14 @@ import '../scripts/app_manifest/manifest.dart';
 
 const _manifest = AppManifest(
   appName: 'Example Reader',
-  tenantHost: 'reader.example.jp',
-  androidApplicationId: 'jp.example.reader',
-  iosBundleIdentifier: 'jp.example.reader',
+  tenantHost: 'reader.example.com',
+  androidApplicationId: 'com.example.reader',
+  iosBundleIdentifier: 'com.example.reader',
 );
 
 const _addresses = {
-  'PUBLIRA_API_BASE_URL': 'https://reader.example.jp/api',
-  'PUBLIRA_IMAGE_BASE_URL': 'https://reader.example.jp',
+  'PUBLIRA_API_BASE_URL': 'https://reader.example.com/api',
+  'PUBLIRA_IMAGE_BASE_URL': 'https://reader.example.com',
 };
 
 List<String> _build(
@@ -82,9 +82,9 @@ void main() {
         'appbundle',
         '--flavor',
         'production',
-        '--dart-define=PUBLIRA_TENANT_HOST=reader.example.jp',
-        '--dart-define=PUBLIRA_API_BASE_URL=https://reader.example.jp/api',
-        '--dart-define=PUBLIRA_IMAGE_BASE_URL=https://reader.example.jp',
+        '--dart-define=PUBLIRA_TENANT_HOST=reader.example.com',
+        '--dart-define=PUBLIRA_API_BASE_URL=https://reader.example.com/api',
+        '--dart-define=PUBLIRA_IMAGE_BASE_URL=https://reader.example.com',
       ]);
     });
 
@@ -98,9 +98,9 @@ void main() {
         [
           'build',
           'ipa',
-          '--dart-define=PUBLIRA_TENANT_HOST=reader.example.jp',
-          '--dart-define=PUBLIRA_API_BASE_URL=https://reader.example.jp/api',
-          '--dart-define=PUBLIRA_IMAGE_BASE_URL=https://reader.example.jp',
+          '--dart-define=PUBLIRA_TENANT_HOST=reader.example.com',
+          '--dart-define=PUBLIRA_API_BASE_URL=https://reader.example.com/api',
+          '--dart-define=PUBLIRA_IMAGE_BASE_URL=https://reader.example.com',
           '--flavor=production',
           '--dart-define=PUBLIRA_FIREBASE_PROJECT_ID=reader',
         ],
@@ -115,8 +115,8 @@ void main() {
     });
 
     for (final url in [
-      'http://reader.example.jp/api',
-      'reader.example.jp',
+      'http://reader.example.com/api',
+      'reader.example.com',
       'https://',
     ]) {
       test('refuses the address $url', () {
@@ -136,7 +136,7 @@ void main() {
       expect(_build(['apk', '--flavor', 'dev', '--debug'], const {}), [
         'build',
         'apk',
-        '--dart-define=PUBLIRA_TENANT_HOST=reader.example.jp',
+        '--dart-define=PUBLIRA_TENANT_HOST=reader.example.com',
         '--flavor',
         'dev',
         '--debug',

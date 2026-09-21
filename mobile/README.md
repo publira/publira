@@ -116,13 +116,13 @@ app:
   name: Example Reader # the launcher name
 
 tenant:
-  host: reader.example.jp # the one tenant the app serves, which its links are verified against
+  host: reader.example.com # the one tenant the app serves, which its links are verified against
 
 android:
-  applicationId: jp.example.reader # the production application ID
+  applicationId: com.example.reader # the production application ID
 
 ios:
-  bundleIdentifier: jp.example.reader # the production bundle identifier
+  bundleIdentifier: com.example.reader # the production bundle identifier
 ```
 
 Every field is required, and a field the format does not define is an error. Android and iOS take separate identifiers, so an app that already has a store listing under different ones keeps both. `schemaVersion` names the format, and a manifest of a version the tooling does not read is refused rather than half-applied.
@@ -160,8 +160,8 @@ A tenant builds the app it publishes from its own manifest:
 
 ```bash
 # From the repository root; a relative manifest path is read from where the task starts
-export PUBLIRA_API_BASE_URL=https://reader.example.jp/api
-export PUBLIRA_IMAGE_BASE_URL=https://reader.example.jp
+export PUBLIRA_API_BASE_URL=https://reader.example.com/api
+export PUBLIRA_IMAGE_BASE_URL=https://reader.example.com
 
 task mobile:build -- ../tenant/app.yaml appbundle
 task mobile:build -- ../tenant/app.yaml ipa

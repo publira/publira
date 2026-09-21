@@ -32,7 +32,7 @@
           "description": "The lowercase host name of the one tenant this app serves, which App Links and Universal Links are verified against.",
           "type": "string",
           "pattern": "^(?=.{1,253}$)(?!(.*\\.)?[0-9]+$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$",
-          "examples": ["reader.example.jp"]
+          "examples": ["reader.example.com"]
         }
       }
     },
@@ -45,7 +45,7 @@
           "description": "The production Android application ID. The development build appends `.dev`.",
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$",
-          "examples": ["jp.example.reader"]
+          "examples": ["com.example.reader"]
         }
       }
     },
@@ -58,7 +58,7 @@
           "description": "The production iOS bundle identifier, kept apart from the Android application ID. The development build appends `.dev`.",
           "type": "string",
           "pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$",
-          "examples": ["jp.example.reader"]
+          "examples": ["com.example.reader"]
         }
       }
     }
