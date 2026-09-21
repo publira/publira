@@ -50,7 +50,9 @@ type PurgeContentEventsArgs struct{}
 
 func (PurgeContentEventsArgs) Kind() string { return kindPurgeContentEvents }
 
-func (PurgeContentEventsArgs) InsertOpts() river.InsertOpts { return insertOpts() }
+func (PurgeContentEventsArgs) InsertOpts() river.InsertOpts {
+	return purgeInsertOpts(contentEventPurgeInterval)
+}
 
 // PurgeRankingSnapshotsArgs deletes content_ranking_snapshots rows past their
 // retention window.
@@ -58,7 +60,9 @@ type PurgeRankingSnapshotsArgs struct{}
 
 func (PurgeRankingSnapshotsArgs) Kind() string { return kindPurgeRankingSnapshots }
 
-func (PurgeRankingSnapshotsArgs) InsertOpts() river.InsertOpts { return insertOpts() }
+func (PurgeRankingSnapshotsArgs) InsertOpts() river.InsertOpts {
+	return purgeInsertOpts(rankingSnapshotPurgeInterval)
+}
 
 // PurgeMfaChallengesArgs deletes the spent admin MFA challenges whose tokens
 // have expired.
@@ -66,7 +70,9 @@ type PurgeMfaChallengesArgs struct{}
 
 func (PurgeMfaChallengesArgs) Kind() string { return kindPurgeMfaChallenges }
 
-func (PurgeMfaChallengesArgs) InsertOpts() river.InsertOpts { return insertOpts() }
+func (PurgeMfaChallengesArgs) InsertOpts() river.InsertOpts {
+	return purgeInsertOpts(mfaChallengePurgeInterval)
+}
 
 // PurgeWithdrawnCommentsArgs deletes the comments their authors withdrew past
 // the retention window.
@@ -74,7 +80,9 @@ type PurgeWithdrawnCommentsArgs struct{}
 
 func (PurgeWithdrawnCommentsArgs) Kind() string { return kindPurgeWithdrawnComments }
 
-func (PurgeWithdrawnCommentsArgs) InsertOpts() river.InsertOpts { return insertOpts() }
+func (PurgeWithdrawnCommentsArgs) InsertOpts() river.InsertOpts {
+	return purgeInsertOpts(withdrawnCommentPurgeInterval)
+}
 
 // PurgeOrphanImagesArgs deletes the image rows and storage objects nothing
 // references.
@@ -82,7 +90,9 @@ type PurgeOrphanImagesArgs struct{}
 
 func (PurgeOrphanImagesArgs) Kind() string { return kindPurgeOrphanImages }
 
-func (PurgeOrphanImagesArgs) InsertOpts() river.InsertOpts { return insertOpts() }
+func (PurgeOrphanImagesArgs) InsertOpts() river.InsertOpts {
+	return purgeInsertOpts(orphanImagePurgeInterval)
+}
 
 type projectEpisodeReadsWorker struct {
 	river.WorkerDefaults[ProjectEpisodeReadsArgs]
