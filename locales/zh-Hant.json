@@ -1441,6 +1441,7 @@
       "email_error": "無法顯示郵件設定",
       "payment_error": "無法顯示付款設定",
       "mobile_push_error": "無法顯示行動推播設定",
+      "royalties_error": "無法顯示版稅設定",
       "section_error": "無法顯示設定",
       "theme_error": "無法顯示主題",
       "theme": {
@@ -1635,6 +1636,8 @@
       "payment_description": "管理該租戶的 Stripe 付款設定。",
       "mobile_push_title": "設定 — 行動推播",
       "mobile_push_description": "管理向該租戶的行動應用程式傳送推播通知所用的 Firebase 憑證。",
+      "royalties_title": "設定 — 版稅",
+      "royalties_description": "選擇該租戶如何將版稅月份結算為明細。",
       "account_title": "帳戶設定",
       "account_description": "管理您目前登入的管理員帳戶。",
       "tenant_missing": "缺少租戶 ID。",
@@ -1649,6 +1652,7 @@
         "theme": "主題",
         "email": "郵件",
         "payment": "付款",
+        "royalties": "版稅",
         "mobile_push": "行動推播",
         "policy": "限制與保留"
       },
@@ -1928,6 +1932,32 @@
           "not_service_account": "該檔案不是服務帳戶金鑰。請在 Firebase 控制台的「專案設定」→「服務帳戶」中下載。",
           "project_mismatch": "該金鑰屬於 Firebase 專案「{$key}」，而不是「{$entered}」。請上傳建置行動應用程式所用專案的金鑰，或更正專案 ID。",
           "key_invalid": "無法使用該服務帳戶金鑰。請在 Firebase 控制台的「專案設定」→「服務帳戶」中產生新的私密金鑰並上傳。"
+        }
+      },
+      "royalties": {
+        "title": "版稅月份結算",
+        "description": "結算某月後，該月的版稅會成為此後不再變動的明細。可以每月自行結算，也可以在指定的日期自動結算。",
+        "mode_label": "月份結算方式",
+        "mode_options": {
+          "manual": {
+            "label": "每月自行結算",
+            "description": "月份結束後，在「版稅」中確認並結算。結算之前該月保持未結算狀態。"
+          },
+          "automatic": {
+            "label": "自動結算",
+            "description": "每個月份會在次月的指定日期自動結算。切換到此方式之前已結束的月份保持未結算，請在「版稅」中結算。"
+          }
+        },
+        "day_label": "結算日",
+        "day_placeholder": "選擇日期",
+        "day_option": "{$day}日",
+        "day_description": "結算某月的次月日期，依租戶的時區計算。為確保每個月都有該日期，只能選擇 1 至 28 日。",
+        "submit": "儲存結算設定",
+        "saved": "結算設定已儲存。",
+        "save_failed": "無法儲存結算設定。請稍後再試。",
+        "validation": {
+          "mode_required": "請選擇月份結算方式。",
+          "day_required": "請選擇在次月的哪一天結算。"
         }
       },
       "policy_title": "設定 — 限制與保留",

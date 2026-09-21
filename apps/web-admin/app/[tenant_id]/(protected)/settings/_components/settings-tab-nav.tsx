@@ -13,6 +13,7 @@ interface SettingsTabNavProps {
     | "mobile-push"
     | "payment"
     | "policy"
+    | "royalties"
     | "theme";
 }
 
@@ -56,6 +57,14 @@ export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
     >
       <Suspense fallback={<SkeletonLine className="h-5 w-12" />}>
         <Message message="admin.settings.tabs.payment" />
+      </Suspense>
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/royalties" />}
+      variant={current === "royalties" ? "default" : "outline"}
+    >
+      <Suspense fallback={<SkeletonLine className="h-5 w-16" />}>
+        <Message message="admin.settings.tabs.royalties" />
       </Suspense>
     </LinkButton>
     <LinkButton

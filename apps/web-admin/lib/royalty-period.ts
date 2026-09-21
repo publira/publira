@@ -8,7 +8,15 @@ export const royaltyPeriodSchema = z
   .string()
   .regex(/^\d{4}-(?:0[1-9]|1[0-2])$/u);
 
-export type RoyaltyCloseMode = "automatic" | "manual";
+export const ROYALTY_CLOSE_MODES = ["manual", "automatic"] as const;
+
+export type RoyaltyCloseMode = (typeof ROYALTY_CLOSE_MODES)[number];
+
+export const isRoyaltyCloseMode = (value: unknown): value is RoyaltyCloseMode =>
+  ROYALTY_CLOSE_MODES.some((mode) => mode === value);
+
+/** The last day automatic closing may run on, which every month has. */
+export const MAX_ROYALTY_AUTO_CLOSE_DAY = 28;
 
 export interface RoyaltyClosePolicy {
   closeMode: RoyaltyCloseMode;

@@ -1441,6 +1441,7 @@
       "email_error": "メール設定を表示できませんでした",
       "payment_error": "決済設定を表示できませんでした",
       "mobile_push_error": "モバイルプッシュの設定を表示できませんでした",
+      "royalties_error": "印税の設定を表示できませんでした",
       "section_error": "設定を表示できませんでした",
       "theme_error": "テーマを表示できませんでした",
       "theme": {
@@ -1635,6 +1636,8 @@
       "payment_description": "テナントごとの Stripe 決済設定を管理します。",
       "mobile_push_title": "設定 - モバイルプッシュ",
       "mobile_push_description": "このテナントのモバイルアプリへプッシュ通知を送るための Firebase 認証情報を管理します。",
+      "royalties_title": "設定 - 印税",
+      "royalties_description": "このテナントで印税の月をどのように締めて明細にするかを選びます。",
       "account_title": "アカウント設定",
       "account_description": "ログイン中の管理者アカウントの情報を管理します。",
       "tenant_missing": "テナント ID が見つかりません。",
@@ -1649,6 +1652,7 @@
         "theme": "テーマ",
         "email": "メール情報",
         "payment": "決済",
+        "royalties": "印税",
         "mobile_push": "モバイルプッシュ",
         "policy": "制限と保持"
       },
@@ -1928,6 +1932,32 @@
           "not_service_account": "サービスアカウントキーではありません。Firebase コンソールの［プロジェクトの設定］→［サービス アカウント］からダウンロードしてください。",
           "project_mismatch": "このキーは Firebase プロジェクト「{$key}」のもので、「{$entered}」のものではありません。モバイルアプリがビルドされたプロジェクトのキーをアップロードするか、プロジェクト ID を修正してください。",
           "key_invalid": "このサービスアカウントキーは使用できません。Firebase コンソールの［プロジェクトの設定］→［サービス アカウント］で新しい秘密鍵を生成し、アップロードしてください。"
+        }
+      },
+      "royalties": {
+        "title": "印税の月の締め",
+        "description": "月を締めると、その月の印税は以後変わらない明細になります。毎月ご自身で締めるか、指定した日に自動で締めるかを選べます。",
+        "mode_label": "月の締め方",
+        "mode_options": {
+          "manual": {
+            "label": "毎月自分で締める",
+            "description": "月が終わったら「印税」で内容を確認して締めます。締めるまでその月は開いたままです。"
+          },
+          "automatic": {
+            "label": "自動で締める",
+            "description": "各月は翌月の指定した日に自動で締められます。この設定に切り替える前に終わった月は開いたまま残るので、「印税」で締めてください。"
+          }
+        },
+        "day_label": "締め日",
+        "day_placeholder": "日を選択",
+        "day_option": "{$day}日",
+        "day_description": "月を締める翌月の日付です。テナントのタイムゾーンで数えます。どの月にもある日にするため、選べるのは 1〜28 日です。",
+        "submit": "締めの設定を保存",
+        "saved": "締めの設定を保存しました。",
+        "save_failed": "締めの設定の保存に失敗しました。時間をおいて再試行してください。",
+        "validation": {
+          "mode_required": "月の締め方を選択してください。",
+          "day_required": "締める翌月の日付を選択してください。"
         }
       },
       "policy_title": "設定 - 制限と保持",

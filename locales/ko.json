@@ -1441,6 +1441,7 @@
       "email_error": "메일 설정을 표시할 수 없습니다",
       "payment_error": "결제 설정을 표시할 수 없습니다",
       "mobile_push_error": "모바일 푸시 설정을 표시할 수 없습니다",
+      "royalties_error": "인세 설정을 표시할 수 없습니다",
       "section_error": "설정을 표시할 수 없습니다",
       "theme_error": "테마를 표시할 수 없습니다",
       "theme": {
@@ -1635,6 +1636,8 @@
       "payment_description": "이 테넌트의 Stripe 결제 설정을 관리합니다.",
       "mobile_push_title": "설정 — 모바일 푸시",
       "mobile_push_description": "이 테넌트의 모바일 앱에 푸시 알림을 보낼 때 사용하는 Firebase 인증 정보를 관리합니다.",
+      "royalties_title": "설정 — 인세",
+      "royalties_description": "이 테넌트의 인세 월을 명세서로 마감하는 방식을 선택합니다.",
       "account_title": "계정 설정",
       "account_description": "로그인 중인 관리자 계정의 정보를 관리합니다.",
       "tenant_missing": "테넌트 ID를 찾을 수 없습니다.",
@@ -1649,6 +1652,7 @@
         "theme": "테마",
         "email": "메일",
         "payment": "결제",
+        "royalties": "인세",
         "mobile_push": "모바일 푸시",
         "policy": "제한 및 보존"
       },
@@ -1928,6 +1932,32 @@
           "not_service_account": "서비스 계정 키가 아닙니다. Firebase 콘솔의 프로젝트 설정 → 서비스 계정에서 내려받아 주세요.",
           "project_mismatch": "이 키는 \"{$entered}\"가 아니라 Firebase 프로젝트 \"{$key}\"의 키입니다. 모바일 앱이 빌드된 프로젝트의 키를 올리거나 프로젝트 ID를 고쳐 주세요.",
           "key_invalid": "이 서비스 계정 키는 사용할 수 없습니다. Firebase 콘솔의 프로젝트 설정 → 서비스 계정에서 새 비공개 키를 생성해 올려 주세요."
+        }
+      },
+      "royalties": {
+        "title": "인세 월 마감",
+        "description": "월을 마감하면 그 달의 인세는 이후 바뀌지 않는 명세서가 됩니다. 매달 직접 마감하거나, 지정한 날에 자동으로 마감되게 할 수 있습니다.",
+        "mode_label": "월 마감 방식",
+        "mode_options": {
+          "manual": {
+            "label": "매달 직접 마감",
+            "description": "달이 끝나면 인세에서 내용을 확인하고 마감합니다. 마감할 때까지 그 달은 열려 있습니다."
+          },
+          "automatic": {
+            "label": "자동으로 마감",
+            "description": "각 달은 다음 달의 지정한 날에 자동으로 마감됩니다. 이 방식으로 바꾸기 전에 끝난 달은 열린 채로 남으므로 인세에서 마감해 주세요."
+          }
+        },
+        "day_label": "마감일",
+        "day_placeholder": "날짜 선택",
+        "day_option": "{$day}일",
+        "day_description": "달을 마감하는 다음 달의 날짜이며, 테넌트의 시간대를 기준으로 합니다. 모든 달에 있는 날짜가 되도록 1일부터 28일까지만 선택할 수 있습니다.",
+        "submit": "마감 설정 저장",
+        "saved": "마감 설정을 저장했습니다.",
+        "save_failed": "마감 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "validation": {
+          "mode_required": "월 마감 방식을 선택해 주세요.",
+          "day_required": "마감할 다음 달의 날짜를 선택해 주세요."
         }
       },
       "policy_title": "설정 — 제한 및 보존",

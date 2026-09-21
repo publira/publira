@@ -23,7 +23,7 @@ import { cursorPageRequest, cursorPageTokens } from "./cursor-page";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import { getMessagesFor } from "./messages";
 import type { RoyaltyLine } from "./royalty-lines";
-import type { RoyaltyClosePolicy } from "./royalty-period";
+import type { RoyaltyCloseMode, RoyaltyClosePolicy } from "./royalty-period";
 import { getAccessToken } from "./session";
 
 export interface RoyaltyTotals {
@@ -86,6 +86,10 @@ export type GetRoyaltyStatementResult =
 export type ExportRoyaltyStatementResult =
   | { ok: true; csv: Uint8Array<ArrayBuffer> }
   | { ok: false; reason: "missing" | "signedOut" };
+
+export type UpdateRoyaltyClosePolicyResult =
+  | { ok: true; policy: RoyaltyClosePolicy }
+  | { ok: false; message: string };
 
 export type CloseRoyaltyStatementResult =
   | { ok: true; statement: RoyaltyStatementSummary }
@@ -152,6 +156,11 @@ type RawConfig = Pick<
   "autoCloseDay" | "automaticSince" | "closeMode"
 >;
 
+const toCloseModeProto = (mode: RoyaltyCloseMode): RoyaltyCloseModeProto =>
+  mode === "automatic"
+    ? RoyaltyCloseModeProto.AUTOMATIC
+    : RoyaltyCloseModeProto.MANUAL;
+
 const mapPolicy = (config: RawConfig | undefined): RoyaltyClosePolicy =>
   config?.closeMode === RoyaltyCloseModeProto.AUTOMATIC
     ? {
@@ -203,6 +212,51 @@ export const getRoyaltyClosePolicy = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return readFailure(error, locale);
+  }
+};
+
+/**
+ * Chooses how the tenant's months are closed. The day is sent only in
+ * automatic mode, which is the one mode the API accepts it in.
+ */
+export const updateRoyaltyClosePolicy = async (
+  input: {
+    tenantId: string;
+    closeMode: RoyaltyCloseMode;
+    autoCloseDay?: number;
+  },
+  locale: Locale
+): Promise<UpdateRoyaltyClosePolicyResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response = await apiClient.royalties.updateRoyaltyConfig(
+      {
+        autoCloseDay:
+          input.closeMode === "automatic" ? input.autoCloseDay : undefined,
+        closeMode: toCloseModeProto(input.closeMode),
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { ok: true, policy: mapPolicy(response.config) };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.settings.royalties.save_failed"),
+        { locale }
+      ),
+      ok: false,
+    };
   }
 };
 

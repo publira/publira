@@ -1441,6 +1441,7 @@
       "email_error": "Could not display the email settings",
       "payment_error": "Could not display the payment settings",
       "mobile_push_error": "Could not display the mobile push settings",
+      "royalties_error": "Could not display the royalty settings",
       "section_error": "Could not display the settings",
       "theme_error": "Could not display the theme",
       "theme": {
@@ -1635,6 +1636,8 @@
       "payment_description": "Manage this tenant's Stripe payment settings.",
       "mobile_push_title": "Settings — Mobile push",
       "mobile_push_description": "Manage the Firebase credentials this tenant's mobile app is sent push notifications with.",
+      "royalties_title": "Settings — Royalties",
+      "royalties_description": "Choose how this tenant's royalty months are closed into statements.",
       "account_title": "Account settings",
       "account_description": "Manage the administrator account you are signed in as.",
       "tenant_missing": "The tenant ID is missing.",
@@ -1649,6 +1652,7 @@
         "theme": "Theme",
         "email": "Email",
         "payment": "Payments",
+        "royalties": "Royalties",
         "mobile_push": "Mobile push",
         "policy": "Limits and retention"
       },
@@ -1928,6 +1932,32 @@
           "not_service_account": "That file is not a service account key. Download one from Project settings → Service accounts in the Firebase console.",
           "project_mismatch": "The key belongs to the Firebase project \"{$key}\", not \"{$entered}\". Upload a key from the project the mobile app is built with, or correct the project ID.",
           "key_invalid": "The service account key could not be used. Download a new private key from Project settings → Service accounts in the Firebase console and upload it."
+        }
+      },
+      "royalties": {
+        "title": "Closing royalty months",
+        "description": "A month's royalties become a statement that never changes when the month is closed. Close each month yourself, or let it close on a day of your choice.",
+        "mode_label": "How months are closed",
+        "mode_options": {
+          "manual": {
+            "label": "Close each month myself",
+            "description": "Once a month is over, review it under Royalties and close it there. A month stays open until you do."
+          },
+          "automatic": {
+            "label": "Close automatically",
+            "description": "Each month closes on its own on the chosen day of the following month. Months that ended before you switch to this stay open, and you close them under Royalties."
+          }
+        },
+        "day_label": "Close day",
+        "day_placeholder": "Choose a day",
+        "day_option": "Day {$day}",
+        "day_description": "The day of the following month on which a month is closed, in the tenant's time zone. Only days 1 to 28 are offered, so every month has the day.",
+        "submit": "Save the closing settings",
+        "saved": "The closing settings were saved.",
+        "save_failed": "Could not save the closing settings. Please try again later.",
+        "validation": {
+          "mode_required": "Choose how months are closed.",
+          "day_required": "Choose the day of the following month on which to close."
         }
       },
       "policy_title": "Settings — Limits and retention",
