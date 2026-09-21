@@ -1,1 +1,3 @@
 .run/
+# Build configuration generated from a tenant manifest (scripts/tenant/).
+.generated/
