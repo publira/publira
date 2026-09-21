@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { mockApi, mockGetSessionId } = vi.hoisted(() => ({
   mockApi: {
     closeRoyaltyStatement: vi.fn(),
+    exportRoyaltyStatement: vi.fn(),
     getRoyaltyConfig: vi.fn(),
     getRoyaltyStatement: vi.fn(),
     listRoyaltyStatements: vi.fn(),
@@ -226,5 +227,65 @@ describe("royalties", () => {
       message: "This month is not over yet, so it cannot be closed.",
       ok: false,
     });
+  });
+
+  it("exports a closed month with the operator's session", async () => {
+    const csv = new TextEncoder().encode("period,creator_id\r\n");
+    mockApi.exportRoyaltyStatement.mockResolvedValueOnce({ csv });
+    const { exportRoyaltyStatement } = await import("./royalties");
+
+    const result = await exportRoyaltyStatement("TENANT001", "2026-08");
+
+    expect(result).toEqual({ csv, ok: true });
+    expect(mockApi.exportRoyaltyStatement).toHaveBeenCalledWith(
+      { period: "2026-08", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("reports a month that is not closed as missing", async () => {
+    mockApi.exportRoyaltyStatement.mockRejectedValueOnce(
+      new ConnectError("the month is not closed", Code.FailedPrecondition)
+    );
+    const { exportRoyaltyStatement } = await import("./royalties");
+
+    expect(await exportRoyaltyStatement("TENANT001", "2026-09")).toEqual({
+      ok: false,
+      reason: "missing",
+    });
+  });
+
+  it("reports a rejected session as signed out", async () => {
+    mockApi.exportRoyaltyStatement.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+    const { exportRoyaltyStatement } = await import("./royalties");
+
+    expect(await exportRoyaltyStatement("TENANT001", "2026-08")).toEqual({
+      ok: false,
+      reason: "signedOut",
+    });
+  });
+
+  it("exports nothing without a session", async () => {
+    mockGetSessionId.mockResolvedValueOnce("");
+    const { exportRoyaltyStatement } = await import("./royalties");
+
+    expect(await exportRoyaltyStatement("TENANT001", "2026-08")).toEqual({
+      ok: false,
+      reason: "signedOut",
+    });
+    expect(mockApi.exportRoyaltyStatement).not.toHaveBeenCalled();
+  });
+
+  it("lets an outage fail the download", async () => {
+    mockApi.exportRoyaltyStatement.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+    const { exportRoyaltyStatement } = await import("./royalties");
+
+    await expect(
+      exportRoyaltyStatement("TENANT001", "2026-08")
+    ).rejects.toThrow();
   });
 });

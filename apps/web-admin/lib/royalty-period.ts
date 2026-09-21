@@ -126,3 +126,7 @@ export const royaltyCloseState = (
   }
   return { kind: "ready" };
 };
+
+/** Where a closed month's statement downloads as CSV. */
+export const royaltyStatementCsvPath = (period: string): string =>
+  `/api/royalties/statements/${period}/csv`;

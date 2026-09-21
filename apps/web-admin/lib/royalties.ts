@@ -78,6 +78,15 @@ export type GetRoyaltyStatementResult =
     })
   | (ReadFailure & { notFound: boolean });
 
+/**
+ * `signedOut` covers both a missing session and one the API rejected; `missing`
+ * covers a month that is not closed and one this operator may not see, which
+ * the handler answers alike so the response says nothing about which it was.
+ */
+export type ExportRoyaltyStatementResult =
+  | { ok: true; csv: Uint8Array<ArrayBuffer> }
+  | { ok: false; reason: "missing" | "signedOut" };
+
 export type CloseRoyaltyStatementResult =
   | { ok: true; statement: RoyaltyStatementSummary }
   | { ok: false; message: string };
@@ -287,6 +296,36 @@ export const getRoyaltyStatement = async (
       ...(await readFailure(error, locale)),
       notFound: isMissingResourceRpcError(error),
     };
+  }
+};
+
+/** A closed month as the CSV the API encodes, byte for byte. */
+export const exportRoyaltyStatement = async (
+  tenantId: string,
+  period: string
+): Promise<ExportRoyaltyStatementResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return { ok: false, reason: "signedOut" };
+  }
+
+  try {
+    const response = await apiClient.royalties.exportRoyaltyStatement(
+      { period, tenant: { tenantId } },
+      withSessionHeaders(sessionId)
+    );
+    return { csv: new Uint8Array(response.csv), ok: true };
+  } catch (error) {
+    if (isUnauthenticatedError(error)) {
+      return { ok: false, reason: "signedOut" };
+    }
+    if (
+      isMissingResourceRpcError(error) ||
+      isRpcError(error, Code.FailedPrecondition)
+    ) {
+      return { ok: false, reason: "missing" };
+    }
+    throw error;
   }
 };
 

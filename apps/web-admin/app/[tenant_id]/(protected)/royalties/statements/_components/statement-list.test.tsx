@@ -63,6 +63,11 @@ describe("StatementList", () => {
 
     const august = screen.getByRole("link", { name: "August 2026" });
     expect(august.getAttribute("href")).toBe("/royalties/statements/2026-08");
+    expect(
+      screen
+        .getByRole("link", { name: "Download the CSV for August 2026" })
+        .getAttribute("href")
+    ).toBe("/api/royalties/statements/2026-08/csv");
 
     const [, first, second] = screen.getAllByRole("row");
     expect(within(first).getByText("Operator")).toBeDefined();

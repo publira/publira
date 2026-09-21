@@ -2201,7 +2201,8 @@
           "closed_by": "结算人",
           "gross": "销售额",
           "refunded": "退款",
-          "payout": "支付额"
+          "payout": "支付额",
+          "export": "CSV"
         }
       },
       "statement": {
@@ -2216,6 +2217,11 @@
         "pagination_aria": "明细行分页",
         "pagination_description": "每页最多显示 {$count} 行。",
         "back_to_list": "返回已结算明细"
+      },
+      "export": {
+        "button": "下载 CSV",
+        "row_label": "下载 {$period} 的 CSV",
+        "open_month_note": "该月结算后即可下载 CSV。"
       }
     }
   },

@@ -2201,7 +2201,8 @@
           "closed_by": "締めた人",
           "gross": "売上",
           "refunded": "返金",
-          "payout": "支払額"
+          "payout": "支払額",
+          "export": "CSV"
         }
       },
       "statement": {
@@ -2216,6 +2217,11 @@
         "pagination_aria": "明細行のページ",
         "pagination_description": "1 ページに最大 {$count} 行を表示します。",
         "back_to_list": "締めた明細に戻る"
+      },
+      "export": {
+        "button": "CSV をダウンロード",
+        "row_label": "{$period} の CSV をダウンロード",
+        "open_month_note": "CSV は月を締めるとダウンロードできます。"
       }
     }
   },

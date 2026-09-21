@@ -29,6 +29,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
   AdminSection,
+  AdminSectionActions,
   AdminSectionDescription,
   AdminSectionHeader,
   AdminSectionHeading,
@@ -50,7 +51,10 @@ import {
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getRoyaltyStatement } from "#lib/royalties";
-import { royaltyPeriodSchema } from "#lib/royalty-period";
+import {
+  royaltyPeriodSchema,
+  royaltyStatementCsvPath,
+} from "#lib/royalty-period";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -178,6 +182,16 @@ const StatementContent = async ({
               </Suspense>
             </AdminSectionDescription>
           </AdminSectionHeading>
+          <AdminSectionActions>
+            <LinkButton
+              href={royaltyStatementCsvPath(statement.period)}
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.royalties.export.button" />
+              </Suspense>
+            </LinkButton>
+          </AdminSectionActions>
         </AdminSectionHeader>
         <RoyaltyFigures locale={locale} totals={statement.totals} />
       </AdminSection>
