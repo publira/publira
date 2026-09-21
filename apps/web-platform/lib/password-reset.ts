@@ -120,10 +120,13 @@ export const confirmPlatformPasswordReset = async (
   }
 
   try {
-    const response = await apiClient.auth.confirmPasswordReset({
-      newPassword: normalizedPassword,
-      token: normalizedToken,
-    });
+    const response = await apiClient.auth.confirmPasswordReset(
+      {
+        newPassword: normalizedPassword,
+        token: normalizedToken,
+      },
+      await buildClientAddressHeaders()
+    );
 
     return {
       confirmed: response.confirmed,

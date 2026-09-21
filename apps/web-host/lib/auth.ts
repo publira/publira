@@ -73,11 +73,14 @@ export const loginPublic = async (
   tenantId: string
 ): Promise<PublicSession | null> => {
   try {
-    const response = await apiClient.auth.login({
-      email,
-      password,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.login(
+      {
+        email,
+        password,
+        tenant: { tenantId },
+      },
+      await buildClientAddressHeaders()
+    );
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
     if (!accessToken || !expiresAt) {
       return null;
@@ -170,10 +173,13 @@ export const confirmPublicEmailChange = async (
   pendingConfirmationFor: string;
 } | null> => {
   try {
-    const response = await apiClient.auth.confirmEmailChange({
-      tenant: { tenantId },
-      token,
-    });
+    const response = await apiClient.auth.confirmEmailChange(
+      {
+        tenant: { tenantId },
+        token,
+      },
+      await buildClientAddressHeaders()
+    );
     return {
       changed: Boolean(response.changed),
       confirmed: Boolean(response.confirmed),
@@ -209,11 +215,14 @@ export const confirmPublicPasswordReset = async (
   tenantId: string
 ): Promise<boolean> => {
   try {
-    const response = await apiClient.auth.confirmPasswordReset({
-      newPassword,
-      tenant: { tenantId },
-      token,
-    });
+    const response = await apiClient.auth.confirmPasswordReset(
+      {
+        newPassword,
+        tenant: { tenantId },
+        token,
+      },
+      await buildClientAddressHeaders()
+    );
     return Boolean(response.confirmed);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);

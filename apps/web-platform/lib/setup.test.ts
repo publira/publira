@@ -20,6 +20,11 @@ vi.mock("next/cache", () => ({
   cacheTag: mockCacheTag,
 }));
 
+vi.mock("next/headers", () => ({
+  headers: () =>
+    Promise.resolve(new Headers({ "x-forwarded-for": "203.0.113.7" })),
+}));
+
 vi.mock("@publira/api-client/platform/client", () => ({
   createPlatformApiClient: () => ({
     auth: {},
@@ -256,12 +261,15 @@ describe("createInitialUser", () => {
         password: "password",
       })
     ).resolves.toEqual({ ok: true });
-    expect(mockCreateInitialUser).toHaveBeenCalledWith({
-      defaultLocale: "en",
-      email: "admin@example.com",
-      name: "Admin",
-      password: "password",
-    });
+    expect(mockCreateInitialUser).toHaveBeenCalledWith(
+      {
+        defaultLocale: "en",
+        email: "admin@example.com",
+        name: "Admin",
+        password: "password",
+      },
+      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
   });
 
   it("reports an already-completed setup with its own message", async () => {

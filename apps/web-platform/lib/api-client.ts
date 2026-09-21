@@ -33,7 +33,7 @@ export const apiClient = createPlatformApiClient({
 
 /**
  * Call options for a sessionless call the API holds against the client's
- * address, such as a password reset. Only a call with a session gets the
+ * address, such as sign-in or a password reset. Only a call with a session gets the
  * address from the interceptor.
  */
 export const buildClientAddressHeaders = async () => {

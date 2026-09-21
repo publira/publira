@@ -27,7 +27,7 @@ export const withSessionHeaders = (sessionId: string): SessionCallOptions => ({
 
 /**
  * Call options for a sessionless call the API holds against the client's
- * address: a password reset, a multi-factor step before the session exists.
+ * address: sign-in, a password reset, a multi-factor step before the session exists.
  * Only a call with a session gets the address from the interceptor.
  */
 export const withClientAddressHeaders =

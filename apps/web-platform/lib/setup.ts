@@ -11,7 +11,7 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import type { ResolvedLocaleState } from "@publira/utils/resolved-locale";
 import { cacheTag } from "next/cache";
 
-import { apiClient } from "./api-client";
+import { apiClient, buildClientAddressHeaders } from "./api-client";
 import { getMessagesFor } from "./messages";
 import { platformSetupStatusCacheTag } from "./setup-status";
 
@@ -173,12 +173,15 @@ export const createInitialUser = async ({
   password,
 }: CreateInitialUserInput): Promise<SetupResult> => {
   try {
-    await apiClient.setup.createInitialUser({
-      defaultLocale,
-      email,
-      name,
-      password,
-    });
+    await apiClient.setup.createInitialUser(
+      {
+        defaultLocale,
+        email,
+        name,
+        password,
+      },
+      await buildClientAddressHeaders()
+    );
     return { ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);

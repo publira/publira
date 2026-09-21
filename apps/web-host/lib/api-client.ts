@@ -34,7 +34,7 @@ export const apiClient = createPublicApiClient({
 
 /**
  * Call options for a sessionless call the API holds against the client's
- * address: sign-up, a password reset, a guest's contact message. Only a call
+ * address: sign-in, sign-up, a password reset, a guest's contact message. Only a call
  * with a session gets the address from the interceptor.
  */
 export const buildClientAddressHeaders = async () => {

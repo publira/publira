@@ -29,6 +29,8 @@ vi.mock("./api-client", () => ({
       logout: mockLogout,
     },
   },
+  buildClientAddressHeaders: () =>
+    Promise.resolve({ headers: { "X-Forwarded-For": "203.0.113.7" } }),
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
@@ -53,10 +55,10 @@ describe("loginPlatform", () => {
       accessToken: "tok_abc",
       expiresAt: new Date(expiresAt),
     });
-    expect(mockLogin).toHaveBeenCalledWith({
-      email: "admin@example.com",
-      password: "secret",
-    });
+    expect(mockLogin).toHaveBeenCalledWith(
+      { email: "admin@example.com", password: "secret" },
+      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
   });
 
   it("returns null when the API returns no session", async () => {

@@ -186,11 +186,14 @@ export const loginAdmin = async (
   } as const;
 
   try {
-    const response = await apiClient.auth.login({
-      email,
-      password,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.login(
+      {
+        email,
+        password,
+        tenant: { tenantId },
+      },
+      await withClientAddressHeaders()
+    );
 
     const challenge = response.mfaChallenge;
     if (challenge) {
@@ -453,11 +456,14 @@ export const confirmAdminPasswordReset = async (
   }
 
   try {
-    const response = await apiClient.auth.confirmPasswordReset({
-      newPassword: normalizedPassword,
-      tenant: { tenantId },
-      token: normalizedToken,
-    });
+    const response = await apiClient.auth.confirmPasswordReset(
+      {
+        newPassword: normalizedPassword,
+        tenant: { tenantId },
+        token: normalizedToken,
+      },
+      await withClientAddressHeaders()
+    );
 
     return {
       confirmed: response.confirmed,
@@ -565,10 +571,13 @@ export const confirmAdminEmailChange = async (
   }
 
   try {
-    const response = await apiClient.auth.confirmEmailChange({
-      tenant: { tenantId },
-      token: normalizedToken,
-    });
+    const response = await apiClient.auth.confirmEmailChange(
+      {
+        tenant: { tenantId },
+        token: normalizedToken,
+      },
+      await withClientAddressHeaders()
+    );
 
     return {
       changed: response.changed,

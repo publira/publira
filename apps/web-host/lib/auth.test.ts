@@ -33,6 +33,8 @@ vi.mock("./api-client", () => ({
       updateMe: mockUpdateMe,
     },
   },
+  buildClientAddressHeaders: () =>
+    Promise.resolve({ headers: { "X-Forwarded-For": "203.0.113.7" } }),
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
