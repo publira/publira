@@ -408,6 +408,42 @@ func (q *Queries) ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTe
 	return items, nil
 }
 
+const listPublishedPageSlugsForTenant = `-- name: ListPublishedPageSlugsForTenant :many
+SELECT p.slug
+FROM pages p
+	JOIN page_versions pv ON pv.id = p.published_version_id
+WHERE p.tenant_id = $1
+	AND pv.status = 'published'
+	AND pv.published_at IS NOT NULL
+	AND pv.published_at <= NOW()
+ORDER BY p.slug ASC
+`
+
+// Every published page, footer or not: the public site routes a path to a page
+// by this set, so a page left out of the footer is still reachable at its slug.
+func (q *Queries) ListPublishedPageSlugsForTenant(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedPageSlugsForTenant, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var slug string
+		if err := rows.Scan(&slug); err != nil {
+			return nil, err
+		}
+		items = append(items, slug)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedPagesForTenant = `-- name: ListPublishedPagesForTenant :many
 SELECT p.id, p.tenant_id, p.slug, p.title, p.published_version_id, p.display_in_footer, p.created_at, p.updated_at
 FROM pages p

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/page.proto.
  */
 export const file_publira_v1_page: GenFile = /*@__PURE__*/
-  fileDesc("ChVwdWJsaXJhL3YxL3BhZ2UucHJvdG8SCnB1YmxpcmEudjEiTAoZTGlzdFB1Ymxpc2hlZFBhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiQwoaTGlzdFB1Ymxpc2hlZFBhZ2VzUmVzcG9uc2USJQoFcGFnZXMYASADKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlBhZ2UiWAoXR2V0UHVibGlzaGVkUGFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBHNsdWcYAiABKAkicAoYR2V0UHVibGlzaGVkUGFnZVJlc3BvbnNlEiQKBHBhZ2UYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlBhZ2USLgoHdmVyc2lvbhgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuUGFnZVZlcnNpb24y3AEKElB1YmxpY1BhZ2VzU2VydmljZRJlChJMaXN0UHVibGlzaGVkUGFnZXMSJS5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRQYWdlc1JlcXVlc3QaJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRQYWdlc1Jlc3BvbnNlIgASXwoQR2V0UHVibGlzaGVkUGFnZRIjLnB1YmxpcmEudjEuR2V0UHVibGlzaGVkUGFnZVJlcXVlc3QaJC5wdWJsaXJhLnYxLkdldFB1Ymxpc2hlZFBhZ2VSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChVwdWJsaXJhL3YxL3BhZ2UucHJvdG8SCnB1YmxpcmEudjEiTAoZTGlzdFB1Ymxpc2hlZFBhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiQwoaTGlzdFB1Ymxpc2hlZFBhZ2VzUmVzcG9uc2USJQoFcGFnZXMYASADKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlBhZ2UiUAodTGlzdFB1Ymxpc2hlZFBhZ2VTbHVnc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii8KHkxpc3RQdWJsaXNoZWRQYWdlU2x1Z3NSZXNwb25zZRINCgVzbHVncxgBIAMoCSJYChdHZXRQdWJsaXNoZWRQYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEc2x1ZxgCIAEoCSJwChhHZXRQdWJsaXNoZWRQYWdlUmVzcG9uc2USJAoEcGFnZRgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuUGFnZRIuCgd2ZXJzaW9uGAIgASgLMh0ucHVibGlyYS50eXBlcy52MS5QYWdlVmVyc2lvbjLPAgoSUHVibGljUGFnZXNTZXJ2aWNlEmUKEkxpc3RQdWJsaXNoZWRQYWdlcxIlLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VzUmVxdWVzdBomLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VzUmVzcG9uc2UiABJxChZMaXN0UHVibGlzaGVkUGFnZVNsdWdzEikucHVibGlyYS52MS5MaXN0UHVibGlzaGVkUGFnZVNsdWdzUmVxdWVzdBoqLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VTbHVnc1Jlc3BvbnNlIgASXwoQR2V0UHVibGlzaGVkUGFnZRIjLnB1YmxpcmEudjEuR2V0UHVibGlzaGVkUGFnZVJlcXVlc3QaJC5wdWJsaXJhLnYxLkdldFB1Ymxpc2hlZFBhZ2VSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.ListPublishedPagesRequest
@@ -49,6 +49,44 @@ export const ListPublishedPagesResponseSchema: GenMessage<ListPublishedPagesResp
   messageDesc(file_publira_v1_page, 1);
 
 /**
+ * @generated from message publira.v1.ListPublishedPageSlugsRequest
+ */
+export type ListPublishedPageSlugsRequest = Message<"publira.v1.ListPublishedPageSlugsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.v1.ListPublishedPageSlugsRequest.
+ * Use `create(ListPublishedPageSlugsRequestSchema)` to create a new message.
+ */
+export const ListPublishedPageSlugsRequestSchema: GenMessage<ListPublishedPageSlugsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_page, 2);
+
+/**
+ * Every published page's slug, footer or not, in storage form ("/privacy").
+ * The public site's proxy holds the whole set to decide whether a path names a
+ * page, so it is one unpaginated answer rather than a list to browse.
+ *
+ * @generated from message publira.v1.ListPublishedPageSlugsResponse
+ */
+export type ListPublishedPageSlugsResponse = Message<"publira.v1.ListPublishedPageSlugsResponse"> & {
+  /**
+   * @generated from field: repeated string slugs = 1;
+   */
+  slugs: string[];
+};
+
+/**
+ * Describes the message publira.v1.ListPublishedPageSlugsResponse.
+ * Use `create(ListPublishedPageSlugsResponseSchema)` to create a new message.
+ */
+export const ListPublishedPageSlugsResponseSchema: GenMessage<ListPublishedPageSlugsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_page, 3);
+
+/**
  * @generated from message publira.v1.GetPublishedPageRequest
  */
 export type GetPublishedPageRequest = Message<"publira.v1.GetPublishedPageRequest"> & {
@@ -68,7 +106,7 @@ export type GetPublishedPageRequest = Message<"publira.v1.GetPublishedPageReques
  * Use `create(GetPublishedPageRequestSchema)` to create a new message.
  */
 export const GetPublishedPageRequestSchema: GenMessage<GetPublishedPageRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_page, 2);
+  messageDesc(file_publira_v1_page, 4);
 
 /**
  * @generated from message publira.v1.GetPublishedPageResponse
@@ -90,7 +128,7 @@ export type GetPublishedPageResponse = Message<"publira.v1.GetPublishedPageRespo
  * Use `create(GetPublishedPageResponseSchema)` to create a new message.
  */
 export const GetPublishedPageResponseSchema: GenMessage<GetPublishedPageResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_page, 3);
+  messageDesc(file_publira_v1_page, 5);
 
 /**
  * @generated from service publira.v1.PublicPagesService
@@ -103,6 +141,14 @@ export const PublicPagesService: GenService<{
     methodKind: "unary";
     input: typeof ListPublishedPagesRequestSchema;
     output: typeof ListPublishedPagesResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.PublicPagesService.ListPublishedPageSlugs
+   */
+  listPublishedPageSlugs: {
+    methodKind: "unary";
+    input: typeof ListPublishedPageSlugsRequestSchema;
+    output: typeof ListPublishedPageSlugsResponseSchema;
   },
   /**
    * @generated from rpc publira.v1.PublicPagesService.GetPublishedPage

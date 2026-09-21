@@ -36,6 +36,9 @@ const (
 	// PublicPagesServiceListPublishedPagesProcedure is the fully-qualified name of the
 	// PublicPagesService's ListPublishedPages RPC.
 	PublicPagesServiceListPublishedPagesProcedure = "/publira.v1.PublicPagesService/ListPublishedPages"
+	// PublicPagesServiceListPublishedPageSlugsProcedure is the fully-qualified name of the
+	// PublicPagesService's ListPublishedPageSlugs RPC.
+	PublicPagesServiceListPublishedPageSlugsProcedure = "/publira.v1.PublicPagesService/ListPublishedPageSlugs"
 	// PublicPagesServiceGetPublishedPageProcedure is the fully-qualified name of the
 	// PublicPagesService's GetPublishedPage RPC.
 	PublicPagesServiceGetPublishedPageProcedure = "/publira.v1.PublicPagesService/GetPublishedPage"
@@ -44,6 +47,7 @@ const (
 // PublicPagesServiceClient is a client for the publira.v1.PublicPagesService service.
 type PublicPagesServiceClient interface {
 	ListPublishedPages(context.Context, *connect.Request[v1.ListPublishedPagesRequest]) (*connect.Response[v1.ListPublishedPagesResponse], error)
+	ListPublishedPageSlugs(context.Context, *connect.Request[v1.ListPublishedPageSlugsRequest]) (*connect.Response[v1.ListPublishedPageSlugsResponse], error)
 	GetPublishedPage(context.Context, *connect.Request[v1.GetPublishedPageRequest]) (*connect.Response[v1.GetPublishedPageResponse], error)
 }
 
@@ -64,6 +68,12 @@ func NewPublicPagesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(publicPagesServiceMethods.ByName("ListPublishedPages")),
 			connect.WithClientOptions(opts...),
 		),
+		listPublishedPageSlugs: connect.NewClient[v1.ListPublishedPageSlugsRequest, v1.ListPublishedPageSlugsResponse](
+			httpClient,
+			baseURL+PublicPagesServiceListPublishedPageSlugsProcedure,
+			connect.WithSchema(publicPagesServiceMethods.ByName("ListPublishedPageSlugs")),
+			connect.WithClientOptions(opts...),
+		),
 		getPublishedPage: connect.NewClient[v1.GetPublishedPageRequest, v1.GetPublishedPageResponse](
 			httpClient,
 			baseURL+PublicPagesServiceGetPublishedPageProcedure,
@@ -75,13 +85,19 @@ func NewPublicPagesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 
 // publicPagesServiceClient implements PublicPagesServiceClient.
 type publicPagesServiceClient struct {
-	listPublishedPages *connect.Client[v1.ListPublishedPagesRequest, v1.ListPublishedPagesResponse]
-	getPublishedPage   *connect.Client[v1.GetPublishedPageRequest, v1.GetPublishedPageResponse]
+	listPublishedPages     *connect.Client[v1.ListPublishedPagesRequest, v1.ListPublishedPagesResponse]
+	listPublishedPageSlugs *connect.Client[v1.ListPublishedPageSlugsRequest, v1.ListPublishedPageSlugsResponse]
+	getPublishedPage       *connect.Client[v1.GetPublishedPageRequest, v1.GetPublishedPageResponse]
 }
 
 // ListPublishedPages calls publira.v1.PublicPagesService.ListPublishedPages.
 func (c *publicPagesServiceClient) ListPublishedPages(ctx context.Context, req *connect.Request[v1.ListPublishedPagesRequest]) (*connect.Response[v1.ListPublishedPagesResponse], error) {
 	return c.listPublishedPages.CallUnary(ctx, req)
+}
+
+// ListPublishedPageSlugs calls publira.v1.PublicPagesService.ListPublishedPageSlugs.
+func (c *publicPagesServiceClient) ListPublishedPageSlugs(ctx context.Context, req *connect.Request[v1.ListPublishedPageSlugsRequest]) (*connect.Response[v1.ListPublishedPageSlugsResponse], error) {
+	return c.listPublishedPageSlugs.CallUnary(ctx, req)
 }
 
 // GetPublishedPage calls publira.v1.PublicPagesService.GetPublishedPage.
@@ -92,6 +108,7 @@ func (c *publicPagesServiceClient) GetPublishedPage(ctx context.Context, req *co
 // PublicPagesServiceHandler is an implementation of the publira.v1.PublicPagesService service.
 type PublicPagesServiceHandler interface {
 	ListPublishedPages(context.Context, *connect.Request[v1.ListPublishedPagesRequest]) (*connect.Response[v1.ListPublishedPagesResponse], error)
+	ListPublishedPageSlugs(context.Context, *connect.Request[v1.ListPublishedPageSlugsRequest]) (*connect.Response[v1.ListPublishedPageSlugsResponse], error)
 	GetPublishedPage(context.Context, *connect.Request[v1.GetPublishedPageRequest]) (*connect.Response[v1.GetPublishedPageResponse], error)
 }
 
@@ -108,6 +125,12 @@ func NewPublicPagesServiceHandler(svc PublicPagesServiceHandler, opts ...connect
 		connect.WithSchema(publicPagesServiceMethods.ByName("ListPublishedPages")),
 		connect.WithHandlerOptions(opts...),
 	)
+	publicPagesServiceListPublishedPageSlugsHandler := connect.NewUnaryHandler(
+		PublicPagesServiceListPublishedPageSlugsProcedure,
+		svc.ListPublishedPageSlugs,
+		connect.WithSchema(publicPagesServiceMethods.ByName("ListPublishedPageSlugs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	publicPagesServiceGetPublishedPageHandler := connect.NewUnaryHandler(
 		PublicPagesServiceGetPublishedPageProcedure,
 		svc.GetPublishedPage,
@@ -118,6 +141,8 @@ func NewPublicPagesServiceHandler(svc PublicPagesServiceHandler, opts ...connect
 		switch r.URL.Path {
 		case PublicPagesServiceListPublishedPagesProcedure:
 			publicPagesServiceListPublishedPagesHandler.ServeHTTP(w, r)
+		case PublicPagesServiceListPublishedPageSlugsProcedure:
+			publicPagesServiceListPublishedPageSlugsHandler.ServeHTTP(w, r)
 		case PublicPagesServiceGetPublishedPageProcedure:
 			publicPagesServiceGetPublishedPageHandler.ServeHTTP(w, r)
 		default:
@@ -131,6 +156,10 @@ type UnimplementedPublicPagesServiceHandler struct{}
 
 func (UnimplementedPublicPagesServiceHandler) ListPublishedPages(context.Context, *connect.Request[v1.ListPublishedPagesRequest]) (*connect.Response[v1.ListPublishedPagesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PublicPagesService.ListPublishedPages is not implemented"))
+}
+
+func (UnimplementedPublicPagesServiceHandler) ListPublishedPageSlugs(context.Context, *connect.Request[v1.ListPublishedPageSlugsRequest]) (*connect.Response[v1.ListPublishedPageSlugsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PublicPagesService.ListPublishedPageSlugs is not implemented"))
 }
 
 func (UnimplementedPublicPagesServiceHandler) GetPublishedPage(context.Context, *connect.Request[v1.GetPublishedPageRequest]) (*connect.Response[v1.GetPublishedPageResponse], error) {

@@ -14,6 +14,17 @@ message ListPublishedPagesResponse {
   repeated publira.types.v1.Page pages = 1;
 }
 
+message ListPublishedPageSlugsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every published page's slug, footer or not, in storage form ("/privacy").
+// The public site's proxy holds the whole set to decide whether a path names a
+// page, so it is one unpaginated answer rather than a list to browse.
+message ListPublishedPageSlugsResponse {
+  repeated string slugs = 1;
+}
+
 message GetPublishedPageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string slug = 2;
@@ -26,5 +37,6 @@ message GetPublishedPageResponse {
 
 service PublicPagesService {
   rpc ListPublishedPages(ListPublishedPagesRequest) returns (ListPublishedPagesResponse) {}
+  rpc ListPublishedPageSlugs(ListPublishedPageSlugsRequest) returns (ListPublishedPageSlugsResponse) {}
   rpc GetPublishedPage(GetPublishedPageRequest) returns (GetPublishedPageResponse) {}
 }

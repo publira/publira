@@ -5,13 +5,16 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
+
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 func TestNormalizePageSlugForStorage(t *testing.T) {
 	tests := []struct {
-		in      string
-		want    string
-		wantErr bool
+		in         string
+		want       string
+		wantErr    bool
+		wantReason string
 	}{
 		{in: "", want: ""},
 		{in: "/", want: ""},
@@ -21,7 +24,20 @@ func TestNormalizePageSlugForStorage(t *testing.T) {
 		{in: "  /legal/terms  ", want: "/legal/terms"},
 		{in: "legal//terms", want: "/legal/terms"},
 		{in: "Under_score", wantErr: true},
-		{in: "/series/", want: "/series"}, // segment validity only; reserved paths checked elsewhere
+		// A page may share a path with one of the site's screens and is served
+		// there instead of it.
+		{in: "/series/", want: "/series"},
+		{in: "/contact", want: "/contact"},
+		{in: "/my", want: "/my"},
+		{in: "/login", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
+		{in: "signup", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
+		{in: "/verify/token", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
+		{in: "/confirm-email", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
+		{in: "/confirm-password", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
+		{in: "/reset-password", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
+		{in: "/resend-verification", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
+		{in: "/settings/notifications", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
+		{in: "/help/login", want: "/help/login"},
 	}
 	for _, tt := range tests {
 		got, err := normalizePageSlugForStorage(tt.in)
@@ -33,6 +49,9 @@ func TestNormalizePageSlugForStorage(t *testing.T) {
 				t.Fatalf("normalizePageSlugForStorage(%q) code = %v, want %v", tt.in, connect.CodeOf(err), connect.CodeInvalidArgument)
 			}
 			assertBadRequestField(t, err, "slug")
+			if reason := badRequestReason(t, err); reason != tt.wantReason {
+				t.Fatalf("normalizePageSlugForStorage(%q) reason = %q, want %q", tt.in, reason, tt.wantReason)
+			}
 			continue
 		}
 		if err != nil {
@@ -42,6 +61,15 @@ func TestNormalizePageSlugForStorage(t *testing.T) {
 			t.Fatalf("normalizePageSlugForStorage(%q) = %q, want %q", tt.in, got, tt.want)
 		}
 	}
+}
+
+func badRequestReason(t *testing.T, err error) string {
+	t.Helper()
+	detail, detailErr := err.(*connect.Error).Details()[0].Value()
+	if detailErr != nil {
+		t.Fatalf("detail = %v", detailErr)
+	}
+	return detail.(*errdetails.BadRequest).FieldViolations[0].Reason
 }
 
 func assertBadRequestField(t *testing.T, err error, wantField string) {

@@ -33,6 +33,7 @@ func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 	assertRouteRegistered(t, ts, "/publira.v1.FollowService/ListMyFollows", true)
 	assertRouteRegistered(t, ts, "/webhooks/stripe", false)
 	assertRouteRegistered(t, ts, "/publira.v1.PublicPagesService/ListPublishedPages", true)
+	assertRouteRegistered(t, ts, "/publira.v1.PublicPagesService/ListPublishedPageSlugs", true)
 	assertRouteRegistered(t, ts, "/publira.v1.AuthService/GetMe", true)
 	assertRouteRegistered(t, ts, "/publira.v1.AuthService/GetAnnouncement", true)
 	assertRouteRegistered(t, ts, "/publira.v1.NotificationService/ListNotifications", true)

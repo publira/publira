@@ -21,6 +21,21 @@ import (
 
 var slugSegmentPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]*$`)
 
+// reservedPageSlugFirstSegments are the public site's paths a page may not
+// take over. The site serves a published page in place of its own screen at
+// the same path, so these are the screens a reader cannot use the site without:
+// signing in and up, the links a mail carries, and the account settings.
+var reservedPageSlugFirstSegments = map[string]struct{}{
+	"confirm-email":       {},
+	"confirm-password":    {},
+	"login":               {},
+	"resend-verification": {},
+	"reset-password":      {},
+	"settings":            {},
+	"signup":              {},
+	"verify":              {},
+}
+
 const (
 	slugMaxLen           = 255
 	defaultPageListLimit = int32(20)
@@ -95,6 +110,7 @@ func pageVersionFromModel(v dbmodels.PageVersion) *publirattypesv1.PageVersion {
 //   - empty / "/" → ""
 //   - strip leading/trailing slashes, collapse "//"
 //   - each path segment: [a-z0-9][a-z0-9-]*
+//   - the first segment is not one of reservedPageSlugFirstSegments
 //   - stored form always has a single leading "/" (e.g. "/privacy", "/legal/terms")
 func normalizePageSlugForStorage(slug string) (string, error) {
 	normalized := strings.TrimSpace(slug)
@@ -124,6 +140,15 @@ func normalizePageSlugForStorage(slug string) (string, error) {
 				"slug",
 			)
 		}
+	}
+
+	if _, reserved := reservedPageSlugFirstSegments[segments[0]]; reserved {
+		return "", rpcerrors.NewFieldViolationErrorWithReason(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("slug must not start with /%s, which the public site keeps for its own screen", segments[0]),
+			"slug",
+			rpcerrors.FieldReasonPageSlugReserved,
+		)
 	}
 
 	return "/" + normalized, nil

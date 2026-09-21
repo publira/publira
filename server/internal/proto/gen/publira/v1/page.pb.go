@@ -110,6 +110,97 @@ func (x *ListPublishedPagesResponse) GetPages() []*v1.Page {
 	return nil
 }
 
+type ListPublishedPageSlugsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPublishedPageSlugsRequest) Reset() {
+	*x = ListPublishedPageSlugsRequest{}
+	mi := &file_publira_v1_page_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPublishedPageSlugsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPublishedPageSlugsRequest) ProtoMessage() {}
+
+func (x *ListPublishedPageSlugsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_page_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPublishedPageSlugsRequest.ProtoReflect.Descriptor instead.
+func (*ListPublishedPageSlugsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_page_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ListPublishedPageSlugsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+// Every published page's slug, footer or not, in storage form ("/privacy").
+// The public site's proxy holds the whole set to decide whether a path names a
+// page, so it is one unpaginated answer rather than a list to browse.
+type ListPublishedPageSlugsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slugs         []string               `protobuf:"bytes,1,rep,name=slugs,proto3" json:"slugs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPublishedPageSlugsResponse) Reset() {
+	*x = ListPublishedPageSlugsResponse{}
+	mi := &file_publira_v1_page_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPublishedPageSlugsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPublishedPageSlugsResponse) ProtoMessage() {}
+
+func (x *ListPublishedPageSlugsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_page_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPublishedPageSlugsResponse.ProtoReflect.Descriptor instead.
+func (*ListPublishedPageSlugsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_page_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ListPublishedPageSlugsResponse) GetSlugs() []string {
+	if x != nil {
+		return x.Slugs
+	}
+	return nil
+}
+
 type GetPublishedPageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -120,7 +211,7 @@ type GetPublishedPageRequest struct {
 
 func (x *GetPublishedPageRequest) Reset() {
 	*x = GetPublishedPageRequest{}
-	mi := &file_publira_v1_page_proto_msgTypes[2]
+	mi := &file_publira_v1_page_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -132,7 +223,7 @@ func (x *GetPublishedPageRequest) String() string {
 func (*GetPublishedPageRequest) ProtoMessage() {}
 
 func (x *GetPublishedPageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_page_proto_msgTypes[2]
+	mi := &file_publira_v1_page_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -145,7 +236,7 @@ func (x *GetPublishedPageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPublishedPageRequest.ProtoReflect.Descriptor instead.
 func (*GetPublishedPageRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_page_proto_rawDescGZIP(), []int{2}
+	return file_publira_v1_page_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetPublishedPageRequest) GetTenant() *v1.TenantContext {
@@ -172,7 +263,7 @@ type GetPublishedPageResponse struct {
 
 func (x *GetPublishedPageResponse) Reset() {
 	*x = GetPublishedPageResponse{}
-	mi := &file_publira_v1_page_proto_msgTypes[3]
+	mi := &file_publira_v1_page_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -184,7 +275,7 @@ func (x *GetPublishedPageResponse) String() string {
 func (*GetPublishedPageResponse) ProtoMessage() {}
 
 func (x *GetPublishedPageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_page_proto_msgTypes[3]
+	mi := &file_publira_v1_page_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -197,7 +288,7 @@ func (x *GetPublishedPageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPublishedPageResponse.ProtoReflect.Descriptor instead.
 func (*GetPublishedPageResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_page_proto_rawDescGZIP(), []int{3}
+	return file_publira_v1_page_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetPublishedPageResponse) GetPage() *v1.Page {
@@ -223,15 +314,20 @@ const file_publira_v1_page_proto_rawDesc = "" +
 	"\x19ListPublishedPagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"J\n" +
 	"\x1aListPublishedPagesResponse\x12,\n" +
-	"\x05pages\x18\x01 \x03(\v2\x16.publira.types.v1.PageR\x05pages\"f\n" +
+	"\x05pages\x18\x01 \x03(\v2\x16.publira.types.v1.PageR\x05pages\"X\n" +
+	"\x1dListPublishedPageSlugsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"6\n" +
+	"\x1eListPublishedPageSlugsResponse\x12\x14\n" +
+	"\x05slugs\x18\x01 \x03(\tR\x05slugs\"f\n" +
 	"\x17GetPublishedPageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\"\x7f\n" +
 	"\x18GetPublishedPageResponse\x12*\n" +
 	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\x127\n" +
-	"\aversion\x18\x02 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion2\xdc\x01\n" +
+	"\aversion\x18\x02 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion2\xcf\x02\n" +
 	"\x12PublicPagesService\x12e\n" +
-	"\x12ListPublishedPages\x12%.publira.v1.ListPublishedPagesRequest\x1a&.publira.v1.ListPublishedPagesResponse\"\x00\x12_\n" +
+	"\x12ListPublishedPages\x12%.publira.v1.ListPublishedPagesRequest\x1a&.publira.v1.ListPublishedPagesResponse\"\x00\x12q\n" +
+	"\x16ListPublishedPageSlugs\x12).publira.v1.ListPublishedPageSlugsRequest\x1a*.publira.v1.ListPublishedPageSlugsResponse\"\x00\x12_\n" +
 	"\x10GetPublishedPage\x12#.publira.v1.GetPublishedPageRequest\x1a$.publira.v1.GetPublishedPageResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
@@ -246,31 +342,36 @@ func file_publira_v1_page_proto_rawDescGZIP() []byte {
 	return file_publira_v1_page_proto_rawDescData
 }
 
-var file_publira_v1_page_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_publira_v1_page_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_publira_v1_page_proto_goTypes = []any{
-	(*ListPublishedPagesRequest)(nil),  // 0: publira.v1.ListPublishedPagesRequest
-	(*ListPublishedPagesResponse)(nil), // 1: publira.v1.ListPublishedPagesResponse
-	(*GetPublishedPageRequest)(nil),    // 2: publira.v1.GetPublishedPageRequest
-	(*GetPublishedPageResponse)(nil),   // 3: publira.v1.GetPublishedPageResponse
-	(*v1.TenantContext)(nil),           // 4: publira.types.v1.TenantContext
-	(*v1.Page)(nil),                    // 5: publira.types.v1.Page
-	(*v1.PageVersion)(nil),             // 6: publira.types.v1.PageVersion
+	(*ListPublishedPagesRequest)(nil),      // 0: publira.v1.ListPublishedPagesRequest
+	(*ListPublishedPagesResponse)(nil),     // 1: publira.v1.ListPublishedPagesResponse
+	(*ListPublishedPageSlugsRequest)(nil),  // 2: publira.v1.ListPublishedPageSlugsRequest
+	(*ListPublishedPageSlugsResponse)(nil), // 3: publira.v1.ListPublishedPageSlugsResponse
+	(*GetPublishedPageRequest)(nil),        // 4: publira.v1.GetPublishedPageRequest
+	(*GetPublishedPageResponse)(nil),       // 5: publira.v1.GetPublishedPageResponse
+	(*v1.TenantContext)(nil),               // 6: publira.types.v1.TenantContext
+	(*v1.Page)(nil),                        // 7: publira.types.v1.Page
+	(*v1.PageVersion)(nil),                 // 8: publira.types.v1.PageVersion
 }
 var file_publira_v1_page_proto_depIdxs = []int32{
-	4, // 0: publira.v1.ListPublishedPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	5, // 1: publira.v1.ListPublishedPagesResponse.pages:type_name -> publira.types.v1.Page
-	4, // 2: publira.v1.GetPublishedPageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	5, // 3: publira.v1.GetPublishedPageResponse.page:type_name -> publira.types.v1.Page
-	6, // 4: publira.v1.GetPublishedPageResponse.version:type_name -> publira.types.v1.PageVersion
-	0, // 5: publira.v1.PublicPagesService.ListPublishedPages:input_type -> publira.v1.ListPublishedPagesRequest
-	2, // 6: publira.v1.PublicPagesService.GetPublishedPage:input_type -> publira.v1.GetPublishedPageRequest
-	1, // 7: publira.v1.PublicPagesService.ListPublishedPages:output_type -> publira.v1.ListPublishedPagesResponse
-	3, // 8: publira.v1.PublicPagesService.GetPublishedPage:output_type -> publira.v1.GetPublishedPageResponse
-	7, // [7:9] is the sub-list for method output_type
-	5, // [5:7] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 0: publira.v1.ListPublishedPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	7, // 1: publira.v1.ListPublishedPagesResponse.pages:type_name -> publira.types.v1.Page
+	6, // 2: publira.v1.ListPublishedPageSlugsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	6, // 3: publira.v1.GetPublishedPageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	7, // 4: publira.v1.GetPublishedPageResponse.page:type_name -> publira.types.v1.Page
+	8, // 5: publira.v1.GetPublishedPageResponse.version:type_name -> publira.types.v1.PageVersion
+	0, // 6: publira.v1.PublicPagesService.ListPublishedPages:input_type -> publira.v1.ListPublishedPagesRequest
+	2, // 7: publira.v1.PublicPagesService.ListPublishedPageSlugs:input_type -> publira.v1.ListPublishedPageSlugsRequest
+	4, // 8: publira.v1.PublicPagesService.GetPublishedPage:input_type -> publira.v1.GetPublishedPageRequest
+	1, // 9: publira.v1.PublicPagesService.ListPublishedPages:output_type -> publira.v1.ListPublishedPagesResponse
+	3, // 10: publira.v1.PublicPagesService.ListPublishedPageSlugs:output_type -> publira.v1.ListPublishedPageSlugsResponse
+	5, // 11: publira.v1.PublicPagesService.GetPublishedPage:output_type -> publira.v1.GetPublishedPageResponse
+	9, // [9:12] is the sub-list for method output_type
+	6, // [6:9] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_page_proto_init() }
@@ -284,7 +385,7 @@ func file_publira_v1_page_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_page_proto_rawDesc), len(file_publira_v1_page_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

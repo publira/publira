@@ -71,6 +71,23 @@ func (s *apiServer) ListPublishedPages(
 	return connect.NewResponse(&publirav1.ListPublishedPagesResponse{Pages: pages}), nil
 }
 
+func (s *apiServer) ListPublishedPageSlugs(
+	ctx context.Context,
+	req *connect.Request[publirav1.ListPublishedPageSlugsRequest],
+) (*connect.Response[publirav1.ListPublishedPageSlugsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	slugs, err := s.queriesFor(ctx).ListPublishedPageSlugsForTenant(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list published page slugs", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publirav1.ListPublishedPageSlugsResponse{Slugs: slugs}), nil
+}
+
 // normalizePublishedPageSlugLookup matches admin storage form so clients may
 // send "privacy", "/privacy", or "//privacy" and still hit the same row.
 func normalizePublishedPageSlugLookup(slug string) string {

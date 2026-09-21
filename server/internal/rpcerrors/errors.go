@@ -45,6 +45,11 @@ const (
 	ReasonStorageTestTimeout        = "STORAGE_TEST_TIMEOUT"
 	ReasonStorageTestUnknown        = "STORAGE_TEST_UNKNOWN"
 
+	// FieldReasonPageSlugReserved is a BadRequest field-violation reason, not
+	// an ErrorInfo one: the page slug names a path the public site keeps for
+	// its own screens.
+	FieldReasonPageSlugReserved = "PAGE_SLUG_RESERVED"
+
 	// MetadataCreditCount is the ErrorInfo metadata key for how many credits
 	// still name a creator role that cannot be deleted. The value is a decimal
 	// integer in decimal digits, with no sign or thousands separator.
@@ -61,6 +66,14 @@ func NewFieldViolationError(code connect.Code, err error, field string) *connect
 
 // NewErrorInfoError reports a stable reason for a failure that is not tied to a
 // single invalid request field.
+// NewFieldViolationErrorWithReason is NewFieldViolationError with the
+// violation's reason set, for a field that can be refused for more than one cause.
+func NewFieldViolationErrorWithReason(code connect.Code, err error, field, reason string) *connect.Error {
+	return withDetail(code, err, &errdetails.BadRequest{
+		FieldViolations: []*errdetails.BadRequest_FieldViolation{{Field: field, Reason: reason}},
+	})
+}
+
 func NewErrorInfoError(code connect.Code, err error, reason string) *connect.Error {
 	return NewErrorInfoErrorWithMetadata(code, err, reason, nil)
 }

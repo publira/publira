@@ -101,6 +101,18 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 	AND pv.published_at <= NOW()
 ORDER BY p.created_at ASC;
 
+-- name: ListPublishedPageSlugsForTenant :many
+-- Every published page, footer or not: the public site routes a path to a page
+-- by this set, so a page left out of the footer is still reachable at its slug.
+SELECT p.slug
+FROM pages p
+	JOIN page_versions pv ON pv.id = p.published_version_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+	AND pv.status = 'published'
+	AND pv.published_at IS NOT NULL
+	AND pv.published_at <= NOW()
+ORDER BY p.slug ASC;
+
 -- name: GetPublishedPageBySlugForTenant :one
 SELECT p.id,
 	p.tenant_id,

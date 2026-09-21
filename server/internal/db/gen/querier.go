@@ -1285,6 +1285,9 @@ type Querier interface {
 	ListPublishedLabelsBySearchNameAsc(ctx context.Context, arg ListPublishedLabelsBySearchNameAscParams) ([]ListPublishedLabelsBySearchNameAscRow, error)
 	// The backward direction of ListPublishedLabelsBySearchNameAsc.
 	ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg ListPublishedLabelsBySearchNameDescParams) ([]ListPublishedLabelsBySearchNameDescRow, error)
+	// Every published page, footer or not: the public site routes a path to a page
+	// by this set, so a page left out of the footer is still reachable at its slug.
+	ListPublishedPageSlugsForTenant(ctx context.Context, tenantID uuid.UUID) ([]string, error)
 	// Restricted to the pages flagged for the footer, which is the only place a
 	// reader navigates to them from.
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)

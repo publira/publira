@@ -17,6 +17,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -79,6 +80,30 @@ func TestCreatePageInvalidSlugIncludesFieldViolation(t *testing.T) {
 		t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
 	assertBadRequestField(t, err, "slug")
+	assertExpectations(t, mock)
+}
+
+func TestCreatePageRefusesASlugThatTakesOverTheSignInScreen(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	req := connect.NewRequest(&publiraadminv1.CreatePageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Slug:   "/login",
+		Title:  "Sign in help",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreatePage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertBadRequestField(t, err, "slug")
+	if reason := badRequestReason(t, err); reason != rpcerrors.FieldReasonPageSlugReserved {
+		t.Fatalf("reason = %q, want %q", reason, rpcerrors.FieldReasonPageSlugReserved)
+	}
 	assertExpectations(t, mock)
 }
 
