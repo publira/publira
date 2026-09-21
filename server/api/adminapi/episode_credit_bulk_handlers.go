@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -121,9 +122,17 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
+	var owed revalidate.Owed
+	if len(outcome.changed) > 0 {
+		owed, err = s.recordRevalidation(txCtx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the bulk edited episode credits", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit bulk edit episode credits", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
 	}
+	s.reval.Send(ctx, owed)
 
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -136,11 +145,6 @@ func (s *adminServer) BulkEditEpisodeCredits(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
-	}
-	if len(outcome.changed) > 0 && s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after bulk edit episode credits", "tenant_public_id", tenant.PublicID, "series_public_id", seriesPublicID, "error", err)
-		}
 	}
 
 	// Reported in the order the request listed the episodes, which is the

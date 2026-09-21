@@ -47,7 +47,7 @@ type adminServer struct {
 	encryptor             emailsettings.SecretManager
 	tester                internalsmtp.Tester
 	logger                *slog.Logger
-	reval                 *revalidate.Client
+	reval                 *revalidate.Requester
 	tokens                *auth.TokenManager
 	// policy answers whether a tenant admin must enroll a second factor. It is
 	// the platform's decision, so a tenant cannot lock itself out of its own
@@ -120,6 +120,40 @@ func (s *adminServer) queriesFor(ctx context.Context) Querier {
 		return queries
 	}
 	return s.queries
+}
+
+// revalidateTags records what a committed write left stale and sends it. The
+// failure it can still have is the record, and that one is logged rather than
+// returned: the write is already committed, and a console save must not fail
+// because a cache entry outlived it.
+func (s *adminServer) revalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) {
+	owed, err := s.recordRevalidation(ctx, tenantID, tags)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to record a next cache invalidation",
+			"tenant_id", tenantID.String(),
+			"tags", tags,
+			"error", err,
+		)
+		return
+	}
+	s.reval.Send(ctx, owed)
+}
+
+// recordRevalidation writes the invalidation down on the querier the context
+// carries, so a handler that passes its transaction's context owes the drop
+// only if that transaction commits. Send the result once it has.
+//
+// The error is the caller's to act on rather than this helper's to log, because
+// what it means depends on where the write is: a caller still holding the
+// transaction has to roll it back instead of committing a write whose drop
+// nothing owes. A deployment with revalidation turned off is not that case — it
+// owes nothing and answers a zero [revalidate.Owed] and no error.
+func (s *adminServer) recordRevalidation(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	tags []string,
+) (revalidate.Owed, error) {
+	return s.reval.Record(ctx, s.queriesFor(ctx), tenantID, tags)
 }
 
 // beginTenantTx starts a transaction on the request's tenant-scoped
@@ -253,12 +287,18 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 		recorder = auditlog.New(queries, logger)
 	}
 	revalidateToken := strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN"))
-	revalidator, revalidateErr := revalidate.NewClient(revalidateToken, logger)
+	revalidateClient, revalidateErr := revalidate.NewClient(revalidateToken, logger)
 	if revalidateErr != nil {
 		logger.Warn("next revalidate is disabled", "reason", revalidateErr.Error())
-	} else if revalidator == nil {
+	} else if revalidateClient == nil {
 		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
+	revalidator := revalidate.NewRequester(revalidate.RequesterConfig{
+		Client:  revalidateClient,
+		Queries: queries,
+		DB:      db,
+		Logger:  logger,
+	})
 	server := &adminServer{
 		db:                    db,
 		queries:               queries,

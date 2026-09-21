@@ -59,12 +59,7 @@ func parsePinnedUntil(raw string, now time.Time) (sql.NullTime, error) {
 // otherwise stay as it was until the entry expired. Best-effort like the audit
 // row: failing an action the operator already performed would be worse.
 func (s *adminServer) revalidatePinnedAnnouncement(ctx context.Context, tenantID uuid.UUID) {
-	if s.reval == nil {
-		return
-	}
-	if err := s.reval.RevalidateTags(ctx, pinnedannouncements.RevalidateTags(tenantID)); err != nil {
-		s.logger.Warn("failed to request next revalidate after a pinned announcement change", "tenant_id", tenantID.String(), "error", err)
-	}
+	s.revalidateTags(ctx, tenantID, pinnedannouncements.RevalidateTags(tenantID))
 }
 
 type announcementPageRow struct {

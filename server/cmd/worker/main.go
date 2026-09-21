@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/publira/publira/server/config"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
@@ -77,9 +78,19 @@ func main() {
 	}
 	defer tickerDB.Close() //nolint:errcheck
 
+	// One client for the whole process: the periodic jobs record what they owe
+	// through it, and the handler below is what sends every recorded drop.
+	revalidateClient := newRevalidateClient(logger)
 	jobs, err := tickerjobs.New(tickerjobs.Config{
-		DB:                         tickerDB,
-		Revalidate:                 newRevalidateClient(logger),
+		DB: tickerDB,
+		// No DB here on purpose: the ticker role may insert an outbox event and
+		// not update one, and a drop recorded a drain away needs no attempt of
+		// its own.
+		Revalidate: revalidate.NewRequester(revalidate.RequesterConfig{
+			Client:  revalidateClient,
+			Queries: dbmodels.New(tickerDB),
+			Logger:  logger,
+		}),
 		Logger:                     logger,
 		PublishInterval:            envSeconds("PUBLIRA_PUBLISH_INTERVAL_SECONDS", 0),
 		PublishMaxRetries:          envInt("PUBLIRA_PUBLISH_MAX_RETRIES", tickerjobs.DefaultPublishMaxRetries),
@@ -143,13 +154,21 @@ func main() {
 		logger.Info("web push is disabled", "reason", "no VAPID configuration is configured")
 	}
 
+	// Declared as the interface, never as *revalidate.Client: a typed nil
+	// assigned to an interface is not nil, and the handler would then answer
+	// every event by dropping nothing instead of reporting that this worker
+	// cannot send.
+	var invalidator outbox.CacheInvalidator
+	if revalidateClient != nil {
+		invalidator = revalidateClient
+	}
 	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, jobs, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
 		Renderer:  resolveEmailRenderer(logger),
 	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger},
-		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger}))
+		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger}, invalidator))
 	if err != nil {
 		logger.Error("failed to start the outbox drain", "error", err)
 		os.Exit(1)
@@ -209,9 +228,9 @@ func resolveTickerDBURL() string {
 	return defaultTickerDBURL
 }
 
-// newRevalidateClient builds the client the periodic jobs drop Next.js cache
-// tags with. A deployment without a token gets a nil client, which makes every
-// drop a no-op while each job still records the boundary it passed.
+// newRevalidateClient builds the client that sends Next.js cache tags. A
+// deployment without a token gets a nil client, which makes every drop a no-op
+// while each job still records the boundary it passed.
 func newRevalidateClient(logger *slog.Logger) *revalidate.Client {
 	client, err := revalidate.NewClient(strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN")), logger)
 	switch {
@@ -230,6 +249,7 @@ func workerConfig(
 	pushHandlers outbox.PushHandlerConfig,
 	staffHandlers outbox.StaffNotificationHandlerConfig,
 	announcementHandlers outbox.AnnouncementNotificationHandlerConfig,
+	invalidator outbox.CacheInvalidator,
 ) outbox.Config {
 	emailHandlers.Logger = logger
 	handlers := outbox.DefaultRegistry()
@@ -250,6 +270,7 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeCommentAwaitingApprovalNotification, outbox.NewCommentAwaitingApprovalNotificationHandler(staffHandlers))
 	handlers.Register(outbox.EventTypeCommentReportedNotification, outbox.NewCommentReportedNotificationHandler(staffHandlers))
 	handlers.Register(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
+	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
 	if pushHandlers.Sender != nil || pushHandlers.WebSender != nil {
 		handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	}

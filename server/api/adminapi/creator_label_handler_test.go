@@ -1297,6 +1297,7 @@ func TestCreateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
 	expectAdminAuditLogInsert(mock)
+	expectRevalidationRecord(mock, tenantID)
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateLabelRequest{
@@ -1308,9 +1309,7 @@ func TestCreateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 	if _, err := client.CreateLabel(context.Background(), req); err != nil {
 		t.Fatalf("CreateLabel: %v", err)
 	}
-	if tags := revalidations.requestedTags(); !slices.Equal(tags, wantLabelRevalidateTags(tenantID)) {
-		t.Fatalf("revalidated tags = %v, want %v", tags, wantLabelRevalidateTags(tenantID))
-	}
+	revalidations.waitForTags(t, wantLabelRevalidateTags(tenantID))
 	assertExpectations(t, mock)
 }
 
@@ -1338,6 +1337,7 @@ func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "After", now, nil, nil))
 	expectAdminAuditLogInsert(mock)
+	expectRevalidationRecord(mock, tenantID)
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
@@ -1350,9 +1350,7 @@ func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 	if _, err := client.UpdateLabel(context.Background(), req); err != nil {
 		t.Fatalf("UpdateLabel: %v", err)
 	}
-	if tags := revalidations.requestedTags(); !slices.Equal(tags, wantLabelRevalidateTags(tenantID)) {
-		t.Fatalf("revalidated tags = %v, want %v", tags, wantLabelRevalidateTags(tenantID))
-	}
+	revalidations.waitForTags(t, wantLabelRevalidateTags(tenantID))
 	assertExpectations(t, mock)
 }
 
@@ -1394,6 +1392,7 @@ func TestCreateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", nil, now, nil, nil, int64(0), int32(0), int32(0)))
 	expectAdminAuditLogInsert(mock)
+	expectRevalidationRecord(mock, tenantID)
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateCreatorRequest{
@@ -1405,9 +1404,7 @@ func TestCreateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 	if _, err := client.CreateCreator(context.Background(), req); err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
-	if tags := revalidations.requestedTags(); !slices.Equal(tags, wantCreatorRevalidateTags(tenantID)) {
-		t.Fatalf("revalidated tags = %v, want %v", tags, wantCreatorRevalidateTags(tenantID))
-	}
+	revalidations.waitForTags(t, wantCreatorRevalidateTags(tenantID))
 	assertExpectations(t, mock)
 }
 
@@ -1435,6 +1432,7 @@ func TestUpdateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now, nil, nil, int64(0), int32(0), int32(0)))
 	expectAdminAuditLogInsert(mock)
+	expectRevalidationRecord(mock, tenantID)
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{
@@ -1448,8 +1446,6 @@ func TestUpdateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 	if _, err := client.UpdateCreator(context.Background(), req); err != nil {
 		t.Fatalf("UpdateCreator: %v", err)
 	}
-	if tags := revalidations.requestedTags(); !slices.Equal(tags, wantCreatorRevalidateTags(tenantID)) {
-		t.Fatalf("revalidated tags = %v, want %v", tags, wantCreatorRevalidateTags(tenantID))
-	}
+	revalidations.waitForTags(t, wantCreatorRevalidateTags(tenantID))
 	assertExpectations(t, mock)
 }

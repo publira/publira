@@ -115,6 +115,26 @@ WHERE id = sqlc.arg('id')
     AND status = 'processing'
 RETURNING *;
 
+-- Complete an event whose producer did the work itself before the
+-- worker ever claimed it. The cache invalidation is the one that does:
+-- the API server attempts the drop as soon as the write commits, and
+-- marks the row done so the worker does not send the same tags a
+-- second time. A row already claimed matches nothing here and is left
+-- to the worker, which is the honest outcome of that race.
+--
+-- No token is dropped from payload: this statement is only for an
+-- event whose payload holds no secret. An auth-mail event reaches its
+-- terminal update through MarkOutboxEventDone, which strips it.
+-- name: MarkPendingOutboxEventDone :one
+UPDATE outbox_events
+SET
+    status = 'done',
+    last_error = NULL,
+    updated_at = NOW()
+WHERE id = sqlc.arg('id')
+    AND status = 'pending'
+RETURNING *;
+
 -- name: MarkOutboxEventRetry :one
 UPDATE outbox_events
 SET

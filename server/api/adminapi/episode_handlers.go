@@ -835,11 +835,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after episode schedule update", "tenant_public_id", tenant.PublicID, "episode_public_id", req.Msg.EpisodePublicId, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(ep)
 	if err := setEpisodeAvailability(mapped, ep.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", ep.PublicID)
@@ -929,11 +925,7 @@ func (s *adminServer) UpdateEpisodeLayout(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after episode layout update", "tenant_public_id", tenant.PublicID, "episode_public_id", updated.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodeLayoutResponse{
 		Episode:          mapped,
 		ReadingDirection: readingDirection,
@@ -993,10 +985,6 @@ func (s *adminServer) UpdateEpisodeAvailability(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after episode availability update", "tenant_public_id", tenant.PublicID, "episode_public_id", updated.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodeAvailabilityResponse{Episode: mapped}), nil
 }

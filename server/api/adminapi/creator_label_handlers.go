@@ -729,11 +729,7 @@ func (s *adminServer) CreateCreator(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, creatorRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after creator create", "tenant_public_id", tenant.PublicID, "creator_public_id", created.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, creatorRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: protomapper.CreatorFromRow(
 		created.PublicID,
 		created.Name,
@@ -809,11 +805,7 @@ func (s *adminServer) UpdateCreator(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, creatorRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after creator update", "tenant_public_id", tenant.PublicID, "creator_public_id", updated.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, creatorRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: protomapper.CreatorFromRow(
 		updated.PublicID,
 		updated.Name,
@@ -906,11 +898,7 @@ func (s *adminServer) CreateLabel(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, labelRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after label create", "tenant_public_id", tenant.PublicID, "label_public_id", created.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: protomapper.LabelWithImage(created.PublicID, created.Name, created.EyeCatchImageUpdatedAt, variants)}), nil
 }
 
@@ -980,10 +968,6 @@ func (s *adminServer) UpdateLabel(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, labelRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after label update", "tenant_public_id", tenant.PublicID, "label_public_id", updated.PublicID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: protomapper.LabelWithImage(updated.PublicID, updated.Name, updated.EyeCatchImageUpdatedAt, variants)}), nil
 }

@@ -114,18 +114,19 @@ func (s *adminServer) revalidateOpenFreeWindow(ctx context.Context, tenantID uui
 	if len(windowIDs) == 0 {
 		return
 	}
-	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenantID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after free window change", "tenant_id", tenantID.String(), "error", err)
-			// The boundary stays unmarked so apply-free-windows retries it.
-			return
-		}
+	// The boundary is written off only once the drop is recorded; otherwise it
+	// stays due and apply-free-windows comes back for it.
+	owed, err := s.recordRevalidation(ctx, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
+	if err != nil {
+		s.logger.Warn("failed to record a next cache invalidation after a free window change", "tenant_id", tenantID.String(), "error", err)
+		return
 	}
 	for _, windowID := range windowIDs {
 		if err := s.queriesFor(ctx).MarkEpisodeFreeWindowStartRevalidated(ctx, windowID); err != nil {
 			s.logger.Warn("failed to mark free window start revalidated", "tenant_id", tenantID.String(), "free_window_id", windowID.String(), "error", err)
 		}
 	}
+	s.reval.Send(ctx, owed)
 }
 
 func (s *adminServer) CreateEpisodeFreeWindow(
@@ -344,10 +345,8 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 	// ahead of its start never reached the public site, and one already over
 	// was closed by apply-free-windows when it ended.
 	window := freeWindowPeriod{startsAt: deleted.StartsAt, endsAt: deleted.EndsAt}
-	if window.openAt(time.Now()) && s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
-			s.logger.Warn("failed to request next revalidate after free window delete", "tenant_id", tenant.ID.String(), "free_window_public_id", publicID, "error", err)
-		}
+	if window.openAt(time.Now()) {
+		s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
 	}
 
 	return connect.NewResponse(&publiraadminv1.DeleteEpisodeFreeWindowResponse{}), nil

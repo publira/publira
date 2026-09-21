@@ -69,6 +69,9 @@ const (
 
 func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Helper()
+	// The development environment sets PUBLIRA_REVALIDATE_TOKEN, and a server
+	// that picked it up would record an outbox event no expectation covers.
+	t.Setenv("PUBLIRA_REVALIDATE_TOKEN", "")
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)

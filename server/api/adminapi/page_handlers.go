@@ -257,16 +257,10 @@ func (s *adminServer) UpdatePage(
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 	// Title / display_in_footer can change the public footer link list.
-	if s.reval != nil {
-		tenantID := tenant.ID.String()
-		tags := []string{
-			fmt.Sprintf("tenant:%s:pages", tenantID),
-			fmt.Sprintf("tenant:%s:pages:%s", tenantID, page.ID.String()),
-		}
-		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
-			s.logger.Warn("failed to request next revalidate after page update", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, []string{
+		fmt.Sprintf("tenant:%s:pages", tenant.ID.String()),
+		fmt.Sprintf("tenant:%s:pages:%s", tenant.ID.String(), page.ID.String()),
+	})
 	return connect.NewResponse(&publiraadminv1.UpdatePageResponse{
 		Page: pageFromModel(page),
 	}), nil
@@ -518,16 +512,10 @@ func (s *adminServer) PublishVersion(
 	})
 	// Trigger revalidation for the page on the public site.
 	// Tags must use tenant.ID (path / cache key), same as series revalidate.
-	if s.reval != nil {
-		tenantID := tenant.ID.String()
-		tags := []string{
-			fmt.Sprintf("tenant:%s:pages", tenantID),
-			fmt.Sprintf("tenant:%s:pages:%s", tenantID, version.PageID.String()),
-		}
-		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
-			s.logger.Warn("failed to request next revalidate after page publish", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, []string{
+		fmt.Sprintf("tenant:%s:pages", tenant.ID.String()),
+		fmt.Sprintf("tenant:%s:pages:%s", tenant.ID.String(), version.PageID.String()),
+	})
 	return connect.NewResponse(&publiraadminv1.PublishVersionResponse{
 		Version: pageVersionFromModel(version),
 	}), nil
@@ -576,16 +564,10 @@ func (s *adminServer) UnpublishPage(
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 	// Both the page's own URL and the footer link list have to stop serving it.
-	if s.reval != nil {
-		tenantID := tenant.ID.String()
-		tags := []string{
-			fmt.Sprintf("tenant:%s:pages", tenantID),
-			fmt.Sprintf("tenant:%s:pages:%s", tenantID, page.ID.String()),
-		}
-		if err := s.reval.RevalidateTags(ctx, tags); err != nil {
-			s.logger.Warn("failed to request next revalidate after page unpublish", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
-		}
-	}
+	s.revalidateTags(ctx, tenant.ID, []string{
+		fmt.Sprintf("tenant:%s:pages", tenant.ID.String()),
+		fmt.Sprintf("tenant:%s:pages:%s", tenant.ID.String(), page.ID.String()),
+	})
 	return connect.NewResponse(&publiraadminv1.UnpublishPageResponse{
 		Page: pageFromModel(page),
 	}), nil

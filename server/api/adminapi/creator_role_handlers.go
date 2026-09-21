@@ -79,15 +79,6 @@ func (s *adminServer) recordCreatorRoleChange(ctx context.Context, tenantID uuid
 	})
 }
 
-func (s *adminServer) revalidateCreatorRoles(ctx context.Context, tenant dbmodels.Tenant, action string) {
-	if s.reval == nil {
-		return
-	}
-	if err := s.reval.RevalidateTags(ctx, creatorRoleRevalidateTags(tenant.ID.String())); err != nil {
-		s.logger.Warn("failed to request next revalidate after creator role change", "tenant_public_id", tenant.PublicID, "action", action, "error", err)
-	}
-}
-
 // creatorRolePageRow is one row of a role page, shared by the ascending and
 // descending keyset queries so the handler reads a single shape.
 type creatorRolePageRow struct {
@@ -259,7 +250,7 @@ func (s *adminServer) CreateCreatorRole(
 	}
 
 	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_created", created.PublicID)
-	s.revalidateCreatorRoles(ctx, tenant, "create")
+	s.revalidateTags(ctx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.CreateCreatorRoleResponse{
 		CreatorRole: &publirattypesv1.CreatorRole{PublicId: created.PublicID, Name: created.Name},
@@ -305,7 +296,7 @@ func (s *adminServer) UpdateCreatorRole(
 	}
 
 	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_updated", current.PublicID)
-	s.revalidateCreatorRoles(ctx, tenant, "update")
+	s.revalidateTags(ctx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.UpdateCreatorRoleResponse{
 		CreatorRole: &publirattypesv1.CreatorRole{PublicId: current.PublicID, Name: name},
@@ -365,12 +356,16 @@ func (s *adminServer) ReorderCreatorRoles(
 		}
 		creatorRoles = append(creatorRoles, &publirattypesv1.CreatorRole{PublicId: row.PublicID, Name: row.Name})
 	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the creator role order", err, "tenant_id", tenant.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit reorder creator roles", err, "tenant_id", tenant.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 
 	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_roles_reordered", tenant.PublicID)
-	s.revalidateCreatorRoles(ctx, tenant, "reorder")
 
 	return connect.NewResponse(&publiraadminv1.ReorderCreatorRolesResponse{CreatorRoles: creatorRoles}), nil
 }
@@ -420,7 +415,7 @@ func (s *adminServer) DeleteCreatorRole(
 	}
 
 	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_deleted", current.PublicID)
-	s.revalidateCreatorRoles(ctx, tenant, "delete")
+	s.revalidateTags(ctx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.DeleteCreatorRoleResponse{}), nil
 }

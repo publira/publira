@@ -46,7 +46,7 @@ type apiServer struct {
 	logger                *slog.Logger
 	guards                readerGuards
 	mail                  *mailguard.Guard
-	reval                 *revalidate.Client
+	reval                 *revalidate.Requester
 	webPushVAPIDPublicKey string
 	newStripeProvider     func(secretKey string) stripeSessionCreator
 }
@@ -110,6 +110,23 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 		return queries
 	}
 	return s.queries
+}
+
+// revalidateTags records what a committed write left stale and sends it. The
+// record is the only step that can still fail, and it is logged rather than
+// returned: the write is already committed, and a reader's action must not fail
+// because a cache entry outlived it.
+func (s *apiServer) revalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) {
+	owed, err := s.reval.Record(ctx, s.queriesFor(ctx), tenantID, tags)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to record a next cache invalidation",
+			"tenant_id", tenantID.String(),
+			"tags", tags,
+			"error", err,
+		)
+		return
+	}
+	s.reval.Send(ctx, owed)
 }
 
 // beginTenantTx starts a transaction on the request's tenant-scoped connection.
@@ -199,10 +216,16 @@ func newAPIServer(
 	// the console's client is: every other RPC here answers a reader without
 	// invalidating anything, and the one removal that does is one the
 	// storefront catches up with when its cached list expires.
-	revalidator, revalidateErr := revalidate.NewClient(strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN")), logger)
+	revalidateClient, revalidateErr := revalidate.NewClient(strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN")), logger)
 	if revalidateErr != nil {
 		logger.Warn("next revalidate is disabled", "reason", revalidateErr.Error())
 	}
+	revalidator := revalidate.NewRequester(revalidate.RequesterConfig{
+		Client:  revalidateClient,
+		Queries: queries,
+		DB:      db,
+		Logger:  logger,
+	})
 	webPushPublicKey := strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY"))
 	if webPushPublicKey == "" || strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY")) == "" || strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_SUBJECT")) == "" {
 		webPushPublicKey = ""

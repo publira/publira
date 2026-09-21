@@ -689,13 +689,8 @@ func (s *apiServer) autoHideReportedComment(
 // report itself is already committed, and a list that kept the comment until
 // its entry expired would be worse than a warning in the log.
 func (s *apiServer) revalidateCommentList(ctx context.Context, tenantID uuid.UUID, episodePublicID string) {
-	if s.reval == nil {
-		return
-	}
 	tag := fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
-	if err := s.reval.RevalidateTags(ctx, []string{tag}); err != nil {
-		s.logger.Warn("failed to request next revalidate after an automatic comment removal", "tenant_id", tenantID.String(), "episode_public_id", episodePublicID, "error", err)
-	}
+	s.revalidateTags(ctx, tenantID, []string{tag})
 }
 
 // ReportEpisodeComment flags one published comment as breaking the rules.

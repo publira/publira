@@ -32,11 +32,12 @@ type Queries interface {
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
 }
 
-// Revalidator drops Next.js cache tags. *revalidate.Client satisfies it, and a
-// nil client of that type is a no-op, so a deployment with revalidation turned
-// off still records the boundaries it passed instead of collecting them.
+// Revalidator records Next.js cache tags as owed. *revalidate.Requester
+// satisfies it, and a nil requester of that type is a no-op, so a deployment
+// with revalidation turned off still records the boundaries it passed instead
+// of collecting them.
 type Revalidator interface {
-	RevalidateTags(ctx context.Context, tags []string) error
+	RevalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) error
 }
 
 // Runner applies every free window boundary that has passed.
@@ -98,14 +99,14 @@ func (r *Runner) RunOnce(ctx context.Context) {
 	}
 }
 
-// applyTenant drops one tenant's caches and then records the boundaries that
-// drop answered for. The order matters: a boundary marked before the caches are
-// dropped would never be retried, and the site would keep serving the side of
-// the window it has already left.
+// applyTenant records one tenant's drop and then marks the boundaries that
+// drop answers for. The order matters: a boundary marked before the drop is
+// owed would never be retried, and the site would keep serving the side of the
+// window it has already left.
 func (r *Runner) applyTenant(ctx context.Context, tenantID uuid.UUID, rows []dbmodels.ListEpisodeFreeWindowBoundariesDueRow) {
 	if r.reval != nil {
-		if err := r.reval.RevalidateTags(ctx, RevalidateTags(tenantID)); err != nil {
-			r.logger.WarnContext(ctx, "failed to revalidate after free window boundary",
+		if err := r.reval.RevalidateTags(ctx, tenantID, RevalidateTags(tenantID)); err != nil {
+			r.logger.WarnContext(ctx, "failed to record a revalidation after a free window boundary",
 				"tenant_id", tenantID.String(),
 				"boundaries", len(rows),
 				"error", err,
