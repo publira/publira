@@ -1439,6 +1439,7 @@
     "settings": {
       "email_error": "メール設定を表示できませんでした",
       "payment_error": "決済設定を表示できませんでした",
+      "mobile_push_error": "モバイルプッシュの設定を表示できませんでした",
       "section_error": "設定を表示できませんでした",
       "theme_error": "テーマを表示できませんでした",
       "theme": {
@@ -1631,6 +1632,8 @@
       "email_description": "テナントごとのメール送信設定を管理します。",
       "payment_title": "設定 - 決済",
       "payment_description": "テナントごとの Stripe 決済設定を管理します。",
+      "mobile_push_title": "設定 - モバイルプッシュ",
+      "mobile_push_description": "このテナントのモバイルアプリへプッシュ通知を送るための Firebase 認証情報を管理します。",
       "account_title": "アカウント設定",
       "account_description": "ログイン中の管理者アカウントの情報を管理します。",
       "tenant_missing": "テナント ID が見つかりません。",
@@ -1645,6 +1648,7 @@
         "theme": "テーマ",
         "email": "メール情報",
         "payment": "決済",
+        "mobile_push": "モバイルプッシュ",
         "policy": "制限と保持"
       },
       "image": {
@@ -1889,6 +1893,40 @@
         "validation": {
           "secret_key_required": "シークレットキーを入力してください。",
           "webhook_secret_required": "Webhook 署名シークレットを入力してください。"
+        }
+      },
+      "mobile_push": {
+        "title": "Firebase Cloud Messaging",
+        "description": "プッシュ通知は、このテナントのモバイルアプリがビルドされた Firebase プロジェクトを通じて届きます。認証情報には同じプロジェクトのサービスアカウントキーを使ってください。キーファイルは書き込み専用で、保存後は表示しません。",
+        "configured": "モバイルプッシュは有効です。アプリへの通知は下記の認証情報で送信されます。",
+        "unconfigured": "モバイルプッシュは無効です。認証情報を保存するまで、モバイルアプリにはプッシュ通知が届きません。メールとアプリ内の通知は引き続き届きます。",
+        "project_id": "Firebase プロジェクト ID",
+        "project_id_description": "テナントのモバイルアプリがビルドされた Firebase プロジェクトの ID です。Firebase コンソールのプロジェクトの設定に表示されます。",
+        "client_email": "サービスアカウント",
+        "updated_at": "最終保存日時",
+        "key_file": "サービスアカウントキーのファイル",
+        "key_file_description": "Firebase の［プロジェクトの設定］→［サービス アカウント］→［新しい秘密鍵を生成］でダウンロードした JSON ファイルです。保存すると、登録済みのキーは置き換わります。",
+        "save": "認証情報を保存",
+        "replace": "認証情報を置き換える",
+        "saved": "Firebase の認証情報を保存しました。",
+        "delete": "削除",
+        "deleting": "削除中…",
+        "delete_confirm_title": "Firebase の認証情報を削除しますか?",
+        "delete_confirm_description": "保存済みのキーを削除し、このテナントのモバイルプッシュを無効にします。メールとアプリ内の通知には影響しません。",
+        "delete_confirm_action": "認証情報を削除",
+        "deleted": "Firebase の認証情報を削除しました。",
+        "load_failed": "モバイルプッシュの設定の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "Firebase の認証情報の保存に失敗しました。時間をおいて再試行してください。",
+        "delete_failed": "Firebase の認証情報の削除に失敗しました。時間をおいて再試行してください。",
+        "encryption_unavailable": "API サーバーにサービスアカウントキーを保護する暗号鍵がないため、保存できません。PUBLIRA_SECRET_ENCRYPTION_KEYS を設定して API サーバーを再起動してください。",
+        "validation": {
+          "project_id_required": "Firebase プロジェクト ID を入力してください。",
+          "file_required": "サービスアカウントキーのファイルを選択してください。",
+          "file_too_large": "サービスアカウントキーとしては大きすぎるファイルです。Firebase からダウンロードした JSON ファイルを選択してください。",
+          "not_json": "JSON ファイルではありません。Firebase からダウンロードしたサービスアカウントキーのファイルを選択してください。",
+          "not_service_account": "サービスアカウントキーではありません。Firebase コンソールの［プロジェクトの設定］→［サービス アカウント］からダウンロードしてください。",
+          "project_mismatch": "このキーは Firebase プロジェクト「{$key}」のもので、「{$entered}」のものではありません。モバイルアプリがビルドされたプロジェクトのキーをアップロードするか、プロジェクト ID を修正してください。",
+          "key_invalid": "このサービスアカウントキーは使用できません。Firebase コンソールの［プロジェクトの設定］→［サービス アカウント］で新しい秘密鍵を生成し、アップロードしてください。"
         }
       },
       "policy_title": "設定 - 制限と保持",
