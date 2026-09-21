@@ -72,6 +72,23 @@ void main() {
       );
     });
 
+    test('a confirmation link keeps the token the mail carried', () {
+      expect(
+        appLocationFor(
+          Uri.parse('https://shop.example/verify?token=abc123'),
+          tenantHost: host,
+        ),
+        '/verify?token=abc123',
+      );
+      expect(
+        appLocationFor(
+          Uri.parse('https://shop.example/ja/verify?token=abc123'),
+          tenantHost: host,
+        ),
+        '/verify?token=abc123',
+      );
+    });
+
     test('http is accepted the same way https is', () {
       expect(
         appLocationFor(

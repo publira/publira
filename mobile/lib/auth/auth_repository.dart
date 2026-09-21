@@ -2,12 +2,52 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/reader_age.dart';
 
-/// Sign-in and session checks against the public API.
+/// Sign-up, sign-in, and session checks against the public API.
 abstract class AuthRepository {
   /// Signs [email] in with [password] and returns the session the API issued.
   ///
   /// Throws [AuthFailure].
   Future<AuthSession> signIn({required String email, required String password});
+
+  /// Asks the API for an account on [email], which it answers by mailing that
+  /// address a confirmation link.
+  ///
+  /// Nothing comes back but the acceptance: an address that already has an
+  /// account is accepted the same way, and only the mailbox tells the two
+  /// apart. The account cannot sign in until the link has been opened.
+  ///
+  /// [birthDate] is `YYYY-MM-DD`, and empty from a form the tenant's rule did
+  /// not make ask.
+  ///
+  /// Throws [AuthFailure].
+  Future<void> signUp({
+    required String name,
+    required String email,
+    required String password,
+    String birthDate = '',
+  });
+
+  /// Confirms the address behind [token], which a confirmation link carries,
+  /// and activates the account it belongs to.
+  ///
+  /// Throws [AuthFailure]; the kind tells a link the API never issued from
+  /// one whose time has run out, because only the second has a way back.
+  Future<void> verifyEmail(String token);
+
+  /// Asks the API to mail [email] a fresh confirmation link.
+  ///
+  /// Every address is accepted, whether it has an unconfirmed account, a
+  /// confirmed one, or none at all, so this reports nothing about who is
+  /// registered.
+  ///
+  /// Throws [AuthFailure].
+  Future<void> requestEmailVerification(String email);
+
+  /// Whether the tenant checks ages, read without a session so the sign-up
+  /// form knows whether to ask for a birth date.
+  ///
+  /// Throws [AuthFailure].
+  Future<AgeVerification> readAgeVerification();
 
   /// Re-reads the reader behind [session], so a token restored from storage is
   /// confirmed before the app presents it as signed in.

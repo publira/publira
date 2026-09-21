@@ -208,6 +208,30 @@ abstract class AppMessages {
   /// `mobile.account.title`
   String get accountTitle;
 
+  /// `mobile.auth.email_invalid`
+  String get authEmailInvalid;
+
+  /// `mobile.auth.email_label`
+  String get authEmailLabel;
+
+  /// `mobile.auth.email_required`
+  String get authEmailRequired;
+
+  /// `mobile.auth.password_label`
+  String get authPasswordLabel;
+
+  /// `mobile.auth.password_required`
+  String get authPasswordRequired;
+
+  /// `mobile.auth.resend_failed`
+  String get authResendFailed;
+
+  /// `mobile.auth.resend_verification`
+  String get authResendVerification;
+
+  /// `mobile.auth.verification_sent`
+  String get authVerificationSent;
+
   /// `mobile.catalog.all_series_heading`
   String get catalogAllSeriesHeading;
 
@@ -592,6 +616,18 @@ abstract class AppMessages {
   /// `mobile.push.open`
   String get pushOpen;
 
+  /// `mobile.resend_verification.description`
+  String get resendVerificationDescription;
+
+  /// `mobile.resend_verification.sent_heading`
+  String get resendVerificationSentHeading;
+
+  /// `mobile.resend_verification.submit`
+  String get resendVerificationSubmit;
+
+  /// `mobile.resend_verification.title`
+  String get resendVerificationTitle;
+
   /// `mobile.search.all`
   String get searchAll;
 
@@ -748,14 +784,8 @@ abstract class AppMessages {
   /// `mobile.share.text`
   String shareText({required String creators, required String title});
 
-  /// `mobile.sign_in.email_label`
-  String get signInEmailLabel;
-
   /// `mobile.sign_in.email_not_verified`
   String get signInEmailNotVerified;
-
-  /// `mobile.sign_in.email_required`
-  String get signInEmailRequired;
 
   /// `mobile.sign_in.failed`
   String get signInFailed;
@@ -763,14 +793,86 @@ abstract class AppMessages {
   /// `mobile.sign_in.invalid_credentials`
   String get signInInvalidCredentials;
 
-  /// `mobile.sign_in.password_label`
-  String get signInPasswordLabel;
+  /// `mobile.sign_in.no_account`
+  String get signInNoAccount;
 
-  /// `mobile.sign_in.password_required`
-  String get signInPasswordRequired;
+  /// `mobile.sign_in.password_reset_note`
+  String get signInPasswordResetNote;
 
-  /// `mobile.sign_in.website_note`
-  String get signInWebsiteNote;
+  /// `mobile.sign_in.sign_up`
+  String get signInSignUp;
+
+  /// `mobile.sign_up.birth_date_clear`
+  String get signUpBirthDateClear;
+
+  /// `mobile.sign_up.birth_date_help`
+  String get signUpBirthDateHelp;
+
+  /// `mobile.sign_up.birth_date_label`
+  String get signUpBirthDateLabel;
+
+  /// `mobile.sign_up.failed`
+  String get signUpFailed;
+
+  /// `mobile.sign_up.have_account`
+  String get signUpHaveAccount;
+
+  /// `mobile.sign_up.name_label`
+  String get signUpNameLabel;
+
+  /// `mobile.sign_up.name_required`
+  String get signUpNameRequired;
+
+  /// `mobile.sign_up.name_too_long`
+  String get signUpNameTooLong;
+
+  /// `mobile.sign_up.password_confirm_label`
+  String get signUpPasswordConfirmLabel;
+
+  /// `mobile.sign_up.password_confirm_required`
+  String get signUpPasswordConfirmRequired;
+
+  /// `mobile.sign_up.password_mismatch`
+  String get signUpPasswordMismatch;
+
+  /// `mobile.sign_up.password_too_long`
+  String get signUpPasswordTooLong;
+
+  /// `mobile.sign_up.submit`
+  String get signUpSubmit;
+
+  /// `mobile.sign_up.title`
+  String get signUpTitle;
+
+  /// `mobile.sign_up_pending.check_spam`
+  String get signUpPendingCheckSpam;
+
+  /// `mobile.sign_up_pending.sent`
+  String get signUpPendingSent;
+
+  /// `mobile.sign_up_pending.sent_to`
+  String signUpPendingSentTo({required String email});
+
+  /// `mobile.sign_up_pending.title`
+  String get signUpPendingTitle;
+
+  /// `mobile.verify_email.expired`
+  String get verifyEmailExpired;
+
+  /// `mobile.verify_email.failed`
+  String get verifyEmailFailed;
+
+  /// `mobile.verify_email.invalid_token`
+  String get verifyEmailInvalidToken;
+
+  /// `mobile.verify_email.title`
+  String get verifyEmailTitle;
+
+  /// `mobile.verify_email.verified`
+  String get verifyEmailVerified;
+
+  /// `mobile.verify_email.verifying`
+  String get verifyEmailVerifying;
 
   /// `mobile.viewer.age_restricted.add_birth_date`
   String get viewerAgeRestrictedAddBirthDate;
@@ -1076,6 +1178,46 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountTitle {
     return 'アカウント';
+  }
+
+  @override
+  String get authEmailInvalid {
+    return 'メールアドレスの形式が正しくありません。';
+  }
+
+  @override
+  String get authEmailLabel {
+    return 'メールアドレス';
+  }
+
+  @override
+  String get authEmailRequired {
+    return 'メールアドレスを入力してください';
+  }
+
+  @override
+  String get authPasswordLabel {
+    return 'パスワード';
+  }
+
+  @override
+  String get authPasswordRequired {
+    return 'パスワードを入力してください';
+  }
+
+  @override
+  String get authResendFailed {
+    return '確認メールを送信できませんでした。再試行してください。';
+  }
+
+  @override
+  String get authResendVerification {
+    return '確認メールを再送する';
+  }
+
+  @override
+  String get authVerificationSent {
+    return '確認メールを送信しました。メール内のリンクを開いて登録を完了してください。';
   }
 
   @override
@@ -1719,6 +1861,26 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get resendVerificationDescription {
+    return '登録したメールアドレスを入力してください。確認が済んでいないアドレスであれば、新しいリンクを送ります。';
+  }
+
+  @override
+  String get resendVerificationSentHeading {
+    return '確認メール送信';
+  }
+
+  @override
+  String get resendVerificationSubmit {
+    return '確認メールを送信';
+  }
+
+  @override
+  String get resendVerificationTitle {
+    return '確認メールの再送';
+  }
+
+  @override
   String get searchAll {
     return 'すべて';
   }
@@ -1979,18 +2141,8 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
-  String get signInEmailLabel {
-    return 'メールアドレス';
-  }
-
-  @override
   String get signInEmailNotVerified {
     return 'メールアドレスの確認が完了していません。確認メールのリンクを開いてください。';
-  }
-
-  @override
-  String get signInEmailRequired {
-    return 'メールアドレスを入力してください';
   }
 
   @override
@@ -2004,18 +2156,138 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
-  String get signInPasswordLabel {
-    return 'パスワード';
+  String get signInNoAccount {
+    return 'アカウントをお持ちでない方は';
   }
 
   @override
-  String get signInPasswordRequired {
-    return 'パスワードを入力してください';
+  String get signInPasswordResetNote {
+    return 'パスワードの再設定はウェブサイトで行えます。';
   }
 
   @override
-  String get signInWebsiteNote {
-    return 'アカウントの作成とパスワードの再設定はウェブサイトで行えます。';
+  String get signInSignUp {
+    return '新規登録';
+  }
+
+  @override
+  String get signUpBirthDateClear {
+    return '生年月日を消す';
+  }
+
+  @override
+  String get signUpBirthDateHelp {
+    return '年齢制限のある作品を開くときに年齢を確認します。あとから登録することもできますが、一度登録すると変更できません。';
+  }
+
+  @override
+  String get signUpBirthDateLabel {
+    return '生年月日';
+  }
+
+  @override
+  String get signUpFailed {
+    return '新規登録に失敗しました。入力内容をご確認ください。';
+  }
+
+  @override
+  String get signUpHaveAccount {
+    return 'すでにアカウントをお持ちの方は';
+  }
+
+  @override
+  String get signUpNameLabel {
+    return 'お名前';
+  }
+
+  @override
+  String get signUpNameRequired {
+    return '表示名を入力してください。';
+  }
+
+  @override
+  String get signUpNameTooLong {
+    return '表示名は100文字以内で入力してください。';
+  }
+
+  @override
+  String get signUpPasswordConfirmLabel {
+    return 'パスワード（確認）';
+  }
+
+  @override
+  String get signUpPasswordConfirmRequired {
+    return 'パスワード確認を入力してください。';
+  }
+
+  @override
+  String get signUpPasswordMismatch {
+    return 'パスワード確認が一致しません。同じパスワードを入力してください。';
+  }
+
+  @override
+  String get signUpPasswordTooLong {
+    return 'パスワードは1024文字以内で入力してください。';
+  }
+
+  @override
+  String get signUpSubmit {
+    return '新規登録';
+  }
+
+  @override
+  String get signUpTitle {
+    return '新規登録';
+  }
+
+  @override
+  String get signUpPendingCheckSpam {
+    return 'メールが届かない場合は、迷惑メールフォルダもご確認ください。';
+  }
+
+  @override
+  String get signUpPendingSent {
+    return '入力されたメールアドレス宛にメールを送信しました。続きはメールをご確認ください。';
+  }
+
+  @override
+  String signUpPendingSentTo({required String email}) {
+    return '送信先: $email';
+  }
+
+  @override
+  String get signUpPendingTitle {
+    return 'メールの確認';
+  }
+
+  @override
+  String get verifyEmailExpired {
+    return 'この確認リンクは有効期限が切れています。';
+  }
+
+  @override
+  String get verifyEmailFailed {
+    return 'メールアドレスを確認できませんでした。再試行してください。';
+  }
+
+  @override
+  String get verifyEmailInvalidToken {
+    return 'この確認リンクは無効です。';
+  }
+
+  @override
+  String get verifyEmailTitle {
+    return 'メール確認';
+  }
+
+  @override
+  String get verifyEmailVerified {
+    return 'メールアドレスの確認が完了しました。サインインしてください。';
+  }
+
+  @override
+  String get verifyEmailVerifying {
+    return 'メールアドレスを確認しています…';
   }
 
   @override
@@ -2384,6 +2656,46 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get accountTitle {
     return 'Account';
+  }
+
+  @override
+  String get authEmailInvalid {
+    return 'Enter a valid email address.';
+  }
+
+  @override
+  String get authEmailLabel {
+    return 'Email address';
+  }
+
+  @override
+  String get authEmailRequired {
+    return 'Enter your email address.';
+  }
+
+  @override
+  String get authPasswordLabel {
+    return 'Password';
+  }
+
+  @override
+  String get authPasswordRequired {
+    return 'Enter your password.';
+  }
+
+  @override
+  String get authResendFailed {
+    return 'Could not send the confirmation email. Try again.';
+  }
+
+  @override
+  String get authResendVerification {
+    return 'Send a new confirmation email';
+  }
+
+  @override
+  String get authVerificationSent {
+    return 'We sent a confirmation email. Open the link in it to finish signing up.';
   }
 
   @override
@@ -3027,6 +3339,26 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get resendVerificationDescription {
+    return 'Enter the address you signed up with. If it is still waiting to be confirmed, a new link goes out to it.';
+  }
+
+  @override
+  String get resendVerificationSentHeading {
+    return 'Confirmation email sent';
+  }
+
+  @override
+  String get resendVerificationSubmit {
+    return 'Send confirmation email';
+  }
+
+  @override
+  String get resendVerificationTitle {
+    return 'Resend the confirmation email';
+  }
+
+  @override
   String get searchAll {
     return 'All';
   }
@@ -3287,18 +3619,8 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
-  String get signInEmailLabel {
-    return 'Email address';
-  }
-
-  @override
   String get signInEmailNotVerified {
     return 'Your email address has not been confirmed yet. Open the link in the confirmation email.';
-  }
-
-  @override
-  String get signInEmailRequired {
-    return 'Enter your email address.';
   }
 
   @override
@@ -3312,18 +3634,138 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
-  String get signInPasswordLabel {
-    return 'Password';
+  String get signInNoAccount {
+    return 'Don\'t have an account?';
   }
 
   @override
-  String get signInPasswordRequired {
-    return 'Enter your password.';
+  String get signInPasswordResetNote {
+    return 'Reset your password on the website.';
   }
 
   @override
-  String get signInWebsiteNote {
-    return 'Create an account or reset your password on the website.';
+  String get signInSignUp {
+    return 'Sign up';
+  }
+
+  @override
+  String get signUpBirthDateClear {
+    return 'Clear the date of birth';
+  }
+
+  @override
+  String get signUpBirthDateHelp {
+    return 'This site checks your age before opening age-rated works. You can add it later, but it cannot be changed once given.';
+  }
+
+  @override
+  String get signUpBirthDateLabel {
+    return 'Date of birth';
+  }
+
+  @override
+  String get signUpFailed {
+    return 'Could not create your account. Please check what you entered.';
+  }
+
+  @override
+  String get signUpHaveAccount {
+    return 'Already have an account?';
+  }
+
+  @override
+  String get signUpNameLabel {
+    return 'Name';
+  }
+
+  @override
+  String get signUpNameRequired {
+    return 'Enter a display name.';
+  }
+
+  @override
+  String get signUpNameTooLong {
+    return 'Use 100 characters or fewer for the display name.';
+  }
+
+  @override
+  String get signUpPasswordConfirmLabel {
+    return 'Confirm password';
+  }
+
+  @override
+  String get signUpPasswordConfirmRequired {
+    return 'Confirm your password.';
+  }
+
+  @override
+  String get signUpPasswordMismatch {
+    return 'The passwords do not match. Enter the same password in both fields.';
+  }
+
+  @override
+  String get signUpPasswordTooLong {
+    return 'Use 1024 characters or fewer for the password.';
+  }
+
+  @override
+  String get signUpSubmit {
+    return 'Sign up';
+  }
+
+  @override
+  String get signUpTitle {
+    return 'Sign up';
+  }
+
+  @override
+  String get signUpPendingCheckSpam {
+    return 'If the email does not arrive, check your spam folder.';
+  }
+
+  @override
+  String get signUpPendingSent {
+    return 'We sent an email to the address you entered. Open it to continue.';
+  }
+
+  @override
+  String signUpPendingSentTo({required String email}) {
+    return 'Sent to: $email';
+  }
+
+  @override
+  String get signUpPendingTitle {
+    return 'Check your email';
+  }
+
+  @override
+  String get verifyEmailExpired {
+    return 'This confirmation link has expired.';
+  }
+
+  @override
+  String get verifyEmailFailed {
+    return 'Could not confirm your email address. Try again.';
+  }
+
+  @override
+  String get verifyEmailInvalidToken {
+    return 'This confirmation link is not valid.';
+  }
+
+  @override
+  String get verifyEmailTitle {
+    return 'Email confirmation';
+  }
+
+  @override
+  String get verifyEmailVerified {
+    return 'Your email address has been confirmed. You can sign in now.';
+  }
+
+  @override
+  String get verifyEmailVerifying {
+    return 'Confirming your email address…';
   }
 
   @override
@@ -3692,6 +4134,46 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountTitle {
     return '계정';
+  }
+
+  @override
+  String get authEmailInvalid {
+    return '올바른 이메일 주소를 입력해 주세요.';
+  }
+
+  @override
+  String get authEmailLabel {
+    return '이메일 주소';
+  }
+
+  @override
+  String get authEmailRequired {
+    return '이메일 주소를 입력해 주세요.';
+  }
+
+  @override
+  String get authPasswordLabel {
+    return '비밀번호';
+  }
+
+  @override
+  String get authPasswordRequired {
+    return '비밀번호를 입력해 주세요.';
+  }
+
+  @override
+  String get authResendFailed {
+    return '확인 메일을 보내지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get authResendVerification {
+    return '확인 메일 다시 보내기';
+  }
+
+  @override
+  String get authVerificationSent {
+    return '확인 메일을 보냈습니다. 메일의 링크를 열어 가입을 완료해 주세요.';
   }
 
   @override
@@ -4335,6 +4817,26 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get resendVerificationDescription {
+    return '가입할 때 사용한 이메일 주소를 입력해 주세요. 아직 확인되지 않은 주소라면 새 링크를 보내드립니다.';
+  }
+
+  @override
+  String get resendVerificationSentHeading {
+    return '확인 메일 발송';
+  }
+
+  @override
+  String get resendVerificationSubmit {
+    return '확인 메일 보내기';
+  }
+
+  @override
+  String get resendVerificationTitle {
+    return '확인 메일 다시 보내기';
+  }
+
+  @override
   String get searchAll {
     return '전체';
   }
@@ -4595,18 +5097,8 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
-  String get signInEmailLabel {
-    return '이메일 주소';
-  }
-
-  @override
   String get signInEmailNotVerified {
     return '이메일 주소 확인이 완료되지 않았습니다. 확인 메일의 링크를 열어 주세요.';
-  }
-
-  @override
-  String get signInEmailRequired {
-    return '이메일 주소를 입력해 주세요.';
   }
 
   @override
@@ -4620,18 +5112,138 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
-  String get signInPasswordLabel {
-    return '비밀번호';
+  String get signInNoAccount {
+    return '계정이 없으신가요?';
   }
 
   @override
-  String get signInPasswordRequired {
-    return '비밀번호를 입력해 주세요.';
+  String get signInPasswordResetNote {
+    return '비밀번호 재설정은 웹사이트에서 할 수 있습니다.';
   }
 
   @override
-  String get signInWebsiteNote {
-    return '계정 생성과 비밀번호 재설정은 웹사이트에서 할 수 있습니다.';
+  String get signInSignUp {
+    return '회원가입';
+  }
+
+  @override
+  String get signUpBirthDateClear {
+    return '생년월일 지우기';
+  }
+
+  @override
+  String get signUpBirthDateHelp {
+    return '연령 제한이 있는 작품을 열 때 나이를 확인합니다. 나중에 등록할 수도 있지만, 한 번 등록하면 변경할 수 없습니다.';
+  }
+
+  @override
+  String get signUpBirthDateLabel {
+    return '생년월일';
+  }
+
+  @override
+  String get signUpFailed {
+    return '계정을 만들지 못했습니다. 입력한 내용을 확인해 주세요.';
+  }
+
+  @override
+  String get signUpHaveAccount {
+    return '이미 계정이 있으신가요?';
+  }
+
+  @override
+  String get signUpNameLabel {
+    return '이름';
+  }
+
+  @override
+  String get signUpNameRequired {
+    return '표시 이름을 입력해 주세요.';
+  }
+
+  @override
+  String get signUpNameTooLong {
+    return '표시 이름은 100자 이내로 입력해 주세요.';
+  }
+
+  @override
+  String get signUpPasswordConfirmLabel {
+    return '비밀번호 확인';
+  }
+
+  @override
+  String get signUpPasswordConfirmRequired {
+    return '비밀번호 확인을 입력해 주세요.';
+  }
+
+  @override
+  String get signUpPasswordMismatch {
+    return '비밀번호가 일치하지 않습니다.';
+  }
+
+  @override
+  String get signUpPasswordTooLong {
+    return '비밀번호는 1024자 이내로 입력해 주세요.';
+  }
+
+  @override
+  String get signUpSubmit {
+    return '회원가입';
+  }
+
+  @override
+  String get signUpTitle {
+    return '회원가입';
+  }
+
+  @override
+  String get signUpPendingCheckSpam {
+    return '메일이 도착하지 않으면 스팸함도 확인해 주세요.';
+  }
+
+  @override
+  String get signUpPendingSent {
+    return '입력하신 이메일 주소로 메일을 보냈습니다. 메일을 열어 계속 진행해 주세요.';
+  }
+
+  @override
+  String signUpPendingSentTo({required String email}) {
+    return '받는 사람: $email';
+  }
+
+  @override
+  String get signUpPendingTitle {
+    return '메일 확인';
+  }
+
+  @override
+  String get verifyEmailExpired {
+    return '이 확인 링크는 유효 기간이 지났습니다.';
+  }
+
+  @override
+  String get verifyEmailFailed {
+    return '이메일 주소를 확인하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get verifyEmailInvalidToken {
+    return '이 확인 링크는 유효하지 않습니다.';
+  }
+
+  @override
+  String get verifyEmailTitle {
+    return '이메일 확인';
+  }
+
+  @override
+  String get verifyEmailVerified {
+    return '이메일 주소 확인이 완료되었습니다. 이제 로그인하실 수 있습니다.';
+  }
+
+  @override
+  String get verifyEmailVerifying {
+    return '이메일 주소를 확인하고 있습니다…';
   }
 
   @override
@@ -5000,6 +5612,46 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get accountTitle {
     return '账户';
+  }
+
+  @override
+  String get authEmailInvalid {
+    return '请输入有效的邮箱地址。';
+  }
+
+  @override
+  String get authEmailLabel {
+    return '邮箱地址';
+  }
+
+  @override
+  String get authEmailRequired {
+    return '请输入邮箱地址。';
+  }
+
+  @override
+  String get authPasswordLabel {
+    return '密码';
+  }
+
+  @override
+  String get authPasswordRequired {
+    return '请输入密码。';
+  }
+
+  @override
+  String get authResendFailed {
+    return '无法发送确认邮件。请重试。';
+  }
+
+  @override
+  String get authResendVerification {
+    return '重新发送确认邮件';
+  }
+
+  @override
+  String get authVerificationSent {
+    return '我们已发送确认邮件。请打开邮件中的链接完成注册。';
   }
 
   @override
@@ -5643,6 +6295,26 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get resendVerificationDescription {
+    return '请输入您注册时使用的邮箱地址。如果它仍在等待确认，我们会向它发送新的链接。';
+  }
+
+  @override
+  String get resendVerificationSentHeading {
+    return '确认邮件已发送';
+  }
+
+  @override
+  String get resendVerificationSubmit {
+    return '发送确认邮件';
+  }
+
+  @override
+  String get resendVerificationTitle {
+    return '重新发送确认邮件';
+  }
+
+  @override
   String get searchAll {
     return '全部';
   }
@@ -5903,18 +6575,8 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
-  String get signInEmailLabel {
-    return '邮箱地址';
-  }
-
-  @override
   String get signInEmailNotVerified {
     return '您的邮箱地址尚未确认。请打开确认邮件中的链接。';
-  }
-
-  @override
-  String get signInEmailRequired {
-    return '请输入邮箱地址。';
   }
 
   @override
@@ -5928,18 +6590,138 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
-  String get signInPasswordLabel {
-    return '密码';
+  String get signInNoAccount {
+    return '还没有账户？';
   }
 
   @override
-  String get signInPasswordRequired {
-    return '请输入密码。';
+  String get signInPasswordResetNote {
+    return '请在网站上重设密码。';
   }
 
   @override
-  String get signInWebsiteNote {
-    return '请在网站上创建账户或重设密码。';
+  String get signInSignUp {
+    return '注册';
+  }
+
+  @override
+  String get signUpBirthDateClear {
+    return '清除出生日期';
+  }
+
+  @override
+  String get signUpBirthDateHelp {
+    return '本站点在打开有年龄限制的作品前会核对年龄。您也可以稍后登记，但登记后无法更改。';
+  }
+
+  @override
+  String get signUpBirthDateLabel {
+    return '出生日期';
+  }
+
+  @override
+  String get signUpFailed {
+    return '无法创建您的账户。请检查您输入的内容。';
+  }
+
+  @override
+  String get signUpHaveAccount {
+    return '已经有账户了？';
+  }
+
+  @override
+  String get signUpNameLabel {
+    return '昵称';
+  }
+
+  @override
+  String get signUpNameRequired {
+    return '请输入显示名称。';
+  }
+
+  @override
+  String get signUpNameTooLong {
+    return '显示名称请控制在 100 个字符以内。';
+  }
+
+  @override
+  String get signUpPasswordConfirmLabel {
+    return '确认密码';
+  }
+
+  @override
+  String get signUpPasswordConfirmRequired {
+    return '请再次输入密码进行确认。';
+  }
+
+  @override
+  String get signUpPasswordMismatch {
+    return '两次输入的密码不一致。';
+  }
+
+  @override
+  String get signUpPasswordTooLong {
+    return '密码请控制在 1024 个字符以内。';
+  }
+
+  @override
+  String get signUpSubmit {
+    return '注册';
+  }
+
+  @override
+  String get signUpTitle {
+    return '注册';
+  }
+
+  @override
+  String get signUpPendingCheckSpam {
+    return '如果没有收到邮件，请查看垃圾邮件文件夹。';
+  }
+
+  @override
+  String get signUpPendingSent {
+    return '我们已向您输入的邮箱地址发送邮件。请打开它继续注册。';
+  }
+
+  @override
+  String signUpPendingSentTo({required String email}) {
+    return '发送至：$email';
+  }
+
+  @override
+  String get signUpPendingTitle {
+    return '请查收邮件';
+  }
+
+  @override
+  String get verifyEmailExpired {
+    return '此确认链接已失效。';
+  }
+
+  @override
+  String get verifyEmailFailed {
+    return '无法确认您的邮箱地址。请重试。';
+  }
+
+  @override
+  String get verifyEmailInvalidToken {
+    return '此确认链接无效。';
+  }
+
+  @override
+  String get verifyEmailTitle {
+    return '邮箱地址确认';
+  }
+
+  @override
+  String get verifyEmailVerified {
+    return '您的邮箱地址已确认。现在可以登录了。';
+  }
+
+  @override
+  String get verifyEmailVerifying {
+    return '正在确认您的邮箱地址…';
   }
 
   @override
@@ -6308,6 +7090,46 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get accountTitle {
     return '帳戶';
+  }
+
+  @override
+  String get authEmailInvalid {
+    return '請輸入有效的電子郵件地址。';
+  }
+
+  @override
+  String get authEmailLabel {
+    return '電子郵件地址';
+  }
+
+  @override
+  String get authEmailRequired {
+    return '請輸入電子郵件地址。';
+  }
+
+  @override
+  String get authPasswordLabel {
+    return '密碼';
+  }
+
+  @override
+  String get authPasswordRequired {
+    return '請輸入密碼。';
+  }
+
+  @override
+  String get authResendFailed {
+    return '無法寄送確認郵件。請重試。';
+  }
+
+  @override
+  String get authResendVerification {
+    return '重新寄送確認郵件';
+  }
+
+  @override
+  String get authVerificationSent {
+    return '我們已寄出確認郵件。請開啟郵件中的連結完成註冊。';
   }
 
   @override
@@ -6951,6 +7773,26 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get resendVerificationDescription {
+    return '請輸入您註冊時使用的電子郵件地址。如果它仍在等待確認，我們會向它寄出新的連結。';
+  }
+
+  @override
+  String get resendVerificationSentHeading {
+    return '確認郵件已寄出';
+  }
+
+  @override
+  String get resendVerificationSubmit {
+    return '寄送確認郵件';
+  }
+
+  @override
+  String get resendVerificationTitle {
+    return '重新寄送確認郵件';
+  }
+
+  @override
   String get searchAll {
     return '全部';
   }
@@ -7211,18 +8053,8 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
-  String get signInEmailLabel {
-    return '電子郵件地址';
-  }
-
-  @override
   String get signInEmailNotVerified {
     return '您的電子郵件地址尚未確認。請開啟確認信中的連結。';
-  }
-
-  @override
-  String get signInEmailRequired {
-    return '請輸入電子郵件地址。';
   }
 
   @override
@@ -7236,18 +8068,138 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
-  String get signInPasswordLabel {
-    return '密碼';
+  String get signInNoAccount {
+    return '還沒有帳戶嗎？';
   }
 
   @override
-  String get signInPasswordRequired {
-    return '請輸入密碼。';
+  String get signInPasswordResetNote {
+    return '請在網站上重設密碼。';
   }
 
   @override
-  String get signInWebsiteNote {
-    return '請在網站上建立帳戶或重設密碼。';
+  String get signInSignUp {
+    return '註冊';
+  }
+
+  @override
+  String get signUpBirthDateClear {
+    return '清除出生日期';
+  }
+
+  @override
+  String get signUpBirthDateHelp {
+    return '本網站在開啟有年齡限制的作品前會核對年齡。您也可以稍後登錄，但登錄後無法變更。';
+  }
+
+  @override
+  String get signUpBirthDateLabel {
+    return '出生日期';
+  }
+
+  @override
+  String get signUpFailed {
+    return '無法建立您的帳戶。請檢查您輸入的內容。';
+  }
+
+  @override
+  String get signUpHaveAccount {
+    return '已經有帳戶了嗎？';
+  }
+
+  @override
+  String get signUpNameLabel {
+    return '名稱';
+  }
+
+  @override
+  String get signUpNameRequired {
+    return '請輸入顯示名稱。';
+  }
+
+  @override
+  String get signUpNameTooLong {
+    return '顯示名稱請控制在 100 個字元以內。';
+  }
+
+  @override
+  String get signUpPasswordConfirmLabel {
+    return '確認密碼';
+  }
+
+  @override
+  String get signUpPasswordConfirmRequired {
+    return '請再次輸入密碼以確認。';
+  }
+
+  @override
+  String get signUpPasswordMismatch {
+    return '兩次輸入的密碼不一致。';
+  }
+
+  @override
+  String get signUpPasswordTooLong {
+    return '密碼請控制在 1024 個字元以內。';
+  }
+
+  @override
+  String get signUpSubmit {
+    return '註冊';
+  }
+
+  @override
+  String get signUpTitle {
+    return '註冊';
+  }
+
+  @override
+  String get signUpPendingCheckSpam {
+    return '如果沒有收到郵件，請查看垃圾郵件資料夾。';
+  }
+
+  @override
+  String get signUpPendingSent {
+    return '我們已向您輸入的電子郵件地址寄出郵件。請開啟它繼續註冊。';
+  }
+
+  @override
+  String signUpPendingSentTo({required String email}) {
+    return '寄送至：$email';
+  }
+
+  @override
+  String get signUpPendingTitle {
+    return '請查收郵件';
+  }
+
+  @override
+  String get verifyEmailExpired {
+    return '此確認連結已失效。';
+  }
+
+  @override
+  String get verifyEmailFailed {
+    return '無法確認您的電子郵件地址。請重試。';
+  }
+
+  @override
+  String get verifyEmailInvalidToken {
+    return '此確認連結無效。';
+  }
+
+  @override
+  String get verifyEmailTitle {
+    return '電子郵件地址確認';
+  }
+
+  @override
+  String get verifyEmailVerified {
+    return '您的電子郵件地址已確認。現在可以登入了。';
+  }
+
+  @override
+  String get verifyEmailVerifying {
+    return '正在確認您的電子郵件地址…';
   }
 
   @override

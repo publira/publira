@@ -3063,14 +3063,12 @@
       "title": "系列"
     },
     "sign_in": {
-      "email_label": "邮箱地址",
       "email_not_verified": "您的邮箱地址尚未确认。请打开确认邮件中的链接。",
-      "email_required": "请输入邮箱地址。",
       "failed": "无法登录。",
       "invalid_credentials": "邮箱地址或密码不正确。",
-      "password_label": "密码",
-      "password_required": "请输入密码。",
-      "website_note": "请在网站上创建账户或重设密码。"
+      "no_account": "还没有账户？",
+      "password_reset_note": "请在网站上重设密码。",
+      "sign_up": "注册"
     },
     "viewer": {
       "back_to_series": "返回系列",
@@ -3110,6 +3108,52 @@
       "reload": "重新加载",
       "save_expired": "本章保存的副本已过期。请在联网状态下重新打开。",
       "title": "章节"
+    },
+    "auth": {
+      "email_invalid": "请输入有效的邮箱地址。",
+      "email_label": "邮箱地址",
+      "email_required": "请输入邮箱地址。",
+      "password_label": "密码",
+      "password_required": "请输入密码。",
+      "resend_failed": "无法发送确认邮件。请重试。",
+      "resend_verification": "重新发送确认邮件",
+      "verification_sent": "我们已发送确认邮件。请打开邮件中的链接完成注册。"
+    },
+    "sign_up": {
+      "birth_date_clear": "清除出生日期",
+      "birth_date_help": "本站点在打开有年龄限制的作品前会核对年龄。您也可以稍后登记，但登记后无法更改。",
+      "birth_date_label": "出生日期",
+      "failed": "无法创建您的账户。请检查您输入的内容。",
+      "have_account": "已经有账户了？",
+      "name_label": "昵称",
+      "name_required": "请输入显示名称。",
+      "name_too_long": "显示名称请控制在 100 个字符以内。",
+      "password_confirm_label": "确认密码",
+      "password_confirm_required": "请再次输入密码进行确认。",
+      "password_mismatch": "两次输入的密码不一致。",
+      "password_too_long": "密码请控制在 1024 个字符以内。",
+      "submit": "注册",
+      "title": "注册"
+    },
+    "sign_up_pending": {
+      "check_spam": "如果没有收到邮件，请查看垃圾邮件文件夹。",
+      "sent": "我们已向您输入的邮箱地址发送邮件。请打开它继续注册。",
+      "sent_to": "发送至：{$email}",
+      "title": "请查收邮件"
+    },
+    "verify_email": {
+      "expired": "此确认链接已失效。",
+      "failed": "无法确认您的邮箱地址。请重试。",
+      "invalid_token": "此确认链接无效。",
+      "title": "邮箱地址确认",
+      "verified": "您的邮箱地址已确认。现在可以登录了。",
+      "verifying": "正在确认您的邮箱地址…"
+    },
+    "resend_verification": {
+      "description": "请输入您注册时使用的邮箱地址。如果它仍在等待确认，我们会向它发送新的链接。",
+      "sent_heading": "确认邮件已发送",
+      "submit": "发送确认邮件",
+      "title": "重新发送确认邮件"
     }
   },
   "platform": {

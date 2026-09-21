@@ -719,6 +719,178 @@ void main() {
       });
     });
 
+    testWidgets(
+      'a reader signs up, opens the confirmation link, and signs in',
+      (tester) async {
+        const email = 'new-reader@example.test';
+        const password = 'new-reader-password';
+        // The mailbox: the confirmation link the API would have sent arrives
+        // as an app link, the way the OS hands one over on a tap.
+        final links = FakeIncomingLinks();
+        addTearDown(links.close);
+        await withFailureScreenshot(tester, 'fixture-sign-up', () async {
+          await pumpApp(
+            tester,
+            initialLocation: AppRoutes.signUp,
+            incomingLinks: links,
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('sign-up-submit')),
+          );
+
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-up-name')),
+            'New Reader',
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-up-email')),
+            email,
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-up-password')),
+            password,
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-up-password-confirm')),
+            password,
+          );
+          await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
+          await pumpUntilFound(
+            tester,
+            find.byKey(const ValueKey('sign-up-pending')),
+          );
+
+          links.deliver(
+            Uri.parse(
+              'https://localhost/en/verify'
+              '?token=${ConnectFixtureServer.verificationToken}',
+            ),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('verify-email-verified')),
+          );
+
+          await tester.tap(find.byKey(const ValueKey('verify-email-sign-in')));
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('sign-in-submit')),
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-in-email')),
+            email,
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-in-password')),
+            password,
+          );
+          await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+
+          // The account entry only appears for a signed-in reader, so it is
+          // the whole path answering rather than the last screen alone.
+          await pumpUntilFound(
+            tester,
+            find.byKey(const ValueKey('catalog-account')),
+          );
+          expect(server.signups[email]!.verified, isTrue);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        });
+      },
+    );
+
+    testWidgets('an unconfirmed address is sent a fresh confirmation link', (
+      tester,
+    ) async {
+      const email = 'unconfirmed@example.test';
+      const password = 'unconfirmed-password';
+      await withFailureScreenshot(tester, 'fixture-resend', () async {
+        await pumpApp(tester, initialLocation: AppRoutes.signUp);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-up-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-name')),
+          'Unconfirmed Reader',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-email')),
+          email,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-password')),
+          password,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-password-confirm')),
+          password,
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-up-pending')),
+        );
+
+        // The first mail never arrived, so the reader asks for another.
+        await tester.tap(find.byKey(const ValueKey('sign-up-pending-resend')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-up-pending-resent')),
+        );
+
+        expect(
+          server.requestsTo('RequestEmailVerification').single.body['email'],
+          email,
+        );
+      });
+    });
+
+    testWidgets('signing in before confirming says to open the mail', (
+      tester,
+    ) async {
+      const email = 'waiting@example.test';
+      const password = 'waiting-password';
+      server.signups[email] = FixtureSignup(
+        name: 'Waiting Reader',
+        password: password,
+        birthDate: '',
+      );
+      await withFailureScreenshot(
+        tester,
+        'fixture-unverified-sign-in',
+        () async {
+          await pumpApp(tester, initialLocation: AppRoutes.signIn);
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('sign-in-submit')),
+          );
+
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-in-email')),
+            email,
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-in-password')),
+            password,
+          );
+          await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+          await pumpUntilFound(
+            tester,
+            find.byKey(const ValueKey('sign-in-resend-verification')),
+          );
+
+          expect(
+            find.text(
+              'Your email address has not been confirmed yet. '
+              'Open the link in the confirmation email.',
+            ),
+            findsOneWidget,
+          );
+        },
+      );
+    });
+
     testWidgets('missing series shows the not-found state', (tester) async {
       await withFailureScreenshot(tester, 'fixture-not-found', () async {
         await pumpApp(tester, initialLocation: '/series/ZZZZZZZZZZZZ');
@@ -1111,6 +1283,71 @@ void main() {
         // ticket for the episode, so the pages the development seed gave it
         // are what a granted body looks like here.
         await pumpUntilPagesDrawn(tester);
+      });
+    });
+
+    testWidgets('the live API takes a sign-up and holds the account back', (
+      tester,
+    ) async {
+      // A fresh address per run, because the account the last one created is
+      // still in the seeded database and every sign-up is answered the same
+      // way whether or not the address is taken.
+      final email =
+          'live-signup-${DateTime.now().microsecondsSinceEpoch}'
+          '@example.test';
+      await withFailureScreenshot(tester, 'live-sign-up', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.signUp);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-up-submit')),
+          timeout: const Duration(seconds: 20),
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-name')),
+          'Live Signup Reader',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-email')),
+          email,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-password')),
+          'live-signup-password',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-password-confirm')),
+          'live-signup-password',
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-up-pending')),
+          timeout: const Duration(seconds: 20),
+        );
+
+        // The link is in a mailbox this test cannot read, so what it can
+        // prove is the half the API owns: the account exists and Login keeps
+        // refusing it until the address is confirmed.
+        await tester.tap(find.byKey(const ValueKey('sign-up-pending-sign-in')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          email,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-password')),
+          'live-signup-password',
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-in-resend-verification')),
+          timeout: const Duration(seconds: 20),
+        );
       });
     });
 

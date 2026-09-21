@@ -3063,14 +3063,12 @@
       "title": "シリーズ"
     },
     "sign_in": {
-      "email_label": "メールアドレス",
       "email_not_verified": "メールアドレスの確認が完了していません。確認メールのリンクを開いてください。",
-      "email_required": "メールアドレスを入力してください",
       "failed": "サインインできませんでした",
       "invalid_credentials": "メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。",
-      "password_label": "パスワード",
-      "password_required": "パスワードを入力してください",
-      "website_note": "アカウントの作成とパスワードの再設定はウェブサイトで行えます。"
+      "no_account": "アカウントをお持ちでない方は",
+      "password_reset_note": "パスワードの再設定はウェブサイトで行えます。",
+      "sign_up": "新規登録"
     },
     "viewer": {
       "back_to_series": "シリーズへ戻る",
@@ -3110,6 +3108,52 @@
       "reload": "再読み込み",
       "save_expired": "保存したエピソードの閲覧期限が切れました。通信できる状態で開き直してください。",
       "title": "エピソード"
+    },
+    "auth": {
+      "email_invalid": "メールアドレスの形式が正しくありません。",
+      "email_label": "メールアドレス",
+      "email_required": "メールアドレスを入力してください",
+      "password_label": "パスワード",
+      "password_required": "パスワードを入力してください",
+      "resend_failed": "確認メールを送信できませんでした。再試行してください。",
+      "resend_verification": "確認メールを再送する",
+      "verification_sent": "確認メールを送信しました。メール内のリンクを開いて登録を完了してください。"
+    },
+    "sign_up": {
+      "birth_date_clear": "生年月日を消す",
+      "birth_date_help": "年齢制限のある作品を開くときに年齢を確認します。あとから登録することもできますが、一度登録すると変更できません。",
+      "birth_date_label": "生年月日",
+      "failed": "新規登録に失敗しました。入力内容をご確認ください。",
+      "have_account": "すでにアカウントをお持ちの方は",
+      "name_label": "お名前",
+      "name_required": "表示名を入力してください。",
+      "name_too_long": "表示名は100文字以内で入力してください。",
+      "password_confirm_label": "パスワード（確認）",
+      "password_confirm_required": "パスワード確認を入力してください。",
+      "password_mismatch": "パスワード確認が一致しません。同じパスワードを入力してください。",
+      "password_too_long": "パスワードは1024文字以内で入力してください。",
+      "submit": "新規登録",
+      "title": "新規登録"
+    },
+    "sign_up_pending": {
+      "check_spam": "メールが届かない場合は、迷惑メールフォルダもご確認ください。",
+      "sent": "入力されたメールアドレス宛にメールを送信しました。続きはメールをご確認ください。",
+      "sent_to": "送信先: {$email}",
+      "title": "メールの確認"
+    },
+    "verify_email": {
+      "expired": "この確認リンクは有効期限が切れています。",
+      "failed": "メールアドレスを確認できませんでした。再試行してください。",
+      "invalid_token": "この確認リンクは無効です。",
+      "title": "メール確認",
+      "verified": "メールアドレスの確認が完了しました。サインインしてください。",
+      "verifying": "メールアドレスを確認しています…"
+    },
+    "resend_verification": {
+      "description": "登録したメールアドレスを入力してください。確認が済んでいないアドレスであれば、新しいリンクを送ります。",
+      "sent_heading": "確認メール送信",
+      "submit": "確認メールを送信",
+      "title": "確認メールの再送"
     }
   },
   "platform": {

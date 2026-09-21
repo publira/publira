@@ -161,13 +161,14 @@ mobile/
 │   ├── contact/                  # ContactRepository: a reader's message to the tenant's staff
 │   ├── crypto/                   # HMAC-SHA256 keystream shared by delivery and storage
 │   ├── follow/                   # FollowRepository and the control a series or an author is followed with
+│   ├── forms/                    # Input shapes the forms share, such as what an email address looks like
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── links/                    # Tenant-site URL parsing, incoming App Links, and the share sheet
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
 │   ├── models/                   # Series / author / label / episode body / episode comment / follow
 │   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / account / follows / downloads / contact
+│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / account / follows / downloads / contact
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -189,6 +190,9 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/` | Catalog list |
 | `/search` | Search results |
 | `/sign-in` | Sign-in form |
+| `/sign-up` | Sign-up form, and the state that waits for the address to be confirmed |
+| `/verify` | Where a confirmation link is spent; the site's own path, claimed as an App Link |
+| `/resend-verification` | Asks for a fresh confirmation link |
 | `/account` | Signed-in reader, their date of birth, and sign-out |
 | `/account/follows` | The series and authors the reader follows |
 | `/account/downloads` | What the device keeps for reading offline |
@@ -205,7 +209,7 @@ The catalog's app bar carries the account entry point, which opens `/sign-in` fo
 
 ### Tenant links and sharing
 
-A link to a series, an episode, or a checkout return on the tenant host opens the app when it is installed, rather than the browser. iOS claims the host through `com.apple.developer.associated-domains`; a production archive receives it as the `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same `PUBLIRA_TENANT_HOST` as an App Link (`autoVerify`) for `/series/…` and `/checkout/return`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
+A link to a series, an episode, a checkout return, or an email confirmation on the tenant host opens the app when it is installed, rather than the browser. iOS claims the host through `com.apple.developer.associated-domains`; a production archive receives it as the `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same `PUBLIRA_TENANT_HOST` as an App Link (`autoVerify`) for `/series/…`, `/checkout/return`, and `/verify`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
 
 `app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
 
@@ -333,9 +337,17 @@ A reader signs in with an email address and a password, which `AuthService/Login
 - The launch confirms a restored token with `AuthService/GetMe`. A rejected token is dropped and the reader is told, with the sign-in screen one tap away; an unreachable API leaves the session alone, so a launch without a network still opens signed in
 - Nothing signs the reader back in on its own. Once the 24-hour token is gone, the reader signs in again
 - Signing out drops the stored session, and a paid episode goes back to its locked state
-- Creating an account and resetting a password stay on the website
+- Resetting a password stays on the website
 
 `web-host` holds its own session in the `@publira/web-session` JWE cookie. The app has no cookie jar, which is why the token lives in the platform credential store instead.
+
+## Sign-up
+
+A reader opens an account here rather than on the website. `AuthService/CreateUser` takes a name, an address, a password, and — where `GetTenant` answers that the tenant checks ages — an optional birth date, and answers by mailing a confirmation link.
+
+- Every accepted sign-up ends on the same screen, whether the address was free or already had an account, because that is all the API reports. It names the address the link went to and offers another one
+- `AuthService/Login` refuses an account whose address is unconfirmed, and the form then offers a fresh link for the address it was given. `/resend-verification` asks for one from scratch, for a reader who arrived with nothing typed
+- The link in the mail addresses the tenant site's `/verify`, so a tap on it opens this app and spends the token through `AuthService/VerifyUserEmail`. A link the API never issued, or one whose time has run out, leads to `/resend-verification`; a link that could not be spent because the API was unreachable is spent again on the same screen
 
 ## Push notifications
 
@@ -428,6 +440,8 @@ The screens are taken on an attached device or emulator, which the app is built 
 - Locked display for an unpurchased paid episode
 - Sign-in unlocking that paid episode, and sign-out locking it again
 - Rejected credentials staying on the sign-in form
+- A sign-up, the confirmation link arriving as an App Link, and the resulting account signing in
+- An unconfirmed address asking for a fresh confirmation link, and sign-in refusing it until then
 - A purchase completed in the browser, with a stubbed launcher, opening the paid episode
 - A session written to and read back from the platform keychain
 - A series that does not exist

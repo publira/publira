@@ -3063,14 +3063,12 @@
       "title": "系列"
     },
     "sign_in": {
-      "email_label": "電子郵件地址",
       "email_not_verified": "您的電子郵件地址尚未確認。請開啟確認信中的連結。",
-      "email_required": "請輸入電子郵件地址。",
       "failed": "無法登入。",
       "invalid_credentials": "電子郵件地址或密碼不正確。",
-      "password_label": "密碼",
-      "password_required": "請輸入密碼。",
-      "website_note": "請在網站上建立帳戶或重設密碼。"
+      "no_account": "還沒有帳戶嗎？",
+      "password_reset_note": "請在網站上重設密碼。",
+      "sign_up": "註冊"
     },
     "viewer": {
       "back_to_series": "返回系列",
@@ -3110,6 +3108,52 @@
       "reload": "重新載入",
       "save_expired": "本章儲存的副本已過期。請在連線狀態下重新開啟。",
       "title": "章節"
+    },
+    "auth": {
+      "email_invalid": "請輸入有效的電子郵件地址。",
+      "email_label": "電子郵件地址",
+      "email_required": "請輸入電子郵件地址。",
+      "password_label": "密碼",
+      "password_required": "請輸入密碼。",
+      "resend_failed": "無法寄送確認郵件。請重試。",
+      "resend_verification": "重新寄送確認郵件",
+      "verification_sent": "我們已寄出確認郵件。請開啟郵件中的連結完成註冊。"
+    },
+    "sign_up": {
+      "birth_date_clear": "清除出生日期",
+      "birth_date_help": "本網站在開啟有年齡限制的作品前會核對年齡。您也可以稍後登錄，但登錄後無法變更。",
+      "birth_date_label": "出生日期",
+      "failed": "無法建立您的帳戶。請檢查您輸入的內容。",
+      "have_account": "已經有帳戶了嗎？",
+      "name_label": "名稱",
+      "name_required": "請輸入顯示名稱。",
+      "name_too_long": "顯示名稱請控制在 100 個字元以內。",
+      "password_confirm_label": "確認密碼",
+      "password_confirm_required": "請再次輸入密碼以確認。",
+      "password_mismatch": "兩次輸入的密碼不一致。",
+      "password_too_long": "密碼請控制在 1024 個字元以內。",
+      "submit": "註冊",
+      "title": "註冊"
+    },
+    "sign_up_pending": {
+      "check_spam": "如果沒有收到郵件，請查看垃圾郵件資料夾。",
+      "sent": "我們已向您輸入的電子郵件地址寄出郵件。請開啟它繼續註冊。",
+      "sent_to": "寄送至：{$email}",
+      "title": "請查收郵件"
+    },
+    "verify_email": {
+      "expired": "此確認連結已失效。",
+      "failed": "無法確認您的電子郵件地址。請重試。",
+      "invalid_token": "此確認連結無效。",
+      "title": "電子郵件地址確認",
+      "verified": "您的電子郵件地址已確認。現在可以登入了。",
+      "verifying": "正在確認您的電子郵件地址…"
+    },
+    "resend_verification": {
+      "description": "請輸入您註冊時使用的電子郵件地址。如果它仍在等待確認，我們會向它寄出新的連結。",
+      "sent_heading": "確認郵件已寄出",
+      "submit": "寄送確認郵件",
+      "title": "重新寄送確認郵件"
     }
   },
   "platform": {

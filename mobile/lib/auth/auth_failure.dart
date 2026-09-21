@@ -1,21 +1,38 @@
-/// Why a sign-in or a session check did not produce a usable session.
+/// Why a sign-in, a sign-up, or a session check did not produce what the
+/// screen asked for.
 enum AuthFailureKind {
   /// The email and password pair was rejected.
   invalidCredentials,
 
   /// The account exists but has not confirmed its email address yet, so the
-  /// reader finishes that on the website before signing in here.
+  /// reader opens the link in the confirmation email before signing in.
   emailNotVerified,
 
   /// The API no longer accepts the token the app had stored, so the reader
   /// signs in again.
   sessionExpired,
 
+  /// The API would not take what the form sent — an address that is not one,
+  /// or a birth date that is not a past calendar date. The form is the only
+  /// place that can say which field it was.
+  invalidInput,
+
   /// The API would not take the birth date as a past calendar date.
   birthDateInvalid,
 
   /// The account already holds a birth date, which is written only once.
   birthDateAlreadySet,
+
+  /// The caller has asked for more mail than the allowance covers, so the
+  /// reader waits rather than trying again straight away.
+  rateLimited,
+
+  /// The token a confirmation link carried is not one the API issued.
+  verificationTokenInvalid,
+
+  /// The confirmation link was issued, but its time has run out, so the
+  /// reader asks for a fresh one.
+  verificationTokenExpired,
 
   /// DNS, refused connection, timeout, or Connect `unavailable`.
   network,
