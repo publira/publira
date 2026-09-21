@@ -31,6 +31,15 @@ AuthSession memberSession() => AuthSession(
   expiresAt: DateTime.now().toUtc().add(const Duration(hours: 24)),
 );
 
+/// The catalog's account entry as only a signed-in reader sees it.
+///
+/// A guest gets the same button with an outlined icon, so its key alone only
+/// proves the catalog is on screen.
+Finder signedInAccountEntry() => find.descendant(
+  of: find.byKey(const ValueKey('catalog-account')),
+  matching: find.byIcon(Icons.person),
+);
+
 /// Waits for the reader to draw the pages it built.
 ///
 /// [pumpUntilFound] on the page view returns on the first frame the reader
@@ -787,12 +796,7 @@ void main() {
           );
           await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
 
-          // The account entry only appears for a signed-in reader, so it is
-          // the whole path answering rather than the last screen alone.
-          await pumpUntilFound(
-            tester,
-            find.byKey(const ValueKey('catalog-account')),
-          );
+          await pumpUntilFound(tester, signedInAccountEntry());
           expect(server.signups[email]!.verified, isTrue);
           await pumpUntilNoPendingFrameCallbacks(tester);
         });
@@ -974,12 +978,7 @@ void main() {
           );
           await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
 
-          // The account entry only appears for a signed-in reader, so it is
-          // the whole path answering rather than the last screen alone.
-          await pumpUntilFound(
-            tester,
-            find.byKey(const ValueKey('catalog-account')),
-          );
+          await pumpUntilFound(tester, signedInAccountEntry());
           expect(server.memberCurrentPassword, newPassword);
           await pumpUntilNoPendingFrameCallbacks(tester);
         });
