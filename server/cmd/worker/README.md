@@ -1,6 +1,6 @@
 # worker
 
-The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, and runs the four [periodic jobs](#periodic-jobs) below. It runs as a separate process from the API processes. Besides `outbox_test`, the Outbox drain handles these email events:
+The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the four [periodic jobs](#periodic-jobs), and owns the nine [maintenance jobs](#maintenance-jobs) that rebuild and purge stored data. It runs as a separate process from the API processes. Besides `outbox_test`, the Outbox drain handles these email events:
 
 | Event type | Mail |
 | --- | --- |
@@ -68,6 +68,32 @@ A pinned announcement needs no job to stop being answered either: the banner rea
 
 They connect as `publira_ticker` rather than on the pool above. The worker's own login owns River's schema and therefore holds `CREATE` on the `public` schema, which is the one privilege these jobs must not have.
 
+## Maintenance jobs
+
+The rebuild and purge work runs here as well, on the same River client:
+
+| Kind | What it does |
+| --- | --- |
+| `maintenance.project_episode_reads` | Files the missing `episode_complete` events for stored `episode_reads` |
+| `maintenance.aggregate_content_stats` | Rebuilds one calendar day of `content_daily_stats` per tenant |
+| `maintenance.aggregate_rankings` | Rebuilds the daily and weekly `content_ranking_snapshots` |
+| `maintenance.build_recommend_features` | Rebuilds the daily user and item recommend feature snapshots |
+| `maintenance.purge_content_events` | Deletes `content_events` rows past their retention window |
+| `maintenance.purge_ranking_snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
+| `maintenance.purge_mfa_challenges` | Deletes the spent admin MFA challenges whose tokens have expired |
+| `maintenance.purge_withdrawn_comments` | Deletes the comments their authors withdrew past the retention window |
+| `maintenance.purge_orphan_images` | Deletes the image rows and storage objects nothing references |
+
+Each kind is a thin wrapper around `internal/maintenance`, which is the same implementation [`batch`](../batch/README.md) invokes for an explicit operator run — a backfill of a named date, a recovery after an incident, a dry-run purge. A pass only the schedule could reach would be a second copy of the maintenance, free to diverge from the one an operator recovers with.
+
+What cadence each kind runs on is still open: <https://github.com/publira/publira/issues/2558> settles it for the dated rebuilds, which need a record of the days they have completed, and <https://github.com/publira/publira/issues/2559> for the purges. Until then a run is one that is enqueued rather than one that comes due.
+
+They run on a queue of their own (`maintenance`, two workers) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue is deliberately narrow — these share one database with every request the platform is serving, and the daily rebuilds are a chain each link of which needs the one before it. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
+
+They connect as `publira_content_stats`, the role the batch subcommands have always used for this work, on a third pool. What the work may reach is decided by the role, and hosting three kinds of job in one process is not a reason for any of them to borrow another's privileges.
+
+`maintenance.purge_orphan_images` is the one that reaches past the database. It sweeps the S3-compatible bucket, so it is registered only when one is configured; a worker started without `PUBLIRA_S3_BUCKET` logs that the sweep is disabled and runs everything else. Refusing to start would take the Outbox drain and the periodic jobs down with a sweep that has nothing to sweep.
+
 ## Running
 
 From the repository root:
@@ -101,6 +127,7 @@ The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed crea
 
 - `PUBLIRA_WORKER_DB_URL` (optional; falls back to the development default `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable`)
 - `PUBLIRA_TICKER_DB_URL` (optional; the periodic jobs' own connection, falling back to `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` and never to `PUBLIRA_DB_URL`)
+- `PUBLIRA_CONTENT_STATS_DB_URL` (optional; the maintenance jobs' own connection, falling back to `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` and never to `PUBLIRA_DB_URL`)
 - `PUBLIRA_WORKER_ADDR` (optional, default `:8003`. Serves `/livez` and `/readyz`)
 - `PUBLIRA_OUTBOX_DRAIN_INTERVAL` (optional, a Go duration. Default `2s`)
 - `PUBLIRA_OUTBOX_CLAIM_LIMIT` (optional, the maximum number of rows claimed per drain. Default `100`)
@@ -109,6 +136,8 @@ The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed crea
 - `PUBLIRA_OUTBOX_MAX_WORKERS` (optional, the concurrency of River's default queue, which the Outbox drain has to itself. Default `8`)
 - `PUBLIRA_PUBLISH_INTERVAL_SECONDS` / `PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS` / `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS` / `PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS` (optional, seconds between the passes of each periodic job. Default `60`; a non-numeric or non-positive value falls back to it. Each one bounds how long the site can stay on the wrong side of the instant its job answers to)
 - `PUBLIRA_PUBLISH_MAX_RETRIES` (optional, retries per episode within one `ticker.publish_episodes` pass. Default `3`)
+- `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`, `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT`, `PUBLIRA_RECOMMEND_FEATURES_WINDOW_DAYS`, `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`, `PUBLIRA_CONTENT_RANKING_PURGE_CHUNK_SIZE`, `PUBLIRA_MFA_CHALLENGE_PURGE_CHUNK_SIZE`, `PUBLIRA_COMMENT_PURGE_CHUNK_SIZE`, `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`, `PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE` (optional, the maintenance jobs' tunables, documented per job in [batch](../batch/README.md). They are read once at startup, so a value that is not a positive whole number stops the process with the variable's name. The dated rebuild and dry-run variables are not read here: they control one invocation rather than a deployment, so they belong to `batch`)
+- `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_PUBLIC_BASE_URL`, `PUBLIRA_S3_FORCE_PATH_STYLE`, `AWS_REGION` (optional, the bucket `maintenance.purge_orphan_images` reclaims. Without `PUBLIRA_S3_BUCKET` that one kind is left unregistered)
 - `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders the HTML part of the emails above. Unset, the mail goes out as text alone; see [What a mail is made of](#what-a-mail-is-made-of))
 - `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, where `next_cache_revalidation` sends cache tags: `POST /api/v1/revalidate` on each `web-*` app. A worker without them retries every such event until an operator restarts it with them, because the drop is owed whoever wrote it)
 - `PUBLIRA_PLATFORM_APP_URL` (optional, the base URL the Platform Console links in the platform auth mail are built from. `http://platform.localhost:3080` when unset)
@@ -120,11 +149,11 @@ The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed crea
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
-River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup, which is why `publira_outbox` holds `CREATE` on the `public` schema. `/readyz` names one check per pool — `db.outbox` and `db.ticker` — so a failure says which login stopped answering.
+River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup, which is why `publira_outbox` holds `CREATE` on the `public` schema. `/readyz` names one check per pool — `db.outbox`, `db.ticker`, and `db.content_stats` — so a failure says which login stopped answering.
 
 ## Logs and metrics
 
-OpenTelemetry reports `service.name` as `publira-worker` for the process, and as `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for the span each periodic run hangs off — the names those jobs reported when each had a process of its own.
+OpenTelemetry reports `service.name` as `publira-worker` for the process, and a name of its own for the span each job's run hangs off: `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for a periodic run, and `publira-<subcommand>` for a maintenance run — `publira-aggregate-content-stats` and the rest. They are the names those jobs report where they still have a process of their own, so a trace UI filtering on one keeps finding the same work.
 
 The structured logs (slog) carry `event_id` / `event_type` / `idempotency_key` / `attempts`. The OpenTelemetry counters are:
 

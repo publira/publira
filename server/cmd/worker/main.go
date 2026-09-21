@@ -19,12 +19,15 @@ import (
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/push"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
+	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/storage/s3"
 	"github.com/publira/publira/server/internal/tickerjobs"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -32,9 +35,10 @@ import (
 const (
 	serviceName = "publira-worker"
 
-	defaultWorkerAddr  = ":8003"
-	defaultWorkerDBURL = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
-	defaultTickerDBURL = "postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable"
+	defaultWorkerAddr        = ":8003"
+	defaultWorkerDBURL       = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
+	defaultTickerDBURL       = "postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable"
+	defaultContentStatsDBURL = "postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
@@ -42,9 +46,12 @@ func main() {
 	slog.SetDefault(logger)
 
 	// One service.name per periodic job alongside the process default, so a run
-	// of publish-episodes is still a publira-publish-episodes trace now that the
-	// three no longer have processes of their own.
-	shutdownTracing, err := tracing.Setup(context.Background(), append([]string{serviceName}, tickerjobs.ServiceNames()...)...)
+	// of publish-episodes is still a publira-publish-episodes trace, and a
+	// rebuild of the daily stats a publira-aggregate-content-stats one, now
+	// that none of them has a process or a schedule of its own.
+	serviceNames := append([]string{serviceName}, tickerjobs.ServiceNames()...)
+	serviceNames = append(serviceNames, maintenancejobs.ServiceNames()...)
+	shutdownTracing, err := tracing.Setup(context.Background(), serviceNames...)
 	if err != nil {
 		logger.Error("failed to initialize tracing", "error", err)
 	}
@@ -104,6 +111,35 @@ func main() {
 	}
 	logger.Info("ticker jobs registered", jobs.Settings()...)
 
+	// The rebuild and purge work connects as publira_content_stats, the role
+	// the batch subcommands have always used for it. It is the third login in
+	// this process and the third pool: what the work may reach is decided by
+	// the role, and a process that hosts three kinds of job is still not a
+	// reason for any of them to borrow another's privileges.
+	contentStatsDB, err := sqldb.Open(resolveContentStatsDBURL())
+	if err != nil {
+		logger.Error("failed to initialize the maintenance jobs db", "error", err)
+		os.Exit(1)
+	}
+	defer contentStatsDB.Close() //nolint:errcheck
+
+	reclaimer, err := resolveReclaimer(context.Background(), logger, cfg.Storage)
+	if err != nil {
+		logger.Error("failed to initialize object storage", "error", err)
+		os.Exit(1)
+	}
+	maintenanceJobs, err := maintenancejobs.New(maintenancejobs.Config{
+		DB:      contentStatsDB,
+		Storage: reclaimer,
+		Bucket:  cfg.Storage.S3Bucket,
+		Logger:  logger,
+	})
+	if err != nil {
+		logger.Error("failed to initialize the maintenance jobs", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
+
 	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
 	// assigned to an interface is not nil, and it would slip past the guard in
 	// emailsettings.DecryptPassword into a nil-receiver method call. A process
@@ -162,7 +198,7 @@ func main() {
 	if revalidateClient != nil {
 		invalidator = revalidateClient
 	}
-	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, jobs, outbox.EmailHandlerConfig{
+	worker, err := outbox.Start(context.Background(), db, workerConfig(logger, []outbox.PeriodicRegistrar{jobs, maintenanceJobs}, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
@@ -175,11 +211,12 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	// One check per pool: with two logins behind one process, a single "db"
+	// One check per pool: with three logins behind one process, a single "db"
 	// could not say which of them stopped answering.
 	health.Register(mux,
 		health.WithDBNamed("db.outbox", db),
 		health.WithDBNamed("db.ticker", tickerDB),
+		health.WithDBNamed("db.content_stats", contentStatsDB),
 		health.WithReady(worker.Ready),
 	)
 
@@ -197,7 +234,7 @@ func main() {
 	}, func(ctx context.Context) error {
 		return worker.Stop(ctx)
 	}, shutdownTracing, func(context.Context) error {
-		return errors.Join(db.Close(), tickerDB.Close())
+		return errors.Join(db.Close(), tickerDB.Close(), contentStatsDB.Close())
 	}); err != nil {
 		logger.Error("worker failed", "error", err)
 		os.Exit(1)
@@ -228,6 +265,40 @@ func resolveTickerDBURL() string {
 	return defaultTickerDBURL
 }
 
+// resolveContentStatsDBURL returns the connection the maintenance jobs run on.
+// PUBLIRA_DB_URL is no more a fallback here than it is for the two URLs above,
+// and for the same reason.
+func resolveContentStatsDBURL() string {
+	if url := strings.TrimSpace(os.Getenv("PUBLIRA_CONTENT_STATS_DB_URL")); url != "" {
+		return url
+	}
+	return defaultContentStatsDBURL
+}
+
+// resolveReclaimer builds the bucket the orphan image sweep reclaims. A
+// deployment with no bucket configured gets nil, which leaves that one job
+// unregistered while every other maintenance job still runs — the alternative
+// would be refusing to start a worker whose mail and ticker work needs no
+// object storage at all.
+func resolveReclaimer(ctx context.Context, logger *slog.Logger, cfg config.Storage) (storage.Reclaimer, error) {
+	if err := cfg.Validate(); err != nil {
+		logger.Info("orphan image reclamation is disabled", "reason", err.Error())
+		return nil, nil
+	}
+	store, err := s3.New(ctx, s3.Config{
+		Bucket:         cfg.S3Bucket,
+		Region:         cfg.S3Region,
+		Endpoint:       cfg.S3Endpoint,
+		PublicBaseURL:  cfg.S3PublicBaseURL,
+		ForcePathStyle: cfg.S3ForcePathStyle,
+	})
+	if err != nil {
+		return nil, err
+	}
+	logger.Info("orphan image reclamation is enabled", "bucket", cfg.S3Bucket)
+	return store, nil
+}
+
 // newRevalidateClient builds the client that sends Next.js cache tags. A
 // deployment without a token gets a nil client, which makes every drop a no-op
 // while each job still records the boundary it passed.
@@ -244,7 +315,7 @@ func newRevalidateClient(logger *slog.Logger) *revalidate.Client {
 
 func workerConfig(
 	logger *slog.Logger,
-	periodic outbox.PeriodicRegistrar,
+	periodic []outbox.PeriodicRegistrar,
 	emailHandlers outbox.EmailHandlerConfig,
 	pushHandlers outbox.PushHandlerConfig,
 	staffHandlers outbox.StaffNotificationHandlerConfig,

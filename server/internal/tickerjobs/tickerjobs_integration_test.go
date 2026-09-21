@@ -116,7 +116,7 @@ func startWorkerWithTickerJobs(t *testing.T, pg *testutil.PostgresEnv) {
 	t.Cleanup(cancel)
 	worker, err := outbox.Start(ctx, pg.DB, outbox.Config{
 		Logger:            slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Periodic:          jobs,
+		Periodic:          []outbox.PeriodicRegistrar{jobs},
 		DrainInterval:     50 * time.Millisecond,
 		FetchCooldown:     10 * time.Millisecond,
 		FetchPollInterval: 20 * time.Millisecond,

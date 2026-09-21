@@ -11,6 +11,8 @@ Without an argument, or with a name that is not one of the nine below, the binar
 
 Each one rebuilds or purges a period of data and exits, which is what makes an external schedule the right thing to invoke it. The jobs that instead have to act the moment a stored instant passes — promoting due episodes, applying free window boundaries, turning over a tenant's calendar day — are River periodic jobs inside the [worker](../worker/README.md).
 
+Every subcommand here is a thin invocation of `internal/maintenance`, and the worker registers the same nine jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge.
+
 | Subcommand | What it does |
 | --- | --- |
 | `project-episode-reads` | Files the missing `episode_complete` events for stored `episode_reads` |

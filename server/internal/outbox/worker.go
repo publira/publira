@@ -65,9 +65,11 @@ type Config struct {
 	// can pick jobs up without waiting on the production 1s poll.
 	FetchCooldown     time.Duration
 	FetchPollInterval time.Duration
-	// Periodic is work this process runs on River's schedule besides the
-	// outbox drain. Nil runs the drain alone.
-	Periodic PeriodicRegistrar
+	// Periodic is the sets of work this process runs on River's schedule
+	// besides the outbox drain. An empty slice runs the drain alone. One
+	// entry per set of jobs, because a process that hosts two of them — the
+	// ticker jobs and the maintenance jobs — still owns one River client.
+	Periodic []PeriodicRegistrar
 }
 
 // PeriodicRegistrar is a set of jobs that rides the same River client as the
@@ -183,18 +185,11 @@ func Start(ctx context.Context, db *sql.DB, cfg Config) (*Worker, error) {
 	queues := map[string]river.QueueConfig{
 		river.QueueDefault: {MaxWorkers: cfg.MaxWorkers},
 	}
-	if cfg.Periodic != nil {
-		if err := cfg.Periodic.Register(workers); err != nil {
-			return nil, err
-		}
-		periodicJobs = append(periodicJobs, cfg.Periodic.PeriodicJobs()...)
-		for name, queue := range cfg.Periodic.Queues() {
-			if name == river.QueueDefault {
-				return nil, fmt.Errorf("outbox: periodic jobs may not resize the %q queue", river.QueueDefault)
-			}
-			queues[name] = queue
-		}
+	scheduled, err := registerPeriodic(workers, queues, cfg.Periodic)
+	if err != nil {
+		return nil, err
 	}
+	periodicJobs = append(periodicJobs, scheduled...)
 
 	riverCfg := &river.Config{
 		Logger:            cfg.Logger,
@@ -225,6 +220,35 @@ func Start(ctx context.Context, db *sql.DB, cfg Config) (*Worker, error) {
 		"max_workers", cfg.MaxWorkers,
 	)
 	return w, nil
+}
+
+// registerPeriodic adds every set's workers to the registry and folds its
+// queues into the client's own, answering the schedules they are enqueued on.
+//
+// Two sets claiming one queue name is refused rather than merged: the later
+// MaxWorkers would silently replace the earlier, leaving one set of jobs with a
+// concurrency the other chose.
+func registerPeriodic(workers *river.Workers, queues map[string]river.QueueConfig, registrars []PeriodicRegistrar) ([]*river.PeriodicJob, error) {
+	var periodicJobs []*river.PeriodicJob
+	for _, registrar := range registrars {
+		if registrar == nil {
+			continue
+		}
+		if err := registrar.Register(workers); err != nil {
+			return nil, err
+		}
+		periodicJobs = append(periodicJobs, registrar.PeriodicJobs()...)
+		for name, queue := range registrar.Queues() {
+			if name == river.QueueDefault {
+				return nil, fmt.Errorf("outbox: periodic jobs may not resize the %q queue", river.QueueDefault)
+			}
+			if _, taken := queues[name]; taken {
+				return nil, fmt.Errorf("outbox: two sets of periodic jobs claim the %q queue", name)
+			}
+			queues[name] = queue
+		}
+	}
+	return periodicJobs, nil
 }
 
 // Stop stops fetching new River jobs and waits for in-flight work. It is

@@ -2,16 +2,22 @@
 // names the job; every job is configured through environment variables, rebuilds
 // or purges a period of data, and exits.
 //
+// Each subcommand is a thin invocation of internal/maintenance, which the
+// worker's River jobs invoke as well, so an operator's explicit run and a
+// scheduled one are the same implementation.
+//
 // The jobs that have to act the moment a stored instant passes are not here:
 // they run as River periodic jobs inside the worker (internal/tickerjobs).
 package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -175,12 +181,18 @@ func resolveTenantLocalDate(name string) (time.Time, error) {
 	return time.Parse(time.DateOnly, raw)
 }
 
-// batchDateLogValue words a resolved date for the run's structured log, where
-// the zero time means the run took each tenant's own yesterday rather than one
-// day for all of them.
-func batchDateLogValue(date time.Time) string {
-	if date.IsZero() {
-		return "each tenant's yesterday"
+// resolveDryRun reads the switch that turns one purge into a report of what it
+// would delete. It is a control over a single invocation rather than a setting
+// of the deployment, which is why it is read here and not alongside the
+// tunables every caller of internal/maintenance shares.
+func resolveDryRun(name string) (bool, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return false, nil
 	}
-	return date.Format(time.DateOnly)
+	dryRun, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, errors.New("dry-run must be a boolean such as true or false")
+	}
+	return dryRun, nil
 }
