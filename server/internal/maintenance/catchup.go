@@ -2,8 +2,10 @@ package maintenance
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/contentstats"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/recommendfeatures"
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/tenantday"
 )
 
@@ -73,11 +76,30 @@ func (s EpisodeReadProjection) CatchUp(ctx context.Context, deps Deps) error {
 }
 
 // CatchUp rebuilds, for every tenant, each day from the one after its last
-// rebuilt day through the last day its episode reads were projected past.
+// rebuilt day through the last day its episode reads were projected past. A day
+// that began before the tenant's content event retention cutoff has lost its
+// events, so it is logged as missing and passed over rather than rebuilt from
+// what is left.
 func (s ContentStatsAggregation) CatchUp(ctx context.Context, deps Deps) error {
+	if deps.DB == nil {
+		return errNoDB
+	}
+	table, err := retention.LoadTable(ctx, dbmodels.New(deps.DB))
+	if err != nil {
+		return fmt.Errorf("load retention periods: %w", err)
+	}
+	now := time.Now()
 	aggregator := contentstats.New(deps.DB)
 	return catchUp(ctx, deps, catchUpLink{
 		name: "content stats",
+		lost: func(tenant tenantday.Tenant, day time.Time) (bool, error) {
+			location, err := time.LoadLocation(tenant.TimeZone)
+			if err != nil {
+				return false, fmt.Errorf("load time zone %q: %w", tenant.TimeZone, err)
+			}
+			start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, location)
+			return start.Before(table.For(tenant.ID).ContentEventCutoff(now)), nil
+		},
 		pending: func(tenant tenantday.Tenant, p dbmodels.ListDailyRebuildProgressRow) (time.Time, time.Time, error) {
 			last, err := tenant.Date(time.Time{}, p.EpisodeReadsProjectedAt)
 			return civilDate(p.ContentStatsThrough).AddDate(0, 0, 1), last, err
@@ -142,6 +164,9 @@ type catchUpLink struct {
 	// pending is the first and last day the link owes a tenant. A first day
 	// after the last means it owes nothing.
 	pending func(tenantday.Tenant, dbmodels.ListDailyRebuildProgressRow) (first, last time.Time, err error)
+	// lost reports a day whose input is gone and can no longer be rebuilt. Nil
+	// means every day can be.
+	lost func(tenantday.Tenant, time.Time) (bool, error)
 	// rebuild rebuilds one day and reports the rows it wrote.
 	rebuild func(context.Context, tenantday.Tenant, time.Time) (int64, error)
 	// advance records the day as rebuilt.
@@ -155,6 +180,11 @@ func catchUp(ctx context.Context, deps Deps, link catchUpLink) error {
 	logger := deps.logger()
 	started := time.Now()
 
+	// Under row-level security the progress would read as empty, and the pass
+	// would succeed having rebuilt nothing.
+	if err := requireBypassRLS(ctx, deps.DB); err != nil {
+		return err
+	}
 	queries := dbmodels.New(deps.DB)
 	tenants, err := tenantday.List(ctx, deps.DB)
 	if err != nil {
@@ -192,6 +222,14 @@ tenants:
 			continue
 		}
 		tenantCount++
+		first, err = skipLost(ctx, logger, queries, link, tenant, first, last)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("tenant %s: %w", tenant.ID, err))
+			if ctx.Err() != nil {
+				break tenants
+			}
+			continue tenants
+		}
 		for day := first; !day.After(last); day = day.AddDate(0, 0, 1) {
 			n, err := link.rebuild(ctx, tenant, day)
 			if err == nil {
@@ -231,6 +269,53 @@ tenants:
 		return err
 	}
 	logger.InfoContext(ctx, link.name+" catch-up completed", attrs...)
+	return nil
+}
+
+// skipLost records as rebuilt the lost days at the front of first..last and
+// logs them as missing, returning the first day that can still be rebuilt. The
+// lost days are always the oldest, since a retention cutoff only moves forward.
+func skipLost(ctx context.Context, logger *slog.Logger, queries *dbmodels.Queries, link catchUpLink, tenant tenantday.Tenant, first, last time.Time) (time.Time, error) {
+	if link.lost == nil {
+		return first, nil
+	}
+	day := first
+	for ; !day.After(last); day = day.AddDate(0, 0, 1) {
+		lost, err := link.lost(tenant, day)
+		if err != nil {
+			return first, err
+		}
+		if !lost {
+			break
+		}
+	}
+	if day.Equal(first) {
+		return first, nil
+	}
+	through := day.AddDate(0, 0, -1)
+	if err := link.advance(ctx, queries, tenant.ID, through); err != nil {
+		return first, err
+	}
+	logger.ErrorContext(ctx, link.name+" missing: its input is past retention",
+		"tenant_id", tenant.ID,
+		"from", first.Format(time.DateOnly),
+		"through", through.Format(time.DateOnly),
+	)
+	return day, nil
+}
+
+func requireBypassRLS(ctx context.Context, db *sql.DB) error {
+	var bypasses bool
+	if err := db.QueryRowContext(ctx, `
+		SELECT rolsuper OR rolbypassrls
+		FROM pg_roles
+		WHERE rolname = current_user
+	`).Scan(&bypasses); err != nil {
+		return fmt.Errorf("check database role: %w", err)
+	}
+	if !bypasses {
+		return errors.New("daily rebuild catch-up requires a database role with BYPASSRLS")
+	}
 	return nil
 }
 

@@ -93,7 +93,7 @@ How far the chain has got is recorded per tenant in `daily_rebuild_progress`, in
 | Link | Rebuilds, for each tenant |
 | --- | --- |
 | `maintenance.project_episode_reads` | Every pending read, then records when the pass began. A tenant the table has no row for starts its chain on its own yesterday |
-| `maintenance.aggregate_content_stats` | Each day after `content_stats_through` whose end came before that recorded instant, so no read finished on it is filed after its stats |
+| `maintenance.aggregate_content_stats` | Each day after `content_stats_through` whose end came before that recorded instant, so no read finished on it is filed after its stats. A day that began before the tenant's content event retention cutoff has lost its events, so it is logged as missing and passed over rather than rebuilt from what is left |
 | `maintenance.aggregate_rankings` | Each day after `rankings_through`, up to `content_stats_through` |
 | `maintenance.build_recommend_features` | The day at `rankings_through`, once it has moved past `recommend_features_through`. The feature tables hold one snapshot per tenant, so the days in between are not built |
 

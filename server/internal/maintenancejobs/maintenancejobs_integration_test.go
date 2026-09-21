@@ -27,8 +27,7 @@ func TestWorkerCatchesUpTheDaysItMissed(t *testing.T) {
 		t.Fatalf("set tenant time zone: %v", err)
 	}
 	now := time.Now().UTC()
-	yesterday := time.Date(now.Year(), now.Month(), now.Day()-1, 0, 0, 0, 0, time.UTC)
-	stoppedOn := yesterday.AddDate(0, 0, -3)
+	stoppedOn := time.Date(now.Year(), now.Month(), now.Day()-4, 0, 0, 0, 0, time.UTC)
 	if _, err := pg.DB.ExecContext(ctx, `
 		INSERT INTO daily_rebuild_progress (
 			tenant_id, episode_reads_projected_at, content_stats_through, rankings_through, recommend_features_through
@@ -39,15 +38,21 @@ func TestWorkerCatchesUpTheDaysItMissed(t *testing.T) {
 
 	startWorkerWithMaintenanceJobs(t, pg)
 
+	// Yesterday is taken from the instant the worker's projection recorded, so
+	// a midnight during the test moves the expectation with it.
+	var yesterday time.Time
 	waitFor(t, ctx, "the chain to reach yesterday", func() bool {
-		var through time.Time
+		var projectedAt, through time.Time
 		if err := pg.DB.QueryRowContext(ctx,
-			"SELECT recommend_features_through FROM daily_rebuild_progress WHERE tenant_id = $1", tenant.ID,
-		).Scan(&through); err != nil {
+			"SELECT episode_reads_projected_at, recommend_features_through FROM daily_rebuild_progress WHERE tenant_id = $1", tenant.ID,
+		).Scan(&projectedAt, &through); err != nil {
 			t.Fatalf("read daily rebuild progress: %v", err)
 		}
+		projectedAt = projectedAt.UTC()
+		yesterday = time.Date(projectedAt.Year(), projectedAt.Month(), projectedAt.Day()-1, 0, 0, 0, 0, time.UTC)
 		return through.Format(time.DateOnly) == yesterday.Format(time.DateOnly)
 	})
+	missedDays := int(yesterday.Sub(stoppedOn).Hours() / 24)
 
 	var rankedDays int
 	if err := pg.DB.QueryRowContext(ctx, `
@@ -56,8 +61,8 @@ func TestWorkerCatchesUpTheDaysItMissed(t *testing.T) {
 	`, tenant.ID, stoppedOn).Scan(&rankedDays); err != nil {
 		t.Fatalf("count ranked days: %v", err)
 	}
-	if rankedDays != 3 {
-		t.Fatalf("ranked %d missed days, want 3", rankedDays)
+	if rankedDays != missedDays {
+		t.Fatalf("ranked %d missed days, want %d", rankedDays, missedDays)
 	}
 
 	for _, kind := range []string{

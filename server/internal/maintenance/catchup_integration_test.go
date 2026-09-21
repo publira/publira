@@ -141,7 +141,7 @@ func TestEpisodeReadProjectionCatchUpRecordsEveryTenant(t *testing.T) {
 	}
 
 	got := readProgress(t, pg.DB, fresh.ID)
-	if want := utcDate(before).AddDate(0, 0, -2); !got.ContentStatsThrough.Equal(want) ||
+	if want := utcDate(got.EpisodeReadsProjectedAt).AddDate(0, 0, -2); !got.ContentStatsThrough.Equal(want) ||
 		!got.RankingsThrough.Equal(want) || !got.RecommendFeaturesThrough.Equal(want) {
 		t.Fatalf("new tenant progress = %+v, want every link on %s", got, want.Format(time.DateOnly))
 	}
@@ -281,3 +281,60 @@ func countRows(t *testing.T, db *sql.DB, query string, args ...any) int {
 func utcDate(at time.Time) time.Time { return civilDate(at.UTC()) }
 
 func discardLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
+
+// Row-level security would hide every progress row from a role without
+// BYPASSRLS, and a pass that saw none would succeed having rebuilt nothing.
+func TestCatchUpRefusesARoleUnderRowLevelSecurity(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	deps := Deps{DB: pg.OpenAdminDB(t), Logger: discardLogger()}
+	if err := (ContentStatsAggregation{}).CatchUp(context.Background(), deps); err == nil {
+		t.Fatal("CatchUp under row-level security returned no error, want one")
+	}
+}
+
+// A day that began before the tenant's content event retention cutoff has lost
+// its events to the purge, so rebuilding it would record a partial day as
+// complete. It is passed over instead, and the days still retained are rebuilt.
+func TestContentStatsCatchUpPassesOverDaysPastRetention(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx := context.Background()
+
+	tenant := pg.SeedTenant(t, "CATCHUPRETN1", "retention.catchup.example.com", "Retention Catch-up Tenant")
+	setTenantTimeZone(t, pg.DB, tenant.ID, "UTC")
+	if _, err := pg.DB.ExecContext(ctx,
+		"INSERT INTO tenant_retention_settings (tenant_id, content_event_days) VALUES ($1, 2)", tenant.ID,
+	); err != nil {
+		t.Fatalf("set tenant retention: %v", err)
+	}
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "CATCHUPRSER1"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "CATCHUPREP01"})
+
+	now := time.Now()
+	yesterday := utcDate(now).AddDate(0, 0, -1)
+	stoppedOn := yesterday.AddDate(0, 0, -4)
+	seedProgress(t, pg.DB, tenant.ID, now, stoppedOn)
+	// Two days of retention keep only yesterday whole: the cutoff falls inside
+	// the day before it. The older events are left in place, standing in for
+	// what the purge would have left of those days.
+	for day := stoppedOn.AddDate(0, 0, 1); !day.After(yesterday); day = day.AddDate(0, 0, 1) {
+		insertView(t, pg.DB, tenant.ID, series.ID, episode.ID, day.Add(12*time.Hour))
+	}
+
+	deps := Deps{DB: pg.OpenContentStatsDB(t), Logger: discardLogger()}
+	if err := (ContentStatsAggregation{}).CatchUp(ctx, deps); err != nil {
+		t.Fatalf("CatchUp: %v", err)
+	}
+
+	if got := countRows(t, pg.DB, "SELECT count(DISTINCT stat_date) FROM content_daily_stats WHERE tenant_id = $1", tenant.ID); got != 1 {
+		t.Fatalf("rebuilt %d days, want only yesterday", got)
+	}
+	if got := countRows(t, pg.DB, "SELECT count(*) FROM content_daily_stats WHERE tenant_id = $1 AND stat_date = $2", tenant.ID, yesterday); got == 0 {
+		t.Fatal("yesterday was not rebuilt")
+	}
+	if got := readProgress(t, pg.DB, tenant.ID).ContentStatsThrough; !got.Equal(yesterday) {
+		t.Fatalf("content_stats_through = %s, want %s", got.Format(time.DateOnly), yesterday.Format(time.DateOnly))
+	}
+}
