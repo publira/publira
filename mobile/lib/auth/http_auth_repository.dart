@@ -352,6 +352,12 @@ class HttpAuthRepository implements AuthRepository {
         'token': token,
       }, tenantId: tenantId);
     } on ConnectException catch (error) {
+      // Another account took the new address after the change was asked for.
+      // The link can never finish it, so it is as spent as an expired one and
+      // the way on is to ask again for a different address.
+      if (error.code == 'already_exists') {
+        throw AuthFailure(AuthFailureKind.linkExpired, message: error.message);
+      }
       throw _toLinkFailure(error);
     }
     if (body['changed'] == true) {

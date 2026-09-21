@@ -140,6 +140,11 @@ class ConnectFixtureServer {
   static const pendingEmailChangeToken = 'fixture-pending-email-change-token';
   static const expiredEmailChangeToken = 'fixture-expired-email-change-token';
 
+  /// A link opened after another account took the new address, which
+  /// `ConfirmEmailChange` refuses as `already_exists`.
+  static const conflictingEmailChangeToken =
+      'fixture-conflicting-email-change-token';
+
   /// Unsigned JWT whose `sub` is the synthetic subject a free body's media
   /// token carries (`server/internal/auth`.`FreeEpisodeMediaSubject`). The API
   /// puts one of these on every free page's URL, and it is the whole of the
@@ -1632,6 +1637,11 @@ class ConnectFixtureServer {
         await _write(request, HttpStatus.ok, {
           'confirmed': true,
           'pendingConfirmationFor': 'current_email',
+        });
+      case conflictingEmailChangeToken:
+        await _write(request, HttpStatus.conflict, {
+          'code': 'already_exists',
+          'message': 'email already exists',
         });
       case expiredEmailChangeToken:
         await _write(request, HttpStatus.badRequest, {

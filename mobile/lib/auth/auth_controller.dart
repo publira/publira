@@ -29,6 +29,11 @@ class AuthController extends ChangeNotifier {
   /// working on is still the one in hand — two sessions can be equal, or even
   /// the same object, so the count is what makes the check reliable.
   var _revision = 0;
+
+  /// Bumped only when the reader in hand changes — a sign-in, a sign-out, an
+  /// expiry — and not when the same reader's session is renamed or re-keyed,
+  /// so a settings change still lands after another one has finished.
+  var _reader = 0;
   var _expired = false;
 
   AuthSession? get session => _session;
@@ -70,7 +75,7 @@ class AuthController extends ChangeNotifier {
       if (_revision != revision) {
         return;
       }
-      _setSession(refreshed);
+      _setSession(refreshed, sameReader: true);
       await _store.write(refreshed);
       notifyListeners();
     } on AuthFailure catch (failure) {
@@ -210,8 +215,13 @@ class AuthController extends ChangeNotifier {
   ///
   /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
   /// is signed in.
-  Future<void> updateName(String name) =>
-      _replaceSession((session) => _repository.updateName(session, name));
+  Future<void> updateName(String name) => _replaceSession(
+    (session) => _repository.updateName(session, name),
+    (current, renamed) => current.withUser(
+      userPublicId: renamed.userPublicId,
+      userName: renamed.userName,
+    ),
+  );
 
   /// Replaces the signed-in account's password and holds on to the token the
   /// API hands back, because the change ends the one this device had.
@@ -226,6 +236,10 @@ class AuthController extends ChangeNotifier {
       session,
       currentPassword: currentPassword,
       newPassword: newPassword,
+    ),
+    (current, rekeyed) => current.withAccessToken(
+      rekeyed.accessToken,
+      expiresAt: rekeyed.expiresAt,
     ),
   );
 
@@ -261,15 +275,26 @@ class AuthController extends ChangeNotifier {
   /// so nothing is left signed in to an account that no longer exists.
   ///
   /// Throws [AuthFailure] and keeps the session when the API refuses, such as
-  /// for a wrong [password].
+  /// for a wrong [password]. Once the API has deleted the account the session
+  /// is dropped even if the credential store refuses to forget it: the token
+  /// it keeps is refused at the next launch, while one kept in hand would go
+  /// on presenting an account that is gone.
   Future<void> deleteAccount({required String password}) async {
     final session = _requireSession();
-    final revision = _revision;
+    final reader = _reader;
     await _whileHeld(
       () => _repository.deleteAccount(session, password: password),
     );
-    if (_revision == revision) {
-      await signOut();
+    if (_reader != reader) {
+      return;
+    }
+    _setSession(null);
+    _expired = false;
+    notifyListeners();
+    try {
+      await _store.clear();
+    } on Object {
+      // Settled at the next launch, when the stored token is refused.
     }
   }
 
@@ -281,21 +306,29 @@ class AuthController extends ChangeNotifier {
     return session;
   }
 
-  /// Runs [call] on the session in hand and adopts the session it returns,
-  /// unless the reader signed out or in again while it was in flight.
+  /// Runs [call] on the session in hand and folds what it returns into the
+  /// session in hand by then with [merge], unless the reader signed out or in
+  /// again while it was in flight.
+  ///
+  /// Merging rather than replacing lets two changes to the same reader finish
+  /// in either order: a rename that lands after a password change keeps the
+  /// new token, and the new token keeps the new name.
   ///
   /// The replacement is held before it is stored, so a keychain that refuses
   /// it still leaves this run working with the token the API now accepts.
   Future<void> _replaceSession(
     Future<AuthSession> Function(AuthSession session) call,
+    AuthSession Function(AuthSession current, AuthSession returned) merge,
   ) async {
     final session = _requireSession();
-    final revision = _revision;
-    final replaced = await _whileHeld(() => call(session));
-    if (_revision != revision) {
+    final reader = _reader;
+    final returned = await _whileHeld(() => call(session));
+    final current = _session;
+    if (_reader != reader || current == null) {
       return;
     }
-    _setSession(replaced);
+    final replaced = merge(current, returned);
+    _setSession(replaced, sameReader: true);
     notifyListeners();
     await _store.write(replaced);
   }
@@ -337,8 +370,11 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _setSession(AuthSession? session) {
+  void _setSession(AuthSession? session, {bool sameReader = false}) {
     _session = session;
     _revision++;
+    if (!sameReader) {
+      _reader++;
+    }
   }
 }

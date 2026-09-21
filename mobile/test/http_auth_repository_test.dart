@@ -548,6 +548,15 @@ void main() {
     );
   });
 
+  test('confirmEmailChange maps an address taken meanwhile to linkExpired', () {
+    expect(
+      () => auth.confirmEmailChange(
+        ConnectFixtureServer.conflictingEmailChangeToken,
+      ),
+      failsWith(AuthFailureKind.linkExpired),
+    );
+  });
+
   test('deleteAccount leaves nothing to sign in to', () async {
     await auth.deleteAccount(
       stored,

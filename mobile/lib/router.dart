@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
@@ -213,22 +214,26 @@ GoRouter createAppRouter({String? initialLocation}) {
           GoRoute(
             path: AppRoutes.name,
             name: 'accountName',
-            builder: (context, state) => const EditNameScreen(),
+            builder: (context, state) =>
+                const ReaderKeyed(child: EditNameScreen()),
           ),
           GoRoute(
             path: AppRoutes.email,
             name: 'accountEmail',
-            builder: (context, state) => const ChangeEmailScreen(),
+            builder: (context, state) =>
+                const ReaderKeyed(child: ChangeEmailScreen()),
           ),
           GoRoute(
             path: AppRoutes.password,
             name: 'accountPassword',
-            builder: (context, state) => const ChangePasswordScreen(),
+            builder: (context, state) =>
+                const ReaderKeyed(child: ChangePasswordScreen()),
           ),
           GoRoute(
             path: AppRoutes.delete,
             name: 'accountDelete',
-            builder: (context, state) => const DeleteAccountScreen(),
+            builder: (context, state) =>
+                const ReaderKeyed(child: DeleteAccountScreen()),
           ),
           GoRoute(
             path: AppRoutes.follows,

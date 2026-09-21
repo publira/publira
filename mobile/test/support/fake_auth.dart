@@ -13,12 +13,15 @@ import 'package:publira/auth/session_store.dart';
 /// `flutter test` has no platform keychain behind `SecureSessionStore`, and a
 /// widget test wants to seed the stored session anyway.
 class InMemorySessionStore implements SessionStore {
-  InMemorySessionStore({this.session, this.writeError});
+  InMemorySessionStore({this.session, this.writeError, this.clearError});
 
   AuthSession? session;
 
   /// Thrown by [write], standing in for a keychain that refuses one.
   Object? writeError;
+
+  /// Thrown by [clear], standing in for a keychain that refuses to forget.
+  Object? clearError;
 
   @override
   Future<AuthSession?> read() async => session;
@@ -34,6 +37,10 @@ class InMemorySessionStore implements SessionStore {
 
   @override
   Future<void> clear() async {
+    final error = clearError;
+    if (error != null) {
+      throw error;
+    }
     session = null;
   }
 }
@@ -145,6 +152,10 @@ class FakeAuthRepository implements AuthRepository {
 
   /// The names [updateName] has been asked for, in order.
   final renames = <String>[];
+
+  /// Held open by a test that needs to act while [changePassword] is in
+  /// flight.
+  Completer<void>? changePasswordGate;
 
   /// The token [changePassword] hands back.
   static const changedAccessToken = 'changed-access-token';
@@ -324,6 +335,7 @@ class FakeAuthRepository implements AuthRepository {
     required String currentPassword,
     required String newPassword,
   }) async {
+    await changePasswordGate?.future;
     final failure = accountFailure;
     if (failure != null) {
       throw failure;

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
+import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_repository.dart';
@@ -105,6 +106,36 @@ void main() {
 
       expect(find.text('Enter a display name.'), findsOneWidget);
       expect(repository.renames, isEmpty);
+    });
+
+    testWidgets('a different reader signing in starts the form afresh', (
+      tester,
+    ) async {
+      await openFromAccount(tester, 'account-name', 'edit-name-name');
+      await tester.enterText(
+        find.byKey(const ValueKey('edit-name-name')),
+        'Half-typed name',
+      );
+
+      await auth.signOut();
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('account-settings-sign-in')),
+        findsOneWidget,
+      );
+      repository.session = const AuthSession(
+        accessToken: 'other-access-token',
+        userPublicId: 'SeedMMBRCCC3',
+        userName: 'Other Reader',
+      );
+      await auth.signIn(email: 'other@example.com', password: 'other');
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('edit-name-name')),
+      );
+
+      expect(find.text('Other Reader'), findsOneWidget);
+      expect(find.text('Half-typed name'), findsNothing);
     });
 
     testWidgets('a refused rename keeps the form and says why', (tester) async {

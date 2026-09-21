@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
 
@@ -37,5 +38,26 @@ void leaveAccountSettings(BuildContext context) {
     context.pop();
   } else {
     context.go(AppRoutes.account);
+  }
+}
+
+/// Starts [child] afresh whenever the signed-in reader changes.
+///
+/// A settings screen whose session ended mid-edit offers sign-in, and the
+/// reader who comes back from it may be someone else. What the screen held —
+/// the name it was editing, the address it read, a password typed into it —
+/// belonged to the reader before, so none of it may reach a request made for
+/// the one after.
+class ReaderKeyed extends StatelessWidget {
+  const ReaderKeyed({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: ValueKey(AuthScope.of(context).session?.userPublicId),
+      child: child,
+    );
   }
 }
