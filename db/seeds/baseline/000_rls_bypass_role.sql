@@ -112,61 +112,103 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO publira_platform, publira_cont
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
 GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 
+-- The grants above hand every table to every app role, and two families of
+-- table have to give them back. publira_take_back_default_grants decides both
+-- for one relation, so the seed and the event trigger below apply one rule.
+--
 -- episode_rating_counts and series_rating_counts are derived, not written: they
 -- are the tallies of episode_ratings and only the triggers on that table may
--- move them. The grants above hand every table to every app role, so the API
--- roles have to give these back, or a storefront connection could set the
--- numbers its own tenant's readers see without a single rating behind them. The
--- triggers keep working because they are SECURITY DEFINER; nothing else may
--- write here.
---
--- This runs after the migrations, like the ALL TABLES grants above, so the
--- tables exist by the time the revoke names them.
+-- move them, or a storefront connection could set the numbers its own tenant's
+-- readers see without a single rating behind them. The triggers keep working
+-- because they are SECURITY DEFINER.
 --
 -- The other derived tables — content_daily_stats, content_ranking_snapshots,
 -- item_recommend_features — still carry the blanket grant. Taking it off them
 -- is publira/publira#2010.
-REVOKE INSERT, UPDATE, DELETE ON episode_rating_counts, series_rating_counts FROM publira_admin, publira_public;
-
+--
 -- The platform console's tables carry no policy, and correctly so: the console
 -- spans tenants, publira_platform holds BYPASSRLS, and a tenant isolation
--- policy would have nothing to isolate on. The blanket grants above are
--- therefore the only thing standing in front of the operators' password hashes
--- and the platform SMTP credentials, and they hand both to every app role — a
--- connection serving a storefront request could read them, and insert itself a
--- platform_users row besides. So the tenant-scoped and worker roles give the
--- whole platform_ prefix back.
---
--- The revoke matches on the prefix rather than naming today's tables, because
--- the ALTER DEFAULT PRIVILEGES above re-grants whatever a later migration adds:
--- a hand-maintained list would leave the next platform_ table exposed the day it
--- lands. Like the revoke for the rating tallies, this runs after the migrations,
--- so the tables exist by the time the loop finds them.
---
--- The REVOKE names the schema because the loop found the name in a schema of
--- its own choosing while an unqualified name resolves through search_path: a
--- statement the two disagree about revokes somewhere else and leaves these
--- tables granted, with nothing failing to say so.
-DO $$
+-- policy would have nothing to isolate on. The blanket grants are therefore the
+-- only thing standing in front of the operators' password hashes and the
+-- platform SMTP credentials, so the tenant-scoped and worker roles give the
+-- whole platform_ prefix back. The prefix, rather than a list of today's
+-- tables, is what keeps the next platform_ table covered the day it lands.
+CREATE OR REPLACE FUNCTION public.publira_take_back_default_grants(relation regclass)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
 DECLARE
-    platform_table text;
+    relation_name name;
 BEGIN
-    FOR platform_table IN
-        SELECT c.relname
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'public'
-            AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
-            AND c.relname LIKE 'platform\_%'
-        ORDER BY c.relname
-    LOOP
+    SELECT c.relname
+    INTO relation_name
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.oid = relation
+        AND n.nspname = 'public'
+        AND c.relkind IN ('r', 'p', 'v', 'm', 'f');
+
+    IF relation_name LIKE 'platform\_%' THEN
         EXECUTE format(
-            'REVOKE ALL ON public.%I FROM publira_public, publira_admin, publira_content_stats, publira_outbox',
-            platform_table
+            'REVOKE ALL ON %s FROM publira_public, publira_admin, publira_content_stats, publira_outbox',
+            relation
         );
+    ELSIF relation_name IN ('episode_rating_counts', 'series_rating_counts') THEN
+        EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON %s FROM publira_admin, publira_public', relation);
+    END IF;
+END
+$$;
+REVOKE ALL ON FUNCTION public.publira_take_back_default_grants(regclass) FROM PUBLIC;
+
+DO $$
+BEGIN
+    PERFORM public.publira_take_back_default_grants(c.oid)
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+        AND c.relkind IN ('r', 'p', 'v', 'm', 'f');
+END
+$$;
+
+-- A migration applied after this seed creates its tables under the ALTER
+-- DEFAULT PRIVILEGES above, so the rule is applied again as each relation is
+-- created rather than only when the seed last ran. It fires on River's DDL at
+-- worker startup as well, where it finds nothing to revoke; an error here would
+-- abort that DDL, which is why the function only ever revokes.
+CREATE OR REPLACE FUNCTION public.publira_take_back_default_grants_on_create()
+RETURNS event_trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$
+DECLARE
+    created oid;
+BEGIN
+    FOR created IN
+        SELECT objid
+        FROM pg_event_trigger_ddl_commands()
+        WHERE classid = 'pg_class'::regclass
+            AND object_type IN ('table', 'view', 'materialized view', 'foreign table')
+    LOOP
+        PERFORM public.publira_take_back_default_grants(created);
     END LOOP;
 END
 $$;
+REVOKE ALL ON FUNCTION public.publira_take_back_default_grants_on_create() FROM PUBLIC;
+
+DROP EVENT TRIGGER IF EXISTS publira_take_back_default_grants;
+CREATE EVENT TRIGGER publira_take_back_default_grants
+ON ddl_command_end
+WHEN TAG IN (
+    'CREATE TABLE',
+    'CREATE TABLE AS',
+    'SELECT INTO',
+    'CREATE VIEW',
+    'CREATE MATERIALIZED VIEW',
+    'CREATE FOREIGN TABLE'
+)
+EXECUTE FUNCTION public.publira_take_back_default_grants_on_create();
 
 -- The storefront and the tenant console charge their rate limits, and decide
 -- whether a tenant admin owes a second factor, from the platform policy. It

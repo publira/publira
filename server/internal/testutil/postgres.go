@@ -482,6 +482,44 @@ func (e *PostgresEnv) MigrateUp(t *testing.T) {
 	}
 }
 
+// MigrateUpWith applies every pending migration of db/migrations together with
+// extra, a set of migration files keyed by file name, the way a deployment
+// applies a migration that arrived after the seed ran. The schema then records a
+// version db/migrations does not have, so call [PostgresEnv.Reset] afterwards.
+func (e *PostgresEnv) MigrateUpWith(t *testing.T, extra map[string]string) {
+	t.Helper()
+
+	migrationsDir, err := findMigrationsDir()
+	if err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("read migrations: %v", err)
+	}
+	dir := t.TempDir()
+	for _, entry := range entries {
+		if err := os.Symlink(filepath.Join(migrationsDir, entry.Name()), filepath.Join(dir, entry.Name())); err != nil {
+			t.Fatalf("link migration %s: %v", entry.Name(), err)
+		}
+	}
+	for name, content := range extra {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+			t.Fatalf("write migration %s: %v", name, err)
+		}
+	}
+
+	m, err := migrate.New("file://"+filepath.ToSlash(dir), "pgx5://"+stripURLScheme(e.URL))
+	if err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+	defer m.Close() //nolint:errcheck
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		t.Fatalf("migrate up: %v", err)
+	}
+}
+
 func newMigrate(postgresURL string) (*migrate.Migrate, error) {
 	migrationsDir, err := findMigrationsDir()
 	if err != nil {
