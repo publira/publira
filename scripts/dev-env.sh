@@ -184,7 +184,10 @@ destroy_profile() {
     printf 'nothing to destroy: profile %q does not exist\n' "${name}"
     return 0
   fi
-  dev_env_load_profile "${name}"
+  # Only what the profile names is read, rather than the whole of it: a profile
+  # written in an earlier shape is refused by a load, and destroying it is what
+  # that refusal asks for.
+  dev_env_load_profile_resources "${name}"
   in_use="$(dev_env_profile_in_use "${name}")"
   [[ -z "${in_use}" ]] || dev_env_die "profile ${name} is still selected by: ${in_use}"
   ! dev_env_profile_has_running_processes "${name}" || dev_env_die "stop profile ${name} before destroying it"
@@ -242,15 +245,6 @@ print_env() {
   for key in $(awk -F= '/^[A-Z0-9_]+=/{print $1}' "${profile_path}"); do
     printf 'export %s=%q\n' "${key}" "${!key}"
   done
-  if ! dev_env_profile_value "${profile_path}" PUBLIRA_CONTENT_STATS_DB_URL > /dev/null; then
-    printf 'export PUBLIRA_CONTENT_STATS_DB_URL=%q\n' "${PUBLIRA_CONTENT_STATS_DB_URL}"
-  fi
-  if ! dev_env_profile_value "${profile_path}" PUBLIRA_TICKER_DB_URL > /dev/null; then
-    printf 'export PUBLIRA_TICKER_DB_URL=%q\n' "${PUBLIRA_TICKER_DB_URL}"
-  fi
-  if ! dev_env_profile_value "${profile_path}" PUBLIRA_EDGE_PORT > /dev/null; then
-    printf 'export PUBLIRA_EDGE_PORT=%q\n' "${PUBLIRA_EDGE_PORT}"
-  fi
 }
 
 list_profiles() {

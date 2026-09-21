@@ -291,9 +291,19 @@ expect_profile_value "${alpha_path}" PUBLIRA_EDGE_PORT "13150"
 expect_profile_value "${alpha_path}" PUBLIRA_PLATFORM_APP_URL "http://platform.localhost:13150"
 pass "a new profile carries the port of an edge of its own and names the platform console by it"
 
-# A profile written before it had an edge carries neither the port of one nor a
-# platform URL that goes through it. Loading it must answer both, because a
-# profile that cannot route /images serves no image at all.
+# `task dev-env:env` expands every key the profile file holds, so one the
+# loader does not read would abort it under `set -u`.
+(
+  dev_env_load_profile alpha > /dev/null
+  while IFS= read -r profile_key; do
+    [[ -n "${!profile_key+set}" ]] || fail "loading a profile leaves ${profile_key} unset"
+  done < <(awk -F= '/^[A-Z0-9_]+=/{print $1}' "${alpha_path}")
+) || exit 1
+pass "loading a profile sets every key its file holds"
+
+# A profile written before the worker had a login of its own names the
+# superuser connection as the worker URL and carries no format version. Loading
+# it has to refuse it rather than start the worker on that connection.
 (
   export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
   export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
@@ -301,49 +311,28 @@ pass "a new profile carries the port of an edge of its own and names the platfor
   dev_env_write_profile "echo" 5
 )
 echo_path="$(dev_env_profile_path echo)"
-grep -v '^PUBLIRA_EDGE_PORT=' "${echo_path}" |
-  sed 's|^PUBLIRA_PLATFORM_APP_URL=.*$|PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:13502|' \
-    > "${echo_path}.before-the-edge"
-mv "${echo_path}.before-the-edge" "${echo_path}"
-echo_edge="$(
-  dev_env_load_profile echo > /dev/null
-  printf '%s %s\n' "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}"
-)"
-[[ "${echo_edge}" == "13550 http://platform.localhost:13550" ]] ||
-  fail "a profile written before the edge resolved to ${echo_edge}"
+grep -v '^DEV_ENV_PROFILE_VERSION=' "${echo_path}" |
+  sed 's|^PUBLIRA_WORKER_DB_URL=.*$|PUBLIRA_WORKER_DB_URL=postgres://postgres:password@127.0.0.1:5432/publira_echo?sslmode=disable|' \
+    > "${echo_path}.outdated"
+mv "${echo_path}.outdated" "${echo_path}"
+if outdated_message="$(dev_env_load_profile echo 2>&1)"; then
+  fail "a profile written in an earlier shape was loaded"
+fi
+[[ "${outdated_message}" == *"${echo_path}"* ]] ||
+  fail "the refusal did not name the profile file: ${outdated_message}"
+[[ "${outdated_message}" == *"task dev-env:create NAME=echo"* ]] ||
+  fail "the refusal did not say how to replace the profile: ${outdated_message}"
+pass "a profile written in an earlier shape is refused, naming its file and how to replace it"
 
-# A platform URL a developer pointed elsewhere is not one this script wrote,
-# so the repair above leaves it alone.
-sed -i 's|^PUBLIRA_PLATFORM_APP_URL=.*$|PUBLIRA_PLATFORM_APP_URL=http://platform.example.com|' "${echo_path}"
-echo_platform_url="$(
-  dev_env_load_profile echo > /dev/null
-  printf '%s\n' "${PUBLIRA_PLATFORM_APP_URL}"
-)"
-[[ "${echo_platform_url}" == "http://platform.example.com" ]] ||
-  fail "a platform URL pointed elsewhere became ${echo_platform_url}"
-rm -f "${echo_path}"
-pass "a profile written before the edge takes its port and its platform URL from the ports it holds"
-
-# A profile written before the ticker jobs had a login of their own carries no
-# PUBLIRA_TICKER_DB_URL. Loading it must still not put those jobs on the
-# superuser connection, which is the whole defect the dedicated role removes.
+# Destroying such a profile is what that refusal asks for, so the resources it
+# names are read even though a load refuses it.
 (
-  export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
-  export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
-  export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:9000"
-  dev_env_write_profile "delta" 4
-)
-delta_path="$(dev_env_profile_path delta)"
-grep -v '^PUBLIRA_TICKER_DB_URL=' "${delta_path}" > "${delta_path}.without-ticker"
-mv "${delta_path}.without-ticker" "${delta_path}"
-delta_ticker_url="$(
-  dev_env_load_profile delta > /dev/null
-  printf '%s\n' "${PUBLIRA_TICKER_DB_URL}"
-)"
-[[ "${delta_ticker_url}" == "postgres://publira_ticker:tickerpass@127.0.0.1:5432/publira_delta?sslmode=disable" ]] ||
-  fail "a profile with no ticker URL resolved to ${delta_ticker_url}"
-rm -f "${delta_path}"
-pass "a profile written before the ticker role still loads that role's login, never the superuser connection"
+  dev_env_load_profile_resources echo > /dev/null
+  [[ "${PUBLIRA_S3_BUCKET}" == "publira-echo" ]] || fail "the bucket of an outdated profile was not read"
+  [[ "${DEV_ENV_SLOT}" == "5" ]] || fail "the slot of an outdated profile was not read"
+) || exit 1
+rm -f "${echo_path}"
+pass "the resources of a profile a load refuses are still read, so it can be destroyed"
 
 [[ "$(dev_env_url_authority "redis://127.0.0.1" 6379)" == "127.0.0.1:6379" ]] || fail "default port was not appended"
 [[ "$(dev_env_url_authority "postgres://u:p@db/publira?sslmode=disable" 5432)" == "db:5432" ]] || fail "userinfo or query was not stripped"

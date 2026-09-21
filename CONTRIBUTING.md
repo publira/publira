@@ -110,6 +110,8 @@ pnpm dev --filter @publira/web-host
 
 `task dev-env:list` shows every profile and the worktree that selected it. To discard one, run `task dev-env:destroy NAME=<name>`. It checks that no worktree has the target selected and that it is stopped, then deletes only that profile's database, Redis DB, and bucket after you retype the name. It does not touch the shared development environment, E2E, or other profiles.
 
+A profile records the shape it was written in, and a command that loads one refuses any other shape, naming the file and the commands that replace it. Profiles are not migrated: they hold nothing but local settings, and `task dev-env:destroy NAME=<name>` followed by `task dev-env:create` and `task dev-env:init` rebuilds one from the current shape.
+
 A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` only when you need to. The scripts create and drop a profile's database as the `postgres` superuser of `compose.yaml` on the profile's PostgreSQL host; `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` replaces that connection for a server with other credentials. Both variables are read solely by the development environment scripts.
 
 ## Verifying a change

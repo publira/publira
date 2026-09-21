@@ -11,6 +11,11 @@ DEV_ENV_PROFILES_DIR="${DEV_ENV_HOME}/profiles"
 DEV_ENV_SELECTION_FILE="${REPO_ROOT}/.publira-dev-env"
 DEV_ENV_SLOT_MIN=1
 DEV_ENV_SLOT_MAX=15
+# The shape dev_env_write_profile writes. A load refuses any other, because a
+# profile is local state nothing in the repository reads and recreating one
+# costs less than keeping every superseded shape loadable. Raise it in the same
+# commit as a change to what a profile holds.
+DEV_ENV_PROFILE_VERSION=1
 
 dev_env_error() {
   printf 'dev-env: %s\n' "$*" >&2
@@ -314,6 +319,7 @@ dev_env_write_profile() {
 
   umask 077
   {
+    printf 'DEV_ENV_PROFILE_VERSION=%s\n' "${DEV_ENV_PROFILE_VERSION}"
     printf 'DEV_ENV_NAME=%s\n' "${name}"
     printf 'DEV_ENV_SLOT=%s\n' "${slot}"
     printf 'DEV_ENV_OWNER_WORKTREE=%s\n' "${REPO_ROOT}"
@@ -357,112 +363,59 @@ dev_env_write_profile() {
   mv "${tmp_path}" "${profile_path}"
 }
 
-dev_env_load_profile() {
+# The identity and the resources a profile names: its database, its Valkey
+# logical database, and its bucket. Every shape this script has written has
+# named them by these keys, so a destroy reads a profile through this and goes
+# on removing what an outdated one holds after dev_env_load_profile refuses it.
+dev_env_load_profile_resources() {
   local name="$1"
-  local profile_path
+  local profile_path key
   profile_path="$(dev_env_profile_path "${name}")"
   [[ -f "${profile_path}" ]] || dev_env_die "profile does not exist: ${name}"
 
   dev_env_load_required_profile_value "${profile_path}" DEV_ENV_NAME
   dev_env_load_required_profile_value "${profile_path}" DEV_ENV_SLOT
-  dev_env_load_required_profile_value "${profile_path}" DEV_ENV_OWNER_WORKTREE
   [[ "${DEV_ENV_NAME}" == "${name}" ]] || dev_env_die "profile name mismatch: ${profile_path}"
   dev_env_identifier_is_valid "${DEV_ENV_NAME}" || dev_env_die "invalid profile name in ${profile_path}"
   dev_env_slot_is_valid "${DEV_ENV_SLOT}" || dev_env_die "invalid Valkey slot in ${profile_path}"
 
-  local key
+  for key in PUBLIRA_DB_URL PUBLIRA_REDIS_URL PUBLIRA_S3_BUCKET PUBLIRA_S3_ENDPOINT; do
+    dev_env_load_required_profile_value "${profile_path}" "${key}"
+  done
+}
+
+dev_env_load_profile() {
+  local name="$1"
+  local profile_path version key
+  profile_path="$(dev_env_profile_path "${name}")"
+  [[ -f "${profile_path}" ]] || dev_env_die "profile does not exist: ${name}"
+
+  # The version is read before any other key so that a profile written in an
+  # earlier shape is named as the outdated thing it is, rather than by whichever
+  # key that shape happens to be missing.
+  version="$(dev_env_profile_value "${profile_path}" DEV_ENV_PROFILE_VERSION || true)"
+  if [[ "${version}" != "${DEV_ENV_PROFILE_VERSION}" ]]; then
+    dev_env_error "profile ${name} was written in an earlier shape: ${profile_path}"
+    dev_env_die "create it again: task dev-env:destroy NAME=${name} && task dev-env:create NAME=${name} && task dev-env:init"
+  fi
+
+  dev_env_load_profile_resources "${name}"
+  dev_env_load_required_profile_value "${profile_path}" DEV_ENV_OWNER_WORKTREE
+
   for key in \
-    PUBLIRA_DB_URL PUBLIRA_PUBLIC_DB_URL PUBLIRA_ADMIN_DB_URL PUBLIRA_PLATFORM_DB_URL \
-    PUBLIRA_WORKER_DB_URL PUBLIRA_IMAGE_DB_URL PUBLIRA_ADMIN_IMAGE_DB_URL \
-    PUBLIRA_REDIS_URL PUBLIRA_S3_BUCKET PUBLIRA_S3_ENDPOINT PUBLIRA_S3_FORCE_PATH_STYLE \
-    PUBLIRA_COOKIE_SUFFIX PUBLIRA_AUTH_SECRET \
+    PUBLIRA_PUBLIC_DB_URL PUBLIRA_ADMIN_DB_URL PUBLIRA_PLATFORM_DB_URL \
+    PUBLIRA_WORKER_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_TICKER_DB_URL \
+    PUBLIRA_IMAGE_DB_URL PUBLIRA_ADMIN_IMAGE_DB_URL \
+    PUBLIRA_S3_FORCE_PATH_STYLE PUBLIRA_COOKIE_SUFFIX PUBLIRA_AUTH_SECRET \
     PUBLIRA_AUTH_JWT_SECRET PUBLIRA_REVALIDATE_TOKEN PUBLIRA_WEB_HOST_PORT \
     PUBLIRA_WEB_ADMIN_PORT PUBLIRA_WEB_PLATFORM_PORT PUBLIRA_PUBLIC_API_PORT \
     PUBLIRA_PUBLIC_API_GRPC_PORT PUBLIRA_IMAGE_SERVER_PORT \
-    PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_WORKER_PORT \
+    PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_WORKER_PORT PUBLIRA_EDGE_PORT \
+    PUBLIRA_GRPC_URL \
     PUBLIRA_WEB_HOST_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \
     PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
     dev_env_load_required_profile_value "${profile_path}" "${key}"
   done
-
-  # A profile written before the worker had a role of its own stored the
-  # superuser connection as the worker URL. Loading it unchanged would keep
-  # running the worker as the superuser, which is the whole defect the dedicated
-  # role removes, so the stored value is replaced with the login this profile
-  # would be given today. The comparison is against the exact string the old
-  # dev_env_write_profile emitted for this profile's own database, so a worker
-  # URL a developer pointed somewhere else is left alone.
-  local postgres database
-  postgres="$(dev_env_url_authority "${PUBLIRA_DB_URL}" 5432)" ||
-    dev_env_die "cannot derive the PostgreSQL host from PUBLIRA_DB_URL: ${profile_path}"
-  database="publira_${DEV_ENV_NAME//-/_}"
-  if [[ "${PUBLIRA_WORKER_DB_URL}" == "postgres://postgres:password@${postgres}/${database}?sslmode=disable" ]]; then
-    PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@${postgres}/${database}?sslmode=disable"
-    export PUBLIRA_WORKER_DB_URL
-  fi
-
-  # A profile written before it had an edge carries no port for one, and names
-  # the platform console by the port web-platform itself listens on. Both are
-  # derived from the port block the profile already holds, so an old profile
-  # gets its images routed without being recreated; a platform URL a developer
-  # pointed elsewhere is left alone, the way the worker URL above is.
-  local edge_port
-  if ! edge_port="$(dev_env_profile_value "${profile_path}" PUBLIRA_EDGE_PORT)"; then
-    PUBLIRA_EDGE_PORT="$((PUBLIRA_WEB_HOST_PORT + 50))"
-  elif [[ -z "${edge_port}" ]]; then
-    dev_env_die "profile has an empty PUBLIRA_EDGE_PORT: ${profile_path}"
-  else
-    PUBLIRA_EDGE_PORT="${edge_port}"
-  fi
-  export PUBLIRA_EDGE_PORT
-  if [[ "${PUBLIRA_PLATFORM_APP_URL}" == "http://platform.localhost:${PUBLIRA_WEB_PLATFORM_PORT}" ]]; then
-    PUBLIRA_PLATFORM_APP_URL="http://platform.localhost:${PUBLIRA_EDGE_PORT}"
-    export PUBLIRA_PLATFORM_APP_URL
-  fi
-
-  # A profile written while each console had an API server of its own has a
-  # URL per console and none under this name. All three named the same process
-  # by then, and the ports the old ones carried are gone, so the profile's own
-  # gRPC port is the answer rather than any value stored back then.
-  local grpc_url
-  if ! grpc_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_GRPC_URL)"; then
-    PUBLIRA_GRPC_URL="http://127.0.0.1:${PUBLIRA_PUBLIC_API_GRPC_PORT}"
-  elif [[ -z "${grpc_url}" ]]; then
-    dev_env_die "profile has an empty PUBLIRA_GRPC_URL: ${profile_path}"
-  else
-    PUBLIRA_GRPC_URL="${grpc_url}"
-  fi
-  export PUBLIRA_GRPC_URL
-
-  # Profiles created before the stats batch have no key of their own. They fall
-  # back to the superuser connection, which is what their worker URL was when
-  # they were written; reading PUBLIRA_WORKER_DB_URL here instead would move the
-  # stats batches onto publira_outbox the moment that value was repointed.
-  local content_stats_url
-  if ! content_stats_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_CONTENT_STATS_DB_URL)"; then
-    PUBLIRA_CONTENT_STATS_DB_URL="${PUBLIRA_DB_URL}"
-  elif [[ -z "${content_stats_url}" ]]; then
-    dev_env_die "profile has an empty PUBLIRA_CONTENT_STATS_DB_URL: ${profile_path}"
-  else
-    PUBLIRA_CONTENT_STATS_DB_URL="${content_stats_url}"
-  fi
-  export PUBLIRA_CONTENT_STATS_DB_URL
-
-  # Profiles written before the ticker jobs had a role of their own have no key
-  # here. Unlike the stats batches above they must not fall back to PUBLIRA_DB_URL:
-  # that is the superuser connection, and running the tickers on it is the whole
-  # defect the dedicated role removes. The login this profile would be given
-  # today is built instead, the way the worker URL is repaired above, so an old
-  # profile keeps working without being handed the superuser.
-  local ticker_url
-  if ! ticker_url="$(dev_env_profile_value "${profile_path}" PUBLIRA_TICKER_DB_URL)"; then
-    PUBLIRA_TICKER_DB_URL="postgres://publira_ticker:tickerpass@${postgres}/${database}?sslmode=disable"
-  elif [[ -z "${ticker_url}" ]]; then
-    dev_env_die "profile has an empty PUBLIRA_TICKER_DB_URL: ${profile_path}"
-  else
-    PUBLIRA_TICKER_DB_URL="${ticker_url}"
-  fi
-  export PUBLIRA_TICKER_DB_URL
 }
 
 dev_env_selected_profile() {
