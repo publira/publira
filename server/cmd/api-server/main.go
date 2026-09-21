@@ -22,11 +22,10 @@ import (
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
-	"github.com/publira/publira/server/internal/storage"
-	s3storage "github.com/publira/publira/server/internal/storage/s3"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -78,12 +77,6 @@ func main() {
 	}
 	defer pools.close() //nolint:errcheck
 
-	storageProvider, err := newStorageProvider(context.Background(), cfg.Storage)
-	if err != nil {
-		logger.Error("failed to initialize storage provider", "error", err)
-		os.Exit(1)
-	}
-
 	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
 	// assigned to an interface is not nil, and it would slip past the guard in
 	// emailsettings.DecryptPassword into a nil-receiver method call. A process
@@ -99,7 +92,16 @@ func main() {
 		encryptor = manager
 	}
 
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), storageProvider, encryptor, tokens)
+	// The object store is read from the platform's settings on the platform
+	// pool, the one login here that may read them, so this process starts
+	// before an operator has saved one and an upload until then is refused.
+	storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
+		Queries: dbmodels.New(pools.platform),
+		Secrets: encryptor,
+		Logger:  logger,
+	}, platformstorage.NewStorage)}
+
+	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens)
 	if err != nil {
 		logger.Error("failed to initialize public api handler", "error", err)
 		os.Exit(1)
@@ -212,17 +214,4 @@ func addrFromEnv(name, fallback string) string {
 		return addr
 	}
 	return fallback
-}
-
-func newStorageProvider(ctx context.Context, cfg config.Storage) (storage.Provider, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-	return s3storage.New(ctx, s3storage.Config{
-		Bucket:         cfg.S3Bucket,
-		Region:         cfg.S3Region,
-		Endpoint:       cfg.S3Endpoint,
-		PublicBaseURL:  cfg.S3PublicBaseURL,
-		ForcePathStyle: cfg.S3ForcePathStyle,
-	})
 }

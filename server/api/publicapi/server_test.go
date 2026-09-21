@@ -50,7 +50,7 @@ func TestNewRejectsInvalidWebPushVAPIDConfiguration(t *testing.T) {
 	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", "invalid")
 	t.Setenv("PUBLIRA_WEBPUSH_SUBJECT", "mailto:push@example.test")
 
-	if _, err := New(nil, nil, &testStorageProvider{}, nil, testutil.TokenManager()); err == nil {
+	if _, err := New(nil, nil, nil, testutil.TokenManager()); err == nil {
 		t.Fatal("New error = nil, want invalid VAPID configuration rejection")
 	}
 }

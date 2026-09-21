@@ -3,12 +3,17 @@ package adminapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+
+	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 // TestAdminHandlerExposesOnlyAdminRoutes asserts that NewHandler serves the
@@ -117,5 +122,27 @@ func assertRouteRegistered(t *testing.T, ts *httptest.Server, path string, wantR
 	gotRegistered := resp.StatusCode != http.StatusNotFound
 	if gotRegistered != wantRegistered {
 		t.Fatalf("path %s status = %d, registered = %v, want registered = %v", path, resp.StatusCode, gotRegistered, wantRegistered)
+	}
+}
+
+// A platform with no object store saved is a state the Platform Console
+// resolves, so an upload says which state it is rather than failing as internal.
+func TestStorageUploadErrorReportsMissingPlatformStorage(t *testing.T) {
+	err := storageUploadError(fmt.Errorf("variant persistence failed: %w", storage.ErrNotConfigured))
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeFailedPrecondition {
+		t.Fatalf("error = %v, want %v", err, connect.CodeFailedPrecondition)
+	}
+	details := connectErr.Details()
+	if len(details) != 1 {
+		t.Fatalf("details = %d, want one ErrorInfo", len(details))
+	}
+	value, detailErr := details[0].Value()
+	if detailErr != nil {
+		t.Fatalf("detail Value(): %v", detailErr)
+	}
+	info, ok := value.(*errdetails.ErrorInfo)
+	if !ok || info.Reason != rpcerrors.ReasonStorageNotConfigured {
+		t.Fatalf("detail = %#v, want reason %q", value, rpcerrors.ReasonStorageNotConfigured)
 	}
 }

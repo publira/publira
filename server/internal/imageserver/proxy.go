@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"manael.org/x/manael/v3"
+
+	"github.com/publira/publira/server/internal/storage"
 )
 
 const (
@@ -94,6 +96,11 @@ func (h *Handler) serveOrigin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "image not found", http.StatusNotFound)
 			return
 		}
+		if errors.Is(err, storage.ErrNotConfigured) {
+			h.logger.Warn("origin has no object store to load from", "error", err, "object_key", key)
+			http.Error(w, "object storage is not configured", http.StatusServiceUnavailable)
+			return
+		}
 		h.logger.Error("origin failed to load object", "error", err, "object_key", key)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -117,7 +124,22 @@ func (h *Handler) serveOrigin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectKey, fallbackContentType, cacheControl string, cipher *imageCipher) {
-	key := cacheKey(objectKey, r)
+	var storeVersion string
+	if versioned, ok := h.objects.(VersionedStore); ok {
+		version, err := versioned.Version(r.Context())
+		if errors.Is(err, storage.ErrNotConfigured) {
+			h.logger.Warn("no object store to serve from", "error", err, "object_key", objectKey)
+			writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusServiceUnavailable, []byte("object storage is not configured\n"))
+			return
+		}
+		if err != nil {
+			h.logger.Error("failed to resolve the object store", "error", err, "object_key", objectKey)
+			writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusInternalServerError, []byte("internal server error\n"))
+			return
+		}
+		storeVersion = version
+	}
+	key := cacheKey(storeVersion, objectKey, r)
 	if entry, ok := h.cache.Get(r.Context(), key); ok {
 		h.writeConvertedImage(w, entry.ContentType, cacheControl, "hit", http.StatusOK, entry.Data, cipher, key)
 		return

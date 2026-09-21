@@ -99,14 +99,12 @@ Save the `whsec_...` it prints as that tenant's webhook signing secret through `
 
 ## Image storage configuration
 
-`UploadEpisodeImages` uploads to S3-compatible storage. If `PUBLIRA_S3_BUCKET` is unset, the server fails at startup.
+The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `api-server` (uploads), `image-server` (reads), the worker's `maintenance.purge_orphan_images`, and `batch purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
 
-- `PUBLIRA_S3_BUCKET` (required)
-- `AWS_REGION` (recommended)
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (as needed)
-- `PUBLIRA_S3_ENDPOINT` (optional, for RustFS / MinIO and the like)
-- `PUBLIRA_S3_FORCE_PATH_STYLE` (optional, `true`/`false`)
-- `PUBLIRA_S3_PUBLIC_BASE_URL` (optional)
+Every process starts with nothing saved. Until something is, an upload fails with `FailedPrecondition` and the `STORAGE_NOT_CONFIGURED` reason, the image server answers `503`, and the orphan sweep fails (the worker cancels the job).
+
+- An access key saved with the configuration is stored encrypted, so each of those processes needs `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` to use it.
+- Without one, each process signs with the credential the AWS SDK finds for itself: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`, a web identity token, or an instance role.
 
 ### Initializing the bucket
 
@@ -116,7 +114,7 @@ Creating the bucket is not the application's responsibility (it is never created
 task storage:init
 ```
 
-It creates `PUBLIRA_S3_BUCKET` with the aws CLI, and succeeds as-is when the bucket already exists. `task dev` runs it before starting each server. `task setup`, the E2E preparation, and the bootstrap check run `task storage:seed` instead, which creates the bucket the same way and then uploads the images the development seed's rows name. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
+It creates `PUBLIRA_S3_BUCKET` with the aws CLI, succeeds as-is when the bucket already exists, and saves that bucket (with `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, and `AWS_REGION`) as the platform's object store in `PUBLIRA_DB_URL`, signed with the ambient credential. Those variables are read by the scripts alone. `task dev` runs it before starting each server. `task setup`, the E2E preparation, and the bootstrap check run `task storage:seed` instead, which creates the bucket the same way and then uploads the images the development seed's rows name. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
 
 ### Development environment (RustFS)
 

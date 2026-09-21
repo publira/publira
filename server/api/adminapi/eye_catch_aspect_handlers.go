@@ -175,8 +175,12 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	store, err := storage.Pin(txCtx, s.storage)
+	if err != nil {
+		return nil, storageUploadError(err)
+	}
 	for _, variant := range variants {
-		uploaded, uploadErr := s.storage.Upload(txCtx, storage.UploadRequest{
+		uploaded, uploadErr := store.Upload(txCtx, storage.UploadRequest{
 			ObjectKey:   aspectImageObjectKey(tenant.PublicID, "series", current.PublicID, imageID, uploadID, variant),
 			ContentType: variant.ContentType,
 			Data:        variant.Data,
@@ -327,8 +331,12 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	store, err := storage.Pin(txCtx, s.storage)
+	if err != nil {
+		return nil, storageUploadError(err)
+	}
 	for _, variant := range variants {
-		uploaded, uploadErr := s.storage.Upload(txCtx, storage.UploadRequest{
+		uploaded, uploadErr := store.Upload(txCtx, storage.UploadRequest{
 			ObjectKey:   aspectImageObjectKey(tenant.PublicID, "labels", current.PublicID, imageID, uploadID, variant),
 			ContentType: variant.ContentType,
 			Data:        variant.Data,

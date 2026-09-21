@@ -201,9 +201,15 @@ func (s OrphanImagePurge) Run(ctx context.Context, deps Deps) error {
 	}
 	logger := deps.logger()
 
+	reclaimer, bucket, err := deps.Storage.Reclaimer(ctx)
+	if err != nil {
+		logger.ErrorContext(ctx, "orphan image reclamation has no bucket to sweep", "error", err)
+		return err
+	}
+
 	cutoff := time.Now().UTC().Add(-s.MinAge)
 	started := time.Now()
-	result, err := orphanimages.New(deps.DB, deps.Storage).Run(ctx, orphanimages.Options{
+	result, err := orphanimages.New(deps.DB, reclaimer).Run(ctx, orphanimages.Options{
 		Cutoff:   cutoff,
 		PageSize: s.PageSize,
 		DryRun:   s.DryRun,
@@ -212,7 +218,7 @@ func (s OrphanImagePurge) Run(ctx context.Context, deps Deps) error {
 		logger.ErrorContext(ctx, "orphan image reclamation failed",
 			"cutoff", cutoff.Format(time.RFC3339),
 			"dry_run", s.DryRun,
-			"bucket", deps.Bucket,
+			"bucket", bucket,
 			"row_count", result.RowCount,
 			"scanned_count", result.ScannedCount,
 			"deleted_count", result.DeletedCount,
@@ -224,7 +230,7 @@ func (s OrphanImagePurge) Run(ctx context.Context, deps Deps) error {
 		"cutoff", cutoff.Format(time.RFC3339),
 		"min_age", s.MinAge,
 		"page_size", s.PageSize,
-		"bucket", deps.Bucket,
+		"bucket", bucket,
 		"dry_run", result.DryRun,
 		"row_count", result.RowCount,
 		"scanned_count", result.ScannedCount,

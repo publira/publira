@@ -23,6 +23,7 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
@@ -63,10 +64,14 @@ func invalidSessionError() error {
 
 // storageUploadError keeps context cancellation and deadline errors uncoded so
 // Connect maps them to CodeCanceled / CodeDeadlineExceeded at the protocol
-// boundary. Other storage failures retain the existing internal error code.
+// boundary. A platform with no object store saved is a precondition the
+// Platform Console resolves; other storage failures are internal.
 func storageUploadError(err error) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
+	}
+	if errors.Is(err, storage.ErrNotConfigured) {
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, storage.ErrNotConfigured, rpcerrors.ReasonStorageNotConfigured)
 	}
 	return connect.NewError(connect.CodeInternal, err)
 }

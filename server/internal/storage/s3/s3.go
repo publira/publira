@@ -55,7 +55,7 @@ type Storage struct {
 }
 
 func New(ctx context.Context, cfg Config) (*Storage, error) {
-	client, err := newClient(ctx, cfg)
+	client, err := NewClient(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -68,10 +68,10 @@ func New(ctx context.Context, cfg Config) (*Storage, error) {
 	}, nil
 }
 
-// newClient builds the S3 client cfg addresses. An explicit access key is
+// NewClient builds the S3 client cfg addresses. An explicit access key is
 // handed over as a static credential; without one the SDK's default chain
 // resolves whatever the process was deployed with.
-func newClient(ctx context.Context, cfg Config) (*s3.Client, error) {
+func NewClient(ctx context.Context, cfg Config) (*s3.Client, error) {
 	loadOptions := make([]func(*awsconfig.LoadOptions) error, 0, 2)
 	if strings.TrimSpace(cfg.Region) != "" {
 		loadOptions = append(loadOptions, awsconfig.WithRegion(cfg.Region))

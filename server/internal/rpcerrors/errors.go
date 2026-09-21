@@ -30,6 +30,9 @@ const (
 	ReasonSMTPTestTLS             = "SMTP_TEST_TLS"
 	ReasonSMTPTestTimeout         = "SMTP_TEST_TIMEOUT"
 	ReasonSMTPTestUnknown         = "SMTP_TEST_UNKNOWN"
+	// ReasonStorageNotConfigured refuses an upload on a platform whose
+	// operator has saved no object store yet.
+	ReasonStorageNotConfigured = "STORAGE_NOT_CONFIGURED"
 	// The object store refused one of the operations a connection test
 	// performs. Each names what refused it rather than which operation it was:
 	// the check carries the operation beside the reason.

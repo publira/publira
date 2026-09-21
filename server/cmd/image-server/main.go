@@ -12,17 +12,16 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-
 	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/imageserver"
 	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/sqldb"
+	s3storage "github.com/publira/publira/server/internal/storage/s3"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -68,7 +67,7 @@ func main() {
 	}
 	defer pools.close() //nolint:errcheck
 
-	objectStore, err := newObjectStore(context.Background(), cfg.Storage)
+	objectStore, err := newObjectStore(cfg, pools.admin, logger)
 	if err != nil {
 		logger.Error("failed to initialize object store", "error", err)
 		os.Exit(1)
@@ -148,26 +147,31 @@ func addrFromEnv(name, fallback string) string {
 	return fallback
 }
 
-func newObjectStore(ctx context.Context, cfg config.Storage) (imageserver.ObjectStore, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	loadOptions := make([]func(*awsconfig.LoadOptions) error, 0, 1)
-	if cfg.S3Region != "" {
-		loadOptions = append(loadOptions, awsconfig.WithRegion(cfg.S3Region))
-	}
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOptions...)
-	if err != nil {
-		return nil, fmt.Errorf("load aws config: %w", err)
-	}
-
-	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = cfg.S3ForcePathStyle
-		if cfg.S3Endpoint != "" {
-			o.BaseEndpoint = aws.String(cfg.S3Endpoint)
+// newObjectStore reads every object from the store the platform's settings
+// name. They are read on the admin pool, which is granted that one platform
+// table, and the storefront pool is not.
+func newObjectStore(cfg *config.Config, admin *sql.DB, logger *slog.Logger) (imageserver.ObjectStore, error) {
+	var secrets platformstorage.SecretManager
+	if len(cfg.Encryption.Keys) > 0 {
+		manager, err := secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
+		if err != nil {
+			return nil, fmt.Errorf("initialize secret encryption manager: %w", err)
 		}
+		secrets = manager
+	}
+	resolver := platformstorage.New(platformstorage.Config{
+		Queries: dbmodels.New(admin),
+		Secrets: secrets,
+		Logger:  logger,
+	}, func(ctx context.Context, snapshot platformstorage.Snapshot) (imageserver.ObjectStore, error) {
+		client, err := s3storage.NewClient(ctx, snapshot.S3Config())
+		if err != nil {
+			return nil, err
+		}
+		return imageserver.NewS3Store(client, snapshot.Settings.Bucket), nil
 	})
-
-	return imageserver.NewS3Store(client, cfg.S3Bucket), nil
+	return imageserver.ResolvingStore{Resolve: func(ctx context.Context) (imageserver.ObjectStore, string, error) {
+		resolved, err := resolver.Resolve(ctx)
+		return resolved.Value, resolved.Version, err
+	}}, nil
 }

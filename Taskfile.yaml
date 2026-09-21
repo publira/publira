@@ -118,7 +118,7 @@ tasks:
       - task: storage:seed
 
   storage:init:
-    desc: Initialize the storage backend (create the S3 bucket)
+    desc: Initialize the storage backend (create the S3 bucket and save it as the platform's object store)
     cmds:
       - bash scripts/storage-init.sh
 

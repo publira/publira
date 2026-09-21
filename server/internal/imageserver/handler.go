@@ -121,6 +121,14 @@ type ObjectStore interface {
 	GetObject(ctx context.Context, key string) (ObjectResult, error)
 }
 
+// VersionedStore is an ObjectStore whose configuration can change. A converted
+// result is cached under the version it was read from, so a change of store is
+// not answered from the cache of the previous one.
+type VersionedStore interface {
+	ObjectStore
+	Version(ctx context.Context) (string, error)
+}
+
 // SiteDB is how one of a tenant's two host names reaches the database. The
 // pool belongs to that site's PostgreSQL login — publira_public for the
 // storefront, publira_admin for the console — and Tenants opens the

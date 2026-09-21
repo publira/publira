@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -13,7 +12,6 @@ const defaultDBURL = "postgres://postgres:password@db:5432/publira?sslmode=disab
 
 type Config struct {
 	DB         DB
-	Storage    Storage
 	Encryption Encryption
 	Push       Push
 }
@@ -21,23 +19,6 @@ type Config struct {
 type DB struct {
 	// URL is the generic DB connection string (used by migration tools and worker jobs).
 	URL string
-}
-
-type Storage struct {
-	S3Bucket         string
-	S3Region         string
-	S3Endpoint       string
-	S3PublicBaseURL  string
-	S3ForcePathStyle bool
-}
-
-// Validate is run at startup by the servers that touch object storage, so a
-// missing bucket stops the process instead of surfacing on the first upload.
-func (s Storage) Validate() error {
-	if s.S3Bucket == "" {
-		return errors.New("PUBLIRA_S3_BUCKET is required")
-	}
-	return nil
 }
 
 type Encryption struct {
@@ -91,17 +72,12 @@ func (p Push) ValidateWebPush() error {
 }
 
 func New() (*Config, error) {
-	storageCfg, err := parseStorage()
-	if err != nil {
-		return nil, err
-	}
 	encryptionCfg, err := parseEncryption()
 	if err != nil {
 		return nil, err
 	}
 	return &Config{
 		DB:         parseDB(),
-		Storage:    storageCfg,
 		Encryption: encryptionCfg,
 		Push:       parsePush(),
 	}, nil
@@ -125,25 +101,6 @@ func parseDB() DB {
 		dbURL = defaultDBURL
 	}
 	return DB{URL: dbURL}
-}
-
-func parseStorage() (Storage, error) {
-	cfg := Storage{
-		S3Bucket:        strings.TrimSpace(os.Getenv("PUBLIRA_S3_BUCKET")),
-		S3Region:        strings.TrimSpace(os.Getenv("AWS_REGION")),
-		S3Endpoint:      strings.TrimSpace(os.Getenv("PUBLIRA_S3_ENDPOINT")),
-		S3PublicBaseURL: strings.TrimSpace(os.Getenv("PUBLIRA_S3_PUBLIC_BASE_URL")),
-	}
-
-	if raw := strings.TrimSpace(os.Getenv("PUBLIRA_S3_FORCE_PATH_STYLE")); raw != "" {
-		parsed, err := strconv.ParseBool(raw)
-		if err != nil {
-			return Storage{}, fmt.Errorf("invalid PUBLIRA_S3_FORCE_PATH_STYLE: %w", err)
-		}
-		cfg.S3ForcePathStyle = parsed
-	}
-
-	return cfg, nil
 }
 
 func parseEncryption() (Encryption, error) {

@@ -77,13 +77,14 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 
 // readablePlatformTables are, per role, the platform tables it reads: the
 // policy the storefront's and the tenant console's rate limits and the
-// tenant-admin MFA requirement come from, and the retention defaults the tenant
-// console and the purge batches resolve a tenant's periods from. Neither holds
-// a secret.
+// tenant-admin MFA requirement come from, the retention defaults the tenant
+// console and the purge batches resolve a tenant's periods from, and the object
+// store the image server and the orphan image sweep resolve. The last holds its
+// secret encrypted under keys the database does not have.
 var readablePlatformTables = map[string][]string{
 	"publira_public":        {"platform_policy_config"},
-	"publira_admin":         {"platform_policy_config", "platform_retention_config"},
-	"publira_content_stats": {"platform_retention_config"},
+	"publira_admin":         {"platform_policy_config", "platform_retention_config", "platform_storage_config"},
+	"publira_content_stats": {"platform_retention_config", "platform_storage_config"},
 }
 
 // The storefront and the tenant console reach the database as publira_public and

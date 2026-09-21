@@ -24,7 +24,6 @@ import (
 	"github.com/publira/publira/server/internal/push"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tenantconn"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -40,7 +39,6 @@ type stripeSessionCreator interface {
 type apiServer struct {
 	db                    *sql.DB
 	queries               Querier
-	storage               storage.Provider
 	encryptor             emailsettings.SecretManager
 	tokens                *auth.TokenManager
 	logger                *slog.Logger
@@ -166,7 +164,7 @@ type API struct {
 // publira_public: the row-level security every handler here relies on is that
 // role's. Both flood controls read their limits from the platform policy
 // through that same pool.
-func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (*API, error) {
+func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (*API, error) {
 	if err := validateWebPushVAPIDFromEnv(); err != nil {
 		return nil, err
 	}
@@ -174,7 +172,7 @@ func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encrypto
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
-	return &API{server: newAPIServer(db, queries, storageProvider, encryptor, tokens, logger, guards, mail)}, nil
+	return &API{server: newAPIServer(db, queries, encryptor, tokens, logger, guards, mail)}, nil
 }
 
 // Register mounts the publira.v1 services on mux. What a mux carries is what
@@ -199,7 +197,6 @@ func validateWebPushVAPIDFromEnv() error {
 func newAPIServer(
 	db *sql.DB,
 	queries Querier,
-	storageProvider storage.Provider,
 	encryptor emailsettings.SecretManager,
 	tokens *auth.TokenManager,
 	logger *slog.Logger,
@@ -233,7 +230,6 @@ func newAPIServer(
 	return &apiServer{
 		db:                    db,
 		queries:               queries,
-		storage:               storageProvider,
 		encryptor:             encryptor,
 		tokens:                tokens,
 		logger:                logger,

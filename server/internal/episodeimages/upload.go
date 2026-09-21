@@ -64,6 +64,9 @@ func storageUploadError(err error) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
+	if errors.Is(err, storage.ErrNotConfigured) {
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, storage.ErrNotConfigured, rpcerrors.ReasonStorageNotConfigured)
+	}
 	return connect.NewError(connect.CodeInternal, err)
 }
 
@@ -78,6 +81,10 @@ func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattype
 		return nil, uuid.Nil, err
 	}
 
+	// Every variant of every image goes to the one store resolved here.
+	if s.Storage, err = storage.Pin(ctx, s.Storage); err != nil {
+		return nil, uuid.Nil, storageUploadError(err)
+	}
 	items, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.Headers)
 	if err != nil {
 		return nil, uuid.Nil, err
@@ -239,6 +246,9 @@ func (s Service) storeImages(
 						ContentType: variant.ContentType,
 						Data:        variant.Data,
 					})
+					if errors.Is(uploadErr, storage.ErrNotConfigured) {
+						return dbmodels.EpisodeImageVariant{}, backoff.Permanent(uploadErr)
+					}
 					if uploadErr != nil {
 						return dbmodels.EpisodeImageVariant{}, uploadErr
 					}

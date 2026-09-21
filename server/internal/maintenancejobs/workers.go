@@ -2,9 +2,12 @@ package maintenancejobs
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/riverqueue/river"
+
+	"github.com/publira/publira/server/internal/storage"
 )
 
 // ProjectEpisodeReadsArgs files the missing episode_complete events for stored
@@ -210,5 +213,11 @@ func (w *purgeOrphanImagesWorker) Timeout(*river.Job[PurgeOrphanImagesArgs]) tim
 func (w *purgeOrphanImagesWorker) Work(ctx context.Context, _ *river.Job[PurgeOrphanImagesArgs]) error {
 	ctx, end := startRun(ctx, ServiceNamePurgeOrphanImages, kindPurgeOrphanImages)
 	defer end()
-	return w.jobs.orphanImages.Run(ctx, w.jobs.deps)
+	err := w.jobs.orphanImages.Run(ctx, w.jobs.deps)
+	// No retry saves a platform with no object store configured, so the run
+	// is cancelled with that error rather than retried until it is discarded.
+	if errors.Is(err, storage.ErrNotConfigured) {
+		return river.JobCancel(err)
+	}
+	return err
 }

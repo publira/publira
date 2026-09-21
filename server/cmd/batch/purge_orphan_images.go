@@ -5,9 +5,11 @@ import (
 	"log/slog"
 
 	"github.com/publira/publira/server/config"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/maintenance"
+	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/sqldb"
-	"github.com/publira/publira/server/internal/storage/s3"
 )
 
 func runPurgeOrphanImages(ctx context.Context, logger *slog.Logger, cfg *config.Config) error {
@@ -20,21 +22,14 @@ func runPurgeOrphanImages(ctx context.Context, logger *slog.Logger, cfg *config.
 		logger.Error("invalid dry-run flag", "error", err)
 		return err
 	}
-	if err := cfg.Storage.Validate(); err != nil {
-		logger.Error("invalid storage configuration", "error", err)
-		return err
-	}
-
-	store, err := s3.New(ctx, s3.Config{
-		Bucket:         cfg.Storage.S3Bucket,
-		Region:         cfg.Storage.S3Region,
-		Endpoint:       cfg.Storage.S3Endpoint,
-		PublicBaseURL:  cfg.Storage.S3PublicBaseURL,
-		ForcePathStyle: cfg.Storage.S3ForcePathStyle,
-	})
-	if err != nil {
-		logger.Error("failed to initialize object storage", "error", err)
-		return err
+	var secrets platformstorage.SecretManager
+	if len(cfg.Encryption.Keys) > 0 {
+		manager, managerErr := secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
+		if managerErr != nil {
+			logger.Error("failed to initialize secret encryption manager", "error", managerErr)
+			return managerErr
+		}
+		secrets = manager
 	}
 
 	db, err := sqldb.Open(resolveOrphanImagesDBURL(cfg.DB.URL))
@@ -44,11 +39,16 @@ func runPurgeOrphanImages(ctx context.Context, logger *slog.Logger, cfg *config.
 	}
 	defer db.Close() //nolint:errcheck
 
+	// A platform with no object store saved fails the run with
+	// storage.ErrNotConfigured before any row is deleted.
 	return job.Run(ctx, maintenance.Deps{
-		DB:      db,
-		Storage: store,
-		Bucket:  cfg.Storage.S3Bucket,
-		Logger:  logger,
+		DB: db,
+		Storage: platformstorage.Reclaimers{Resolver: platformstorage.New(platformstorage.Config{
+			Queries: dbmodels.New(db),
+			Secrets: secrets,
+			Logger:  logger,
+		}, platformstorage.NewStorage)},
+		Logger: logger,
 	})
 }
 

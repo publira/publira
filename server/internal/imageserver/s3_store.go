@@ -53,3 +53,24 @@ func (s *S3Store) GetObject(ctx context.Context, key string) (ObjectResult, erro
 		ContentLength: contentLength,
 	}, nil
 }
+
+// ResolvingStore reads each object from the store Resolve answers for that
+// read, so a changed platform storage configuration reaches the next request.
+// Resolve also names the configuration the store was built from.
+type ResolvingStore struct {
+	Resolve func(ctx context.Context) (ObjectStore, string, error)
+}
+
+func (s ResolvingStore) GetObject(ctx context.Context, key string) (ObjectResult, error) {
+	store, _, err := s.Resolve(ctx)
+	if err != nil {
+		return ObjectResult{}, err
+	}
+	return store.GetObject(ctx, key)
+}
+
+// Version implements VersionedStore.
+func (s ResolvingStore) Version(ctx context.Context) (string, error) {
+	_, version, err := s.Resolve(ctx)
+	return version, err
+}

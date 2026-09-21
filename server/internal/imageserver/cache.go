@@ -132,10 +132,12 @@ func (c *memoryCache) removeLocked(key string) {
 	delete(c.items, key)
 }
 
-func cacheKey(objectKey string, r *http.Request) string {
+func cacheKey(storeVersion, objectKey string, r *http.Request) string {
 	q := r.URL.Query()
 	var b strings.Builder
-	b.Grow(len(objectKey) + 64)
+	b.Grow(len(storeVersion) + len(objectKey) + 64)
+	b.WriteString(storeVersion)
+	b.WriteByte(cacheKeySep)
 	b.WriteString(objectKey)
 	b.WriteByte(cacheKeySep)
 	b.WriteString(r.Header.Get("Accept"))

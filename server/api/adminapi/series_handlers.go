@@ -103,6 +103,10 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
 	}
 
+	store, err := storage.Pin(ctx, s.storage)
+	if err != nil {
+		return uuid.NullUUID{}, storageUploadError(err)
+	}
 	for _, variant := range variants {
 		objectKey := fmt.Sprintf(
 			"tenants/%s/series/%s/%s-%s%s",
@@ -112,7 +116,7 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 			variant.Label,
 			variant.Extension,
 		)
-		uploaded, uploadErr := s.storage.Upload(ctx, storage.UploadRequest{
+		uploaded, uploadErr := store.Upload(ctx, storage.UploadRequest{
 			ObjectKey:   objectKey,
 			ContentType: variant.ContentType,
 			Data:        variant.Data,
