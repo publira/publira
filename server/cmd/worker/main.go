@@ -29,6 +29,7 @@ import (
 	"github.com/publira/publira/server/internal/sqldb"
 	"github.com/publira/publira/server/internal/tickerjobs"
 	"github.com/publira/publira/server/internal/tracing"
+	"github.com/publira/publira/server/internal/webpushsettings"
 )
 
 const (
@@ -58,10 +59,6 @@ func main() {
 	cfg, err := config.New()
 	if err != nil {
 		logger.Error("failed to load config", "error", err)
-		os.Exit(1)
-	}
-	if err := cfg.Push.ValidateWebPush(); err != nil {
-		logger.Error("invalid Web Push configuration", "error", err)
 		os.Exit(1)
 	}
 
@@ -155,11 +152,13 @@ func main() {
 	}
 	logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
 
-	// No Firebase credential means no push handler, so a local stack without
-	// one still drains everything else. An event whose handler is missing goes
-	// dead, which is the honest answer for a deployment that writes push events
-	// it cannot send.
-	pushHandlers := outbox.PushHandlerConfig{DB: db, Logger: logger}
+	// No Firebase credential means no FCM sender. Web Push is decided per
+	// delivery instead, because an operator turns it on while this runs.
+	pushHandlers := outbox.PushHandlerConfig{
+		DB:        db,
+		Logger:    logger,
+		WebSender: webpushsettings.NewSenders(dbmodels.New(db), encryptor, webpushsettings.CacheTTL, logger),
+	}
 	if cfg.Push.Configured() {
 		sender, senderErr := push.New(context.Background(), push.Config{
 			ProjectID:       cfg.Push.FCMProjectID,
@@ -173,21 +172,6 @@ func main() {
 		logger.Info("mobile push is enabled", "fcm_project_id", sender.ProjectID())
 	} else {
 		logger.Info("mobile push is disabled", "reason", "no FCM credential is configured")
-	}
-	if cfg.Push.WebPushConfigured() {
-		sender, senderErr := push.NewWebPushClient(push.WebPushConfig{
-			VAPIDPublicKey:  cfg.Push.WebPushVAPIDPublicKey,
-			VAPIDPrivateKey: cfg.Push.WebPushVAPIDPrivateKey,
-			Subscriber:      cfg.Push.WebPushSubject,
-		})
-		if senderErr != nil {
-			logger.Error("failed to initialize Web Push client", "error", senderErr)
-			os.Exit(1)
-		}
-		pushHandlers.WebSender = sender
-		logger.Info("web push is enabled")
-	} else {
-		logger.Info("web push is disabled", "reason", "no VAPID configuration is configured")
 	}
 
 	// Declared as the interface, never as *revalidate.Client: a typed nil
@@ -318,9 +302,7 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeCommentReportedNotification, outbox.NewCommentReportedNotificationHandler(staffHandlers))
 	handlers.Register(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
-	if pushHandlers.Sender != nil || pushHandlers.WebSender != nil {
-		handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
-	}
+	handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,

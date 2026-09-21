@@ -101,7 +101,7 @@ image-server encrypts every body it serves, free and entitled alike. A page that
 
 ### Browser notifications (Web Push)
 
-A signed-in reader can be told in the browser when a new episode is published. The switch is on `/settings/notifications`, and it appears only where the public API answers `GetTenant` with a VAPID public key — `getTenantWebPushPublicKey()` in `lib/tenant.ts`, over [the server's Web Push credentials](../../server/README.md#web-push).
+A signed-in reader can be told in the browser when a new episode is published. The switch is on `/settings/notifications`, and it appears only where the public API answers `GetTenant` with a VAPID public key — `getTenantWebPushPublicKey()` in `lib/tenant.ts`, over [the platform's Web Push settings](../../server/README.md#web-push).
 
 | File | What it holds |
 | --- | --- |

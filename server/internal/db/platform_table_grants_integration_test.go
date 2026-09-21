@@ -80,9 +80,11 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // tenant-admin MFA requirement come from, the retention defaults the tenant
 // console and the purge batches resolve a tenant's periods from, and the object
 // store the image server and the orphan image sweep resolve. The last holds its
-// secret encrypted under keys the database does not have.
+// secret encrypted under keys the database does not have. The storefront also
+// reads the Web Push settings, but only the columns that publish the public
+// key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to.
 var readablePlatformTables = map[string][]string{
-	"publira_public":        {"platform_policy_config"},
+	"publira_public":        {"platform_policy_config", "platform_webpush_config"},
 	"publira_admin":         {"platform_policy_config", "platform_retention_config", "platform_storage_config"},
 	"publira_content_stats": {"platform_retention_config", "platform_storage_config"},
 }
@@ -122,17 +124,41 @@ func TestPlatformTablesAreOutOfReachOfTheTenantRoles(t *testing.T) {
 	}
 }
 
+// The storefront publishes the VAPID public key from the same row the sealed
+// private key is stored in, so its grant names columns rather than the table.
+// The private key must stay out of its reach even sealed: a ciphertext beside
+// the keys that open it is one leak away from the key itself.
+func TestPublicRoleReadsOnlyThePublishedWebPushColumns(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	public := pg.OpenPublicDB(t)
+	var count int
+	if err := public.QueryRowContext(ctx,
+		"SELECT count(*) FROM platform_webpush_config WHERE singleton AND vapid_public_key <> '' AND subject IS NOT NULL",
+	).Scan(&count); err != nil {
+		t.Fatalf("read the published web push columns as publira_public: %v", err)
+	}
+	assertRefused(t, ctx, public, "publira_public", "SELECT vapid_private_key_encrypted FROM platform_webpush_config")
+	assertRefused(t, ctx, public, "publira_public", "SELECT * FROM platform_webpush_config")
+}
+
 const outboxDBRole = "publira_outbox"
 
 // outboxReadableTables are the platform tables the mail paths in internal/outbox
 // read: the console's own password reset and email change mail, and the platform
-// relay every mail leaves over when the tenant overrides nothing.
+// relay every mail leaves over when the tenant overrides nothing. The member
+// push handler reads the VAPID key pair every Web Push delivery is signed with.
 var outboxReadableTables = []string{
 	"platform_config",
 	"platform_smtp_config",
 	"platform_user_email_change_tokens",
 	"platform_user_password_reset_tokens",
 	"platform_users",
+	"platform_webpush_config",
 }
 
 // The outbox worker composes the platform console's own mail, so it keeps the

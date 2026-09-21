@@ -122,23 +122,14 @@ export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${PUBLIRA_E2E_EMAIL_RENDERER
 # without this they would name the dev stack's port instead of this run's.
 export PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL}"
 
-# Secret decryption for the SMTP password. The worker reports an unusable
-# manager when it is started without keys, and every auth mail it renders stops
-# at that before it reaches Mailpit. The seeded password is not an encrypted
-# envelope, so the manager hands it back verbatim and the key itself is never
-# used — but one has to exist. 32 bytes, base64url, as the parser requires.
+# Secret decryption. The worker reports an unusable manager when it is started
+# without keys, and every auth mail it renders stops at that before it reaches
+# Mailpit. The seeded SMTP password is not an encrypted envelope, so the manager
+# hands it back verbatim; the VAPID private key 250_web_push.sql seeds is sealed
+# with this key, so changing it means sealing that key again. 32 bytes,
+# base64url, as the parser requires.
 export PUBLIRA_SECRET_ENCRYPTION_KEYS="${PUBLIRA_SECRET_ENCRYPTION_KEYS:-e2e:ZTJlLW9ubHktaW5zZWN1cmUtc2VjcmV0LWtleS0zMmI}"
 export PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID:-e2e}"
-
-# Web Push. Without these the public API publishes no VAPID key and the browser
-# notification switch is left out of `/settings/notifications`, so the screen
-# `host.browser-notifications.spec.ts` drives would not exist. A matching P-256
-# pair, because the worker validates the pair at startup and refuses to
-# run on a broken one. Nothing is ever delivered through it: that spec stubs the
-# Push API, so the endpoint it registers belongs to no push service.
-export PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY="${PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY:-BLA9H4ThVuX8uYA1HMTOe0q51POeLNEvc-TtqSb5TKuztJM_UfKKQLLfbpm9Kr7jzikhThqoipdhx0NQgzfBDs0}"
-export PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY="${PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY:-MbA3EQ7bhB1QWgq_d8DjY5bbuF616HplHhnj7yhC_Co}"
-export PUBLIRA_WEBPUSH_SUBJECT="${PUBLIRA_WEBPUSH_SUBJECT:-mailto:e2e@publira.test}"
 
 # PID files, logs, and local storage for one stack run.
 #

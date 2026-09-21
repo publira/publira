@@ -132,13 +132,10 @@ func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 }
 
 func TestGetTenantIncludesTheme(t *testing.T) {
-	privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+	_, publicKey, err := webpush.GenerateVAPIDKeys()
 	if err != nil {
 		t.Fatalf("GenerateVAPIDKeys: %v", err)
 	}
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", publicKey)
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", privateKey)
-	t.Setenv("PUBLIRA_WEBPUSH_SUBJECT", "mailto:push@example.test")
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
@@ -165,6 +162,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectPublishedWebPushPublicKey(mock, publicKey)
 
 	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{

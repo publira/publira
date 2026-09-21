@@ -86,9 +86,9 @@ const NotificationsSection = async () => {
 
 /**
  * Browser pushes, offered only where they can actually be delivered: a
- * deployment with no VAPID key publishes none, and `RegisterPushDevice` refuses
- * a web registration without one, so the card is left out rather than shown as
- * a switch every subscription would fail behind.
+ * platform that has not configured Web Push publishes no VAPID key, and
+ * `RegisterPushDevice` refuses a web registration there, so the card is left
+ * out rather than shown as a switch every subscription would fail behind.
  */
 const BrowserNotificationsSection = async () => {
   const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);

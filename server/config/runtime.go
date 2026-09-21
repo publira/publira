@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -38,16 +37,14 @@ type Push struct {
 	// performs that lookup itself.
 	FCMCredentialsJSON []byte
 	// ADCPathConfigured records that GOOGLE_APPLICATION_CREDENTIALS was set.
-	ADCPathConfigured      bool
-	WebPushVAPIDPublicKey  string
-	WebPushVAPIDPrivateKey string
-	WebPushSubject         string
+	ADCPathConfigured bool
 }
 
-// Configured reports whether this deployment means to send push notifications.
-// A process that gets false leaves the push handler unregistered, so a local
-// stack without Firebase still runs — and, because an event with no handler
-// goes dead, a deployment that does mean to send has to be recognized here.
+// Configured reports whether this deployment means to send mobile push
+// notifications. A process that gets false starts no Firebase client, so a
+// local stack without Firebase still runs — and, because a mobile device the
+// worker cannot reach fails its delivery, a deployment that does mean to send
+// has to be recognized here.
 //
 // The project id counts on its own, and not only the two credential names,
 // because Application Default Credentials resolves more than an explicit key
@@ -57,18 +54,6 @@ type Push struct {
 // turns push on; the credential is then whatever the Google library finds.
 func (p Push) Configured() bool {
 	return p.FCMProjectID != "" || len(p.FCMCredentialsJSON) > 0 || p.ADCPathConfigured
-}
-
-func (p Push) WebPushConfigured() bool {
-	return p.WebPushVAPIDPublicKey != "" && p.WebPushVAPIDPrivateKey != "" && p.WebPushSubject != ""
-}
-
-func (p Push) ValidateWebPush() error {
-	configured := p.WebPushVAPIDPublicKey != "" || p.WebPushVAPIDPrivateKey != "" || p.WebPushSubject != ""
-	if !configured || p.WebPushConfigured() {
-		return nil
-	}
-	return errors.New("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY, PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY, and PUBLIRA_WEBPUSH_SUBJECT must be set together")
 }
 
 func New() (*Config, error) {
@@ -86,12 +71,9 @@ func New() (*Config, error) {
 func parsePush() Push {
 	credentials := strings.TrimSpace(os.Getenv("PUBLIRA_FCM_CREDENTIALS_JSON"))
 	return Push{
-		FCMProjectID:           strings.TrimSpace(os.Getenv("PUBLIRA_FCM_PROJECT_ID")),
-		FCMCredentialsJSON:     []byte(credentials),
-		ADCPathConfigured:      strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) != "",
-		WebPushVAPIDPublicKey:  strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY")),
-		WebPushVAPIDPrivateKey: strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY")),
-		WebPushSubject:         strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_SUBJECT")),
+		FCMProjectID:       strings.TrimSpace(os.Getenv("PUBLIRA_FCM_PROJECT_ID")),
+		FCMCredentialsJSON: []byte(credentials),
+		ADCPathConfigured:  strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) != "",
 	}
 }
 

@@ -80,4 +80,11 @@ ranking_sql="${REPO_ROOT}/db/seeds/scenarios/170_ranking.sql"
 e2e_log "applying ${ranking_sql}"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${ranking_sql}"
 
+# Web Push, configured. Applied here rather than by a spec because the setting
+# is platform-wide: every storefront offers the browser notification switch
+# once it exists, so the stack starts in that state for every suite.
+web_push_sql="${REPO_ROOT}/db/seeds/scenarios/250_web_push.sql"
+e2e_log "applying ${web_push_sql}"
+psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${web_push_sql}"
+
 e2e_log "database and storage ready"
