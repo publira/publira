@@ -102,17 +102,6 @@ android {
         }
         create("production") {
             dimension = "environment"
-            // A store binary is pinned to one tenant: the App Links it
-            // declares and the tenant the app asks the API about have to be
-            // the same, or the tenant's links stay in the browser.
-            val tenantHost = dartDefines()["PUBLIRA_TENANT_HOST"]
-            val productionBuild = gradle.startParameter.taskNames.any {
-                it.contains("production", ignoreCase = true)
-            }
-            require(!productionBuild || tenantHost == appValue("tenantHost")) {
-                "Production builds require --dart-define=PUBLIRA_TENANT_HOST=" +
-                    "${appValue("tenantHost")}, the tenant.host of the app manifest"
-            }
             resValue("string", "app_name", stringResource(appValue("appName")))
         }
     }
@@ -123,6 +112,20 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+}
+
+// A store binary is pinned to one tenant: the App Links it declares and the
+// tenant the app asks the API about have to be the same, or the tenant's links
+// stay in the browser. The task graph also holds the production packaging an
+// aggregate such as `assemble` runs, which the requested task names do not.
+gradle.taskGraph.whenReady {
+    val productionBuild = allTasks.any {
+        it.project == project && Regex("^(package|bundle)Production").containsMatchIn(it.name)
+    }
+    require(!productionBuild || dartDefines()["PUBLIRA_TENANT_HOST"] == appValue("tenantHost")) {
+        "Production builds require --dart-define=PUBLIRA_TENANT_HOST=" +
+            "${appValue("tenantHost")}, the tenant.host of the app manifest"
     }
 }
 
