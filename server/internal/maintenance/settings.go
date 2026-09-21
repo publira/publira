@@ -162,6 +162,12 @@ type OrphanImagePurge struct {
 	DryRun   bool
 }
 
+// maxMinAgeHours is the largest age time.Duration can hold. Past it the
+// multiplication below wraps negative, which puts the cutoff after now and
+// makes every upload in flight a candidate — the same outcome the lower bound
+// refuses, reached through the other end of the range.
+const maxMinAgeHours = int(int64(1<<63-1) / int64(time.Hour))
+
 // LoadOrphanImagePurge reads the job's tunables from the environment.
 func LoadOrphanImagePurge() (OrphanImagePurge, error) {
 	// A zero or negative age would put the cutoff at or after now and make
@@ -169,6 +175,12 @@ func LoadOrphanImagePurge() (OrphanImagePurge, error) {
 	hours, err := positiveInt("PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS", int(orphanimages.DefaultMinAge/time.Hour))
 	if err != nil {
 		return OrphanImagePurge{}, err
+	}
+	if hours > maxMinAgeHours {
+		return OrphanImagePurge{}, fmt.Errorf(
+			"PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS must be at most %d, got %d",
+			maxMinAgeHours, hours,
+		)
 	}
 	// The value becomes an S3 MaxKeys and a PostgreSQL array parameter, so a
 	// width that could wrap negative is rejected before either sees it.

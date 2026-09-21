@@ -51,12 +51,13 @@ const (
 // it is counting on for as long as the rebuild takes.
 const QueueName = "maintenance"
 
-// queueMaxWorkers is deliberately small. These jobs share one database with
-// every request the platform is serving, and the daily rebuilds are a chain
-// each link of which needs the one before it, so nothing is gained by running
-// many of them side by side — and a wide queue would let a day's rebuild
-// compete with the purge of the table it reads.
-const queueMaxWorkers = 2
+// queueMaxWorkers runs one pass at a time, which is what orders the daily
+// rebuilds: each link of that chain reads what the one before it wrote, and a
+// second worker could only start a rebuild over input another is still
+// producing. Nothing else here wants the second slot either — these share one
+// database with every request the platform is serving, and a purge that ran
+// beside a rebuild would only take the rows out from under it.
+const queueMaxWorkers = 1
 
 const (
 	kindProjectEpisodeReads    = "maintenance.project_episode_reads"

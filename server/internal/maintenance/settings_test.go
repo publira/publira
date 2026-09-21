@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -167,6 +168,29 @@ func TestEveryTunableRejectsANonNumericValue(t *testing.T) {
 				t.Fatalf("error = %v, want it to name %s", err, tc.name)
 			}
 		})
+	}
+}
+
+// The age reaches a time.Duration, which wraps negative past its own range and
+// would put the cutoff after now — deleting exactly the uploads the setting
+// exists to keep out of range.
+func TestOrphanImageMinAgeRejectsAnAgeDurationCannotHold(t *testing.T) {
+	t.Setenv("PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS", strconv.Itoa(maxMinAgeHours+1))
+	_, err := LoadOrphanImagePurge()
+	if err == nil {
+		t.Fatal("error = nil, want a rejection")
+	}
+	if !strings.Contains(err.Error(), "PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS") {
+		t.Fatalf("error = %v, want it to name the variable", err)
+	}
+
+	t.Setenv("PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS", strconv.Itoa(maxMinAgeHours))
+	job, err := LoadOrphanImagePurge()
+	if err != nil {
+		t.Fatalf("the largest age Duration holds was rejected: %v", err)
+	}
+	if job.MinAge <= 0 {
+		t.Fatalf("minimum age = %s, want a positive duration", job.MinAge)
 	}
 }
 
