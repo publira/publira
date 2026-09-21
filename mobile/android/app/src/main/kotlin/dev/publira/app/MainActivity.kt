@@ -1,4 +1,4 @@
-package com.publira.publira
+package dev.publira.app
 
 import io.flutter.embedding.android.FlutterActivity
 

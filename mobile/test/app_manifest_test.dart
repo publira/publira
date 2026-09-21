@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../scripts/app_manifest/android.dart';
+import '../scripts/app_manifest/generate.dart';
 import '../scripts/app_manifest/generated_files.dart';
 import '../scripts/app_manifest/manifest.dart';
 
@@ -407,6 +409,33 @@ android:
       }
     });
 
+    test('go where PUBLIRA_MOBILE_GENERATED_DIR names', () {
+      final mobile = Directory('${temporary.path}/mobile');
+
+      expect(
+        generatedDirectory(mobile, {}).path,
+        defaultGeneratedDirectory(mobile).path,
+      );
+      expect(
+        generatedDirectory(mobile, {generatedDirectoryVariable: ''}).path,
+        defaultGeneratedDirectory(mobile).path,
+      );
+      expect(
+        generatedDirectory(mobile, {
+          generatedDirectoryVariable: '${temporary.path}/tenant-a',
+        }).uri,
+        Directory('${temporary.path}/tenant-a').uri,
+      );
+      // Relative to the app, as Gradle resolves it, rather than to wherever
+      // the command happens to run.
+      expect(
+        generatedDirectory(mobile, {
+          generatedDirectoryVariable: 'build/tenant-b',
+        }).uri,
+        Directory('${temporary.path}/mobile/build/tenant-b').absolute.uri,
+      );
+    });
+
     test('default to the ignored directory beside the app', () async {
       final directory = defaultGeneratedDirectory(Directory('.'));
       final ignored = await Process.run('git', [
@@ -416,6 +445,92 @@ android:
       ]);
 
       expect(ignored.exitCode, 0);
+    });
+  });
+
+  group('the Android build configuration', () {
+    /// The properties [manifest] generates, as `java.util.Properties` reads
+    /// them: comments dropped, and each backslash escape undone.
+    Map<String, String> propertiesOf(AppManifest manifest) {
+      final text = androidGeneratedFiles(
+        manifest,
+        source: 'app.yaml',
+      )[androidAppProperties]!;
+      return {
+        for (final line in const LineSplitter().convert(text))
+          if (line.isNotEmpty && !line.startsWith('#'))
+            line.substring(0, line.indexOf('=')): line
+                .substring(line.indexOf('=') + 1)
+                .replaceAllMapped(RegExp(r'\\(.)'), (m) => m[1]!),
+      };
+    }
+
+    test('carries the tenant identity Gradle reads', () {
+      final manifest = AppManifest.parse(_valid, source: 'app.yaml');
+
+      expect(propertiesOf(manifest), {
+        'publira.applicationId': 'jp.example.reader',
+        'publira.tenantHost': 'reader.example.jp',
+        'publira.appName': 'Example Reader',
+      });
+    });
+
+    test('is the one file Gradle reads', () {
+      final manifest = AppManifest.parse(_valid, source: 'app.yaml');
+
+      expect(androidGeneratedFiles(manifest, source: 'app.yaml').keys, [
+        'app.properties',
+      ]);
+    });
+
+    test('keeps whatever characters the name is written in', () {
+      for (final name in [
+        r'Reader \ Club',
+        '漫画リーダー',
+        'Reader = #1',
+        "Reader's",
+      ]) {
+        final manifest = AppManifest.parse(
+          _with('app.name', jsonEncode(name)),
+          source: 'app.yaml',
+        );
+
+        expect(propertiesOf(manifest)['publira.appName'], name);
+      }
+    });
+
+    test('is generated from a manifest file into a directory', () async {
+      final temporary = await Directory.systemTemp.createTemp('app_android_');
+      addTearDown(() => temporary.delete(recursive: true));
+      final directory = Directory('${temporary.path}/out');
+
+      final manifest = await generateBuildConfiguration(
+        File('config/app.example.yaml'),
+        directory,
+      );
+
+      expect(manifest.androidApplicationId, 'jp.example.reader');
+      expect(
+        await File('${directory.path}/app.properties').readAsString(),
+        allOf(
+          startsWith('# Generated from config/app.example.yaml'),
+          contains('publira.applicationId=jp.example.reader\n'),
+        ),
+      );
+    });
+
+    test('is not generated from a manifest that is not valid', () async {
+      final temporary = await Directory.systemTemp.createTemp('app_android_');
+      addTearDown(() => temporary.delete(recursive: true));
+      final file = File('${temporary.path}/app.yaml');
+      await file.writeAsString(_with('android.applicationId', 'reader'));
+      final directory = Directory('${temporary.path}/out');
+
+      await expectLater(
+        generateBuildConfiguration(file, directory),
+        throwsA(isA<AppManifestException>()),
+      );
+      expect(directory.existsSync(), isFalse);
     });
   });
 }

@@ -14,10 +14,8 @@ set -euo pipefail
 # shellcheck source=./app-config.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/app-config.sh"
 
-# The development flavor, whose application id `mobile/README.md` tabulates.
 # `default-flavor: dev` in pubspec.yaml is what a build with no `--flavor`
-# produces, so this is the one that gets installed.
-readonly APP_ID='com.publira.publira.dev'
+# produces, so the development flavor is the one that gets installed.
 readonly APK='build/app/outputs/flutter-apk/app-dev-debug.apk'
 
 out_dir="${MOBILE_DIR}/.run/screenshots"
@@ -47,7 +45,7 @@ require_profile_stack() {
 }
 
 screenshot_on_device() {
-  local device="$1" activity route name attempt
+  local device="$1" app_id activity route name attempt
   mobile_load_app_config "$(mobile_device_address "${device}")"
   mobile_bind_device_ports "${device}"
   printf 'profile %s on %s: api %s, images %s, tenant %s\n' \
@@ -58,9 +56,11 @@ screenshot_on_device() {
   mapfile -t defines < <(
     mobile_dart_defines "${PUBLIRA_API_BASE_URL}" "${PUBLIRA_IMAGE_BASE_URL}"
   )
+  mobile_generate_build_config
+  app_id="$(mobile_dev_application_id)"
   flutter build apk --debug "${defines[@]}"
   adb -s "${device}" install -r "${APK}"
-  activity="$(adb -s "${device}" shell cmd package resolve-activity --brief "${APP_ID}" | tail -1 | tr -d '\r')"
+  activity="$(adb -s "${device}" shell cmd package resolve-activity --brief "${app_id}" | tail -1 | tr -d '\r')"
 
   for route in "${routes[@]}"; do
     name="$(route_name "${route}")"
@@ -68,16 +68,16 @@ screenshot_on_device() {
     # starts from a process of its own: `route` is the initial route Flutter's
     # Android embedding reads off the intent, and a resumed activity would
     # keep the screen it was left on instead.
-    adb -s "${device}" shell am force-stop "${APP_ID}"
+    adb -s "${device}" shell am force-stop "${app_id}"
     adb -s "${device}" shell am start -n "${activity}" --es route "${route}" > /dev/null
     for attempt in $(seq 60); do
-      if adb -s "${device}" shell dumpsys window | grep -q "mCurrentFocus.*${APP_ID}"; then
+      if adb -s "${device}" shell dumpsys window | grep -q "mCurrentFocus.*${app_id}"; then
         break
       fi
       # An app that crashes on launch never takes focus, and waiting for it
       # forever is a run with no picture and no message either.
       [[ "${attempt}" -lt 60 ]] ||
-        dev_env_die "${APP_ID} never took focus on ${device} for route ${route}"
+        dev_env_die "${app_id} never took focus on ${device} for route ${route}"
       sleep 1
     done
     sleep "$(awk -v milliseconds="${wait_ms}" 'BEGIN { print milliseconds / 1000 }')"

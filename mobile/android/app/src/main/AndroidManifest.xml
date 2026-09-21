@@ -41,8 +41,8 @@
                  parses it first. -->
             <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
             <!-- App Links for the tenant host this build is pinned to. The
-                 host is PUBLIRA_TENANT_HOST at build time; path prefixes
-                 cover the public site, including a locale segment. -->
+                 host is tenant.host of the app manifest; path prefixes cover
+                 the public site, including a locale segment. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
