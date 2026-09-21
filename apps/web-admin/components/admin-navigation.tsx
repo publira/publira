@@ -1,10 +1,18 @@
 import {
   ChartIcon,
+  CoinsIcon,
   CollectionIcon,
   CommentIcon,
   DashboardIcon,
+  FileTextIcon,
   MailIcon,
+  MegaphoneIcon,
+  PenLineIcon,
+  ScrollTextIcon,
   SettingsIcon,
+  ShapesIcon,
+  TagIcon,
+  TicketIcon,
   UserIcon,
 } from "@publira/icons";
 import {
@@ -73,7 +81,7 @@ export const AdminNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/labels">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <TagIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -85,7 +93,7 @@ export const AdminNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/creators">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <PenLineIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -97,7 +105,7 @@ export const AdminNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/genres">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <ShapesIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -121,7 +129,7 @@ export const AdminNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/pages">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <FileTextIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -133,7 +141,7 @@ export const AdminNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/announcements">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <MegaphoneIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -145,7 +153,7 @@ export const AdminNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/access-tickets">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <TicketIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -212,7 +220,7 @@ export const AdminNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/royalties">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <CoinsIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -233,7 +241,7 @@ export const AdminNavigation = () => (
       <ConsoleSidebarNavigationItems>
         <ConsoleSidebarNavigationItem href="/audit-logs">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <ScrollTextIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
