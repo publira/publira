@@ -4139,6 +4139,61 @@
         "subject_required": "プッシュサービス向けの連絡先を入力してください。",
         "subject_invalid": "mailto:push@example.com のようにメールアドレスを 1 つ含む mailto: URI か、https://example.com/contact のような https:// URL を入力してください。"
       }
+    },
+    "configuration": {
+      "tab": "概要",
+      "page_title": "設定 - 概要",
+      "heading": "設定",
+      "page_description": "プラットフォームのどの機能がすぐ使える状態かを確認し、足りない設定を済ませます。",
+      "summary_ready": "プラットフォームに必要な設定はすべて済んでいます。任意の機能は、使いたくなるまでオフのままで構いません。",
+      "summary_needs_setup": "プラットフォームに必要な設定のうち、まだ済んでいないものがあります。「要設定」の項目を開いて設定を済ませてください。",
+      "columns": {
+        "setting": "設定項目",
+        "status": "状態",
+        "details": "詳細"
+      },
+      "necessity": {
+        "required": "必須",
+        "optional": "任意"
+      },
+      "status": {
+        "configured": "設定済み",
+        "needs_setup": "要設定",
+        "not_configured": "未設定",
+        "defaults": "既定値",
+        "unavailable": "確認できません"
+      },
+      "actions": {
+        "set_up": "設定する",
+        "manage": "管理"
+      },
+      "general": {
+        "name": "言語とタイムゾーン",
+        "detail": "コンソールの既定の言語は {$language}、新しいテナントのタイムゾーンは {$time_zone} です。"
+      },
+      "email": {
+        "name": "メール送信",
+        "configured": "登録確認、パスワード再設定、招待のメールは {$from_address} から送信されます。",
+        "unconfigured": "メールサーバーが保存されていないため、登録確認、パスワード再設定、招待のメールを送信できません。",
+        "password_missing": "メールサーバーのパスワードが保存されていないため、メールを送信できません。"
+      },
+      "storage": {
+        "name": "画像ストレージ",
+        "configured": "アップロードされた画像は {$bucket} バケットに保存されます。",
+        "unconfigured": "ストレージが保存されていないため、画像をアップロードも表示もできません。"
+      },
+      "webpush": {
+        "name": "ブラウザー通知",
+        "configured": "読者はストアフロントでブラウザー通知をオンにできます。",
+        "unconfigured": "読者にブラウザー通知は提供されません。通知を送りたい場合にだけ設定してください。"
+      },
+      "policies": {
+        "name": "セキュリティとデータのポリシー",
+        "defaults": "サインイン、不正利用対策、データ保持期間には組み込みの既定値が適用されています。このプラットフォームに合わない場合だけ変更してください。",
+        "configured": "保存したサインイン、不正利用対策、データ保持期間の設定が適用されています。"
+      },
+      "dashboard_notice": "プラットフォームに必要な設定のうち、まだ済んでいないものがあります。このままでは一部の機能が動きません。",
+      "dashboard_notice_link": "設定を確認"
     }
   }
 }

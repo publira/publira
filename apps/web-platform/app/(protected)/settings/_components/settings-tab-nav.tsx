@@ -8,12 +8,14 @@ interface SettingsTabNavProps {
     | "community"
     | "email"
     | "general"
+    | "overview"
     | "retention"
     | "security"
     | "storage"
     | "webpush";
   emailLabel: ReactNode;
   generalLabel: ReactNode;
+  overviewLabel: ReactNode;
   retentionLabel: ReactNode;
   securityLabel: ReactNode;
   storageLabel: ReactNode;
@@ -25,12 +27,19 @@ export const SettingsTabNav = ({
   current,
   emailLabel,
   generalLabel,
+  overviewLabel,
   retentionLabel,
   securityLabel,
   storageLabel,
   webPushLabel,
 }: SettingsTabNavProps) => (
   <div className="flex flex-wrap gap-2">
+    <LinkButton
+      render={<Link href="/settings" />}
+      variant={current === "overview" ? "default" : "outline"}
+    >
+      {overviewLabel}
+    </LinkButton>
     <LinkButton
       render={<Link href="/settings/general" />}
       variant={current === "general" ? "default" : "outline"}

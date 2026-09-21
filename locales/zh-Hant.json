@@ -4139,6 +4139,61 @@
         "subject_required": "請輸入供推播服務使用的聯絡方式。",
         "subject_invalid": "請輸入包含一個電子郵件地址的 mailto: URI（例如 mailto:push@example.com），或 https:// URL（例如 https://example.com/contact）。"
       }
+    },
+    "configuration": {
+      "tab": "概覽",
+      "page_title": "設定 - 概覽",
+      "heading": "設定",
+      "page_description": "查看平台的哪些功能已可使用，並完成尚缺的設定。",
+      "summary_ready": "平台所需的設定皆已完成。選用功能可以在需要之前保持關閉。",
+      "summary_needs_setup": "平台所需的部分設定尚未完成。請開啟標示為「需要設定」的項目完成設定。",
+      "columns": {
+        "setting": "設定項目",
+        "status": "狀態",
+        "details": "詳細資訊"
+      },
+      "necessity": {
+        "required": "必要",
+        "optional": "選用"
+      },
+      "status": {
+        "configured": "已設定",
+        "needs_setup": "需要設定",
+        "not_configured": "未設定",
+        "defaults": "內建預設值",
+        "unavailable": "無法檢查"
+      },
+      "actions": {
+        "set_up": "前往設定",
+        "manage": "管理"
+      },
+      "general": {
+        "name": "語言與時區",
+        "detail": "主控台的預設語言為 {$language}，新租戶預設使用 {$time_zone} 時區。"
+      },
+      "email": {
+        "name": "郵件寄送",
+        "configured": "註冊確認、密碼重設與邀請郵件由 {$from_address} 寄出。",
+        "unconfigured": "尚未儲存郵件伺服器，因此無法寄送註冊確認、密碼重設與邀請郵件。",
+        "password_missing": "尚未儲存郵件伺服器的密碼，因此無法寄送任何郵件。"
+      },
+      "storage": {
+        "name": "圖片儲存",
+        "configured": "上傳的圖片儲存在 {$bucket} 儲存貯體中。",
+        "unconfigured": "尚未儲存儲存設定，因此無法上傳或顯示圖片。"
+      },
+      "webpush": {
+        "name": "瀏覽器通知",
+        "configured": "讀者可以在店面開啟瀏覽器通知。",
+        "unconfigured": "不會向讀者提供瀏覽器通知。僅在需要傳送通知時進行設定。"
+      },
+      "policies": {
+        "name": "安全性與資料政策",
+        "defaults": "登入、防濫用與資料保留限制採用內建預設值。僅在不適合本平台時變更。",
+        "configured": "已套用你儲存的登入、防濫用與資料保留限制。"
+      },
+      "dashboard_notice": "平台所需的部分設定尚未完成，部分功能將無法運作。",
+      "dashboard_notice_link": "查看設定"
     }
   }
 }

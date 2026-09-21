@@ -26,6 +26,7 @@ describe("SettingsTabNav", () => {
         current="general"
         emailLabel="Email"
         generalLabel="General"
+        overviewLabel="Overview"
         retentionLabel="Retention"
         securityLabel="Security"
         storageLabel="Storage"
@@ -35,6 +36,7 @@ describe("SettingsTabNav", () => {
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
       [
+        "Overview",
         "General",
         "Email",
         "Storage",
@@ -53,6 +55,7 @@ describe("SettingsTabNav", () => {
         current="general"
         emailLabel="Email"
         generalLabel="General"
+        overviewLabel="Overview"
         retentionLabel="Retention"
         securityLabel="Security"
         storageLabel="Storage"
