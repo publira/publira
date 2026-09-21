@@ -21,6 +21,21 @@ func TestEveryJobRefusesToRunWithoutItsPool(t *testing.T) {
 	}
 }
 
+func TestEveryCatchUpRefusesToRunWithoutItsPool(t *testing.T) {
+	for name, run := range map[string]func(context.Context, Deps) error{
+		"project-episode-reads":    EpisodeReadProjection{}.CatchUp,
+		"aggregate-content-stats":  ContentStatsAggregation{}.CatchUp,
+		"aggregate-rankings":       RankingAggregation{}.CatchUp,
+		"build-recommend-features": RecommendFeatureBuild{}.CatchUp,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := run(context.Background(), Deps{}); !errors.Is(err, errNoDB) {
+				t.Fatalf("error = %v, want %v", err, errNoDB)
+			}
+		})
+	}
+}
+
 // The orphan image sweep is the one job that reaches past the database, and a
 // bucket it cannot list is not a sweep that should delete the rows either.
 func TestOrphanImagePurgeRefusesToRunWithoutStorage(t *testing.T) {

@@ -192,6 +192,11 @@ GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stat
 -- keys the database never holds, and neither role may write the row.
 GRANT SELECT ON platform_storage_config TO publira_admin, publira_content_stats;
 
+-- daily_rebuild_progress records how far the worker's daily rebuilds have got,
+-- and only the maintenance role that runs them reads or moves it. A request
+-- that moved it would make the worker skip a day or rebuild one again.
+REVOKE ALL ON daily_rebuild_progress FROM publira_platform, publira_admin, publira_public, publira_outbox;
+
 -- The worker composes the platform console's own mail — a password reset, an
 -- email change confirmation, the notice that follows one — and every mail it
 -- sends goes through the platform relay unless the tenant overrides it. So the

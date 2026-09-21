@@ -16,6 +16,11 @@ type Querier interface {
 	// Only an account waiting for its address to be confirmed becomes active, so
 	// confirming the address never lifts a suspension.
 	ActivateInactiveUserByID(ctx context.Context, id uuid.UUID) error
+	// The three advances below never move a link back, so a pass that finished
+	// behind another cannot undo what the other recorded.
+	AdvanceContentStatsThrough(ctx context.Context, arg AdvanceContentStatsThroughParams) error
+	AdvanceRankingsThrough(ctx context.Context, arg AdvanceRankingsThroughParams) error
+	AdvanceRecommendFeaturesThrough(ctx context.Context, arg AdvanceRecommendFeaturesThroughParams) error
 	// Writes a held refund onto the purchase that has since been created, by the
 	// same rules RecordStripeRefundOnPurchase uses. Nothing matches when no refund
 	// is held for the payment intent, which is the ordinary case.
@@ -874,6 +879,7 @@ type Querier interface {
 	// flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error)
+	ListDailyRebuildProgress(ctx context.Context) ([]ListDailyRebuildProgressRow, error)
 	ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams) ([]ListEndUsersAscRow, error)
 	// ListEndUsers lists the end users (the ones that hold no tenant_user_roles
 	// row) in (created_at, id) DESC. Tenant members are left out deliberately:
@@ -1803,6 +1809,10 @@ type Querier interface {
 	// The caller resolves the episode through the published catalog query first, so
 	// publication and body access are settled before this runs.
 	RateEpisode(ctx context.Context, arg RateEpisodeParams) (EpisodeRating, error)
+	// RecordEpisodeReadProjection moves a tenant's projection instant forward, and
+	// starts the chain for a tenant it has not seen yet: every link is placed on
+	// start_through, so the first day each one rebuilds is the day after it.
+	RecordEpisodeReadProjection(ctx context.Context, arg RecordEpisodeReadProjectionParams) error
 	// Records what Stripe has refunded against one purchase, matched by the
 	// payment intent the refund event names. Nothing matches when the payment
 	// intent belongs to another tenant or to no purchase here, and the caller

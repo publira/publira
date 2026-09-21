@@ -52,11 +52,10 @@ type Options struct {
 // leaves the tenants already rebuilt with a complete day rather than a
 // half-written one.
 //
-// One tenant's failure does not stop the others. The cron that drives this
-// rebuilds yesterday and never comes back for a day it missed, so letting a
-// lock timeout on one tenant cost every tenant after it their stats would lose
-// that day for good. The run finishes what it can and returns every failure
-// together, so the exit status still reports the day as failed.
+// One tenant's failure does not stop the others: a lock timeout on one tenant
+// is no reason to leave every tenant after it without the day. The run
+// finishes what it can and returns every failure together, so the exit status
+// still reports the day as failed.
 //
 // A cancelled context is the one failure that does stop the run: every tenant
 // left would fail for that same reason, so the loop ends at the tenant that
@@ -98,6 +97,19 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 		result.RowCount += rows
 	}
 	return result, errors.Join(failures...)
+}
+
+// RunTenant rebuilds one of tenant's calendar days, statDate, and reports the
+// rows it wrote. It is how a caller that tracks each tenant's progress on its
+// own rebuilds the days one tenant is missing without touching the others.
+func (a *Aggregator) RunTenant(ctx context.Context, tenant tenantday.Tenant, statDate time.Time) (int64, error) {
+	if a == nil || a.db == nil {
+		return 0, errors.New("content stats aggregator requires a database")
+	}
+	if err := a.requireBypassRLS(ctx); err != nil {
+		return 0, err
+	}
+	return a.aggregateTenant(ctx, tenant, statDate.Format(time.DateOnly))
 }
 
 func (a *Aggregator) requireBypassRLS(ctx context.Context) error {

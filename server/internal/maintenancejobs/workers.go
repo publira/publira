@@ -2,7 +2,9 @@ package maintenancejobs
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/riverqueue/river"
@@ -11,30 +13,31 @@ import (
 )
 
 // ProjectEpisodeReadsArgs files the missing episode_complete events for stored
-// episode reads.
+// episode reads, and starts the daily rebuild chain.
 type ProjectEpisodeReadsArgs struct{}
 
 func (ProjectEpisodeReadsArgs) Kind() string { return kindProjectEpisodeReads }
 
 func (ProjectEpisodeReadsArgs) InsertOpts() river.InsertOpts { return insertOpts() }
 
-// AggregateContentStatsArgs rebuilds one calendar day of content_daily_stats
-// for every tenant.
+// AggregateContentStatsArgs rebuilds every calendar day of content_daily_stats
+// each tenant is owed.
 type AggregateContentStatsArgs struct{}
 
 func (AggregateContentStatsArgs) Kind() string { return kindAggregateContentStats }
 
 func (AggregateContentStatsArgs) InsertOpts() river.InsertOpts { return insertOpts() }
 
-// AggregateRankingsArgs rebuilds the daily and weekly ranking snapshots.
+// AggregateRankingsArgs rebuilds the daily and weekly ranking snapshots of
+// every day each tenant is owed.
 type AggregateRankingsArgs struct{}
 
 func (AggregateRankingsArgs) Kind() string { return kindAggregateRankings }
 
 func (AggregateRankingsArgs) InsertOpts() river.InsertOpts { return insertOpts() }
 
-// BuildRecommendFeaturesArgs rebuilds the daily user and item feature
-// snapshots.
+// BuildRecommendFeaturesArgs rebuilds the user and item feature snapshots of
+// every tenant whose rankings have moved past them.
 type BuildRecommendFeaturesArgs struct{}
 
 func (BuildRecommendFeaturesArgs) Kind() string { return kindBuildRecommendFeatures }
@@ -93,7 +96,7 @@ func (w *projectEpisodeReadsWorker) Timeout(*river.Job[ProjectEpisodeReadsArgs])
 func (w *projectEpisodeReadsWorker) Work(ctx context.Context, _ *river.Job[ProjectEpisodeReadsArgs]) error {
 	ctx, end := startRun(ctx, ServiceNameProjectEpisodeReads, kindProjectEpisodeReads)
 	defer end()
-	return w.jobs.episodeReads.Run(ctx, w.jobs.deps)
+	return enqueueNext(ctx, w.jobs.episodeReads.CatchUp(ctx, w.jobs.deps), AggregateContentStatsArgs{})
 }
 
 type aggregateContentStatsWorker struct {
@@ -108,7 +111,7 @@ func (w *aggregateContentStatsWorker) Timeout(*river.Job[AggregateContentStatsAr
 func (w *aggregateContentStatsWorker) Work(ctx context.Context, _ *river.Job[AggregateContentStatsArgs]) error {
 	ctx, end := startRun(ctx, ServiceNameAggregateContentStats, kindAggregateContentStats)
 	defer end()
-	return w.jobs.contentStats.Run(ctx, w.jobs.deps)
+	return enqueueNext(ctx, w.jobs.contentStats.CatchUp(ctx, w.jobs.deps), AggregateRankingsArgs{})
 }
 
 type aggregateRankingsWorker struct {
@@ -123,7 +126,7 @@ func (w *aggregateRankingsWorker) Timeout(*river.Job[AggregateRankingsArgs]) tim
 func (w *aggregateRankingsWorker) Work(ctx context.Context, _ *river.Job[AggregateRankingsArgs]) error {
 	ctx, end := startRun(ctx, ServiceNameAggregateRankings, kindAggregateRankings)
 	defer end()
-	return w.jobs.rankings.Run(ctx, w.jobs.deps)
+	return enqueueNext(ctx, w.jobs.rankings.CatchUp(ctx, w.jobs.deps), BuildRecommendFeaturesArgs{})
 }
 
 type buildRecommendFeaturesWorker struct {
@@ -138,7 +141,7 @@ func (w *buildRecommendFeaturesWorker) Timeout(*river.Job[BuildRecommendFeatures
 func (w *buildRecommendFeaturesWorker) Work(ctx context.Context, _ *river.Job[BuildRecommendFeaturesArgs]) error {
 	ctx, end := startRun(ctx, ServiceNameBuildRecommendFeatures, kindBuildRecommendFeatures)
 	defer end()
-	return w.jobs.recommendFeatures.Run(ctx, w.jobs.deps)
+	return w.jobs.recommendFeatures.CatchUp(ctx, w.jobs.deps)
 }
 
 type purgeContentEventsWorker struct {
@@ -220,4 +223,21 @@ func (w *purgeOrphanImagesWorker) Work(ctx context.Context, _ *river.Job[PurgeOr
 		return river.JobCancel(err)
 	}
 	return err
+}
+
+// enqueueNext enqueues the next link of the daily rebuild chain, even after a
+// failed pass: the failure held back only the tenants it hit, and the next link
+// never reads past what a tenant has finished.
+func enqueueNext(ctx context.Context, passErr error, next river.JobArgs) error {
+	if ctx.Err() != nil {
+		return passErr
+	}
+	client, err := river.ClientFromContextSafely[*sql.Tx](ctx)
+	if err != nil {
+		return errors.Join(passErr, fmt.Errorf("enqueue %s: %w", next.Kind(), err))
+	}
+	if _, err := client.Insert(ctx, next, nil); err != nil {
+		return errors.Join(passErr, fmt.Errorf("enqueue %s: %w", next.Kind(), err))
+	}
+	return passErr
 }
