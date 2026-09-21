@@ -51,6 +51,9 @@ const (
 	// AdminRoyaltyServiceGetRoyaltyStatementProcedure is the fully-qualified name of the
 	// AdminRoyaltyService's GetRoyaltyStatement RPC.
 	AdminRoyaltyServiceGetRoyaltyStatementProcedure = "/publira.admin.v1.AdminRoyaltyService/GetRoyaltyStatement"
+	// AdminRoyaltyServiceExportRoyaltyStatementProcedure is the fully-qualified name of the
+	// AdminRoyaltyService's ExportRoyaltyStatement RPC.
+	AdminRoyaltyServiceExportRoyaltyStatementProcedure = "/publira.admin.v1.AdminRoyaltyService/ExportRoyaltyStatement"
 )
 
 // AdminRoyaltyServiceClient is a client for the publira.admin.v1.AdminRoyaltyService service.
@@ -75,6 +78,10 @@ type AdminRoyaltyServiceClient interface {
 	// Reads a closed month and a page of its lines. not_found for a month that
 	// is not closed.
 	GetRoyaltyStatement(context.Context, *connect.Request[v1.GetRoyaltyStatementRequest]) (*connect.Response[v1.GetRoyaltyStatementResponse], error)
+	// Exports a closed month as CSV, built from the stored lines alone, so the
+	// same month exports the same bytes every time. failed_precondition for a
+	// month that is not closed; the console previews an open month instead.
+	ExportRoyaltyStatement(context.Context, *connect.Request[v1.ExportRoyaltyStatementRequest]) (*connect.Response[v1.ExportRoyaltyStatementResponse], error)
 }
 
 // NewAdminRoyaltyServiceClient constructs a client for the publira.admin.v1.AdminRoyaltyService
@@ -124,6 +131,12 @@ func NewAdminRoyaltyServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(adminRoyaltyServiceMethods.ByName("GetRoyaltyStatement")),
 			connect.WithClientOptions(opts...),
 		),
+		exportRoyaltyStatement: connect.NewClient[v1.ExportRoyaltyStatementRequest, v1.ExportRoyaltyStatementResponse](
+			httpClient,
+			baseURL+AdminRoyaltyServiceExportRoyaltyStatementProcedure,
+			connect.WithSchema(adminRoyaltyServiceMethods.ByName("ExportRoyaltyStatement")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -135,6 +148,7 @@ type adminRoyaltyServiceClient struct {
 	closeRoyaltyStatement   *connect.Client[v1.CloseRoyaltyStatementRequest, v1.CloseRoyaltyStatementResponse]
 	listRoyaltyStatements   *connect.Client[v1.ListRoyaltyStatementsRequest, v1.ListRoyaltyStatementsResponse]
 	getRoyaltyStatement     *connect.Client[v1.GetRoyaltyStatementRequest, v1.GetRoyaltyStatementResponse]
+	exportRoyaltyStatement  *connect.Client[v1.ExportRoyaltyStatementRequest, v1.ExportRoyaltyStatementResponse]
 }
 
 // GetRoyaltyConfig calls publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig.
@@ -167,6 +181,11 @@ func (c *adminRoyaltyServiceClient) GetRoyaltyStatement(ctx context.Context, req
 	return c.getRoyaltyStatement.CallUnary(ctx, req)
 }
 
+// ExportRoyaltyStatement calls publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement.
+func (c *adminRoyaltyServiceClient) ExportRoyaltyStatement(ctx context.Context, req *connect.Request[v1.ExportRoyaltyStatementRequest]) (*connect.Response[v1.ExportRoyaltyStatementResponse], error) {
+	return c.exportRoyaltyStatement.CallUnary(ctx, req)
+}
+
 // AdminRoyaltyServiceHandler is an implementation of the publira.admin.v1.AdminRoyaltyService
 // service.
 type AdminRoyaltyServiceHandler interface {
@@ -190,6 +209,10 @@ type AdminRoyaltyServiceHandler interface {
 	// Reads a closed month and a page of its lines. not_found for a month that
 	// is not closed.
 	GetRoyaltyStatement(context.Context, *connect.Request[v1.GetRoyaltyStatementRequest]) (*connect.Response[v1.GetRoyaltyStatementResponse], error)
+	// Exports a closed month as CSV, built from the stored lines alone, so the
+	// same month exports the same bytes every time. failed_precondition for a
+	// month that is not closed; the console previews an open month instead.
+	ExportRoyaltyStatement(context.Context, *connect.Request[v1.ExportRoyaltyStatementRequest]) (*connect.Response[v1.ExportRoyaltyStatementResponse], error)
 }
 
 // NewAdminRoyaltyServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -235,6 +258,12 @@ func NewAdminRoyaltyServiceHandler(svc AdminRoyaltyServiceHandler, opts ...conne
 		connect.WithSchema(adminRoyaltyServiceMethods.ByName("GetRoyaltyStatement")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminRoyaltyServiceExportRoyaltyStatementHandler := connect.NewUnaryHandler(
+		AdminRoyaltyServiceExportRoyaltyStatementProcedure,
+		svc.ExportRoyaltyStatement,
+		connect.WithSchema(adminRoyaltyServiceMethods.ByName("ExportRoyaltyStatement")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminRoyaltyService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminRoyaltyServiceGetRoyaltyConfigProcedure:
@@ -249,6 +278,8 @@ func NewAdminRoyaltyServiceHandler(svc AdminRoyaltyServiceHandler, opts ...conne
 			adminRoyaltyServiceListRoyaltyStatementsHandler.ServeHTTP(w, r)
 		case AdminRoyaltyServiceGetRoyaltyStatementProcedure:
 			adminRoyaltyServiceGetRoyaltyStatementHandler.ServeHTTP(w, r)
+		case AdminRoyaltyServiceExportRoyaltyStatementProcedure:
+			adminRoyaltyServiceExportRoyaltyStatementHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -280,4 +311,8 @@ func (UnimplementedAdminRoyaltyServiceHandler) ListRoyaltyStatements(context.Con
 
 func (UnimplementedAdminRoyaltyServiceHandler) GetRoyaltyStatement(context.Context, *connect.Request[v1.GetRoyaltyStatementRequest]) (*connect.Response[v1.GetRoyaltyStatementResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement is not implemented"))
+}
+
+func (UnimplementedAdminRoyaltyServiceHandler) ExportRoyaltyStatement(context.Context, *connect.Request[v1.ExportRoyaltyStatementRequest]) (*connect.Response[v1.ExportRoyaltyStatementResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement is not implemented"))
 }

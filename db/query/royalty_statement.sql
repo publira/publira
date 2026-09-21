@@ -213,3 +213,12 @@ WHERE l.tenant_id = sqlc.arg('tenant_id')
     AND l.line_number < sqlc.arg('before_line_number')::integer
 ORDER BY l.line_number DESC
 LIMIT sqlc.arg('row_limit');
+
+-- name: ListRoyaltyStatementLinesForExport :many
+-- Every line of a statement as it was closed, for the CSV export. It reads the
+-- stored columns only, so the export of a closed month never changes.
+SELECT *
+FROM royalty_statement_lines
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND statement_id = sqlc.arg('statement_id')
+ORDER BY line_number ASC;

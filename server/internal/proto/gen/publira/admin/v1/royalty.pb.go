@@ -1121,6 +1121,124 @@ func (x *GetRoyaltyStatementResponse) GetNextToken() string {
 	return ""
 }
 
+type ExportRoyaltyStatementRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// YYYY-MM of a closed month.
+	Period        string `protobuf:"bytes,2,opt,name=period,proto3" json:"period,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportRoyaltyStatementRequest) Reset() {
+	*x = ExportRoyaltyStatementRequest{}
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportRoyaltyStatementRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportRoyaltyStatementRequest) ProtoMessage() {}
+
+func (x *ExportRoyaltyStatementRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportRoyaltyStatementRequest.ProtoReflect.Descriptor instead.
+func (*ExportRoyaltyStatementRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ExportRoyaltyStatementRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ExportRoyaltyStatementRequest) GetPeriod() string {
+	if x != nil {
+		return x.Period
+	}
+	return ""
+}
+
+type ExportRoyaltyStatementResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The statement as CSV: UTF-8 with a byte order mark, CRLF line endings,
+	// RFC 4180 quoting. A header row, then one row per line in line order, with
+	// no summary row; the totals are those of GetRoyaltyStatement. Columns:
+	//
+	//	period            YYYY-MM
+	//	creator_id        the creator's ID, as closed
+	//	creator_name      as closed
+	//	role_id           the role's ID, as closed; empty for a credit with no role
+	//	role_name         as closed; empty for a credit with no role
+	//	series_id         the series' ID, as closed
+	//	series_title      as closed
+	//	episode_id        the episode's ID, as closed
+	//	episode_title     as closed
+	//	sale_count        integer
+	//	gross_amount      whole yen, no currency symbol
+	//	refunded_amount   whole yen, no currency symbol
+	//	share_percent     the share with two decimals, 12.50 for 1250 bps
+	//	payout_amount     whole yen, no currency symbol
+	//
+	// The IDs are the rows' internal IDs, not their public IDs, and they stay
+	// on the line after the row is deleted.
+	Csv           []byte `protobuf:"bytes,1,opt,name=csv,proto3" json:"csv,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportRoyaltyStatementResponse) Reset() {
+	*x = ExportRoyaltyStatementResponse{}
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportRoyaltyStatementResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportRoyaltyStatementResponse) ProtoMessage() {}
+
+func (x *ExportRoyaltyStatementResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_royalty_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportRoyaltyStatementResponse.ProtoReflect.Descriptor instead.
+func (*ExportRoyaltyStatementResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_royalty_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ExportRoyaltyStatementResponse) GetCsv() []byte {
+	if x != nil {
+		return x.Csv
+	}
+	return nil
+}
+
 var File_publira_admin_v1_royalty_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_royalty_proto_rawDesc = "" +
@@ -1207,18 +1325,24 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x05lines\x18\x02 \x03(\v2&.publira.admin.v1.RoyaltyStatementLineR\x05lines\x12%\n" +
 	"\x0eprevious_token\x18\x03 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x04 \x01(\tR\tnextToken*w\n" +
+	"next_token\x18\x04 \x01(\tR\tnextToken\"p\n" +
+	"\x1dExportRoyaltyStatementRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
+	"\x06period\x18\x02 \x01(\tR\x06period\"2\n" +
+	"\x1eExportRoyaltyStatementResponse\x12\x10\n" +
+	"\x03csv\x18\x01 \x01(\fR\x03csv*w\n" +
 	"\x10RoyaltyCloseMode\x12\"\n" +
 	"\x1eROYALTY_CLOSE_MODE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19ROYALTY_CLOSE_MODE_MANUAL\x10\x01\x12 \n" +
-	"\x1cROYALTY_CLOSE_MODE_AUTOMATIC\x10\x022\xe9\x05\n" +
+	"\x1cROYALTY_CLOSE_MODE_AUTOMATIC\x10\x022\xe8\x06\n" +
 	"\x13AdminRoyaltyService\x12k\n" +
 	"\x10GetRoyaltyConfig\x12).publira.admin.v1.GetRoyaltyConfigRequest\x1a*.publira.admin.v1.GetRoyaltyConfigResponse\"\x00\x12t\n" +
 	"\x13UpdateRoyaltyConfig\x12,.publira.admin.v1.UpdateRoyaltyConfigRequest\x1a-.publira.admin.v1.UpdateRoyaltyConfigResponse\"\x00\x12\x80\x01\n" +
 	"\x17PreviewRoyaltyStatement\x120.publira.admin.v1.PreviewRoyaltyStatementRequest\x1a1.publira.admin.v1.PreviewRoyaltyStatementResponse\"\x00\x12z\n" +
 	"\x15CloseRoyaltyStatement\x12..publira.admin.v1.CloseRoyaltyStatementRequest\x1a/.publira.admin.v1.CloseRoyaltyStatementResponse\"\x00\x12z\n" +
 	"\x15ListRoyaltyStatements\x12..publira.admin.v1.ListRoyaltyStatementsRequest\x1a/.publira.admin.v1.ListRoyaltyStatementsResponse\"\x00\x12t\n" +
-	"\x13GetRoyaltyStatement\x12,.publira.admin.v1.GetRoyaltyStatementRequest\x1a-.publira.admin.v1.GetRoyaltyStatementResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x13GetRoyaltyStatement\x12,.publira.admin.v1.GetRoyaltyStatementRequest\x1a-.publira.admin.v1.GetRoyaltyStatementResponse\"\x00\x12}\n" +
+	"\x16ExportRoyaltyStatement\x12/.publira.admin.v1.ExportRoyaltyStatementRequest\x1a0.publira.admin.v1.ExportRoyaltyStatementResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_royalty_proto_rawDescOnce sync.Once
@@ -1233,7 +1357,7 @@ func file_publira_admin_v1_royalty_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_royalty_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_publira_admin_v1_royalty_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_publira_admin_v1_royalty_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_publira_admin_v1_royalty_proto_goTypes = []any{
 	(RoyaltyCloseMode)(0),                   // 0: publira.admin.v1.RoyaltyCloseMode
 	(*RoyaltyConfig)(nil),                   // 1: publira.admin.v1.RoyaltyConfig
@@ -1252,43 +1376,48 @@ var file_publira_admin_v1_royalty_proto_goTypes = []any{
 	(*ListRoyaltyStatementsResponse)(nil),   // 14: publira.admin.v1.ListRoyaltyStatementsResponse
 	(*GetRoyaltyStatementRequest)(nil),      // 15: publira.admin.v1.GetRoyaltyStatementRequest
 	(*GetRoyaltyStatementResponse)(nil),     // 16: publira.admin.v1.GetRoyaltyStatementResponse
-	(*v1.TenantContext)(nil),                // 17: publira.types.v1.TenantContext
+	(*ExportRoyaltyStatementRequest)(nil),   // 17: publira.admin.v1.ExportRoyaltyStatementRequest
+	(*ExportRoyaltyStatementResponse)(nil),  // 18: publira.admin.v1.ExportRoyaltyStatementResponse
+	(*v1.TenantContext)(nil),                // 19: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_royalty_proto_depIdxs = []int32{
 	0,  // 0: publira.admin.v1.RoyaltyConfig.close_mode:type_name -> publira.admin.v1.RoyaltyCloseMode
-	17, // 1: publira.admin.v1.GetRoyaltyConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 1: publira.admin.v1.GetRoyaltyConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
 	1,  // 2: publira.admin.v1.GetRoyaltyConfigResponse.config:type_name -> publira.admin.v1.RoyaltyConfig
-	17, // 3: publira.admin.v1.UpdateRoyaltyConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 3: publira.admin.v1.UpdateRoyaltyConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 4: publira.admin.v1.UpdateRoyaltyConfigRequest.close_mode:type_name -> publira.admin.v1.RoyaltyCloseMode
 	1,  // 5: publira.admin.v1.UpdateRoyaltyConfigResponse.config:type_name -> publira.admin.v1.RoyaltyConfig
 	6,  // 6: publira.admin.v1.RoyaltyStatement.totals:type_name -> publira.admin.v1.RoyaltyStatementTotals
-	17, // 7: publira.admin.v1.PreviewRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 7: publira.admin.v1.PreviewRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
 	6,  // 8: publira.admin.v1.PreviewRoyaltyStatementResponse.totals:type_name -> publira.admin.v1.RoyaltyStatementTotals
 	8,  // 9: publira.admin.v1.PreviewRoyaltyStatementResponse.lines:type_name -> publira.admin.v1.RoyaltyStatementLine
-	17, // 10: publira.admin.v1.CloseRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 10: publira.admin.v1.CloseRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
 	7,  // 11: publira.admin.v1.CloseRoyaltyStatementResponse.statement:type_name -> publira.admin.v1.RoyaltyStatement
-	17, // 12: publira.admin.v1.ListRoyaltyStatementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 12: publira.admin.v1.ListRoyaltyStatementsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	7,  // 13: publira.admin.v1.ListRoyaltyStatementsResponse.statements:type_name -> publira.admin.v1.RoyaltyStatement
-	17, // 14: publira.admin.v1.GetRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 14: publira.admin.v1.GetRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
 	7,  // 15: publira.admin.v1.GetRoyaltyStatementResponse.statement:type_name -> publira.admin.v1.RoyaltyStatement
 	8,  // 16: publira.admin.v1.GetRoyaltyStatementResponse.lines:type_name -> publira.admin.v1.RoyaltyStatementLine
-	2,  // 17: publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig:input_type -> publira.admin.v1.GetRoyaltyConfigRequest
-	4,  // 18: publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig:input_type -> publira.admin.v1.UpdateRoyaltyConfigRequest
-	9,  // 19: publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement:input_type -> publira.admin.v1.PreviewRoyaltyStatementRequest
-	11, // 20: publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement:input_type -> publira.admin.v1.CloseRoyaltyStatementRequest
-	13, // 21: publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements:input_type -> publira.admin.v1.ListRoyaltyStatementsRequest
-	15, // 22: publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement:input_type -> publira.admin.v1.GetRoyaltyStatementRequest
-	3,  // 23: publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig:output_type -> publira.admin.v1.GetRoyaltyConfigResponse
-	5,  // 24: publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig:output_type -> publira.admin.v1.UpdateRoyaltyConfigResponse
-	10, // 25: publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement:output_type -> publira.admin.v1.PreviewRoyaltyStatementResponse
-	12, // 26: publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement:output_type -> publira.admin.v1.CloseRoyaltyStatementResponse
-	14, // 27: publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements:output_type -> publira.admin.v1.ListRoyaltyStatementsResponse
-	16, // 28: publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement:output_type -> publira.admin.v1.GetRoyaltyStatementResponse
-	23, // [23:29] is the sub-list for method output_type
-	17, // [17:23] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	19, // 17: publira.admin.v1.ExportRoyaltyStatementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 18: publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig:input_type -> publira.admin.v1.GetRoyaltyConfigRequest
+	4,  // 19: publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig:input_type -> publira.admin.v1.UpdateRoyaltyConfigRequest
+	9,  // 20: publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement:input_type -> publira.admin.v1.PreviewRoyaltyStatementRequest
+	11, // 21: publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement:input_type -> publira.admin.v1.CloseRoyaltyStatementRequest
+	13, // 22: publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements:input_type -> publira.admin.v1.ListRoyaltyStatementsRequest
+	15, // 23: publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement:input_type -> publira.admin.v1.GetRoyaltyStatementRequest
+	17, // 24: publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement:input_type -> publira.admin.v1.ExportRoyaltyStatementRequest
+	3,  // 25: publira.admin.v1.AdminRoyaltyService.GetRoyaltyConfig:output_type -> publira.admin.v1.GetRoyaltyConfigResponse
+	5,  // 26: publira.admin.v1.AdminRoyaltyService.UpdateRoyaltyConfig:output_type -> publira.admin.v1.UpdateRoyaltyConfigResponse
+	10, // 27: publira.admin.v1.AdminRoyaltyService.PreviewRoyaltyStatement:output_type -> publira.admin.v1.PreviewRoyaltyStatementResponse
+	12, // 28: publira.admin.v1.AdminRoyaltyService.CloseRoyaltyStatement:output_type -> publira.admin.v1.CloseRoyaltyStatementResponse
+	14, // 29: publira.admin.v1.AdminRoyaltyService.ListRoyaltyStatements:output_type -> publira.admin.v1.ListRoyaltyStatementsResponse
+	16, // 30: publira.admin.v1.AdminRoyaltyService.GetRoyaltyStatement:output_type -> publira.admin.v1.GetRoyaltyStatementResponse
+	18, // 31: publira.admin.v1.AdminRoyaltyService.ExportRoyaltyStatement:output_type -> publira.admin.v1.ExportRoyaltyStatementResponse
+	25, // [25:32] is the sub-list for method output_type
+	18, // [18:25] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_royalty_proto_init() }
@@ -1304,7 +1433,7 @@ func file_publira_admin_v1_royalty_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_royalty_proto_rawDesc), len(file_publira_admin_v1_royalty_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
