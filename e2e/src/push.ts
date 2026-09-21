@@ -1,5 +1,7 @@
 import type { Page } from "@playwright/test";
 
+import { querySql } from "./db";
+
 /**
  * The endpoint the stubbed push service issues. It belongs to no real service:
  * nothing is ever delivered through it, and the server only ever stores it and
@@ -10,14 +12,16 @@ export const STUB_PUSH_ENDPOINT =
 
 /**
  * The VAPID public key this stack's API publishes, which is what the browser
- * has to subscribe with. `lib.sh` defaults it, so a run that overrides the
- * variable is still checked against the key its own server answered with.
+ * has to subscribe with. Read from the stored settings rather than restated,
+ * so the stub checks against whatever key the server answers with.
  */
 const vapidPublicKey = (): string => {
-  const key = process.env.PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY?.trim();
+  const key = querySql(
+    "SELECT vapid_public_key FROM platform_webpush_config WHERE subject IS NOT NULL;"
+  );
   if (!key) {
     throw new Error(
-      "PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY is required to stub the Push API (set by e2e scripts)"
+      "Web Push is not configured on this stack (applied by e2e/scripts/db-setup.sh)"
     );
   }
   return key;

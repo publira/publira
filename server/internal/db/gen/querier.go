@@ -455,6 +455,8 @@ type Querier interface {
 	GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error)
 	GetPlatformUserEmailChangeTokenByID(ctx context.Context, id uuid.UUID) (PlatformUserEmailChangeToken, error)
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
+	// Returns no rows until the server has generated a key pair.
+	GetPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
 	// Returns only the creators that hold at least one published series. The
 	// caller turns an empty result into not_found exactly as it does a missing
 	// row, so the existence of an unpublished creator does not leak.
@@ -472,6 +474,10 @@ type Querier interface {
 	// Shared by every member-facing RPC that acts on a series (follow, rating), so
 	// they all treat a foreign, unpublished, or missing series the same way.
 	GetPublishedSeriesIDByPublicID(ctx context.Context, arg GetPublishedSeriesIDByPublicIDParams) (uuid.UUID, error)
+	// The public key browsers subscribe with, read by the storefront role, which is
+	// granted only the columns named here. No rows while Web Push is not
+	// configured, so the key is never offered before a push could be signed.
+	GetPublishedWebPushPublicKey(ctx context.Context) (string, error)
 	GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error)
 	// Reader reports on episode comments, and the open-report counter they keep on
 	// the comment they are about.
@@ -711,6 +717,11 @@ type Querier interface {
 	// nothing to lock, so a losing racer must fail on the primary key rather than
 	// overwrite the row the winner just created.
 	InsertPlatformStorageConfig(ctx context.Context, arg InsertPlatformStorageConfigParams) (PlatformStorageConfig, error)
+	// Stores a freshly generated pair unless one is already there. Every process
+	// that finds no row generates a pair of its own, and the primary key keeps the
+	// first one stored: replacing it would orphan the subscriptions already made
+	// against it.
+	InsertPlatformWebPushKeyPair(ctx context.Context, arg InsertPlatformWebPushKeyPairParams) (int64, error)
 	// Idempotent projection from a SoT row (purchases.id, access_tickets.id).
 	InsertProjectedSourceEvent(ctx context.Context, arg InsertProjectedSourceEventParams) (ContentEvent, error)
 	// Ratings are append-only, like every other content_events row: a member who
@@ -1623,6 +1634,9 @@ type Querier interface {
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
+	// Reads the row for update, so the revision a save compares against cannot
+	// change between the comparison and the write.
+	LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
 	// A series as one row: locked, read, written, and listed for the console. The
 	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
@@ -1955,6 +1969,7 @@ type Querier interface {
 	UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error)
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
 	UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error)
+	UpdatePlatformWebPushSubject(ctx context.Context, subject string) (PlatformWebpushConfig, error)
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSeriesEyeCatchImageIDParams) error
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error

@@ -99,7 +99,7 @@ func (s *apiServer) GetTenant(
 		AcceptsPayments:       acceptsPayments,
 		AgeVerification:       ageVerification,
 		CommentMode:           commentMode,
-		WebPushVapidPublicKey: s.webPushVAPIDPublicKey,
+		WebPushVapidPublicKey: s.publishedWebPushPublicKey(ctx),
 	}), nil
 }
 
@@ -145,4 +145,15 @@ func tenantBrandingImageVariants(
 	byImageID := protomapper.TenantImageVariantsByImageID(variantRows)
 
 	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID]
+}
+
+// publishedWebPushPublicKey answers the key GetTenant publishes. A failed read
+// publishes none rather than failing the site chrome over it.
+func (s *apiServer) publishedWebPushPublicKey(ctx context.Context) string {
+	publicKey, err := s.webPushKeys.PublicKey(ctx)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to read the web push public key", "error", err)
+		return ""
+	}
+	return publicKey
 }

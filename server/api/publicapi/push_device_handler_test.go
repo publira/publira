@@ -19,9 +19,22 @@ import (
 )
 
 const (
-	upsertUserPushDeviceQuery        = "-- name: UpsertUserPushDevice :one\n"
-	deleteUserPushDeviceForUserQuery = "-- name: DeleteUserPushDeviceForUser :execrows\n"
+	upsertUserPushDeviceQuery         = "-- name: UpsertUserPushDevice :one\n"
+	deleteUserPushDeviceForUserQuery  = "-- name: DeleteUserPushDeviceForUser :execrows\n"
+	getPublishedWebPushPublicKeyQuery = "-- name: GetPublishedWebPushPublicKey :one\n"
 )
+
+// expectPublishedWebPushPublicKey answers the storefront's read of the VAPID
+// public key: the key when publicKey is set, and no row, which is what an
+// installation with no subject saved answers, when it is empty.
+func expectPublishedWebPushPublicKey(mock sqlmock.Sqlmock, publicKey string) {
+	expectation := mock.ExpectQuery(regexp.QuoteMeta(getPublishedWebPushPublicKeyQuery))
+	if publicKey == "" {
+		expectation.WillReturnError(sql.ErrNoRows)
+		return
+	}
+	expectation.WillReturnRows(sqlmock.NewRows([]string{"vapid_public_key"}).AddRow(publicKey))
+}
 
 func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
@@ -51,10 +64,10 @@ func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 }
 
 func TestRegisterWebPushDeviceRequiresVAPIDConfiguration(t *testing.T) {
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", "")
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	client, mock := newNotificationClient(t, tenantID, userID, time.Now().UTC())
+	expectPublishedWebPushPublicKey(mock, "")
 
 	_, err := client.RegisterPushDevice(context.Background(), newAuthedPublicRequest(&publirav1.RegisterPushDeviceRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -70,17 +83,15 @@ func TestRegisterWebPushDeviceRequiresVAPIDConfiguration(t *testing.T) {
 }
 
 func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
-	privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+	_, publicKey, err := webpush.GenerateVAPIDKeys()
 	if err != nil {
 		t.Fatalf("GenerateVAPIDKeys: %v", err)
 	}
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY", publicKey)
-	t.Setenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY", privateKey)
-	t.Setenv("PUBLIRA_WEBPUSH_SUBJECT", "mailto:push@example.test")
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
+	expectPublishedWebPushPublicKey(mock, publicKey)
 
 	mock.ExpectQuery(regexp.QuoteMeta(upsertUserPushDeviceQuery)).
 		WithArgs(tenantID, userID, "https://push.example.test/subscription", "web", sql.NullString{String: "https://push.example.test/subscription", Valid: true}, sql.NullString{String: "p256dh", Valid: true}, sql.NullString{String: "auth", Valid: true}).

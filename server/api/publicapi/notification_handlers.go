@@ -272,7 +272,7 @@ func (s *apiServer) RegisterPushDevice(
 	if err != nil {
 		return nil, err
 	}
-	registration, err := s.pushDeviceRegistration(req.Msg, platform)
+	registration, err := s.pushDeviceRegistration(ctx, req.Msg, platform)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +366,7 @@ type pushDeviceRegistration struct {
 	auth     sql.NullString
 }
 
-func (s *apiServer) pushDeviceRegistration(request *publirav1.RegisterPushDeviceRequest, platform string) (pushDeviceRegistration, error) {
+func (s *apiServer) pushDeviceRegistration(ctx context.Context, request *publirav1.RegisterPushDeviceRequest, platform string) (pushDeviceRegistration, error) {
 	if platform != "web" {
 		if strings.TrimSpace(request.Endpoint) != "" || strings.TrimSpace(request.P256Dh) != "" || strings.TrimSpace(request.Auth) != "" {
 			return pushDeviceRegistration{}, connect.NewError(connect.CodeInvalidArgument, errors.New("web push subscription fields require platform web"))
@@ -374,7 +374,11 @@ func (s *apiServer) pushDeviceRegistration(request *publirav1.RegisterPushDevice
 		token, err := pushDeviceToken(request.Token)
 		return pushDeviceRegistration{token: token}, err
 	}
-	if s.webPushVAPIDPublicKey == "" {
+	publicKey, err := s.webPushKeys.PublicKey(ctx)
+	if err != nil {
+		return pushDeviceRegistration{}, s.internalDBError(ctx, "failed to read the web push public key", err)
+	}
+	if publicKey == "" {
 		return pushDeviceRegistration{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("web push is not configured"))
 	}
 	endpoint, err := pushDeviceToken(request.Endpoint)

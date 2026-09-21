@@ -60,13 +60,15 @@ type PushSender interface {
 	Send(ctx context.Context, message push.Message) error
 }
 
+// WebPushSender delivers to a browser subscription. The worker's reports Web
+// Push that is not configured rather than being absent.
 type WebPushSender interface {
 	Send(ctx context.Context, subscription push.WebPushSubscription, message push.WebPushMessage) error
 }
 
 // PushHandlerConfig is what the worker resolves once at startup for the push
-// handler. A process with no Firebase credential registers no handler at all,
-// so Sender is never nil in a registered one.
+// handler. Sender is nil in a process with no Firebase credential, which fails
+// every mobile delivery.
 type PushHandlerConfig struct {
 	DB        *sql.DB
 	Sender    PushSender

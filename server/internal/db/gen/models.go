@@ -564,6 +564,16 @@ type PlatformUserRole struct {
 	PlatformUserID uuid.UUID `json:"platform_user_id"`
 }
 
+type PlatformWebpushConfig struct {
+	Singleton                bool           `json:"singleton"`
+	VapidPublicKey           string         `json:"vapid_public_key"`
+	VapidPrivateKeyEncrypted string         `json:"vapid_private_key_encrypted"`
+	Subject                  sql.NullString `json:"subject"`
+	Revision                 int64          `json:"revision"`
+	CreatedAt                time.Time      `json:"created_at"`
+	UpdatedAt                time.Time      `json:"updated_at"`
+}
+
 type PublishedFreeEpisode struct {
 	EpisodeID uuid.UUID `json:"episode_id"`
 	SeriesID  uuid.UUID `json:"series_id"`

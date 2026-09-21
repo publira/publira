@@ -21,11 +21,11 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-	"github.com/publira/publira/server/internal/push"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantconn"
 	"github.com/publira/publira/server/internal/tracing"
+	"github.com/publira/publira/server/internal/webpushsettings"
 )
 
 type Querier interface {
@@ -37,16 +37,22 @@ type stripeSessionCreator interface {
 }
 
 type apiServer struct {
-	db                    *sql.DB
-	queries               Querier
-	encryptor             emailsettings.SecretManager
-	tokens                *auth.TokenManager
-	logger                *slog.Logger
-	guards                readerGuards
-	mail                  *mailguard.Guard
-	reval                 *revalidate.Requester
-	webPushVAPIDPublicKey string
-	newStripeProvider     func(secretKey string) stripeSessionCreator
+	db        *sql.DB
+	queries   Querier
+	encryptor emailsettings.SecretManager
+	tokens    *auth.TokenManager
+	logger    *slog.Logger
+	guards    readerGuards
+	mail      *mailguard.Guard
+	reval     *revalidate.Requester
+	// webPushKeys answers the VAPID public key browsers subscribe with, empty
+	// while Web Push is not configured.
+	webPushKeys       webPushPublicKeySource
+	newStripeProvider func(secretKey string) stripeSessionCreator
+}
+
+type webPushPublicKeySource interface {
+	PublicKey(ctx context.Context) (string, error)
 }
 
 func invalidSessionError() error {
@@ -165,9 +171,6 @@ type API struct {
 // role's. Both flood controls read their limits from the platform policy
 // through that same pool.
 func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (*API, error) {
-	if err := validateWebPushVAPIDFromEnv(); err != nil {
-		return nil, err
-	}
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
@@ -180,18 +183,6 @@ func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tok
 // two console namespaces.
 func (a *API) Register(mux *http.ServeMux) {
 	registerPublicRoutes(mux, a.server)
-}
-
-func validateWebPushVAPIDFromEnv() error {
-	config := push.WebPushConfig{
-		VAPIDPublicKey:  strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY")),
-		VAPIDPrivateKey: strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY")),
-		Subscriber:      strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_SUBJECT")),
-	}
-	if config.VAPIDPublicKey == "" && config.VAPIDPrivateKey == "" && config.Subscriber == "" {
-		return nil
-	}
-	return push.ValidateWebPushConfig(config)
 }
 
 func newAPIServer(
@@ -223,20 +214,16 @@ func newAPIServer(
 		DB:      db,
 		Logger:  logger,
 	})
-	webPushPublicKey := strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PUBLIC_KEY"))
-	if webPushPublicKey == "" || strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_VAPID_PRIVATE_KEY")) == "" || strings.TrimSpace(os.Getenv("PUBLIRA_WEBPUSH_SUBJECT")) == "" {
-		webPushPublicKey = ""
-	}
 	return &apiServer{
-		db:                    db,
-		queries:               queries,
-		encryptor:             encryptor,
-		tokens:                tokens,
-		logger:                logger,
-		guards:                guards.withDefaults(),
-		mail:                  mail,
-		reval:                 revalidator,
-		webPushVAPIDPublicKey: webPushPublicKey,
+		db:          db,
+		queries:     queries,
+		encryptor:   encryptor,
+		tokens:      tokens,
+		logger:      logger,
+		guards:      guards.withDefaults(),
+		mail:        mail,
+		reval:       revalidator,
+		webPushKeys: webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),
 		newStripeProvider: func(secretKey string) stripeSessionCreator {
 			return newStripeCheckoutProvider(secretKey)
 		},

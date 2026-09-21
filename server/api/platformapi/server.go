@@ -220,6 +220,12 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(storagePath, storageHandler)
+	webPushPath, webPushHandler := publirasplatformv1connect.NewPlatformWebPushSettingsServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(authInterceptor),
+	)
+	mux.Handle(webPushPath, webPushHandler)
 	policyPath, policyHandler := publirasplatformv1connect.NewPlatformPolicyServiceHandler(
 		server,
 		traced,

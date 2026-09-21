@@ -173,6 +173,11 @@ $$;
 -- holds no secret, so both roles read it; neither may write it.
 GRANT SELECT ON platform_policy_config TO publira_public, publira_admin;
 
+-- The storefront publishes the VAPID public key browsers subscribe with, and
+-- only once a subject is saved. The grant names the columns that answer that,
+-- so the sealed private key in the same row stays out of this role's reach.
+GRANT SELECT (singleton, vapid_public_key, subject) ON platform_webpush_config TO publira_public;
+
 -- The storefront resolves each tenant's stricter community limits alongside
 -- the platform policy. RLS confines the tenant-console role to its own row.
 REVOKE INSERT, UPDATE, DELETE ON tenant_community_limit_overrides FROM publira_public;
@@ -194,13 +199,15 @@ GRANT SELECT ON platform_storage_config TO publira_admin, publira_content_stats;
 
 -- The worker composes the platform console's own mail — a password reset, an
 -- email change confirmation, the notice that follows one — and every mail it
--- sends goes through the platform relay unless the tenant overrides it. So the
--- five tables those paths read are granted back one by one, the way the ticker
+-- sends goes through the platform relay unless the tenant overrides it. It also
+-- signs every Web Push delivery with the platform's VAPID key pair. So the
+-- tables those paths read are granted back one by one, the way the ticker
 -- role's are: reads only, and a platform_ table added later reaches this role
 -- only when someone puts it in this list.
 GRANT SELECT ON
     platform_config,
     platform_smtp_config,
+    platform_webpush_config,
     platform_users,
     platform_user_email_change_tokens,
     platform_user_password_reset_tokens
