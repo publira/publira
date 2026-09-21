@@ -28,6 +28,8 @@ class ConnectFixtureServer {
     this.myEpisodeComments = const {},
     this.myFollows = const [],
     this.followsPageSize = 0,
+    this.notifications = const [],
+    this.notificationsPageSize = 0,
     this.listStatus = HttpStatus.ok,
     this.searchStatus = HttpStatus.ok,
     this.rankedStatus = HttpStatus.ok,
@@ -37,6 +39,7 @@ class ConnectFixtureServer {
     this.pushDeviceStatus = HttpStatus.ok,
     this.commentStatus = HttpStatus.ok,
     this.followStatus = HttpStatus.ok,
+    this.notificationStatus = HttpStatus.ok,
     this.contactStatus = HttpStatus.ok,
     this.contactErrorCode = 'unavailable',
     this.signupStatus = HttpStatus.ok,
@@ -456,6 +459,16 @@ class ConnectFixtureServer {
   /// The token stands in for the server's opaque cursor and is the index of
   /// the page's first row, written out.
   int followsPageSize;
+
+  /// `NotificationItem` rows of the signed-in member, newest first. The read
+  /// RPCs write `isRead` here, so the next list and count agree with what the
+  /// app marked.
+  List<Map<String, Object?>> notifications;
+
+  /// How many of [notifications] one `ListNotifications` page holds, with the
+  /// token written the way [followsPageSize] writes one. `0` answers the whole
+  /// of it at once.
+  int notificationsPageSize;
   int listStatus;
   int searchStatus;
   int rankedStatus;
@@ -474,6 +487,10 @@ class ConnectFixtureServer {
   /// What every `FollowService` RPC answers with, so a test can act out an API
   /// that cannot be reached.
   int followStatus;
+
+  /// What the inbox RPCs of `NotificationService` answer with, so a test can
+  /// act out an API that cannot be reached.
+  int notificationStatus;
 
   /// What `SubmitContactMessage` answers with, and the Connect code of the
   /// error body when that is not 200, so a test can act out an API that
@@ -926,6 +943,14 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/ListNotifications') ||
+        path.endsWith('/CountUnreadNotifications') ||
+        path.endsWith('/MarkNotificationAsRead') ||
+        path.endsWith('/MarkAllNotificationsAsRead')) {
+      await _writeNotification(request, path, body);
+      return;
+    }
+
     if (path.endsWith('/RegisterPushDevice') ||
         path.endsWith('/UnregisterPushDevice')) {
       final registering = path.endsWith('/RegisterPushDevice');
@@ -1293,6 +1318,85 @@ class ConnectFixtureServer {
     return {
       if (page.isNotEmpty) 'follows': page,
       if (end < myFollows.length) 'nextToken': '$end',
+    };
+  }
+
+  /// Answers the inbox RPCs of one member, every one of which needs their
+  /// session the way the API refuses one without it.
+  Future<void> _writeNotification(
+    HttpRequest request,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    if (notificationStatus != HttpStatus.ok) {
+      await _write(request, notificationStatus, const {
+        'code': 'unavailable',
+        'message': 'unavailable',
+      });
+      return;
+    }
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    if (path.endsWith('/ListNotifications')) {
+      await _write(request, HttpStatus.ok, _notificationsPage(body['token']));
+      return;
+    }
+    final unread = notifications.where((item) => item['isRead'] != true);
+    if (path.endsWith('/CountUnreadNotifications')) {
+      // protojson omits a zero.
+      await _write(request, HttpStatus.ok, {
+        if (unread.isNotEmpty) 'unreadCount': unread.length,
+      });
+      return;
+    }
+    Map<String, Object?> read(Map<String, Object?> item) => {
+      ...item,
+      'isRead': true,
+      'readAt': DateTime.now().toUtc().toIso8601String(),
+    };
+    if (path.endsWith('/MarkAllNotificationsAsRead')) {
+      final marked = unread.length;
+      notifications = [
+        for (final item in notifications)
+          item['isRead'] == true ? item : read(item),
+      ];
+      await _write(request, HttpStatus.ok, {
+        if (marked > 0) 'markedCount': marked,
+      });
+      return;
+    }
+    final id = body['notificationId'];
+    if (!notifications.any((item) => item['id'] == id)) {
+      await _write(request, HttpStatus.notFound, {
+        'code': 'not_found',
+        'message': 'notification not found',
+      });
+      return;
+    }
+    notifications = [
+      for (final item in notifications)
+        item['id'] == id && item['isRead'] != true ? read(item) : item,
+    ];
+    await _write(request, HttpStatus.ok, const {'marked': true});
+  }
+
+  /// The page of [notifications] the request's token asks for, with the token
+  /// of the page under it when there is one.
+  Map<String, Object?> _notificationsPage(Object? token) {
+    if (notificationsPageSize <= 0) {
+      return {if (notifications.isNotEmpty) 'notifications': notifications};
+    }
+    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
+    final end = min(start + notificationsPageSize, notifications.length);
+    final page = notifications.sublist(min(start, notifications.length), end);
+    return {
+      if (page.isNotEmpty) 'notifications': page,
+      if (end < notifications.length) 'nextToken': '$end',
     };
   }
 

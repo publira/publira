@@ -25,6 +25,8 @@ import 'package:publira/links/app_link.dart';
 import 'package:publira/links/incoming_links.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/links/share_sheet.dart';
+import 'package:publira/notifications/http_notification_repository.dart';
+import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
@@ -56,6 +58,7 @@ class PubliraApp extends StatefulWidget {
     required this.auth,
     this.comments,
     this.follows,
+    this.notifications,
     this.contact,
     this.purchases,
     this.checkoutLauncher,
@@ -139,6 +142,12 @@ class PubliraApp extends StatefulWidget {
       auth: auth,
       comments: HttpCommentRepository(client: client, tenants: tenants),
       follows: HttpFollowRepository(client: client, tenants: tenants),
+      notifications: NotificationInbox(
+        repository: HttpNotificationRepository(
+          client: client,
+          tenants: tenants,
+        ),
+      ),
       contact: HttpContactRepository(client: client, tenants: tenants),
       purchases: HttpPurchaseRepository(client: client, tenants: tenants),
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
@@ -186,6 +195,13 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// follows at all, and no screen then offers to follow anything.
   final FollowRepository? follows;
+
+  /// The signed-in reader's notification inbox and its unread count.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// inbox at all, and no screen then leads to one.
+  final NotificationInbox? notifications;
 
   /// The messages a reader sends the tenant's staff.
   ///
@@ -301,6 +317,9 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     }
     widget.auth.addListener(_onAuthChanged);
     widget.push?.addListener(_onPushChanged);
+    if (widget.auth.isSignedIn) {
+      unawaited(widget.notifications?.refresh());
+    }
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     widget.tenantBrand?.addListener(_onTenantBrandChanged);
     unawaited(_restore());
@@ -390,6 +409,16 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     setState(() {});
   }
 
+  /// Reads the unread count again when the reader comes back to the app, which
+  /// is when a notification they were sent in the meantime would otherwise go
+  /// unbadged.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.auth.isSignedIn) {
+      unawaited(widget.notifications?.refresh());
+    }
+  }
+
   void _onTenantDefaultLocaleChanged() {
     setState(() {});
   }
@@ -420,6 +449,11 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       unawaited(
         signedIn ? widget.push?.handleSignedIn() : widget.push?.handleSignOut(),
       );
+      if (signedIn) {
+        unawaited(widget.notifications?.refresh());
+      } else {
+        widget.notifications?.reset();
+      }
     }
     if (!widget.auth.acknowledgeExpiry()) {
       return;
@@ -460,6 +494,8 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     if (message == null) {
       return;
     }
+    // Every push is also a row in the inbox.
+    unawaited(widget.notifications?.refresh());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final messages = AppMessages.forLocale(_locale);
       if (messages == null) {
@@ -522,14 +558,17 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                 repository: widget.comments,
                 child: FollowScope(
                   repository: widget.follows,
-                  child: ContactScope(
-                    repository: widget.contact,
-                    child: PurchaseScope(
-                      repository: widget.purchases,
-                      launcher: widget.checkoutLauncher,
-                      child: AgeRatingConfirmationScope(
-                        controller: _ageRating,
-                        child: app,
+                  child: NotificationScope(
+                    inbox: widget.notifications,
+                    child: ContactScope(
+                      repository: widget.contact,
+                      child: PurchaseScope(
+                        repository: widget.purchases,
+                        launcher: widget.checkoutLauncher,
+                        child: AgeRatingConfirmationScope(
+                          controller: _ageRating,
+                          child: app,
+                        ),
                       ),
                     ),
                   ),

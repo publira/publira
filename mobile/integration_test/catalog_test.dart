@@ -1306,6 +1306,64 @@ void main() {
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
+
+    testApp('a notification no push delivered is found in the inbox', (
+      tester,
+    ) async {
+      // The fixture app carries no Firebase project, so nothing but the inbox
+      // can tell the reader about this episode.
+      server.notifications = [
+        {
+          'id': 'fixture-notification-1',
+          'notificationType': 'episode_published',
+          'payload':
+              '{"series_id":"${ConnectFixtureServer.seedSeriesId}",'
+              '"episode_id":"${ConnectFixtureServer.seedEpisodeId}",'
+              '"series_title":"${ConnectFixtureServer.seedSeriesTitle}",'
+              '"episode_title":"${ConnectFixtureServer.seedEpisodeTitle}"}',
+          'createdAt': '2026-09-08T10:30:00Z',
+        },
+        {
+          'id': 'fixture-notification-2',
+          'notificationType': 'comment_approved',
+          'payload': '{}',
+          'isRead': true,
+          'createdAt': '2026-09-01T10:30:00Z',
+        },
+      ];
+      await withFailureScreenshot(tester, 'fixture-notifications', () async {
+        await pumpApp(tester, session: memberSession());
+        await pumpUntilFound(
+          tester,
+          find.byTooltip('Account, 1 unread notifications'),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('catalog-account')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('account-notifications-unread')),
+        );
+        await tester.tap(
+          find.byKey(const ValueKey('account-notifications-inbox')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(
+            const ValueKey('notification-unread-fixture-notification-1'),
+          ),
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey('notification-fixture-notification-1')),
+        );
+        await pumpUntilPagesDrawn(tester);
+        await pumpUntilTrue(
+          tester,
+          () => server.notifications.every((item) => item['isRead'] == true),
+          description: 'the read mark to reach the API',
+        );
+      });
+    });
   });
 
   group('live public API', skip: !_liveApi, () {
@@ -1716,6 +1774,47 @@ void main() {
           find.byKey(const ValueKey('confirm-password-request-again')),
           timeout: const Duration(seconds: 20),
         );
+      });
+    });
+
+    testApp('the seed member reads their inbox from the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-notifications', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.accountNotifications);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('notifications-sign-in')),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('notifications-sign-in')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          ConnectFixtureServer.memberEmail,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-password')),
+          ConnectFixtureServer.memberPassword,
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+
+        // The development seed delivers the member no notification, so what
+        // this proves is that both inbox reads are answered, not what they
+        // hold.
+        await pumpUntilRouteSettled(
+          tester,
+          find.byWidgetPredicate(
+            (widget) =>
+                widget.key == const ValueKey('notifications-empty') ||
+                widget.key == const ValueKey('notifications-list'),
+          ),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.byKey(const ValueKey('notifications-error')), findsNothing);
       });
     });
 

@@ -19,6 +19,7 @@ import 'package:publira/screens/episode_viewer_screen.dart';
 import 'package:publira/screens/follows_screen.dart';
 import 'package:publira/screens/label_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
+import 'package:publira/screens/notifications_screen.dart';
 import 'package:publira/screens/resend_verification_screen.dart';
 import 'package:publira/screens/reset_password_screen.dart';
 import 'package:publira/screens/search_screen.dart';
@@ -56,6 +57,8 @@ abstract final class AppRoutes {
   static const accountPassword = '$account/$password';
   static const delete = 'delete';
   static const accountDelete = '$account/$delete';
+  static const notifications = 'notifications';
+  static const accountNotifications = '$account/$notifications';
   static const follows = 'follows';
   static const accountFollows = '$account/$follows';
   static const downloads = 'downloads';
@@ -234,6 +237,11 @@ GoRouter createAppRouter({String? initialLocation}) {
             name: 'accountDelete',
             builder: (context, state) =>
                 const ReaderKeyed(child: DeleteAccountScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.notifications,
+            name: 'notifications',
+            builder: (context, state) => const NotificationsScreen(),
           ),
           GoRoute(
             path: AppRoutes.follows,
