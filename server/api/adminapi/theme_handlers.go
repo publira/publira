@@ -502,7 +502,10 @@ func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmod
 		return nil, err
 	}
 
-	owed, _ := s.recordRevalidation(txCtx, tenant.ID, themeBrandingRevalidateTags(tenant.ID.String()))
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, themeBrandingRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the tenant "+image.name+" change", err, "tenant_id", tenant.ID.String())
+	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit tenant "+image.name+" change", err, "tenant_id", tenant.ID.String())

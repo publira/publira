@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"regexp"
 	"slices"
 	"sync"
@@ -100,6 +101,7 @@ func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 // keeps the bytes.
 func newTestAdminServerWithStorage(t *testing.T, provider storage.Provider) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Helper()
+	disableRevalidationUnlessRecorded(t)
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
@@ -143,6 +145,10 @@ func openMailGuard() *mailguard.Guard {
 	return mailGuardWith(platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 }
 
+// testRevalidateToken is what tells a server built for a test that revalidates
+// from one that does not.
+const testRevalidateToken = "test-revalidate-token"
+
 // revalidateRecorder stands in for the Next.js apps and collects the tags the
 // handlers ask them to drop.
 type revalidateRecorder struct {
@@ -177,6 +183,18 @@ func (r *revalidateRecorder) waitForTags(t *testing.T, want []string) {
 	t.Fatalf("revalidated tags = %v, want %v", got, want)
 }
 
+// disableRevalidationUnlessRecorded turns revalidation off for every test that
+// did not ask for it with [newRevalidateRecorder]. The development environment
+// sets PUBLIRA_REVALIDATE_TOKEN, and a server that picked it up would record an
+// outbox event no expectation covers — so the same test would pass in CI and
+// fail on a developer's machine.
+func disableRevalidationUnlessRecorded(t *testing.T) {
+	t.Helper()
+	if os.Getenv("PUBLIRA_REVALIDATE_TOKEN") != testRevalidateToken {
+		t.Setenv("PUBLIRA_REVALIDATE_TOKEN", "")
+	}
+}
+
 // newRevalidateRecorder points all three revalidate targets at one recording
 // server and configures the token that turns the client on. The handler reads
 // this environment when it is built, so call this before newTestAdminServer.
@@ -197,7 +215,7 @@ func newRevalidateRecorder(t *testing.T) *revalidateRecorder {
 		recorder.mu.Unlock()
 	}))
 	t.Cleanup(server.Close)
-	t.Setenv("PUBLIRA_REVALIDATE_TOKEN", "test-revalidate-token")
+	t.Setenv("PUBLIRA_REVALIDATE_TOKEN", testRevalidateToken)
 	t.Setenv("PUBLIRA_WEB_HOST_INTERNAL_URL", server.URL)
 	t.Setenv("PUBLIRA_WEB_ADMIN_INTERNAL_URL", server.URL)
 	t.Setenv("PUBLIRA_WEB_PLATFORM_INTERNAL_URL", server.URL)

@@ -116,8 +116,9 @@ func (s *adminServer) revalidateOpenFreeWindow(ctx context.Context, tenantID uui
 	}
 	// The boundary is written off only once the drop is recorded; otherwise it
 	// stays due and apply-free-windows comes back for it.
-	owed, recorded := s.recordRevalidation(ctx, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
-	if !recorded {
+	owed, err := s.recordRevalidation(ctx, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
+	if err != nil {
+		s.logger.Warn("failed to record a next cache invalidation after a free window change", "tenant_id", tenantID.String(), "error", err)
 		return
 	}
 	for _, windowID := range windowIDs {

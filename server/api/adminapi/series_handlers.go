@@ -716,7 +716,10 @@ func (s *adminServer) CreateSeries(
 	// rollback takes it back and a crash after the commit still owes it.
 	var owed revalidate.Owed
 	if publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC()) {
-		owed, _ = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), base.PublicID))
+		owed, err = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), base.PublicID))
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the created series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
@@ -916,7 +919,10 @@ func (s *adminServer) UpdateSeries(
 	}
 	var owed revalidate.Owed
 	if current.IsPublished || (publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC())) {
-		owed, _ = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), current.PublicID))
+		owed, err = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), current.PublicID))
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the updated series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())

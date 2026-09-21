@@ -356,7 +356,10 @@ func (s *adminServer) ReorderCreatorRoles(
 		}
 		creatorRoles = append(creatorRoles, &publirattypesv1.CreatorRole{PublicId: row.PublicID, Name: row.Name})
 	}
-	owed, _ := s.recordRevalidation(txCtx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the creator role order", err, "tenant_id", tenant.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit reorder creator roles", err, "tenant_id", tenant.ID.String())
 	}

@@ -209,7 +209,10 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	}
 	var owed revalidate.Owed
 	if current.IsPublished {
-		owed, _ = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), current.PublicID))
+		owed, err = s.recordRevalidation(txCtx, tenant.ID, seriesRevalidateTags(tenant.ID.String(), current.PublicID))
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the series eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit series eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
@@ -356,7 +359,10 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	if err := s.queriesFor(txCtx).TouchLabelImage(txCtx, imageID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to touch label image", err, "tenant_id", tenant.ID.String(), "label_image_id", imageID.String())
 	}
-	owed, _ := s.recordRevalidation(txCtx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the label eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit label eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
 	}

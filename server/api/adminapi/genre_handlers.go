@@ -381,7 +381,10 @@ func (s *adminServer) ReorderGenres(
 		}
 		genres = append(genres, &publirattypesv1.Genre{PublicId: row.PublicID, Name: row.Name, Slug: row.Slug})
 	}
-	owed, _ := s.recordRevalidation(txCtx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the genre order", err, "tenant_id", tenant.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit reorder genres", err, "tenant_id", tenant.ID.String())
 	}

@@ -127,7 +127,15 @@ func (s *adminServer) queriesFor(ctx context.Context) Querier {
 // returned: the write is already committed, and a console save must not fail
 // because a cache entry outlived it.
 func (s *adminServer) revalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) {
-	owed, _ := s.recordRevalidation(ctx, tenantID, tags)
+	owed, err := s.recordRevalidation(ctx, tenantID, tags)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to record a next cache invalidation",
+			"tenant_id", tenantID.String(),
+			"tags", tags,
+			"error", err,
+		)
+		return
+	}
 	s.reval.Send(ctx, owed)
 }
 
@@ -135,25 +143,17 @@ func (s *adminServer) revalidateTags(ctx context.Context, tenantID uuid.UUID, ta
 // carries, so a handler that passes its transaction's context owes the drop
 // only if that transaction commits. Send the result once it has.
 //
-// It reports whether the invalidation is accounted for, which a caller that
-// marks the work done needs: a deployment with revalidation turned off owes
-// nothing and answers true with a zero [revalidate.Owed], while a record that
-// failed answers false and must not be written off.
+// The error is the caller's to act on rather than this helper's to log, because
+// what it means depends on where the write is: a caller still holding the
+// transaction has to roll it back instead of committing a write whose drop
+// nothing owes. A deployment with revalidation turned off is not that case — it
+// owes nothing and answers a zero [revalidate.Owed] and no error.
 func (s *adminServer) recordRevalidation(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	tags []string,
-) (revalidate.Owed, bool) {
-	owed, err := s.reval.Record(ctx, s.queriesFor(ctx), tenantID, tags)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to record a next cache invalidation",
-			"tenant_id", tenantID.String(),
-			"tags", tags,
-			"error", err,
-		)
-		return revalidate.Owed{}, false
-	}
-	return owed, true
+) (revalidate.Owed, error) {
+	return s.reval.Record(ctx, s.queriesFor(ctx), tenantID, tags)
 }
 
 // beginTenantTx starts a transaction on the request's tenant-scoped
