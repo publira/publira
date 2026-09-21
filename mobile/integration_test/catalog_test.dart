@@ -18,6 +18,7 @@ import '../test/support/fake_purchase.dart';
 import '../test/support/pump_until.dart';
 import '../test/support/tap.dart';
 import 'support/artifacts.dart';
+import 'support/test_app.dart';
 
 /// Live public API, used when CI / `task mobile:e2e` starts api-server.
 const _liveApi = bool.fromEnvironment('PUBLIRA_LIVE_API');
@@ -43,11 +44,7 @@ Finder signedInAccountEntry() => find.descendant(
 /// Waits for the reader to draw the pages it built.
 ///
 /// [pumpUntilFound] on the page view returns on the first frame the reader
-/// exists, which is while its pages are still being fetched. A fetch still in
-/// flight when a test ends is cancelled with the widget tree —
-/// `EpisodeReader.dispose` closes the image client on purpose — and the error
-/// that cancellation raises has no listener left to take it, so it lands on
-/// whichever test happens to be running by then.
+/// exists, which is while its pages are still being fetched.
 Future<void> pumpUntilPagesDrawn(
   WidgetTester tester, {
   // Longer than the waits that only cover a request: a page is fetched,
@@ -168,7 +165,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
     }
 
-    testWidgets('launches onto a catalog populated from the public API', (
+    testApp('launches onto a catalog populated from the public API', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-launch', () async {
@@ -186,7 +183,7 @@ void main() {
       });
     });
 
-    testWidgets('the shelves of the catalog stand above the whole of it', (
+    testApp('the shelves of the catalog stand above the whole of it', (
       tester,
     ) async {
       server.rankedSeries = ConnectFixtureServer.populatedRankedSeries();
@@ -222,7 +219,7 @@ void main() {
       });
     });
 
-    testWidgets('opens series detail from the catalog list', (tester) async {
+    testApp('opens series detail from the catalog list', (tester) async {
       await withFailureScreenshot(tester, 'fixture-detail', () async {
         await pumpApp(tester);
         await pumpUntilRouteSettled(
@@ -253,7 +250,7 @@ void main() {
       });
     });
 
-    testWidgets('returns to the catalog with the system back gesture', (
+    testApp('returns to the catalog with the system back gesture', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-back', () async {
@@ -290,9 +287,7 @@ void main() {
       });
     });
 
-    testWidgets('finds a series by part of its title and opens it', (
-      tester,
-    ) async {
+    testApp('finds a series by part of its title and opens it', (tester) async {
       await withFailureScreenshot(tester, 'fixture-search', () async {
         await pumpApp(tester);
         await pumpUntilRouteSettled(
@@ -324,7 +319,7 @@ void main() {
       });
     });
 
-    testWidgets('clearing the keyword takes the results away', (tester) async {
+    testApp('clearing the keyword takes the results away', (tester) async {
       await withFailureScreenshot(tester, 'fixture-search-cleared', () async {
         await pumpApp(tester, initialLocation: AppRoutes.search);
         await pumpUntilRouteSettled(
@@ -358,9 +353,7 @@ void main() {
       });
     });
 
-    testWidgets('finds an author by name and opens their series', (
-      tester,
-    ) async {
+    testApp('finds an author by name and opens their series', (tester) async {
       await withFailureScreenshot(tester, 'fixture-search-author', () async {
         await pumpApp(tester, initialLocation: AppRoutes.search);
         await pumpUntilRouteSettled(
@@ -390,7 +383,7 @@ void main() {
       });
     });
 
-    testWidgets('finds a label by name and opens its series', (tester) async {
+    testApp('finds a label by name and opens its series', (tester) async {
       await withFailureScreenshot(tester, 'fixture-search-label', () async {
         await pumpApp(tester, initialLocation: AppRoutes.search);
         await pumpUntilRouteSettled(
@@ -419,7 +412,7 @@ void main() {
       });
     });
 
-    testWidgets('opens the reader on a free episode body', (tester) async {
+    testApp('opens the reader on a free episode body', (tester) async {
       await withFailureScreenshot(tester, 'fixture-viewer', () async {
         await pumpApp(
           tester,
@@ -465,7 +458,7 @@ void main() {
       });
     });
 
-    testWidgets('a free body draws while the server encrypts nothing', (
+    testApp('a free body draws while the server encrypts nothing', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-viewer-plain', () async {
@@ -496,9 +489,7 @@ void main() {
       });
     });
 
-    testWidgets('turns to the next page from the reader controls', (
-      tester,
-    ) async {
+    testApp('turns to the next page from the reader controls', (tester) async {
       await withFailureScreenshot(tester, 'fixture-viewer-next', () async {
         await pumpApp(
           tester,
@@ -524,9 +515,7 @@ void main() {
       });
     });
 
-    testWidgets('a paid episode stays locked without a purchase', (
-      tester,
-    ) async {
+    testApp('a paid episode stays locked without a purchase', (tester) async {
       await withFailureScreenshot(tester, 'fixture-viewer-locked', () async {
         await pumpApp(
           tester,
@@ -542,7 +531,7 @@ void main() {
       });
     });
 
-    testWidgets('signing in unlocks a paid episode body', (tester) async {
+    testApp('signing in unlocks a paid episode body', (tester) async {
       await withFailureScreenshot(tester, 'fixture-sign-in-unlock', () async {
         await pumpApp(
           tester,
@@ -593,7 +582,7 @@ void main() {
       });
     });
 
-    testWidgets('signing out locks the paid episode again', (tester) async {
+    testApp('signing out locks the paid episode again', (tester) async {
       await withFailureScreenshot(tester, 'fixture-sign-out-lock', () async {
         final seriesTile = find.byKey(
           const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
@@ -649,9 +638,7 @@ void main() {
       });
     });
 
-    testWidgets('a purchase made in the browser opens the episode', (
-      tester,
-    ) async {
+    testApp('a purchase made in the browser opens the episode', (tester) async {
       server
         ..acceptsPayments = true
         ..entitledEpisodes = const {};
@@ -701,9 +688,7 @@ void main() {
       });
     });
 
-    testWidgets('rejected credentials keep the reader on the form', (
-      tester,
-    ) async {
+    testApp('rejected credentials keep the reader on the form', (tester) async {
       await withFailureScreenshot(tester, 'fixture-sign-in-error', () async {
         await pumpApp(tester, initialLocation: AppRoutes.signIn);
         await pumpUntilRouteSettled(
@@ -728,82 +713,81 @@ void main() {
       });
     });
 
-    testWidgets(
-      'a reader signs up, opens the confirmation link, and signs in',
-      (tester) async {
-        const email = 'new-reader@example.test';
-        const password = 'new-reader-password';
-        // The mailbox: the confirmation link the API would have sent arrives
-        // as an app link, the way the OS hands one over on a tap.
-        final links = FakeIncomingLinks();
-        addTearDown(links.close);
-        await withFailureScreenshot(tester, 'fixture-sign-up', () async {
-          await pumpApp(
-            tester,
-            initialLocation: AppRoutes.signUp,
-            incomingLinks: links,
-          );
-          await pumpUntilRouteSettled(
-            tester,
-            find.byKey(const ValueKey('sign-up-submit')),
-          );
+    testApp('a reader signs up, opens the confirmation link, and signs in', (
+      tester,
+    ) async {
+      const email = 'new-reader@example.test';
+      const password = 'new-reader-password';
+      // The mailbox: the confirmation link the API would have sent arrives
+      // as an app link, the way the OS hands one over on a tap.
+      final links = FakeIncomingLinks();
+      addTearDown(links.close);
+      await withFailureScreenshot(tester, 'fixture-sign-up', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.signUp,
+          incomingLinks: links,
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-up-submit')),
+        );
 
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-up-name')),
-            'New Reader',
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-up-email')),
-            email,
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-up-password')),
-            password,
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-up-password-confirm')),
-            password,
-          );
-          await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
-          await pumpUntilFound(
-            tester,
-            find.byKey(const ValueKey('sign-up-pending')),
-          );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-name')),
+          'New Reader',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-email')),
+          email,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-password')),
+          password,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-up-password-confirm')),
+          password,
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('sign-up-pending')),
+        );
 
-          links.deliver(
-            Uri.parse(
-              'https://localhost/en/verify'
-              '?token=${ConnectFixtureServer.verificationToken}',
-            ),
-          );
-          await pumpUntilRouteSettled(
-            tester,
-            find.byKey(const ValueKey('verify-email-verified')),
-          );
+        links.deliver(
+          Uri.parse(
+            'https://localhost/en/verify'
+            '?token=${ConnectFixtureServer.verificationToken}',
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('verify-email-verified')),
+        );
 
-          await tester.tap(find.byKey(const ValueKey('verify-email-sign-in')));
-          await pumpUntilRouteSettled(
-            tester,
-            find.byKey(const ValueKey('sign-in-submit')),
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-in-email')),
-            email,
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-in-password')),
-            password,
-          );
-          await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tester.tap(find.byKey(const ValueKey('verify-email-sign-in')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          email,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-password')),
+          password,
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
 
-          await pumpUntilFound(tester, signedInAccountEntry());
-          expect(server.signups[email]!.verified, isTrue);
-          await pumpUntilNoPendingFrameCallbacks(tester);
-        });
-      },
-    );
+        await pumpUntilFound(tester, signedInAccountEntry());
+        expect(server.signups[email]!.verified, isTrue);
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
 
-    testWidgets('an unconfirmed address is sent a fresh confirmation link', (
+    testApp('an unconfirmed address is sent a fresh confirmation link', (
       tester,
     ) async {
       const email = 'unconfirmed@example.test';
@@ -850,7 +834,7 @@ void main() {
       });
     });
 
-    testWidgets('signing in before confirming says to open the mail', (
+    testApp('signing in before confirming says to open the mail', (
       tester,
     ) async {
       const email = 'waiting@example.test';
@@ -895,97 +879,92 @@ void main() {
       );
     });
 
-    testWidgets(
-      'a member who forgot their password sets a new one and signs in',
-      (tester) async {
-        const newPassword = 'replaced-member-password';
-        // The mailbox: the reset link the API would have sent arrives as an
-        // app link, the way the OS hands one over on a tap.
-        final links = FakeIncomingLinks();
-        addTearDown(links.close);
-        await withFailureScreenshot(tester, 'fixture-password-reset', () async {
-          await pumpApp(
-            tester,
-            initialLocation: AppRoutes.signIn,
-            incomingLinks: links,
-          );
-          await pumpUntilRouteSettled(
-            tester,
-            find.byKey(const ValueKey('sign-in-submit')),
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-in-email')),
-            ConnectFixtureServer.memberEmail,
-          );
+    testApp('a member who forgot their password sets a new one and signs in', (
+      tester,
+    ) async {
+      const newPassword = 'replaced-member-password';
+      // The mailbox: the reset link the API would have sent arrives as an
+      // app link, the way the OS hands one over on a tap.
+      final links = FakeIncomingLinks();
+      addTearDown(links.close);
+      await withFailureScreenshot(tester, 'fixture-password-reset', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.signIn,
+          incomingLinks: links,
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          ConnectFixtureServer.memberEmail,
+        );
 
-          await tester.tap(
-            find.byKey(const ValueKey('sign-in-forgot-password')),
-          );
-          await pumpUntilRouteSettled(
-            tester,
-            find.byKey(const ValueKey('reset-password-submit')),
-          );
-          await tester.tap(find.byKey(const ValueKey('reset-password-submit')));
-          await pumpUntilFound(
-            tester,
-            find.byKey(const ValueKey('reset-password-sent')),
-          );
-          expect(
-            server.requestsTo('RequestPasswordReset').single.body['email'],
-            ConnectFixtureServer.memberEmail,
-          );
+        await tester.tap(find.byKey(const ValueKey('sign-in-forgot-password')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('reset-password-submit')),
+        );
+        await tester.tap(find.byKey(const ValueKey('reset-password-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('reset-password-sent')),
+        );
+        expect(
+          server.requestsTo('RequestPasswordReset').single.body['email'],
+          ConnectFixtureServer.memberEmail,
+        );
 
-          links.deliver(
-            Uri.parse(
-              'https://localhost/ja/confirm-password'
-              '?token=${ConnectFixtureServer.passwordResetToken}',
-            ),
-          );
-          await pumpUntilRouteSettled(
-            tester,
-            find.byKey(const ValueKey('confirm-password-submit')),
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('confirm-password-password')),
-            newPassword,
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('confirm-password-password-confirm')),
-            newPassword,
-          );
-          await tester.tap(
-            find.byKey(const ValueKey('confirm-password-submit')),
-          );
-          await pumpUntilFound(
-            tester,
-            find.byKey(const ValueKey('confirm-password-done')),
-          );
+        links.deliver(
+          Uri.parse(
+            'https://localhost/ja/confirm-password'
+            '?token=${ConnectFixtureServer.passwordResetToken}',
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('confirm-password-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('confirm-password-password')),
+          newPassword,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('confirm-password-password-confirm')),
+          newPassword,
+        );
+        await tester.tap(find.byKey(const ValueKey('confirm-password-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('confirm-password-done')),
+        );
 
-          await tester.tap(
-            find.byKey(const ValueKey('confirm-password-sign-in')),
-          );
-          await pumpUntilRouteSettled(
-            tester,
-            find.byKey(const ValueKey('sign-in-submit')),
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-in-email')),
-            ConnectFixtureServer.memberEmail,
-          );
-          await tester.enterText(
-            find.byKey(const ValueKey('sign-in-password')),
-            newPassword,
-          );
-          await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tester.tap(
+          find.byKey(const ValueKey('confirm-password-sign-in')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          ConnectFixtureServer.memberEmail,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-password')),
+          newPassword,
+        );
+        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
 
-          await pumpUntilFound(tester, signedInAccountEntry());
-          expect(server.memberCurrentPassword, newPassword);
-          await pumpUntilNoPendingFrameCallbacks(tester);
-        });
-      },
-    );
+        await pumpUntilFound(tester, signedInAccountEntry());
+        expect(server.memberCurrentPassword, newPassword);
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
 
-    testWidgets(
+    testApp(
       'a member renames the account and changes the password in the app',
       (tester) async {
         const newPassword = 'replaced-member-password';
@@ -1071,7 +1050,7 @@ void main() {
       },
     );
 
-    testWidgets('an email change is requested and its link opens the app', (
+    testApp('an email change is requested and its link opens the app', (
       tester,
     ) async {
       final links = FakeIncomingLinks();
@@ -1133,7 +1112,7 @@ void main() {
       });
     });
 
-    testWidgets('deleting the account signs the device out for good', (
+    testApp('deleting the account signs the device out for good', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-account-delete', () async {
@@ -1184,9 +1163,7 @@ void main() {
       });
     });
 
-    testWidgets('an expired reset link leads to a fresh request', (
-      tester,
-    ) async {
+    testApp('an expired reset link leads to a fresh request', (tester) async {
       await withFailureScreenshot(tester, 'fixture-reset-expired', () async {
         await pumpApp(
           tester,
@@ -1226,7 +1203,7 @@ void main() {
       });
     });
 
-    testWidgets('missing series shows the not-found state', (tester) async {
+    testApp('missing series shows the not-found state', (tester) async {
       await withFailureScreenshot(tester, 'fixture-not-found', () async {
         await pumpApp(tester, initialLocation: '/series/ZZZZZZZZZZZZ');
         await pumpUntilRouteSettled(
@@ -1243,7 +1220,7 @@ void main() {
       });
     });
 
-    testWidgets('empty catalog shows the empty-state copy', (tester) async {
+    testApp('empty catalog shows the empty-state copy', (tester) async {
       server.series = const [];
       await withFailureScreenshot(tester, 'fixture-empty', () async {
         await pumpApp(tester);
@@ -1255,7 +1232,7 @@ void main() {
       });
     });
 
-    testWidgets('an unreachable API with nothing saved offers a retry', (
+    testApp('an unreachable API with nothing saved offers a retry', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-error', () async {
@@ -1274,7 +1251,7 @@ void main() {
       });
     });
 
-    testWidgets('an episode opens on the page the member stopped on', (
+    testApp('an episode opens on the page the member stopped on', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-resume', () async {
@@ -1302,7 +1279,7 @@ void main() {
       });
     });
 
-    testWidgets('the page a member turns to is recorded at the API', (
+    testApp('the page a member turns to is recorded at the API', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-record-position', () async {
@@ -1383,7 +1360,7 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('catalog lists series from the seed tenant', (tester) async {
+    testApp('catalog lists series from the seed tenant', (tester) async {
       await withFailureScreenshot(tester, 'live-catalog', () async {
         await pumpLive(tester);
         await pumpUntilFound(
@@ -1396,7 +1373,7 @@ void main() {
       });
     });
 
-    testWidgets('the seed tenant chart reaches the catalog', (tester) async {
+    testApp('the seed tenant chart reaches the catalog', (tester) async {
       await withFailureScreenshot(tester, 'live-ranking', () async {
         await pumpLive(tester);
         // `db/seeds/scenarios/170_ranking.sql` is the snapshot the engagement
@@ -1425,9 +1402,7 @@ void main() {
       });
     });
 
-    testWidgets('a keyword finds the seed series on the live API', (
-      tester,
-    ) async {
+    testApp('a keyword finds the seed series on the live API', (tester) async {
       await withFailureScreenshot(tester, 'live-search', () async {
         await pumpLive(tester, initialLocation: AppRoutes.search);
         await pumpUntilRouteSettled(
@@ -1452,7 +1427,7 @@ void main() {
       });
     });
 
-    testWidgets('a name reaches the seed author and label on the live API', (
+    testApp('a name reaches the seed author and label on the live API', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'live-search-author-label', () async {
@@ -1509,7 +1484,7 @@ void main() {
       });
     });
 
-    testWidgets('seed series detail is reachable by public id', (tester) async {
+    testApp('seed series detail is reachable by public id', (tester) async {
       await withFailureScreenshot(tester, 'live-detail', () async {
         await pumpLive(
           tester,
@@ -1533,7 +1508,7 @@ void main() {
       });
     });
 
-    testWidgets('a free seed episode reaches the reader on the live API', (
+    testApp('a free seed episode reaches the reader on the live API', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'live-viewer', () async {
@@ -1550,7 +1525,7 @@ void main() {
       });
     });
 
-    testWidgets('a paid seed episode is locked for an anonymous reader', (
+    testApp('a paid seed episode is locked for an anonymous reader', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'live-viewer-locked', () async {
@@ -1569,9 +1544,7 @@ void main() {
       });
     });
 
-    testWidgets('missing public id is not found on the live API', (
-      tester,
-    ) async {
+    testApp('missing public id is not found on the live API', (tester) async {
       await withFailureScreenshot(tester, 'live-not-found', () async {
         await pumpLive(tester, initialLocation: '/series/ZZZZZZZZZZZZ');
         await pumpUntilFound(
@@ -1582,7 +1555,7 @@ void main() {
       });
     });
 
-    testWidgets('the seed member signs in and unlocks their ticketed episode', (
+    testApp('the seed member signs in and unlocks their ticketed episode', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'live-sign-in', () async {
@@ -1621,7 +1594,7 @@ void main() {
       });
     });
 
-    testWidgets('the live API takes a sign-up and holds the account back', (
+    testApp('the live API takes a sign-up and holds the account back', (
       tester,
     ) async {
       // A fresh address per run, because the account the last one created is
@@ -1686,7 +1659,7 @@ void main() {
       });
     });
 
-    testWidgets('the live API takes a password reset request', (tester) async {
+    testApp('the live API takes a password reset request', (tester) async {
       // An address nobody has signed up with, which the API answers exactly
       // like a registered one, so the seed member's password and mail
       // allowance are left alone.
@@ -1713,7 +1686,7 @@ void main() {
       });
     });
 
-    testWidgets('the live API refuses a reset link it never issued', (
+    testApp('the live API refuses a reset link it never issued', (
       tester,
     ) async {
       // The real link is in a mailbox this test cannot read, so what it can
@@ -1746,9 +1719,7 @@ void main() {
       });
     });
 
-    testWidgets('wrong credentials are rejected by the live API', (
-      tester,
-    ) async {
+    testApp('wrong credentials are rejected by the live API', (tester) async {
       await withFailureScreenshot(tester, 'live-sign-in-error', () async {
         await pumpLive(tester, initialLocation: AppRoutes.signIn);
         await pumpUntilRouteSettled(
@@ -1782,9 +1753,7 @@ void main() {
       await store.clear();
     });
 
-    testWidgets('a written session survives a new store instance', (
-      tester,
-    ) async {
+    testApp('a written session survives a new store instance', (tester) async {
       const session = AuthSession(
         accessToken: 'stored-access-token',
         userPublicId: ConnectFixtureServer.memberPublicId,
@@ -1875,7 +1844,7 @@ void main() {
       );
     }
 
-    testWidgets('a free episode read online turns again with the API gone', (
+    testApp('a free episode read online turns again with the API gone', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'offline-free-episode', () async {
@@ -1923,7 +1892,7 @@ void main() {
       });
     });
 
-    testWidgets('the catalog opens from the device with the API gone', (
+    testApp('the catalog opens from the device with the API gone', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'offline-catalog', () async {
@@ -1946,7 +1915,7 @@ void main() {
       });
     });
 
-    testWidgets('an unsaved episode says so rather than failing blankly', (
+    testApp('an unsaved episode says so rather than failing blankly', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'offline-unsaved-episode', () async {
@@ -1978,7 +1947,7 @@ void main() {
       });
     });
 
-    testWidgets('a paid episode saved by a member stops opening once they '
+    testApp('a paid episode saved by a member stops opening once they '
         'sign out', (tester) async {
       await withFailureScreenshot(tester, 'offline-signed-out', () async {
         await pumpLaunch(
@@ -2026,9 +1995,7 @@ void main() {
       });
     });
 
-    testWidgets('an episode the API takes back leaves the device', (
-      tester,
-    ) async {
+    testApp('an episode the API takes back leaves the device', (tester) async {
       await withFailureScreenshot(tester, 'offline-revoked', () async {
         await pumpLaunch(
           tester,
@@ -2076,7 +2043,7 @@ void main() {
       });
     });
 
-    testWidgets('an episode reopens on its saved page with the API gone', (
+    testApp('an episode reopens on its saved page with the API gone', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'offline-resume', () async {
