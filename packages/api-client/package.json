@@ -23,6 +23,10 @@
       "types": "./dist/pagination.d.mts",
       "default": "./dist/pagination.mjs"
     },
+    "./forwarded-for": {
+      "types": "./dist/forwarded-for.d.mts",
+      "default": "./dist/forwarded-for.mjs"
+    },
     "./public": {
       "types": "./dist/public/index.d.mts",
       "default": "./dist/public/index.mjs"

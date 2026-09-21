@@ -20,7 +20,7 @@ import { parseInstant } from "@publira/utils";
 import { cacheTag } from "next/cache";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageKey } from "./messages";
 import { getAccessToken } from "./session";
@@ -238,11 +238,10 @@ export const verifyAdminMfa = async (
   const t = await getMessagesFor(locale);
 
   try {
-    const response = await apiClient.auth.verifyMfa({
-      challengeToken,
-      code,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.verifyMfa(
+      { challengeToken, code, tenant: { tenantId } },
+      await withClientAddressHeaders()
+    );
 
     const session = toMfaSession(
       response.accessToken?.token,
@@ -287,10 +286,10 @@ export const startAdminMfaEnrollment = async (
 
   try {
     const response = challengeToken
-      ? await apiClient.auth.startMfaEnrollment({
-          challengeToken,
-          tenant: { tenantId },
-        })
+      ? await apiClient.auth.startMfaEnrollment(
+          { challengeToken, tenant: { tenantId } },
+          await withClientAddressHeaders()
+        )
       : await apiClient.auth.startMfaEnrollment(
           { challengeToken: "", tenant: { tenantId } },
           withSessionHeaders(sessionToken)
@@ -333,11 +332,10 @@ export const confirmAdminMfaEnrollment = async (
 
   try {
     const response = challengeToken
-      ? await apiClient.auth.confirmMfaEnrollment({
-          challengeToken,
-          code,
-          tenant: { tenantId },
-        })
+      ? await apiClient.auth.confirmMfaEnrollment(
+          { challengeToken, code, tenant: { tenantId } },
+          await withClientAddressHeaders()
+        )
       : await apiClient.auth.confirmMfaEnrollment(
           { challengeToken: "", code, tenant: { tenantId } },
           withSessionHeaders(sessionToken)

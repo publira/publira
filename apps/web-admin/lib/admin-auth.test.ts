@@ -31,6 +31,11 @@ const {
   mockRequestPasswordReset: vi.fn(),
 }));
 
+vi.mock("next/headers", () => ({
+  headers: () =>
+    Promise.resolve(new Headers({ "x-forwarded-for": "203.0.113.7" })),
+}));
+
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
 }));
@@ -369,6 +374,16 @@ describe("admin password reset", () => {
     await expect(
       requestAdminPasswordReset("tenant_001", "admin@example.com", "en")
     ).resolves.toEqual({ ok: true, requested: true });
+  });
+
+  it("names the operator's address, so the mail allowance is theirs rather than the console's", async () => {
+    mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
+
+    await requestAdminPasswordReset("tenant_001", "admin@example.com", "en");
+
+    expect(mockRequestPasswordReset).toHaveBeenCalledWith(expect.anything(), {
+      headers: { "X-Forwarded-For": "203.0.113.7" },
+    });
   });
 
   it("translates an input error from sending the password reset mail", async () => {

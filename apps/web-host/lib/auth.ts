@@ -8,6 +8,7 @@ import pRetry, { AbortError } from "p-retry";
 
 import {
   apiClient,
+  buildClientAddressHeaders,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
@@ -106,13 +107,10 @@ export const signupPublic = async ({
   tenantId,
 }: SignupInput): Promise<boolean> => {
   try {
-    const response = await apiClient.auth.createUser({
-      birthDate,
-      email,
-      name,
-      password,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.createUser(
+      { birthDate, email, name, password, tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
     return response.accepted;
   } catch (error) {
     if (isRejectedRequestRpcError(error)) {
@@ -152,10 +150,10 @@ export const requestPublicEmailVerification = async (
   tenantId: string
 ): Promise<boolean> => {
   try {
-    const response = await apiClient.auth.requestEmailVerification({
-      email,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.requestEmailVerification(
+      { email, tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
     return Boolean(response.requested);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -194,10 +192,10 @@ export const requestPublicPasswordReset = async (
   tenantId: string
 ): Promise<boolean> => {
   try {
-    const response = await apiClient.auth.requestPasswordReset({
-      email,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.requestPasswordReset(
+      { email, tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
     return Boolean(response.requested);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);

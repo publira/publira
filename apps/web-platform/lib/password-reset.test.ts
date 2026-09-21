@@ -13,6 +13,11 @@ const { mockConfirmPasswordReset, mockRequestPasswordReset } = vi.hoisted(
   })
 );
 
+vi.mock("next/headers", () => ({
+  headers: () =>
+    Promise.resolve(new Headers({ "x-forwarded-for": "203.0.113.7" })),
+}));
+
 vi.mock("@publira/api-client/platform/client", () => ({
   createPlatformApiClient: () => ({
     auth: {
@@ -30,6 +35,17 @@ describe("requestPlatformPasswordReset", () => {
     await expect(
       requestPlatformPasswordReset("operator@example.com", "en")
     ).resolves.toEqual({ ok: true, requested: true });
+  });
+
+  it("names the operator's address, so the mail allowance is theirs rather than the console's", async () => {
+    mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
+
+    await requestPlatformPasswordReset("operator@example.com", "en");
+
+    expect(mockRequestPasswordReset).toHaveBeenCalledWith(
+      { email: "operator@example.com" },
+      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
   });
 
   it("replaces invalid_argument with email-specific copy", async () => {

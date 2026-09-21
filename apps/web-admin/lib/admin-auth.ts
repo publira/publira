@@ -15,7 +15,7 @@ import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
 import type { MfaChallengeKindName } from "./mfa-challenge";
 import { getAccessToken } from "./session";
@@ -396,10 +396,10 @@ export const requestAdminPasswordReset = async (
   }
 
   try {
-    const response = await apiClient.auth.requestPasswordReset({
-      email: normalizedEmail,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.requestPasswordReset(
+      { email: normalizedEmail, tenant: { tenantId } },
+      await withClientAddressHeaders()
+    );
 
     return {
       ok: true,
