@@ -42,11 +42,13 @@ func (c *Value[T]) Get(ctx context.Context) (T, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	now := c.Now()
-	if c.hasValue && now.Before(c.nextReadAt) {
+	if c.hasValue && c.Now().Before(c.nextReadAt) {
 		return c.value, nil
 	}
 	value, err := c.load(ctx)
+	// Measured from when the read ended, so a read slower than the TTL still
+	// leaves a TTL before the next one.
+	now := c.Now()
 	if err != nil {
 		if c.hasValue {
 			c.nextReadAt = now.Add(c.ttl)
