@@ -99,6 +99,26 @@ With `tenantPublicId` set, every API request automatically carries the `X-Publir
 - A fixed value: `tenantPublicId: "TENANT001"`
 - A dynamic value: `tenantPublicId: () => selectedTenantPublicId`
 
+## The client's address
+
+`@publira/api-client/forwarded-for` exports `createForwardedForInterceptor(resolve)`, which sets `X-Forwarded-For` from `resolve()` on every call that carries `Authorization`, and `FORWARDED_FOR_HEADER` for a sessionless call that sets the header itself. An app passes the interceptor through `interceptors`, with a resolver that reads the header the edge set on the request being served.
+
+```ts
+import { createForwardedForInterceptor } from "@publira/api-client/forwarded-for";
+import { headers } from "next/headers";
+
+const readForwardedFor = async () => {
+  const requestHeaders = await headers();
+  return requestHeaders.get("x-forwarded-for");
+};
+
+export const apiClient = createAdminApiClient({
+  baseUrl,
+  interceptors: [createForwardedForInterceptor(readForwardedFor)],
+  transport: "grpc",
+});
+```
+
 ## Distributed tracing
 
 `createPublicApiClient`, `createAdminApiClient`, and `createPlatformApiClient` always install `createTracingInterceptor` from `src/tracing.ts`, which opens a client span per RPC (named `AdminSeriesService/ListSeries`, with the `rpc.*` and `server.*` attributes) and sends W3C Trace Context. There is nothing to configure. For registering the SDK on the Next.js side, see [`@publira/tracing`](../tracing).

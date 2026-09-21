@@ -1,3 +1,7 @@
+import {
+  createForwardedForInterceptor,
+  FORWARDED_FOR_HEADER,
+} from "@publira/api-client/forwarded-for";
 import { createPlatformApiClient } from "@publira/api-client/platform/client";
 import {
   buildBearerHeaders,
@@ -6,7 +10,7 @@ import {
   resolveAuthSecret,
 } from "@publira/web-session";
 import { cacheTag, io } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import {
   PLATFORM_SESSION_CACHE_TAG,
@@ -16,10 +20,28 @@ import {
 // gRPC transport is used for internal Next.js → Go API communication
 const grpcBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100";
 
+const readForwardedFor = async () => {
+  const requestHeaders = await headers();
+  return requestHeaders.get("x-forwarded-for");
+};
+
 export const apiClient = createPlatformApiClient({
   baseUrl: grpcBaseUrl,
+  interceptors: [createForwardedForInterceptor(readForwardedFor)],
   transport: "grpc",
 });
+
+/**
+ * Call options for a sessionless call the API holds against the client's
+ * address, such as sign-in or a password reset. Only a call with a session gets the
+ * address from the interceptor.
+ */
+export const buildClientAddressHeaders = async () => {
+  const forwardedFor = await readForwardedFor();
+  return forwardedFor
+    ? { headers: { [FORWARDED_FOR_HEADER]: forwardedFor } }
+    : {};
+};
 
 export const buildSessionHeaders = (accessToken: string) =>
   buildBearerHeaders(accessToken);

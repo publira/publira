@@ -8,6 +8,7 @@ import pRetry, { AbortError } from "p-retry";
 
 import {
   apiClient,
+  buildClientAddressHeaders,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
@@ -72,11 +73,14 @@ export const loginPublic = async (
   tenantId: string
 ): Promise<PublicSession | null> => {
   try {
-    const response = await apiClient.auth.login({
-      email,
-      password,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.login(
+      {
+        email,
+        password,
+        tenant: { tenantId },
+      },
+      await buildClientAddressHeaders()
+    );
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
     if (!accessToken || !expiresAt) {
       return null;
@@ -106,13 +110,10 @@ export const signupPublic = async ({
   tenantId,
 }: SignupInput): Promise<boolean> => {
   try {
-    const response = await apiClient.auth.createUser({
-      birthDate,
-      email,
-      name,
-      password,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.createUser(
+      { birthDate, email, name, password, tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
     return response.accepted;
   } catch (error) {
     if (isRejectedRequestRpcError(error)) {
@@ -152,10 +153,10 @@ export const requestPublicEmailVerification = async (
   tenantId: string
 ): Promise<boolean> => {
   try {
-    const response = await apiClient.auth.requestEmailVerification({
-      email,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.requestEmailVerification(
+      { email, tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
     return Boolean(response.requested);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -172,10 +173,13 @@ export const confirmPublicEmailChange = async (
   pendingConfirmationFor: string;
 } | null> => {
   try {
-    const response = await apiClient.auth.confirmEmailChange({
-      tenant: { tenantId },
-      token,
-    });
+    const response = await apiClient.auth.confirmEmailChange(
+      {
+        tenant: { tenantId },
+        token,
+      },
+      await buildClientAddressHeaders()
+    );
     return {
       changed: Boolean(response.changed),
       confirmed: Boolean(response.confirmed),
@@ -194,10 +198,10 @@ export const requestPublicPasswordReset = async (
   tenantId: string
 ): Promise<boolean> => {
   try {
-    const response = await apiClient.auth.requestPasswordReset({
-      email,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.requestPasswordReset(
+      { email, tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
     return Boolean(response.requested);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -211,11 +215,14 @@ export const confirmPublicPasswordReset = async (
   tenantId: string
 ): Promise<boolean> => {
   try {
-    const response = await apiClient.auth.confirmPasswordReset({
-      newPassword,
-      tenant: { tenantId },
-      token,
-    });
+    const response = await apiClient.auth.confirmPasswordReset(
+      {
+        newPassword,
+        tenant: { tenantId },
+        token,
+      },
+      await buildClientAddressHeaders()
+    );
     return Boolean(response.confirmed);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);

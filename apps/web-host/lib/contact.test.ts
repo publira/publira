@@ -3,19 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { submitContactMessage } from "./contact";
 
-const { mockHeaders, mockResolveAccessToken, mockSubmitContactMessage } =
-  vi.hoisted(() => ({
-    mockHeaders: vi.fn(),
-    mockResolveAccessToken: vi.fn(),
-    mockSubmitContactMessage: vi.fn(),
-  }));
-
-vi.mock("next/headers", () => ({ headers: mockHeaders }));
+const {
+  mockBuildClientAddressHeaders,
+  mockResolveAccessToken,
+  mockSubmitContactMessage,
+} = vi.hoisted(() => ({
+  mockBuildClientAddressHeaders: vi.fn(),
+  mockResolveAccessToken: vi.fn(),
+  mockSubmitContactMessage: vi.fn(),
+}));
 
 vi.mock("./api-client", () => ({
   apiClient: {
     contact: { submitContactMessage: mockSubmitContactMessage },
   },
+  buildClientAddressHeaders: mockBuildClientAddressHeaders,
+  buildSessionHeaders: (sessionId: string) => ({
+    headers: { Authorization: `Bearer ${sessionId}` },
+  }),
   resolveAccessToken: mockResolveAccessToken,
 }));
 
@@ -32,7 +37,7 @@ const input = {
 describe("submitContactMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockHeaders.mockResolvedValue(new Headers());
+    mockBuildClientAddressHeaders.mockResolvedValue({});
     mockSubmitContactMessage.mockResolvedValue({});
   });
 
@@ -53,9 +58,9 @@ describe("submitContactMessage", () => {
 
   it("names the reader's address the edge recorded, so a guest spends their own allowance", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
-    mockHeaders.mockResolvedValueOnce(
-      new Headers({ "x-forwarded-for": "203.0.113.7" })
-    );
+    mockBuildClientAddressHeaders.mockResolvedValueOnce({
+      headers: { "X-Forwarded-For": "203.0.113.7" },
+    });
 
     await submitContactMessage(input);
 
@@ -70,7 +75,7 @@ describe("submitContactMessage", () => {
     await expect(submitContactMessage(input)).resolves.toEqual({ ok: true });
     expect(mockSubmitContactMessage).toHaveBeenCalledWith(
       expect.objectContaining({ replyToEmail: "reader@example.com" }),
-      { headers: {} }
+      {}
     );
   });
 

@@ -7,6 +7,7 @@ import type { Locale } from "@publira/i18n";
 
 import {
   apiClient,
+  buildClientAddressHeaders,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
@@ -105,7 +106,10 @@ export const confirmPlatformEmailChange = async (
   token: string
 ): Promise<EmailChangeConfirmResult | null> => {
   try {
-    const response = await apiClient.auth.confirmEmailChange({ token });
+    const response = await apiClient.auth.confirmEmailChange(
+      { token },
+      await buildClientAddressHeaders()
+    );
     return {
       changed: response.changed,
       confirmed: response.confirmed,

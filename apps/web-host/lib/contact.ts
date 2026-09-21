@@ -1,9 +1,13 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
-import { headers } from "next/headers";
 
-import { apiClient, resolveAccessToken } from "./api-client";
+import {
+  apiClient,
+  buildClientAddressHeaders,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 import { getMessagesFor } from "./messages";
 
 export interface ContactMessageInput {
@@ -31,22 +35,13 @@ export type SubmitContactMessageResult =
 export const submitContactMessage = async (
   input: ContactMessageInput
 ): Promise<SubmitContactMessageResult> => {
-  const [t, sessionId, requestHeaders] = await Promise.all([
+  const [t, sessionId] = await Promise.all([
     getMessagesFor(input.locale),
     resolveAccessToken(),
-    headers(),
   ]);
-  // The API holds an allowance against the client as well as the account, and
-  // without the edge's address every guest of every tenant would spend this
-  // server's.
-  const forwardedFor = requestHeaders.get("x-forwarded-for");
-  const callHeaders: Record<string, string> = {};
-  if (sessionId) {
-    callHeaders.Authorization = `Bearer ${sessionId}`;
-  }
-  if (forwardedFor) {
-    callHeaders["X-Forwarded-For"] = forwardedFor;
-  }
+  const callOptions = sessionId
+    ? buildSessionHeaders(sessionId)
+    : await buildClientAddressHeaders();
 
   try {
     await apiClient.contact.submitContactMessage(
@@ -56,7 +51,7 @@ export const submitContactMessage = async (
         subject: input.subject,
         tenant: { tenantId: input.tenantId },
       },
-      { headers: callHeaders }
+      callOptions
     );
     return { ok: true };
   } catch (error) {

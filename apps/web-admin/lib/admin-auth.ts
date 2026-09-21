@@ -15,7 +15,7 @@ import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
-import { apiClient, withSessionHeaders } from "./api";
+import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
 import type { MfaChallengeKindName } from "./mfa-challenge";
 import { getAccessToken } from "./session";
@@ -186,11 +186,14 @@ export const loginAdmin = async (
   } as const;
 
   try {
-    const response = await apiClient.auth.login({
-      email,
-      password,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.login(
+      {
+        email,
+        password,
+        tenant: { tenantId },
+      },
+      await withClientAddressHeaders()
+    );
 
     const challenge = response.mfaChallenge;
     if (challenge) {
@@ -396,10 +399,10 @@ export const requestAdminPasswordReset = async (
   }
 
   try {
-    const response = await apiClient.auth.requestPasswordReset({
-      email: normalizedEmail,
-      tenant: { tenantId },
-    });
+    const response = await apiClient.auth.requestPasswordReset(
+      { email: normalizedEmail, tenant: { tenantId } },
+      await withClientAddressHeaders()
+    );
 
     return {
       ok: true,
@@ -453,11 +456,14 @@ export const confirmAdminPasswordReset = async (
   }
 
   try {
-    const response = await apiClient.auth.confirmPasswordReset({
-      newPassword: normalizedPassword,
-      tenant: { tenantId },
-      token: normalizedToken,
-    });
+    const response = await apiClient.auth.confirmPasswordReset(
+      {
+        newPassword: normalizedPassword,
+        tenant: { tenantId },
+        token: normalizedToken,
+      },
+      await withClientAddressHeaders()
+    );
 
     return {
       confirmed: response.confirmed,
@@ -565,10 +571,13 @@ export const confirmAdminEmailChange = async (
   }
 
   try {
-    const response = await apiClient.auth.confirmEmailChange({
-      tenant: { tenantId },
-      token: normalizedToken,
-    });
+    const response = await apiClient.auth.confirmEmailChange(
+      {
+        tenant: { tenantId },
+        token: normalizedToken,
+      },
+      await withClientAddressHeaders()
+    );
 
     return {
       changed: response.changed,

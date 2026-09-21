@@ -7,6 +7,7 @@ export default defineConfig({
     "src/errors.ts",
     "src/error-messages.ts",
     "src/pagination.ts",
+    "src/forwarded-for.ts",
     "src/public/index.ts",
     "src/public/client.ts",
     "src/public/auth.ts",

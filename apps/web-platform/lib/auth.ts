@@ -8,6 +8,7 @@ import { cacheTag } from "next/cache";
 
 import {
   apiClient,
+  buildClientAddressHeaders,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
@@ -41,10 +42,13 @@ export const loginPlatform = async (
   password: string
 ): Promise<{ accessToken: string; expiresAt: Date } | null> => {
   try {
-    const response = await apiClient.auth.login({
-      email,
-      password,
-    });
+    const response = await apiClient.auth.login(
+      {
+        email,
+        password,
+      },
+      await buildClientAddressHeaders()
+    );
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
     if (!accessToken || !expiresAt) {
       return null;
