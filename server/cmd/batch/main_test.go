@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRunWithoutSubcommand(t *testing.T) {
@@ -61,5 +63,51 @@ func TestSubcommandsAreWiredAndUnique(t *testing.T) {
 		if lookup(cmd.name) == nil {
 			t.Fatalf("lookup(%q) = nil, want the registered subcommand", cmd.name)
 		}
+	}
+}
+
+// The date a rebuild covers is each tenant's own local one, so an unset
+// variable cannot be answered with a single day: it yields the zero time, and
+// the job resolves every tenant's yesterday in that tenant's zone.
+func TestResolveTenantLocalDate(t *testing.T) {
+	const name = "PUBLIRA_CONTENT_STATS_DATE"
+
+	t.Setenv(name, "2026-08-28")
+	got, err := resolveTenantLocalDate(name)
+	if err != nil {
+		t.Fatalf("resolveTenantLocalDate: %v", err)
+	}
+	if want := "2026-08-28"; got.Format(time.DateOnly) != want {
+		t.Fatalf("date = %s, want %s", got.Format(time.DateOnly), want)
+	}
+
+	t.Setenv(name, "not-a-date")
+	var parseErr *time.ParseError
+	if _, err := resolveTenantLocalDate(name); !errors.As(err, &parseErr) {
+		t.Fatalf("invalid date error = %v, want a ParseError", err)
+	}
+
+	t.Setenv(name, "  ")
+	if got, err := resolveTenantLocalDate(name); err != nil || !got.IsZero() {
+		t.Fatalf("blank date = (%s, %v), want (the zero time, nil)", got, err)
+	}
+}
+
+func TestResolveDryRun(t *testing.T) {
+	const name = "PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN"
+
+	t.Setenv(name, "")
+	if got, err := resolveDryRun(name); err != nil || got {
+		t.Fatalf("default dry-run = (%t, %v), want (false, nil)", got, err)
+	}
+
+	t.Setenv(name, " true ")
+	if got, err := resolveDryRun(name); err != nil || !got {
+		t.Fatalf("dry-run = (%t, %v), want (true, nil)", got, err)
+	}
+
+	t.Setenv(name, "maybe")
+	if _, err := resolveDryRun(name); err == nil {
+		t.Fatal("invalid dry-run error = nil, want an error")
 	}
 }

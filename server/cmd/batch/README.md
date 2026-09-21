@@ -11,6 +11,8 @@ Without an argument, or with a name that is not one of the nine below, the binar
 
 Each one rebuilds or purges a period of data and exits, which is what makes an external schedule the right thing to invoke it. The jobs that instead have to act the moment a stored instant passes — promoting due episodes, applying free window boundaries, turning over a tenant's calendar day — are River periodic jobs inside the [worker](../worker/README.md).
 
+Every subcommand here is a thin invocation of `internal/maintenance`, and the worker registers the same nine jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge.
+
 | Subcommand | What it does |
 | --- | --- |
 | `project-episode-reads` | Files the missing `episode_complete` events for stored `episode_reads` |
@@ -269,7 +271,7 @@ Environment variables:
 
 - `PUBLIRA_ORPHAN_IMAGES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, `AWS_REGION`: the bucket to sweep, read the same way every uploading process reads them. A missing bucket fails at startup.
-- `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`: how old an object or image row must be to become a candidate. Defaults to `24`. Anything below `1` fails at startup, because the cutoff would land at or after now and put every upload in flight in range.
+- `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`: how old an object or image row must be to become a candidate. Defaults to `24`. Anything below `1` fails at startup, because the cutoff would land at or after now and put every upload in flight in range; so does an age beyond `2562047`, which wraps negative into that same cutoff.
 - `PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE`: objects per listing page, and with it the keys per reference lookup and per batch delete. Defaults to `1000`, which is S3's own page ceiling; a smaller value only adds round trips.
 - `PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN`: `true` deletes nothing and reports the objects the sweep would remove. The row deletes are skipped too, so the count covers the objects already unreferenced rather than the ones this run would have stranded first.
 
