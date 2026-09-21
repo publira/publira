@@ -147,7 +147,7 @@ func (s *platformServer) writePlatformStorageSettings(
 		if write.expectedRevision != 0 {
 			return dbmodels.PlatformStorageConfig{}, connect.NewError(connect.CodeFailedPrecondition, errPlatformStorageConflict)
 		}
-		params, paramsErr := storageConfigParams(write, "", s.encryptor)
+		params, paramsErr := storageConfigParams(write, dbmodels.PlatformStorageConfig{}, s.encryptor)
 		if paramsErr != nil {
 			return dbmodels.PlatformStorageConfig{}, paramsErr
 		}
@@ -166,7 +166,7 @@ func (s *platformServer) writePlatformStorageSettings(
 		if write.expectedRevision != current.Revision {
 			return dbmodels.PlatformStorageConfig{}, connect.NewError(connect.CodeFailedPrecondition, errPlatformStorageConflict)
 		}
-		params, paramsErr := storageConfigParams(write, storedSecretAccessKey(current), s.encryptor)
+		params, paramsErr := storageConfigParams(write, current, s.encryptor)
 		if paramsErr != nil {
 			return dbmodels.PlatformStorageConfig{}, paramsErr
 		}
@@ -188,12 +188,17 @@ func (s *platformServer) writePlatformStorageSettings(
 }
 
 // storageConfigParams resolves the secret the row ends up holding and refuses
-// a credential that is only half stated.
+// a credential that is only half stated, or whose halves no longer belong
+// together. current is the zero row when nothing is saved yet.
 func storageConfigParams(
 	write storageWrite,
-	existingEncrypted string,
+	current dbmodels.PlatformStorageConfig,
 	encryptor storagesettings.SecretManager,
 ) (dbmodels.UpdatePlatformStorageConfigParams, error) {
+	existingEncrypted := storedSecretAccessKey(current)
+	if err := storagesettings.ValidateKeptSecret(current.AccessKeyID.String, write.accessKeyID, write.secretUpdateMode, existingEncrypted != ""); err != nil {
+		return dbmodels.UpdatePlatformStorageConfigParams{}, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	encrypted, err := storagesettings.EncryptUpdatedSecret(existingEncrypted, write.secretUpdateMode, write.secretAccessKey, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformStorageConfigParams{}, connect.NewError(connect.CodeInvalidArgument, err)
@@ -276,6 +281,14 @@ func (s *platformServer) TestPlatformStorageConnection(
 	existingEncrypted := ""
 	if found {
 		existingEncrypted = storedSecretAccessKey(existing)
+	}
+	if err := storagesettings.ValidateKeptSecret(
+		existing.AccessKeyID.String,
+		req.Msg.GetAccessKeyId(),
+		int32(req.Msg.GetSecretAccessKeyUpdateMode()),
+		existingEncrypted != "",
+	); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	secretAccessKey, err := storagesettings.ResolveSecretForTest(
 		existingEncrypted,

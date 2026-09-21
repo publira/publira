@@ -303,3 +303,35 @@ func TestFailedAnswersTheFirstRefusedCheck(t *testing.T) {
 		t.Fatal("Failed() reported a refusal among checks that all succeeded")
 	}
 }
+
+func TestValidateKeptSecretRefusesTheStoredSecretUnderAnotherAccessKeyID(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name            string
+		storedID        string
+		accessKeyID     string
+		mode            int32
+		hasStoredSecret bool
+		wantErr         bool
+	}{
+		{name: "the same id kept", storedID: "AKIAOLD", accessKeyID: "AKIAOLD", mode: storagesettings.SecretUpdateModeUnchanged, hasStoredSecret: true},
+		{name: "a new id with the stored secret", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: storagesettings.SecretUpdateModeUnchanged, hasStoredSecret: true, wantErr: true},
+		{name: "a new id with no mode stated", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: storagesettings.SecretUpdateModeUnspecified, hasStoredSecret: true, wantErr: true},
+		{name: "a new id with a new secret", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: storagesettings.SecretUpdateModeReplace, hasStoredSecret: true},
+		{name: "a new id with nothing stored", storedID: "", accessKeyID: "AKIANEW", mode: storagesettings.SecretUpdateModeUnchanged},
+		{name: "the id cleared", storedID: "AKIAOLD", accessKeyID: "", mode: storagesettings.SecretUpdateModeUnchanged, hasStoredSecret: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := storagesettings.ValidateKeptSecret(tc.storedID, tc.accessKeyID, tc.mode, tc.hasStoredSecret)
+			if tc.wantErr && !errors.Is(err, storagesettings.ErrAccessKeyIDChanged) {
+				t.Fatalf("ValidateKeptSecret() = %v, want ErrAccessKeyIDChanged", err)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("ValidateKeptSecret(): %v", err)
+			}
+		})
+	}
+}

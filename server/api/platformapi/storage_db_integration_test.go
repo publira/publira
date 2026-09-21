@@ -273,6 +273,41 @@ func TestDBUpdatePlatformStorageSettingsRefusesHalfACredential(t *testing.T) {
 	}
 }
 
+// A secret access key is issued for one access key id, so a save that names a
+// new id has to bring the secret that goes with it.
+func TestDBUpdatePlatformStorageSettingsRefusesANewAccessKeyIDWithTheStoredSecret(t *testing.T) {
+	client, pg, operator := newStorageClient(t, &recordingTester{checks: passingChecks()})
+
+	if _, err := updateStorageSettings(t, client, operator, storageUpdateRequest(0)); err != nil {
+		t.Fatalf("UpdatePlatformStorageSettings: %v", err)
+	}
+	first := storedSecretCiphertext(t, pg)
+
+	renamed := storageUpdateRequest(1)
+	renamed.AccessKeyId = "AKIAOTHER"
+	renamed.SecretAccessKeyUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED
+	renamed.SecretAccessKey = ""
+	if _, err := updateStorageSettings(t, client, operator, renamed); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdatePlatformStorageSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	if got := getStorageSettings(t, client, operator); got.GetAccessKeyId() != "AKIAEXAMPLE" {
+		t.Fatalf("access_key_id = %q, want the stored one", got.GetAccessKeyId())
+	}
+
+	renamed.SecretAccessKeyUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
+	renamed.SecretAccessKey = "the-other-secret-access-key"
+	saved, err := updateStorageSettings(t, client, operator, renamed)
+	if err != nil {
+		t.Fatalf("UpdatePlatformStorageSettings(new credential): %v", err)
+	}
+	if saved.GetAccessKeyId() != "AKIAOTHER" {
+		t.Fatalf("access_key_id = %q, want the new one", saved.GetAccessKeyId())
+	}
+	if got := storedSecretCiphertext(t, pg); got == first {
+		t.Fatal("the stored secret access key did not change with the access key id")
+	}
+}
+
 // A save states the revision it was derived from, so a second session's change
 // cannot be rolled back by a form that was read before it.
 func TestDBUpdatePlatformStorageSettingsRefusesAStaleRevision(t *testing.T) {
@@ -389,6 +424,30 @@ func TestDBTestPlatformStorageConnectionReportsARefusedOperation(t *testing.T) {
 		rpcerrors.ReasonStorageTestPermission,
 	); got != 1 {
 		t.Fatalf("failed test audit rows = %d, want 1", got)
+	}
+}
+
+// The test signs with the stored secret only under the access key id it was
+// stored with, for the same reason a save does.
+func TestDBTestPlatformStorageConnectionRefusesANewAccessKeyIDWithTheStoredSecret(t *testing.T) {
+	tester := &recordingTester{checks: passingChecks()}
+	client, _, operator := newStorageClient(t, tester)
+
+	if _, err := updateStorageSettings(t, client, operator, storageUpdateRequest(0)); err != nil {
+		t.Fatalf("UpdatePlatformStorageSettings: %v", err)
+	}
+
+	_, err := client.TestPlatformStorageConnection(context.Background(), authedStorageRequest(operator, &publirasplatformv1.TestPlatformStorageConnectionRequest{
+		Bucket:                    "publira-objects",
+		Region:                    "ap-northeast-1",
+		AccessKeyId:               "AKIAOTHER",
+		SecretAccessKeyUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("TestPlatformStorageConnection code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	if _, _, calls := tester.snapshot(); calls != 0 {
+		t.Fatal("a credential whose halves do not belong together reached the store")
 	}
 }
 

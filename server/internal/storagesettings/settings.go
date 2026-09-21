@@ -39,6 +39,7 @@ var (
 	ErrSecretAccessKeyRequired  = errors.New("secret_access_key is required to replace the stored one")
 	ErrAccessKeyIDRequired      = errors.New("access_key_id is required alongside a secret access key")
 	ErrSecretAccessKeyMissing   = errors.New("secret_access_key is required alongside an access key id")
+	ErrAccessKeyIDChanged       = errors.New("secret_access_key must be replaced when access_key_id changes")
 )
 
 // SecretManager encrypts and decrypts the stored secret access key.
@@ -151,6 +152,23 @@ func ValidateCredentialPair(accessKeyID string, hasSecretAccessKey bool) error {
 	default:
 		return nil
 	}
+}
+
+// ValidateKeptSecret refuses to keep the stored secret under an access key id
+// other than the one it was stored with, which would pair a new id with a key
+// that was never issued for it.
+func ValidateKeptSecret(storedAccessKeyID, accessKeyID string, mode int32, hasStoredSecret bool) error {
+	if mode != SecretUpdateModeUnspecified && mode != SecretUpdateModeUnchanged {
+		return nil
+	}
+	accessKeyID = strings.TrimSpace(accessKeyID)
+	if !hasStoredSecret || accessKeyID == "" {
+		return nil
+	}
+	if accessKeyID != strings.TrimSpace(storedAccessKeyID) {
+		return ErrAccessKeyIDChanged
+	}
+	return nil
 }
 
 // FromConfig reads a saved row.
