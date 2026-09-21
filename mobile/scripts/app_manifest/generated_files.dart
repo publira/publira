@@ -1,4 +1,4 @@
-// Where the build configuration generated from a tenant manifest is written.
+// Where the build configuration generated from an app manifest is written.
 
 import 'dart:io';
 import 'dart:math';

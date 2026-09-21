@@ -1,8 +1,8 @@
-# yaml-language-server: $schema=tenant.schema.json
+# yaml-language-server: $schema=app.schema.json
 #
 # Publira's own identity, which local development, the integration tests,
 # screenshots, and CI build with. A tenant publishing the app writes its own
-# manifest from tenant.example.yaml instead.
+# manifest from app.example.yaml instead.
 schemaVersion: 1
 
 app:

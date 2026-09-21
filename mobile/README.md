@@ -111,9 +111,9 @@ A flavor decides identity — application ID, launcher name, icon, and the assoc
 
 Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`, and `dev` overrides from `android/app/src/dev/res/` whatever it wants to differ; what `android/app/src/main/res/` holds is the production identity. iOS takes it from the `dev` and `production` Xcode schemes, whose `Debug-`, `Release-`, and `Profile-` configurations carry `PRODUCT_BUNDLE_IDENTIFIER`, `APP_DISPLAY_NAME` (which `Info.plist` reads as `CFBundleDisplayName`), `ASSETCATALOG_COMPILER_APPICON_NAME`, and `PUBLIRA_ASSOCIATED_DOMAIN`. A new flavor has to appear on both platforms under one name, because `default-flavor` and `--flavor` name a single flavor for whichever platform is being built.
 
-## Tenant manifest
+## App manifest
 
-Each tenant builds and publishes the app under its own identity, which a tenant manifest states in YAML:
+Each tenant builds and publishes the app under its own identity, which an app manifest states in YAML:
 
 ```yaml
 schemaVersion: 1
@@ -135,17 +135,17 @@ Every field is required, and a field the format does not define is an error. And
 
 | File | What it is |
 | --- | --- |
-| `config/tenant.schema.json` | The format as a JSON Schema, for an editor to validate against |
-| `config/tenant.default.yaml` | Publira's own identity, which development, tests, and CI build with |
-| `config/tenant.example.yaml` | The manifest a tenant copies out of the repository and fills in with its own values |
+| `config/app.schema.json` | The format as a JSON Schema, for an editor to validate against |
+| `config/app.default.yaml` | Publira's own identity, which development, tests, and CI build with |
+| `config/app.example.yaml` | The manifest a tenant copies out of the repository and fills in with its own values |
 | `.generated/` | Build configuration generated from a manifest; ignored by Git |
 
 Check a manifest before building with it; every problem is listed at once, and the command exits non-zero when there is one:
 
 ```bash
 cd mobile
-dart run scripts/tenant_manifest.dart path/to/tenant.yaml
-dart run scripts/tenant_manifest.dart   # config/tenant.default.yaml
+dart run scripts/app_manifest.dart path/to/app.yaml
+dart run scripts/app_manifest.dart   # config/app.default.yaml
 ```
 
 ## Quality gates (format / analyze / test)
@@ -210,8 +210,8 @@ mobile/
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation
-├── config/                       # Tenant manifest schema, Publira's default manifest, and an example
-├── scripts/                      # Mobile E2E lifecycle, running or photographing the app, and the tenant manifest
+├── config/                       # App manifest schema, Publira's default manifest, and an example
+├── scripts/                      # Mobile E2E lifecycle, running or photographing the app, and the app manifest
 ├── android/                      # Android-specific files
 ├── ios/                          # iOS-specific files
 ├── web/                          # Web-specific files

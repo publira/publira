@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import '../scripts/tenant/generated_files.dart';
-import '../scripts/tenant/manifest.dart';
+import '../scripts/app_manifest/generated_files.dart';
+import '../scripts/app_manifest/manifest.dart';
 
 const _valid = '''
 schemaVersion: 1
@@ -29,8 +29,8 @@ String _with(String field, String value) {
 /// The problems [text] is reported with, as a reader sees them.
 List<String> _issuesOf(String text) {
   try {
-    TenantManifest.parse(text, source: 'tenant.yaml');
-  } on TenantManifestException catch (error) {
+    AppManifest.parse(text, source: 'app.yaml');
+  } on AppManifestException catch (error) {
     return error.issues.map((issue) => issue.toString()).toList();
   }
   fail('the manifest was accepted');
@@ -39,9 +39,7 @@ List<String> _issuesOf(String text) {
 void main() {
   group('the checked-in manifests', () {
     test('Publira defaults to its own identity', () async {
-      final manifest = await TenantManifest.load(
-        File('config/tenant.default.yaml'),
-      );
+      final manifest = await AppManifest.load(File('config/app.default.yaml'));
 
       expect(manifest.appName, 'Publira');
       expect(manifest.tenantHost, 'localhost');
@@ -50,9 +48,7 @@ void main() {
     });
 
     test('the example is a valid manifest for another tenant', () async {
-      final manifest = await TenantManifest.load(
-        File('config/tenant.example.yaml'),
-      );
+      final manifest = await AppManifest.load(File('config/app.example.yaml'));
 
       expect(manifest.tenantHost, 'reader.example.jp');
       expect(manifest.androidApplicationId, isNot('dev.publira.app'));
@@ -60,7 +56,7 @@ void main() {
 
     test('the schema carries the rules the validator applies', () async {
       final schema =
-          jsonDecode(await File('config/tenant.schema.json').readAsString())
+          jsonDecode(await File('config/app.schema.json').readAsString())
               as Map<String, Object?>;
       Map<String, Object?> field(String section, String key) {
         final sections = schema['properties']! as Map<String, Object?>;
@@ -80,7 +76,7 @@ void main() {
       ]);
       expect(
         (schema['properties']! as Map<String, Object?>)['schemaVersion'],
-        containsPair('const', tenantManifestSchemaVersion),
+        containsPair('const', appManifestSchemaVersion),
       );
       expect(field('app', 'name')['pattern'], appNamePattern);
       expect(field('tenant', 'host')['pattern'], tenantHostPattern);
@@ -97,7 +93,7 @@ void main() {
 
   group('a valid manifest', () {
     test('yields every field', () {
-      final manifest = TenantManifest.parse(_valid, source: 'tenant.yaml');
+      final manifest = AppManifest.parse(_valid, source: 'app.yaml');
 
       expect(manifest.appName, 'Example Reader');
       expect(manifest.tenantHost, 'reader.example.jp');
@@ -106,9 +102,9 @@ void main() {
     });
 
     test('keeps the Android and iOS identifiers apart', () {
-      final manifest = TenantManifest.parse(
+      final manifest = AppManifest.parse(
         _with('ios.bundleIdentifier', 'com.example.Reader-iOS'),
-        source: 'tenant.yaml',
+        source: 'app.yaml',
       );
 
       expect(manifest.androidApplicationId, 'jp.example.reader');
@@ -116,9 +112,9 @@ void main() {
     });
 
     test('takes a name in any script', () {
-      final manifest = TenantManifest.parse(
+      final manifest = AppManifest.parse(
         _with('app.name', 'Café Reader'),
-        source: 'tenant.yaml',
+        source: 'app.yaml',
       );
 
       expect(manifest.appName, 'Café Reader');
@@ -128,7 +124,7 @@ void main() {
   group('the document', () {
     test('names the file and every problem at once', () {
       try {
-        TenantManifest.parse('''
+        AppManifest.parse('''
 schemaVersion: 1
 app:
   name: " "
@@ -136,10 +132,10 @@ tenant:
   host: https://reader.example.jp
 android:
   applicationId: reader
-''', source: 'path/to/tenant.yaml');
+''', source: 'path/to/app.yaml');
         fail('the manifest was accepted');
-      } on TenantManifestException catch (error) {
-        expect(error.source, 'path/to/tenant.yaml');
+      } on AppManifestException catch (error) {
+        expect(error.source, 'path/to/app.yaml');
         expect(error.issues.map((issue) => issue.path), [
           'app.name',
           'tenant.host',
@@ -148,7 +144,7 @@ android:
         ]);
         expect(
           error.toString(),
-          startsWith('path/to/tenant.yaml is not a valid tenant manifest:\n'),
+          startsWith('path/to/app.yaml is not a valid app manifest:\n'),
         );
       }
     });
@@ -169,9 +165,9 @@ android:
       final missing = File('config/does-not-exist.yaml');
 
       await expectLater(
-        TenantManifest.load(missing),
+        AppManifest.load(missing),
         throwsA(
-          isA<TenantManifestException>()
+          isA<AppManifestException>()
               .having((error) => error.source, 'source', missing.path)
               .having(
                 (error) => error.issues.single.message,
@@ -260,9 +256,9 @@ android:
       'reader2.example.jp',
     ]) {
       test('accepts $host', () {
-        final manifest = TenantManifest.parse(
+        final manifest = AppManifest.parse(
           _with('tenant.host', host),
-          source: 'tenant.yaml',
+          source: 'app.yaml',
         );
 
         expect(manifest.tenantHost, host);
@@ -297,9 +293,9 @@ android:
   group('android.applicationId', () {
     for (final id in ['jp.example.reader', 'com.Example.reader_app', 'a.b']) {
       test('accepts $id', () {
-        final manifest = TenantManifest.parse(
+        final manifest = AppManifest.parse(
           _with('android.applicationId', id),
-          source: 'tenant.yaml',
+          source: 'app.yaml',
         );
 
         expect(manifest.androidApplicationId, id);
@@ -328,9 +324,9 @@ android:
   group('ios.bundleIdentifier', () {
     for (final id in ['jp.example.reader', 'jp.example-reader.1app', 'a.b']) {
       test('accepts $id', () {
-        final manifest = TenantManifest.parse(
+        final manifest = AppManifest.parse(
           _with('ios.bundleIdentifier', id),
-          source: 'tenant.yaml',
+          source: 'app.yaml',
         );
 
         expect(manifest.iosBundleIdentifier, id);
@@ -359,7 +355,7 @@ android:
     late Directory temporary;
 
     setUp(() async {
-      temporary = await Directory.systemTemp.createTemp('tenant_generated_');
+      temporary = await Directory.systemTemp.createTemp('app_generated_');
     });
 
     tearDown(() async {
@@ -369,15 +365,15 @@ android:
     test('are written into a directory that is created on demand', () async {
       final directory = Directory('${temporary.path}/build/a');
 
-      await writeGeneratedFiles(directory, {'tenant.properties': 'a=1\n'});
-      await writeGeneratedFiles(directory, {'tenant.properties': 'a=2\n'});
+      await writeGeneratedFiles(directory, {'app.properties': 'a=1\n'});
+      await writeGeneratedFiles(directory, {'app.properties': 'a=2\n'});
 
       expect(
-        await File('${directory.path}/tenant.properties').readAsString(),
+        await File('${directory.path}/app.properties').readAsString(),
         'a=2\n',
       );
       expect(directory.listSync().map((entry) => entry.uri.pathSegments.last), [
-        'tenant.properties',
+        'app.properties',
       ]);
     });
 
@@ -386,14 +382,12 @@ android:
 
       await Future.wait([
         for (final text in contents)
-          writeGeneratedFiles(temporary, {'Tenant.xcconfig': text}),
+          writeGeneratedFiles(temporary, {'App.xcconfig': text}),
       ]);
 
       expect(
         contents,
-        contains(
-          await File('${temporary.path}/Tenant.xcconfig').readAsString(),
-        ),
+        contains(await File('${temporary.path}/App.xcconfig').readAsString()),
       );
       expect(temporary.listSync(), hasLength(1));
     });
@@ -412,7 +406,7 @@ android:
       final ignored = await Process.run('git', [
         'check-ignore',
         '--quiet',
-        '${directory.path}/tenant.properties',
+        '${directory.path}/app.properties',
       ]);
 
       expect(ignored.exitCode, 0);

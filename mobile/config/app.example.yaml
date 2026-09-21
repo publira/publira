@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=tenant.schema.json
+# yaml-language-server: $schema=app.schema.json
 #
 # A tenant's own manifest. Copy it out of the repository, replace every value
 # with the tenant's, and keep the identifiers once the app is published: a

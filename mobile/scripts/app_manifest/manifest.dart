@@ -1,8 +1,8 @@
-// The tenant build manifest: the identity one tenant's app is built and
+// The app manifest: the identity one tenant's app is built and
 // published under, read and checked before a platform build is started.
 //
-// `config/tenant.schema.json` describes the same format to an editor. The
-// patterns below are the ones it carries, which test/tenant_manifest_test.dart
+// `config/app.schema.json` describes the same format to an editor. The
+// patterns below are the ones it carries, which test/app_manifest_test.dart
 // holds the two to.
 
 import 'dart:io';
@@ -10,7 +10,7 @@ import 'dart:io';
 import 'package:yaml/yaml.dart';
 
 /// The one manifest format this tool understands.
-const tenantManifestSchemaVersion = 1;
+const appManifestSchemaVersion = 1;
 
 /// What an Android `applicationId` may be: two or more segments, each starting
 /// with a letter and made of letters, digits, and underscores.
@@ -41,9 +41,9 @@ const _sections = <String, List<String>>{
   'ios': ['bundleIdentifier'],
 };
 
-/// A validated tenant manifest.
-class TenantManifest {
-  const TenantManifest({
+/// A validated app manifest.
+class AppManifest {
+  const AppManifest({
     required this.appName,
     required this.tenantHost,
     required this.androidApplicationId,
@@ -51,13 +51,13 @@ class TenantManifest {
   });
 
   /// Reads and validates the manifest at [file].
-  static Future<TenantManifest> load(File file) async {
+  static Future<AppManifest> load(File file) async {
     final String text;
     try {
       text = await file.readAsString();
     } on FileSystemException catch (error) {
-      throw TenantManifestException(file.path, [
-        TenantManifestIssue('', 'cannot be read: ${error.osError ?? error}'),
+      throw AppManifestException(file.path, [
+        AppManifestIssue('', 'cannot be read: ${error.osError ?? error}'),
       ]);
     }
     return parse(text, source: file.path);
@@ -66,7 +66,7 @@ class TenantManifest {
   /// Validates the manifest [text], naming [source] in every problem it
   /// reports. Every problem is reported at once, so that one run is enough to
   /// see what to fix.
-  static TenantManifest parse(String text, {required String source}) {
+  static AppManifest parse(String text, {required String source}) {
     final Object? document;
     try {
       document = loadYaml(text, sourceUrl: Uri.file(source));
@@ -75,40 +75,40 @@ class TenantManifest {
       final at = span == null
           ? ''
           : ' (line ${span.start.line + 1}, column ${span.start.column + 1})';
-      throw TenantManifestException(source, [
-        TenantManifestIssue('', 'is not valid YAML$at: ${error.message}'),
+      throw AppManifestException(source, [
+        AppManifestIssue('', 'is not valid YAML$at: ${error.message}'),
       ]);
     }
 
-    final issues = <TenantManifestIssue>[];
+    final issues = <AppManifestIssue>[];
     if (document is! YamlMap) {
-      throw TenantManifestException(source, [
-        const TenantManifestIssue('', 'must be a mapping of fields'),
+      throw AppManifestException(source, [
+        const AppManifestIssue('', 'must be a mapping of fields'),
       ]);
     }
 
     final version = document['schemaVersion'];
     if (version == null) {
       issues.add(
-        const TenantManifestIssue(
+        const AppManifestIssue(
           'schemaVersion',
-          'is required; write `schemaVersion: $tenantManifestSchemaVersion`',
+          'is required; write `schemaVersion: $appManifestSchemaVersion`',
         ),
       );
-    } else if (version != tenantManifestSchemaVersion) {
+    } else if (version != appManifestSchemaVersion) {
       // Every other rule belongs to a version, so nothing else can be judged.
-      throw TenantManifestException(source, [
-        TenantManifestIssue(
+      throw AppManifestException(source, [
+        AppManifestIssue(
           'schemaVersion',
           '${_describe(version)} is not supported; this tool reads version '
-              '$tenantManifestSchemaVersion',
+              '$appManifestSchemaVersion',
         ),
       ]);
     }
 
     for (final key in document.keys) {
       if (key != 'schemaVersion' && !_sections.containsKey(key)) {
-        issues.add(TenantManifestIssue('$key', _unknownField(_sections.keys)));
+        issues.add(AppManifestIssue('$key', _unknownField(_sections.keys)));
       }
     }
 
@@ -117,7 +117,7 @@ class TenantManifest {
       final node = document[section];
       if (node == null) {
         issues.add(
-          TenantManifestIssue(
+          AppManifestIssue(
             section,
             'is required, with ${_list(fields.map((f) => '`$f`'))}',
           ),
@@ -125,24 +125,22 @@ class TenantManifest {
         continue;
       }
       if (node is! YamlMap) {
-        issues.add(TenantManifestIssue(section, 'must be a mapping of fields'));
+        issues.add(AppManifestIssue(section, 'must be a mapping of fields'));
         continue;
       }
       for (final key in node.keys) {
         if (!fields.contains(key)) {
-          issues.add(
-            TenantManifestIssue('$section.$key', _unknownField(fields)),
-          );
+          issues.add(AppManifestIssue('$section.$key', _unknownField(fields)));
         }
       }
       for (final field in fields) {
         final path = '$section.$field';
         final value = node[field];
         if (value == null) {
-          issues.add(TenantManifestIssue(path, 'is required'));
+          issues.add(AppManifestIssue(path, 'is required'));
         } else if (value is! String) {
           issues.add(
-            TenantManifestIssue(
+            AppManifestIssue(
               path,
               'must be a string, not ${_describe(value)}; quote it',
             ),
@@ -152,16 +150,16 @@ class TenantManifest {
           if (problem == null) {
             values[path] = value;
           } else {
-            issues.add(TenantManifestIssue(path, problem));
+            issues.add(AppManifestIssue(path, problem));
           }
         }
       }
     }
 
     if (issues.isNotEmpty) {
-      throw TenantManifestException(source, issues);
+      throw AppManifestException(source, issues);
     }
-    return TenantManifest(
+    return AppManifest(
       appName: values['app.name']!,
       tenantHost: values['tenant.host']!,
       androidApplicationId: values['android.applicationId']!,
@@ -187,8 +185,8 @@ class TenantManifest {
 
 /// One problem found in a manifest, at the dotted [path] of the field it is
 /// about, or at the document itself when [path] is empty.
-class TenantManifestIssue {
-  const TenantManifestIssue(this.path, this.message);
+class AppManifestIssue {
+  const AppManifestIssue(this.path, this.message);
 
   final String path;
   final String message;
@@ -199,16 +197,16 @@ class TenantManifestIssue {
 }
 
 /// Thrown when the manifest at [source] cannot be built from.
-class TenantManifestException implements Exception {
-  TenantManifestException(this.source, List<TenantManifestIssue> issues)
+class AppManifestException implements Exception {
+  AppManifestException(this.source, List<AppManifestIssue> issues)
     : issues = List.unmodifiable(issues);
 
   final String source;
-  final List<TenantManifestIssue> issues;
+  final List<AppManifestIssue> issues;
 
   @override
   String toString() => [
-    '$source is not a valid tenant manifest:',
+    '$source is not a valid app manifest:',
     for (final issue in issues) '  - $issue',
   ].join('\n');
 }
