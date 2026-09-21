@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/publira/publira/blob/main/mobile/config/app.schema.json",
+  "title": "Publira mobile app manifest",
+  "description": "The identity one tenant's mobile app is built and published under.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "app", "tenant", "android", "ios"],
+  "properties": {
+    "schemaVersion": {
+      "description": "The version of this format.",
+      "const": 1
+    },
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "description": "The name the app is shown under on the home screen.",
+          "type": "string",
+          "pattern": "^[^\\s\\x00-\\x1F\\x7F]([^\\x00-\\x1F\\x7F]*[^\\s\\x00-\\x1F\\x7F])?$"
+        }
+      }
+    },
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host"],
+      "properties": {
+        "host": {
+          "description": "The lowercase host name of the one tenant this app serves, which App Links and Universal Links are verified against.",
+          "type": "string",
+          "pattern": "^(?=.{1,253}$)(?!(.*\\.)?[0-9]+$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$",
+          "examples": ["reader.example.jp"]
+        }
+      }
+    },
+    "android": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applicationId"],
+      "properties": {
+        "applicationId": {
+          "description": "The production Android application ID. The development build appends `.dev`.",
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$",
+          "examples": ["jp.example.reader"]
+        }
+      }
+    },
+    "ios": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundleIdentifier"],
+      "properties": {
+        "bundleIdentifier": {
+          "description": "The production iOS bundle identifier, kept apart from the Android application ID. The development build appends `.dev`.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$",
+          "examples": ["jp.example.reader"]
+        }
+      }
+    }
+  }
+}

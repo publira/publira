@@ -1,1 +1,3 @@
 .run/
+# Build configuration generated from an app manifest (scripts/app_manifest/).
+.generated/

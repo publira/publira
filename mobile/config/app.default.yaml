@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=app.schema.json
+#
+# Publira's own identity, which local development, the integration tests,
+# screenshots, and CI build with. A tenant publishing the app writes its own
+# manifest from app.example.yaml instead.
+schemaVersion: 1
+
+app:
+  name: Publira
+
+tenant:
+  # The tenant db/seeds/dev creates.
+  host: localhost
+
+android:
+  applicationId: dev.publira.app
+
+ios:
+  bundleIdentifier: dev.publira.app

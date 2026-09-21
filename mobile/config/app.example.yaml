@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=app.schema.json
+#
+# A tenant's own manifest. Copy it out of the repository, replace every value
+# with the tenant's, and keep the identifiers once the app is published: a
+# store knows the app by them.
+schemaVersion: 1
+
+app:
+  name: Example Reader
+
+tenant:
+  host: reader.example.jp
+
+android:
+  applicationId: jp.example.reader
+
+ios:
+  bundleIdentifier: jp.example.reader
