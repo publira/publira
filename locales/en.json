@@ -1642,7 +1642,8 @@
         "creator_roles": "Author roles",
         "theme": "Theme",
         "email": "Email",
-        "payment": "Payments"
+        "payment": "Payments",
+        "policy": "Limits and retention"
       },
       "image": {
         "file_required": "Select an image file.",
@@ -1886,6 +1887,73 @@
         "validation": {
           "secret_key_required": "Enter the secret key.",
           "webhook_secret_required": "Enter the webhook signing secret."
+        }
+      },
+      "policy_title": "Settings — Limits and retention",
+      "policy_description": "Manage this tenant's community limits and how long its records are kept.",
+      "policy": {
+        "use_platform_default": "Use the platform default",
+        "save_conflict": "These settings were changed elsewhere while this page was open. Reload the page and enter the change again.",
+        "revision_invalid": "Reload the page and enter the change again.",
+        "community": {
+          "title": "Community limits",
+          "description": "How often a reader may comment, report, rate, or write to you. Each limit starts at the platform value and can only be made stricter.",
+          "platform_minute_day": "Platform limit: {$per_minute} per minute, {$per_day} per day",
+          "platform_hour_day": "Platform limit: {$per_hour} per hour, {$per_day} per day",
+          "platform_window": "Platform window: {$minutes} minutes",
+          "comment_post_legend": "Comment posting",
+          "comment_post_per_minute": "Comment posts per minute",
+          "comment_post_per_day": "Comment posts per day",
+          "comment_report_legend": "Comment reporting",
+          "comment_report_per_minute": "Comment reports per minute",
+          "comment_report_per_day": "Comment reports per day",
+          "episode_rating_legend": "Episode ratings",
+          "episode_rating_per_minute": "Episode ratings per minute",
+          "episode_rating_per_day": "Episode ratings per day",
+          "contact_per_account_legend": "Contact messages per account",
+          "contact_account_per_hour": "Contact messages per account per hour",
+          "contact_account_per_day": "Contact messages per account per day",
+          "contact_per_client_legend": "Contact messages per client",
+          "contact_client_per_hour": "Contact messages per client per hour",
+          "contact_client_per_day": "Contact messages per client per day",
+          "viewer_preferences_legend": "Viewer preference updates",
+          "viewer_preferences_per_minute": "Viewer preference updates per minute",
+          "viewer_preferences_per_day": "Viewer preference updates per day",
+          "duplicate_window_legend": "Duplicate comment window",
+          "duplicate_window_label": "Minutes",
+          "duplicate_window_description": "A reader may not post the same comment again within this many minutes. A longer window is the stricter setting.",
+          "submit": "Save the community limits",
+          "saved": "The community limits were saved.",
+          "load_failed": "Could not load the community limits. Please try again later.",
+          "save_failed": "Could not save the community limits. Please try again later.",
+          "load_error_hint": "Saving now would overwrite the stored limits, so reload the page before changing them.",
+          "too_loose": "{$setting} may not be looser than the platform limit. Enter a value at least as strict as the platform limit shown beside it.",
+          "validation": {
+            "limit_invalid": "Enter a whole number of at least 1 for {$setting}.",
+            "limit_too_large": "Enter a smaller number for {$setting}.",
+            "day_below_minute": "The daily limit for {$setting} cannot be lower than its limit per minute.",
+            "day_below_hour": "The daily limit for {$setting} cannot be lower than its limit per hour.",
+            "incomplete": "Enter both values for {$setting}, or follow the platform default.",
+            "window_invalid": "Enter a whole number from 1 through 10080 for the duplicate comment window."
+          }
+        },
+        "retention": {
+          "title": "Retention periods",
+          "description": "How long this tenant's withdrawn comments, content events, and ranking snapshots are kept before a purge removes them. Each period starts at the platform default and may be set longer or shorter.",
+          "platform_days": "Platform default: {$days} days",
+          "submit": "Save the retention periods",
+          "saved": "The retention periods were saved.",
+          "load_failed": "Could not load the retention periods. Please try again later.",
+          "save_failed": "Could not save the retention periods. Please try again later.",
+          "load_error_hint": "Saving now would overwrite the stored periods, so reload the page before changing them.",
+          "validation": {
+            "days_invalid": "Enter a whole number of days from 1 through 36500 for {$setting}."
+          },
+          "withdrawn_comment_legend": "Withdrawn comments",
+          "content_event_legend": "Content events",
+          "daily_ranking_legend": "Daily ranking snapshots",
+          "weekly_ranking_legend": "Weekly ranking snapshots",
+          "days_label": "Days kept"
         }
       }
     },

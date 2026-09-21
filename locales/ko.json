@@ -1642,7 +1642,8 @@
         "creator_roles": "작가 역할",
         "theme": "테마",
         "email": "메일",
-        "payment": "결제"
+        "payment": "결제",
+        "policy": "제한 및 보존"
       },
       "image": {
         "file_required": "이미지 파일을 선택해 주세요.",
@@ -1886,6 +1887,73 @@
         "validation": {
           "secret_key_required": "시크릿 키를 입력해 주세요.",
           "webhook_secret_required": "웹훅 서명 시크릿을 입력해 주세요."
+        }
+      },
+      "policy_title": "설정 — 제한 및 보존",
+      "policy_description": "이 테넌트의 커뮤니티 제한과 기록 보존 기간을 관리합니다.",
+      "policy": {
+        "use_platform_default": "플랫폼 기본값 사용",
+        "save_conflict": "이 페이지를 열어 둔 사이에 다른 곳에서 이 설정이 변경되었습니다. 페이지를 새로 고친 뒤 다시 입력해 주세요.",
+        "revision_invalid": "페이지를 새로 고친 뒤 다시 입력해 주세요.",
+        "community": {
+          "title": "커뮤니티 제한",
+          "description": "독자가 댓글, 신고, 평가, 문의를 할 수 있는 빈도입니다. 각 제한은 플랫폼 값에서 시작하며 더 엄격하게만 설정할 수 있습니다.",
+          "platform_minute_day": "플랫폼 상한: 1분당 {$per_minute}건, 1일당 {$per_day}건",
+          "platform_hour_day": "플랫폼 상한: 1시간당 {$per_hour}건, 1일당 {$per_day}건",
+          "platform_window": "플랫폼 간격: {$minutes}분",
+          "comment_post_legend": "댓글 작성",
+          "comment_post_per_minute": "1분당 댓글 작성 수",
+          "comment_post_per_day": "1일당 댓글 작성 수",
+          "comment_report_legend": "댓글 신고",
+          "comment_report_per_minute": "1분당 댓글 신고 수",
+          "comment_report_per_day": "1일당 댓글 신고 수",
+          "episode_rating_legend": "에피소드 평가",
+          "episode_rating_per_minute": "1분당 에피소드 평가 수",
+          "episode_rating_per_day": "1일당 에피소드 평가 수",
+          "contact_per_account_legend": "계정당 문의",
+          "contact_account_per_hour": "계정당 1시간 문의 수",
+          "contact_account_per_day": "계정당 1일 문의 수",
+          "contact_per_client_legend": "클라이언트당 문의",
+          "contact_client_per_hour": "클라이언트당 1시간 문의 수",
+          "contact_client_per_day": "클라이언트당 1일 문의 수",
+          "viewer_preferences_legend": "뷰어 설정 변경",
+          "viewer_preferences_per_minute": "1분당 뷰어 설정 변경 수",
+          "viewer_preferences_per_day": "1일당 뷰어 설정 변경 수",
+          "duplicate_window_legend": "중복 댓글 판정 시간",
+          "duplicate_window_label": "분",
+          "duplicate_window_description": "독자는 이 시간(분) 안에 같은 댓글을 다시 올릴 수 없습니다. 시간이 길수록 더 엄격한 설정입니다.",
+          "submit": "커뮤니티 제한 저장",
+          "saved": "커뮤니티 제한을 저장했습니다.",
+          "load_failed": "커뮤니티 제한을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "save_failed": "커뮤니티 제한을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "load_error_hint": "지금 저장하면 저장된 제한을 덮어쓰게 됩니다. 변경하기 전에 페이지를 새로 고쳐 주세요.",
+          "too_loose": "{$setting}은(는) 플랫폼 상한보다 느슨할 수 없습니다. 옆에 표시된 플랫폼 상한과 같거나 더 엄격한 값을 입력해 주세요.",
+          "validation": {
+            "limit_invalid": "{$setting}에는 1 이상의 정수를 입력해 주세요.",
+            "limit_too_large": "{$setting}에는 더 작은 수를 입력해 주세요.",
+            "day_below_minute": "{$setting}의 1일 상한은 1분 상한보다 낮을 수 없습니다.",
+            "day_below_hour": "{$setting}의 1일 상한은 1시간 상한보다 낮을 수 없습니다.",
+            "incomplete": "{$setting}은(는) 두 값을 모두 입력하거나 플랫폼 기본값을 사용해 주세요.",
+            "window_invalid": "중복 댓글 판정 시간에는 1부터 10080까지의 정수를 입력해 주세요."
+          }
+        },
+        "retention": {
+          "title": "보존 기간",
+          "description": "이 테넌트의 철회된 댓글, 콘텐츠 이벤트, 랭킹 스냅샷을 삭제되기 전까지 보관하는 기간입니다. 각 기간은 플랫폼 기본값에서 시작하며 더 길게도 짧게도 설정할 수 있습니다.",
+          "platform_days": "플랫폼 기본값: {$days}일",
+          "submit": "보존 기간 저장",
+          "saved": "보존 기간을 저장했습니다.",
+          "load_failed": "보존 기간을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "save_failed": "보존 기간을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "load_error_hint": "지금 저장하면 저장된 기간을 덮어쓰게 됩니다. 변경하기 전에 페이지를 새로 고쳐 주세요.",
+          "validation": {
+            "days_invalid": "{$setting}에는 1부터 36500까지의 일수를 정수로 입력해 주세요."
+          },
+          "withdrawn_comment_legend": "철회된 댓글",
+          "content_event_legend": "콘텐츠 이벤트",
+          "daily_ranking_legend": "일간 랭킹 스냅샷",
+          "weekly_ranking_legend": "주간 랭킹 스냅샷",
+          "days_label": "보존 일수"
         }
       }
     },

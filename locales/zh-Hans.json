@@ -1642,7 +1642,8 @@
         "creator_roles": "作者角色",
         "theme": "主题",
         "email": "邮件",
-        "payment": "支付"
+        "payment": "支付",
+        "policy": "限制与保留"
       },
       "image": {
         "file_required": "请选择图片文件。",
@@ -1886,6 +1887,73 @@
         "validation": {
           "secret_key_required": "请输入密钥。",
           "webhook_secret_required": "请输入 webhook 签名密钥。"
+        }
+      },
+      "policy_title": "设置 — 限制与保留",
+      "policy_description": "管理该租户的社区限制以及记录的保留期限。",
+      "policy": {
+        "use_platform_default": "使用平台默认值",
+        "save_conflict": "在此页面打开期间，该设置已在别处被更改。请重新加载页面后再次输入。",
+        "revision_invalid": "请重新加载页面后再次输入。",
+        "community": {
+          "title": "社区限制",
+          "description": "读者发表评论、举报、评分或联系您的频率。每项限制以平台值为起点，只能设得更严格。",
+          "platform_minute_day": "平台上限：每分钟 {$per_minute} 次，每天 {$per_day} 次",
+          "platform_hour_day": "平台上限：每小时 {$per_hour} 次，每天 {$per_day} 次",
+          "platform_window": "平台判定时间：{$minutes} 分钟",
+          "comment_post_legend": "发表评论",
+          "comment_post_per_minute": "每分钟评论数",
+          "comment_post_per_day": "每天评论数",
+          "comment_report_legend": "举报评论",
+          "comment_report_per_minute": "每分钟举报数",
+          "comment_report_per_day": "每天举报数",
+          "episode_rating_legend": "话数评分",
+          "episode_rating_per_minute": "每分钟评分数",
+          "episode_rating_per_day": "每天评分数",
+          "contact_per_account_legend": "每个账号的联系消息",
+          "contact_account_per_hour": "每个账号每小时联系消息数",
+          "contact_account_per_day": "每个账号每天联系消息数",
+          "contact_per_client_legend": "每个客户端的联系消息",
+          "contact_client_per_hour": "每个客户端每小时联系消息数",
+          "contact_client_per_day": "每个客户端每天联系消息数",
+          "viewer_preferences_legend": "阅读器偏好更新",
+          "viewer_preferences_per_minute": "每分钟偏好更新数",
+          "viewer_preferences_per_day": "每天偏好更新数",
+          "duplicate_window_legend": "重复评论判定时间",
+          "duplicate_window_label": "分钟",
+          "duplicate_window_description": "读者在这段时间内无法再次发表相同的评论。时间越长，设置越严格。",
+          "submit": "保存社区限制",
+          "saved": "已保存社区限制。",
+          "load_failed": "无法加载社区限制。请稍后重试。",
+          "save_failed": "无法保存社区限制。请稍后重试。",
+          "load_error_hint": "此时保存会覆盖已保存的限制。请先重新加载页面再进行更改。",
+          "too_loose": "{$setting}不能比平台上限更宽松。请输入不低于旁边所示平台上限的严格程度的值。",
+          "validation": {
+            "limit_invalid": "请为{$setting}输入不小于 1 的整数。",
+            "limit_too_large": "请为{$setting}输入更小的数值。",
+            "day_below_minute": "{$setting}的每天上限不能低于每分钟上限。",
+            "day_below_hour": "{$setting}的每天上限不能低于每小时上限。",
+            "incomplete": "请为{$setting}输入两个值，或使用平台默认值。",
+            "window_invalid": "重复评论判定时间请输入 1 至 10080 的整数。"
+          }
+        },
+        "retention": {
+          "title": "保留期限",
+          "description": "该租户的已撤回评论、内容事件和排行榜快照在被清除前保留的时长。每个期限以平台默认值为起点，可设置得更长或更短。",
+          "platform_days": "平台默认值：{$days} 天",
+          "submit": "保存保留期限",
+          "saved": "已保存保留期限。",
+          "load_failed": "无法加载保留期限。请稍后重试。",
+          "save_failed": "无法保存保留期限。请稍后重试。",
+          "load_error_hint": "此时保存会覆盖已保存的期限。请先重新加载页面再进行更改。",
+          "validation": {
+            "days_invalid": "请为{$setting}输入 1 至 36500 之间的整数天数。"
+          },
+          "withdrawn_comment_legend": "已撤回评论",
+          "content_event_legend": "内容事件",
+          "daily_ranking_legend": "每日排行榜快照",
+          "weekly_ranking_legend": "每周排行榜快照",
+          "days_label": "保留天数"
         }
       }
     },

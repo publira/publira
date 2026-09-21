@@ -1642,7 +1642,8 @@
         "creator_roles": "著者の役割",
         "theme": "テーマ",
         "email": "メール情報",
-        "payment": "決済"
+        "payment": "決済",
+        "policy": "制限と保持"
       },
       "image": {
         "file_required": "画像ファイルを選択してください。",
@@ -1886,6 +1887,73 @@
         "validation": {
           "secret_key_required": "シークレットキーを入力してください。",
           "webhook_secret_required": "Webhook 署名シークレットを入力してください。"
+        }
+      },
+      "policy_title": "設定 - 制限と保持",
+      "policy_description": "このテナントのコミュニティ制限と、記録を保持する期間を管理します。",
+      "policy": {
+        "use_platform_default": "プラットフォームの既定値を使う",
+        "save_conflict": "このページを開いている間に、別の場所でこの設定が変更されました。ページを再読み込みしてから、もう一度入力してください。",
+        "revision_invalid": "ページを再読み込みしてから、もう一度入力してください。",
+        "community": {
+          "title": "コミュニティの上限",
+          "description": "読者がコメント・報告・評価・問い合わせを行える頻度です。各上限はプラットフォームの値から始まり、より厳しくすることだけができます。",
+          "platform_minute_day": "プラットフォームの上限: 1分あたり{$per_minute}件、1日あたり{$per_day}件",
+          "platform_hour_day": "プラットフォームの上限: 1時間あたり{$per_hour}件、1日あたり{$per_day}件",
+          "platform_window": "プラットフォームの判定時間: {$minutes}分",
+          "comment_post_legend": "コメント投稿",
+          "comment_post_per_minute": "コメント投稿数（1分）",
+          "comment_post_per_day": "コメント投稿数（1日）",
+          "comment_report_legend": "コメント報告",
+          "comment_report_per_minute": "コメント報告数（1分）",
+          "comment_report_per_day": "コメント報告数（1日）",
+          "episode_rating_legend": "エピソード評価",
+          "episode_rating_per_minute": "エピソード評価数（1分）",
+          "episode_rating_per_day": "エピソード評価数（1日）",
+          "contact_per_account_legend": "アカウントごとの問い合わせ",
+          "contact_account_per_hour": "アカウントごとの問い合わせ数（1時間）",
+          "contact_account_per_day": "アカウントごとの問い合わせ数（1日）",
+          "contact_per_client_legend": "クライアントごとの問い合わせ",
+          "contact_client_per_hour": "クライアントごとの問い合わせ数（1時間）",
+          "contact_client_per_day": "クライアントごとの問い合わせ数（1日）",
+          "viewer_preferences_legend": "閲覧者設定の更新",
+          "viewer_preferences_per_minute": "閲覧者設定の更新数（1分）",
+          "viewer_preferences_per_day": "閲覧者設定の更新数（1日）",
+          "duplicate_window_legend": "重複コメントの判定時間",
+          "duplicate_window_label": "分",
+          "duplicate_window_description": "読者は、この分数のあいだ同じコメントを再投稿できません。時間を長くするほど厳しい設定になります。",
+          "submit": "コミュニティの上限を保存",
+          "saved": "コミュニティの上限を保存しました。",
+          "load_failed": "コミュニティの上限を読み込めませんでした。しばらくしてからもう一度お試しください。",
+          "save_failed": "コミュニティの上限を保存できませんでした。しばらくしてからもう一度お試しください。",
+          "load_error_hint": "このまま保存すると保存済みの上限を上書きしてしまいます。変更する前にページを再読み込みしてください。",
+          "too_loose": "{$setting}は、プラットフォームの上限より緩くはできません。横に表示されているプラットフォームの上限と同じか、より厳しい値を入力してください。",
+          "validation": {
+            "limit_invalid": "{$setting}には、1 以上の整数を入力してください。",
+            "limit_too_large": "{$setting}には、より小さい数を入力してください。",
+            "day_below_minute": "{$setting}の1日あたりの上限は、1分あたりの上限を下回れません。",
+            "day_below_hour": "{$setting}の1日あたりの上限は、1時間あたりの上限を下回れません。",
+            "incomplete": "{$setting}は両方の値を入力するか、プラットフォームの既定値を使ってください。",
+            "window_invalid": "重複コメントの判定時間には、1 から 10080 の整数を入力してください。"
+          }
+        },
+        "retention": {
+          "title": "保持期間",
+          "description": "このテナントの取り下げられたコメント、コンテンツイベント、ランキングのスナップショットを、削除されるまで保持する期間です。各期間はプラットフォームの既定値から始まり、長くも短くも設定できます。",
+          "platform_days": "プラットフォームの既定値: {$days}日",
+          "submit": "保持期間を保存",
+          "saved": "保持期間を保存しました。",
+          "load_failed": "保持期間を読み込めませんでした。しばらくしてからもう一度お試しください。",
+          "save_failed": "保持期間を保存できませんでした。しばらくしてからもう一度お試しください。",
+          "load_error_hint": "このまま保存すると保存済みの期間を上書きしてしまいます。変更する前にページを再読み込みしてください。",
+          "validation": {
+            "days_invalid": "{$setting}には、1 から 36500 の日数を整数で入力してください。"
+          },
+          "withdrawn_comment_legend": "取り下げられたコメント",
+          "content_event_legend": "コンテンツイベント",
+          "daily_ranking_legend": "日次ランキングのスナップショット",
+          "weekly_ranking_legend": "週次ランキングのスナップショット",
+          "days_label": "保持日数"
         }
       }
     },

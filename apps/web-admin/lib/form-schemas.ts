@@ -71,6 +71,46 @@ export const nonNegativeIntFormSchema = (
     z.number({ error: message }).int(message).min(0, message)
   );
 
+/** Signed decimal integers only, for the bounded schemas below. */
+const INTEGER_RE = /^[+-]?\d+$/u;
+
+/**
+ * A required whole number within `[min, max]`. Unlike
+ * {@link nonNegativeIntFormSchema}, a blank or out-of-range value is an error
+ * rather than a default or a clamp. `maxMessage` words a value above `max`.
+ */
+export const boundedIntFormSchema = (
+  message: string,
+  options: { max: number; maxMessage?: string; min: number }
+): z.ZodType<number, unknown> =>
+  z.preprocess(
+    (value) => {
+      const raw = typeof value === "string" ? value.trim() : "";
+      return INTEGER_RE.test(raw) ? Number(raw) : undefined;
+    },
+    z
+      .number({ error: message })
+      .int(message)
+      .min(options.min, message)
+      .max(options.max, options.maxMessage ?? message)
+  );
+
+/**
+ * The same bound, for a control the form may not have submitted at all — a
+ * disabled one, on a screen where absent means "follow the stored default".
+ */
+export const optionalBoundedIntFormSchema = (
+  message: string,
+  options: { max: number; maxMessage?: string; min: number }
+): z.ZodType<number | undefined, unknown> =>
+  z.preprocess(
+    (value) => {
+      const raw = typeof value === "string" ? value.trim() : "";
+      return raw === "" ? undefined : raw;
+    },
+    z.optional(boundedIntFormSchema(message, options))
+  );
+
 const PAGE_NUMBER_RE = /^\d+$/u;
 
 /** The largest page an `int32` index can name. */
