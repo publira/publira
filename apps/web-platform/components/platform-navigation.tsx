@@ -1,4 +1,12 @@
-import { CollectionIcon, DashboardIcon, SettingsIcon } from "@publira/icons";
+import {
+  BuildingIcon,
+  DashboardIcon,
+  PlusIcon,
+  ScrollTextIcon,
+  SettingsIcon,
+  ShieldUserIcon,
+  UsersIcon,
+} from "@publira/icons";
 import {
   ConsoleSidebarNavigation,
   ConsoleSidebarNavigationItem,
@@ -64,7 +72,7 @@ export const PlatformNavigation = () => (
       <ConsoleSidebarNavigationItems>
         <ConsoleSidebarNavigationItem href="/tenants">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <BuildingIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -76,7 +84,7 @@ export const PlatformNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/tenants/new">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <PlusIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -109,7 +117,7 @@ export const PlatformNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/operators">
           <ConsoleSidebarNavigationItemIcon>
-            <SettingsIcon className="size-4" />
+            <ShieldUserIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -121,7 +129,7 @@ export const PlatformNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/users">
           <ConsoleSidebarNavigationItemIcon>
-            <SettingsIcon className="size-4" />
+            <UsersIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
@@ -133,7 +141,7 @@ export const PlatformNavigation = () => (
         </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/audit-logs">
           <ConsoleSidebarNavigationItemIcon>
-            <SettingsIcon className="size-4" />
+            <ScrollTextIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
