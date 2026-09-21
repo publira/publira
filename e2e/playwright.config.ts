@@ -41,6 +41,14 @@ const platformLocaleSwitchingSpecs = /platform\.locale-switching\./u;
 const platformOperatorManagementSpecs = /platform\.operator-management\./u;
 
 /**
+ * The spec that rewrites `platform_storage_config`, the one object store every
+ * upload and every image read in the stack resolves. It empties the row once
+ * and re-saves it, so it runs after the parallel projects rather than beside
+ * the suites that upload an eye-catch or read an episode body.
+ */
+const platformStorageSettingsSpecs = /platform\.storage-settings\./u;
+
+/**
  * This spec changes its tenant's saved comment mode twice and waits for the
  * public cache to observe each value. It runs after the parallel projects so
  * their requests cannot keep the old mode live while that round trip runs.
@@ -192,6 +200,7 @@ export default defineConfig({
         processIsolatedSpecs,
         platformLocaleSwitchingSpecs,
         platformOperatorManagementSpecs,
+        platformStorageSettingsSpecs,
         platformSetupSpecs,
         performanceSpecs,
         screenshotSpecs,
@@ -302,6 +311,20 @@ export default defineConfig({
         baseURL: WEB_PLATFORM_BASE_URL,
       },
     },
+    // Rewrites the installation's object store, which every upload and image
+    // read resolves, so it follows the operator spec in the platform chain and
+    // precedes every project that reads an image.
+    {
+      dependencies: ["platform-operator-management"],
+      fullyParallel: false,
+      name: "platform-storage-settings",
+      testMatch: [platformStorageSettingsSpecs],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_PLATFORM_BASE_URL,
+      },
+    },
     // This round trip changes a tenant-wide setting and asks web-host to read
     // both values through its cache. It follows every parallel project so
     // concurrent requests cannot race either cache revalidation.
@@ -309,7 +332,7 @@ export default defineConfig({
       dependencies: [
         "catalog-error-boundary",
         "admin-error-boundary",
-        "platform-operator-management",
+        "platform-storage-settings",
       ],
       fullyParallel: false,
       name: "admin-comment-moderation",
@@ -343,7 +366,7 @@ export default defineConfig({
       dependencies: [
         "catalog-error-boundary",
         "admin-error-boundary",
-        "platform-operator-management",
+        "platform-storage-settings",
         "admin-age-verification",
       ],
       fullyParallel: false,

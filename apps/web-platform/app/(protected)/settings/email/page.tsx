@@ -48,7 +48,8 @@ const tabLabel = (
     | "platform.policy.retention.tab"
     | "platform.policy.security.tab"
     | "platform.settings.email_tab"
-    | "platform.settings.general_tab",
+    | "platform.settings.general_tab"
+    | "platform.storage.tab",
   fallbackClassName: string
 ) => (
   <Suspense fallback={<SkeletonLine className={fallbackClassName} />}>
@@ -114,6 +115,7 @@ const PlatformEmailSettingsPage = () => (
           generalLabel={tabLabel("platform.settings.general_tab", "h-4 w-8")}
           retentionLabel={tabLabel("platform.policy.retention.tab", "h-4 w-16")}
           securityLabel={tabLabel("platform.policy.security.tab", "h-4 w-14")}
+          storageLabel={tabLabel("platform.storage.tab", "h-4 w-14")}
         />
         <Suspense fallback={<EmailSettingsFormSkeleton />}>
           <EmailSettingsSection />

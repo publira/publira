@@ -22,7 +22,7 @@ type Translate = Awaited<ReturnType<typeof getMessagesFor>>;
  * The revision the form was rendered at, sent back so the server can refuse a
  * save based on values another operator has since replaced.
  */
-const revisionSchema = (t: Translate) =>
+export const revisionSchema = (t: Translate) =>
   z.preprocess(
     (value) => (typeof value === "string" ? value.trim() : ""),
     z

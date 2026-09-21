@@ -13,6 +13,7 @@ import { PlatformOperatorService } from "../gen/publira/platform/v1/operator_pb.
 import { PlatformPolicyService } from "../gen/publira/platform/v1/policy_pb.js";
 import { PlatformSettingsService } from "../gen/publira/platform/v1/settings_pb.js";
 import { PlatformSetupService } from "../gen/publira/platform/v1/setup_pb.js";
+import { PlatformStorageSettingsService } from "../gen/publira/platform/v1/storage_pb.js";
 import { PlatformTenantService } from "../gen/publira/platform/v1/tenant_pb.js";
 import { PlatformUserService } from "../gen/publira/platform/v1/user_pb.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
@@ -38,6 +39,7 @@ export interface PlatformApiClient {
   policy: Client<typeof PlatformPolicyService>;
   settings: Client<typeof PlatformSettingsService>;
   setup: Client<typeof PlatformSetupService>;
+  storageSettings: Client<typeof PlatformStorageSettingsService>;
   tenants: Client<typeof PlatformTenantService>;
   users: Client<typeof PlatformUserService>;
 }
@@ -87,6 +89,10 @@ export const createPlatformApiClient = (
     policy: createClient(PlatformPolicyService, transportInstance),
     settings: createClient(PlatformSettingsService, transportInstance),
     setup: createClient(PlatformSetupService, transportInstance),
+    storageSettings: createClient(
+      PlatformStorageSettingsService,
+      transportInstance
+    ),
     tenants: createClient(PlatformTenantService, transportInstance),
     users: createClient(PlatformUserService, transportInstance),
   };

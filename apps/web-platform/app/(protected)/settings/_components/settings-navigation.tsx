@@ -1,4 +1,5 @@
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import type { ComponentProps } from "react";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -11,7 +12,8 @@ const label = (
     | "platform.policy.retention.tab"
     | "platform.policy.security.tab"
     | "platform.settings.email_tab"
-    | "platform.settings.general_tab",
+    | "platform.settings.general_tab"
+    | "platform.storage.tab",
   fallbackClassName: string
 ) => (
   <Suspense fallback={<SkeletonLine className={fallbackClassName} />}>
@@ -22,7 +24,7 @@ const label = (
 export const SettingsNavigation = ({
   current,
 }: {
-  current: "community" | "email" | "general" | "retention" | "security";
+  current: ComponentProps<typeof SettingsTabNav>["current"];
 }) => (
   <SettingsTabNav
     communityLabel={label("platform.policy.community.tab", "h-4 w-20")}
@@ -31,5 +33,6 @@ export const SettingsNavigation = ({
     generalLabel={label("platform.settings.general_tab", "h-4 w-14")}
     retentionLabel={label("platform.policy.retention.tab", "h-4 w-16")}
     securityLabel={label("platform.policy.security.tab", "h-4 w-14")}
+    storageLabel={label("platform.storage.tab", "h-4 w-14")}
   />
 );

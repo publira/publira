@@ -52,6 +52,7 @@ import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+import { storageTestReasonKey } from "#lib/storage-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
 
 import {
@@ -310,11 +311,18 @@ const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
 
 const auditLogReason = (
   log: PlatformAuditLogSummary,
-  locale: Locale
-): string =>
-  log.action === "platform_smtp_test_email_sent"
-    ? (smtpTestFailureMessage(log.reason, locale) ?? log.reason)
-    : log.reason;
+  locale: Locale,
+  t: Awaited<ReturnType<typeof getMessagesFor>>
+): string => {
+  if (log.action === "platform_smtp_test_email_sent") {
+    return smtpTestFailureMessage(log.reason, locale) ?? log.reason;
+  }
+  if (log.action === "platform_storage_connection_tested") {
+    const key = storageTestReasonKey(log.reason);
+    return key ? t(key) : log.reason;
+  }
+  return log.reason;
+};
 
 /**
  * The actor's role and the action name, each as its own async component: both
@@ -352,7 +360,10 @@ const AuditLogsTableBody = async ({
     return <TableBody />;
   }
 
-  const emptyMessage = await buildEmptyMessage(hasFilter, locale);
+  const [emptyMessage, t] = await Promise.all([
+    buildEmptyMessage(hasFilter, locale),
+    getMessagesFor(locale),
+  ]);
 
   if (result.auditLogs.length === 0) {
     return (
@@ -413,9 +424,9 @@ const AuditLogsTableBody = async ({
           <TableCell>
             <div className="grid gap-1">
               {renderAuditLogTarget(log)}
-              {auditLogReason(log, locale) ? (
+              {auditLogReason(log, locale, t) ? (
                 <p className="text-xs text-muted-foreground">
-                  {auditLogReason(log, locale)}
+                  {auditLogReason(log, locale, t)}
                 </p>
               ) : null}
             </div>

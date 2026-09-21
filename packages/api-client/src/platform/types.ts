@@ -13,6 +13,10 @@ export type {
 } from "../gen/publira/platform/v1/policy_pb.js";
 export type { PlatformSettings } from "../gen/publira/platform/v1/settings_pb.js";
 export type {
+  PlatformStorageCheck,
+  PlatformStorageSettings,
+} from "../gen/publira/platform/v1/storage_pb.js";
+export type {
   Tenant,
   TenantAdminInvitation,
   TenantMember,

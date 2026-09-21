@@ -4,11 +4,18 @@ import type { ReactNode } from "react";
 
 interface SettingsTabNavProps {
   communityLabel: ReactNode;
-  current: "community" | "email" | "general" | "retention" | "security";
+  current:
+    | "community"
+    | "email"
+    | "general"
+    | "retention"
+    | "security"
+    | "storage";
   emailLabel: ReactNode;
   generalLabel: ReactNode;
   retentionLabel: ReactNode;
   securityLabel: ReactNode;
+  storageLabel: ReactNode;
 }
 
 export const SettingsTabNav = ({
@@ -18,6 +25,7 @@ export const SettingsTabNav = ({
   generalLabel,
   retentionLabel,
   securityLabel,
+  storageLabel,
 }: SettingsTabNavProps) => (
   <div className="flex flex-wrap gap-2">
     <LinkButton
@@ -31,6 +39,12 @@ export const SettingsTabNav = ({
       variant={current === "email" ? "default" : "outline"}
     >
       {emailLabel}
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/storage" />}
+      variant={current === "storage" ? "default" : "outline"}
+    >
+      {storageLabel}
     </LinkButton>
     <LinkButton
       render={<Link href="/settings/security" />}

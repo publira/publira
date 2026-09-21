@@ -17,6 +17,10 @@ const auditActionKeys = {
   platform_settings_updated: "platform.audit.actions.platform_settings_updated",
   platform_smtp_test_email_sent:
     "platform.audit.actions.platform_smtp_test_email_sent",
+  platform_storage_connection_tested:
+    "platform.audit.actions.platform_storage_connection_tested",
+  platform_storage_settings_updated:
+    "platform.audit.actions.platform_storage_settings_updated",
   tenant_created: "platform.audit.actions.tenant_created",
   tenant_info_updated: "platform.audit.actions.tenant_info_updated",
   tenant_resumed: "platform.audit.actions.tenant_resumed",
