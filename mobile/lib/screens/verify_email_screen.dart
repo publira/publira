@@ -48,7 +48,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   Future<void> _verify() async {
     if (widget.token.isEmpty) {
-      setState(() => _failure = AuthFailureKind.verificationTokenInvalid);
+      setState(() => _failure = AuthFailureKind.linkInvalid);
       return;
     }
     final auth = AuthScope.of(context);
@@ -154,9 +154,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   String _failureCopy(AppMessages messages, AuthFailureKind failure) {
     return switch (failure) {
-      AuthFailureKind.verificationTokenInvalid =>
-        messages.verifyEmailInvalidToken,
-      AuthFailureKind.verificationTokenExpired => messages.verifyEmailExpired,
+      AuthFailureKind.linkInvalid => messages.verifyEmailInvalidToken,
+      AuthFailureKind.linkExpired => messages.verifyEmailExpired,
       AuthFailureKind.network => messages.errorsRpcUnavailable,
       _ => messages.verifyEmailFailed,
     };

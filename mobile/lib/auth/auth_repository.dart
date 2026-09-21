@@ -2,7 +2,8 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/reader_age.dart';
 
-/// Sign-up, sign-in, and session checks against the public API.
+/// Sign-up, sign-in, password reset, and session checks against the public
+/// API.
 abstract class AuthRepository {
   /// Signs [email] in with [password] and returns the session the API issued.
   ///
@@ -42,6 +43,26 @@ abstract class AuthRepository {
   ///
   /// Throws [AuthFailure].
   Future<void> requestEmailVerification(String email);
+
+  /// Asks the API to mail [email] a link to set a new password with.
+  ///
+  /// Every address is accepted, whether or not it has an account, so this
+  /// reports nothing about who is registered.
+  ///
+  /// Throws [AuthFailure].
+  Future<void> requestPasswordReset(String email);
+
+  /// Sets [newPassword] on the account behind [token], which a password reset
+  /// link carries.
+  ///
+  /// The API ends every session the account held, this device's included.
+  ///
+  /// Throws [AuthFailure]; the kind tells a link the API never issued from
+  /// one whose time has run out.
+  Future<void> confirmPasswordReset({
+    required String token,
+    required String newPassword,
+  });
 
   /// Whether the tenant checks ages, read without a session so the sign-up
   /// form knows whether to ask for a birth date.

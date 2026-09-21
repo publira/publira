@@ -3065,9 +3065,9 @@
     "sign_in": {
       "email_not_verified": "이메일 주소 확인이 완료되지 않았습니다. 확인 메일의 링크를 열어 주세요.",
       "failed": "로그인할 수 없습니다",
+      "forgot_password": "비밀번호를 잊으셨나요?",
       "invalid_credentials": "이메일 주소 또는 비밀번호가 올바르지 않습니다",
       "no_account": "계정이 없으신가요?",
-      "password_reset_note": "비밀번호 재설정은 웹사이트에서 할 수 있습니다.",
       "sign_up": "회원가입"
     },
     "viewer": {
@@ -3110,13 +3110,18 @@
       "title": "에피소드"
     },
     "auth": {
+      "check_spam": "메일이 도착하지 않으면 스팸함도 확인해 주세요.",
       "email_invalid": "올바른 이메일 주소를 입력해 주세요.",
       "email_label": "이메일 주소",
       "email_required": "이메일 주소를 입력해 주세요.",
+      "password_confirm_required": "비밀번호 확인을 입력해 주세요.",
       "password_label": "비밀번호",
+      "password_mismatch": "비밀번호가 일치하지 않습니다.",
       "password_required": "비밀번호를 입력해 주세요.",
+      "password_too_long": "비밀번호는 1024자 이내로 입력해 주세요.",
       "resend_failed": "확인 메일을 보내지 못했습니다. 다시 시도해 주세요.",
       "resend_verification": "확인 메일 다시 보내기",
+      "sent_to": "받는 사람: {$email}",
       "verification_sent": "확인 메일을 보냈습니다. 메일의 링크를 열어 가입을 완료해 주세요."
     },
     "sign_up": {
@@ -3129,16 +3134,11 @@
       "name_required": "표시 이름을 입력해 주세요.",
       "name_too_long": "표시 이름은 100자 이내로 입력해 주세요.",
       "password_confirm_label": "비밀번호 확인",
-      "password_confirm_required": "비밀번호 확인을 입력해 주세요.",
-      "password_mismatch": "비밀번호가 일치하지 않습니다.",
-      "password_too_long": "비밀번호는 1024자 이내로 입력해 주세요.",
       "submit": "회원가입",
       "title": "회원가입"
     },
     "sign_up_pending": {
-      "check_spam": "메일이 도착하지 않으면 스팸함도 확인해 주세요.",
       "sent": "입력하신 이메일 주소로 메일을 보냈습니다. 메일을 열어 계속 진행해 주세요.",
-      "sent_to": "받는 사람: {$email}",
       "title": "메일 확인"
     },
     "verify_email": {
@@ -3154,6 +3154,25 @@
       "sent_heading": "확인 메일 발송",
       "submit": "확인 메일 보내기",
       "title": "확인 메일 다시 보내기"
+    },
+    "reset_password": {
+      "description": "로그인에 사용하는 이메일 주소를 입력해 주세요. 계정이 있는 주소라면 새 비밀번호를 설정할 링크를 보내드립니다.",
+      "failed": "재설정 메일을 보내지 못했습니다. 다시 시도해 주세요.",
+      "sent": "재설정 메일을 보냈습니다. 메일의 링크를 열어 새 비밀번호를 설정해 주세요.",
+      "sent_heading": "재설정 메일 발송",
+      "submit": "재설정 메일 보내기",
+      "title": "비밀번호 재설정"
+    },
+    "confirm_password": {
+      "done": "비밀번호를 재설정했습니다. 새 비밀번호로 로그인해 주세요.",
+      "expired": "이 재설정 링크는 유효 기간이 지났습니다.",
+      "failed": "비밀번호를 재설정하지 못했습니다. 다시 시도해 주세요.",
+      "invalid_token": "이 재설정 링크는 유효하지 않습니다.",
+      "password_confirm_label": "새 비밀번호 확인",
+      "password_label": "새 비밀번호",
+      "request_again": "재설정 메일 다시 요청하기",
+      "submit": "비밀번호 재설정",
+      "title": "새 비밀번호 설정"
     }
   },
   "platform": {

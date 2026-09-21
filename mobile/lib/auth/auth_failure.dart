@@ -1,5 +1,5 @@
-/// Why a sign-in, a sign-up, or a session check did not produce what the
-/// screen asked for.
+/// Why a sign-in, a sign-up, a password reset, or a session check did not
+/// produce what the screen asked for.
 enum AuthFailureKind {
   /// The email and password pair was rejected.
   invalidCredentials,
@@ -27,12 +27,13 @@ enum AuthFailureKind {
   /// reader waits rather than trying again straight away.
   rateLimited,
 
-  /// The token a confirmation link carried is not one the API issued.
-  verificationTokenInvalid,
+  /// The token an emailed link carried — a confirmation link or a password
+  /// reset link — is not one the API issued.
+  linkInvalid,
 
-  /// The confirmation link was issued, but its time has run out, so the
-  /// reader asks for a fresh one.
-  verificationTokenExpired,
+  /// The emailed link was issued, but its time has run out, so the reader
+  /// asks for a fresh one.
+  linkExpired,
 
   /// DNS, refused connection, timeout, or Connect `unavailable`.
   network,

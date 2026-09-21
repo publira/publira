@@ -107,6 +107,31 @@ class FakeAuthRepository implements AuthRepository {
   /// Thrown by [requestEmailVerification].
   AuthFailure? requestVerificationFailure;
 
+  /// The addresses [requestPasswordReset] has been asked for, in order.
+  final requestedPasswordResets = <String>[];
+
+  /// Thrown by [requestPasswordReset].
+  AuthFailure? requestResetFailure;
+
+  /// The tokens [confirmPasswordReset] accepts. Anything else is answered the
+  /// way the API answers a token it never issued.
+  Set<String> resetTokens = {};
+
+  /// Thrown by [confirmPasswordReset] in place of reading [resetTokens],
+  /// standing in for a link whose time has run out or an API that is gone.
+  AuthFailure? confirmResetFailure;
+
+  /// The password [confirmPasswordReset] last set, `null` until it has.
+  String? resetPassword;
+
+  /// What [refresh] throws once [confirmPasswordReset] has succeeded, which is
+  /// how the API answers a session of the account whose password it replaced.
+  /// `null` leaves [refreshFailure] alone, the way a session of some other
+  /// account is still good.
+  AuthFailure? refreshFailureAfterReset = const AuthFailure(
+    AuthFailureKind.sessionExpired,
+  );
+
   @override
   Future<AuthSession> signIn({
     required String email,
@@ -147,7 +172,7 @@ class FakeAuthRepository implements AuthRepository {
       throw failure;
     }
     if (!verificationTokens.contains(token)) {
-      throw const AuthFailure(AuthFailureKind.verificationTokenInvalid);
+      throw const AuthFailure(AuthFailureKind.linkInvalid);
     }
   }
 
@@ -158,6 +183,31 @@ class FakeAuthRepository implements AuthRepository {
     if (failure != null) {
       throw failure;
     }
+  }
+
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    requestedPasswordResets.add(email);
+    final failure = requestResetFailure;
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  @override
+  Future<void> confirmPasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    final failure = confirmResetFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (!resetTokens.contains(token)) {
+      throw const AuthFailure(AuthFailureKind.linkInvalid);
+    }
+    resetPassword = newPassword;
+    refreshFailure = refreshFailureAfterReset ?? refreshFailure;
   }
 
   @override

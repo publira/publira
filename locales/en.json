@@ -3065,9 +3065,9 @@
     "sign_in": {
       "email_not_verified": "Your email address has not been confirmed yet. Open the link in the confirmation email.",
       "failed": "Could not sign in.",
+      "forgot_password": "Forgot your password?",
       "invalid_credentials": "That email address or password is incorrect. Check them and try again.",
       "no_account": "Don't have an account?",
-      "password_reset_note": "Reset your password on the website.",
       "sign_up": "Sign up"
     },
     "viewer": {
@@ -3110,13 +3110,18 @@
       "title": "Episode"
     },
     "auth": {
+      "check_spam": "If the email does not arrive, check your spam folder.",
       "email_invalid": "Enter a valid email address.",
       "email_label": "Email address",
       "email_required": "Enter your email address.",
+      "password_confirm_required": "Confirm your password.",
       "password_label": "Password",
+      "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
       "password_required": "Enter your password.",
+      "password_too_long": "Use 1024 characters or fewer for the password.",
       "resend_failed": "Could not send the confirmation email. Try again.",
       "resend_verification": "Send a new confirmation email",
+      "sent_to": "Sent to: {$email}",
       "verification_sent": "We sent a confirmation email. Open the link in it to finish signing up."
     },
     "sign_up": {
@@ -3129,16 +3134,11 @@
       "name_required": "Enter a display name.",
       "name_too_long": "Use 100 characters or fewer for the display name.",
       "password_confirm_label": "Confirm password",
-      "password_confirm_required": "Confirm your password.",
-      "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
-      "password_too_long": "Use 1024 characters or fewer for the password.",
       "submit": "Sign up",
       "title": "Sign up"
     },
     "sign_up_pending": {
-      "check_spam": "If the email does not arrive, check your spam folder.",
       "sent": "We sent an email to the address you entered. Open it to continue.",
-      "sent_to": "Sent to: {$email}",
       "title": "Check your email"
     },
     "verify_email": {
@@ -3154,6 +3154,25 @@
       "sent_heading": "Confirmation email sent",
       "submit": "Send confirmation email",
       "title": "Resend the confirmation email"
+    },
+    "reset_password": {
+      "description": "Enter the email address you sign in with. If it belongs to an account, a link to set a new password goes out to it.",
+      "failed": "Could not send the reset email. Try again.",
+      "sent": "We sent a reset email. Open the link in it to set a new password.",
+      "sent_heading": "Reset email sent",
+      "submit": "Send reset email",
+      "title": "Reset your password"
+    },
+    "confirm_password": {
+      "done": "Your password has been reset. Sign in with your new password.",
+      "expired": "This reset link has expired.",
+      "failed": "Could not reset your password. Try again.",
+      "invalid_token": "This reset link is not valid.",
+      "password_confirm_label": "Confirm new password",
+      "password_label": "New password",
+      "request_again": "Request a new reset email",
+      "submit": "Reset password",
+      "title": "Set a new password"
     }
   },
   "platform": {

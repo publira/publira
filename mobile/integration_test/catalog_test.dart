@@ -891,6 +891,143 @@ void main() {
       );
     });
 
+    testWidgets(
+      'a member who forgot their password sets a new one and signs in',
+      (tester) async {
+        const newPassword = 'replaced-member-password';
+        // The mailbox: the reset link the API would have sent arrives as an
+        // app link, the way the OS hands one over on a tap.
+        final links = FakeIncomingLinks();
+        addTearDown(links.close);
+        await withFailureScreenshot(tester, 'fixture-password-reset', () async {
+          await pumpApp(
+            tester,
+            initialLocation: AppRoutes.signIn,
+            incomingLinks: links,
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('sign-in-submit')),
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-in-email')),
+            ConnectFixtureServer.memberEmail,
+          );
+
+          await tester.tap(
+            find.byKey(const ValueKey('sign-in-forgot-password')),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('reset-password-submit')),
+          );
+          await tester.tap(find.byKey(const ValueKey('reset-password-submit')));
+          await pumpUntilFound(
+            tester,
+            find.byKey(const ValueKey('reset-password-sent')),
+          );
+          expect(
+            server.requestsTo('RequestPasswordReset').single.body['email'],
+            ConnectFixtureServer.memberEmail,
+          );
+
+          links.deliver(
+            Uri.parse(
+              'https://localhost/ja/confirm-password'
+              '?token=${ConnectFixtureServer.passwordResetToken}',
+            ),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('confirm-password-submit')),
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('confirm-password-password')),
+            newPassword,
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('confirm-password-password-confirm')),
+            newPassword,
+          );
+          await tester.tap(
+            find.byKey(const ValueKey('confirm-password-submit')),
+          );
+          await pumpUntilFound(
+            tester,
+            find.byKey(const ValueKey('confirm-password-done')),
+          );
+
+          await tester.tap(
+            find.byKey(const ValueKey('confirm-password-sign-in')),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('sign-in-submit')),
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-in-email')),
+            ConnectFixtureServer.memberEmail,
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('sign-in-password')),
+            newPassword,
+          );
+          await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+
+          // The account entry only appears for a signed-in reader, so it is
+          // the whole path answering rather than the last screen alone.
+          await pumpUntilFound(
+            tester,
+            find.byKey(const ValueKey('catalog-account')),
+          );
+          expect(server.memberCurrentPassword, newPassword);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        });
+      },
+    );
+
+    testWidgets('an expired reset link leads to a fresh request', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-reset-expired', () async {
+        await pumpApp(
+          tester,
+          initialLocation:
+              '${AppRoutes.confirmPassword}'
+              '?token=${ConnectFixtureServer.expiredPasswordResetToken}',
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('confirm-password-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('confirm-password-password')),
+          'replaced-member-password',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('confirm-password-password-confirm')),
+          'replaced-member-password',
+        );
+        await tester.tap(find.byKey(const ValueKey('confirm-password-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('confirm-password-link-error')),
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey('confirm-password-request-again')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('reset-password-submit')),
+        );
+        expect(
+          server.memberCurrentPassword,
+          ConnectFixtureServer.memberPassword,
+        );
+      });
+    });
+
     testWidgets('missing series shows the not-found state', (tester) async {
       await withFailureScreenshot(tester, 'fixture-not-found', () async {
         await pumpApp(tester, initialLocation: '/series/ZZZZZZZZZZZZ');
@@ -1346,6 +1483,66 @@ void main() {
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('sign-in-resend-verification')),
+          timeout: const Duration(seconds: 20),
+        );
+      });
+    });
+
+    testWidgets('the live API takes a password reset request', (tester) async {
+      // An address nobody has signed up with, which the API answers exactly
+      // like a registered one, so the seed member's password and mail
+      // allowance are left alone.
+      final email =
+          'live-reset-${DateTime.now().microsecondsSinceEpoch}'
+          '@example.test';
+      await withFailureScreenshot(tester, 'live-password-reset', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.resetPassword);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('reset-password-submit')),
+          timeout: const Duration(seconds: 20),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('reset-password-email')),
+          email,
+        );
+        await tester.tap(find.byKey(const ValueKey('reset-password-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('reset-password-sent')),
+          timeout: const Duration(seconds: 20),
+        );
+      });
+    });
+
+    testWidgets('the live API refuses a reset link it never issued', (
+      tester,
+    ) async {
+      // The real link is in a mailbox this test cannot read, so what it can
+      // prove of that half is that a stray token is answered as a dead link
+      // with the way back.
+      await withFailureScreenshot(tester, 'live-reset-invalid', () async {
+        await pumpLive(
+          tester,
+          initialLocation: '${AppRoutes.confirmPassword}?token=never-issued',
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('confirm-password-submit')),
+          timeout: const Duration(seconds: 20),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('confirm-password-password')),
+          'live-reset-password',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('confirm-password-password-confirm')),
+          'live-reset-password',
+        );
+        await tester.tap(find.byKey(const ValueKey('confirm-password-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('confirm-password-request-again')),
           timeout: const Duration(seconds: 20),
         );
       });

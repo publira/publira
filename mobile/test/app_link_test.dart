@@ -89,6 +89,23 @@ void main() {
       );
     });
 
+    test('a password reset link keeps the token the mail carried', () {
+      expect(
+        appLocationFor(
+          Uri.parse('https://shop.example/ko/confirm-password?token=abc123'),
+          tenantHost: host,
+        ),
+        '/confirm-password?token=abc123',
+      );
+      expect(
+        appLocationFor(
+          Uri.parse('https://shop.example/reset-password'),
+          tenantHost: host,
+        ),
+        '/reset-password',
+      );
+    });
+
     test('http is accepted the same way https is', () {
       expect(
         appLocationFor(

@@ -242,27 +242,27 @@ void main() {
     expect(server.signups['new@example.com']!.verified, isTrue);
   });
 
-  test('verifyEmail maps an unknown token to verificationTokenInvalid', () {
+  test('verifyEmail maps an unknown token to linkInvalid', () {
     expect(
       () => auth.verifyEmail('never-issued'),
       throwsA(
         isA<AuthFailure>().having(
           (failure) => failure.kind,
           'kind',
-          AuthFailureKind.verificationTokenInvalid,
+          AuthFailureKind.linkInvalid,
         ),
       ),
     );
   });
 
-  test('verifyEmail maps a spent link to verificationTokenExpired', () {
+  test('verifyEmail maps a spent link to linkExpired', () {
     expect(
       () => auth.verifyEmail(ConnectFixtureServer.expiredVerificationToken),
       throwsA(
         isA<AuthFailure>().having(
           (failure) => failure.kind,
           'kind',
-          AuthFailureKind.verificationTokenExpired,
+          AuthFailureKind.linkExpired,
         ),
       ),
     );
@@ -288,6 +288,92 @@ void main() {
           (failure) => failure.kind,
           'kind',
           AuthFailureKind.rateLimited,
+        ),
+      ),
+    );
+  });
+
+  test('requestPasswordReset names the address it was given', () async {
+    await auth.requestPasswordReset(ConnectFixtureServer.memberEmail);
+
+    expect(
+      server.requestsTo('RequestPasswordReset').single.body['email'],
+      ConnectFixtureServer.memberEmail,
+    );
+  });
+
+  test('requestPasswordReset maps a spent allowance to rateLimited', () {
+    server.passwordResetRequestStatus = HttpStatus.tooManyRequests;
+    server.passwordResetRequestErrorCode = 'resource_exhausted';
+
+    expect(
+      () => auth.requestPasswordReset(ConnectFixtureServer.memberEmail),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.rateLimited,
+        ),
+      ),
+    );
+  });
+
+  test('confirmPasswordReset sets the password Login then takes', () async {
+    await auth.confirmPasswordReset(
+      token: ConnectFixtureServer.passwordResetToken,
+      newPassword: 'replaced-password',
+    );
+
+    final session = await auth.signIn(
+      email: ConnectFixtureServer.memberEmail,
+      password: 'replaced-password',
+    );
+    expect(session.userPublicId, ConnectFixtureServer.memberPublicId);
+  });
+
+  test('confirmPasswordReset maps an unknown token to linkInvalid', () {
+    expect(
+      () => auth.confirmPasswordReset(
+        token: 'never-issued',
+        newPassword: 'replaced-password',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.linkInvalid,
+        ),
+      ),
+    );
+  });
+
+  test('confirmPasswordReset maps a spent link to linkExpired', () {
+    expect(
+      () => auth.confirmPasswordReset(
+        token: ConnectFixtureServer.expiredPasswordResetToken,
+        newPassword: 'replaced-password',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.linkExpired,
+        ),
+      ),
+    );
+  });
+
+  test('confirmPasswordReset maps a blank password to invalidInput', () {
+    expect(
+      () => auth.confirmPasswordReset(
+        token: ConnectFixtureServer.passwordResetToken,
+        newPassword: '   ',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.invalidInput,
         ),
       ),
     );

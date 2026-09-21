@@ -50,8 +50,8 @@ class PublicSite {
 /// The host must be [tenantHost]. A locale prefix the catalogs know is
 /// stripped, so `/en/series/SR01` and `/series/SR01` are the same series.
 /// Query strings ride along, which is how a checkout return still names the
-/// episode it was started for and a confirmation link still carries its
-/// token.
+/// episode it was started for and a confirmation or reset link still carries
+/// its token.
 String? appLocationFor(Uri uri, {required String tenantHost}) {
   if (uri.scheme != 'https' && uri.scheme != 'http') {
     return null;
@@ -118,9 +118,15 @@ bool _isOpenablePath(String path) {
       segments[1] == 'return') {
     return true;
   }
-  // The confirmation mail's link. Its token rides along in the query, which
+  // The account mails' links: a confirmation, a password reset request, and
+  // the reset link itself. A token rides along in the query, which
   // `appLocationFor` keeps.
-  if (segments.length == 1 && segments[0] == 'verify') {
+  if (segments.length == 1 &&
+      const {
+        'verify',
+        'reset-password',
+        'confirm-password',
+      }.contains(segments[0])) {
     return true;
   }
   if (segments.length >= 2 &&

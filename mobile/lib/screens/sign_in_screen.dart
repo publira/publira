@@ -8,8 +8,8 @@ import 'package:publira/router.dart';
 
 /// Email and password sign-in against `AuthService/Login`.
 ///
-/// Creating an account is a screen of its own here. Resetting a password
-/// stays on the website, so this screen only names it.
+/// Creating an account and resetting a password are screens of their own,
+/// which this form leads to.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key, this.returnTo});
 
@@ -100,6 +100,13 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  /// The reset request form, carrying whatever address is typed so far.
+  void _openResetPassword() {
+    context.push(
+      AppRoutes.resetPasswordPath(email: _emailController.text.trim()),
+    );
+  }
+
   /// The resend form, carrying the address the refused attempt used.
   void _openResendVerification() {
     context.push(
@@ -172,6 +179,12 @@ class _SignInScreenState extends State<SignInScreen> {
                         )
                       : Text(messages.commonSignIn),
                 ),
+                const SizedBox(height: 8),
+                TextButton(
+                  key: const ValueKey('sign-in-forgot-password'),
+                  onPressed: _openResetPassword,
+                  child: Text(messages.signInForgotPassword),
+                ),
                 // The address is already typed, so the reader is not asked
                 // for it again on the way to a replacement link.
                 if (failure == AuthFailureKind.emailNotVerified) ...[
@@ -193,11 +206,6 @@ class _SignInScreenState extends State<SignInScreen> {
                   onPressed: () => context.push(AppRoutes.signUp),
                   child: Text(messages.signInSignUp),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  messages.signInPasswordResetNote,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
               ],
             ),
           ),
@@ -216,8 +224,8 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.invalidInput ||
       AuthFailureKind.birthDateInvalid ||
       AuthFailureKind.birthDateAlreadySet ||
-      AuthFailureKind.verificationTokenInvalid ||
-      AuthFailureKind.verificationTokenExpired ||
+      AuthFailureKind.linkInvalid ||
+      AuthFailureKind.linkExpired ||
       AuthFailureKind.unexpected => messages.signInFailed,
     };
   }

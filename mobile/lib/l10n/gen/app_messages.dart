@@ -208,6 +208,9 @@ abstract class AppMessages {
   /// `mobile.account.title`
   String get accountTitle;
 
+  /// `mobile.auth.check_spam`
+  String get authCheckSpam;
+
   /// `mobile.auth.email_invalid`
   String get authEmailInvalid;
 
@@ -217,17 +220,29 @@ abstract class AppMessages {
   /// `mobile.auth.email_required`
   String get authEmailRequired;
 
+  /// `mobile.auth.password_confirm_required`
+  String get authPasswordConfirmRequired;
+
   /// `mobile.auth.password_label`
   String get authPasswordLabel;
 
+  /// `mobile.auth.password_mismatch`
+  String get authPasswordMismatch;
+
   /// `mobile.auth.password_required`
   String get authPasswordRequired;
+
+  /// `mobile.auth.password_too_long`
+  String get authPasswordTooLong;
 
   /// `mobile.auth.resend_failed`
   String get authResendFailed;
 
   /// `mobile.auth.resend_verification`
   String get authResendVerification;
+
+  /// `mobile.auth.sent_to`
+  String authSentTo({required String email});
 
   /// `mobile.auth.verification_sent`
   String get authVerificationSent;
@@ -417,6 +432,33 @@ abstract class AppMessages {
 
   /// `mobile.common.sign_in`
   String get commonSignIn;
+
+  /// `mobile.confirm_password.done`
+  String get confirmPasswordDone;
+
+  /// `mobile.confirm_password.expired`
+  String get confirmPasswordExpired;
+
+  /// `mobile.confirm_password.failed`
+  String get confirmPasswordFailed;
+
+  /// `mobile.confirm_password.invalid_token`
+  String get confirmPasswordInvalidToken;
+
+  /// `mobile.confirm_password.password_confirm_label`
+  String get confirmPasswordPasswordConfirmLabel;
+
+  /// `mobile.confirm_password.password_label`
+  String get confirmPasswordPasswordLabel;
+
+  /// `mobile.confirm_password.request_again`
+  String get confirmPasswordRequestAgain;
+
+  /// `mobile.confirm_password.submit`
+  String get confirmPasswordSubmit;
+
+  /// `mobile.confirm_password.title`
+  String get confirmPasswordTitle;
 
   /// `mobile.contact.body_label`
   String get contactBodyLabel;
@@ -628,6 +670,24 @@ abstract class AppMessages {
   /// `mobile.resend_verification.title`
   String get resendVerificationTitle;
 
+  /// `mobile.reset_password.description`
+  String get resetPasswordDescription;
+
+  /// `mobile.reset_password.failed`
+  String get resetPasswordFailed;
+
+  /// `mobile.reset_password.sent`
+  String get resetPasswordSent;
+
+  /// `mobile.reset_password.sent_heading`
+  String get resetPasswordSentHeading;
+
+  /// `mobile.reset_password.submit`
+  String get resetPasswordSubmit;
+
+  /// `mobile.reset_password.title`
+  String get resetPasswordTitle;
+
   /// `mobile.search.all`
   String get searchAll;
 
@@ -790,14 +850,14 @@ abstract class AppMessages {
   /// `mobile.sign_in.failed`
   String get signInFailed;
 
+  /// `mobile.sign_in.forgot_password`
+  String get signInForgotPassword;
+
   /// `mobile.sign_in.invalid_credentials`
   String get signInInvalidCredentials;
 
   /// `mobile.sign_in.no_account`
   String get signInNoAccount;
-
-  /// `mobile.sign_in.password_reset_note`
-  String get signInPasswordResetNote;
 
   /// `mobile.sign_in.sign_up`
   String get signInSignUp;
@@ -829,29 +889,14 @@ abstract class AppMessages {
   /// `mobile.sign_up.password_confirm_label`
   String get signUpPasswordConfirmLabel;
 
-  /// `mobile.sign_up.password_confirm_required`
-  String get signUpPasswordConfirmRequired;
-
-  /// `mobile.sign_up.password_mismatch`
-  String get signUpPasswordMismatch;
-
-  /// `mobile.sign_up.password_too_long`
-  String get signUpPasswordTooLong;
-
   /// `mobile.sign_up.submit`
   String get signUpSubmit;
 
   /// `mobile.sign_up.title`
   String get signUpTitle;
 
-  /// `mobile.sign_up_pending.check_spam`
-  String get signUpPendingCheckSpam;
-
   /// `mobile.sign_up_pending.sent`
   String get signUpPendingSent;
-
-  /// `mobile.sign_up_pending.sent_to`
-  String signUpPendingSentTo({required String email});
 
   /// `mobile.sign_up_pending.title`
   String get signUpPendingTitle;
@@ -1181,6 +1226,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get authCheckSpam {
+    return 'メールが届かない場合は、迷惑メールフォルダもご確認ください。';
+  }
+
+  @override
   String get authEmailInvalid {
     return 'メールアドレスの形式が正しくありません。';
   }
@@ -1196,13 +1246,28 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get authPasswordConfirmRequired {
+    return 'パスワード確認を入力してください。';
+  }
+
+  @override
   String get authPasswordLabel {
     return 'パスワード';
   }
 
   @override
+  String get authPasswordMismatch {
+    return 'パスワード確認が一致しません。同じパスワードを入力してください。';
+  }
+
+  @override
   String get authPasswordRequired {
     return 'パスワードを入力してください';
+  }
+
+  @override
+  String get authPasswordTooLong {
+    return 'パスワードは1024文字以内で入力してください。';
   }
 
   @override
@@ -1213,6 +1278,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get authResendVerification {
     return '確認メールを再送する';
+  }
+
+  @override
+  String authSentTo({required String email}) {
+    return '送信先: $email';
   }
 
   @override
@@ -1528,6 +1598,51 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get commonSignIn {
     return 'サインイン';
+  }
+
+  @override
+  String get confirmPasswordDone {
+    return 'パスワードを再設定しました。新しいパスワードでサインインしてください。';
+  }
+
+  @override
+  String get confirmPasswordExpired {
+    return 'この再設定リンクは有効期限が切れています。';
+  }
+
+  @override
+  String get confirmPasswordFailed {
+    return 'パスワードを再設定できませんでした。再試行してください。';
+  }
+
+  @override
+  String get confirmPasswordInvalidToken {
+    return 'この再設定リンクは無効です。';
+  }
+
+  @override
+  String get confirmPasswordPasswordConfirmLabel {
+    return '新しいパスワード（確認）';
+  }
+
+  @override
+  String get confirmPasswordPasswordLabel {
+    return '新しいパスワード';
+  }
+
+  @override
+  String get confirmPasswordRequestAgain {
+    return '再設定メールを送り直す';
+  }
+
+  @override
+  String get confirmPasswordSubmit {
+    return 'パスワードを再設定';
+  }
+
+  @override
+  String get confirmPasswordTitle {
+    return '新しいパスワード設定';
   }
 
   @override
@@ -1881,6 +1996,36 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get resetPasswordDescription {
+    return 'サインインに使っているメールアドレスを入力してください。アカウントがあれば、新しいパスワードを設定するリンクを送ります。';
+  }
+
+  @override
+  String get resetPasswordFailed {
+    return '再設定メールを送信できませんでした。再試行してください。';
+  }
+
+  @override
+  String get resetPasswordSent {
+    return '再設定メールを送信しました。メール内のリンクを開いて新しいパスワードを設定してください。';
+  }
+
+  @override
+  String get resetPasswordSentHeading {
+    return '再設定メール送信';
+  }
+
+  @override
+  String get resetPasswordSubmit {
+    return '再設定メールを送信';
+  }
+
+  @override
+  String get resetPasswordTitle {
+    return 'パスワード再設定';
+  }
+
+  @override
   String get searchAll {
     return 'すべて';
   }
@@ -2151,6 +2296,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get signInForgotPassword {
+    return 'パスワードをお忘れですか？';
+  }
+
+  @override
   String get signInInvalidCredentials {
     return 'メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。';
   }
@@ -2158,11 +2308,6 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get signInNoAccount {
     return 'アカウントをお持ちでない方は';
-  }
-
-  @override
-  String get signInPasswordResetNote {
-    return 'パスワードの再設定はウェブサイトで行えます。';
   }
 
   @override
@@ -2216,21 +2361,6 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
-  String get signUpPasswordConfirmRequired {
-    return 'パスワード確認を入力してください。';
-  }
-
-  @override
-  String get signUpPasswordMismatch {
-    return 'パスワード確認が一致しません。同じパスワードを入力してください。';
-  }
-
-  @override
-  String get signUpPasswordTooLong {
-    return 'パスワードは1024文字以内で入力してください。';
-  }
-
-  @override
   String get signUpSubmit {
     return '新規登録';
   }
@@ -2241,18 +2371,8 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
-  String get signUpPendingCheckSpam {
-    return 'メールが届かない場合は、迷惑メールフォルダもご確認ください。';
-  }
-
-  @override
   String get signUpPendingSent {
     return '入力されたメールアドレス宛にメールを送信しました。続きはメールをご確認ください。';
-  }
-
-  @override
-  String signUpPendingSentTo({required String email}) {
-    return '送信先: $email';
   }
 
   @override
@@ -2659,6 +2779,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get authCheckSpam {
+    return 'If the email does not arrive, check your spam folder.';
+  }
+
+  @override
   String get authEmailInvalid {
     return 'Enter a valid email address.';
   }
@@ -2674,13 +2799,28 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get authPasswordConfirmRequired {
+    return 'Confirm your password.';
+  }
+
+  @override
   String get authPasswordLabel {
     return 'Password';
   }
 
   @override
+  String get authPasswordMismatch {
+    return 'The passwords do not match. Enter the same password in both fields.';
+  }
+
+  @override
   String get authPasswordRequired {
     return 'Enter your password.';
+  }
+
+  @override
+  String get authPasswordTooLong {
+    return 'Use 1024 characters or fewer for the password.';
   }
 
   @override
@@ -2691,6 +2831,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get authResendVerification {
     return 'Send a new confirmation email';
+  }
+
+  @override
+  String authSentTo({required String email}) {
+    return 'Sent to: $email';
   }
 
   @override
@@ -3006,6 +3151,51 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get commonSignIn {
     return 'Sign in';
+  }
+
+  @override
+  String get confirmPasswordDone {
+    return 'Your password has been reset. Sign in with your new password.';
+  }
+
+  @override
+  String get confirmPasswordExpired {
+    return 'This reset link has expired.';
+  }
+
+  @override
+  String get confirmPasswordFailed {
+    return 'Could not reset your password. Try again.';
+  }
+
+  @override
+  String get confirmPasswordInvalidToken {
+    return 'This reset link is not valid.';
+  }
+
+  @override
+  String get confirmPasswordPasswordConfirmLabel {
+    return 'Confirm new password';
+  }
+
+  @override
+  String get confirmPasswordPasswordLabel {
+    return 'New password';
+  }
+
+  @override
+  String get confirmPasswordRequestAgain {
+    return 'Request a new reset email';
+  }
+
+  @override
+  String get confirmPasswordSubmit {
+    return 'Reset password';
+  }
+
+  @override
+  String get confirmPasswordTitle {
+    return 'Set a new password';
   }
 
   @override
@@ -3359,6 +3549,36 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get resetPasswordDescription {
+    return 'Enter the email address you sign in with. If it belongs to an account, a link to set a new password goes out to it.';
+  }
+
+  @override
+  String get resetPasswordFailed {
+    return 'Could not send the reset email. Try again.';
+  }
+
+  @override
+  String get resetPasswordSent {
+    return 'We sent a reset email. Open the link in it to set a new password.';
+  }
+
+  @override
+  String get resetPasswordSentHeading {
+    return 'Reset email sent';
+  }
+
+  @override
+  String get resetPasswordSubmit {
+    return 'Send reset email';
+  }
+
+  @override
+  String get resetPasswordTitle {
+    return 'Reset your password';
+  }
+
+  @override
   String get searchAll {
     return 'All';
   }
@@ -3629,6 +3849,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get signInForgotPassword {
+    return 'Forgot your password?';
+  }
+
+  @override
   String get signInInvalidCredentials {
     return 'That email address or password is incorrect. Check them and try again.';
   }
@@ -3636,11 +3861,6 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get signInNoAccount {
     return 'Don\'t have an account?';
-  }
-
-  @override
-  String get signInPasswordResetNote {
-    return 'Reset your password on the website.';
   }
 
   @override
@@ -3694,21 +3914,6 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
-  String get signUpPasswordConfirmRequired {
-    return 'Confirm your password.';
-  }
-
-  @override
-  String get signUpPasswordMismatch {
-    return 'The passwords do not match. Enter the same password in both fields.';
-  }
-
-  @override
-  String get signUpPasswordTooLong {
-    return 'Use 1024 characters or fewer for the password.';
-  }
-
-  @override
   String get signUpSubmit {
     return 'Sign up';
   }
@@ -3719,18 +3924,8 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
-  String get signUpPendingCheckSpam {
-    return 'If the email does not arrive, check your spam folder.';
-  }
-
-  @override
   String get signUpPendingSent {
     return 'We sent an email to the address you entered. Open it to continue.';
-  }
-
-  @override
-  String signUpPendingSentTo({required String email}) {
-    return 'Sent to: $email';
   }
 
   @override
@@ -4137,6 +4332,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get authCheckSpam {
+    return '메일이 도착하지 않으면 스팸함도 확인해 주세요.';
+  }
+
+  @override
   String get authEmailInvalid {
     return '올바른 이메일 주소를 입력해 주세요.';
   }
@@ -4152,13 +4352,28 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get authPasswordConfirmRequired {
+    return '비밀번호 확인을 입력해 주세요.';
+  }
+
+  @override
   String get authPasswordLabel {
     return '비밀번호';
   }
 
   @override
+  String get authPasswordMismatch {
+    return '비밀번호가 일치하지 않습니다.';
+  }
+
+  @override
   String get authPasswordRequired {
     return '비밀번호를 입력해 주세요.';
+  }
+
+  @override
+  String get authPasswordTooLong {
+    return '비밀번호는 1024자 이내로 입력해 주세요.';
   }
 
   @override
@@ -4169,6 +4384,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get authResendVerification {
     return '확인 메일 다시 보내기';
+  }
+
+  @override
+  String authSentTo({required String email}) {
+    return '받는 사람: $email';
   }
 
   @override
@@ -4484,6 +4704,51 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get commonSignIn {
     return '로그인';
+  }
+
+  @override
+  String get confirmPasswordDone {
+    return '비밀번호를 재설정했습니다. 새 비밀번호로 로그인해 주세요.';
+  }
+
+  @override
+  String get confirmPasswordExpired {
+    return '이 재설정 링크는 유효 기간이 지났습니다.';
+  }
+
+  @override
+  String get confirmPasswordFailed {
+    return '비밀번호를 재설정하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get confirmPasswordInvalidToken {
+    return '이 재설정 링크는 유효하지 않습니다.';
+  }
+
+  @override
+  String get confirmPasswordPasswordConfirmLabel {
+    return '새 비밀번호 확인';
+  }
+
+  @override
+  String get confirmPasswordPasswordLabel {
+    return '새 비밀번호';
+  }
+
+  @override
+  String get confirmPasswordRequestAgain {
+    return '재설정 메일 다시 요청하기';
+  }
+
+  @override
+  String get confirmPasswordSubmit {
+    return '비밀번호 재설정';
+  }
+
+  @override
+  String get confirmPasswordTitle {
+    return '새 비밀번호 설정';
   }
 
   @override
@@ -4837,6 +5102,36 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get resetPasswordDescription {
+    return '로그인에 사용하는 이메일 주소를 입력해 주세요. 계정이 있는 주소라면 새 비밀번호를 설정할 링크를 보내드립니다.';
+  }
+
+  @override
+  String get resetPasswordFailed {
+    return '재설정 메일을 보내지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get resetPasswordSent {
+    return '재설정 메일을 보냈습니다. 메일의 링크를 열어 새 비밀번호를 설정해 주세요.';
+  }
+
+  @override
+  String get resetPasswordSentHeading {
+    return '재설정 메일 발송';
+  }
+
+  @override
+  String get resetPasswordSubmit {
+    return '재설정 메일 보내기';
+  }
+
+  @override
+  String get resetPasswordTitle {
+    return '비밀번호 재설정';
+  }
+
+  @override
   String get searchAll {
     return '전체';
   }
@@ -5107,6 +5402,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get signInForgotPassword {
+    return '비밀번호를 잊으셨나요?';
+  }
+
+  @override
   String get signInInvalidCredentials {
     return '이메일 주소 또는 비밀번호가 올바르지 않습니다';
   }
@@ -5114,11 +5414,6 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get signInNoAccount {
     return '계정이 없으신가요?';
-  }
-
-  @override
-  String get signInPasswordResetNote {
-    return '비밀번호 재설정은 웹사이트에서 할 수 있습니다.';
   }
 
   @override
@@ -5172,21 +5467,6 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
-  String get signUpPasswordConfirmRequired {
-    return '비밀번호 확인을 입력해 주세요.';
-  }
-
-  @override
-  String get signUpPasswordMismatch {
-    return '비밀번호가 일치하지 않습니다.';
-  }
-
-  @override
-  String get signUpPasswordTooLong {
-    return '비밀번호는 1024자 이내로 입력해 주세요.';
-  }
-
-  @override
   String get signUpSubmit {
     return '회원가입';
   }
@@ -5197,18 +5477,8 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
-  String get signUpPendingCheckSpam {
-    return '메일이 도착하지 않으면 스팸함도 확인해 주세요.';
-  }
-
-  @override
   String get signUpPendingSent {
     return '입력하신 이메일 주소로 메일을 보냈습니다. 메일을 열어 계속 진행해 주세요.';
-  }
-
-  @override
-  String signUpPendingSentTo({required String email}) {
-    return '받는 사람: $email';
   }
 
   @override
@@ -5615,6 +5885,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get authCheckSpam {
+    return '如果没有收到邮件，请查看垃圾邮件文件夹。';
+  }
+
+  @override
   String get authEmailInvalid {
     return '请输入有效的邮箱地址。';
   }
@@ -5630,13 +5905,28 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get authPasswordConfirmRequired {
+    return '请再次输入密码进行确认。';
+  }
+
+  @override
   String get authPasswordLabel {
     return '密码';
   }
 
   @override
+  String get authPasswordMismatch {
+    return '两次输入的密码不一致。';
+  }
+
+  @override
   String get authPasswordRequired {
     return '请输入密码。';
+  }
+
+  @override
+  String get authPasswordTooLong {
+    return '密码请控制在 1024 个字符以内。';
   }
 
   @override
@@ -5647,6 +5937,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get authResendVerification {
     return '重新发送确认邮件';
+  }
+
+  @override
+  String authSentTo({required String email}) {
+    return '发送至：$email';
   }
 
   @override
@@ -5962,6 +6257,51 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get commonSignIn {
     return '登录';
+  }
+
+  @override
+  String get confirmPasswordDone {
+    return '您的密码已重设。请使用新密码登录。';
+  }
+
+  @override
+  String get confirmPasswordExpired {
+    return '此重设链接已失效。';
+  }
+
+  @override
+  String get confirmPasswordFailed {
+    return '无法重设您的密码。请重试。';
+  }
+
+  @override
+  String get confirmPasswordInvalidToken {
+    return '此重设链接无效。';
+  }
+
+  @override
+  String get confirmPasswordPasswordConfirmLabel {
+    return '确认新密码';
+  }
+
+  @override
+  String get confirmPasswordPasswordLabel {
+    return '新密码';
+  }
+
+  @override
+  String get confirmPasswordRequestAgain {
+    return '重新申请重设邮件';
+  }
+
+  @override
+  String get confirmPasswordSubmit {
+    return '重设密码';
+  }
+
+  @override
+  String get confirmPasswordTitle {
+    return '设置新密码';
   }
 
   @override
@@ -6315,6 +6655,36 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get resetPasswordDescription {
+    return '请输入您登录时使用的邮箱地址。如果该地址有账户，我们会向它发送设置新密码的链接。';
+  }
+
+  @override
+  String get resetPasswordFailed {
+    return '无法发送重设邮件。请重试。';
+  }
+
+  @override
+  String get resetPasswordSent {
+    return '我们已发送重设邮件。请打开邮件中的链接设置新密码。';
+  }
+
+  @override
+  String get resetPasswordSentHeading {
+    return '重设邮件已发送';
+  }
+
+  @override
+  String get resetPasswordSubmit {
+    return '发送重设邮件';
+  }
+
+  @override
+  String get resetPasswordTitle {
+    return '重设密码';
+  }
+
+  @override
   String get searchAll {
     return '全部';
   }
@@ -6585,6 +6955,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get signInForgotPassword {
+    return '忘记密码？';
+  }
+
+  @override
   String get signInInvalidCredentials {
     return '邮箱地址或密码不正确。';
   }
@@ -6592,11 +6967,6 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get signInNoAccount {
     return '还没有账户？';
-  }
-
-  @override
-  String get signInPasswordResetNote {
-    return '请在网站上重设密码。';
   }
 
   @override
@@ -6650,21 +7020,6 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
-  String get signUpPasswordConfirmRequired {
-    return '请再次输入密码进行确认。';
-  }
-
-  @override
-  String get signUpPasswordMismatch {
-    return '两次输入的密码不一致。';
-  }
-
-  @override
-  String get signUpPasswordTooLong {
-    return '密码请控制在 1024 个字符以内。';
-  }
-
-  @override
   String get signUpSubmit {
     return '注册';
   }
@@ -6675,18 +7030,8 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
-  String get signUpPendingCheckSpam {
-    return '如果没有收到邮件，请查看垃圾邮件文件夹。';
-  }
-
-  @override
   String get signUpPendingSent {
     return '我们已向您输入的邮箱地址发送邮件。请打开它继续注册。';
-  }
-
-  @override
-  String signUpPendingSentTo({required String email}) {
-    return '发送至：$email';
   }
 
   @override
@@ -7093,6 +7438,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get authCheckSpam {
+    return '如果沒有收到郵件，請查看垃圾郵件資料夾。';
+  }
+
+  @override
   String get authEmailInvalid {
     return '請輸入有效的電子郵件地址。';
   }
@@ -7108,13 +7458,28 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get authPasswordConfirmRequired {
+    return '請再次輸入密碼以確認。';
+  }
+
+  @override
   String get authPasswordLabel {
     return '密碼';
   }
 
   @override
+  String get authPasswordMismatch {
+    return '兩次輸入的密碼不一致。';
+  }
+
+  @override
   String get authPasswordRequired {
     return '請輸入密碼。';
+  }
+
+  @override
+  String get authPasswordTooLong {
+    return '密碼請控制在 1024 個字元以內。';
   }
 
   @override
@@ -7125,6 +7490,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get authResendVerification {
     return '重新寄送確認郵件';
+  }
+
+  @override
+  String authSentTo({required String email}) {
+    return '寄送至：$email';
   }
 
   @override
@@ -7440,6 +7810,51 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get commonSignIn {
     return '登入';
+  }
+
+  @override
+  String get confirmPasswordDone {
+    return '您的密碼已重設。請使用新密碼登入。';
+  }
+
+  @override
+  String get confirmPasswordExpired {
+    return '此重設連結已失效。';
+  }
+
+  @override
+  String get confirmPasswordFailed {
+    return '無法重設您的密碼。請重試。';
+  }
+
+  @override
+  String get confirmPasswordInvalidToken {
+    return '此重設連結無效。';
+  }
+
+  @override
+  String get confirmPasswordPasswordConfirmLabel {
+    return '確認新密碼';
+  }
+
+  @override
+  String get confirmPasswordPasswordLabel {
+    return '新密碼';
+  }
+
+  @override
+  String get confirmPasswordRequestAgain {
+    return '重新申請重設郵件';
+  }
+
+  @override
+  String get confirmPasswordSubmit {
+    return '重設密碼';
+  }
+
+  @override
+  String get confirmPasswordTitle {
+    return '設定新密碼';
   }
 
   @override
@@ -7793,6 +8208,36 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get resetPasswordDescription {
+    return '請輸入您登入時使用的電子郵件地址。如果該地址有帳戶，我們會向它寄出設定新密碼的連結。';
+  }
+
+  @override
+  String get resetPasswordFailed {
+    return '無法寄送重設郵件。請重試。';
+  }
+
+  @override
+  String get resetPasswordSent {
+    return '我們已寄出重設郵件。請開啟郵件中的連結設定新密碼。';
+  }
+
+  @override
+  String get resetPasswordSentHeading {
+    return '重設郵件已寄出';
+  }
+
+  @override
+  String get resetPasswordSubmit {
+    return '寄送重設郵件';
+  }
+
+  @override
+  String get resetPasswordTitle {
+    return '重設密碼';
+  }
+
+  @override
   String get searchAll {
     return '全部';
   }
@@ -8063,6 +8508,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get signInForgotPassword {
+    return '忘記密碼？';
+  }
+
+  @override
   String get signInInvalidCredentials {
     return '電子郵件地址或密碼不正確。';
   }
@@ -8070,11 +8520,6 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get signInNoAccount {
     return '還沒有帳戶嗎？';
-  }
-
-  @override
-  String get signInPasswordResetNote {
-    return '請在網站上重設密碼。';
   }
 
   @override
@@ -8128,21 +8573,6 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
-  String get signUpPasswordConfirmRequired {
-    return '請再次輸入密碼以確認。';
-  }
-
-  @override
-  String get signUpPasswordMismatch {
-    return '兩次輸入的密碼不一致。';
-  }
-
-  @override
-  String get signUpPasswordTooLong {
-    return '密碼請控制在 1024 個字元以內。';
-  }
-
-  @override
   String get signUpSubmit {
     return '註冊';
   }
@@ -8153,18 +8583,8 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
-  String get signUpPendingCheckSpam {
-    return '如果沒有收到郵件，請查看垃圾郵件資料夾。';
-  }
-
-  @override
   String get signUpPendingSent {
     return '我們已向您輸入的電子郵件地址寄出郵件。請開啟它繼續註冊。';
-  }
-
-  @override
-  String signUpPendingSentTo({required String email}) {
-    return '寄送至：$email';
   }
 
   @override

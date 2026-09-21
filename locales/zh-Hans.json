@@ -3065,9 +3065,9 @@
     "sign_in": {
       "email_not_verified": "您的邮箱地址尚未确认。请打开确认邮件中的链接。",
       "failed": "无法登录。",
+      "forgot_password": "忘记密码？",
       "invalid_credentials": "邮箱地址或密码不正确。",
       "no_account": "还没有账户？",
-      "password_reset_note": "请在网站上重设密码。",
       "sign_up": "注册"
     },
     "viewer": {
@@ -3110,13 +3110,18 @@
       "title": "章节"
     },
     "auth": {
+      "check_spam": "如果没有收到邮件，请查看垃圾邮件文件夹。",
       "email_invalid": "请输入有效的邮箱地址。",
       "email_label": "邮箱地址",
       "email_required": "请输入邮箱地址。",
+      "password_confirm_required": "请再次输入密码进行确认。",
       "password_label": "密码",
+      "password_mismatch": "两次输入的密码不一致。",
       "password_required": "请输入密码。",
+      "password_too_long": "密码请控制在 1024 个字符以内。",
       "resend_failed": "无法发送确认邮件。请重试。",
       "resend_verification": "重新发送确认邮件",
+      "sent_to": "发送至：{$email}",
       "verification_sent": "我们已发送确认邮件。请打开邮件中的链接完成注册。"
     },
     "sign_up": {
@@ -3129,16 +3134,11 @@
       "name_required": "请输入显示名称。",
       "name_too_long": "显示名称请控制在 100 个字符以内。",
       "password_confirm_label": "确认密码",
-      "password_confirm_required": "请再次输入密码进行确认。",
-      "password_mismatch": "两次输入的密码不一致。",
-      "password_too_long": "密码请控制在 1024 个字符以内。",
       "submit": "注册",
       "title": "注册"
     },
     "sign_up_pending": {
-      "check_spam": "如果没有收到邮件，请查看垃圾邮件文件夹。",
       "sent": "我们已向您输入的邮箱地址发送邮件。请打开它继续注册。",
-      "sent_to": "发送至：{$email}",
       "title": "请查收邮件"
     },
     "verify_email": {
@@ -3154,6 +3154,25 @@
       "sent_heading": "确认邮件已发送",
       "submit": "发送确认邮件",
       "title": "重新发送确认邮件"
+    },
+    "reset_password": {
+      "description": "请输入您登录时使用的邮箱地址。如果该地址有账户，我们会向它发送设置新密码的链接。",
+      "failed": "无法发送重设邮件。请重试。",
+      "sent": "我们已发送重设邮件。请打开邮件中的链接设置新密码。",
+      "sent_heading": "重设邮件已发送",
+      "submit": "发送重设邮件",
+      "title": "重设密码"
+    },
+    "confirm_password": {
+      "done": "您的密码已重设。请使用新密码登录。",
+      "expired": "此重设链接已失效。",
+      "failed": "无法重设您的密码。请重试。",
+      "invalid_token": "此重设链接无效。",
+      "password_confirm_label": "确认新密码",
+      "password_label": "新密码",
+      "request_again": "重新申请重设邮件",
+      "submit": "重设密码",
+      "title": "设置新密码"
     }
   },
   "platform": {
