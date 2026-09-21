@@ -37,6 +37,23 @@ mobile_load_app_config() {
   export MOBILE_PROFILE_NAME PUBLIRA_API_BASE_URL PUBLIRA_IMAGE_BASE_URL PUBLIRA_TENANT_HOST
 }
 
+# Generates the build configuration from Publira's own manifest,
+# config/app.default.yaml, whose tenant is the one every profile is seeded
+# with. Whatever another manifest generated before is replaced.
+mobile_generate_build_config() {
+  (cd "${MOBILE_DIR}" && dart run scripts/app_manifest.dart --generate)
+}
+
+# The application ID the development build is installed under: the generated
+# one with the `.dev` suffix `android/app/build.gradle.kts` gives the flavor.
+mobile_dev_application_id() {
+  local dir="${PUBLIRA_MOBILE_GENERATED_DIR:-.generated}" id
+  [[ "${dir}" == /* ]] || dir="${MOBILE_DIR}/${dir}"
+  id="$(sed -n 's/^publira\.applicationId=//p' "${dir}/app.properties")"
+  [[ -n "${id}" ]] || dev_env_die "no application ID in ${dir}/app.properties"
+  printf '%s.dev\n' "${id}"
+}
+
 # The three defines, given the pair of addresses this build is to use: the
 # profile's own ports for a build on a device, and the one-origin server below
 # for a build in a browser.

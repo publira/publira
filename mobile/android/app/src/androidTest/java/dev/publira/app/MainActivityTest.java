@@ -1,4 +1,4 @@
-package com.publira.publira;
+package dev.publira.app;
 
 import androidx.test.rule.ActivityTestRule;
 import dev.flutter.plugins.integration_test.FlutterTestRunner;

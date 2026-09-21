@@ -1,4 +1,5 @@
 import java.util.Base64
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -26,8 +27,46 @@ fun dartDefines(): Map<String, String> {
     }.toMap()
 }
 
+/**
+ * The app's identity, generated from an app manifest by
+ * `scripts/app_manifest.dart --generate` into the directory
+ * PUBLIRA_MOBILE_GENERATED_DIR names, else `mobile/.generated/`.
+ */
+val app: Properties = run {
+    val mobileDir = rootDir.parentFile
+    val generatedDir =
+        providers.environmentVariable("PUBLIRA_MOBILE_GENERATED_DIR").orNull
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { mobileDir.resolve(it) }
+            ?: mobileDir.resolve(".generated")
+    val file = generatedDir.resolve("app.properties")
+    if (!file.isFile) {
+        throw GradleException(
+            "$file does not exist. Generate it from an app manifest, in mobile/: " +
+                "dart run scripts/app_manifest.dart --generate [<manifest>]",
+        )
+    }
+    Properties().apply { file.reader(Charsets.UTF_8).use { load(it) } }
+}
+
+fun appValue(key: String): String =
+    app.getProperty("publira.$key")
+        ?: throw GradleException("the generated app configuration has no publira.$key")
+
+/**
+ * [value] as an Android string resource reads it back: an ASCII character
+ * other than a letter or digit could be markup, a quote, or a reference
+ * prefix, so each is written as a `\u` escape.
+ */
+fun stringResource(value: String): String =
+    value.map { c ->
+        if (c.code < 0x80 && !c.isLetterOrDigit()) "\\u%04x".format(c.code) else c.toString()
+    }.joinToString("")
+
 android {
-    namespace = "com.publira.publira"
+    // The source namespace is Publira's own; the application ID the app is
+    // published under is the tenant's.
+    namespace = "dev.publira.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -37,8 +76,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.publira.publira"
+        manifestPlaceholders["tenantHost"] = appValue("tenantHost")
+        applicationId = appValue("applicationId")
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -48,33 +87,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Each flavor's launcher name is a resValue from the manifest's app.name.
+    buildFeatures {
+        resValues = true
+    }
+
     flavorDimensions += "environment"
 
     productFlavors {
         create("dev") {
             dimension = "environment"
             applicationIdSuffix = ".dev"
+            resValue("string", "app_name", stringResource("${appValue("appName")} Dev"))
         }
         create("production") {
             dimension = "environment"
-            // A store binary is pinned to one tenant. Unlike development,
-            // shipping a localhost App Links declaration would silently leave
-            // the real tenant links in the browser.
-            val tenantHost = dartDefines()["PUBLIRA_TENANT_HOST"]
-            val productionBuild = gradle.startParameter.taskNames.any {
-                it.contains("production", ignoreCase = true)
-            }
-            require(!productionBuild || !tenantHost.isNullOrBlank()) {
-                "Production builds require --dart-define=PUBLIRA_TENANT_HOST=<tenant host>"
-            }
-            manifestPlaceholders["tenantHost"] = tenantHost ?: "localhost"
+            resValue("string", "app_name", stringResource(appValue("appName")))
         }
-    }
-
-    // The development flavor intentionally claims the seeded local tenant.
-    productFlavors.named("dev") {
-        manifestPlaceholders["tenantHost"] =
-            dartDefines()["PUBLIRA_TENANT_HOST"] ?: "localhost"
     }
 
     buildTypes {
@@ -83,6 +112,20 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+}
+
+// A store binary is pinned to one tenant: the App Links it declares and the
+// tenant the app asks the API about have to be the same, or the tenant's links
+// stay in the browser. The task graph also holds the production packaging an
+// aggregate such as `assemble` runs, which the requested task names do not.
+gradle.taskGraph.whenReady {
+    val productionBuild = allTasks.any {
+        it.project == project && Regex("^(package|bundle)Production").containsMatchIn(it.name)
+    }
+    require(!productionBuild || dartDefines()["PUBLIRA_TENANT_HOST"] == appValue("tenantHost")) {
+        "Production builds require --dart-define=PUBLIRA_TENANT_HOST=" +
+            "${appValue("tenantHost")}, the tenant.host of the app manifest"
     }
 }
 

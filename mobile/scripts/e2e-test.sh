@@ -61,6 +61,9 @@ collect_failure_artifacts() {
     > /dev/null 2>&1 || true
 }
 
+# Publira's own identity, whatever another manifest generated before.
+(cd "${MOBILE_DIR}" && dart run scripts/app_manifest.dart --generate)
+
 set +e
 (
   cd "${MOBILE_DIR}"

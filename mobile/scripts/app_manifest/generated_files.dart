@@ -9,6 +9,25 @@ import 'dart:math';
 Directory defaultGeneratedDirectory(Directory mobileDirectory) =>
     Directory('${mobileDirectory.path}/.generated');
 
+/// The variable naming the directory a build writes into and the platform
+/// builds read from, which `android/app/build.gradle.kts` reads as well.
+const generatedDirectoryVariable = 'PUBLIRA_MOBILE_GENERATED_DIR';
+
+/// The directory [environment] names, resolved against [mobileDirectory] as
+/// Gradle resolves it, or the default one when it names none.
+Directory generatedDirectory(
+  Directory mobileDirectory,
+  Map<String, String> environment,
+) {
+  final named = environment[generatedDirectoryVariable] ?? '';
+  if (named.isEmpty) {
+    return defaultGeneratedDirectory(mobileDirectory);
+  }
+  return Directory.fromUri(
+    mobileDirectory.absolute.uri.resolveUri(Uri.directory(named)),
+  );
+}
+
 /// Writes each of [files], keyed by name, into [directory].
 ///
 /// Each file is written under a name no other writer uses and then renamed

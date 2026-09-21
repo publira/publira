@@ -90,16 +90,19 @@ flutter run -d chrome
 
 The app builds in two flavors, so a development build and a production build can sit on one device at the same time.
 
-| Flavor | Application ID / bundle identifier | Launcher name | Icon set |
-| --- | --- | --- | --- |
-| `dev` | `com.publira.publira.dev` | Publira Dev | `AppIcon-dev` / `android/app/src/dev/res` |
-| `production` | `com.publira.publira` | Publira | `AppIcon` / `android/app/src/main/res` |
+| Flavor | Android application ID | iOS bundle identifier | Launcher name | Icon set |
+| --- | --- | --- | --- | --- |
+| `dev` | `<android.applicationId>.dev` | `com.publira.publira.dev` | `<app.name> Dev` on Android, Publira Dev on iOS | `AppIcon-dev` / `android/app/src/dev/res` |
+| `production` | `<android.applicationId>` | `com.publira.publira` | `<app.name>` on Android, Publira on iOS | `AppIcon` / `android/app/src/main/res` |
+
+`<android.applicationId>` and `<app.name>` come from the [app manifest](#app-manifest) the build configuration was generated from: `dev.publira.app` and Publira for Publira's own.
 
 Both icon sets still hold the same placeholder art, so today the two builds are told apart by their launcher name. Give the development build its own icon by replacing the images in `ios/Runner/Assets.xcassets/AppIcon-dev.appiconset/` and adding `android/app/src/dev/res/mipmap-*/ic_launcher.png`; nothing else has to change, because both platforms already read the flavor's own icon.
 
-`default-flavor: dev` in `pubspec.yaml` makes every command without a `--flavor` build the development app, so `flutter run` and `flutter test integration_test` both target `com.publira.publira.dev`, and so does CI's `Test / Mobile E2E` through `task mobile:test-integration`. `Test / Mobile` builds no app at all — `dart format`, `flutter analyze`, and `flutter test` run on the host — so no flavor reaches it. A store build asks for the other one:
+`default-flavor: dev` in `pubspec.yaml` makes every command without a `--flavor` build the development app, so `flutter run` and `flutter test integration_test` both target the development app, and so does CI's `Test / Mobile E2E` through `task mobile:test-integration`. `Test / Mobile` builds no app at all — `dart format`, `flutter analyze`, and `flutter test` run on the host — so no flavor reaches it. A store build asks for the other one:
 
 ```bash
+dart run scripts/app_manifest.dart --generate path/to/app.yaml
 flutter build appbundle --flavor production \\
   --dart-define=PUBLIRA_TENANT_HOST=tenant.example
 PUBLIRA_ASSOCIATED_DOMAIN=tenant.example \\
@@ -109,7 +112,7 @@ PUBLIRA_ASSOCIATED_DOMAIN=tenant.example \\
 
 A flavor decides identity — application ID, launcher name, icon, and the associated domain Universal Links claim. Where the app connects stays with `--dart-define` (see [Connecting to the public API](#connecting-to-the-public-api)), because the same development build points at a local `task dev` stack, an emulator loopback to the host, or an E2E stack depending on who runs it.
 
-Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`, and `dev` overrides from `android/app/src/dev/res/` whatever it wants to differ; what `android/app/src/main/res/` holds is the production identity. iOS takes it from the `dev` and `production` Xcode schemes, whose `Debug-`, `Release-`, and `Profile-` configurations carry `PRODUCT_BUNDLE_IDENTIFIER`, `APP_DISPLAY_NAME` (which `Info.plist` reads as `CFBundleDisplayName`), `ASSETCATALOG_COMPILER_APPICON_NAME`, and `PUBLIRA_ASSOCIATED_DOMAIN`. A new flavor has to appear on both platforms under one name, because `default-flavor` and `--flavor` name a single flavor for whichever platform is being built.
+Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`, which reads the application ID, launcher name, and App Links host from the generated build configuration, and `dev` overrides from `android/app/src/dev/res/` whatever else it wants to differ. A production Android build refuses a `PUBLIRA_TENANT_HOST` other than the manifest's `tenant.host`. The source namespace, `dev.publira.app`, is Publira's own and does not follow the application ID. iOS takes it from the `dev` and `production` Xcode schemes, whose `Debug-`, `Release-`, and `Profile-` configurations carry `PRODUCT_BUNDLE_IDENTIFIER`, `APP_DISPLAY_NAME` (which `Info.plist` reads as `CFBundleDisplayName`), `ASSETCATALOG_COMPILER_APPICON_NAME`, and `PUBLIRA_ASSOCIATED_DOMAIN`. A new flavor has to appear on both platforms under one name, because `default-flavor` and `--flavor` name a single flavor for whichever platform is being built.
 
 ## App manifest
 
@@ -140,13 +143,20 @@ Every field is required, and a field the format does not define is an error. And
 | `config/app.example.yaml` | The manifest a tenant copies out of the repository and fills in with its own values |
 | `.generated/` | Build configuration generated from a manifest; ignored by Git |
 
-Check a manifest before building with it; every problem is listed at once, and the command exits non-zero when there is one:
+Check a manifest before building with it; every problem is listed at once, and the command exits non-zero when there is one. `--generate` then writes the build configuration a platform build reads, and writes nothing for a manifest with a problem:
 
 ```bash
 cd mobile
 dart run scripts/app_manifest.dart path/to/app.yaml
 dart run scripts/app_manifest.dart   # config/app.default.yaml
+dart run scripts/app_manifest.dart --generate path/to/app.yaml
 ```
+
+| Generated file | Read by |
+| --- | --- |
+| `app.properties` | `android/app/build.gradle.kts`, which stops with the command to run when the file is missing |
+
+The files go into `.generated/`, or into the directory `PUBLIRA_MOBILE_GENERATED_DIR` names (relative to `mobile/`), which the platform build reads as well; builds for two tenants running at once each name their own. `task mobile:deps` generates Publira's own, and so do `task mobile:run`, `task mobile:screenshot`, and `task mobile:test-integration` before every build, replacing whatever another manifest generated.
 
 ## Quality gates (format / analyze / test)
 

@@ -21,9 +21,10 @@ tasks:
       - task: test
 
   deps:
-    desc: Install Flutter package dependencies for the mobile app
+    desc: Install Flutter package dependencies and generate the build configuration from Publira's own app manifest
     cmds:
       - flutter pub get
+      - dart run scripts/app_manifest.dart --generate
 
   emulator-start:
     desc: Boot the Android emulator android-install created, headless, and wait until it has booted
