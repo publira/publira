@@ -3319,6 +3319,8 @@
         "platform_retention_defaults_updated": "更新了保留期限預設值",
         "platform_settings_updated": "更新了平台設定",
         "platform_smtp_test_email_sent": "寄出了 SMTP 測試郵件",
+        "platform_storage_connection_tested": "測試了儲存連線",
+        "platform_storage_settings_updated": "更新了儲存設定",
         "tenant_created": "建立了租戶",
         "tenant_info_updated": "更新了租戶資訊",
         "tenant_resumed": "恢復了租戶",
@@ -3898,6 +3900,88 @@
       "unsuspend_action": "解除暫停",
       "unsuspend_description": "允許該已暫停的使用者再次登入。",
       "unsuspend_title": "要解除此帳戶的暫停嗎？"
+    },
+    "storage": {
+      "tab": "儲存",
+      "page_title": "設定 - 儲存",
+      "heading": "設定",
+      "page_description": "管理上傳圖片的儲存位置。",
+      "title": "物件儲存",
+      "description": "所有租戶上傳的圖片都儲存在這一個相容 S3 的儲存貯體中。儲存的變更無須重新啟動，會在一分鐘內套用到所有伺服器。",
+      "unconfigured": "尚未設定物件儲存。在此儲存之前，圖片上傳會失敗，圖片也無法顯示。請輸入服務商提供的儲存貯體，測試連線後再儲存。",
+      "load_failed": "無法載入儲存設定。請重新載入頁面後再試一次。",
+      "save": "儲存儲存設定",
+      "saved": "已儲存儲存設定。",
+      "save_failed": "無法儲存儲存設定。請稍後再試。",
+      "save_conflict": "其他營運人員已變更儲存設定，因此未儲存。請重新載入頁面後再試一次。",
+      "form": {
+        "bucket": "儲存貯體",
+        "bucket_help": "與服務商畫面上顯示完全相同的儲存貯體名稱。",
+        "bucket_required": "請輸入儲存貯體名稱。",
+        "bucket_invalid": "儲存貯體名稱須為 3 到 63 個小寫英文字母、數字、點與連字號，並以小寫英文字母或數字開頭及結尾。",
+        "region": "區域",
+        "region_help": "儲存貯體所在的區域，例如 ap-northeast-1。若服務商不使用區域，請輸入其建議的值；通常 us-east-1 即可運作。",
+        "region_required": "請輸入區域。",
+        "region_invalid": "區域不能包含空格。",
+        "public_base_url": "公開基礎 URL（選填）",
+        "public_base_url_help": "僅在圖片直接由儲存空間或其前端的 CDN 提供時填寫，否則請留空。",
+        "public_base_url_invalid": "請輸入以 http:// 或 https:// 開頭、且不含查詢或片段的公開基礎 URL。",
+        "advanced_legend": "相容 S3 服務商的選項",
+        "advanced_help": "Amazon S3 的儲存貯體無須變更這些選項。Cloudflare R2、MinIO 等其他相容 S3 的服務商，會在其設定說明中註明應填寫的值。",
+        "endpoint": "端點",
+        "endpoint_help": "服務商 S3 API 的位址，例如 https://s3.example.com。使用 Amazon S3 時請留空。",
+        "endpoint_invalid": "請輸入以 http:// 或 https:// 開頭、且不含查詢或片段的端點。",
+        "force_path_style": "使用路徑樣式存取",
+        "force_path_style_help": "服務商要求時請開啟。大多數自行架設的儲存空間需要開啟，Amazon S3 則不需要。",
+        "access_key_id_required": "請輸入存取金鑰 ID。",
+        "secret_access_key_required": "請輸入秘密存取金鑰。"
+      },
+      "credentials": {
+        "legend": "認證資訊",
+        "ambient": "使用各伺服器本身的認證資訊",
+        "ambient_description": "各伺服器使用其執行環境提供的認證資訊存取，例如執行個體角色或 AWS_ACCESS_KEY_ID。此處不儲存任何金鑰。",
+        "access_key": "使用存取金鑰",
+        "access_key_description": "儲存服務商核發的存取金鑰 ID 與秘密存取金鑰。秘密會加密儲存，且不會再次顯示。",
+        "access_key_id": "存取金鑰 ID",
+        "secret_access_key": "秘密存取金鑰",
+        "secret_stored": "已儲存（隱藏）",
+        "secret_stored_help": "儲存其他變更時，已儲存的秘密會維持不變。若要使用其他金鑰，請同時替換存取金鑰 ID 與秘密。",
+        "secret_help": "請輸入與此存取金鑰 ID 對應的秘密。",
+        "replace": "替換存取金鑰",
+        "keep": "保留已儲存的存取金鑰"
+      },
+      "test": {
+        "title": "連線測試",
+        "description": "使用上方的值，嘗試 Publira 對儲存貯體執行的四項操作。不會儲存設定，測試物件會在最後刪除。",
+        "submit": "測試連線",
+        "pending": "測試中...",
+        "succeeded": "連線正常。Publira 可以在此儲存貯體中上傳、讀取、列出與刪除物件。",
+        "failed_checks": "連線測試失敗。下方顯示失敗的步驟。",
+        "failed": "無法執行連線測試。請稍後再試。",
+        "skipped": "由於前面的步驟失敗，未執行。",
+        "status": {
+          "succeeded": "成功",
+          "failed": "失敗",
+          "skipped": "未執行"
+        },
+        "operations": {
+          "put_object": "上傳",
+          "get_object": "讀取",
+          "list_objects": "列出",
+          "delete_object": "刪除"
+        },
+        "reasons": {
+          "credentials": "驗證失敗：儲存空間拒絕了認證資訊。請檢查存取金鑰 ID 與秘密存取金鑰。",
+          "permission": "權限不足：認證資訊已被接受，但不允許執行此操作。請授予此金鑰對儲存貯體執行此操作的權限。",
+          "bucket_not_found": "設定問題：找不到儲存貯體。請檢查儲存貯體名稱、區域與端點。",
+          "connection": "連線失敗：無法連線到儲存空間。請檢查端點，以及此伺服器能否連線到它。",
+          "timeout": "連線逾時：儲存空間未及時回應。請檢查端點，以及此伺服器與儲存空間之間的網路。",
+          "object_missing": "上傳後找不到測試物件。此儲存空間無法依 Publira 所需的方式儲存或列出物件。",
+          "object_altered": "讀回的測試物件與上傳的內容不同。請確認端點指向儲存空間本身，而非代理或網頁。",
+          "unknown": "儲存空間因 Publira 無法辨識的原因拒絕了操作。請檢查儲存服務商的記錄。"
+        },
+        "steps": "連線測試步驟"
+      }
     }
   }
 }

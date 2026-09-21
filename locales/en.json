@@ -3319,6 +3319,8 @@
         "platform_retention_defaults_updated": "Updated the retention defaults",
         "platform_settings_updated": "Updated platform settings",
         "platform_smtp_test_email_sent": "Sent an SMTP test email",
+        "platform_storage_connection_tested": "Tested the storage connection",
+        "platform_storage_settings_updated": "Updated storage settings",
         "tenant_created": "Created a tenant",
         "tenant_info_updated": "Updated tenant details",
         "tenant_resumed": "Resumed a tenant",
@@ -3898,6 +3900,88 @@
       "unsuspend_action": "Unsuspend",
       "unsuspend_description": "Allow this suspended user to sign in again.",
       "unsuspend_title": "Unsuspend this account?"
+    },
+    "storage": {
+      "tab": "Storage",
+      "page_title": "Settings - Storage",
+      "heading": "Settings",
+      "page_description": "Manage where Publira stores uploaded images.",
+      "title": "Object storage",
+      "description": "Every tenant's uploaded images are stored in this one S3-compatible bucket. A saved change reaches every server within a minute, without a restart.",
+      "unconfigured": "Object storage isn't configured yet. Until it is saved here, image uploads fail and images can't be shown. Enter the bucket your provider gave you, test the connection, and save.",
+      "load_failed": "Could not load the storage settings. Reload the screen and try again.",
+      "save": "Save storage settings",
+      "saved": "Storage settings saved.",
+      "save_failed": "Could not save the storage settings. Please try again later.",
+      "save_conflict": "Another operator changed the storage settings, so nothing was saved. Reload the screen and try again.",
+      "form": {
+        "bucket": "Bucket",
+        "bucket_help": "The name of the bucket, exactly as your provider shows it.",
+        "bucket_required": "Enter the bucket name.",
+        "bucket_invalid": "A bucket name is 3 to 63 lowercase letters, digits, dots, and hyphens, and starts and ends with a letter or a digit.",
+        "region": "Region",
+        "region_help": "The region the bucket is in, such as us-east-1. If your provider doesn't use regions, enter the value it recommends; us-east-1 usually works.",
+        "region_required": "Enter the region.",
+        "region_invalid": "The region can't contain spaces.",
+        "public_base_url": "Public base URL (optional)",
+        "public_base_url_help": "Only when images are served straight from the storage or from a CDN in front of it. Leave it empty otherwise.",
+        "public_base_url_invalid": "Enter a public base URL that starts with http:// or https://, without a query or a fragment.",
+        "advanced_legend": "Options for S3-compatible providers",
+        "advanced_help": "Leave these as they are for a bucket on Amazon S3. Other S3-compatible providers, such as Cloudflare R2 or MinIO, say what to enter in their setup instructions.",
+        "endpoint": "Endpoint",
+        "endpoint_help": "The address of your provider's S3 API, such as https://s3.example.com. Leave it empty for Amazon S3.",
+        "endpoint_invalid": "Enter an endpoint that starts with http:// or https://, without a query or a fragment.",
+        "force_path_style": "Use path-style addressing",
+        "force_path_style_help": "Turn this on when your provider asks for it. Most self-hosted storage does; Amazon S3 does not.",
+        "access_key_id_required": "Enter the access key ID.",
+        "secret_access_key_required": "Enter the secret access key."
+      },
+      "credentials": {
+        "legend": "Credentials",
+        "ambient": "Use each server's own credentials",
+        "ambient_description": "Each server signs in with what its environment provides, such as an instance role or AWS_ACCESS_KEY_ID. No key is saved here.",
+        "access_key": "Use an access key",
+        "access_key_description": "Save an access key ID and secret access key issued by your provider. The secret is stored encrypted and is never shown again.",
+        "access_key_id": "Access key ID",
+        "secret_access_key": "Secret access key",
+        "secret_stored": "Saved (hidden)",
+        "secret_stored_help": "The saved secret is kept when you save other changes. To use a different key, replace the access key ID and the secret together.",
+        "secret_help": "Enter the secret that belongs to this access key ID.",
+        "replace": "Replace access key",
+        "keep": "Keep saved access key"
+      },
+      "test": {
+        "title": "Connection test",
+        "description": "Tries the four things Publira does with the bucket, using the values above. Nothing is saved, and the test object is removed afterwards.",
+        "submit": "Test connection",
+        "pending": "Testing...",
+        "succeeded": "The connection works. Publira can upload, read, list, and delete objects in this bucket.",
+        "failed_checks": "The connection test failed. The steps below show where.",
+        "failed": "Could not run the connection test. Please try again later.",
+        "skipped": "Not tried, because an earlier step failed.",
+        "status": {
+          "succeeded": "Passed",
+          "failed": "Failed",
+          "skipped": "Not run"
+        },
+        "operations": {
+          "put_object": "Upload",
+          "get_object": "Read back",
+          "list_objects": "List",
+          "delete_object": "Delete"
+        },
+        "reasons": {
+          "credentials": "Authentication failed: the storage rejected the credentials. Check the access key ID and the secret access key.",
+          "permission": "Permission denied: the credentials were accepted but aren't allowed to do this. Allow this operation on the bucket for this key.",
+          "bucket_not_found": "Configuration problem: the bucket wasn't found. Check the bucket name, the region, and the endpoint.",
+          "connection": "Connection failed: the storage couldn't be reached. Check the endpoint, and that this server can connect to it.",
+          "timeout": "Connection timed out: the storage didn't answer in time. Check the endpoint and the network between this server and the storage.",
+          "object_missing": "The test object wasn't found after it was uploaded. This storage doesn't keep or list objects the way Publira needs.",
+          "object_altered": "The test object came back different from what was uploaded. Check that the endpoint points at the storage itself rather than at a proxy or a web page.",
+          "unknown": "The storage refused for a reason Publira doesn't recognize. Check the storage provider's logs."
+        },
+        "steps": "Connection test steps"
+      }
     }
   }
 }
