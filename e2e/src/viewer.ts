@@ -8,6 +8,21 @@ const TURN_LIMIT = 12;
 const TURN_SETTLE_MS = 1000;
 
 /**
+ * Bring the viewer's controls out, which is what makes the toolbar reachable:
+ * it is `inert` while they are hidden, so a click on a button of its own never
+ * lands. A tap in the middle of the rail is the reader's own way of asking for
+ * them, and they retract again on a timer — hence the retry.
+ */
+export const revealViewerControls = async (page: Page): Promise<void> => {
+  const toolbar = page.locator(".pcv-toolbar");
+
+  await expect(async () => {
+    await page.locator(".pcv-viewport").click();
+    await expect(toolbar).not.toHaveAttribute("inert", { timeout: 1000 });
+  }).toPass();
+};
+
+/**
  * Turn forward until `control` is on screen, and answer whether it ever was.
  *
  * Everything a reader does once they have finished the episode — reacting to

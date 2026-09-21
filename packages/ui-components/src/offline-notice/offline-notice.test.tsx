@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { OfflineNotice } from "./offline-notice";
 
@@ -9,9 +9,17 @@ const offline = vi.hoisted(() => ({ value: false }));
 
 vi.mock("next/offline", () => ({ useOffline: () => offline.value }));
 
+const togglePopover = vi.fn<(force?: boolean) => boolean>();
+
+beforeAll(() => {
+  // jsdom implements no part of the popover API.
+  HTMLElement.prototype.togglePopover = togglePopover;
+});
+
 afterEach(() => {
   cleanup();
   offline.value = false;
+  togglePopover.mockClear();
 });
 
 const liveRegion = (container: HTMLElement) =>
@@ -59,5 +67,37 @@ describe("OfflineNotice", () => {
 
     expect(document.activeElement).toBe(document.body);
     expect(container.querySelector("[tabindex]")).toBeNull();
+  });
+
+  it("holds the live region open as a manual popover", () => {
+    const { container } = render(
+      <OfflineNotice>You are offline.</OfflineNotice>
+    );
+
+    expect(liveRegion(container)?.getAttribute("popover")).toBe("manual");
+    expect(togglePopover.mock.calls).toEqual([[false], [true]]);
+  });
+
+  it("shows the same live region again when a full-screen element is entered or left", () => {
+    const { container } = render(
+      <OfflineNotice>You are offline.</OfflineNotice>
+    );
+    const region = liveRegion(container);
+    togglePopover.mockClear();
+
+    document.dispatchEvent(new Event("fullscreenchange"));
+
+    expect(togglePopover.mock.calls).toEqual([[false], [true]]);
+    expect(liveRegion(container)).toBe(region);
+  });
+
+  it("stops answering full-screen changes once unmounted", () => {
+    const { unmount } = render(<OfflineNotice>You are offline.</OfflineNotice>);
+
+    unmount();
+    togglePopover.mockClear();
+    document.dispatchEvent(new Event("fullscreenchange"));
+
+    expect(togglePopover).not.toHaveBeenCalled();
   });
 });
