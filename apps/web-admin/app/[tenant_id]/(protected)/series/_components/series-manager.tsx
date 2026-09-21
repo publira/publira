@@ -33,6 +33,7 @@ import type {
 
 import type { SeriesFilters } from "../_lib/search-params";
 import type { SeriesListItem } from "../series-types";
+import { SeriesAvailabilityBadge } from "./series-availability-badge";
 
 type SeriesManagerProps = CursorPageHrefs & {
   filters: SeriesFilters;
@@ -313,7 +314,12 @@ const SeriesListBody = ({
       <TableBody>
         {series.map((item) => (
           <TableRow key={item.publicId}>
-            <TableCell className="font-medium">{item.title}</TableCell>
+            <TableCell className="font-medium">
+              <div className="flex flex-wrap items-center gap-2">
+                <span>{item.title}</span>
+                <SeriesAvailabilityBadge availability={item.availability} />
+              </div>
+            </TableCell>
             <TableCell>{item.labelName || "-"}</TableCell>
             <TableCell>
               {formatDateTime(item.publishedAt, {

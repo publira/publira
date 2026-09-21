@@ -19,8 +19,10 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -84,10 +86,22 @@ const NewEpisodeFormData = async ({
     resolveSeriesId(params),
     getTenantId(),
   ]);
-  const timeZone = await getTenantDisplayTimeZone(tenantId);
+  const locale = await getLocale(tenantId);
+  const [timeZone, seriesResult] = await Promise.all([
+    getTenantDisplayTimeZone(tenantId),
+    // Only to name what the availability option that follows the series
+    // follows, so a read that failed leaves it unnamed rather than the form
+    // unusable.
+    getSeries({ publicId: seriesId, tenantId }, locale),
+  ]);
+  await redirectToLoginIfSessionRejected(seriesResult);
+
   return (
     <EpisodeForm
       action={createEpisodeAction}
+      seriesAvailability={
+        seriesResult.ok ? seriesResult.series.availability : undefined
+      }
       seriesPublicId={seriesId}
       timeZone={timeZone}
     />

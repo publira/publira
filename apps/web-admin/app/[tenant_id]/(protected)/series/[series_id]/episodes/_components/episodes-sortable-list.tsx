@@ -18,8 +18,11 @@ import {
   withItemMoved,
 } from "#components/sortable-list";
 import type { EpisodeItem } from "#lib/episode";
+import { DEFAULT_SURFACE_AVAILABILITY } from "#lib/surface-availability";
+import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 import { useTenantId } from "#lib/use-tenant-id";
 
+import { EpisodeAvailabilityBadge } from "./episode-availability-badge";
 import {
   selectionCheckboxProps,
   useEpisodeCreditsSelection,
@@ -27,6 +30,11 @@ import {
 
 interface EpisodesSortableListProps {
   seriesPublicId: string;
+  /**
+   * What the series is shown on, which bounds every episode. Absent when that
+   * read failed, and each row is then marked by its own value alone.
+   */
+  seriesAvailability?: SurfaceAvailabilityValue;
   episodes: EpisodeItem[];
   reorderAction: (
     formData: FormData
@@ -38,6 +46,7 @@ const episodeId = (episode: EpisodeItem): string => episode.publicId;
 
 export const EpisodesSortableList = ({
   seriesPublicId,
+  seriesAvailability = DEFAULT_SURFACE_AVAILABILITY,
   episodes,
   reorderAction,
   timeZone,
@@ -182,9 +191,15 @@ export const EpisodesSortableList = ({
             </SortableItemHandle>
 
             <div className="grid flex-1 gap-1">
-              <p className="text-sm font-medium">
-                {episode.orderIndex}. {episode.title}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium">
+                  {episode.orderIndex}. {episode.title}
+                </p>
+                <EpisodeAvailabilityBadge
+                  override={episode.availability}
+                  seriesAvailability={seriesAvailability}
+                />
+              </div>
               <p className="text-xs text-muted-foreground">
                 <ClientMessage
                   message="admin.series.episodes.status_price"

@@ -46,10 +46,12 @@ import {
   DEFAULT_SERIES_STATUS,
 } from "#lib/series-classification";
 import type { SeriesCommentMode } from "#lib/series-comment-mode";
+import { DEFAULT_SURFACE_AVAILABILITY } from "#lib/surface-availability";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
+import { SeriesAvailabilityField } from "./series-availability-field";
 import {
   SeriesAgeRatingField,
   SeriesGenreField,
@@ -323,6 +325,9 @@ const useSeriesFormState = ({
   const [ageRating, setAgeRating] = useState(
     () => initialSeries?.ageRating ?? DEFAULT_SERIES_AGE_RATING
   );
+  const [availability, setAvailability] = useState(
+    () => initialSeries?.availability ?? DEFAULT_SURFACE_AVAILABILITY
+  );
   const [selectedGenrePublicIds, setSelectedGenrePublicIds] = useState(
     () => initialSeries?.genrePublicIds ?? []
   );
@@ -371,6 +376,7 @@ const useSeriesFormState = ({
 
   return {
     ageRating,
+    availability,
     commentMode,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
@@ -380,6 +386,7 @@ const useSeriesFormState = ({
     selectedGenrePublicIds,
     selectedLabelPublicId,
     setAgeRating,
+    setAvailability,
     setCommentMode,
     setReadingDirection,
     setScheduleWeekdays,
@@ -436,6 +443,7 @@ export const SeriesForm = ({
   );
   const {
     ageRating,
+    availability,
     commentMode,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
@@ -445,6 +453,7 @@ export const SeriesForm = ({
     selectedGenrePublicIds,
     selectedLabelPublicId,
     setAgeRating,
+    setAvailability,
     setCommentMode,
     setReadingDirection,
     setScheduleWeekdays,
@@ -580,6 +589,11 @@ export const SeriesForm = ({
             </FieldDescription>
           </FieldContent>
         </Field>
+
+        <SeriesAvailabilityField
+          onChange={setAvailability}
+          value={availability}
+        />
 
         <SeriesStatusField onChange={setStatus} value={status} />
 

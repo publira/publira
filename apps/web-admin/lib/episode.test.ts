@@ -1,6 +1,7 @@
 import {
   CreatorCreditSource,
   ReadingDirection,
+  SurfaceAvailability,
 } from "@publira/api-client/admin/types";
 import {
   BadRequestSchema,
@@ -11,19 +12,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockBulkEditEpisodeCredits,
+  mockCreateEpisode,
   mockGetAccessToken,
   mockGetEpisode,
   mockListEpisodeCredits,
   mockListEpisodes,
   mockReorderEpisodes,
+  mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
 } = vi.hoisted(() => ({
   mockBulkEditEpisodeCredits: vi.fn(),
+  mockCreateEpisode: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockListEpisodeCredits: vi.fn(),
   mockListEpisodes: vi.fn(),
   mockReorderEpisodes: vi.fn(),
+  mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
 }));
 
@@ -35,10 +40,12 @@ vi.mock("./api", () => ({
   apiClient: {
     series: {
       bulkEditEpisodeCredits: mockBulkEditEpisodeCredits,
+      createEpisode: mockCreateEpisode,
       getEpisode: mockGetEpisode,
       listEpisodeCredits: mockListEpisodeCredits,
       listEpisodes: mockListEpisodes,
       reorderEpisodes: mockReorderEpisodes,
+      updateEpisodeAvailability: mockUpdateEpisodeAvailability,
       updateEpisodeLayout: mockUpdateEpisodeLayout,
     },
   },
@@ -288,6 +295,7 @@ describe("getEpisode", () => {
     expect(mockListEpisodes).not.toHaveBeenCalled();
     expect(result).toEqual({
       episode: {
+        availability: "",
         orderIndex: 1,
         price: 0,
         publicId: "EPISODE001",
@@ -390,6 +398,147 @@ describe("getEpisode", () => {
     );
 
     expect(result).toEqual({ notFound: true, ok: false });
+  });
+});
+
+describe("the surfaces an episode is shown on", () => {
+  it("reads the episode's own value, and the empty value where it follows its series", async () => {
+    mockListEpisodes.mockResolvedValue({
+      episodes: [
+        { ...episode("EPISODE001", 1), availability: SurfaceAvailability.APP },
+        episode("EPISODE002", 2),
+      ],
+    });
+
+    const { listEpisodes } = await import("./episode");
+    const result = await listEpisodes(
+      { seriesPublicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.episodes.map((item) => item.availability)).toEqual([
+      "app",
+      "",
+    ]);
+  });
+
+  // Opening the form on following the series for a value this build cannot
+  // name would write that over the episode's own value on the next save.
+  it("reports an episode value it cannot name", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: { ...episode("EPISODE001", 1), availability: 99 },
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("creates an episode that follows its series by sending nothing of its own", async () => {
+    mockCreateEpisode.mockResolvedValue({ episode: episode("EPISODE001", 1) });
+
+    const { createEpisode } = await import("./episode");
+    await createEpisode(
+      {
+        availability: "",
+        price: 0,
+        publishAt: "",
+        readingPeriodHours: 0,
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+        title: "Episode title",
+      },
+      "en"
+    );
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: undefined }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("creates an episode kept to the surfaces it names", async () => {
+    mockCreateEpisode.mockResolvedValue({ episode: episode("EPISODE001", 1) });
+
+    const { createEpisode } = await import("./episode");
+    await createEpisode(
+      {
+        availability: "web",
+        price: 0,
+        publishAt: "",
+        readingPeriodHours: 0,
+        seriesPublicId: "SERIES001",
+        tenantId: "TENANT001",
+        title: "Episode title",
+      },
+      "en"
+    );
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: SurfaceAvailability.WEB }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("sends the override and reads back what was stored", async () => {
+    mockUpdateEpisodeAvailability.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE001", 1),
+        availability: SurfaceAvailability.APP,
+      },
+    });
+
+    const { updateEpisodeAvailability } = await import("./episode");
+    const result = await updateEpisodeAvailability(
+      {
+        availability: "app",
+        episodePublicId: "EPISODE001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodeAvailability).toHaveBeenCalledWith(
+      {
+        availability: SurfaceAvailability.APP,
+        episodePublicId: "EPISODE001",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ availability: "app", ok: true });
+  });
+
+  // Unspecified is stored as no value, which is what keeps the episode
+  // following its series after the series changes.
+  it("sends unspecified to return the episode to its series", async () => {
+    mockUpdateEpisodeAvailability.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+    });
+
+    const { updateEpisodeAvailability } = await import("./episode");
+    const result = await updateEpisodeAvailability(
+      {
+        availability: "",
+        episodePublicId: "EPISODE001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodeAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: undefined }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ availability: "", ok: true });
   });
 });
 

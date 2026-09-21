@@ -71,3 +71,27 @@ it("finds each input by its role and label", () => {
   ).toHaveLength(2);
   expect(screen.getAllByLabelText(/publish_at/u)).toHaveLength(2);
 });
+
+// A new episode starts out following its series, and the option says what
+// that series is shown on.
+it("creates an episode that follows its series unless told otherwise", () => {
+  render(
+    <EpisodeForm
+      action={action}
+      seriesAvailability="app"
+      seriesPublicId="SERIES001"
+      timeZone="UTC"
+    />
+  );
+
+  expect(
+    [
+      ...document.querySelectorAll<HTMLInputElement>(
+        'input[type="hidden"][name="availability"]'
+      ),
+    ].map((input) => input.value)
+  ).toEqual([""]);
+  expect(screen.getByRole("combobox", { name: "Shown on" }).textContent).toBe(
+    "Follow the series (App only)"
+  );
+});

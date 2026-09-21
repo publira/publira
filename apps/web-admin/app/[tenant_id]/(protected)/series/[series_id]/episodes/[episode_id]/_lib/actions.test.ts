@@ -6,6 +6,7 @@ const {
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockReorderEpisodeImages,
+  mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
   mockUpdateEpisodePublishSchedule,
   mockUpdateTag,
@@ -16,6 +17,7 @@ const {
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
+  mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
   mockUpdateEpisodePublishSchedule: vi.fn(),
   mockUpdateTag: vi.fn(),
@@ -51,6 +53,7 @@ vi.mock("#lib/session", () => ({
 
 vi.mock("#lib/episode", () => ({
   reorderEpisodeImages: mockReorderEpisodeImages,
+  updateEpisodeAvailability: mockUpdateEpisodeAvailability,
   updateEpisodeLayout: mockUpdateEpisodeLayout,
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
   uploadEpisodePages: mockUploadEpisodePages,
@@ -193,6 +196,86 @@ describe("episode actions", () => {
     expect(result).toEqual({
       message:
         "Spreads cannot start past the episode's last page. Choose one of its pages.",
+      ok: false,
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("updating the availability sends the surfaces the episode states", async () => {
+    mockUpdateEpisodeAvailability.mockResolvedValueOnce({
+      availability: "app",
+      ok: true,
+    });
+
+    const { updateEpisodeAvailabilityAction } = await import("./actions");
+    await updateEpisodeAvailabilityAction(
+      null,
+      layoutFormData({ availability: "app" })
+    );
+
+    expect(mockUpdateEpisodeAvailability).toHaveBeenCalledWith(
+      {
+        availability: "app",
+        episodePublicId: "EP001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001/episodes/EP001?availability_updated=1"
+    );
+  });
+
+  // The empty value is what returns an overridden episode to its series, so a
+  // later change to the series reaches it again.
+  it("updating the availability sends the empty value to follow the series", async () => {
+    mockUpdateEpisodeAvailability.mockResolvedValueOnce({
+      availability: "",
+      ok: true,
+    });
+
+    const { updateEpisodeAvailabilityAction } = await import("./actions");
+    await updateEpisodeAvailabilityAction(
+      null,
+      layoutFormData({ availability: "" })
+    );
+
+    expect(mockUpdateEpisodeAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: "" }),
+      "en"
+    );
+  });
+
+  it("updating the availability refuses surfaces the form could not have offered", async () => {
+    const { updateEpisodeAvailabilityAction } = await import("./actions");
+    const result = await updateEpisodeAvailabilityAction(
+      null,
+      layoutFormData({ availability: "everywhere" })
+    );
+
+    expect(result).toEqual({
+      message: "Choose where the episode is shown, or follow the series.",
+      ok: false,
+    });
+    expect(mockUpdateEpisodeAvailability).not.toHaveBeenCalled();
+  });
+
+  it("updating the availability shows the failure the API reported", async () => {
+    mockUpdateEpisodeAvailability.mockResolvedValueOnce({
+      message:
+        "Could not update where the episode is shown. Please try again later.",
+      ok: false,
+    });
+
+    const { updateEpisodeAvailabilityAction } = await import("./actions");
+    const result = await updateEpisodeAvailabilityAction(
+      null,
+      layoutFormData({ availability: "web" })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Could not update where the episode is shown. Please try again later.",
       ok: false,
     });
     expect(mockRedirect).not.toHaveBeenCalled();

@@ -38,6 +38,7 @@ import {
 import { listEpisodes } from "#lib/episode";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -142,7 +143,7 @@ const SeriesEpisodesData = async ({
 
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [result, timeZone, t] = await Promise.all([
+  const [result, seriesResult, timeZone, t] = await Promise.all([
     listEpisodes(
       {
         seriesPublicId: series_id,
@@ -151,10 +152,14 @@ const SeriesEpisodesData = async ({
       },
       locale
     ),
+    // Only to mark the rows by where the series bounds them, so a read that
+    // failed leaves each row marked by its own value rather than the list
+    // unusable.
+    getSeries({ publicId: series_id, tenantId }, locale),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
   ]);
-  await redirectToLoginIfSessionRejected(result);
+  await redirectToLoginIfSessionRejected(result, seriesResult);
 
   const pageHrefs = cursorPageHrefs(result);
   const hasPageLinks = hasCursorPageLinks(pageHrefs);
@@ -215,6 +220,9 @@ const SeriesEpisodesData = async ({
         <EpisodesSortableList
           episodes={result.episodes}
           reorderAction={reorderEpisodesAction}
+          seriesAvailability={
+            seriesResult.ok ? seriesResult.series.availability : undefined
+          }
           seriesPublicId={series_id}
           timeZone={timeZone}
         />
