@@ -43,6 +43,8 @@ class ConnectFixtureServer {
     this.signupErrorCode = 'unavailable',
     this.verificationRequestStatus = HttpStatus.ok,
     this.verificationRequestErrorCode = 'unavailable',
+    this.passwordResetRequestStatus = HttpStatus.ok,
+    this.passwordResetRequestErrorCode = 'unavailable',
     this.acceptsPayments = false,
     this.checkoutStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
@@ -110,6 +112,14 @@ class ConnectFixtureServer {
   /// A token `VerifyUserEmail` answers as one whose time has run out, so a
   /// test can reach the state a reader finds an old link in.
   static const expiredVerificationToken = 'fixture-expired-verification-token';
+
+  /// The token a password reset link for the member carries, standing in for
+  /// the one the API would put in the mail `RequestPasswordReset` sends.
+  static const passwordResetToken = 'fixture-password-reset-token';
+
+  /// A reset token `ConfirmPasswordReset` answers as one whose time has run
+  /// out.
+  static const expiredPasswordResetToken = 'fixture-expired-reset-token';
 
   /// Unsigned JWT whose `sub` is the synthetic subject a free body's media
   /// token carries (`server/internal/auth`.`FreeEpisodeMediaSubject`). The API
@@ -458,6 +468,15 @@ class ConnectFixtureServer {
   int verificationRequestStatus;
   String verificationRequestErrorCode;
 
+  /// The same pair for `RequestPasswordReset`, which is charged against the
+  /// same mail allowance.
+  int passwordResetRequestStatus;
+  String passwordResetRequestErrorCode;
+
+  /// The member's password as `Login` checks it, which `ConfirmPasswordReset`
+  /// replaces for [passwordResetToken].
+  String memberCurrentPassword = memberPassword;
+
   /// The accounts `CreateUser` has opened here, keyed by address: what
   /// `Login` then accepts, and whether the address has been confirmed.
   final signups = <String, FixtureSignup>{};
@@ -641,6 +660,26 @@ class ConnectFixtureServer {
                 'message': verificationRequestErrorCode,
               },
       );
+      return;
+    }
+
+    if (path.endsWith('/RequestPasswordReset')) {
+      // Every address is answered the same way, the way the API answers one.
+      await _write(
+        request,
+        passwordResetRequestStatus,
+        passwordResetRequestStatus == HttpStatus.ok
+            ? const {'requested': true}
+            : {
+                'code': passwordResetRequestErrorCode,
+                'message': passwordResetRequestErrorCode,
+              },
+      );
+      return;
+    }
+
+    if (path.endsWith('/ConfirmPasswordReset')) {
+      await _writeConfirmPasswordReset(request, body);
       return;
     }
 
@@ -1274,7 +1313,7 @@ class ConnectFixtureServer {
   ) async {
     final email = _trimmed(body['email']);
     final password = _trimmed(body['password']);
-    if (email == memberEmail && password == memberPassword) {
+    if (email == memberEmail && password == memberCurrentPassword) {
       await _write(request, HttpStatus.ok, {
         'user': {
           'publicId': memberPublicId,
@@ -1362,6 +1401,41 @@ class ConnectFixtureServer {
       signup.verified = true;
     }
     await _write(request, HttpStatus.ok, {'verified': true});
+  }
+
+  /// `ConfirmPasswordReset` for the member's [passwordResetToken]. Everything
+  /// else is the dead end the API answers with: an expired link on
+  /// [expiredPasswordResetToken], and a token it never issued on anything
+  /// else.
+  Future<void> _writeConfirmPasswordReset(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    final token = _trimmed(body['token']);
+    final newPassword = _trimmed(body['newPassword']);
+    if (token.isEmpty || newPassword.isEmpty) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'invalid_argument',
+        'message': 'token and new_password are required',
+      });
+      return;
+    }
+    if (token == expiredPasswordResetToken) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': 'password reset token expired',
+      });
+      return;
+    }
+    if (token != passwordResetToken) {
+      await _write(request, HttpStatus.notFound, {
+        'code': 'not_found',
+        'message': 'password reset token not found',
+      });
+      return;
+    }
+    memberCurrentPassword = newPassword;
+    await _write(request, HttpStatus.ok, {'confirmed': true});
   }
 
   Map<String, Object?> _accessToken(String token) => {

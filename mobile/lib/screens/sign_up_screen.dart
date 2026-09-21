@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/forms/email_input.dart';
+import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
@@ -21,10 +22,9 @@ import 'package:publira/router.dart';
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
-  /// The limits `CreateUser` and the site's own form enforce, counted in code
-  /// points the way they count them.
+  /// The limit `CreateUser` and the site's own form enforce, counted in code
+  /// points the way they count it.
   static const maxNameLength = 100;
-  static const maxPasswordLength = 1024;
 
   /// The oldest birth date the picker offers, matching
   /// `oldestPlausibleAge` in `server/internal/ageverification`.
@@ -212,7 +212,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             obscureText: true,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.next,
-            validator: (value) => _validatePassword(messages, value ?? ''),
+            validator: (value) => validateNewPassword(messages, value ?? ''),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -225,7 +225,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
             obscureText: true,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.done,
-            validator: (value) => _validateConfirmation(messages, value ?? ''),
+            validator: (value) => validatePasswordConfirmation(
+              messages,
+              value ?? '',
+              password: _passwordController.text,
+            ),
             onFieldSubmitted: (_) => unawaited(_submit()),
           ),
           _BirthDateField(
@@ -268,26 +272,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
     if (name.runes.length > SignUpScreen.maxNameLength) {
       return messages.signUpNameTooLong;
-    }
-    return null;
-  }
-
-  String? _validatePassword(AppMessages messages, String value) {
-    if (value.isEmpty) {
-      return messages.authPasswordRequired;
-    }
-    if (value.runes.length > SignUpScreen.maxPasswordLength) {
-      return messages.signUpPasswordTooLong;
-    }
-    return null;
-  }
-
-  String? _validateConfirmation(AppMessages messages, String value) {
-    if (value.isEmpty) {
-      return messages.signUpPasswordConfirmRequired;
-    }
-    if (value != _passwordController.text) {
-      return messages.signUpPasswordMismatch;
     }
     return null;
   }
@@ -429,12 +413,12 @@ class _SignUpPendingState extends State<_SignUpPending> {
         Text(messages.signUpPendingSent),
         const SizedBox(height: 8),
         Text(
-          messages.signUpPendingSentTo(email: widget.email),
+          messages.authSentTo(email: widget.email),
           key: const ValueKey('sign-up-pending-email'),
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 8),
-        Text(messages.signUpPendingCheckSpam, style: theme.textTheme.bodySmall),
+        Text(messages.authCheckSpam, style: theme.textTheme.bodySmall),
         if (_resent) ...[
           const SizedBox(height: 16),
           Text(

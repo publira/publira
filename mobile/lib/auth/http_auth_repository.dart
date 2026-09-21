@@ -31,6 +31,10 @@ class HttpAuthRepository implements AuthRepository {
       '/publira.v1.AuthService/VerifyUserEmail';
   static const _requestEmailVerificationProcedure =
       '/publira.v1.AuthService/RequestEmailVerification';
+  static const _requestPasswordResetProcedure =
+      '/publira.v1.AuthService/RequestPasswordReset';
+  static const _confirmPasswordResetProcedure =
+      '/publira.v1.AuthService/ConfirmPasswordReset';
   static const _getMeProcedure = '/publira.v1.AuthService/GetMe';
   static const _updateMeProcedure = '/publira.v1.AuthService/UpdateMe';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
@@ -100,19 +104,7 @@ class HttpAuthRepository implements AuthRepository {
         );
       }
     } on ConnectException catch (error) {
-      throw switch (error.code) {
-        // A token the API never issued, and one it has already forgotten,
-        // are the same not_found and the same dead end for the reader.
-        'not_found' || 'invalid_argument' => AuthFailure(
-          AuthFailureKind.verificationTokenInvalid,
-          message: error.message,
-        ),
-        'failed_precondition' => AuthFailure(
-          AuthFailureKind.verificationTokenExpired,
-          message: error.message,
-        ),
-        _ => _toFailure(error),
-      };
+      throw _toLinkFailure(error);
     }
   }
 
@@ -126,6 +118,47 @@ class HttpAuthRepository implements AuthRepository {
       }, tenantId: tenantId);
     } on ConnectException catch (error) {
       throw _toMailFailure(error);
+    }
+  }
+
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(_requestPasswordResetProcedure, {
+        'tenant': {'tenantId': tenantId},
+        'email': email,
+      }, tenantId: tenantId);
+    } on ConnectException catch (error) {
+      throw _toMailFailure(error);
+    }
+  }
+
+  @override
+  Future<void> confirmPasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_confirmPasswordResetProcedure, {
+        'tenant': {'tenantId': tenantId},
+        'token': token,
+        'newPassword': newPassword,
+      }, tenantId: tenantId);
+      if (body['confirmed'] != true) {
+        throw const AuthFailure(
+          AuthFailureKind.unexpected,
+          message: 'ConfirmPasswordReset answered without setting the password',
+        );
+      }
+    } on ConnectException catch (error) {
+      // The screen never sends an empty token, so what the API calls missing
+      // here is a password that trimmed down to nothing.
+      if (error.code == 'invalid_argument') {
+        throw AuthFailure(AuthFailureKind.invalidInput, message: error.message);
+      }
+      throw _toLinkFailure(error);
     }
   }
 
@@ -283,6 +316,23 @@ class HttpAuthRepository implements AuthRepository {
         message: error.message,
       ),
       _ => AuthFailure(AuthFailureKind.unexpected, message: error.message),
+    };
+  }
+
+  /// What the RPCs that spend an emailed link's token refuse with.
+  AuthFailure _toLinkFailure(ConnectException error) {
+    return switch (error.code) {
+      // A token the API never issued, and one it has already forgotten, are
+      // the same not_found and the same dead end for the reader.
+      'not_found' || 'invalid_argument' => AuthFailure(
+        AuthFailureKind.linkInvalid,
+        message: error.message,
+      ),
+      'failed_precondition' => AuthFailure(
+        AuthFailureKind.linkExpired,
+        message: error.message,
+      ),
+      _ => _toFailure(error),
     };
   }
 

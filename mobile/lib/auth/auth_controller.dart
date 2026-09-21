@@ -120,6 +120,46 @@ class AuthController extends ChangeNotifier {
   Future<void> requestEmailVerification(String email) =>
       _repository.requestEmailVerification(email);
 
+  /// Asks for a link to set a new password with, mailed to [email].
+  ///
+  /// Throws [AuthFailure].
+  Future<void> requestPasswordReset(String email) =>
+      _repository.requestPasswordReset(email);
+
+  /// Sets [newPassword] on the account behind a reset link's [token].
+  ///
+  /// The API ends every session of that account, so a session this device
+  /// holds is checked afterwards and dropped once the API refuses it. The
+  /// link does not say whose account it was for, and a session of another
+  /// account is still good. The reader is not told the session expired: they
+  /// have just replaced the password it was signed in with.
+  ///
+  /// Throws [AuthFailure] when the reset itself fails. The check that follows
+  /// never throws; a session it could not settle is left for the next launch
+  /// to confirm.
+  Future<void> confirmPasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _repository.confirmPasswordReset(
+      token: token,
+      newPassword: newPassword,
+    );
+    final session = _session;
+    if (session == null) {
+      return;
+    }
+    final revision = _revision;
+    try {
+      await _repository.refresh(session);
+    } on AuthFailure catch (failure) {
+      if (failure.kind == AuthFailureKind.sessionExpired &&
+          _revision == revision) {
+        await signOut();
+      }
+    }
+  }
+
   /// Whether the tenant checks ages, which the sign-up form asks before it
   /// decides whether to offer a birth date.
   ///

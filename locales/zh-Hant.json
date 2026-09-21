@@ -3065,9 +3065,9 @@
     "sign_in": {
       "email_not_verified": "您的電子郵件地址尚未確認。請開啟確認信中的連結。",
       "failed": "無法登入。",
+      "forgot_password": "忘記密碼？",
       "invalid_credentials": "電子郵件地址或密碼不正確。",
       "no_account": "還沒有帳戶嗎？",
-      "password_reset_note": "請在網站上重設密碼。",
       "sign_up": "註冊"
     },
     "viewer": {
@@ -3110,13 +3110,18 @@
       "title": "章節"
     },
     "auth": {
+      "check_spam": "如果沒有收到郵件，請查看垃圾郵件資料夾。",
       "email_invalid": "請輸入有效的電子郵件地址。",
       "email_label": "電子郵件地址",
       "email_required": "請輸入電子郵件地址。",
+      "password_confirm_required": "請再次輸入密碼以確認。",
       "password_label": "密碼",
+      "password_mismatch": "兩次輸入的密碼不一致。",
       "password_required": "請輸入密碼。",
+      "password_too_long": "密碼請控制在 1024 個字元以內。",
       "resend_failed": "無法寄送確認郵件。請重試。",
       "resend_verification": "重新寄送確認郵件",
+      "sent_to": "寄送至：{$email}",
       "verification_sent": "我們已寄出確認郵件。請開啟郵件中的連結完成註冊。"
     },
     "sign_up": {
@@ -3129,16 +3134,11 @@
       "name_required": "請輸入顯示名稱。",
       "name_too_long": "顯示名稱請控制在 100 個字元以內。",
       "password_confirm_label": "確認密碼",
-      "password_confirm_required": "請再次輸入密碼以確認。",
-      "password_mismatch": "兩次輸入的密碼不一致。",
-      "password_too_long": "密碼請控制在 1024 個字元以內。",
       "submit": "註冊",
       "title": "註冊"
     },
     "sign_up_pending": {
-      "check_spam": "如果沒有收到郵件，請查看垃圾郵件資料夾。",
       "sent": "我們已向您輸入的電子郵件地址寄出郵件。請開啟它繼續註冊。",
-      "sent_to": "寄送至：{$email}",
       "title": "請查收郵件"
     },
     "verify_email": {
@@ -3154,6 +3154,25 @@
       "sent_heading": "確認郵件已寄出",
       "submit": "寄送確認郵件",
       "title": "重新寄送確認郵件"
+    },
+    "reset_password": {
+      "description": "請輸入您登入時使用的電子郵件地址。如果該地址有帳戶，我們會向它寄出設定新密碼的連結。",
+      "failed": "無法寄送重設郵件。請重試。",
+      "sent": "我們已寄出重設郵件。請開啟郵件中的連結設定新密碼。",
+      "sent_heading": "重設郵件已寄出",
+      "submit": "寄送重設郵件",
+      "title": "重設密碼"
+    },
+    "confirm_password": {
+      "done": "您的密碼已重設。請使用新密碼登入。",
+      "expired": "此重設連結已失效。",
+      "failed": "無法重設您的密碼。請重試。",
+      "invalid_token": "此重設連結無效。",
+      "password_confirm_label": "確認新密碼",
+      "password_label": "新密碼",
+      "request_again": "重新申請重設郵件",
+      "submit": "重設密碼",
+      "title": "設定新密碼"
     }
   },
   "platform": {

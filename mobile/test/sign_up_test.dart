@@ -199,7 +199,7 @@ void main() {
     tester,
   ) async {
     repository.verifyEmailFailure = const AuthFailure(
-      AuthFailureKind.verificationTokenExpired,
+      AuthFailureKind.linkExpired,
     );
     await pumpApp(tester, initialLocation: '/verify?token=stale-token');
     await pumpUntilFound(

@@ -4,6 +4,7 @@ import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
 import 'package:publira/screens/checkout_return_screen.dart';
+import 'package:publira/screens/confirm_password_screen.dart';
 import 'package:publira/screens/contact_screen.dart';
 import 'package:publira/screens/creator_screen.dart';
 import 'package:publira/screens/downloads_screen.dart';
@@ -13,6 +14,7 @@ import 'package:publira/screens/follows_screen.dart';
 import 'package:publira/screens/label_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/resend_verification_screen.dart';
+import 'package:publira/screens/reset_password_screen.dart';
 import 'package:publira/screens/search_screen.dart';
 import 'package:publira/screens/series_detail_screen.dart';
 import 'package:publira/screens/sign_in_screen.dart';
@@ -30,6 +32,11 @@ abstract final class AppRoutes {
   /// as an App Link, so the token is spent here rather than in a browser.
   static const verifyEmail = '/verify';
   static const resendVerification = '/resend-verification';
+
+  /// The site's own paths for asking for a password reset link and for the
+  /// link itself, both claimed as App Links so neither opens a browser.
+  static const resetPassword = '/reset-password';
+  static const confirmPassword = '/confirm-password';
   static const account = '/account';
   static const follows = 'follows';
   static const accountFollows = '$account/$follows';
@@ -53,6 +60,13 @@ abstract final class AppRoutes {
           path: resendVerification,
           queryParameters: {'email': email},
         ).toString();
+
+  /// The reset request form, with [email] already in its field for a reader
+  /// sent from a form that knows the address.
+  static String resetPasswordPath({String? email}) =>
+      email == null || email.isEmpty
+      ? resetPassword
+      : Uri(path: resetPassword, queryParameters: {'email': email}).toString();
 
   /// The sign-in form, landing on [returnTo] once the reader is in rather
   /// than on the screen that sent them.
@@ -136,6 +150,19 @@ GoRouter createAppRouter({String? initialLocation}) {
         name: 'resendVerification',
         builder: (context, state) =>
             ResendVerificationScreen(email: state.uri.queryParameters['email']),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        name: 'resetPassword',
+        builder: (context, state) =>
+            ResetPasswordScreen(email: state.uri.queryParameters['email']),
+      ),
+      GoRoute(
+        path: AppRoutes.confirmPassword,
+        name: 'confirmPassword',
+        builder: (context, state) => ConfirmPasswordScreen(
+          token: state.uri.queryParameters['token'] ?? '',
+        ),
       ),
       GoRoute(
         path: AppRoutes.checkoutReturn,
