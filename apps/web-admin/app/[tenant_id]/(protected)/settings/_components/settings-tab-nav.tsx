@@ -6,7 +6,14 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 
 interface SettingsTabNavProps {
-  current: "basic" | "creator-roles" | "email" | "payment" | "policy" | "theme";
+  current:
+    | "basic"
+    | "creator-roles"
+    | "email"
+    | "mobile-push"
+    | "payment"
+    | "policy"
+    | "theme";
 }
 
 export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
@@ -49,6 +56,14 @@ export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
     >
       <Suspense fallback={<SkeletonLine className="h-5 w-12" />}>
         <Message message="admin.settings.tabs.payment" />
+      </Suspense>
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/mobile-push" />}
+      variant={current === "mobile-push" ? "default" : "outline"}
+    >
+      <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+        <Message message="admin.settings.tabs.mobile_push" />
       </Suspense>
     </LinkButton>
     <LinkButton

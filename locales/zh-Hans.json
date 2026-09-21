@@ -1439,6 +1439,7 @@
     "settings": {
       "email_error": "无法显示邮件设置",
       "payment_error": "无法显示支付设置",
+      "mobile_push_error": "无法显示移动推送设置",
       "section_error": "无法显示设置",
       "theme_error": "无法显示主题",
       "theme": {
@@ -1631,6 +1632,8 @@
       "email_description": "管理该租户发送邮件的方式。",
       "payment_title": "设置 — 支付",
       "payment_description": "管理该租户的 Stripe 支付设置。",
+      "mobile_push_title": "设置 — 移动推送",
+      "mobile_push_description": "管理向该租户的移动应用发送推送通知所用的 Firebase 凭据。",
       "account_title": "账户设置",
       "account_description": "管理您当前登录的管理员账户。",
       "tenant_missing": "缺少租户 ID。",
@@ -1645,6 +1648,7 @@
         "theme": "主题",
         "email": "邮件",
         "payment": "支付",
+        "mobile_push": "移动推送",
         "policy": "限制与保留"
       },
       "image": {
@@ -1889,6 +1893,40 @@
         "validation": {
           "secret_key_required": "请输入密钥。",
           "webhook_secret_required": "请输入 webhook 签名密钥。"
+        }
+      },
+      "mobile_push": {
+        "title": "Firebase Cloud Messaging",
+        "description": "推送通知通过构建该租户移动应用所用的 Firebase 项目送达，因此凭据必须是同一项目的服务账号密钥。密钥文件只能写入，保存后不会再次显示。",
+        "configured": "移动推送已开启。发往应用的通知使用下方的凭据发送。",
+        "unconfigured": "移动推送已关闭。在保存凭据之前，移动应用不会收到推送通知；电子邮件和应用内通知仍会照常送达。",
+        "project_id": "Firebase 项目 ID",
+        "project_id_description": "构建该租户移动应用所用的 Firebase 项目的 ID，可在 Firebase 控制台的项目设置中找到。",
+        "client_email": "服务账号",
+        "updated_at": "上次保存",
+        "key_file": "服务账号密钥文件",
+        "key_file_description": "在 Firebase 的“项目设置”→“服务账号”→“生成新的私钥”中下载的 JSON 文件。保存后会替换已存储的密钥。",
+        "save": "保存凭据",
+        "replace": "替换凭据",
+        "saved": "Firebase 凭据已保存。",
+        "delete": "删除",
+        "deleting": "正在删除…",
+        "delete_confirm_title": "要删除 Firebase 凭据吗？",
+        "delete_confirm_description": "已存储的密钥将被删除，该租户的移动推送将关闭。电子邮件和应用内通知不受影响。",
+        "delete_confirm_action": "删除凭据",
+        "deleted": "Firebase 凭据已删除。",
+        "load_failed": "无法加载移动推送设置。请稍后再试。",
+        "save_failed": "无法保存 Firebase 凭据。请稍后再试。",
+        "delete_failed": "无法删除 Firebase 凭据。请稍后再试。",
+        "encryption_unavailable": "API 服务器没有用于保护服务账号密钥的加密密钥，因此无法保存。请设置 PUBLIRA_SECRET_ENCRYPTION_KEYS 并重启 API 服务器。",
+        "validation": {
+          "project_id_required": "请输入 Firebase 项目 ID。",
+          "file_required": "请选择服务账号密钥文件。",
+          "file_too_large": "该文件太大，不是服务账号密钥。请选择从 Firebase 下载的 JSON 文件。",
+          "not_json": "该文件不是 JSON。请选择从 Firebase 下载的服务账号密钥文件。",
+          "not_service_account": "该文件不是服务账号密钥。请在 Firebase 控制台的“项目设置”→“服务账号”中下载。",
+          "project_mismatch": "该密钥属于 Firebase 项目“{$key}”，而不是“{$entered}”。请上传构建移动应用所用项目的密钥，或更正项目 ID。",
+          "key_invalid": "无法使用该服务账号密钥。请在 Firebase 控制台的“项目设置”→“服务账号”中生成新的私钥并上传。"
         }
       },
       "policy_title": "设置 — 限制与保留",

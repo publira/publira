@@ -1439,6 +1439,7 @@
     "settings": {
       "email_error": "無法顯示郵件設定",
       "payment_error": "無法顯示付款設定",
+      "mobile_push_error": "無法顯示行動推播設定",
       "section_error": "無法顯示設定",
       "theme_error": "無法顯示主題",
       "theme": {
@@ -1631,6 +1632,8 @@
       "email_description": "管理該租戶寄送郵件的方式。",
       "payment_title": "設定 — 付款",
       "payment_description": "管理該租戶的 Stripe 付款設定。",
+      "mobile_push_title": "設定 — 行動推播",
+      "mobile_push_description": "管理向該租戶的行動應用程式傳送推播通知所用的 Firebase 憑證。",
       "account_title": "帳戶設定",
       "account_description": "管理您目前登入的管理員帳戶。",
       "tenant_missing": "缺少租戶 ID。",
@@ -1645,6 +1648,7 @@
         "theme": "主題",
         "email": "郵件",
         "payment": "付款",
+        "mobile_push": "行動推播",
         "policy": "限制與保留"
       },
       "image": {
@@ -1889,6 +1893,40 @@
         "validation": {
           "secret_key_required": "請輸入密鑰。",
           "webhook_secret_required": "請輸入 webhook 簽章密鑰。"
+        }
+      },
+      "mobile_push": {
+        "title": "Firebase Cloud Messaging",
+        "description": "推播通知透過建置該租戶行動應用程式所用的 Firebase 專案送達，因此憑證必須是同一專案的服務帳戶金鑰。金鑰檔案僅供寫入，儲存後不會再次顯示。",
+        "configured": "行動推播已開啟。傳給應用程式的通知會使用下方的憑證傳送。",
+        "unconfigured": "行動推播已關閉。在儲存憑證之前，行動應用程式不會收到推播通知；電子郵件和應用程式內通知仍會照常送達。",
+        "project_id": "Firebase 專案 ID",
+        "project_id_description": "建置該租戶行動應用程式所用的 Firebase 專案的 ID，可在 Firebase 控制台的專案設定中找到。",
+        "client_email": "服務帳戶",
+        "updated_at": "上次儲存",
+        "key_file": "服務帳戶金鑰檔案",
+        "key_file_description": "在 Firebase 的「專案設定」→「服務帳戶」→「產生新的私密金鑰」中下載的 JSON 檔案。儲存後會取代已儲存的金鑰。",
+        "save": "儲存憑證",
+        "replace": "取代憑證",
+        "saved": "Firebase 憑證已儲存。",
+        "delete": "刪除",
+        "deleting": "正在刪除…",
+        "delete_confirm_title": "要刪除 Firebase 憑證嗎？",
+        "delete_confirm_description": "已儲存的金鑰將被刪除，該租戶的行動推播將關閉。電子郵件和應用程式內通知不受影響。",
+        "delete_confirm_action": "刪除憑證",
+        "deleted": "Firebase 憑證已刪除。",
+        "load_failed": "無法載入行動推播設定。請稍後再試。",
+        "save_failed": "無法儲存 Firebase 憑證。請稍後再試。",
+        "delete_failed": "無法刪除 Firebase 憑證。請稍後再試。",
+        "encryption_unavailable": "API 伺服器沒有用於保護服務帳戶金鑰的加密金鑰，因此無法儲存。請設定 PUBLIRA_SECRET_ENCRYPTION_KEYS 並重新啟動 API 伺服器。",
+        "validation": {
+          "project_id_required": "請輸入 Firebase 專案 ID。",
+          "file_required": "請選擇服務帳戶金鑰檔案。",
+          "file_too_large": "該檔案太大，不是服務帳戶金鑰。請選擇從 Firebase 下載的 JSON 檔案。",
+          "not_json": "該檔案不是 JSON。請選擇從 Firebase 下載的服務帳戶金鑰檔案。",
+          "not_service_account": "該檔案不是服務帳戶金鑰。請在 Firebase 控制台的「專案設定」→「服務帳戶」中下載。",
+          "project_mismatch": "該金鑰屬於 Firebase 專案「{$key}」，而不是「{$entered}」。請上傳建置行動應用程式所用專案的金鑰，或更正專案 ID。",
+          "key_invalid": "無法使用該服務帳戶金鑰。請在 Firebase 控制台的「專案設定」→「服務帳戶」中產生新的私密金鑰並上傳。"
         }
       },
       "policy_title": "設定 — 限制與保留",

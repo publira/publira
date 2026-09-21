@@ -1439,6 +1439,7 @@
     "settings": {
       "email_error": "Could not display the email settings",
       "payment_error": "Could not display the payment settings",
+      "mobile_push_error": "Could not display the mobile push settings",
       "section_error": "Could not display the settings",
       "theme_error": "Could not display the theme",
       "theme": {
@@ -1631,6 +1632,8 @@
       "email_description": "Manage how this tenant sends email.",
       "payment_title": "Settings — Payments",
       "payment_description": "Manage this tenant's Stripe payment settings.",
+      "mobile_push_title": "Settings — Mobile push",
+      "mobile_push_description": "Manage the Firebase credentials this tenant's mobile app is sent push notifications with.",
       "account_title": "Account settings",
       "account_description": "Manage the administrator account you are signed in as.",
       "tenant_missing": "The tenant ID is missing.",
@@ -1645,6 +1648,7 @@
         "theme": "Theme",
         "email": "Email",
         "payment": "Payments",
+        "mobile_push": "Mobile push",
         "policy": "Limits and retention"
       },
       "image": {
@@ -1889,6 +1893,40 @@
         "validation": {
           "secret_key_required": "Enter the secret key.",
           "webhook_secret_required": "Enter the webhook signing secret."
+        }
+      },
+      "mobile_push": {
+        "title": "Firebase Cloud Messaging",
+        "description": "Push notifications reach this tenant's mobile app through the Firebase project the app is built with, so the credentials must be a service account key from that same project. The key file is write-only: once saved, it is never shown again.",
+        "configured": "Mobile push is on. Notifications to the app are sent with the credentials below.",
+        "unconfigured": "Mobile push is off. Until credentials are saved, the mobile app receives no push notifications; email and in-app notifications are still delivered.",
+        "project_id": "Firebase project ID",
+        "project_id_description": "The ID of the Firebase project the tenant's mobile app is built with, as shown in the Firebase console's project settings.",
+        "client_email": "Service account",
+        "updated_at": "Last saved",
+        "key_file": "Service account key file",
+        "key_file_description": "The JSON file Firebase downloads from Project settings → Service accounts → Generate new private key. Saving replaces any key already stored.",
+        "save": "Save the credentials",
+        "replace": "Replace the credentials",
+        "saved": "The Firebase credentials were saved.",
+        "delete": "Remove",
+        "deleting": "Removing…",
+        "delete_confirm_title": "Remove the Firebase credentials?",
+        "delete_confirm_description": "The stored key is deleted and mobile push is turned off for this tenant. Email and in-app notifications are not affected.",
+        "delete_confirm_action": "Remove the credentials",
+        "deleted": "The Firebase credentials were removed.",
+        "load_failed": "Could not load the mobile push settings. Please try again later.",
+        "save_failed": "Could not save the Firebase credentials. Please try again later.",
+        "delete_failed": "Could not remove the Firebase credentials. Please try again later.",
+        "encryption_unavailable": "The API server has no encryption key to protect the service account key with, so it cannot be saved. Set PUBLIRA_SECRET_ENCRYPTION_KEYS and restart the API server.",
+        "validation": {
+          "project_id_required": "Enter the Firebase project ID.",
+          "file_required": "Select the service account key file.",
+          "file_too_large": "That file is too large to be a service account key. Select the JSON file Firebase downloaded.",
+          "not_json": "That file is not JSON. Select the service account key file Firebase downloaded.",
+          "not_service_account": "That file is not a service account key. Download one from Project settings → Service accounts in the Firebase console.",
+          "project_mismatch": "The key belongs to the Firebase project \"{$key}\", not \"{$entered}\". Upload a key from the project the mobile app is built with, or correct the project ID.",
+          "key_invalid": "The service account key could not be used. Download a new private key from Project settings → Service accounts in the Firebase console and upload it."
         }
       },
       "policy_title": "Settings — Limits and retention",
