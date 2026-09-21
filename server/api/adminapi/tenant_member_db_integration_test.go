@@ -11,6 +11,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -376,5 +377,60 @@ func TestDBCreateTenantAdminInvitationGrantsAnExistingUserAtOnce(t *testing.T) {
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM outbox_events WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
 		t.Fatalf("outbox events = %d, want none for a granted role", count)
+	}
+}
+
+// An invitation mails an address nobody has confirmed, so creating and resending
+// one spend the mail guard's allowance like the console's other mail forms.
+func TestDBTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
+	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.tenantMemberClient()
+	ctx := context.Background()
+
+	created, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), Email: "invitee@tenant-a.example.com",
+	}))
+	if err != nil {
+		t.Fatalf("the first CreateTenantAdminInvitation: %v", err)
+	}
+	_, err = client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), Email: "invitee@tenant-a.example.com",
+	}))
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("the second CreateTenantAdminInvitation code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+	_, err = client.ResendTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.ResendTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), InvitationId: created.Msg.Invitation.Id,
+	}))
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("ResendTenantAdminInvitation code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+
+	if events := env.pendingOutboxEvents(t, outbox.EventTypeTenantAdminInvitationEmail); len(events) != 1 {
+		t.Fatalf("queued invitation mails = %d, want the one the allowance paid for", len(events))
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'tenant_admin_invite_resent'", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("resent audit rows = %d, want none for a refused resend", count)
+	}
+}
+
+// Granting the role to an existing user mails nothing, so it spends nothing.
+func TestDBTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T) {
+	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
+	client := env.tenantMemberClient()
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		created, err := client.CreateTenantAdminInvitation(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+			Tenant: tenant.tenantContext(), Email: reader.Email,
+		}))
+		if err != nil {
+			t.Fatalf("CreateTenantAdminInvitation attempt %d: %v", attempt, err)
+		}
+		if !created.Msg.RoleGrantedImmediately {
+			t.Fatalf("attempt %d response = %+v, want the role granted", attempt, created.Msg)
+		}
 	}
 }

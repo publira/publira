@@ -93,6 +93,9 @@ func ListInvitations(ctx context.Context, q dbmodels.Querier, p ListParams) ([]d
 type InviteParams struct {
 	TenantID uuid.UUID
 	Email    string
+	// AllowMail, when set, is asked before anything is written for an address
+	// that will be mailed, and its error is returned as is.
+	AllowMail func(email string) error
 }
 
 // Invited is what [Invite] did: either it granted the role to a user the
@@ -129,22 +132,24 @@ func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 	}
 
 	existing, err := q.GetTenantAdminInvitationByTenantAndEmail(ctx, dbmodels.GetTenantAdminInvitationByTenantAndEmailParams{TenantID: p.TenantID, Email: email})
-	switch {
-	case err == nil:
-		invitation, err := rearm(ctx, q, p.TenantID, existing.Email)
-		if err != nil {
-			return Invited{}, err
-		}
-		return Invited{Email: email, Invitation: invitation}, nil
-	case errors.Is(err, sql.ErrNoRows):
-		invitation, err := IssueInvitation(ctx, q, p.TenantID, email)
-		if err != nil {
-			return Invited{}, err
-		}
-		return Invited{Email: email, Invitation: invitation}, nil
-	default:
+	found := err == nil
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return Invited{}, fmt.Errorf("get tenant admin invitation: %w", err)
 	}
+	if err := allowMail(p.AllowMail, email); err != nil {
+		return Invited{}, err
+	}
+
+	var invitation dbmodels.TenantAdminInvitation
+	if found {
+		invitation, err = rearm(ctx, q, p.TenantID, existing.Email)
+	} else {
+		invitation, err = IssueInvitation(ctx, q, p.TenantID, email)
+	}
+	if err != nil {
+		return Invited{}, err
+	}
+	return Invited{Email: email, Invitation: invitation}, nil
 }
 
 // IssueInvitation creates a new invitation for an address that has neither an
@@ -176,11 +181,19 @@ type InvitationParams struct {
 	InvitationID uuid.UUID
 }
 
+// ResendParams names the invitation to mail again.
+type ResendParams struct {
+	TenantID     uuid.UUID
+	InvitationID uuid.UUID
+	// AllowMail is asked as [InviteParams.AllowMail] is.
+	AllowMail func(email string) error
+}
+
 // Resend gives a pending or expired invitation a new link and a new expiry
 // inside tx, and queues the mail again.
-func Resend(ctx context.Context, tx *sql.Tx, p InvitationParams) (dbmodels.TenantAdminInvitation, error) {
+func Resend(ctx context.Context, tx *sql.Tx, p ResendParams) (dbmodels.TenantAdminInvitation, error) {
 	q := dbmodels.New(tx)
-	invitation, err := getInvitation(ctx, q, p)
+	invitation, err := getInvitation(ctx, q, InvitationParams{TenantID: p.TenantID, InvitationID: p.InvitationID})
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
@@ -189,6 +202,9 @@ func Resend(ctx context.Context, tx *sql.Tx, p InvitationParams) (dbmodels.Tenan
 	}
 	if invitation.CanceledAt.Valid {
 		return dbmodels.TenantAdminInvitation{}, ErrInvitationWasCanceled
+	}
+	if err := allowMail(p.AllowMail, invitation.Email); err != nil {
+		return dbmodels.TenantAdminInvitation{}, err
 	}
 	return rearm(ctx, q, p.TenantID, invitation.Email)
 }
@@ -210,6 +226,13 @@ func Cancel(ctx context.Context, q dbmodels.Querier, p InvitationParams) (dbmode
 		return dbmodels.TenantAdminInvitation{}, fmt.Errorf("cancel tenant admin invitation: %w", err)
 	}
 	return canceled, nil
+}
+
+func allowMail(allow func(string) error, email string) error {
+	if allow == nil {
+		return nil
+	}
+	return allow(email)
 }
 
 func getInvitation(ctx context.Context, q dbmodels.Querier, p InvitationParams) (dbmodels.TenantAdminInvitation, error) {

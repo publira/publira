@@ -176,7 +176,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	updated, err := tenantmembers.Resend(ctx, tx, tenantmembers.InvitationParams{TenantID: tenant.ID, InvitationID: invitationID})
+	updated, err := tenantmembers.Resend(ctx, tx, tenantmembers.ResendParams{TenantID: tenant.ID, InvitationID: invitationID})
 	if err != nil {
 		return nil, s.tenantInvitationError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}

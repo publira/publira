@@ -58,7 +58,10 @@ func tenantAdminInvitationToProto(invitation dbmodels.TenantAdminInvitation, now
 // tenantMembersError maps what tenantmembers refuses to this API's codes;
 // anything else is a database failure.
 func (s *adminServer) tenantMembersError(ctx context.Context, msg string, err error, keyvals ...any) error {
+	var connectErr *connect.Error
 	switch {
+	case errors.As(err, &connectErr):
+		return connectErr
 	case errors.Is(err, tenantmembers.ErrLastAdmin):
 		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonLastTenantAdmin)
 	case errors.Is(err, tenantmembers.ErrUserPublicIDRequired),
@@ -294,7 +297,11 @@ func (s *adminServer) CreateTenantAdminInvitation(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	invited, err := tenantmembers.Invite(ctx, tx, tenantmembers.InviteParams{TenantID: tenant.ID, Email: req.Msg.Email})
+	invited, err := tenantmembers.Invite(ctx, tx, tenantmembers.InviteParams{
+		TenantID:  tenant.ID,
+		Email:     req.Msg.Email,
+		AllowMail: s.allowInvitationMail(ctx, req, tenant),
+	})
 	if err != nil {
 		return nil, s.tenantMembersError(ctx, "failed to invite tenant admin", err, "tenant_id", tenant.ID.String())
 	}
@@ -331,7 +338,11 @@ func (s *adminServer) ResendTenantAdminInvitation(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	updated, err := tenantmembers.Resend(ctx, tx, tenantmembers.InvitationParams{TenantID: tenant.ID, InvitationID: invitationID})
+	updated, err := tenantmembers.Resend(ctx, tx, tenantmembers.ResendParams{
+		TenantID:     tenant.ID,
+		InvitationID: invitationID,
+		AllowMail:    s.allowInvitationMail(ctx, req, tenant),
+	})
 	if err != nil {
 		return nil, s.tenantMembersError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
@@ -369,6 +380,15 @@ func (s *adminServer) CancelTenantAdminInvitation(
 	return connect.NewResponse(&publiraadminv1.CancelTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
 	}), nil
+}
+
+// allowInvitationMail charges the mail guard for an invitation mail. It runs
+// after the lookups that decide whether a mail goes out, since an address that
+// already has an account is granted the role and mailed nothing.
+func (s *adminServer) allowInvitationMail(ctx context.Context, req connect.AnyRequest, tenant dbmodels.Tenant) func(string) error {
+	return func(email string) error {
+		return s.mail.Allow(ctx, req, tenant.ID.String(), email)
+	}
 }
 
 func parseInvitationID(raw string) (uuid.UUID, error) {
