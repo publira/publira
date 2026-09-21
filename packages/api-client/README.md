@@ -127,10 +127,11 @@ import {
 | `isRejectedRequestRpcError(error)` | The range where the server rejected the request itself; a form may show it as a message |
 | `rethrowUnclassifiedRpcError(error)` | Rethrows only what cannot be classified. Call it first in a `catch` that turns errors into messages |
 | `rpcErrorRawMessage(error)` | The server's body with the `[code]` prefix stripped. **Only for passing through wording written for an operator** |
-| `rpcErrorHasFieldViolation(error, field)` | Type-safe check for a `google.rpc.BadRequest` request field |
+| `rpcErrorHasFieldViolation(error, field, reason?)` | Type-safe check for a `google.rpc.BadRequest` request field, optionally narrowed to one of `RPC_FIELD_VIOLATION_REASON` |
 | `rpcErrorHasReason(error, reason)` | Type-safe check for a Publira `google.rpc.ErrorInfo` reason |
 | `rpcErrorReasonMetadataNumber(error, reason, key)` | Numeric `ErrorInfo` metadata for a Publira reason, or `null` |
 | `RPC_ERROR_REASON` | The constants for the `ErrorInfo` reasons Publira sends |
+| `RPC_FIELD_VIOLATION_REASON` | The constants for the `BadRequest` field-violation reasons Publira sends |
 | `RPC_ERROR_METADATA` | The constants for the `ErrorInfo` metadata keys Publira sends |
 
 ```ts

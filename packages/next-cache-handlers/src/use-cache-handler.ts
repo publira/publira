@@ -126,6 +126,30 @@ const applyTagRevalidations = (
   }
 };
 
+/**
+ * When `tag` was last revalidated (ms since the epoch), as the `"use cache"`
+ * handler of every instance sharing this Redis sees it: `0` for a tag never
+ * revalidated, `undefined` when Redis cannot be read.
+ *
+ * This is for code that keeps a value of its own outside `"use cache"` — the
+ * proxy, where no Next.js cache runs — and still wants `revalidateTag` to reach
+ * it.
+ */
+export const readTagRevalidatedAt = async (
+  tag: string,
+  configOverrides: Partial<CacheHandlerConfig> = {}
+): Promise<number | undefined> => {
+  const config = resolveCacheHandlerConfig(configOverrides);
+  return await withRedis<number | undefined>(
+    config,
+    undefined,
+    async (client) => {
+      const raw = await client.get(tagKey(config.keyPrefix, tag));
+      return raw ? (parseTagRevalidation(raw)?.staleAt ?? 0) : 0;
+    }
+  );
+};
+
 export const createUseCacheHandler = (
   configOverrides: Partial<CacheHandlerConfig> = {}
 ): UseCacheHandler => {

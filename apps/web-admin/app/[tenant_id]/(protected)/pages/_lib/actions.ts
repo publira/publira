@@ -117,7 +117,9 @@ export const createPageAction = async (
   );
 
   if (!result.ok) {
-    return toFailure(result.message);
+    return result.field
+      ? { field: result.field, message: result.message, ok: false }
+      : toFailure(result.message);
   }
 
   updateTag(`pages-${parsed.data.tenantId}`);

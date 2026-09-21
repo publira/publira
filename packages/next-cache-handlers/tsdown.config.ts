@@ -7,6 +7,7 @@ export default defineConfig({
     "src/index.ts",
     "src/incremental.ts",
     "src/revalidate.ts",
+    "src/tags.ts",
     "src/use-cache.ts",
   ],
   format: ["esm"],

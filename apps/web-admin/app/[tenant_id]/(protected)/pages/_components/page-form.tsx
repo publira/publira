@@ -41,6 +41,8 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
   );
 
   const isUpdate = mode === "update";
+  const slugError = state?.field === "slug" ? state.message : null;
+  const formError = state && !slugError ? state.message : null;
   const handleSlugBlur = useCallback(() => {
     setSlug((current) => normalizePageSlugInput(current));
   }, []);
@@ -86,7 +88,7 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
         value={displayInFooter ? "true" : "false"}
       />
 
-      <Field>
+      <Field invalid={slugError !== null}>
         <FieldLabel>slug</FieldLabel>
         <FieldContent>
           <Input
@@ -106,6 +108,9 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
               }}
             />
           </FieldDescription>
+          {slugError ? (
+            <FormMessage variant="destructive">{slugError}</FormMessage>
+          ) : null}
         </FieldContent>
       </Field>
 
@@ -161,8 +166,8 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
         </Field>
       )}
 
-      {state ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
+      {formError ? (
+        <FormMessage variant="destructive">{formError}</FormMessage>
       ) : null}
 
       <div className="flex justify-end">

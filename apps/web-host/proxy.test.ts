@@ -3,7 +3,9 @@ import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockResolveTenant } = vi.hoisted(() => ({
+const { mockResolvePublishedPageSlugs, mockResolveTenant } = vi.hoisted(() => ({
+  mockResolvePublishedPageSlugs:
+    vi.fn<(tenantId: string) => Promise<ReadonlySet<string> | null>>(),
   mockResolveTenant: vi.fn(),
 }));
 
@@ -14,6 +16,16 @@ vi.mock("./lib/api-client", () => ({
 vi.mock("./lib/tenant-resolution", () => ({
   createTenantResolver: () => mockResolveTenant,
 }));
+
+vi.mock("./lib/published-page-slugs", () => ({
+  createPublishedPageSlugResolver: () => mockResolvePublishedPageSlugs,
+}));
+
+beforeEach(() => {
+  mockResolvePublishedPageSlugs.mockResolvedValue(
+    new Set(["/authors-wanted", "/privacy"])
+  );
+});
 
 const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -422,6 +434,97 @@ describe("web-host proxy retired paths", () => {
     expect(slug.headers.get("location")).toBeNull();
     expect(slug.headers.get("x-middleware-rewrite")).toContain(
       `/${TENANT_ID}/ja/page/authors-wanted`
+    );
+  });
+});
+
+describe("web-host proxy published pages", () => {
+  beforeAll(() => {
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Serve a page at a path the site also routes", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(
+      new Set(["/contact", "/series"])
+    );
+    const { proxy } = await import("./proxy");
+
+    const series = await proxy(request("https://shop.example.com/series"));
+    const contact = await proxy(request("https://shop.example.com/en/contact"));
+
+    expect(series.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/series`
+    );
+    expect(contact.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en/page/contact`
+    );
+  });
+
+  it("Serve a page at a member path without sending the reader to login", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/my"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/my"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/my`
+    );
+  });
+
+  it("Serve a page at a retired path instead of redirecting it", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/authors"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/authors"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/authors`
+    );
+  });
+
+  it("Still drop the redundant default prefix from a page's URL", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/series"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/ja/series"));
+
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/series"
+    );
+  });
+
+  it("Send a path no page has to the app's routes", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/privacy"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/new-feature")
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/new-feature`
+    );
+  });
+
+  it("Send every path to the app's routes when the slugs cannot be read", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(null);
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://shop.example.com/privacy"));
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/privacy`
     );
   });
 });

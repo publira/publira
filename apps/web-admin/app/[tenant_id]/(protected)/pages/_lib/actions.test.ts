@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockCreatePage,
   mockCreatePageVersion,
   mockRedirect,
   mockUpdatePage,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockCreatePage: vi.fn(),
   mockCreatePageVersion: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdatePage: vi.fn(),
@@ -29,7 +31,7 @@ vi.mock("#lib/auth-session", () => ({
 }));
 
 vi.mock("#lib/page", () => ({
-  createPage: vi.fn(),
+  createPage: mockCreatePage,
   createPageVersion: mockCreatePageVersion,
   publishPageVersion: vi.fn(),
   rollbackPageVersion: vi.fn(),
@@ -187,5 +189,38 @@ describe("savePageAction", () => {
     expect(state?.message).toBe(
       "The content could not be saved as a new draft version. Could not save the page. Please try again later."
     );
+  });
+});
+
+describe("createPageAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  const createForm = (): FormData => {
+    const data = new FormData();
+    data.set("tenant_id", TENANT_ID);
+    data.set("slug", "/login");
+    data.set("title", "Help");
+    return data;
+  };
+
+  it("keeps the field a slug failure belongs to", async () => {
+    mockCreatePage.mockResolvedValueOnce({
+      field: "slug",
+      message: "The site keeps this path.",
+      ok: false,
+    });
+
+    const { createPageAction } = await import("./actions");
+    const state = await createPageAction(null, createForm());
+
+    expect(state).toEqual({
+      field: "slug",
+      message: "The site keeps this path.",
+      ok: false,
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 });

@@ -1,10 +1,17 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockListPages } = vi.hoisted(() => ({
-  mockGetAccessToken: vi.fn(),
-  mockListPages: vi.fn(),
-}));
+const { mockCreatePage, mockGetAccessToken, mockListPages } = vi.hoisted(
+  () => ({
+    mockCreatePage: vi.fn(),
+    mockGetAccessToken: vi.fn(),
+    mockListPages: vi.fn(),
+  })
+);
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -13,6 +20,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     pages: {
+      createPage: mockCreatePage,
       listPages: mockListPages,
     },
   },
@@ -137,5 +145,70 @@ describe("listPages", () => {
       pages: [],
       previousToken: "",
     });
+  });
+});
+
+const slugViolation = (reason = "") =>
+  new ConnectError("invalid slug", Code.InvalidArgument, undefined, [
+    {
+      desc: BadRequestSchema,
+      value: { fieldViolations: [{ field: "slug", reason }] },
+    },
+  ]);
+
+describe("createPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  const input = { slug: "/login", tenantId: "TENANT001", title: "Help" };
+
+  it("puts a reserved slug on the slug field with its own message", async () => {
+    mockCreatePage.mockRejectedValue(slugViolation("PAGE_SLUG_RESERVED"));
+
+    const { createPage } = await import("./page");
+    const result = await createPage(input, "en");
+
+    expect(result).toEqual({
+      field: "slug",
+      message:
+        "The site keeps this path for signing in, signing up, the links in its emails, or account settings. Choose a different slug.",
+      ok: false,
+    });
+  });
+
+  it("puts a malformed slug on the slug field", async () => {
+    mockCreatePage.mockRejectedValue(slugViolation());
+
+    const { createPage } = await import("./page");
+    const result = await createPage(input, "en");
+
+    expect(result).toMatchObject({ field: "slug", ok: false });
+    expect(result.ok ? "" : result.message).toContain("lowercase letters");
+  });
+
+  it("puts a duplicate slug on the slug field", async () => {
+    mockCreatePage.mockRejectedValue(
+      new ConnectError("exists", Code.AlreadyExists)
+    );
+
+    const { createPage } = await import("./page");
+    const result = await createPage(input, "en");
+
+    expect(result).toMatchObject({ field: "slug", ok: false });
+  });
+
+  it("leaves a failure that is not about the slug on the form", async () => {
+    mockCreatePage.mockRejectedValue(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    const { createPage } = await import("./page");
+    const result = await createPage(input, "en");
+
+    expect(result).not.toHaveProperty("field");
+    expect(result.ok).toBe(false);
   });
 });

@@ -1,97 +1,39 @@
 import type { Locale } from "@publira/i18n";
 
 /**
- * First segments **below the locale prefix** that belong to app features or
- * auth rather than to a tenant-published content page — every route directory
- * under `app/[tenant_id]/[locale]`.
+ * The published page a locale-less public pathname names, as the path under
+ * `/page/` (`/privacy` → `privacy`, `/legal/terms` → `legal/terms`), or null
+ * when no published page has that slug.
  *
- * The locale is stripped before this set is consulted, so a locale code can
- * never collide with a reserved name and `/{locale}/{locale}` still reaches a
- * published page whose slug happens to be `ja` or `en`. The paths served
- * outside the locale tree — `/theme.css`, `/api/*`, `/livez`, `/readyz` — are
- * settled in `lib/locale-path.ts` and `@publira/utils/health` before a
- * pathname gets here.
- */
-const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
-  "announcements",
-  "confirm-email",
-  "confirm-password",
-  "contact",
-  "creators",
-  "genres",
-  "labels",
-  "login",
-  "my",
-  "notifications",
-  "page",
-  "ranking",
-  "resend-verification",
-  "reset-password",
-  "search",
-  "series",
-  "settings",
-  "signup",
-  "tags",
-  "verify",
-]);
-
-/**
- * One path segment of a published page slug (admin storage: `/seg` or `/a/b`).
- */
-const PUBLISHED_PAGE_SLUG_SEGMENT_PATTERN = /^[a-z0-9][a-z0-9-]*$/u;
-
-export const isReservedTopLevelSegment = (segment: string): boolean =>
-  RESERVED_TOP_LEVEL_SEGMENTS.has(segment.trim().toLowerCase());
-
-/**
- * Returns the path under `/page/` for a candidate published-page URL
- * (e.g. `/privacy` → `privacy`, `/legal/terms` → `legal/terms`), or null
- * when the path is reserved, empty, or not a valid page slug path.
+ * `publishedSlugs` is the tenant's set in storage form (`/privacy`). A page
+ * wins over one of the site's own routes at the same path.
  */
 export const getPublishedPageSlugFromPathname = (
-  pathname: string
+  pathname: string,
+  publishedSlugs: ReadonlySet<string> | null
 ): string | null => {
-  const normalized = pathname.trim();
-  if (!normalized || normalized === "/") {
-    return null;
-  }
-
-  const withoutLeading = normalized.startsWith("/")
-    ? normalized.slice(1)
-    : normalized;
-  if (!withoutLeading) {
+  if (!publishedSlugs || publishedSlugs.size === 0) {
     return null;
   }
 
   // Collapse empty segments from accidental "//".
-  const segments = withoutLeading
+  const segments = pathname
     .split("/")
     .map((segment) => segment.trim().toLowerCase())
     .filter((segment) => segment.length > 0);
-
   if (segments.length === 0) {
     return null;
   }
 
-  const [first] = segments;
-  if (!first || isReservedTopLevelSegment(first)) {
-    return null;
-  }
-
-  for (const segment of segments) {
-    if (!PUBLISHED_PAGE_SLUG_SEGMENT_PATTERN.test(segment)) {
-      return null;
-    }
-  }
-
-  return segments.join("/");
+  const slug = segments.join("/");
+  return publishedSlugs.has(`/${slug}`) ? slug : null;
 };
 
 /**
  * Rewrite a locale-less public pathname onto the resolved tenant and locale:
- * - `/privacy` → `/{tenantId}/{locale}/page/privacy`
- * - `/legal/terms` → `/{tenantId}/{locale}/page/legal/terms`
- * - `/series` (reserved) → `/{tenantId}/{locale}/series`
+ * - `/privacy` (a published page) → `/{tenantId}/{locale}/page/privacy`
+ * - `/legal/terms` (a published page) → `/{tenantId}/{locale}/page/legal/terms`
+ * - `/series` (no page) → `/{tenantId}/{locale}/series`
  *
  * `pathname` is what `splitLocalePathname` left behind, so the published-page
  * decision is made on the path the reader actually asked for rather than on a
@@ -100,10 +42,14 @@ export const getPublishedPageSlugFromPathname = (
 export const buildTenantRewritePathname = (
   tenantId: string,
   locale: Locale,
-  pathname: string
+  pathname: string,
+  publishedSlugs: ReadonlySet<string> | null
 ): string => {
   const prefix = `/${tenantId.trim()}/${locale}`;
-  const publishedSlug = getPublishedPageSlugFromPathname(pathname);
+  const publishedSlug = getPublishedPageSlugFromPathname(
+    pathname,
+    publishedSlugs
+  );
   if (publishedSlug) {
     return `${prefix}/page/${publishedSlug}`;
   }
