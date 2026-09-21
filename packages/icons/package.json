@@ -15,6 +15,10 @@
       "types": "./dist/bell-icon.d.mts",
       "default": "./dist/bell-icon.mjs"
     },
+    "./building-icon": {
+      "types": "./dist/building-icon.d.mts",
+      "default": "./dist/building-icon.mjs"
+    },
     "./chart-icon": {
       "types": "./dist/chart-icon.d.mts",
       "default": "./dist/chart-icon.mjs"
@@ -43,6 +47,10 @@
       "types": "./dist/close-icon.d.mts",
       "default": "./dist/close-icon.mjs"
     },
+    "./coins-icon": {
+      "types": "./dist/coins-icon.d.mts",
+      "default": "./dist/coins-icon.mjs"
+    },
     "./collection-icon": {
       "types": "./dist/collection-icon.d.mts",
       "default": "./dist/collection-icon.mjs"
@@ -58,6 +66,10 @@
     "./dashboard-icon": {
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"
+    },
+    "./file-text-icon": {
+      "types": "./dist/file-text-icon.d.mts",
+      "default": "./dist/file-text-icon.mjs"
     },
     "./fold-horizontal-icon": {
       "types": "./dist/fold-horizontal-icon.d.mts",
@@ -103,17 +115,41 @@
       "types": "./dist/minimize-icon.d.mts",
       "default": "./dist/minimize-icon.mjs"
     },
+    "./pen-line-icon": {
+      "types": "./dist/pen-line-icon.d.mts",
+      "default": "./dist/pen-line-icon.mjs"
+    },
     "./plus-icon": {
       "types": "./dist/plus-icon.d.mts",
       "default": "./dist/plus-icon.mjs"
+    },
+    "./scroll-text-icon": {
+      "types": "./dist/scroll-text-icon.d.mts",
+      "default": "./dist/scroll-text-icon.mjs"
     },
     "./settings-icon": {
       "types": "./dist/settings-icon.d.mts",
       "default": "./dist/settings-icon.mjs"
     },
+    "./shapes-icon": {
+      "types": "./dist/shapes-icon.d.mts",
+      "default": "./dist/shapes-icon.mjs"
+    },
     "./share-icon": {
       "types": "./dist/share-icon.d.mts",
       "default": "./dist/share-icon.mjs"
+    },
+    "./shield-user-icon": {
+      "types": "./dist/shield-user-icon.d.mts",
+      "default": "./dist/shield-user-icon.mjs"
+    },
+    "./tag-icon": {
+      "types": "./dist/tag-icon.d.mts",
+      "default": "./dist/tag-icon.mjs"
+    },
+    "./ticket-icon": {
+      "types": "./dist/ticket-icon.d.mts",
+      "default": "./dist/ticket-icon.mjs"
     },
     "./unfold-horizontal-icon": {
       "types": "./dist/unfold-horizontal-icon.d.mts",
@@ -122,6 +158,10 @@
     "./user-icon": {
       "types": "./dist/user-icon.d.mts",
       "default": "./dist/user-icon.mjs"
+    },
+    "./users-icon": {
+      "types": "./dist/users-icon.d.mts",
+      "default": "./dist/users-icon.mjs"
     },
     "./wifi-off-icon": {
       "types": "./dist/wifi-off-icon.d.mts",
