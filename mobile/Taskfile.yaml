@@ -13,6 +13,13 @@ tasks:
     cmds:
       - bash scripts/android-install.sh
 
+  build:
+    desc: Build the app a tenant publishes from its app manifest (task mobile:build -- <manifest> <apk|appbundle|ios|ipa> [flutter build arguments])
+    # The manifest is named relative to where the task was started.
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - dart run "{{.TASKFILE_DIR}}/scripts/build.dart" {{.CLI_ARGS}}
+
   check:
     desc: Run format, analyze, and unit tests (CI-equivalent gate)
     cmds:

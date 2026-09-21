@@ -794,6 +794,14 @@ jobs:
           PUBLIRA_LIVE_API: "true"
           PUBLIRA_TENANT_HOST: localhost
 
+      # A tenant's production build from the example manifest, through the
+      # command a tenant runs.
+      - name: Build / Tenant Android app
+        run: task mobile:build -- mobile/config/app.example.yaml apk
+        env:
+          PUBLIRA_API_BASE_URL: https://reader.example.com/api
+          PUBLIRA_IMAGE_BASE_URL: https://reader.example.com
+
       - name: Teardown / Public API stack
         if: always()
         run: |

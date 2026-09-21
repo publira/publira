@@ -9,10 +9,10 @@ app:
   name: Example Reader
 
 tenant:
-  host: reader.example.jp
+  host: reader.example.com
 
 android:
-  applicationId: jp.example.reader
+  applicationId: com.example.reader
 
 ios:
-  bundleIdentifier: jp.example.reader
+  bundleIdentifier: com.example.reader

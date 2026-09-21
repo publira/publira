@@ -14,11 +14,11 @@ schemaVersion: 1
 app:
   name: Example Reader
 tenant:
-  host: reader.example.jp
+  host: reader.example.com
 android:
-  applicationId: jp.example.reader
+  applicationId: com.example.reader
 ios:
-  bundleIdentifier: jp.example.reader
+  bundleIdentifier: com.example.reader
 ''';
 
 /// [_valid] with the one [field] (`section.key`) set to [value], written as
@@ -119,7 +119,7 @@ void main() {
     test('the example is a valid manifest for another tenant', () async {
       final manifest = await AppManifest.load(File('config/app.example.yaml'));
 
-      expect(manifest.tenantHost, 'reader.example.jp');
+      expect(manifest.tenantHost, 'reader.example.com');
       expect(manifest.androidApplicationId, isNot('dev.publira.app'));
     });
 
@@ -165,9 +165,9 @@ void main() {
       final manifest = AppManifest.parse(_valid, source: 'app.yaml');
 
       expect(manifest.appName, 'Example Reader');
-      expect(manifest.tenantHost, 'reader.example.jp');
-      expect(manifest.androidApplicationId, 'jp.example.reader');
-      expect(manifest.iosBundleIdentifier, 'jp.example.reader');
+      expect(manifest.tenantHost, 'reader.example.com');
+      expect(manifest.androidApplicationId, 'com.example.reader');
+      expect(manifest.iosBundleIdentifier, 'com.example.reader');
     });
 
     test('keeps the Android and iOS identifiers apart', () {
@@ -176,7 +176,7 @@ void main() {
         source: 'app.yaml',
       );
 
-      expect(manifest.androidApplicationId, 'jp.example.reader');
+      expect(manifest.androidApplicationId, 'com.example.reader');
       expect(manifest.iosBundleIdentifier, 'com.example.Reader-iOS');
     });
 
@@ -198,7 +198,7 @@ schemaVersion: 1
 app:
   name: " "
 tenant:
-  host: https://reader.example.jp
+  host: https://reader.example.com
 android:
   applicationId: reader
 ''', source: 'path/to/app.yaml');
@@ -328,11 +328,11 @@ android:
   group('tenant.host', () {
     for (final host in [
       'localhost',
-      'reader.example.jp',
-      'my-reader.example.co.jp',
+      'reader.example.com',
+      'my-reader.apps.example.com',
       'xn--eckwd4c7c.xn--zckzah',
-      '${'a' * 63}.example.jp',
-      'reader2.example.jp',
+      '${'a' * 63}.example.com',
+      'reader2.example.com',
     ]) {
       test('accepts $host', () {
         final manifest = AppManifest.parse(
@@ -345,21 +345,25 @@ android:
     }
 
     for (final (name, value, problem) in [
-      ('with a scheme', 'https://reader.example.jp', 'without a scheme'),
-      ('with a port', '"reader.example.jp:443"', 'without a port'),
-      ('with a path', 'reader.example.jp/app', 'without a port, path'),
-      ('in uppercase', 'Reader.Example.jp', '("reader.example.jp")'),
-      ('ending in a dot', 'reader.example.jp.', 'must not end with a dot'),
+      ('with a scheme', 'https://reader.example.com', 'without a scheme'),
+      ('with a port', '"reader.example.com:443"', 'without a port'),
+      ('with a path', 'reader.example.com/app', 'without a port, path'),
+      ('in uppercase', 'Reader.Example.com', '("reader.example.com")'),
+      ('ending in a dot', 'reader.example.com.', 'must not end with a dot'),
       ('that is an IPv4 address', '"192.0.2.1"', 'not an IP address'),
-      ('with an underscore', 'my_reader.example.jp', 'not a valid host name'),
-      ('with a leading hyphen', '-reader.example.jp', 'not a valid host name'),
-      ('with a trailing hyphen', 'reader-.example.jp', 'not a valid host name'),
-      ('with an empty label', 'reader..example.jp', 'not a valid host name'),
-      ('with a label too long', '${'a' * 64}.example.jp', 'not a valid host'),
+      ('with an underscore', 'my_reader.example.com', 'not a valid host name'),
+      ('with a leading hyphen', '-reader.example.com', 'not a valid host name'),
+      (
+        'with a trailing hyphen',
+        'reader-.example.com',
+        'not a valid host name',
+      ),
+      ('with an empty label', 'reader..example.com', 'not a valid host name'),
+      ('with a label too long', '${'a' * 64}.example.com', 'not a valid host'),
       ('too long', '${'a.' * 127}jp', 'not a valid host name'),
       ('with a numeric TLD', 'reader.example.123', 'not a valid host name'),
-      ('in Unicode', 'リーダー.example.jp', 'xn-- form'),
-      ('with a wildcard', '"*.example.jp"', 'not a valid host name'),
+      ('in Unicode', 'リーダー.example.com', 'xn-- form'),
+      ('with a wildcard', '"*.example.com"', 'not a valid host name'),
     ]) {
       test('rejects a host $name', () {
         expect(_issuesOf(_with('tenant.host', value)), [
@@ -370,7 +374,7 @@ android:
   });
 
   group('android.applicationId', () {
-    for (final id in ['jp.example.reader', 'com.Example.reader_app', 'a.b']) {
+    for (final id in ['com.example.reader', 'com.Example.reader_app', 'a.b']) {
       test('accepts $id', () {
         final manifest = AppManifest.parse(
           _with('android.applicationId', id),
@@ -383,11 +387,11 @@ android:
 
     for (final id in [
       'reader',
-      'jp.example.1reader',
-      'jp.example-reader.app',
+      'com.example.1reader',
+      'com.example-reader.app',
       'jp..reader',
-      'jp.example.reader.',
-      '_jp.example',
+      'com.example.reader.',
+      '_com.example',
     ]) {
       test('rejects $id', () {
         expect(_issuesOf(_with('android.applicationId', '"$id"')), [
@@ -401,7 +405,7 @@ android:
   });
 
   group('ios.bundleIdentifier', () {
-    for (final id in ['jp.example.reader', 'jp.example-reader.1app', 'a.b']) {
+    for (final id in ['com.example.reader', 'com.example-reader.1app', 'a.b']) {
       test('accepts $id', () {
         final manifest = AppManifest.parse(
           _with('ios.bundleIdentifier', id),
@@ -414,10 +418,10 @@ android:
 
     for (final id in [
       'reader',
-      'jp.example.reader_app',
+      'com.example.reader_app',
       'jp..reader',
-      'jp.example.reader.',
-      'jp.example.reader app',
+      'com.example.reader.',
+      'com.example.reader app',
     ]) {
       test('rejects $id', () {
         expect(_issuesOf(_with('ios.bundleIdentifier', '"$id"')), [
@@ -548,8 +552,8 @@ android:
       final manifest = AppManifest.parse(_valid, source: 'app.yaml');
 
       expect(propertiesOf(manifest), {
-        'publira.applicationId': 'jp.example.reader',
-        'publira.tenantHost': 'reader.example.jp',
+        'publira.applicationId': 'com.example.reader',
+        'publira.tenantHost': 'reader.example.com',
         'publira.appName': 'Example Reader',
       });
     });
@@ -607,12 +611,12 @@ android:
         directory,
       );
 
-      expect(manifest.androidApplicationId, 'jp.example.reader');
+      expect(manifest.androidApplicationId, 'com.example.reader');
       expect(
         await File('${directory.path}/app.properties').readAsString(),
         allOf(
           startsWith('# Generated from config/app.example.yaml'),
-          contains('publira.applicationId=jp.example.reader\n'),
+          contains('publira.applicationId=com.example.reader\n'),
         ),
       );
     });
@@ -643,14 +647,14 @@ android:
 
     test('carries the tenant identity Xcode reads', () {
       final manifest = AppManifest.parse(
-        _with('ios.bundleIdentifier', 'jp.example.reader-ios'),
+        _with('ios.bundleIdentifier', 'com.example.reader-ios'),
         source: 'app.yaml',
       );
 
       expect(settingsOf(manifest), {
         'PUBLIRA_EMPTY': '',
-        'PUBLIRA_BUNDLE_IDENTIFIER': 'jp.example.reader-ios',
-        'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.jp',
+        'PUBLIRA_BUNDLE_IDENTIFIER': 'com.example.reader-ios',
+        'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.com',
         'PUBLIRA_APP_NAME': 'Example Reader',
       });
     });
@@ -658,7 +662,7 @@ android:
     test('keeps whatever characters the name is written in', () {
       for (final name in [
         'Reader // Club',
-        'https://reader.example.jp/',
+        'https://reader.example.com/',
         'Reader;',
         'Reader ;',
         r'$(HOME) Reader',
@@ -732,7 +736,7 @@ android:
         await File('${directory.path}/App.xcconfig').readAsString(),
         allOf(
           startsWith('// Generated from config/app.example.yaml'),
-          contains('PUBLIRA_BUNDLE_IDENTIFIER = jp.example.reader\n'),
+          contains('PUBLIRA_BUNDLE_IDENTIFIER = com.example.reader\n'),
         ),
       );
     });
@@ -758,8 +762,8 @@ android:
       environment: {
         'SRCROOT': '${mobile.path}/ios',
         'CONFIGURATION': 'Debug-dev',
-        'PUBLIRA_BUNDLE_IDENTIFIER': 'jp.example.reader',
-        'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.jp',
+        'PUBLIRA_BUNDLE_IDENTIFIER': 'com.example.reader',
+        'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.com',
         ...settings,
       },
     );
@@ -807,11 +811,11 @@ android:
 
     test('pins a production build to the manifest tenant', () async {
       for (final (defines, passes) in [
-        (['PUBLIRA_TENANT_HOST=reader.example.jp'], true),
+        (['PUBLIRA_TENANT_HOST=reader.example.com'], true),
         (
           [
-            'PUBLIRA_API_BASE_URL=https://api.example.jp',
-            'PUBLIRA_TENANT_HOST=reader.example.jp',
+            'PUBLIRA_API_BASE_URL=https://api.example.com',
+            'PUBLIRA_TENANT_HOST=reader.example.com',
           ],
           true,
         ),
@@ -834,7 +838,7 @@ android:
               result.stderr,
               contains(
                 'error: Production builds require '
-                '--dart-define=PUBLIRA_TENANT_HOST=reader.example.jp',
+                '--dart-define=PUBLIRA_TENANT_HOST=reader.example.com',
               ),
             );
           }

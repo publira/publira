@@ -238,7 +238,7 @@ String? _validateAppName(String value) {
 }
 
 String? _validateTenantHost(String value) {
-  const example = 'e.g. reader.example.jp';
+  const example = 'e.g. reader.example.com';
   if (value.contains('://')) {
     return '"$value" must be the host name alone, without a scheme ($example)';
   }
@@ -268,7 +268,7 @@ String? _validateAndroidApplicationId(String value) {
   if (!RegExp(androidApplicationIdPattern).hasMatch(value)) {
     return '"$value" is not a valid Android application ID: it needs at least '
         'two dot-separated segments, and each must start with a letter and '
-        'contain only letters, digits, and underscores (e.g. jp.example.reader)';
+        'contain only letters, digits, and underscores (e.g. com.example.reader)';
   }
   return null;
 }
@@ -277,7 +277,7 @@ String? _validateIosBundleIdentifier(String value) {
   if (!RegExp(iosBundleIdentifierPattern).hasMatch(value)) {
     return '"$value" is not a valid iOS bundle identifier: it needs at least '
         'two dot-separated segments, each containing only letters, digits, and '
-        'hyphens (e.g. jp.example.reader)';
+        'hyphens (e.g. com.example.reader)';
   }
   return null;
 }
