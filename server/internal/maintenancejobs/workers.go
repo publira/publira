@@ -9,6 +9,7 @@ import (
 
 	"github.com/riverqueue/river"
 
+	"github.com/publira/publira/server/internal/maintenance"
 	"github.com/publira/publira/server/internal/storage"
 )
 
@@ -103,10 +104,10 @@ func (w *projectEpisodeReadsWorker) Timeout(*river.Job[ProjectEpisodeReadsArgs])
 	return jobTimeout
 }
 
-func (w *projectEpisodeReadsWorker) Work(ctx context.Context, _ *river.Job[ProjectEpisodeReadsArgs]) error {
-	ctx, end := startRun(ctx, ServiceNameProjectEpisodeReads, kindProjectEpisodeReads)
-	defer end()
-	return enqueueNext(ctx, w.jobs.episodeReads.CatchUp(ctx, w.jobs.deps), AggregateContentStatsArgs{})
+func (w *projectEpisodeReadsWorker) Work(ctx context.Context, job *river.Job[ProjectEpisodeReadsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameProjectEpisodeReads, func(ctx context.Context, deps maintenance.Deps) error {
+		return enqueueNext(ctx, w.jobs.episodeReads.CatchUp(ctx, deps), AggregateContentStatsArgs{})
+	})
 }
 
 type aggregateContentStatsWorker struct {
@@ -118,10 +119,10 @@ func (w *aggregateContentStatsWorker) Timeout(*river.Job[AggregateContentStatsAr
 	return jobTimeout
 }
 
-func (w *aggregateContentStatsWorker) Work(ctx context.Context, _ *river.Job[AggregateContentStatsArgs]) error {
-	ctx, end := startRun(ctx, ServiceNameAggregateContentStats, kindAggregateContentStats)
-	defer end()
-	return enqueueNext(ctx, w.jobs.contentStats.CatchUp(ctx, w.jobs.deps), AggregateRankingsArgs{})
+func (w *aggregateContentStatsWorker) Work(ctx context.Context, job *river.Job[AggregateContentStatsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameAggregateContentStats, func(ctx context.Context, deps maintenance.Deps) error {
+		return enqueueNext(ctx, w.jobs.contentStats.CatchUp(ctx, deps), AggregateRankingsArgs{})
+	})
 }
 
 type aggregateRankingsWorker struct {
@@ -133,10 +134,10 @@ func (w *aggregateRankingsWorker) Timeout(*river.Job[AggregateRankingsArgs]) tim
 	return jobTimeout
 }
 
-func (w *aggregateRankingsWorker) Work(ctx context.Context, _ *river.Job[AggregateRankingsArgs]) error {
-	ctx, end := startRun(ctx, ServiceNameAggregateRankings, kindAggregateRankings)
-	defer end()
-	return enqueueNext(ctx, w.jobs.rankings.CatchUp(ctx, w.jobs.deps), BuildRecommendFeaturesArgs{})
+func (w *aggregateRankingsWorker) Work(ctx context.Context, job *river.Job[AggregateRankingsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameAggregateRankings, func(ctx context.Context, deps maintenance.Deps) error {
+		return enqueueNext(ctx, w.jobs.rankings.CatchUp(ctx, deps), BuildRecommendFeaturesArgs{})
+	})
 }
 
 type buildRecommendFeaturesWorker struct {
@@ -148,10 +149,10 @@ func (w *buildRecommendFeaturesWorker) Timeout(*river.Job[BuildRecommendFeatures
 	return jobTimeout
 }
 
-func (w *buildRecommendFeaturesWorker) Work(ctx context.Context, _ *river.Job[BuildRecommendFeaturesArgs]) error {
-	ctx, end := startRun(ctx, ServiceNameBuildRecommendFeatures, kindBuildRecommendFeatures)
-	defer end()
-	return w.jobs.recommendFeatures.CatchUp(ctx, w.jobs.deps)
+func (w *buildRecommendFeaturesWorker) Work(ctx context.Context, job *river.Job[BuildRecommendFeaturesArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameBuildRecommendFeatures, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.recommendFeatures.CatchUp(ctx, deps)
+	})
 }
 
 type purgeContentEventsWorker struct {
@@ -163,10 +164,10 @@ func (w *purgeContentEventsWorker) Timeout(*river.Job[PurgeContentEventsArgs]) t
 	return jobTimeout
 }
 
-func (w *purgeContentEventsWorker) Work(ctx context.Context, _ *river.Job[PurgeContentEventsArgs]) error {
-	ctx, end := startRun(ctx, ServiceNamePurgeContentEvents, kindPurgeContentEvents)
-	defer end()
-	return w.jobs.contentEvents.Run(ctx, w.jobs.deps)
+func (w *purgeContentEventsWorker) Work(ctx context.Context, job *river.Job[PurgeContentEventsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNamePurgeContentEvents, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.contentEvents.Run(ctx, deps)
+	})
 }
 
 type purgeRankingSnapshotsWorker struct {
@@ -178,10 +179,10 @@ func (w *purgeRankingSnapshotsWorker) Timeout(*river.Job[PurgeRankingSnapshotsAr
 	return jobTimeout
 }
 
-func (w *purgeRankingSnapshotsWorker) Work(ctx context.Context, _ *river.Job[PurgeRankingSnapshotsArgs]) error {
-	ctx, end := startRun(ctx, ServiceNamePurgeRankingSnapshots, kindPurgeRankingSnapshots)
-	defer end()
-	return w.jobs.rankingSnapshots.Run(ctx, w.jobs.deps)
+func (w *purgeRankingSnapshotsWorker) Work(ctx context.Context, job *river.Job[PurgeRankingSnapshotsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNamePurgeRankingSnapshots, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.rankingSnapshots.Run(ctx, deps)
+	})
 }
 
 type purgeMfaChallengesWorker struct {
@@ -193,10 +194,10 @@ func (w *purgeMfaChallengesWorker) Timeout(*river.Job[PurgeMfaChallengesArgs]) t
 	return jobTimeout
 }
 
-func (w *purgeMfaChallengesWorker) Work(ctx context.Context, _ *river.Job[PurgeMfaChallengesArgs]) error {
-	ctx, end := startRun(ctx, ServiceNamePurgeMfaChallenges, kindPurgeMfaChallenges)
-	defer end()
-	return w.jobs.mfaChallenges.Run(ctx, w.jobs.deps)
+func (w *purgeMfaChallengesWorker) Work(ctx context.Context, job *river.Job[PurgeMfaChallengesArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNamePurgeMfaChallenges, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.mfaChallenges.Run(ctx, deps)
+	})
 }
 
 type purgeWithdrawnCommentsWorker struct {
@@ -208,10 +209,10 @@ func (w *purgeWithdrawnCommentsWorker) Timeout(*river.Job[PurgeWithdrawnComments
 	return jobTimeout
 }
 
-func (w *purgeWithdrawnCommentsWorker) Work(ctx context.Context, _ *river.Job[PurgeWithdrawnCommentsArgs]) error {
-	ctx, end := startRun(ctx, ServiceNamePurgeWithdrawnComments, kindPurgeWithdrawnComments)
-	defer end()
-	return w.jobs.withdrawnComments.Run(ctx, w.jobs.deps)
+func (w *purgeWithdrawnCommentsWorker) Work(ctx context.Context, job *river.Job[PurgeWithdrawnCommentsArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNamePurgeWithdrawnComments, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.withdrawnComments.Run(ctx, deps)
+	})
 }
 
 type purgeOrphanImagesWorker struct {
@@ -223,16 +224,16 @@ func (w *purgeOrphanImagesWorker) Timeout(*river.Job[PurgeOrphanImagesArgs]) tim
 	return jobTimeout
 }
 
-func (w *purgeOrphanImagesWorker) Work(ctx context.Context, _ *river.Job[PurgeOrphanImagesArgs]) error {
-	ctx, end := startRun(ctx, ServiceNamePurgeOrphanImages, kindPurgeOrphanImages)
-	defer end()
-	err := w.jobs.orphanImages.Run(ctx, w.jobs.deps)
-	// No retry saves a platform with no object store configured, so the run
-	// is cancelled with that error rather than retried until it is discarded.
-	if errors.Is(err, storage.ErrNotConfigured) {
-		return river.JobCancel(err)
-	}
-	return err
+func (w *purgeOrphanImagesWorker) Work(ctx context.Context, job *river.Job[PurgeOrphanImagesArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNamePurgeOrphanImages, func(ctx context.Context, deps maintenance.Deps) error {
+		err := w.jobs.orphanImages.Run(ctx, deps)
+		// No retry saves a platform with no object store configured, so the run
+		// is cancelled with that error rather than retried until it is discarded.
+		if errors.Is(err, storage.ErrNotConfigured) {
+			return river.JobCancel(err)
+		}
+		return err
+	})
 }
 
 // enqueueNext enqueues the next link of the daily rebuild chain, even after a
