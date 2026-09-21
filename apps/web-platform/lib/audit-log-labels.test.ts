@@ -28,6 +28,9 @@ describe("audit-log-labels", () => {
     await expect(
       getAuditActionLabel("platform_storage_connection_tested", en)
     ).resolves.toBe("Tested the storage connection");
+    await expect(
+      getAuditActionLabel("platform_webpush_subject_updated", en)
+    ).resolves.toBe("Updated the Web Push contact");
   });
 
   it("offers the storage actions in the action filter", async () => {
@@ -40,6 +43,15 @@ describe("audit-log-labels", () => {
     expect(options).toContainEqual({
       label: "Tested the storage connection",
       value: "platform_storage_connection_tested",
+    });
+  });
+
+  it("offers the Web Push action in the action filter", async () => {
+    const options = await getAuditActionOptions(en);
+
+    expect(options).toContainEqual({
+      label: "Updated the Web Push contact",
+      value: "platform_webpush_subject_updated",
     });
   });
 

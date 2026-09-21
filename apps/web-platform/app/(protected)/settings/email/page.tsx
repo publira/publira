@@ -18,7 +18,7 @@ import type { PlatformSmtpSettings } from "#lib/email-settings";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
+import { SettingsNavigation } from "../_components/settings-navigation";
 import {
   sendPlatformSmtpTestEmailAction,
   updatePlatformEmailSettingsAction,
@@ -41,21 +41,6 @@ const emptySettings: PlatformSmtpSettings = {
   replyTo: "",
   username: "",
 };
-
-const tabLabel = (
-  message:
-    | "platform.policy.community.tab"
-    | "platform.policy.retention.tab"
-    | "platform.policy.security.tab"
-    | "platform.settings.email_tab"
-    | "platform.settings.general_tab"
-    | "platform.storage.tab",
-  fallbackClassName: string
-) => (
-  <Suspense fallback={<SkeletonLine className={fallbackClassName} />}>
-    <Message message={message} />
-  </Suspense>
-);
 
 const EmailSettingsFormSkeleton = () => (
   <PlatformSection>
@@ -108,15 +93,7 @@ const PlatformEmailSettingsPage = () => (
     </PlatformPageHeader>
     <PlatformPageContent>
       <div className="grid gap-6">
-        <SettingsTabNav
-          communityLabel={tabLabel("platform.policy.community.tab", "h-4 w-20")}
-          current="email"
-          emailLabel={tabLabel("platform.settings.email_tab", "h-4 w-20")}
-          generalLabel={tabLabel("platform.settings.general_tab", "h-4 w-8")}
-          retentionLabel={tabLabel("platform.policy.retention.tab", "h-4 w-16")}
-          securityLabel={tabLabel("platform.policy.security.tab", "h-4 w-14")}
-          storageLabel={tabLabel("platform.storage.tab", "h-4 w-14")}
-        />
+        <SettingsNavigation current="email" />
         <Suspense fallback={<EmailSettingsFormSkeleton />}>
           <EmailSettingsSection />
         </Suspense>

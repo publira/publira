@@ -3321,6 +3321,7 @@
         "platform_smtp_test_email_sent": "SMTP 接続テストメールを送信",
         "platform_storage_connection_tested": "ストレージの接続をテスト",
         "platform_storage_settings_updated": "ストレージ設定を更新",
+        "platform_webpush_subject_updated": "Web Push の連絡先を更新",
         "tenant_created": "テナントを作成",
         "tenant_info_updated": "テナント情報を更新",
         "tenant_resumed": "テナントを再開",
@@ -3989,6 +3990,28 @@
           "unknown": "Publira が判別できない理由でストレージが操作を拒否しました。ストレージプロバイダーのログを確認してください。"
         },
         "steps": "接続テストの手順"
+      }
+    },
+    "webpush": {
+      "tab": "Web Push",
+      "page_title": "設定 - Web Push",
+      "heading": "設定",
+      "page_description": "Publira が読者に送るブラウザー通知を管理します。",
+      "title": "Web Push",
+      "description": "Publira は、このインストール用に生成した鍵ペアでブラウザー通知に署名します。秘密鍵はサーバーの外に出ず、表示されることもありません。保存した変更は、再起動なしで 1 分以内にすべてのサーバーへ反映されます。",
+      "configured": "Web Push は設定済みです。読者はストアフロントでブラウザー通知をオンにできます。",
+      "unconfigured": "Web Push はまだ設定されていません。ここで連絡先を保存するまで、ストアフロントはブラウザー通知を提供せず、通知も送信されません。",
+      "load_failed": "Web Push 設定を読み込めませんでした。画面を再読み込みしてもう一度お試しください。",
+      "encryption_unavailable": "API サーバーに秘密鍵を保護するための暗号鍵がないため、Web Push を設定できません。PUBLIRA_SECRET_ENCRYPTION_KEYS を設定して API サーバーを再起動し、この画面を再読み込みしてください。",
+      "save": "Web Push 設定を保存",
+      "saved": "Web Push 設定を保存しました。",
+      "save_failed": "Web Push 設定を保存できませんでした。しばらくしてからもう一度お試しください。",
+      "save_conflict": "別のオペレーターが Web Push 設定を変更したため保存されませんでした。画面を再読み込みしてもう一度お試しください。",
+      "form": {
+        "subject": "連絡先（VAPID subject）",
+        "subject_help": "ブラウザーへ通知を届けるプッシュサービスが、このインストールから送られた通知に問題があったときに連絡するための宛先です。メールアドレスを mailto:push@example.com の形で入力するか、連絡用ページの https:// URL を入力してください。",
+        "subject_required": "プッシュサービス向けの連絡先を入力してください。",
+        "subject_invalid": "mailto:push@example.com のようにメールアドレスを 1 つ含む mailto: URI か、https://example.com/contact のような https:// URL を入力してください。"
       }
     }
   }

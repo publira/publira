@@ -21,6 +21,8 @@ const auditActionKeys = {
     "platform.audit.actions.platform_storage_connection_tested",
   platform_storage_settings_updated:
     "platform.audit.actions.platform_storage_settings_updated",
+  platform_webpush_subject_updated:
+    "platform.audit.actions.platform_webpush_subject_updated",
   tenant_created: "platform.audit.actions.tenant_created",
   tenant_info_updated: "platform.audit.actions.tenant_info_updated",
   tenant_resumed: "platform.audit.actions.tenant_resumed",

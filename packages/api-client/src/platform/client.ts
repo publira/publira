@@ -16,6 +16,7 @@ import { PlatformSetupService } from "../gen/publira/platform/v1/setup_pb.js";
 import { PlatformStorageSettingsService } from "../gen/publira/platform/v1/storage_pb.js";
 import { PlatformTenantService } from "../gen/publira/platform/v1/tenant_pb.js";
 import { PlatformUserService } from "../gen/publira/platform/v1/user_pb.js";
+import { PlatformWebPushSettingsService } from "../gen/publira/platform/v1/webpush_pb.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
 import type { TenantHeaderOptions } from "../tenant-header.js";
 import { createTracingInterceptor } from "../tracing.js";
@@ -42,6 +43,7 @@ export interface PlatformApiClient {
   storageSettings: Client<typeof PlatformStorageSettingsService>;
   tenants: Client<typeof PlatformTenantService>;
   users: Client<typeof PlatformUserService>;
+  webPushSettings: Client<typeof PlatformWebPushSettingsService>;
 }
 
 export const createPlatformApiClient = (
@@ -95,5 +97,9 @@ export const createPlatformApiClient = (
     ),
     tenants: createClient(PlatformTenantService, transportInstance),
     users: createClient(PlatformUserService, transportInstance),
+    webPushSettings: createClient(
+      PlatformWebPushSettingsService,
+      transportInstance
+    ),
   };
 };

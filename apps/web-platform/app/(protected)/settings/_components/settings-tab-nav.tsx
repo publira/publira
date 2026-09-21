@@ -10,12 +10,14 @@ interface SettingsTabNavProps {
     | "general"
     | "retention"
     | "security"
-    | "storage";
+    | "storage"
+    | "webpush";
   emailLabel: ReactNode;
   generalLabel: ReactNode;
   retentionLabel: ReactNode;
   securityLabel: ReactNode;
   storageLabel: ReactNode;
+  webPushLabel: ReactNode;
 }
 
 export const SettingsTabNav = ({
@@ -26,6 +28,7 @@ export const SettingsTabNav = ({
   retentionLabel,
   securityLabel,
   storageLabel,
+  webPushLabel,
 }: SettingsTabNavProps) => (
   <div className="flex flex-wrap gap-2">
     <LinkButton
@@ -45,6 +48,12 @@ export const SettingsTabNav = ({
       variant={current === "storage" ? "default" : "outline"}
     >
       {storageLabel}
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/webpush" />}
+      variant={current === "webpush" ? "default" : "outline"}
+    >
+      {webPushLabel}
     </LinkButton>
     <LinkButton
       render={<Link href="/settings/security" />}

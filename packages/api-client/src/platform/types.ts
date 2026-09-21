@@ -22,5 +22,6 @@ export type {
   TenantMember,
 } from "../gen/publira/platform/v1/tenant_pb.js";
 export type { EndUser } from "../gen/publira/platform/v1/user_pb.js";
+export type { PlatformWebPushSettings } from "../gen/publira/platform/v1/webpush_pb.js";
 // A types.v1 message the platform policy service returns.
 export type { RetentionPeriods } from "../gen/publira/types/v1/types_pb.js";
