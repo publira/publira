@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -24,6 +26,11 @@ const (
 	defaultRustFSSecretKey = "publirapass"
 	defaultRustFSBucket    = "publira-test"
 	defaultRustFSRegion    = "us-east-1"
+
+	// RustFS answers /health before its S3 API stops returning 503, so the
+	// container is handed out only after a write has gone through.
+	rustFSWritableTimeout  = 1 * time.Minute
+	rustFSWritableInterval = 500 * time.Millisecond
 )
 
 type RustFSEnv struct {
@@ -118,14 +125,85 @@ func startRustFS(ctx context.Context) (*RustFSEnv, error) {
 	_ = os.Setenv("AWS_SECRET_ACCESS_KEY", defaultRustFSSecretKey)
 	_ = os.Setenv("AWS_REGION", defaultRustFSRegion)
 
-	return &RustFSEnv{
+	env := &RustFSEnv{
 		Container: container,
 		Endpoint:  endpoint,
 		Bucket:    defaultRustFSBucket,
 		AccessKey: defaultRustFSAccessKey,
 		SecretKey: defaultRustFSSecretKey,
 		Region:    defaultRustFSRegion,
-	}, nil
+	}
+
+	client, err := env.client(ctx)
+	if err != nil {
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	writableCtx, cancel := context.WithTimeout(ctx, rustFSWritableTimeout)
+	defer cancel()
+	if err := awaitWritable(writableCtx, client, env.Bucket, rustFSWritableInterval); err != nil {
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+
+	return env, nil
+}
+
+// awaitWritable creates bucket until the store stops answering 503, and
+// reports the last 503 once ctx is done.
+func awaitWritable(ctx context.Context, client *s3.Client, bucket string, interval time.Duration) error {
+	var unavailable error
+	for {
+		err := createBucket(ctx, client, bucket)
+		if err == nil {
+			return nil
+		}
+		if ctx.Err() != nil && unavailable != nil {
+			return fmt.Errorf("rustfs: S3 API still unavailable when the wait ended (%w): %w", ctx.Err(), unavailable)
+		}
+		var respErr *smithyhttp.ResponseError
+		if !errors.As(err, &respErr) || respErr.HTTPStatusCode() != http.StatusServiceUnavailable {
+			return fmt.Errorf("rustfs: create bucket %q: %w", bucket, err)
+		}
+		unavailable = err
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("rustfs: S3 API still unavailable when the wait ended (%w): %w", ctx.Err(), unavailable)
+		case <-time.After(interval):
+		}
+	}
+}
+
+// createBucket creates bucket, treating one that already exists as created.
+func createBucket(ctx context.Context, client *s3.Client, bucket string) error {
+	_, err := client.CreateBucket(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(bucket),
+	})
+	var alreadyExists *s3types.BucketAlreadyExists
+	var alreadyOwned *s3types.BucketAlreadyOwnedByYou
+	if errors.As(err, &alreadyExists) || errors.As(err, &alreadyOwned) {
+		return nil
+	}
+	return err
+}
+
+func (e *RustFSEnv) client(ctx context.Context) (*s3.Client, error) {
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithRegion(e.Region),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("rustfs: load aws config: %w", err)
+	}
+	return newS3Client(awsCfg, e.Endpoint), nil
+}
+
+// newS3Client makes a single attempt per call: awaitWritable owns the retries.
+func newS3Client(awsCfg aws.Config, endpoint string) *s3.Client {
+	return s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.UsePathStyle = true
+		o.BaseEndpoint = aws.String(endpoint)
+		o.RetryMaxAttempts = 1
+	})
 }
 
 // CreateBucket creates the test bucket in the RustFS container. It is
@@ -142,27 +220,11 @@ func (e *RustFSEnv) CreateNamedBucket(t *testing.T, bucket string) {
 
 	ctx := context.Background()
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
-		awsconfig.WithRegion(e.Region),
-	)
+	client, err := e.client(ctx)
 	if err != nil {
-		t.Fatalf("rustfs: load aws config: %v", err)
+		t.Fatal(err)
 	}
-
-	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-		o.BaseEndpoint = aws.String(e.Endpoint)
-	})
-
-	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(bucket),
-	})
-	if err != nil {
-		var alreadyExists *s3types.BucketAlreadyExists
-		var alreadyOwned *s3types.BucketAlreadyOwnedByYou
-		if errors.As(err, &alreadyExists) || errors.As(err, &alreadyOwned) {
-			return
-		}
+	if err := createBucket(ctx, client, bucket); err != nil {
 		t.Fatalf("rustfs: create bucket %q: %v", bucket, err)
 	}
 }
