@@ -273,7 +273,7 @@ func TestPublicKeysServesTheLastReadThroughAnOutage(t *testing.T) {
 	store.saveSubject("mailto:push@example.com")
 	now := time.Unix(0, 0)
 	keys := NewPublicKeys(store, time.Minute, slog.Default())
-	keys.cache.now = func() time.Time { return now }
+	keys.cache.Now = func() time.Time { return now }
 
 	want, err := keys.PublicKey(context.Background())
 	if err != nil {
@@ -319,17 +319,17 @@ func TestSendersRebuildsOnlyWhenTheCredentialsChange(t *testing.T) {
 	store.saveSubject("mailto:push@example.com")
 	senders := NewSenders(store, encryptor, 0, slog.Default())
 
-	first, err := senders.cache.get(context.Background())
+	first, err := senders.cache.Get(context.Background())
 	if err != nil || first == nil {
 		t.Fatalf("client = %v, %v; want one", first, err)
 	}
-	second, err := senders.cache.get(context.Background())
+	second, err := senders.cache.Get(context.Background())
 	if err != nil || second != first {
 		t.Fatalf("second client = %p, %v; want the first one kept", second, err)
 	}
 
 	store.saveSubject("https://example.com/contact")
-	third, err := senders.cache.get(context.Background())
+	third, err := senders.cache.Get(context.Background())
 	if err != nil || third == first {
 		t.Fatalf("client after a new subject = %p, %v; want a new one", third, err)
 	}
