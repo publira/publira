@@ -38,6 +38,7 @@ describe("SettingsTabNav", () => {
         "Theme",
         "Email",
         "Payments",
+        "Royalties",
         "Mobile push",
         "Limits and retention",
       ]

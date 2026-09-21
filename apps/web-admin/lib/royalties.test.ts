@@ -10,6 +10,7 @@ const { mockApi, mockGetSessionId } = vi.hoisted(() => ({
     getRoyaltyStatement: vi.fn(),
     listRoyaltyStatements: vi.fn(),
     previewRoyaltyStatement: vi.fn(),
+    updateRoyaltyConfig: vi.fn(),
   },
   mockGetSessionId: vi.fn(),
 }));
@@ -100,6 +101,64 @@ describe("royalties", () => {
       ok: true,
       policy: { automaticSince: "", closeMode: "manual" },
     });
+  });
+
+  it("sends the day only with automatic closing", async () => {
+    mockApi.updateRoyaltyConfig.mockResolvedValueOnce({
+      config: { automaticSince: "", closeMode: RoyaltyCloseMode.MANUAL },
+    });
+    const { updateRoyaltyClosePolicy } = await import("./royalties");
+
+    expect(
+      await updateRoyaltyClosePolicy(
+        { autoCloseDay: 5, closeMode: "manual", tenantId: "TENANT001" },
+        "en"
+      )
+    ).toEqual({
+      ok: true,
+      policy: { automaticSince: "", closeMode: "manual" },
+    });
+    expect(mockApi.updateRoyaltyConfig).toHaveBeenCalledWith(
+      {
+        autoCloseDay: undefined,
+        closeMode: RoyaltyCloseMode.MANUAL,
+        tenant: { tenantId: "TENANT001" },
+      },
+      expect.anything()
+    );
+  });
+
+  it("saves automatic closing and reads back the stored policy", async () => {
+    mockApi.updateRoyaltyConfig.mockResolvedValueOnce({
+      config: {
+        autoCloseDay: 10,
+        automaticSince: "2026-09-21T00:00:00Z",
+        closeMode: RoyaltyCloseMode.AUTOMATIC,
+      },
+    });
+    const { updateRoyaltyClosePolicy } = await import("./royalties");
+
+    expect(
+      await updateRoyaltyClosePolicy(
+        { autoCloseDay: 10, closeMode: "automatic", tenantId: "TENANT001" },
+        "en"
+      )
+    ).toEqual({
+      ok: true,
+      policy: {
+        autoCloseDay: 10,
+        automaticSince: "2026-09-21T00:00:00Z",
+        closeMode: "automatic",
+      },
+    });
+    expect(mockApi.updateRoyaltyConfig).toHaveBeenCalledWith(
+      {
+        autoCloseDay: 10,
+        closeMode: RoyaltyCloseMode.AUTOMATIC,
+        tenant: { tenantId: "TENANT001" },
+      },
+      expect.anything()
+    );
   });
 
   it("maps a preview's lines and totals", async () => {

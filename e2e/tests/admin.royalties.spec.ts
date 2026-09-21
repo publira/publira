@@ -120,6 +120,74 @@ test.describe("royalties", () => {
     );
   });
 
+  test("switches to automatic closing from the settings and leaves earlier months manual", async ({
+    page,
+  }) => {
+    // The scenario's tenant keeps the default zone, UTC, so its months are
+    // counted in UTC here too.
+    const today = Temporal.Now.plainDateISO("UTC");
+    const currentPeriod = today.toPlainYearMonth().toString();
+    const previousPeriod = today
+      .toPlainYearMonth()
+      .subtract({ months: 1 })
+      .toString();
+    const closeDate = today
+      .with({ day: 1 })
+      .add({ months: 1 })
+      .with({ day: 5 })
+      .toLocaleString("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+
+    await signIn(page, "/settings/royalties");
+
+    const automatic = page.getByRole("radio", { name: /Close automatically/u });
+    await expect(
+      page.getByRole("radio", { name: /Close each month myself/u })
+    ).toBeChecked();
+    await automatic.click();
+    await page
+      .getByRole("button", { name: "Save the closing settings" })
+      .click();
+    await expect(
+      page.getByText("Choose the day of the following month on which to close.")
+    ).toBeVisible();
+
+    await page.getByRole("combobox", { name: /Close day/u }).click();
+    await page.getByRole("option", { exact: true, name: "Day 5" }).click();
+    await page
+      .getByRole("button", { name: "Save the closing settings" })
+      .click();
+    await expect(
+      page.getByText("The closing settings were saved.")
+    ).toBeVisible();
+
+    await page.reload();
+    await expect(automatic).toBeChecked();
+    await expect(
+      page.getByRole("combobox", { name: /Close day/u })
+    ).toContainText("Day 5");
+
+    await page.goto(
+      `${WEB_ADMIN_ROYALTIES_BASE_URL}${openMonthPath(currentPeriod)}`
+    );
+    await expect(
+      page.getByText(`This month closes automatically on ${closeDate}.`)
+    ).toBeVisible();
+
+    await page.goto(
+      `${WEB_ADMIN_ROYALTIES_BASE_URL}${openMonthPath(previousPeriod)}`
+    );
+    await expect(
+      page.getByText("This month is over and ready to close.")
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Close month" })
+    ).toBeVisible();
+  });
+
   test("names the automatic close date and offers no close button", async ({
     page,
   }) => {

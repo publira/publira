@@ -3,6 +3,7 @@ import type { TenantTheme } from "@publira/utils/theme-css-variables";
 
 import type { TenantSmtpSettings } from "#lib/email-settings";
 import type { TenantPaymentSettings } from "#lib/payment-settings";
+import type { RoyaltyClosePolicy } from "#lib/royalty-period";
 import type { TenantAgeVerification } from "#lib/tenant-age-verification-shared";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
@@ -153,6 +154,23 @@ export type TenantPaymentSettingsFormState =
       ok: false;
       message: string;
       fieldErrors?: TenantPaymentSettingsFieldErrors;
+    }
+  | null;
+
+export type RoyaltyCloseSettingsFieldErrors = Partial<
+  Record<"autoCloseDay" | "closeMode", string>
+>;
+
+export type RoyaltyCloseSettingsFormState =
+  | {
+      ok: true;
+      message: string;
+      policy: RoyaltyClosePolicy;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: RoyaltyCloseSettingsFieldErrors;
     }
   | null;
 

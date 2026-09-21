@@ -1440,6 +1440,7 @@
       "email_error": "无法显示邮件设置",
       "payment_error": "无法显示支付设置",
       "mobile_push_error": "无法显示移动推送设置",
+      "royalties_error": "无法显示版税设置",
       "section_error": "无法显示设置",
       "theme_error": "无法显示主题",
       "theme": {
@@ -1634,6 +1635,8 @@
       "payment_description": "管理该租户的 Stripe 支付设置。",
       "mobile_push_title": "设置 — 移动推送",
       "mobile_push_description": "管理向该租户的移动应用发送推送通知所用的 Firebase 凭据。",
+      "royalties_title": "设置 — 版税",
+      "royalties_description": "选择该租户如何将版税月份结算为明细。",
       "account_title": "账户设置",
       "account_description": "管理您当前登录的管理员账户。",
       "tenant_missing": "缺少租户 ID。",
@@ -1648,6 +1651,7 @@
         "theme": "主题",
         "email": "邮件",
         "payment": "支付",
+        "royalties": "版税",
         "mobile_push": "移动推送",
         "policy": "限制与保留"
       },
@@ -1927,6 +1931,32 @@
           "not_service_account": "该文件不是服务账号密钥。请在 Firebase 控制台的“项目设置”→“服务账号”中下载。",
           "project_mismatch": "该密钥属于 Firebase 项目“{$key}”，而不是“{$entered}”。请上传构建移动应用所用项目的密钥，或更正项目 ID。",
           "key_invalid": "无法使用该服务账号密钥。请在 Firebase 控制台的“项目设置”→“服务账号”中生成新的私钥并上传。"
+        }
+      },
+      "royalties": {
+        "title": "版税月份结算",
+        "description": "结算某月后，该月的版税会成为此后不再变动的明细。可以每月自行结算，也可以在指定的日期自动结算。",
+        "mode_label": "月份结算方式",
+        "mode_options": {
+          "manual": {
+            "label": "每月自行结算",
+            "description": "月份结束后，在“版税”中确认并结算。结算之前该月保持未结算状态。"
+          },
+          "automatic": {
+            "label": "自动结算",
+            "description": "每个月份会在次月的指定日期自动结算。切换到此方式之前已结束的月份保持未结算，请在“版税”中结算。"
+          }
+        },
+        "day_label": "结算日",
+        "day_placeholder": "选择日期",
+        "day_option": "{$day}日",
+        "day_description": "结算某月的次月日期，按租户的时区计算。为确保每个月都有该日期，只能选择 1 至 28 日。",
+        "submit": "保存结算设置",
+        "saved": "结算设置已保存。",
+        "save_failed": "无法保存结算设置。请稍后再试。",
+        "validation": {
+          "mode_required": "请选择月份结算方式。",
+          "day_required": "请选择在次月的哪一天结算。"
         }
       },
       "policy_title": "设置 — 限制与保留",
