@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1";
+
+import "publira/platform/v1/email.proto";
+
+// The one S3-compatible object store the installation writes to. Everything
+// here is platform-wide: a tenant has no bucket, no credential, and no prefix
+// of its own.
+message PlatformStorageSettings {
+  string bucket = 1;
+  // The region requests are signed for. Never empty in a saved configuration,
+  // including against a provider that ignores the value, because SigV4 has no
+  // signature without one.
+  string region = 2;
+  // The address an S3-compatible store is reached on. Empty leaves the
+  // endpoint to the SDK's own resolver, which is what a bucket on AWS wants.
+  string endpoint = 3;
+  // Whether the bucket is addressed as a path of the endpoint
+  // (endpoint/bucket/key) rather than as a host of its own. What most
+  // S3-compatible stores want, and what a bucket on AWS does not.
+  bool force_path_style = 4;
+  // Where a stored object is readable from, for whatever serves one directly.
+  // Empty leaves an object addressed as s3://bucket/key.
+  string public_base_url = 5;
+  // The access key requests are signed with, empty when the installation signs
+  // with the credentials each process finds for itself — an instance role, a
+  // web identity token, the environment.
+  string access_key_id = 6;
+  // Whether a secret access key is stored. The key itself is never returned.
+  bool has_secret_access_key = 7;
+  // Version of the settings row these values were read at. It moves with every
+  // write, so a caller can state which version its save is based on. Zero says
+  // no configuration is saved at all, which is the state a fresh installation
+  // is in; every other field is empty alongside it.
+  int64 revision = 8;
+}
+
+message GetPlatformStorageSettingsRequest {}
+
+message GetPlatformStorageSettingsResponse {
+  PlatformStorageSettings settings = 1;
+}
+
+message UpdatePlatformStorageSettingsRequest {
+  string bucket = 1;
+  string region = 2;
+  string endpoint = 3;
+  bool force_path_style = 4;
+  string public_base_url = 5;
+  // Sent together with secret_access_key_update_mode: an access key id and its
+  // secret are one credential, so a save leaves both or states both. Clearing
+  // them is what selects the ambient credentials of each process.
+  string access_key_id = 6;
+  SecretUpdateMode secret_access_key_update_mode = 7;
+  string secret_access_key = 8;
+  // Required: the revision the values in this request were derived from, as
+  // read from PlatformStorageSettings.revision. Zero states that no
+  // configuration is expected to exist yet. The write is refused with
+  // FAILED_PRECONDITION when the stored row moved on, so a save that read one
+  // field before another session changed it cannot roll that change back.
+  int64 expected_revision = 9;
+}
+
+message UpdatePlatformStorageSettingsResponse {
+  PlatformStorageSettings settings = 1;
+}
+
+// One operation Publira performs on the bucket. The four together are
+// everything it does: an upload writes, the image server reads, and the orphan
+// sweep lists and deletes.
+enum PlatformStorageOperation {
+  PLATFORM_STORAGE_OPERATION_UNSPECIFIED = 0;
+  PLATFORM_STORAGE_OPERATION_PUT_OBJECT = 1;
+  PLATFORM_STORAGE_OPERATION_GET_OBJECT = 2;
+  PLATFORM_STORAGE_OPERATION_LIST_OBJECTS = 3;
+  PLATFORM_STORAGE_OPERATION_DELETE_OBJECT = 4;
+}
+
+// What one operation answered when the test performed it against a probe
+// object of its own.
+message PlatformStorageCheck {
+  PlatformStorageOperation operation = 1;
+  bool succeeded = 2;
+  // A stable reason code (STORAGE_TEST_*) for a failure, empty on success. It
+  // names what the store refused — credentials, permission, the bucket, the
+  // connection — and never carries the provider's own message, which can
+  // quote the request it was given.
+  string reason = 3;
+}
+
+message TestPlatformStorageConnectionRequest {
+  string bucket = 1;
+  string region = 2;
+  string endpoint = 3;
+  bool force_path_style = 4;
+  string public_base_url = 5;
+  string access_key_id = 6;
+  // SECRET_UPDATE_MODE_UNCHANGED tests with the stored secret, so an operator
+  // can test a saved configuration without handling its credential again.
+  SecretUpdateMode secret_access_key_update_mode = 7;
+  string secret_access_key = 8;
+}
+
+// The checks in the order they were performed. A failed operation the
+// following ones depend on ends the run, so a caller reads the list rather
+// than assuming four entries.
+//
+// The RPC itself succeeds whichever way the checks went: four operations each
+// answer for themselves, and an operator whose bucket accepts an upload but
+// refuses a delete has to be told exactly that. It fails only when the request
+// states a configuration that cannot be tested at all.
+message TestPlatformStorageConnectionResponse {
+  repeated PlatformStorageCheck checks = 1;
+}
+
+service PlatformStorageSettingsService {
+  rpc GetPlatformStorageSettings(GetPlatformStorageSettingsRequest) returns (GetPlatformStorageSettingsResponse) {}
+  rpc UpdatePlatformStorageSettings(UpdatePlatformStorageSettingsRequest) returns (UpdatePlatformStorageSettingsResponse) {}
+  rpc TestPlatformStorageConnection(TestPlatformStorageConnectionRequest) returns (TestPlatformStorageConnectionResponse) {}
+}

@@ -30,6 +30,16 @@ const (
 	ReasonSMTPTestTLS             = "SMTP_TEST_TLS"
 	ReasonSMTPTestTimeout         = "SMTP_TEST_TIMEOUT"
 	ReasonSMTPTestUnknown         = "SMTP_TEST_UNKNOWN"
+	// The object store refused one of the operations a connection test
+	// performs. Each names what refused it rather than which operation it was:
+	// the check carries the operation beside the reason.
+	ReasonStorageTestBucketNotFound = "STORAGE_TEST_BUCKET_NOT_FOUND"
+	ReasonStorageTestConnection     = "STORAGE_TEST_CONNECTION"
+	ReasonStorageTestCredentials    = "STORAGE_TEST_CREDENTIALS"
+	ReasonStorageTestObjectMissing  = "STORAGE_TEST_OBJECT_MISSING"
+	ReasonStorageTestPermission     = "STORAGE_TEST_PERMISSION"
+	ReasonStorageTestTimeout        = "STORAGE_TEST_TIMEOUT"
+	ReasonStorageTestUnknown        = "STORAGE_TEST_UNKNOWN"
 
 	// MetadataCreditCount is the ErrorInfo metadata key for how many credits
 	// still name a creator role that cannot be deleted. The value is a decimal
