@@ -133,7 +133,7 @@ Implementation:
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test` and `task e2e:test-lib` for the isolated development-profile and E2E-stack Bash libraries. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
-| `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed. | [`mobile/README.md`](../../mobile/README.md) |
+| `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed, then a production APK from `mobile/config/app.example.yaml` through `task mobile:build`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E` | `task e2e:run`: build, readiness, Playwright, teardown. | [`e2e/README.md`](../../e2e/README.md) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |

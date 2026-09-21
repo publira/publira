@@ -99,15 +99,7 @@ The app builds in two flavors, so a development build and a production build can
 
 Both icon sets still hold the same placeholder art, so today the two builds are told apart by their launcher name. Give the development build its own icon by replacing the images in `ios/Runner/Assets.xcassets/AppIcon-dev.appiconset/` and adding `android/app/src/dev/res/mipmap-*/ic_launcher.png`; nothing else has to change, because both platforms already read the flavor's own icon.
 
-`default-flavor: dev` in `pubspec.yaml` makes every command without a `--flavor` build the development app, so `flutter run` and `flutter test integration_test` both target the development app, and so does CI's `Test / Mobile E2E` through `task mobile:test-integration`. `Test / Mobile` builds no app at all — `dart format`, `flutter analyze`, and `flutter test` run on the host — so no flavor reaches it. A store build asks for the other one:
-
-```bash
-dart run scripts/app_manifest.dart --generate path/to/app.yaml
-flutter build appbundle --flavor production \\
-  --dart-define=PUBLIRA_TENANT_HOST=tenant.example
-flutter build ipa --flavor production \\
-  --dart-define=PUBLIRA_TENANT_HOST=tenant.example
-```
+`default-flavor: dev` in `pubspec.yaml` makes every `flutter` command without a `--flavor` build the development app, so `flutter run` and `flutter test integration_test` both target the development app, and so does CI's `Test / Mobile E2E` through `task mobile:test-integration`. `Test / Mobile` builds no app at all — `dart format`, `flutter analyze`, and `flutter test` run on the host — so no flavor reaches it. A store build is the other one, which [`task mobile:build`](#building-a-tenants-app) makes unless told otherwise.
 
 A flavor decides identity — application ID, launcher name, icon, and the associated domain Universal Links claim. Where the app connects stays with `--dart-define` (see [Connecting to the public API](#connecting-to-the-public-api)), because the same development build points at a local `task dev` stack, an emulator loopback to the host, or an E2E stack depending on who runs it.
 
@@ -156,7 +148,37 @@ dart run scripts/app_manifest.dart --generate path/to/app.yaml
 | `app.properties` | `android/app/build.gradle.kts`, which stops with the command to run when the file is missing |
 | `App.xcconfig` | `ios/Flutter/Debug.xcconfig` and `ios/Flutter/Release.xcconfig`, which include it; the Runner target's first build phase, `scripts/ios-check-app-config.sh`, stops with the command to run when it is missing |
 
-The files go into `.generated/`, or into the directory `PUBLIRA_MOBILE_GENERATED_DIR` names (relative to `mobile/`); builds for two tenants running at once each name their own. Gradle reads the directory the variable names, but Xcode reads `.generated/` only, and an iOS build stops when the variable names another directory. `task mobile:deps` generates Publira's own, and so do `task mobile:run`, `task mobile:screenshot`, and `task mobile:test-integration` before every build, replacing whatever another manifest generated.
+The files go into `.generated/`, or into the directory `PUBLIRA_MOBILE_GENERATED_DIR` names (relative to `mobile/`); builds for two tenants running at once each name their own. Gradle reads the directory the variable names, but Xcode reads `.generated/` only, and an iOS build stops when the variable names another directory. `task mobile:deps` generates Publira's own, and so do `task mobile:run`, `task mobile:screenshot`, and `task mobile:test-integration` before every build, replacing whatever another manifest generated. Development, screenshots, the integration tests, and CI therefore build as Publira without anyone writing a manifest; only a tenant's build names one.
+
+## Building a tenant's app
+
+A tenant builds the app it publishes from its own manifest:
+
+1. Copy `config/app.example.yaml` out of the repository and replace every value with the tenant's. The identifiers are what the stores know the app by, so they stay the same for every later release.
+2. Export the addresses the app connects to, which a production build requires and the app manifest does not carry.
+3. Run `task mobile:build` with the manifest and the `flutter build` target.
+
+```bash
+# From the repository root; a relative manifest path is read from where the task starts
+export PUBLIRA_API_BASE_URL=https://reader.example.jp/api
+export PUBLIRA_IMAGE_BASE_URL=https://reader.example.jp
+
+task mobile:build -- ../tenant/app.yaml appbundle
+task mobile:build -- ../tenant/app.yaml ipa
+```
+
+The command checks the manifest and the arguments, reports every problem before starting Flutter, generates the build configuration from the manifest, and runs `flutter build <target>` in `mobile/`:
+
+| Input | What the command does with it |
+| --- | --- |
+| `<manifest>` | Checked and generated into `.generated/`, or into `PUBLIRA_MOBILE_GENERATED_DIR`, which an `ios` or `ipa` build refuses |
+| `<target>` | One of `apk`, `appbundle`, `ios`, and `ipa` |
+| `--flavor` | `production` when no flavor is named; `--flavor dev` builds the development app under the same manifest |
+| `tenant.host` | Passed as `--dart-define=PUBLIRA_TENANT_HOST`, so the app asks the API about the tenant whose links it claims. Giving the define as well is refused |
+| `PUBLIRA_API_BASE_URL`, `PUBLIRA_IMAGE_BASE_URL` | Passed as the defines of the same names. A production build requires both, as `https://` URLs; a development build without them keeps the defaults of [Connecting to the public API](#connecting-to-the-public-api). Giving the defines as well is refused |
+| Any other argument | Passed on to `flutter build` after the command's own, such as the [Firebase configuration](#firebase-configuration) defines, `--build-name`, and `--build-number` |
+
+The build fails when it leaves a change behind in a file Git tracks or does not ignore: a tenant's identity lives only in the generated files, so every tenant builds from the same unmodified checkout.
 
 ## Quality gates (format / analyze / test)
 
@@ -221,7 +243,7 @@ mobile/
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation
 ├── config/                       # App manifest schema, Publira's default manifest, and an example
-├── scripts/                      # Mobile E2E lifecycle, running or photographing the app, and the app manifest
+├── scripts/                      # Mobile E2E lifecycle, running, photographing, or building the app, and the app manifest
 ├── android/                      # Android-specific files
 ├── ios/                          # iOS-specific files
 ├── web/                          # Web-specific files
