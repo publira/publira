@@ -41,7 +41,7 @@ func newDBIntegrationEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) (*htt
 	pg.Reset(t)
 	db := pg.OpenPlatformDB(t)
 
-	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), nil, mail)
+	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), nil, mail, nil)
 	server := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(server.Close)
 	return server, pg

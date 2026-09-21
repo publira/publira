@@ -108,7 +108,7 @@ func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmoc
 // the counters would otherwise be the deployment's shared Redis, where one run
 // of these tests would charge the budget of the next.
 func newTestHandler(db *sql.DB, queries Querier) http.Handler {
-	api := newAPI(db, queries, slog.Default(), nil, nil, testutil.TokenManager(), nil, openMailGuard())
+	api := newAPI(db, queries, slog.Default(), nil, nil, testutil.TokenManager(), nil, openMailGuard(), nil)
 	return handlerFromServer(api.server)
 }
 

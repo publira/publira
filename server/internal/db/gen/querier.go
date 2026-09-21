@@ -446,6 +446,9 @@ type Querier interface {
 	// which the server answers with its built-in defaults.
 	GetPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
+	// Returns no rows when the platform has never saved an object store, which is
+	// the "not configured" state the console shows.
+	GetPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
 	GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error)
 	GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error)
 	GetPlatformUserByPublicID(ctx context.Context, publicID string) (PlatformUser, error)
@@ -704,6 +707,10 @@ type Querier interface {
 	// absent, so a losing racer must fail on the primary key rather than overwrite
 	// the row the winner just created.
 	InsertPlatformSettings(ctx context.Context, arg InsertPlatformSettingsParams) (PlatformConfig, error)
+	// No ON CONFLICT clause: an absent row leaves LockPlatformStorageConfig
+	// nothing to lock, so a losing racer must fail on the primary key rather than
+	// overwrite the row the winner just created.
+	InsertPlatformStorageConfig(ctx context.Context, arg InsertPlatformStorageConfigParams) (PlatformStorageConfig, error)
 	// Idempotent projection from a SoT row (purchases.id, access_tickets.id).
 	InsertProjectedSourceEvent(ctx context.Context, arg InsertProjectedSourceEventParams) (ContentEvent, error)
 	// Ratings are append-only, like every other content_events row: a member who
@@ -1613,6 +1620,9 @@ type Querier interface {
 	// Reads the defaults row for update, so the revision a save compares against
 	// cannot change between the comparison and the write.
 	LockPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error)
+	// Reads the row for update, so the revision a save compares against cannot
+	// change between the comparison and the write.
+	LockPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
 	// A series as one row: locked, read, written, and listed for the console. The
 	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
@@ -1939,6 +1949,9 @@ type Querier interface {
 	// revision moves with every write, which is what makes a save based on an
 	// earlier read detectable.
 	UpdatePlatformSettings(ctx context.Context, arg UpdatePlatformSettingsParams) (PlatformConfig, error)
+	// Writes every value over the existing row. The revision moves with every
+	// write, which is what makes a save based on an earlier read detectable.
+	UpdatePlatformStorageConfig(ctx context.Context, arg UpdatePlatformStorageConfigParams) (PlatformStorageConfig, error)
 	UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error)
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
 	UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error)

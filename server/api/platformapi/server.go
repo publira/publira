@@ -21,6 +21,8 @@ import (
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/storage/s3"
+	"github.com/publira/publira/server/internal/storagesettings"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -37,6 +39,9 @@ type platformServer struct {
 	tester    internalsmtp.Tester
 	tokens    *auth.TokenManager
 	logger    *slog.Logger
+	// storageTester exercises an object store configuration against the store
+	// it addresses.
+	storageTester storagesettings.Tester
 	// mail bounds how much mail the console's own forms may cause.
 	mail *mailguard.Guard
 }
@@ -115,12 +120,12 @@ type API struct {
 // connected as publira_platform, whose BYPASSRLS attribute lets it read past
 // row-level security.
 func New(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) *API {
-	return newAPI(db, queries, logger, encryptor, tester, tokens, nil, nil)
+	return newAPI(db, queries, logger, encryptor, tester, tokens, nil, nil, nil)
 }
 
 // NewWithAsyncRecorder is New with an AsyncRecorder.
 func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) *API {
-	return newAPI(db, queries, logger, encryptor, tester, tokens, recorder, nil)
+	return newAPI(db, queries, logger, encryptor, tester, tokens, recorder, nil, nil)
 }
 
 // Register mounts the publira.platform.v1 services on mux. What a mux carries
@@ -132,7 +137,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	registerPlatformRoutes(mux, a.server)
 }
 
-func newAPI(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard) *API {
+func newAPI(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard, storageTester storagesettings.Tester) *API {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -144,15 +149,21 @@ func newAPI(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailset
 	if mail == nil {
 		mail = mailguard.NewShared(platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger), logger)
 	}
+	// A nil tester is the production one: it builds its client from the
+	// settings each test states rather than from anything wired here.
+	if storageTester == nil {
+		storageTester = s3.NewConnectionTester()
+	}
 	server := &platformServer{
-		queries:   queries,
-		db:        db,
-		recorder:  recorder,
-		encryptor: encryptor,
-		tester:    tester,
-		tokens:    tokens,
-		logger:    logger,
-		mail:      mail,
+		queries:       queries,
+		db:            db,
+		recorder:      recorder,
+		encryptor:     encryptor,
+		tester:        tester,
+		tokens:        tokens,
+		logger:        logger,
+		mail:          mail,
+		storageTester: storageTester,
 	}
 	return &API{server: server}
 }
@@ -203,6 +214,12 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(settingsPath, settingsHandler)
+	storagePath, storageHandler := publirasplatformv1connect.NewPlatformStorageSettingsServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(authInterceptor),
+	)
+	mux.Handle(storagePath, storageHandler)
 	policyPath, policyHandler := publirasplatformv1connect.NewPlatformPolicyServiceHandler(
 		server,
 		traced,

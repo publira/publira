@@ -509,6 +509,20 @@ type PlatformSmtpConfig struct {
 	UpdatedAt         time.Time      `json:"updated_at"`
 }
 
+type PlatformStorageConfig struct {
+	Singleton                bool           `json:"singleton"`
+	Bucket                   string         `json:"bucket"`
+	Region                   string         `json:"region"`
+	Endpoint                 sql.NullString `json:"endpoint"`
+	ForcePathStyle           bool           `json:"force_path_style"`
+	PublicBaseUrl            sql.NullString `json:"public_base_url"`
+	AccessKeyID              sql.NullString `json:"access_key_id"`
+	SecretAccessKeyEncrypted sql.NullString `json:"secret_access_key_encrypted"`
+	Revision                 int64          `json:"revision"`
+	CreatedAt                time.Time      `json:"created_at"`
+	UpdatedAt                time.Time      `json:"updated_at"`
+}
+
 type PlatformUser struct {
 	ID                 uuid.UUID `json:"id"`
 	PublicID           string    `json:"public_id"`

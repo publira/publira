@@ -303,7 +303,7 @@ func TestDBUpdatePlatformPolicyAuditsInTheSameTransaction(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPlatformDB(t)
-	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), droppingRecorder{}, openMailGuard())
+	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), droppingRecorder{}, openMailGuard(), nil)
 	ts := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(ts.Close)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")

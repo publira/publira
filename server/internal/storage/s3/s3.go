@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
@@ -33,11 +34,16 @@ type apiClient interface {
 }
 
 type Config struct {
-	Bucket         string
-	Region         string
-	Endpoint       string
-	PublicBaseURL  string
-	ForcePathStyle bool
+	Bucket        string
+	Region        string
+	Endpoint      string
+	PublicBaseURL string
+	// AccessKeyID and SecretAccessKey sign the requests. Leave both empty to
+	// sign with whatever credential the process finds for itself — an instance
+	// role, a web identity token, the environment.
+	AccessKeyID     string
+	SecretAccessKey string
+	ForcePathStyle  bool
 }
 
 type Storage struct {
@@ -49,20 +55,10 @@ type Storage struct {
 }
 
 func New(ctx context.Context, cfg Config) (*Storage, error) {
-	loadOptions := make([]func(*awsconfig.LoadOptions) error, 0, 1)
-	if strings.TrimSpace(cfg.Region) != "" {
-		loadOptions = append(loadOptions, awsconfig.WithRegion(cfg.Region))
-	}
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOptions...)
+	client, err := newClient(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("load aws config: %w", err)
+		return nil, err
 	}
-	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = cfg.ForcePathStyle
-		if strings.TrimSpace(cfg.Endpoint) != "" {
-			o.BaseEndpoint = aws.String(strings.TrimSpace(cfg.Endpoint))
-		}
-	})
 	return &Storage{
 		client:         client,
 		bucket:         cfg.Bucket,
@@ -70,6 +66,31 @@ func New(ctx context.Context, cfg Config) (*Storage, error) {
 		uploadTimeout:  defaultUploadTimeout,
 		reclaimTimeout: defaultReclaimTimeout,
 	}, nil
+}
+
+// newClient builds the S3 client cfg addresses. An explicit access key is
+// handed over as a static credential; without one the SDK's default chain
+// resolves whatever the process was deployed with.
+func newClient(ctx context.Context, cfg Config) (*s3.Client, error) {
+	loadOptions := make([]func(*awsconfig.LoadOptions) error, 0, 2)
+	if strings.TrimSpace(cfg.Region) != "" {
+		loadOptions = append(loadOptions, awsconfig.WithRegion(cfg.Region))
+	}
+	if strings.TrimSpace(cfg.AccessKeyID) != "" || strings.TrimSpace(cfg.SecretAccessKey) != "" {
+		loadOptions = append(loadOptions, awsconfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
+		))
+	}
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("load aws config: %w", err)
+	}
+	return s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.UsePathStyle = cfg.ForcePathStyle
+		if strings.TrimSpace(cfg.Endpoint) != "" {
+			o.BaseEndpoint = aws.String(strings.TrimSpace(cfg.Endpoint))
+		}
+	}), nil
 }
 
 func (s *Storage) Upload(ctx context.Context, req storage.UploadRequest) (storage.UploadResult, error) {
