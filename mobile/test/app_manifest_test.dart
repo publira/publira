@@ -393,7 +393,13 @@ android:
     });
 
     test('are named plainly, never by a path', () async {
-      for (final name in ['', '../escape', '.hidden']) {
+      for (final name in [
+        '',
+        '../escape',
+        r'..\escape',
+        'C:escape',
+        '.hidden',
+      ]) {
         await expectLater(
           writeGeneratedFiles(temporary, {name: ''}),
           throwsArgumentError,

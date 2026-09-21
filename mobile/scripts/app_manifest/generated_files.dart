@@ -21,7 +21,10 @@ Future<void> writeGeneratedFiles(
   await directory.create(recursive: true);
   final random = Random.secure();
   for (final MapEntry(key: name, value: contents) in files.entries) {
-    if (name.isEmpty || name.contains('/') || name.startsWith('.')) {
+    // Windows also reads `\` and a drive's `:` as parts of a path.
+    if (name.isEmpty ||
+        name.contains(RegExp(r'[/\\:]')) ||
+        name.startsWith('.')) {
       throw ArgumentError.value(name, 'files', 'must be a plain file name');
     }
     final suffix = random.nextInt(1 << 32).toRadixString(16);
