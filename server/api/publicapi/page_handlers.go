@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/pageslug"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 )
@@ -69,6 +70,32 @@ func (s *apiServer) ListPublishedPages(
 	}
 
 	return connect.NewResponse(&publirav1.ListPublishedPagesResponse{Pages: pages}), nil
+}
+
+func (s *apiServer) ListPublishedPageSlugs(
+	ctx context.Context,
+	req *connect.Request[publirav1.ListPublishedPageSlugsRequest],
+) (*connect.Response[publirav1.ListPublishedPageSlugsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.queriesFor(ctx).ListPublishedPageSlugsForTenant(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list published page slugs", err, "tenant_id", tenant.ID.String())
+	}
+
+	// The admin API refuses these slugs, but a row stored before it did (or
+	// written past it) must still never be routed over a reserved screen.
+	slugs := make([]string, 0, len(rows))
+	for _, slug := range rows {
+		if _, reserved := pageslug.ReservedFirstSegment(slug); !reserved {
+			slugs = append(slugs, slug)
+		}
+	}
+
+	return connect.NewResponse(&publirav1.ListPublishedPageSlugsResponse{Slugs: slugs}), nil
 }
 
 // normalizePublishedPageSlugLookup matches admin storage form so clients may

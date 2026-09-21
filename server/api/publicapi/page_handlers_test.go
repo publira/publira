@@ -55,6 +55,37 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// A page stored under a reserved path before the admin API refused one is left
+// out, so the public site never serves it over a sign-in or settings screen.
+func TestPagesListPublishedPageSlugsSuccess(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedPageSlugsForTenantQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"slug"}).
+			AddRow("/legal/terms").
+			AddRow("/login").
+			AddRow("/series"))
+
+	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedPageSlugs(context.Background(), connect.NewRequest(&publirav1.ListPublishedPageSlugsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedPageSlugs: %v", err)
+	}
+
+	if got := strings.Join(resp.Msg.Slugs, ","); got != "/legal/terms,/series" {
+		t.Fatalf("slugs = %q, want /legal/terms,/series", got)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
 func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -188,11 +219,17 @@ func TestPagesPublishedQueriesHavePublicationGuards(t *testing.T) {
 		if !strings.Contains(listPublishedPagesForTenantQuery, snippet) {
 			t.Fatalf("listPublishedPagesForTenantQuery does not contain %q", snippet)
 		}
+		if !strings.Contains(listPublishedPageSlugsForTenantQuery, snippet) {
+			t.Fatalf("listPublishedPageSlugsForTenantQuery does not contain %q", snippet)
+		}
 		if !strings.Contains(getPublishedPageBySlugQuery, snippet) {
 			t.Fatalf("getPublishedPageBySlugQuery does not contain %q", snippet)
 		}
 	}
 	if !strings.Contains(listPublishedPagesForTenantQuery, "p.display_in_footer = true") {
 		t.Fatalf("listPublishedPagesForTenantQuery must filter display_in_footer")
+	}
+	if strings.Contains(listPublishedPageSlugsForTenantQuery, "display_in_footer") {
+		t.Fatalf("listPublishedPageSlugsForTenantQuery must not filter display_in_footer")
 	}
 }

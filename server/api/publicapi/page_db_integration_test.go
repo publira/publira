@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +59,49 @@ func TestDBListPublishedPagesReturnsOnlyPublishedFooterPages(t *testing.T) {
 	}
 	if resp.Msg.Pages[0].Title != "Privacy Policy" {
 		t.Fatalf("page title = %q, want Privacy Policy", resp.Msg.Pages[0].Title)
+	}
+}
+
+func TestDBListPublishedPageSlugsReturnsEveryPublishedPageOfTheTenant(t *testing.T) {
+	env := newPublicDBEnv(t)
+	first, second := env.seedTwoTenants(t)
+
+	env.PG.SeedPage(t, first.ID, testutil.PageSeed{
+		Slug:            "privacy",
+		Title:           "Privacy Policy",
+		Published:       true,
+		DisplayInFooter: true,
+	})
+	env.PG.SeedPage(t, first.ID, testutil.PageSeed{
+		Slug:      "series",
+		Title:     "About Our Series",
+		Published: true,
+	})
+	env.PG.SeedPage(t, first.ID, testutil.PageSeed{
+		Slug:            "terms",
+		Title:           "Terms (draft)",
+		DisplayInFooter: true,
+	})
+	// Stored past the admin API, which refuses a reserved slug.
+	env.PG.SeedPage(t, first.ID, testutil.PageSeed{
+		Slug:      "login",
+		Title:     "Sign-in help",
+		Published: true,
+	})
+	env.PG.SeedPage(t, second.ID, testutil.PageSeed{
+		Slug:      "contact",
+		Title:     "Tenant B Contact",
+		Published: true,
+	})
+
+	resp, err := env.pagesClient().ListPublishedPageSlugs(context.Background(), connect.NewRequest(&publirav1.ListPublishedPageSlugsRequest{
+		Tenant: tenantContext(first),
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedPageSlugs: %v", err)
+	}
+	if got := strings.Join(resp.Msg.Slugs, ","); got != "/privacy,/series" {
+		t.Fatalf("slugs = %q, want the published pages of tenant A, footer or not, less the reserved one", got)
 	}
 }
 

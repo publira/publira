@@ -30,6 +30,25 @@ func TestNewFieldViolationError(t *testing.T) {
 	}
 }
 
+func TestNewFieldViolationErrorWithReason(t *testing.T) {
+	err := NewFieldViolationErrorWithReason(connect.CodeInvalidArgument, errors.New("reserved slug"), "slug", FieldReasonPageSlugReserved)
+	detail, detailErr := err.Details()[0].Value()
+	if detailErr != nil {
+		t.Fatalf("detail Value(): %v", detailErr)
+	}
+	badRequest, ok := detail.(*errdetails.BadRequest)
+	if !ok {
+		t.Fatalf("detail type = %T, want *errdetails.BadRequest", detail)
+	}
+	if len(badRequest.FieldViolations) != 1 {
+		t.Fatalf("field violations = %#v, want one", badRequest.FieldViolations)
+	}
+	violation := badRequest.FieldViolations[0]
+	if violation.Field != "slug" || violation.Reason != FieldReasonPageSlugReserved {
+		t.Fatalf("violation = %#v, want slug / %s", violation, FieldReasonPageSlugReserved)
+	}
+}
+
 func TestNewErrorInfoError(t *testing.T) {
 	err := NewErrorInfoError(connect.CodeFailedPrecondition, errors.New("invitation canceled"), ReasonInvitationCanceled)
 	detail, detailErr := err.Details()[0].Value()

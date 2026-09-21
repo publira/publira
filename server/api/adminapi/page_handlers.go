@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/pageslug"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -95,6 +96,7 @@ func pageVersionFromModel(v dbmodels.PageVersion) *publirattypesv1.PageVersion {
 //   - empty / "/" → ""
 //   - strip leading/trailing slashes, collapse "//"
 //   - each path segment: [a-z0-9][a-z0-9-]*
+//   - the first segment is not one pageslug reserves
 //   - stored form always has a single leading "/" (e.g. "/privacy", "/legal/terms")
 func normalizePageSlugForStorage(slug string) (string, error) {
 	normalized := strings.TrimSpace(slug)
@@ -124,6 +126,15 @@ func normalizePageSlugForStorage(slug string) (string, error) {
 				"slug",
 			)
 		}
+	}
+
+	if first, reserved := pageslug.ReservedFirstSegment("/" + normalized); reserved {
+		return "", rpcerrors.NewFieldViolationErrorWithReason(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("slug must not start with /%s, which the public site keeps for its own screen", first),
+			"slug",
+			rpcerrors.FieldReasonPageSlugReserved,
+		)
 	}
 
 	return "/" + normalized, nil
