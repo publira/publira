@@ -453,6 +453,53 @@ test.describe("web-host episode reading", () => {
     );
   });
 
+  test("a reading position moved while offline is recorded once the connection returns", async ({
+    page,
+  }) => {
+    clearReadingPosition();
+    await signInAsMember(
+      page,
+      SEED_MEMBER,
+      VIEWER_EPISODE_PATH,
+      WEB_HOST_EDGE_BASE_URL
+    );
+    await expect(page).toHaveURL(new RegExp(`${VIEWER_EPISODE_PATH}$`, "u"));
+    await expectFirstPageDrawn(page);
+    // Opening the episode saves the first page on its own; waiting for it keeps
+    // that save from being the one the drop below catches.
+    await expect
+      .poll(savedPageIndex, { message: "the first page was saved on opening" })
+      .toBe("0");
+
+    await page.context().setOffline(true);
+    const refused = page.waitForEvent(
+      "requestfailed",
+      (request) =>
+        request.method() === "POST" &&
+        request
+          .url()
+          .endsWith(`/episodes/${VIEWER_EPISODE_ID}/reading-position`)
+    );
+    await turnPages(page, 3);
+    const stoppedOn = Number(await readingProgress(page).getAttribute("value"));
+    expect(stoppedOn, "the reader moved off the first page").toBeGreaterThan(1);
+    await refused;
+    expect(savedPageIndex(), "nothing reached the database offline").toBe("0");
+
+    await page.context().setOffline(false);
+
+    await expect
+      .poll(() => Number(savedPageIndex()), {
+        message: "the page turned to offline reached the database on reconnect",
+      })
+      .toBeGreaterThan(0);
+    await page.reload();
+    await expect(readingProgress(page)).toHaveAttribute(
+      "value",
+      String(stoppedOn)
+    );
+  });
+
   test("the series page and the home page offer the episode the member stopped in", async ({
     page,
   }) => {
@@ -534,6 +581,43 @@ test.describe("web-host episode reading", () => {
     );
   });
 
+  test("a page refused mid-read draws its reload control and leaves the drawn pages on screen", async ({
+    page,
+  }) => {
+    // The first page opens on its own, so the spread after it holds pages 2
+    // and 3. Only the third is refused, and only its first attempt: the page
+    // beside it is drawn, and the reload reaches the network.
+    await page.route(
+      (url) => url.pathname === `/images/episodes/${viewerPageImageId(3)}`,
+      (route) => route.abort("internetdisconnected"),
+      { times: 1 }
+    );
+
+    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+    await turnPages(page, 1);
+
+    const drawnPage = pageCanvas(page, 2);
+    const refusedPage = pageCanvas(page, 3);
+    await expect(refusedPage).toHaveAttribute("data-page-status", "error");
+    await expect(
+      page.getByText(
+        "This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again."
+      )
+    ).toBeVisible();
+    await expect(drawnPage, "the page beside it stays drawn").toHaveAttribute(
+      "data-page-status",
+      "loaded"
+    );
+    await expect(drawnPage).toBeInViewport();
+
+    await page.getByRole("button", { name: "Reload" }).click();
+
+    await expect(refusedPage).toHaveAttribute("data-page-status", "loaded");
+    await expect(drawnPage).toHaveAttribute("data-page-status", "loaded");
+    await expect(readingProgress(page)).toHaveAttribute("value", "3");
+  });
+
   test("the end of an episode opens the next one in a single click", async ({
     page,
   }) => {
@@ -562,6 +646,61 @@ test.describe("web-host episode reading", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: NEXT_EPISODE_TITLE })
     ).toBeVisible();
+  });
+
+  test("the next episode opened while offline arrives once the connection returns", async ({
+    page,
+  }) => {
+    await page.goto(edgeUrl(VIEWER_EPISODE_PATH));
+    await expectFirstPageDrawn(page);
+    const nextEpisode = endPage(page).getByRole("link", {
+      name: NEXT_EPISODE_TITLE,
+    });
+    expect(
+      await turnToEndPage(page, nextEpisode),
+      "the page after the last one offers the next episode"
+    ).toBe(true);
+
+    // Survives a soft navigation only. Without the retry a refused navigation
+    // falls back to loading the document, whose error page the browser reloads
+    // on reconnect, which reaches the next episode as well.
+    await page.evaluate(() => {
+      document.documentElement.dataset.e2eSoftNavigation = "pending";
+    });
+    await page.context().setOffline(true);
+    const refused = page.waitForEvent(
+      "requestfailed",
+      (request) =>
+        request.resourceType() === "fetch" &&
+        request.url().includes(NEXT_EPISODE_PATH)
+    );
+    await nextEpisode.click();
+    await refused;
+    // The retry checks for the connection with a `HEAD` against the current
+    // URL, so one of those refused after the navigation is what says it is
+    // being held rather than failed. Only then is the absence of the error
+    // boundary, and of a document load, worth asserting.
+    await page.waitForEvent(
+      "requestfailed",
+      (request) => request.method() === "HEAD"
+    );
+    await expect(page.getByText("Could not show this page")).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-e2e-soft-navigation",
+      "pending"
+    );
+
+    await page.context().setOffline(false);
+
+    await expect(page).toHaveURL(new RegExp(`${NEXT_EPISODE_PATH}$`, "u"));
+    await expect(
+      page.getByRole("heading", { level: 1, name: NEXT_EPISODE_TITLE })
+    ).toBeVisible();
+    await expect(page.getByText("Could not show this page")).toHaveCount(0);
+    await expect(
+      page.locator("html"),
+      "the document was not reloaded to get there"
+    ).toHaveAttribute("data-e2e-soft-navigation", "pending");
   });
 
   test("a paid next episode says what it costs before the reader opens it", async ({
