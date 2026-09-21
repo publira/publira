@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
@@ -81,6 +83,19 @@ test.describe("royalties", () => {
     ).toBeVisible();
     expect(await lineRows(page)).toEqual(previewed);
 
+    const downloading = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download CSV" }).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe(
+      `royalties-${ROYALTIES_TENANT.publicId}-${ROYALTIES_SALES.period}.csv`
+    );
+    const csv = await readFile(await download.path(), "utf-8");
+    const [header, ...rows] = csv.split("\r\n").filter((row) => row !== "");
+    expect(header).toMatch(/^\uFEFFperiod,creator_id,creator_name,/u);
+    expect(rows).toHaveLength(2);
+    expect(rows.join("\n")).toContain(`${ROYALTIES_SALES.artist},`);
+    expect(rows.join("\n")).toContain(`${ROYALTIES_SALES.writer},`);
+
     await page.goto(
       `${WEB_ADMIN_ROYALTIES_BASE_URL}${openMonthPath(ROYALTIES_SALES.period)}`
     );
@@ -90,8 +105,19 @@ test.describe("royalties", () => {
 
     await page.getByRole("link", { name: "Closed statements" }).first().click();
     await expect(
-      page.getByRole("link", { name: ROYALTIES_SALES.periodLabel })
+      page.getByRole("link", {
+        exact: true,
+        name: ROYALTIES_SALES.periodLabel,
+      })
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", {
+        name: `Download the CSV for ${ROYALTIES_SALES.periodLabel}`,
+      })
+    ).toHaveAttribute(
+      "href",
+      `/api/royalties/statements/${ROYALTIES_SALES.period}/csv`
+    );
   });
 
   test("names the automatic close date and offers no close button", async ({

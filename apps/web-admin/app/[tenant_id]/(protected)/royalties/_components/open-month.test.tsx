@@ -106,6 +106,28 @@ describe("OpenMonth", () => {
     expect(screen.getByText("¥2,950")).toBeDefined();
   });
 
+  it("offers no download until the month is closed, and says why", () => {
+    render(
+      <OpenMonth
+        closeState={{ kind: "ready" }}
+        lines={lines}
+        locale="en"
+        period="2026-08"
+        timeZone="Asia/Tokyo"
+        totals={totals}
+      />
+    );
+
+    expect(
+      screen
+        .getByRole("button", { name: "Download CSV" })
+        .hasAttribute("disabled")
+    ).toBe(true);
+    expect(
+      screen.getByText("The CSV can be downloaded once the month is closed.")
+    ).toBeDefined();
+  });
+
   it("groups the lines by author with a subtotal each", () => {
     render(
       <OpenMonth

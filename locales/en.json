@@ -2239,7 +2239,8 @@
           "closed_by": "Closed by",
           "gross": "Sales",
           "refunded": "Refunds",
-          "payout": "Payout"
+          "payout": "Payout",
+          "export": "CSV"
         }
       },
       "statement": {
@@ -2254,6 +2255,11 @@
         "pagination_aria": "Statement line pages",
         "pagination_description": "Shows up to {$count} lines per page.",
         "back_to_list": "Back to closed statements"
+      },
+      "export": {
+        "button": "Download CSV",
+        "row_label": "Download the CSV for {$period}",
+        "open_month_note": "The CSV can be downloaded once the month is closed."
       }
     }
   },

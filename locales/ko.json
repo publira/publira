@@ -2239,7 +2239,8 @@
           "closed_by": "마감한 사람",
           "gross": "매출",
           "refunded": "환불",
-          "payout": "지급액"
+          "payout": "지급액",
+          "export": "CSV"
         }
       },
       "statement": {
@@ -2254,6 +2255,11 @@
         "pagination_aria": "명세 행 페이지",
         "pagination_description": "한 페이지에 최대 {$count}행을 표시합니다.",
         "back_to_list": "마감한 명세서로 돌아가기"
+      },
+      "export": {
+        "button": "CSV 다운로드",
+        "row_label": "{$period} CSV 다운로드",
+        "open_month_note": "CSV는 월을 마감한 후 다운로드할 수 있습니다."
       }
     }
   },

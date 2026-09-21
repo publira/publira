@@ -2239,7 +2239,8 @@
           "closed_by": "結算人",
           "gross": "銷售額",
           "refunded": "退款",
-          "payout": "支付額"
+          "payout": "支付額",
+          "export": "CSV"
         }
       },
       "statement": {
@@ -2254,6 +2255,11 @@
         "pagination_aria": "明細列分頁",
         "pagination_description": "每頁最多顯示 {$count} 列。",
         "back_to_list": "返回已結算明細"
+      },
+      "export": {
+        "button": "下載 CSV",
+        "row_label": "下載 {$period} 的 CSV",
+        "open_month_note": "該月結算後即可下載 CSV。"
       }
     }
   },

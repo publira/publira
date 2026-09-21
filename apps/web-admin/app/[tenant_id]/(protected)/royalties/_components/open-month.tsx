@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import { Button } from "@publira/ui-components/button";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -15,6 +16,7 @@ import { Suspense } from "react";
 
 import {
   AdminSection,
+  AdminSectionActions,
   AdminSectionDescription,
   AdminSectionHeader,
   AdminSectionHeading,
@@ -150,6 +152,18 @@ export const OpenMonth = ({
             </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
+        <AdminSectionActions>
+          <p className="text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="admin.royalties.export.open_month_note" />
+            </Suspense>
+          </p>
+          <Button disabled type="button" variant="outline">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.royalties.export.button" />
+            </Suspense>
+          </Button>
+        </AdminSectionActions>
       </AdminSectionHeader>
       <RoyaltyFigures locale={locale} totals={totals} />
       <CloseStatus

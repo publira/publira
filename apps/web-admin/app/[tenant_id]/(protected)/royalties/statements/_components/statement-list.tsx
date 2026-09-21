@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
   SectionErrorDescription,
@@ -30,6 +31,7 @@ import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
 import type { RoyaltyStatementSummary } from "#lib/royalties";
+import { royaltyStatementCsvPath } from "#lib/royalty-period";
 
 type StatementListProps = CursorPageHrefs & {
   listErrorMessage?: string;
@@ -118,6 +120,11 @@ export const StatementList = async ({
                   <Message message="admin.royalties.statements.columns.payout" />
                 </Suspense>
               </TableHead>
+              <TableHead className="text-right">
+                <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
+                  <Message message="admin.royalties.statements.columns.export" />
+                </Suspense>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -147,6 +154,20 @@ export const StatementList = async ({
                 </TableCell>
                 <TableCell className="text-right">
                   {formatYen(statement.totals.payout, { locale })}
+                </TableCell>
+                <TableCell className="text-right">
+                  <LinkButton
+                    aria-label={t("admin.royalties.export.row_label", {
+                      period: formatPlainYearMonth(statement.period, {
+                        locale,
+                      }),
+                    })}
+                    href={royaltyStatementCsvPath(statement.period)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Message message="admin.royalties.export.button" />
+                  </LinkButton>
                 </TableCell>
               </TableRow>
             ))}
