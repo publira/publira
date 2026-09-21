@@ -11,7 +11,7 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `api/Dockerfile` | Long-running Go HTTP servers (`server/cmd/*`) that stay `CGO_ENABLED=0` |
 | `image/Dockerfile` | The image server, which links Manael / libvips (`image-server`) |
-| `batch/Dockerfile` | Every batch job, as one image (`server/cmd/batch`) |
+| `batch/Dockerfile` | Every maintenance job, as one image an operator runs by hand (`server/cmd/batch`); the worker schedules the same jobs |
 | `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
 | `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` (included from repo root) |

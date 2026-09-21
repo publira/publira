@@ -9,7 +9,7 @@
 // The shape is one table plus chunked deletes, which is the simplest thing
 // that reclaims the space. Either of two observations is the trigger to
 // reconsider it in favour of declarative partitioning by occurred_at, dropping
-// a partition instead of deleting rows: one purge no longer fits in the cron
+// a partition instead of deleting rows: one purge no longer fits in its
 // interval (the elapsed time is in its completion log), or the table and its
 // indexes outgrow what autovacuum keeps up with, since the bloat a delete
 // leaves does not come back down on its own.

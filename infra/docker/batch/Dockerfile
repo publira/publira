@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1.27@sha256:bde3983e9c939224420ddaf6b784cc30e09b035a4dea01f581230c50809f372e
 
-# Batch job image for server/cmd/batch. Every batch ships in this one image;
-# the subcommand passed as a container argument selects the job to run.
+# Image for server/cmd/batch, which runs a maintenance job by hand. Every job
+# ships in this one image; the subcommand passed as a container argument selects
+# the job to run. The worker schedules the same jobs, so nothing runs this on a
+# timer.
 #
 # Build from the repository root:
 #

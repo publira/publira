@@ -137,7 +137,7 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 	defer tx.Rollback() //nolint:errcheck
 
 	// This lock belongs inside the transaction: it protects the delete/insert
-	// replacement from a concurrent cron invocation for the same tenant/day.
+	// replacement from a concurrent run for the same tenant/day.
 	// Its bounded wait turns an overlapping run into a failed run rather than
 	// one that waits out the day holding a transaction open.
 	if err := batchlock.TakeTenant(ctx, tx, tenantID.String()+":"+statDate); err != nil {

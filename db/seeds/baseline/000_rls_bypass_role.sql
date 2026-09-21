@@ -29,8 +29,8 @@ BEGIN
 END
 $$;
 
--- Daily content stats worker: a separate BYPASSRLS login so the cron job
--- cannot accidentally run through a tenant-scoped API role.
+-- Maintenance jobs (the worker's and cmd/batch): a separate BYPASSRLS login so
+-- they cannot accidentally run through a tenant-scoped API role.
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_content_stats') THEN

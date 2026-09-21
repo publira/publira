@@ -1,6 +1,6 @@
 # worker
 
-The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the four [periodic jobs](#periodic-jobs), and owns the nine [maintenance jobs](#maintenance-jobs) that rebuild and purge stored data. It runs as a separate process from the API processes. Besides `outbox_test`, the Outbox drain handles these email events:
+The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the four [periodic jobs](#periodic-jobs), and owns the nine [maintenance jobs](#maintenance-jobs) that rebuild and purge stored data. It runs as a separate process from the API processes, and it is all the scheduling a deployment needs: nothing besides it — no host cron, no Kubernetes CronJob — has to invoke a job on a timer. Any number of replicas may run, since every scheduled job is unique while a run of it is in flight. Besides `outbox_test`, the Outbox drain handles these email events:
 
 | Event type | Mail |
 | --- | --- |
@@ -177,7 +177,7 @@ River's schema (`river_job` and the rest) is applied with `rivermigrate` at star
 
 OpenTelemetry reports `service.name` as `publira-worker` for the process, and a name of its own for the span each job's run hangs off: `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for a periodic run, and `publira-<subcommand>` for a maintenance run — `publira-aggregate-content-stats` and the rest. They are the names those jobs report where they still have a process of their own, so a trace UI filtering on one keeps finding the same work.
 
-The structured logs (slog) carry `event_id` / `event_type` / `idempotency_key` / `attempts`. The OpenTelemetry counters are:
+The structured logs (slog) of the Outbox drain carry `event_id` / `event_type` / `idempotency_key` / `attempts`. Those of a maintenance run carry `job_kind` / `job_id` / `attempt`, and its span carries `river.job.id` / `river.job.attempt` and an error status when the pass fails, so a failure found in either leads to its `river_job` row: the `errors` column there holds every failed attempt's error, naming the tenant and the day it stopped on. The OpenTelemetry counters are:
 
 - `publira.outbox.events.claimed`
 - `publira.outbox.events.done`

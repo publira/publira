@@ -1,9 +1,12 @@
 package maintenancejobs
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"slices"
 	"strings"
 	"testing"
@@ -11,6 +14,11 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -181,7 +189,7 @@ func TestRegisterAddsAWorkerForEveryKind(t *testing.T) {
 func TestPurgeOrphanImagesCancelsWithoutConfiguredStorage(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}, Storage: stubSource{err: storage.ErrNotConfigured}})
 
-	err := (&purgeOrphanImagesWorker{jobs: jobs}).Work(context.Background(), &river.Job[PurgeOrphanImagesArgs]{})
+	err := (&purgeOrphanImagesWorker{jobs: jobs}).Work(context.Background(), jobOf(PurgeOrphanImagesArgs{}))
 	var cancel *river.JobCancelError
 	if !errors.As(err, &cancel) {
 		t.Fatalf("Work error = %v, want a JobCancelError", err)
@@ -189,6 +197,68 @@ func TestPurgeOrphanImagesCancelsWithoutConfiguredStorage(t *testing.T) {
 	if !errors.Is(err, storage.ErrNotConfigured) {
 		t.Fatalf("Work error = %v, want it to wrap %v", err, storage.ErrNotConfigured)
 	}
+}
+
+// A failed pass is found from a trace or a log line, and both have to lead to
+// the river_job row that holds its error and its retries.
+func TestAFailedPassNamesItsJobInTheTraceAndTheLog(t *testing.T) {
+	recorder := tracetest.NewSpanRecorder()
+	previous := otel.GetTracerProvider()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder)))
+	t.Cleanup(func() { otel.SetTracerProvider(previous) })
+
+	var logs bytes.Buffer
+	jobs := newJobs(t, Config{
+		DB:      &sql.DB{},
+		Storage: stubSource{err: errors.New("bucket unreachable")},
+		Logger:  slog.New(slog.NewJSONHandler(&logs, nil)),
+	})
+	job := jobOf(PurgeOrphanImagesArgs{})
+	job.ID = 42
+	job.Attempt = 2
+
+	if err := (&purgeOrphanImagesWorker{jobs: jobs}).Work(context.Background(), job); err == nil {
+		t.Fatal("Work succeeded, want the storage error")
+	}
+
+	spans := recorder.Ended()
+	if len(spans) != 1 {
+		t.Fatalf("ended spans = %d, want 1", len(spans))
+	}
+	span := spans[0]
+	if span.Name() != kindPurgeOrphanImages {
+		t.Fatalf("span name = %q, want %q", span.Name(), kindPurgeOrphanImages)
+	}
+	if span.Status().Code != codes.Error {
+		t.Fatalf("span status = %v, want %v", span.Status().Code, codes.Error)
+	}
+	attrs := map[attribute.Key]attribute.Value{}
+	for _, kv := range span.Attributes() {
+		attrs[kv.Key] = kv.Value
+	}
+	if got := attrs["river.job.id"].AsInt64(); got != 42 {
+		t.Fatalf("river.job.id = %d, want 42", got)
+	}
+	if got := attrs["river.job.attempt"].AsInt64(); got != 2 {
+		t.Fatalf("river.job.attempt = %d, want 2", got)
+	}
+
+	var line struct {
+		Kind    string `json:"job_kind"`
+		ID      int64  `json:"job_id"`
+		Attempt int    `json:"attempt"`
+	}
+	if err := json.Unmarshal(logs.Bytes(), &line); err != nil {
+		t.Fatalf("decode the pass's log line %q: %v", logs.String(), err)
+	}
+	if line.Kind != kindPurgeOrphanImages || line.ID != 42 || line.Attempt != 2 {
+		t.Fatalf("log line names job %+v, want %s 42 attempt 2", line, kindPurgeOrphanImages)
+	}
+}
+
+// jobOf wraps args in the row River hands a worker, as a job of its kind.
+func jobOf[T river.JobArgs](args T) *river.Job[T] {
+	return &river.Job[T]{JobRow: &rivertype.JobRow{Kind: args.Kind()}, Args: args}
 }
 
 func inFlight() []rivertype.JobState {

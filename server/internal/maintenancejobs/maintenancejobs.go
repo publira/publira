@@ -23,6 +23,9 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/publira/publira/server/internal/maintenance"
 	"github.com/publira/publira/server/internal/storage"
@@ -315,16 +318,31 @@ func purgeInsertOpts(interval time.Duration) river.InsertOpts {
 	return opts
 }
 
-// startRun opens the span a pass hangs off, taken from the provider registered
-// for that job's own service.name.
+// run executes one pass under the span it hangs off, taken from the provider
+// registered for that job's own service.name.
 //
 // A trace UI attributes a trace to the service of its root span, so this is
 // what keeps the jobs apart now that they share a process with each other and
 // with the outbox drain: a rebuild of the daily stats is still a
 // publira-aggregate-content-stats trace. The spans inside it belong to the
 // worker that executed it and carry its name.
-func startRun(ctx context.Context, serviceName, kind string) (context.Context, func()) {
+//
+// The span and every log line of the pass carry the river_job id and attempt,
+// so a failure found in either leads to the row that holds its retries.
+func (j *Jobs) run(ctx context.Context, job *rivertype.JobRow, serviceName string, pass func(context.Context, maintenance.Deps) error) error {
 	tracer := tracing.TracerProvider(serviceName).Tracer("github.com/publira/publira/server/internal/maintenancejobs")
-	ctx, span := tracer.Start(ctx, kind)
-	return ctx, func() { span.End() }
+	ctx, span := tracer.Start(ctx, job.Kind, trace.WithAttributes(
+		attribute.Int64("river.job.id", job.ID),
+		attribute.Int("river.job.attempt", job.Attempt),
+	))
+	defer span.End()
+
+	deps := j.deps
+	deps.Logger = deps.Logger.With("job_kind", job.Kind, "job_id", job.ID, "attempt", job.Attempt)
+	err := pass(ctx, deps)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "pass failed")
+	}
+	return err
 }
