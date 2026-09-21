@@ -14,6 +14,7 @@ import 'app_manifest/flutter_build.dart';
 import 'app_manifest/generate.dart';
 import 'app_manifest/generated_files.dart';
 import 'app_manifest/manifest.dart';
+import 'app_manifest/working_tree.dart';
 
 Future<void> main(List<String> arguments) async {
   final BuildRequest request;
@@ -51,7 +52,7 @@ Future<void> main(List<String> arguments) async {
     exit(1);
   }
 
-  final before = await _workingTreeStatus(mobileDirectory);
+  final before = await WorkingTreeSnapshot.take(mobileDirectory);
   await generateBuildConfiguration(manifestFile, directory);
   stdout.writeln('flutter ${flutterArguments.join(' ')}');
   final flutter = await Process.start(
@@ -68,37 +69,16 @@ Future<void> main(List<String> arguments) async {
   // Tenant identity lives in ignored, generated files only; a build that
   // leaves a change to a tracked file behind would be committed by whoever
   // builds next.
-  final after = await _workingTreeStatus(mobileDirectory);
+  final after = await WorkingTreeSnapshot.take(mobileDirectory);
   if (before == null || after == null) {
     return;
   }
-  final changed = after.difference(before);
+  final changed = after.changedSince(before);
   if (changed.isNotEmpty) {
     stderr.writeln('the build changed files Git tracks or does not ignore:');
     for (final entry in changed) {
       stderr.writeln('  $entry');
     }
     exit(1);
-  }
-}
-
-/// Each entry of the working tree's status, or `null` outside a Git checkout.
-Future<Set<String>?> _workingTreeStatus(Directory directory) async {
-  try {
-    final result = await Process.run('git', [
-      'status',
-      '--porcelain=v1',
-      '-z',
-      '--untracked-files=all',
-    ], workingDirectory: directory.path);
-    if (result.exitCode != 0) {
-      return null;
-    }
-    return (result.stdout as String)
-        .split('\x00')
-        .where((entry) => entry.isNotEmpty)
-        .toSet();
-  } on ProcessException {
-    return null;
   }
 }
