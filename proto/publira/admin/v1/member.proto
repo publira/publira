@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// A user holding a console role in the calling tenant.
+message TenantMember {
+  string user_public_id = 1;
+  string name = 2;
+  string email = 3;
+  // tenant_admin | tenant_editor | tenant_auditor
+  string role = 4;
+  // active | suspended | inactive
+  string status = 5;
+  // RFC3339
+  string created_at = 6;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListTenantMembersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListTenantMembersResponse {
+  repeated TenantMember members = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+// Demoting the tenant's last active tenant_admin is refused with
+// FAILED_PRECONDITION and the ErrorInfo reason LAST_TENANT_ADMIN.
+message UpdateTenantMemberRoleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string user_public_id = 2;
+  // tenant_admin | tenant_editor | tenant_auditor
+  string role = 3;
+}
+
+message UpdateTenantMemberRoleResponse {
+  TenantMember member = 1;
+}
+
+// Takes every console role away from the user, who stays a reader of the
+// tenant. Removing the tenant's last active tenant_admin is refused with
+// FAILED_PRECONDITION and the ErrorInfo reason LAST_TENANT_ADMIN.
+message RemoveTenantMemberRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string user_public_id = 2;
+}
+
+message RemoveTenantMemberResponse {
+  string user_public_id = 1;
+}
+
+// An invitation to become a tenant_admin of the calling tenant.
+message TenantAdminInvitation {
+  string id = 1;
+  string email = 2;
+  // pending | accepted | canceled | expired
+  string status = 3;
+  // RFC3339
+  string created_at = 4;
+  // RFC3339
+  string expires_at = 5;
+  // RFC3339; empty until accepted.
+  string accepted_at = 6;
+  // RFC3339; empty unless canceled.
+  string canceled_at = 7;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListTenantAdminInvitationsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListTenantAdminInvitationsResponse {
+  repeated TenantAdminInvitation invitations = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message CreateTenantAdminInvitationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+}
+
+message CreateTenantAdminInvitationResponse {
+  // Unset when role_granted_immediately is true.
+  TenantAdminInvitation invitation = 1;
+  // True when the address already belongs to a user of the tenant, who is made
+  // a tenant_admin on the spot instead of being mailed an invitation.
+  bool role_granted_immediately = 2;
+}
+
+message ResendTenantAdminInvitationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string invitation_id = 2;
+}
+
+message ResendTenantAdminInvitationResponse {
+  TenantAdminInvitation invitation = 1;
+}
+
+message CancelTenantAdminInvitationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string invitation_id = 2;
+}
+
+message CancelTenantAdminInvitationResponse {
+  TenantAdminInvitation invitation = 1;
+}
+
+// The calling tenant's console members and administrator invitations. Every
+// RPC requires a tenant_admin session.
+service AdminTenantMemberService {
+  rpc ListTenantMembers(ListTenantMembersRequest) returns (ListTenantMembersResponse) {}
+  rpc UpdateTenantMemberRole(UpdateTenantMemberRoleRequest) returns (UpdateTenantMemberRoleResponse) {}
+  rpc RemoveTenantMember(RemoveTenantMemberRequest) returns (RemoveTenantMemberResponse) {}
+  rpc ListTenantAdminInvitations(ListTenantAdminInvitationsRequest) returns (ListTenantAdminInvitationsResponse) {}
+  rpc CreateTenantAdminInvitation(CreateTenantAdminInvitationRequest) returns (CreateTenantAdminInvitationResponse) {}
+  rpc ResendTenantAdminInvitation(ResendTenantAdminInvitationRequest) returns (ResendTenantAdminInvitationResponse) {}
+  rpc CancelTenantAdminInvitation(CancelTenantAdminInvitationRequest) returns (CancelTenantAdminInvitationResponse) {}
+}

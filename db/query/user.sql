@@ -540,6 +540,22 @@ WHERE id = $1
 DELETE FROM tenant_user_roles
 WHERE user_id = $1;
 
+-- CountOtherActiveTenantAdmins counts the active tenant_admin members of a
+-- tenant other than one user: who is left to sign in to the console once that
+-- user is removed or demoted.
+-- name: CountOtherActiveTenantAdmins :one
+SELECT COUNT(*)::int
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND u.id <> sqlc.arg('user_id')::uuid
+    AND u.status = 'active'
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+            AND tur.role = 'tenant_admin'
+    );
+
 -- name: GetUserByPublicID :one
 SELECT u.id,
     u.public_id,

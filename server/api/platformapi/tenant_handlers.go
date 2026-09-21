@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/mail"
 	"strings"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -22,6 +21,7 @@ import (
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -265,26 +265,9 @@ func (s *platformServer) CreateTenant(
 				return nil, s.internalDBError(ctx, "failed to get user by email for tenant", err, "tenant_id", tenant.ID.String())
 			}
 
-			token, tokenErr := generateInvitationToken()
-			if tokenErr != nil {
-				return nil, connect.NewError(connect.CodeInternal, tokenErr)
-			}
-			invitationID, invitationIDErr := uuid.NewV7()
-			if invitationIDErr != nil {
-				return nil, connect.NewError(connect.CodeInternal, invitationIDErr)
-			}
-			invitation, createInvitationErr := txq.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
-				ID:        invitationID,
-				TenantID:  tenant.ID,
-				Email:     email,
-				TokenHash: auth.HashToken(token),
-				ExpiresAt: time.Now().Add(tenantAdminInvitationTTL),
-			})
-			if createInvitationErr != nil {
-				return nil, s.internalDBError(ctx, "failed to create tenant admin invitation", createInvitationErr, "tenant_id", tenant.ID.String())
-			}
-			if err := enqueueTenantAdminInvitationEmail(ctx, txq, tenant.ID, invitation, token); err != nil {
-				return nil, s.internalDBError(ctx, "failed to enqueue tenant admin invitation email", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
+			invitation, err := tenantmembers.IssueInvitation(ctx, txq, tenant.ID, email)
+			if err != nil {
+				return nil, s.internalDBError(ctx, "failed to invite tenant admin", err, "tenant_id", tenant.ID.String())
 			}
 			pendingInvitationEmails = append(pendingInvitationEmails, invitation.Email)
 			continue
@@ -470,100 +453,28 @@ func (s *platformServer) ResumeTenant(
 	}), nil
 }
 
-func normalizeTenantMemberRole(rawRole string) (string, bool) {
-	role := strings.TrimSpace(rawRole)
-	switch role {
-	case auth.RoleTenantAdmin:
-		return auth.RoleTenantAdmin, true
-	case auth.RoleTenantEditor:
-		return auth.RoleTenantEditor, true
-	case auth.RoleTenantAuditor:
-		return auth.RoleTenantAuditor, true
-	default:
-		return "", false
-	}
-}
-
-type tenantMemberPageRow struct {
-	userID    uuid.UUID
-	publicID  string
-	name      string
-	email     string
-	role      string
-	status    string
-	createdAt time.Time
-}
-
-func tenantMemberPageFromDesc(row dbmodels.ListTenantMembersDescRow) tenantMemberPageRow {
-	return tenantMemberPageRow{
-		userID:    row.UserID,
-		publicID:  row.PublicID,
-		name:      row.Name,
-		email:     row.Email,
-		role:      row.Role,
-		status:    row.Status,
-		createdAt: row.CreatedAt,
-	}
-}
-
-func tenantMemberPageFromAsc(row dbmodels.ListTenantMembersAscRow) tenantMemberPageRow {
-	return tenantMemberPageRow{
-		userID:    row.UserID,
-		publicID:  row.PublicID,
-		name:      row.Name,
-		email:     row.Email,
-		role:      row.Role,
-		status:    row.Status,
-		createdAt: row.CreatedAt,
-	}
-}
-
-func tenantMemberToProto(row tenantMemberPageRow) *publirasplatformv1.TenantMember {
+func tenantMemberToProto(member tenantmembers.Member) *publirasplatformv1.TenantMember {
 	return &publirasplatformv1.TenantMember{
-		UserPublicId: row.publicID,
-		Name:         row.name,
-		Email:        row.email,
-		Role:         row.role,
-		Status:       row.status,
-		CreatedAt:    row.createdAt.UTC().Format("2006-01-02T15:04:05Z"),
+		UserPublicId: member.PublicID,
+		Name:         member.Name,
+		Email:        member.Email,
+		Role:         member.Role,
+		Status:       member.Status,
+		CreatedAt:    member.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
 }
 
-func (s *platformServer) tenantMemberPage(
-	ctx context.Context,
-	tenantID uuid.UUID,
-	keys pagination.TimeUUIDKeys,
-	direction pagination.Direction,
-	limit int32,
-) ([]tenantMemberPageRow, error) {
-	queries := s.queriesFor(ctx)
-	if direction == pagination.Backward {
-		rows, err := queries.ListTenantMembersAsc(ctx, dbmodels.ListTenantMembersAscParams{
-			TenantID:        uuid.NullUUID{UUID: tenantID, Valid: true},
-			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
-			CursorInclusive: keys.Inclusive,
-			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
-			Limit:           limit,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return toPage(rows, tenantMemberPageFromAsc), nil
+// tenantMemberError maps what tenantmembers refuses to this API's codes;
+// anything else is a database failure.
+func (s *platformServer) tenantMemberError(ctx context.Context, msg string, err error, keyvals ...any) error {
+	switch {
+	case errors.Is(err, tenantmembers.ErrUserPublicIDRequired), errors.Is(err, tenantmembers.ErrInvalidRole):
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, tenantmembers.ErrMemberNotFound):
+		return connect.NewError(connect.CodeNotFound, err)
+	default:
+		return s.internalDBError(ctx, msg, err, keyvals...)
 	}
-
-	rows, err := queries.ListTenantMembersDesc(ctx, dbmodels.ListTenantMembersDescParams{
-		TenantID:        uuid.NullUUID{UUID: tenantID, Valid: true},
-		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
-		CursorInclusive: keys.Inclusive,
-		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
-		Limit:           limit,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return toPage(rows, tenantMemberPageFromDesc), nil
 }
 
 func (s *platformServer) ListTenantMembers(
@@ -588,15 +499,17 @@ func (s *platformServer) ListTenantMembers(
 		}
 	}
 
-	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.tenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get tenant", err, "public_id", tenantPublicID)
+		return nil, err
 	}
 
-	rows, err := s.tenantMemberPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
+	rows, err := tenantmembers.ListMembers(ctx, s.queriesFor(ctx), tenantmembers.ListParams{
+		TenantID:  tenant.ID,
+		Keys:      keys,
+		Direction: cursor.Direction,
+		Limit:     limit + 1,
+	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list tenant members", err, "tenant_id", tenant.ID.String())
 	}
@@ -612,11 +525,11 @@ func (s *platformServer) ListTenantMembers(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].userID)
+			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].UserID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.userID)
+			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.UserID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -652,17 +565,14 @@ func (s *platformServer) AddTenantMember(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email"))
 		}
 	}
-	normalizedRole, ok := normalizeTenantMemberRole(req.Msg.Role)
+	normalizedRole, ok := tenantmembers.NormalizeRole(req.Msg.Role)
 	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid role"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, tenantmembers.ErrInvalidRole)
 	}
 
-	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.tenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get tenant", err, "public_id", tenantPublicID)
+		return nil, err
 	}
 
 	var user dbmodels.GetUserByPublicIDForTenantRow
@@ -740,6 +650,9 @@ func (s *platformServer) AddTenantMember(
 	}), nil
 }
 
+// UpdateTenantMemberRole and RemoveTenantMember do not keep a tenant_admin in
+// place: the platform is how a tenant with none gets one back, and the operator
+// has to be able to take the role from a compromised last administrator.
 func (s *platformServer) UpdateTenantMemberRole(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UpdateTenantMemberRoleRequest],
@@ -748,77 +661,38 @@ func (s *platformServer) UpdateTenantMemberRole(
 	if err != nil {
 		return nil, err
 	}
-	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
-	if userPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_public_id is required"))
+	if strings.TrimSpace(req.Msg.UserPublicId) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, tenantmembers.ErrUserPublicIDRequired)
 	}
-	normalizedRole, ok := normalizeTenantMemberRole(req.Msg.Role)
-	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid role"))
+	if _, ok := tenantmembers.NormalizeRole(req.Msg.Role); !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, tenantmembers.ErrInvalidRole)
 	}
 
-	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.tenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get tenant", err, "public_id", tenantPublicID)
-	}
-
-	user, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		PublicID: userPublicID,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get tenant member", err, "tenant_id", tenant.ID.String(), "public_id", userPublicID)
-	}
-
-	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if len(roles) == 0 {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
+		return nil, err
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to begin update tenant member role transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		return nil, s.internalDBError(ctx, "failed to begin update tenant member role transaction", err, "tenant_id", tenant.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	txq := dbmodels.New(tx)
-
-	if err := txq.DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to delete tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
-	_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
-		ID:       uuid.Must(uuid.NewV7()),
-		TenantID: tenant.ID,
-		UserID:   user.ID,
-		Role:     normalizedRole,
+	member, err := tenantmembers.UpdateRole(ctx, tx, tenantmembers.UpdateRoleParams{
+		TenantID:     tenant.ID,
+		UserPublicID: req.Msg.UserPublicId,
+		Role:         req.Msg.Role,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to create tenant user role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		return nil, s.tenantMemberError(ctx, "failed to update tenant member role", err, "tenant_id", tenant.ID.String())
 	}
-
 	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError(ctx, "failed to commit update tenant member role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		return nil, s.internalDBError(ctx, "failed to commit update tenant member role", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
 	return connect.NewResponse(&publirasplatformv1.UpdateTenantMemberRoleResponse{
-		Member: &publirasplatformv1.TenantMember{
-			UserPublicId: user.PublicID,
-			Name:         user.Name,
-			Email:        user.Email,
-			Role:         normalizedRole,
-			Status:       user.Status,
-			CreatedAt:    user.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-		},
+		Member: tenantMemberToProto(member),
 	}), nil
 }
 
@@ -830,35 +704,33 @@ func (s *platformServer) RemoveTenantMember(
 	if err != nil {
 		return nil, err
 	}
-	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
-	if userPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_public_id is required"))
+	if strings.TrimSpace(req.Msg.UserPublicId) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, tenantmembers.ErrUserPublicIDRequired)
 	}
 
-	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.tenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get tenant", err, "public_id", tenantPublicID)
+		return nil, err
 	}
 
-	user, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		PublicID: userPublicID,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin remove tenant member transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	member, err := tenantmembers.Remove(ctx, tx, tenantmembers.RemoveParams{
+		TenantID:     tenant.ID,
+		UserPublicID: req.Msg.UserPublicId,
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get tenant member", err, "tenant_id", tenant.ID.String(), "public_id", userPublicID)
+		return nil, s.tenantMemberError(ctx, "failed to remove tenant member", err, "tenant_id", tenant.ID.String())
 	}
-
-	if err := s.queriesFor(ctx).DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to delete tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit remove tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
 	return connect.NewResponse(&publirasplatformv1.RemoveTenantMemberResponse{
-		UserPublicId: user.PublicID,
+		UserPublicId: member.PublicID,
 	}), nil
 }
