@@ -234,10 +234,11 @@ mobile/
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── links/                    # Tenant-site URL parsing, incoming App Links, and the share sheet
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
-│   ├── models/                   # Series / author / label / episode body / episode comment / follow
+│   ├── models/                   # Series / author / label / episode body / episode comment / follow / inbox notification
+│   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
 │   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / follows / downloads / contact
+│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / follows / downloads / contact
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -271,6 +272,7 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/account/email` | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
 | `/account/password` | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
 | `/account/delete` | Deletes the account after the password and a second confirmation, then signs out (`AuthService/DeleteMe`) |
+| `/account/notifications` | The reader's notification inbox |
 | `/account/follows` | The series and authors the reader follows |
 | `/account/downloads` | What the device keeps for reading offline |
 | `/series/:seriesId` | Series details |
@@ -376,6 +378,15 @@ A reader follows a series, and each author credited on it, from the series scree
 - A state the API could not answer leaves the control offering to follow, which is the request the API takes the same way whether or not the follow is already there. A follow the reader asked for that did not happen says why
 - `/account/follows` lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own — one that leaves the device alone, because a reader who follows a series has not opened it — and a row whose name could not be read is named by its public id. A row opens its series or its author; every row unfollows without asking the API what it already knows
 - The API lists only targets that are still public, so a series taken down leaves the list rather than standing in it as a row nothing names
+
+## Notification inbox
+
+`/account/notifications` is the reader's record of what they were notified of, read from `NotificationService` whether or not a push ever reached the device. It is online only, and nothing of it is written to the device.
+
+- The list is newest first, twenty to a page, the next asked for as the reader nears the end of the rows already there. A row's title and description are assembled from its `notification_type` and payload with the same catalog wording the site uses; a type this build does not know stays as a generic row
+- A row opens what it is about: a new episode opens its viewer, a comment notification the comments of its episode, and a payload naming only a series opens the series. An announcement, and a payload naming nothing the app can open, lands on the catalog
+- Opening an unread row marks it read on the way, and each unread row carries its own mark; the app bar marks every notification read
+- The unread count badges the catalog's account entry and the account screen's row. It is read back from `CountUnreadNotifications` after every read mark, when the inbox opens, when the app returns to the foreground, and when a push arrives in front, so it is the server's count rather than one the device worked out
 
 ## Offline reading
 

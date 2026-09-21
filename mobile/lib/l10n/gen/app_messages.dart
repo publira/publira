@@ -775,6 +775,101 @@ abstract class AppMessages {
   /// `mobile.not_found.title`
   String get notFoundTitle;
 
+  /// `mobile.notifications.account_description`
+  String get notificationsAccountDescription;
+
+  /// `mobile.notifications.account_unread`
+  String notificationsAccountUnread({required String count});
+
+  /// `mobile.notifications.announcement_posted_description`
+  String notificationsAnnouncementPostedDescription({required String title});
+
+  /// `mobile.notifications.announcement_posted_description_unknown`
+  String get notificationsAnnouncementPostedDescriptionUnknown;
+
+  /// `mobile.notifications.announcement_posted_title`
+  String get notificationsAnnouncementPostedTitle;
+
+  /// `mobile.notifications.comment_approved_description`
+  String notificationsCommentApprovedDescription({required String subject});
+
+  /// `mobile.notifications.comment_approved_title`
+  String get notificationsCommentApprovedTitle;
+
+  /// `mobile.notifications.comment_hidden_description`
+  String notificationsCommentHiddenDescription({required String subject});
+
+  /// `mobile.notifications.comment_hidden_description_reports`
+  String notificationsCommentHiddenDescriptionReports({
+    required String subject,
+  });
+
+  /// `mobile.notifications.comment_hidden_description_staff`
+  String notificationsCommentHiddenDescriptionStaff({required String subject});
+
+  /// `mobile.notifications.comment_hidden_title`
+  String get notificationsCommentHiddenTitle;
+
+  /// `mobile.notifications.comment_subject_unknown`
+  String get notificationsCommentSubjectUnknown;
+
+  /// `mobile.notifications.empty`
+  String get notificationsEmpty;
+
+  /// `mobile.notifications.episode_published_description`
+  String notificationsEpisodePublishedDescription({required String subject});
+
+  /// `mobile.notifications.episode_published_subject_unknown`
+  String get notificationsEpisodePublishedSubjectUnknown;
+
+  /// `mobile.notifications.episode_published_title`
+  String get notificationsEpisodePublishedTitle;
+
+  /// `mobile.notifications.episode_subject`
+  String notificationsEpisodeSubject({required String episodeTitle});
+
+  /// `mobile.notifications.episode_subject_series`
+  String notificationsEpisodeSubjectSeries({required String seriesTitle});
+
+  /// `mobile.notifications.episode_subject_with_series`
+  String notificationsEpisodeSubjectWithSeries({
+    required String episodeTitle,
+    required String seriesTitle,
+  });
+
+  /// `mobile.notifications.failed`
+  String get notificationsFailed;
+
+  /// `mobile.notifications.mark_all_read`
+  String get notificationsMarkAllRead;
+
+  /// `mobile.notifications.mark_all_read_failed`
+  String get notificationsMarkAllReadFailed;
+
+  /// `mobile.notifications.mark_read`
+  String get notificationsMarkRead;
+
+  /// `mobile.notifications.mark_read_failed`
+  String get notificationsMarkReadFailed;
+
+  /// `mobile.notifications.sign_in_prompt`
+  String get notificationsSignInPrompt;
+
+  /// `mobile.notifications.title`
+  String get notificationsTitle;
+
+  /// `mobile.notifications.unknown_description`
+  String get notificationsUnknownDescription;
+
+  /// `mobile.notifications.unknown_title`
+  String get notificationsUnknownTitle;
+
+  /// `mobile.notifications.unread`
+  String get notificationsUnread;
+
+  /// `mobile.notifications.unread_count`
+  String notificationsUnreadCount({required String count});
+
   /// `mobile.purchase.buy`
   String purchaseBuy({required String price});
 
@@ -2297,6 +2392,161 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get notFoundTitle {
     return 'ページが見つかりません';
+  }
+
+  @override
+  String get notificationsAccountDescription {
+    return '新しいエピソードなど、自分宛の通知です。';
+  }
+
+  @override
+  String notificationsAccountUnread({required String count}) {
+    return 'アカウント（未読の通知 $count 件）';
+  }
+
+  @override
+  String notificationsAnnouncementPostedDescription({required String title}) {
+    return '運営から「$title」が届きました。';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedDescriptionUnknown {
+    return '運営から新しいお知らせが届きました。';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedTitle {
+    return '新しいお知らせ';
+  }
+
+  @override
+  String notificationsCommentApprovedDescription({required String subject}) {
+    return '$subjectへのコメントが公開されました。';
+  }
+
+  @override
+  String get notificationsCommentApprovedTitle {
+    return 'コメントが公開されました';
+  }
+
+  @override
+  String notificationsCommentHiddenDescription({required String subject}) {
+    return '$subjectへのコメントが非表示になりました。';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionReports({
+    required String subject,
+  }) {
+    return '$subjectへのコメントが、他の読者からの報告により非表示になりました。';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionStaff({required String subject}) {
+    return '$subjectへのコメントが運営により非表示になりました。';
+  }
+
+  @override
+  String get notificationsCommentHiddenTitle {
+    return 'コメントが非表示になりました';
+  }
+
+  @override
+  String get notificationsCommentSubjectUnknown {
+    return 'エピソード';
+  }
+
+  @override
+  String get notificationsEmpty {
+    return '通知はまだありません。フォロー中の作品のエピソードが公開されると、ここに表示されます。';
+  }
+
+  @override
+  String notificationsEpisodePublishedDescription({required String subject}) {
+    return '$subjectが公開されました。';
+  }
+
+  @override
+  String get notificationsEpisodePublishedSubjectUnknown {
+    return '新しいエピソード';
+  }
+
+  @override
+  String get notificationsEpisodePublishedTitle {
+    return '新しいエピソードが公開されました';
+  }
+
+  @override
+  String notificationsEpisodeSubject({required String episodeTitle}) {
+    return '「$episodeTitle」';
+  }
+
+  @override
+  String notificationsEpisodeSubjectSeries({required String seriesTitle}) {
+    return '「$seriesTitle」のエピソード';
+  }
+
+  @override
+  String notificationsEpisodeSubjectWithSeries({
+    required String episodeTitle,
+    required String seriesTitle,
+  }) {
+    return '「$episodeTitle」（$seriesTitle）';
+  }
+
+  @override
+  String get notificationsFailed {
+    return '通知一覧を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get notificationsMarkAllRead {
+    return 'すべて既読にする';
+  }
+
+  @override
+  String get notificationsMarkAllReadFailed {
+    return '一括既読に失敗しました。時間をおいて再試行してください。';
+  }
+
+  @override
+  String get notificationsMarkRead {
+    return '既読にする';
+  }
+
+  @override
+  String get notificationsMarkReadFailed {
+    return '既読への更新に失敗しました。時間をおいて再試行してください。';
+  }
+
+  @override
+  String get notificationsSignInPrompt {
+    return 'サインインすると、自分宛の通知を確認できます。';
+  }
+
+  @override
+  String get notificationsTitle {
+    return '通知';
+  }
+
+  @override
+  String get notificationsUnknownDescription {
+    return '内容の詳細はありません。';
+  }
+
+  @override
+  String get notificationsUnknownTitle {
+    return '通知';
+  }
+
+  @override
+  String get notificationsUnread {
+    return '未読';
+  }
+
+  @override
+  String notificationsUnreadCount({required String count}) {
+    return '未読 $count 件';
   }
 
   @override
@@ -4068,6 +4318,161 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get notificationsAccountDescription {
+    return 'Notifications addressed to you, such as new episodes.';
+  }
+
+  @override
+  String notificationsAccountUnread({required String count}) {
+    return 'Account, $count unread notifications';
+  }
+
+  @override
+  String notificationsAnnouncementPostedDescription({required String title}) {
+    return '“$title” was posted by the operator.';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedDescriptionUnknown {
+    return 'The operator posted a new announcement.';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedTitle {
+    return 'A new announcement';
+  }
+
+  @override
+  String notificationsCommentApprovedDescription({required String subject}) {
+    return 'Your comment on $subject is now visible to everyone.';
+  }
+
+  @override
+  String get notificationsCommentApprovedTitle {
+    return 'Your comment is now public';
+  }
+
+  @override
+  String notificationsCommentHiddenDescription({required String subject}) {
+    return 'Your comment on $subject was removed.';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionReports({
+    required String subject,
+  }) {
+    return 'Your comment on $subject was removed after reports from other readers.';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionStaff({required String subject}) {
+    return 'Your comment on $subject was removed by the operator.';
+  }
+
+  @override
+  String get notificationsCommentHiddenTitle {
+    return 'Your comment was removed';
+  }
+
+  @override
+  String get notificationsCommentSubjectUnknown {
+    return 'an episode';
+  }
+
+  @override
+  String get notificationsEmpty {
+    return 'You have no notifications yet. When an episode you follow is published, it appears here.';
+  }
+
+  @override
+  String notificationsEpisodePublishedDescription({required String subject}) {
+    return '$subject is now available.';
+  }
+
+  @override
+  String get notificationsEpisodePublishedSubjectUnknown {
+    return 'A new episode';
+  }
+
+  @override
+  String get notificationsEpisodePublishedTitle {
+    return 'A new episode has been published';
+  }
+
+  @override
+  String notificationsEpisodeSubject({required String episodeTitle}) {
+    return '“$episodeTitle”';
+  }
+
+  @override
+  String notificationsEpisodeSubjectSeries({required String seriesTitle}) {
+    return 'an episode of “$seriesTitle”';
+  }
+
+  @override
+  String notificationsEpisodeSubjectWithSeries({
+    required String episodeTitle,
+    required String seriesTitle,
+  }) {
+    return '“$episodeTitle” ($seriesTitle)';
+  }
+
+  @override
+  String get notificationsFailed {
+    return 'Could not show your notifications. Try again.';
+  }
+
+  @override
+  String get notificationsMarkAllRead {
+    return 'Mark all as read';
+  }
+
+  @override
+  String get notificationsMarkAllReadFailed {
+    return 'Could not mark everything as read. Please try again later.';
+  }
+
+  @override
+  String get notificationsMarkRead {
+    return 'Mark as read';
+  }
+
+  @override
+  String get notificationsMarkReadFailed {
+    return 'Could not mark it as read. Please try again later.';
+  }
+
+  @override
+  String get notificationsSignInPrompt {
+    return 'Sign in to see your notifications.';
+  }
+
+  @override
+  String get notificationsTitle {
+    return 'Notifications';
+  }
+
+  @override
+  String get notificationsUnknownDescription {
+    return 'No further details.';
+  }
+
+  @override
+  String get notificationsUnknownTitle {
+    return 'Notification';
+  }
+
+  @override
+  String get notificationsUnread {
+    return 'Unread';
+  }
+
+  @override
+  String notificationsUnreadCount({required String count}) {
+    return '$count unread';
+  }
+
+  @override
   String purchaseBuy({required String price}) {
     return 'Buy for $price';
   }
@@ -5833,6 +6238,161 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get notFoundTitle {
     return '페이지를 찾을 수 없습니다';
+  }
+
+  @override
+  String get notificationsAccountDescription {
+    return '새 에피소드 등 나에게 온 알림입니다.';
+  }
+
+  @override
+  String notificationsAccountUnread({required String count}) {
+    return '계정, 읽지 않은 알림 $count개';
+  }
+
+  @override
+  String notificationsAnnouncementPostedDescription({required String title}) {
+    return '운영자가 “$title”을(를) 게시했습니다.';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedDescriptionUnknown {
+    return '운영자가 새 공지사항을 게시했습니다.';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedTitle {
+    return '새 공지사항';
+  }
+
+  @override
+  String notificationsCommentApprovedDescription({required String subject}) {
+    return '$subject에 남긴 댓글이 공개되었습니다.';
+  }
+
+  @override
+  String get notificationsCommentApprovedTitle {
+    return '댓글이 공개되었습니다';
+  }
+
+  @override
+  String notificationsCommentHiddenDescription({required String subject}) {
+    return '$subject에 남긴 댓글이 숨김 처리되었습니다.';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionReports({
+    required String subject,
+  }) {
+    return '$subject에 남긴 댓글이 다른 독자의 신고로 숨김 처리되었습니다.';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionStaff({required String subject}) {
+    return '$subject에 남긴 댓글이 운영자에 의해 숨김 처리되었습니다.';
+  }
+
+  @override
+  String get notificationsCommentHiddenTitle {
+    return '댓글이 숨김 처리되었습니다';
+  }
+
+  @override
+  String get notificationsCommentSubjectUnknown {
+    return '에피소드';
+  }
+
+  @override
+  String get notificationsEmpty {
+    return '아직 알림이 없습니다. 팔로우 중인 작품의 에피소드가 공개되면 여기에 표시됩니다.';
+  }
+
+  @override
+  String notificationsEpisodePublishedDescription({required String subject}) {
+    return '$subject이(가) 공개되었습니다.';
+  }
+
+  @override
+  String get notificationsEpisodePublishedSubjectUnknown {
+    return '새 에피소드';
+  }
+
+  @override
+  String get notificationsEpisodePublishedTitle {
+    return '새 에피소드가 공개되었습니다';
+  }
+
+  @override
+  String notificationsEpisodeSubject({required String episodeTitle}) {
+    return '“$episodeTitle”';
+  }
+
+  @override
+  String notificationsEpisodeSubjectSeries({required String seriesTitle}) {
+    return '“$seriesTitle”의 에피소드';
+  }
+
+  @override
+  String notificationsEpisodeSubjectWithSeries({
+    required String episodeTitle,
+    required String seriesTitle,
+  }) {
+    return '“$episodeTitle” ($seriesTitle)';
+  }
+
+  @override
+  String get notificationsFailed {
+    return '알림 목록을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get notificationsMarkAllRead {
+    return '모두 읽음으로 표시';
+  }
+
+  @override
+  String get notificationsMarkAllReadFailed {
+    return '모두 읽음으로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get notificationsMarkRead {
+    return '읽음으로 표시';
+  }
+
+  @override
+  String get notificationsMarkReadFailed {
+    return '읽음으로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get notificationsSignInPrompt {
+    return '로그인하면 나에게 온 알림을 볼 수 있습니다.';
+  }
+
+  @override
+  String get notificationsTitle {
+    return '알림';
+  }
+
+  @override
+  String get notificationsUnknownDescription {
+    return '자세한 내용이 없습니다.';
+  }
+
+  @override
+  String get notificationsUnknownTitle {
+    return '알림';
+  }
+
+  @override
+  String get notificationsUnread {
+    return '읽지 않음';
+  }
+
+  @override
+  String notificationsUnreadCount({required String count}) {
+    return '읽지 않음 $count개';
   }
 
   @override
@@ -7604,6 +8164,161 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get notificationsAccountDescription {
+    return '新章节等发送给您的通知。';
+  }
+
+  @override
+  String notificationsAccountUnread({required String count}) {
+    return '账户，$count 条未读通知';
+  }
+
+  @override
+  String notificationsAnnouncementPostedDescription({required String title}) {
+    return '运营方发布了《$title》。';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedDescriptionUnknown {
+    return '运营方发布了新公告。';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedTitle {
+    return '新公告';
+  }
+
+  @override
+  String notificationsCommentApprovedDescription({required String subject}) {
+    return '您在$subject下的评论已公开。';
+  }
+
+  @override
+  String get notificationsCommentApprovedTitle {
+    return '您的评论已公开';
+  }
+
+  @override
+  String notificationsCommentHiddenDescription({required String subject}) {
+    return '您在$subject下的评论已被隐藏。';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionReports({
+    required String subject,
+  }) {
+    return '您在$subject下的评论因其他读者的举报而被隐藏。';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionStaff({required String subject}) {
+    return '您在$subject下的评论已被运营方隐藏。';
+  }
+
+  @override
+  String get notificationsCommentHiddenTitle {
+    return '您的评论已被隐藏';
+  }
+
+  @override
+  String get notificationsCommentSubjectUnknown {
+    return '某个章节';
+  }
+
+  @override
+  String get notificationsEmpty {
+    return '您还没有收到任何通知。您关注的作品有新章节发布时，会显示在这里。';
+  }
+
+  @override
+  String notificationsEpisodePublishedDescription({required String subject}) {
+    return '$subject现已上线。';
+  }
+
+  @override
+  String get notificationsEpisodePublishedSubjectUnknown {
+    return '新章节';
+  }
+
+  @override
+  String get notificationsEpisodePublishedTitle {
+    return '有新章节发布';
+  }
+
+  @override
+  String notificationsEpisodeSubject({required String episodeTitle}) {
+    return '《$episodeTitle》';
+  }
+
+  @override
+  String notificationsEpisodeSubjectSeries({required String seriesTitle}) {
+    return '《$seriesTitle》的章节';
+  }
+
+  @override
+  String notificationsEpisodeSubjectWithSeries({
+    required String episodeTitle,
+    required String seriesTitle,
+  }) {
+    return '《$episodeTitle》（$seriesTitle）';
+  }
+
+  @override
+  String get notificationsFailed {
+    return '无法显示您的通知。请重试。';
+  }
+
+  @override
+  String get notificationsMarkAllRead {
+    return '全部标记为已读';
+  }
+
+  @override
+  String get notificationsMarkAllReadFailed {
+    return '无法将全部标记为已读。请稍后再试。';
+  }
+
+  @override
+  String get notificationsMarkRead {
+    return '标记为已读';
+  }
+
+  @override
+  String get notificationsMarkReadFailed {
+    return '无法标记为已读。请稍后再试。';
+  }
+
+  @override
+  String get notificationsSignInPrompt {
+    return '登录后即可查看发送给您的通知。';
+  }
+
+  @override
+  String get notificationsTitle {
+    return '通知';
+  }
+
+  @override
+  String get notificationsUnknownDescription {
+    return '没有更多详情。';
+  }
+
+  @override
+  String get notificationsUnknownTitle {
+    return '通知';
+  }
+
+  @override
+  String get notificationsUnread {
+    return '未读';
+  }
+
+  @override
+  String notificationsUnreadCount({required String count}) {
+    return '$count 条未读';
+  }
+
+  @override
   String purchaseBuy({required String price}) {
     return '以$price购买';
   }
@@ -9369,6 +10084,161 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get notFoundTitle {
     return '找不到頁面';
+  }
+
+  @override
+  String get notificationsAccountDescription {
+    return '新章節等寄給您的通知。';
+  }
+
+  @override
+  String notificationsAccountUnread({required String count}) {
+    return '帳戶，$count 則未讀通知';
+  }
+
+  @override
+  String notificationsAnnouncementPostedDescription({required String title}) {
+    return '營運方發布了《$title》。';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedDescriptionUnknown {
+    return '營運方發布了新公告。';
+  }
+
+  @override
+  String get notificationsAnnouncementPostedTitle {
+    return '新公告';
+  }
+
+  @override
+  String notificationsCommentApprovedDescription({required String subject}) {
+    return '您在$subject下的留言已公開。';
+  }
+
+  @override
+  String get notificationsCommentApprovedTitle {
+    return '您的留言已公開';
+  }
+
+  @override
+  String notificationsCommentHiddenDescription({required String subject}) {
+    return '您在$subject下的留言已被隱藏。';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionReports({
+    required String subject,
+  }) {
+    return '您在$subject下的留言因其他讀者的檢舉而被隱藏。';
+  }
+
+  @override
+  String notificationsCommentHiddenDescriptionStaff({required String subject}) {
+    return '您在$subject下的留言已被營運方隱藏。';
+  }
+
+  @override
+  String get notificationsCommentHiddenTitle {
+    return '您的留言已被隱藏';
+  }
+
+  @override
+  String get notificationsCommentSubjectUnknown {
+    return '某個章節';
+  }
+
+  @override
+  String get notificationsEmpty {
+    return '您還沒有收到任何通知。您追蹤的作品有新章節發布時，會顯示在這裡。';
+  }
+
+  @override
+  String notificationsEpisodePublishedDescription({required String subject}) {
+    return '$subject現已上線。';
+  }
+
+  @override
+  String get notificationsEpisodePublishedSubjectUnknown {
+    return '新章節';
+  }
+
+  @override
+  String get notificationsEpisodePublishedTitle {
+    return '有新章節發布';
+  }
+
+  @override
+  String notificationsEpisodeSubject({required String episodeTitle}) {
+    return '《$episodeTitle》';
+  }
+
+  @override
+  String notificationsEpisodeSubjectSeries({required String seriesTitle}) {
+    return '《$seriesTitle》的章節';
+  }
+
+  @override
+  String notificationsEpisodeSubjectWithSeries({
+    required String episodeTitle,
+    required String seriesTitle,
+  }) {
+    return '《$episodeTitle》（$seriesTitle）';
+  }
+
+  @override
+  String get notificationsFailed {
+    return '無法顯示您的通知。請重試。';
+  }
+
+  @override
+  String get notificationsMarkAllRead {
+    return '全部標示為已讀';
+  }
+
+  @override
+  String get notificationsMarkAllReadFailed {
+    return '無法將全部標示為已讀。請稍後再試。';
+  }
+
+  @override
+  String get notificationsMarkRead {
+    return '標示為已讀';
+  }
+
+  @override
+  String get notificationsMarkReadFailed {
+    return '無法標示為已讀。請稍後再試。';
+  }
+
+  @override
+  String get notificationsSignInPrompt {
+    return '登入後即可查看寄給您的通知。';
+  }
+
+  @override
+  String get notificationsTitle {
+    return '通知';
+  }
+
+  @override
+  String get notificationsUnknownDescription {
+    return '沒有更多詳細資訊。';
+  }
+
+  @override
+  String get notificationsUnknownTitle {
+    return '通知';
+  }
+
+  @override
+  String get notificationsUnread {
+    return '未讀';
+  }
+
+  @override
+  String notificationsUnreadCount({required String count}) {
+    return '$count 則未讀';
   }
 
   @override

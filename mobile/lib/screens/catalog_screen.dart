@@ -13,6 +13,7 @@ import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/router.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 
@@ -65,14 +66,30 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     final signedIn = AuthScope.of(context).isSignedIn;
+    final unread = signedIn
+        ? NotificationScope.maybeOf(context)?.unreadCount ?? 0
+        : 0;
     return Scaffold(
       appBar: AppBar(
         title: const _CatalogTitle(),
         actions: [
           IconButton(
             key: const ValueKey('catalog-account'),
-            icon: Icon(signedIn ? Icons.person : Icons.person_outline),
-            tooltip: signedIn ? messages.accountTitle : messages.commonSignIn,
+            // The inbox is reached through the account screen, so the account
+            // entry is what carries its unread count.
+            icon: Badge(
+              key: const ValueKey('catalog-account-unread'),
+              isLabelVisible: unread > 0,
+              label: Text(unreadBadgeLabel(messages, unread)),
+              child: Icon(signedIn ? Icons.person : Icons.person_outline),
+            ),
+            tooltip: !signedIn
+                ? messages.commonSignIn
+                : unread > 0
+                ? messages.notificationsAccountUnread(
+                    count: messages.formatInteger(unread),
+                  )
+                : messages.accountTitle,
             onPressed: () =>
                 context.push(signedIn ? AppRoutes.account : AppRoutes.signIn),
           ),

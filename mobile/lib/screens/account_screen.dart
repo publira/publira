@@ -9,6 +9,7 @@ import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
@@ -82,6 +83,7 @@ class AccountScreen extends StatelessWidget {
                     onTap: () => context.push(AppRoutes.accountPassword),
                   ),
                   const Divider(height: 1),
+                  const _NotificationsEntry(),
                   const _FollowsEntry(),
                   const _DownloadsEntry(),
                   const _NotificationSwitch(),
@@ -122,6 +124,53 @@ Future<void> _signOut(BuildContext context) async {
     await push.handleSignOut();
   }
   await auth.signOut();
+}
+
+/// The way to the reader's notification inbox, badged with what is unread.
+///
+/// A build carrying no [NotificationScope] has no inbox, so the row is left
+/// out.
+class _NotificationsEntry extends StatelessWidget {
+  const _NotificationsEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    final inbox = NotificationScope.maybeOf(context);
+    if (inbox == null) {
+      return const SizedBox.shrink();
+    }
+    final messages = AppMessages.of(context);
+    final unread = inbox.unreadCount;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: const ValueKey('account-notifications-inbox'),
+          title: Text(messages.notificationsTitle),
+          subtitle: Text(messages.notificationsAccountDescription),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (unread > 0)
+                Semantics(
+                  label: messages.notificationsUnreadCount(
+                    count: messages.formatInteger(unread),
+                  ),
+                  excludeSemantics: true,
+                  child: Badge(
+                    key: const ValueKey('account-notifications-unread'),
+                    label: Text(unreadBadgeLabel(messages, unread)),
+                  ),
+                ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+          onTap: () => context.push(AppRoutes.accountNotifications),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
 }
 
 /// The way to the series and authors the reader follows.
