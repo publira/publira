@@ -1,20 +1,19 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { querySql, quoteSqlLiteral, runSql } from "../src/db";
-import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import {
+  querySql,
+  restorePlatformSettingsRow,
+  runSql,
+  snapshotPlatformSettingsRow,
+} from "../src/db";
+import { STACK_STORAGE, signInAsSeedPlatformSuperAdmin } from "../src/platform";
 
 const STORAGE_PATH = "/settings/storage";
 
-/**
- * The store the stack runs against, as `scripts/lib.sh` exports it. Every
- * value the suite saves keeps addressing this bucket, so an upload another
- * project makes after this one still lands somewhere.
- */
-const BUCKET = process.env.PUBLIRA_S3_BUCKET?.trim() || "publira";
-const REGION = process.env.AWS_REGION?.trim() || "us-east-1";
-const ENDPOINT =
-  process.env.PUBLIRA_S3_ENDPOINT?.trim() || "http://127.0.0.1:9003";
+const BUCKET = STACK_STORAGE.bucket;
+const REGION = STACK_STORAGE.region;
+const ENDPOINT = STACK_STORAGE.endpoint;
 const ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID?.trim() || "publira";
 const SECRET_ACCESS_KEY =
   process.env.AWS_SECRET_ACCESS_KEY?.trim() || "publirapass";
@@ -29,9 +28,6 @@ const TEST_FAILED_MESSAGE =
   "The connection test failed. The steps below show where.";
 const SECRET_STORED = "Saved (hidden)";
 
-const storedRow = (): string =>
-  querySql(`SELECT row_to_json(c) FROM platform_storage_config c;`);
-
 const storedSecretCiphertext = (): string =>
   querySql(`
     SELECT COALESCE(secret_access_key_encrypted, '')
@@ -40,28 +36,6 @@ const storedSecretCiphertext = (): string =>
 
 const storedColumn = (column: "access_key_id" | "public_base_url"): string =>
   querySql(`SELECT COALESCE(${column}, '') FROM platform_storage_config;`);
-
-/**
- * Put back the row `task e2e:db` saved. The revision moves past whatever the
- * suite left, so every running server rebuilds its client from it.
- */
-const restoreRow = (snapshot: string): void => {
-  const revision = Number(
-    querySql(
-      `SELECT COALESCE(MAX(revision), 0) FROM platform_storage_config;`
-    ) || "0"
-  );
-  runSql(`
-    DELETE FROM platform_storage_config;
-    INSERT INTO platform_storage_config
-    SELECT * FROM json_populate_record(
-      NULL::platform_storage_config,
-      ${quoteSqlLiteral(snapshot)}::json
-    );
-    UPDATE platform_storage_config
-    SET revision = ${revision + 1}, updated_at = NOW();
-  `);
-};
 
 const openStorageSettings = async (page: Page): Promise<void> => {
   await signInAsSeedPlatformSuperAdmin(page, STORAGE_PATH);
@@ -97,12 +71,12 @@ test.describe("web-platform storage settings", () => {
   let snapshot = "";
 
   test.beforeAll(() => {
-    snapshot = storedRow();
+    snapshot = snapshotPlatformSettingsRow("platform_storage_config");
   });
 
   test.afterAll(() => {
     if (snapshot) {
-      restoreRow(snapshot);
+      restorePlatformSettingsRow("platform_storage_config", snapshot);
     }
   });
 

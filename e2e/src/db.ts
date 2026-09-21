@@ -93,6 +93,42 @@ export const quoteSqlLiteral = (value: string): string =>
   `'${value.replaceAll("'", "''")}'`;
 
 /**
+ * The installation-wide settings rows a serial suite empties and puts back.
+ * Every server rebuilds what it reads from one of them when its revision moves.
+ */
+export type PlatformSettingsTable =
+  | "platform_storage_config"
+  | "platform_webpush_config";
+
+/** The row `task e2e:db` saved, as JSON, so a suite can put it back. */
+export const snapshotPlatformSettingsRow = (
+  table: PlatformSettingsTable
+): string => querySql(`SELECT row_to_json(c) FROM ${table} c;`);
+
+/**
+ * Put back a row {@link snapshotPlatformSettingsRow} took. The revision moves
+ * past whatever the suite left, so every running server rebuilds from it.
+ */
+export const restorePlatformSettingsRow = (
+  table: PlatformSettingsTable,
+  snapshot: string
+): void => {
+  const revision = Number(
+    querySql(`SELECT COALESCE(MAX(revision), 0) FROM ${table};`) || "0"
+  );
+  runSql(`
+    DELETE FROM ${table};
+    INSERT INTO ${table}
+    SELECT * FROM json_populate_record(
+      NULL::${table},
+      ${quoteSqlLiteral(snapshot)}::json
+    );
+    UPDATE ${table}
+    SET revision = ${revision + 1}, updated_at = NOW();
+  `);
+};
+
+/**
  * Remove series created by admin publish-flow tests (and their episodes).
  * Episodes do not cascade from series, so they are deleted first. Listings /
  * creators cascade from their parents.
