@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/models/inbox_notification.dart';
 import 'package:publira/notifications/notification_failure.dart';
 import 'package:publira/notifications/notification_repository.dart';
@@ -24,6 +26,10 @@ class FakeNotificationRepository implements NotificationRepository {
   NotificationFailure? listFailure;
   NotificationFailure? countFailure;
   NotificationFailure? markFailure;
+
+  /// Holds [markRead] and [markAllRead] until a test completes it, so a test
+  /// can change what happens while a mark is in flight.
+  Completer<void>? markGate;
 
   /// What was asked for, in order, so a test can assert what the screen sent.
   final listTokens = <String>[];
@@ -64,6 +70,7 @@ class FakeNotificationRepository implements NotificationRepository {
   @override
   Future<void> markRead(String notificationId) async {
     marked.add(notificationId);
+    await markGate?.future;
     final failure = markFailure;
     if (failure != null) {
       throw failure;
@@ -77,6 +84,7 @@ class FakeNotificationRepository implements NotificationRepository {
   @override
   Future<void> markAllRead() async {
     markAllCalls++;
+    await markGate?.future;
     final failure = markFailure;
     if (failure != null) {
       throw failure;

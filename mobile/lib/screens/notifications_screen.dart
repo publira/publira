@@ -80,6 +80,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _readFirstPage() {
     setState(() {
+      _markingAll = false;
       _notifications = null;
       _nextToken = '';
       _failure = null;
@@ -153,16 +154,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   /// Marks [notification] read on the API, and on the row once it has been.
+  ///
+  /// The answer is dropped when another reader holds the session by then:
+  /// it was about the rows of the reader who asked.
   Future<void> _markRead(InboxNotification notification) async {
     final inbox = NotificationScope.maybeOf(context);
     if (inbox == null) {
       return;
     }
+    final auth = AuthScope.of(context);
+    final accessToken = _accessToken;
     final messages = AppMessages.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
       await inbox.markRead(notification.id);
     } on NotificationFailure catch (failure) {
+      if (auth.accessToken != accessToken) {
+        return;
+      }
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -176,7 +185,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
       return;
     }
-    if (!mounted) {
+    if (!mounted || accessToken != _accessToken) {
       return;
     }
     setState(() {
@@ -192,6 +201,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (inbox == null) {
       return;
     }
+    final accessToken = _accessToken;
     final messages = AppMessages.of(context);
     final messenger = ScaffoldMessenger.of(context);
     setState(() {
@@ -203,7 +213,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } on NotificationFailure catch (error) {
       failure = error;
     }
-    if (!mounted) {
+    // Another reader's rows were read since, and the session change has
+    // already put the button back.
+    if (!mounted || accessToken != _accessToken) {
       return;
     }
     setState(() {

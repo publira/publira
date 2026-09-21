@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -63,10 +65,11 @@ void main() {
     WidgetTester tester, {
     String initialLocation = AppRoutes.catalog,
     AuthSession? session = fakeSession,
+    FakeAuthRepository? authRepository,
     PushController? push,
   }) async {
     router = createAppRouter(initialLocation: initialLocation);
-    auth = fakeAuthController(session: session);
+    auth = fakeAuthController(session: session, repository: authRepository);
     await tester.pumpWidget(
       PubliraApp(
         router: router,
@@ -80,11 +83,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   }
 
-  Future<void> openInbox(WidgetTester tester, {AuthSession? session}) async {
+  Future<void> openInbox(
+    WidgetTester tester, {
+    AuthSession? session,
+    FakeAuthRepository? authRepository,
+  }) async {
     await pumpApp(
       tester,
       initialLocation: AppRoutes.accountNotifications,
       session: session ?? fakeSession,
+      authRepository: authRepository,
     );
     await pumpUntilRouteSettled(
       tester,
@@ -282,6 +290,57 @@ void main() {
         find.text('Could not connect to the server. Please try again later.'),
         findsOneWidget,
       );
+    });
+
+    group('leaves the next reader alone when a mark answers late', () {
+      const nextReader = AuthSession(
+        accessToken: 'next-access-token',
+        userPublicId: 'SeedMMBRBBB2',
+        userName: 'Next Member',
+      );
+
+      /// Opens the inbox, starts [mark] and holds it, and signs the next
+      /// reader in before letting it answer.
+      Future<void> switchReaderDuring(WidgetTester tester, Finder mark) async {
+        await openInbox(
+          tester,
+          authRepository: FakeAuthRepository(session: nextReader),
+        );
+        final gate = Completer<void>();
+        repository.markGate = gate;
+
+        await tester.tap(mark);
+        await tester.pump();
+        await auth.signIn(email: 'next@example.com', password: 'password');
+        await pumpUntilFound(tester, unreadDot('n-1'));
+
+        gate.complete();
+        await tester.pump();
+        await tester.pump();
+      }
+
+      testWidgets('marking one', (tester) async {
+        await switchReaderDuring(
+          tester,
+          find.byKey(const ValueKey('notification-mark-read-n-1')),
+        );
+
+        expect(unreadDot('n-1'), findsOneWidget);
+      });
+
+      testWidgets('marking all', (tester) async {
+        await switchReaderDuring(
+          tester,
+          find.byKey(const ValueKey('notifications-mark-all-read')),
+        );
+
+        expect(unreadDot('n-1'), findsOneWidget);
+        expect(unreadDot('n-2'), findsOneWidget);
+        final button = tester.widget<IconButton>(
+          find.byKey(const ValueKey('notifications-mark-all-read')),
+        );
+        expect(button.onPressed, isNotNull);
+      });
     });
 
     testWidgets('opens the episode a row is about and marks it read', (
