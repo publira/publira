@@ -2419,7 +2419,7 @@
         "loading": "読み込み中…",
         "navigation": "ページ送り",
         "no_pages": "ページがありません",
-        "page_error": "このページを読み込めませんでした。再試行してください。",
+        "page_error": "ネットワークエラーか、サーバーの一時的な問題でこのページを読み込めませんでした。再読み込みしてください。",
         "page_status": "{$first} / {$total}ページ",
         "page_status_range": "{$first}–{$last} / {$total}ページ",
         "page_title": "{$title} {$page}ページ",
