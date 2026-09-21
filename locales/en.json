@@ -1196,7 +1196,9 @@
           "ltr": "Left to right"
         },
         "spread_start": "Spreads start at page",
-        "spread_start_description": "Pages before this one are shown alone, and from it on two pages share a screen. 2 keeps the cover alone and 1 pairs from the first page. An episode with fewer pages is shown without spreads, and an episode can set its own on its edit page."
+        "spread_start_description": "Pages before this one are shown alone, and from it on two pages share a screen. 2 keeps the cover alone and 1 pairs from the first page. An episode with fewer pages is shown without spreads, and an episode can set its own on its edit page.",
+        "availability": "Shown on",
+        "availability_description": "Where readers can find this series. Its episodes follow this unless one sets its own, and an episode is never shown where its series is not."
       },
       "validation": {
         "label_required": "A label is required.",
@@ -1212,7 +1214,8 @@
         "comment_mode_invalid": "Select how comments on this series are published.",
         "creator_credits_invalid": "Every author credit needs an author and a role.",
         "reading_direction_invalid": "Select a reading direction.",
-        "spread_start_invalid": "Enter the page spreads start at as a whole number of 1 or more."
+        "spread_start_invalid": "Enter the page spreads start at as a whole number of 1 or more.",
+        "availability_invalid": "Choose where the series is shown."
       },
       "created": "Series created.",
       "updated": "Series updated.",
@@ -1340,7 +1343,8 @@
           "pages_required": "Select page images to add.",
           "reading_direction_invalid": "Select a reading direction, or follow the series.",
           "spread_start_invalid": "Enter the page spreads start at as a whole number of 1 or more.",
-          "spread_start_past_last_page": "Spreads cannot start past the episode's last page. Choose one of its pages."
+          "spread_start_past_last_page": "Spreads cannot start past the episode's last page. Choose one of its pages.",
+          "availability_invalid": "Choose where the episode is shown, or follow the series."
         },
         "layout": {
           "title": "Page layout",
@@ -1423,6 +1427,19 @@
             "replace_same": "The replacement has to name a different author or role.",
             "share_invalid": "Enter each share as a percentage from 0 to 100, with up to two decimal places."
           }
+        },
+        "availability": {
+          "title": "Shown on",
+          "description": "Where readers can find this episode. A value that follows the series changes when the series does.",
+          "error": "Could not display where this episode is shown",
+          "label": "Shown on",
+          "follow_series": "Follow the series",
+          "follow_series_value": "Follow the series ({$availability})",
+          "field_description": "An episode is shown only where its series is, so this can narrow the series' setting but not widen it.",
+          "shown_nowhere": "The series is not shown there, so this episode will not be shown anywhere.",
+          "update": "Update where it is shown",
+          "updated": "Updated where the episode is shown.",
+          "failed": "Could not update where the episode is shown. Please try again later."
         }
       },
       "status": {
@@ -1435,7 +1452,13 @@
         "r15": "R15",
         "r18": "R18"
       },
-      "tags_unavailable": "Could not load the tags already in use. You can still type a tag name."
+      "tags_unavailable": "Could not load the tags already in use. You can still type a tag name.",
+      "availability": {
+        "all": "Web and app",
+        "web": "Web only",
+        "app": "App only",
+        "none": "Not shown anywhere"
+      }
     },
     "settings": {
       "email_error": "Could not display the email settings",

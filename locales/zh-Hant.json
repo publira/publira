@@ -1196,7 +1196,9 @@
           "ltr": "從左到右"
         },
         "spread_start": "跨頁起始頁",
-        "spread_start_description": "此頁之前逐頁顯示，從此頁起兩頁並排顯示。填寫 2 表示封面單獨顯示，填寫 1 表示從第一頁起跨頁顯示。頁數少於此值的章節不以跨頁顯示。可在各章節的編輯頁面為單一章節另行設定。"
+        "spread_start_description": "此頁之前逐頁顯示，從此頁起兩頁並排顯示。填寫 2 表示封面單獨顯示，填寫 1 表示從第一頁起跨頁顯示。頁數少於此值的章節不以跨頁顯示。可在各章節的編輯頁面為單一章節另行設定。",
+        "availability": "顯示位置",
+        "availability_description": "讀者可以找到本作品的位置。除非章節另行指定，否則章節沿用此設定，且不會顯示在作品不顯示的位置。"
       },
       "validation": {
         "label_required": "品牌為必填。",
@@ -1212,7 +1214,8 @@
         "comment_mode_invalid": "請選擇本作品公開留言的方式。",
         "creator_credits_invalid": "作者署名需要同時指定作者與角色。",
         "reading_direction_invalid": "請選擇閱讀方向。",
-        "spread_start_invalid": "跨頁起始頁請填寫 1 或以上的整數。"
+        "spread_start_invalid": "跨頁起始頁請填寫 1 或以上的整數。",
+        "availability_invalid": "請選擇顯示位置。"
       },
       "created": "系列已建立。",
       "updated": "系列已更新。",
@@ -1340,7 +1343,8 @@
           "pages_required": "請選擇要新增的頁面圖片。",
           "reading_direction_invalid": "請選擇閱讀方向，或沿用作品設定。",
           "spread_start_invalid": "跨頁起始頁請填寫 1 或以上的整數。",
-          "spread_start_past_last_page": "跨頁不能從章節最後一頁之後開始。請指定該章節中的一頁。"
+          "spread_start_past_last_page": "跨頁不能從章節最後一頁之後開始。請指定該章節中的一頁。",
+          "availability_invalid": "請選擇顯示位置，或沿用作品設定。"
         },
         "layout": {
           "title": "頁面版面",
@@ -1423,6 +1427,19 @@
             "replace_same": "取代目標必須是不同的作者或角色。",
             "share_invalid": "請以 0 到 100 的百分比輸入每項分潤，最多保留兩位小數。"
           }
+        },
+        "availability": {
+          "title": "顯示位置",
+          "description": "讀者可以找到該章節的位置。沿用作品設定的值會隨作品設定的變更而變化。",
+          "error": "無法顯示該章節的顯示位置",
+          "label": "顯示位置",
+          "follow_series": "沿用作品設定",
+          "follow_series_value": "沿用作品設定（{$availability}）",
+          "field_description": "章節僅在作品顯示的位置顯示，因此可以縮小作品的設定，但不能擴大。",
+          "shown_nowhere": "作品不在該位置顯示，因此該章節不會在任何位置顯示。",
+          "update": "更新顯示位置",
+          "updated": "顯示位置已更新。",
+          "failed": "無法更新顯示位置。請稍後再試。"
         }
       },
       "status": {
@@ -1435,7 +1452,13 @@
         "r15": "R15",
         "r18": "R18"
       },
-      "tags_unavailable": "無法載入正在使用的標籤。仍可直接輸入標籤名稱。"
+      "tags_unavailable": "無法載入正在使用的標籤。仍可直接輸入標籤名稱。",
+      "availability": {
+        "all": "網頁與應用程式",
+        "web": "僅網頁",
+        "app": "僅應用程式",
+        "none": "不在任何位置顯示"
+      }
     },
     "settings": {
       "email_error": "無法顯示郵件設定",

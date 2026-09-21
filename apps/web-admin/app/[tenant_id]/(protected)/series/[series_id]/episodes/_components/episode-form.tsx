@@ -13,9 +13,11 @@ import { useActionState, useCallback } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
+import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeActionState } from "../episode-types";
+import { EpisodeAvailabilityField } from "./episode-availability-field";
 import { PublishAtInput } from "./publish-at-input";
 
 interface EpisodeFormProps {
@@ -24,12 +26,18 @@ interface EpisodeFormProps {
     prevState: EpisodeActionState,
     formData: FormData
   ) => Promise<EpisodeActionState>;
+  /**
+   * What the series is shown on, for the option that follows it. Absent when
+   * that read failed.
+   */
+  seriesAvailability?: SurfaceAvailabilityValue;
   timeZone: string;
 }
 
 export const EpisodeForm = ({
   seriesPublicId,
   action,
+  seriesAvailability,
   timeZone,
 }: EpisodeFormProps) => {
   const t = useClientMessages();
@@ -102,6 +110,11 @@ export const EpisodeForm = ({
       </Field>
 
       <PublishAtInput timeZone={timeZone} />
+
+      <EpisodeAvailabilityField
+        initialValue=""
+        seriesAvailability={seriesAvailability}
+      />
 
       {state ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>

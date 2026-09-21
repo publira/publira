@@ -32,6 +32,7 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type {
@@ -48,6 +49,10 @@ const createEpisodeSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
+    // The empty value is the episode following its series.
+    availability: z.enum(EPISODE_AVAILABILITY_OVERRIDES, {
+      error: t("admin.series.episodes.validation.availability_invalid"),
+    }),
     price: nonNegativeIntFormSchema(
       t("admin.series.episodes.validation.price_invalid")
     ),
@@ -132,6 +137,7 @@ export const createEpisodeAction = async (
   const schema = await createEpisodeSchema(locale);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      availability: "value",
       price: "value",
       publishAt: { kind: "value", name: "publish_at" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
@@ -159,6 +165,7 @@ export const createEpisodeAction = async (
   const result = await withAdminSessionReauth(() =>
     createEpisode(
       {
+        availability: parsed.data.availability,
         price: parsed.data.price,
         publishAt: scheduledAt.value,
         readingPeriodHours: parsed.data.readingPeriodHours,

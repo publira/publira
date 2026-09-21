@@ -58,6 +58,12 @@ import type {
 import { SERIES_COMMENT_MODES } from "./series-comment-mode";
 import type { SeriesCommentMode } from "./series-comment-mode";
 import { getAccessToken } from "./session";
+import { DEFAULT_SURFACE_AVAILABILITY } from "./surface-availability";
+import type { SurfaceAvailabilityValue } from "./surface-availability";
+import {
+  SURFACE_AVAILABILITY_ENUM,
+  toSurfaceAvailabilityValue,
+} from "./surface-availability-enum";
 
 /**
  * The tag `getSeries()` caches one series under. Every Action that changes a
@@ -127,6 +133,8 @@ export interface SeriesItem {
     fileSizeBytes: number;
   }[];
   eyeCatchImageUpdatedAt: string;
+  /** Which surfaces the series may be shown on, and every episode with it. */
+  availability: SurfaceAvailabilityValue;
 }
 
 export type ListSeriesResult = CursorPageTokens &
@@ -235,6 +243,7 @@ const mapErrorToMessage = async (
 type RawSeries = Pick<
   Series,
   | "ageRating"
+  | "availability"
   | "creators"
   | "eyeCatchImageUpdatedAt"
   | "eyeCatchImageVariants"
@@ -367,6 +376,11 @@ const mapSeries = (
   );
   return {
     ageRating: toSeriesAgeRatingValue(series.ageRating),
+    // Unspecified is the column default, which the console's reads never
+    // answer; a value naming none of the three is reported by `getSeries`.
+    availability:
+      toSurfaceAvailabilityValue(series.availability) ||
+      DEFAULT_SURFACE_AVAILABILITY,
     creatorCredits: (series.creators ?? []).flatMap((creator) => {
       const creatorPublicId = creator.publicId.trim();
       // A credit written before roles existed states none. It is kept, so the
@@ -629,7 +643,13 @@ export const getSeries = async (
 
     const commentMode = toSeriesCommentMode(response.commentMode);
     const readingLayout = toSeriesReadingLayout(response);
-    if (commentMode === undefined || readingLayout === undefined) {
+    // An unknown availability would open the form on both surfaces, and the
+    // next save would write that over the one the series is kept to.
+    if (
+      commentMode === undefined ||
+      readingLayout === undefined ||
+      toSurfaceAvailabilityValue(response.series.availability) === undefined
+    ) {
       return {
         message: t("admin.series.list_failed"),
         ok: false,
@@ -704,6 +724,7 @@ export const createSeries = async (
     publishedAt?: string;
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
+    availability: SurfaceAvailabilityValue;
   } & SeriesClassificationInput &
     SeriesCommentModeInput &
     SeriesReadingLayoutInput,
@@ -724,6 +745,7 @@ export const createSeries = async (
     const response = await apiClient.series.createSeries(
       {
         ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
+        availability: SURFACE_AVAILABILITY_ENUM[input.availability],
         commentMode: SERIES_COMMENT_MODE_ENUM[input.commentMode],
         creatorCredits: input.creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
@@ -787,6 +809,11 @@ export const updateSeries = async (
     clearEyeCatchImage?: boolean;
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
+    /**
+     * Absent keeps the value stored, which is what the cover image tab
+     * relies on: it saves the series without offering this choice.
+     */
+    availability?: SurfaceAvailabilityValue;
   } & SeriesClassificationInput &
     SeriesCommentModeInput &
     SeriesReadingLayoutInput,
@@ -807,6 +834,10 @@ export const updateSeries = async (
     const response = await apiClient.series.updateSeries(
       {
         ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
+        availability:
+          input.availability === undefined
+            ? undefined
+            : SURFACE_AVAILABILITY_ENUM[input.availability],
         clearEyeCatchImage: input.clearEyeCatchImage,
         commentMode: SERIES_COMMENT_MODE_ENUM[input.commentMode],
         creatorCredits: input.creatorCredits,

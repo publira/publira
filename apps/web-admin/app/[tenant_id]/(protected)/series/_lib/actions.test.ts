@@ -94,6 +94,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -105,6 +106,7 @@ describe("series actions", () => {
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       {
         ageRating: "all",
+        availability: "all",
         commentMode: "",
         creatorCredits: [],
         eyeCatchImageContentType: undefined,
@@ -158,6 +160,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -199,6 +202,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -234,6 +238,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -301,6 +306,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -327,6 +333,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "hiatus");
     formData.set("age_rating", "r18");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -368,6 +375,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -395,6 +403,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -429,6 +438,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "approval_required");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -451,6 +461,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "moderated");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -463,6 +474,91 @@ describe("series actions", () => {
       ok: false,
     });
     expect(mockCreateSeries).not.toHaveBeenCalled();
+  });
+
+  it("sends the surfaces the series is shown on", async () => {
+    mockUpdateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { publicId: "SERIES001" },
+    });
+
+    const { updateSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("public_id", "SERIES001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("availability", "app");
+    formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+
+    await updateSeriesAction(null, formData);
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: "app" }),
+      "en"
+    );
+  });
+
+  it("refuses surfaces the form could not have offered", async () => {
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("availability", "");
+    formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+
+    const result = await createSeriesAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Choose where the series is shown.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateSeries).not.toHaveBeenCalled();
+  });
+
+  // The cover image tab offers no surfaces, so its save must not put a series
+  // kept to one surface back on both.
+  it("keeps the stored surfaces when the cover image is removed", async () => {
+    mockUpdateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { eyeCatchImageVariants: [], publicId: "SERIES001" },
+    });
+
+    const { updateSeriesEyeCatchAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("public_id", "SERIES001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("comment_mode", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+    formData.set("clear_eye_catch_image", "1");
+
+    await updateSeriesEyeCatchAction(null, formData);
+
+    expect(mockUpdateSeries).toHaveBeenCalledOnce();
+    expect(mockUpdateSeries.mock.calls[0]?.[0]).not.toHaveProperty(
+      "availability"
+    );
   });
 
   // The form counts pages from 1 and the API indexes them from 0.
@@ -482,6 +578,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "ltr");
     formData.set("spread_start_page", "1");
@@ -510,6 +607,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("spread_start_page", "2");
 
@@ -535,6 +633,7 @@ describe("series actions", () => {
       formData.set("label_public_id", "LABEL001");
       formData.set("status", "ongoing");
       formData.set("age_rating", "all");
+      formData.set("availability", "all");
       formData.set("comment_mode", "");
       formData.set("reading_direction", "rtl");
       formData.set("spread_start_page", page);
@@ -566,6 +665,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -626,6 +726,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -658,6 +759,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
@@ -684,6 +786,7 @@ describe("series actions", () => {
     formData.set("label_public_id", "LABEL001");
     formData.set("status", "cancelled");
     formData.set("age_rating", "all");
+    formData.set("availability", "all");
     formData.set("comment_mode", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");

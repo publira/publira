@@ -41,6 +41,7 @@ import {
   SERIES_STATUS_VALUES,
 } from "#lib/series-classification";
 import { SERIES_COMMENT_MODES } from "#lib/series-comment-mode";
+import { SURFACE_AVAILABILITIES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type {
@@ -116,6 +117,9 @@ const seriesCommonSchema = async (locale: Locale) => {
     ageRating: z.enum(SERIES_AGE_RATING_VALUES, {
       error: t("admin.series.validation.age_rating_invalid"),
     }),
+    availability: z.enum(SURFACE_AVAILABILITIES, {
+      error: t("admin.series.validation.availability_invalid"),
+    }),
     // The empty value is one of the four: it is the series stating no mode of
     // its own and so following the tenant's.
     commentMode: z.enum(SERIES_COMMENT_MODES, {
@@ -173,13 +177,16 @@ const seriesUpdateSchema = async (locale: Locale) => {
 const seriesEyeCatchSchema = async (locale: Locale) => {
   const base = await seriesUpdateSchema(locale);
 
-  return base.extend({
+  // The cover image tab does not offer the surfaces, and a save that names
+  // none keeps the ones stored.
+  return base.omit({ availability: true }).extend({
     clearEyeCatchImage: flagOneFormSchema,
     currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
   });
 };
 const seriesFormFields = {
   ageRating: { kind: "value", name: "age_rating" },
+  availability: "value",
   commentMode: { kind: "value", name: "comment_mode" },
   creatorCredits: { kind: "value", name: "creator_credits" },
   eyeCatchImage: { kind: "file", name: "eye_catch_image" },
@@ -275,6 +282,7 @@ export const createSeriesAction = async (
     createSeries(
       {
         ageRating: parsed.data.ageRating,
+        availability: parsed.data.availability,
         commentMode: parsed.data.commentMode,
         creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
@@ -342,6 +350,7 @@ export const updateSeriesAction = async (
     updateSeries(
       {
         ageRating: parsed.data.ageRating,
+        availability: parsed.data.availability,
         commentMode: parsed.data.commentMode,
         creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,

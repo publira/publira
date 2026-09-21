@@ -3,9 +3,12 @@ import {
   ReadingDirection,
   SeriesAgeRating,
   SeriesStatus,
+  SurfaceAvailability,
 } from "@publira/api-client/admin/types";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { updateSeries as UpdateSeries } from "./series";
 
 const {
   mockCacheTag,
@@ -617,6 +620,133 @@ describe("the layout a series states", () => {
         readingDirection: ReadingDirection.LEFT_TO_RIGHT,
         spreadStartIndex: 0,
       }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+});
+
+describe("the surfaces a series is shown on", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  const updateInput: Parameters<typeof UpdateSeries>[0] = {
+    ageRating: "all",
+    commentMode: "",
+    creatorCredits: [],
+    genrePublicIds: [],
+    isPublished: true,
+    labelPublicId: "LABEL001",
+    publicId: "SERIES001",
+    readingDirection: "rtl",
+    readingPeriodHours: 24,
+    scheduleWeekdays: [],
+    spreadStartIndex: 1,
+    status: "ongoing",
+    synopsis: "A synopsis",
+    tagNames: [],
+    tenantId: "TENANT001",
+    title: "Series title",
+  };
+
+  it("reads the surfaces back on the series", async () => {
+    mockGetSeries.mockResolvedValue({
+      series: {
+        availability: SurfaceAvailability.APP,
+        publicId: "SERIES001",
+        synopsis: "",
+        title: "Series title",
+      },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      series: { availability: "app" },
+    });
+  });
+
+  it("marks each listed series with the surfaces it is shown on", async () => {
+    mockListSeries.mockResolvedValue({
+      series: [
+        {
+          availability: SurfaceAvailability.WEB,
+          publicId: "SERIES001",
+          synopsis: "",
+          title: "Web series",
+        },
+        {
+          availability: SurfaceAvailability.ALL,
+          publicId: "SERIES002",
+          synopsis: "",
+          title: "Everywhere series",
+        },
+      ],
+    });
+
+    const { listSeries } = await import("./series");
+    const result = await listSeries("TENANT001", "en");
+
+    expect(result.series.map((item) => item.availability)).toEqual([
+      "web",
+      "all",
+    ]);
+  });
+
+  // Opening the form on both surfaces for a value this build cannot name
+  // would put the series back on both on the next save.
+  it("reports surfaces it cannot name rather than answering with both", async () => {
+    mockGetSeries.mockResolvedValue({
+      series: {
+        availability: 99,
+        publicId: "SERIES001",
+        synopsis: "",
+        title: "Series title",
+      },
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("sends the surfaces the form chose", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries({ ...updateInput, availability: "web" }, "en");
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: SurfaceAvailability.WEB }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  // `UpdateSeries` keeps the stored value for an absent field, which is what
+  // lets the cover image tab save without offering the surfaces.
+  it("sends no surfaces when the save names none", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries(updateInput, "en");
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: undefined }),
       { headers: { Authorization: "Bearer session-token" } }
     );
   });

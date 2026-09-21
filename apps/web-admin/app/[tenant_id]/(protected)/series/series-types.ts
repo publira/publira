@@ -3,6 +3,7 @@ import type {
   SeriesAgeRatingValue,
   SeriesStatusValue,
 } from "#lib/series-classification";
+import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 
 export type SeriesEyeCatchVariantItem = EyeCatchVariantItem;
 
@@ -36,6 +37,7 @@ export interface SeriesListItem {
   tagNames: string[];
   eyeCatchImageVariants: SeriesEyeCatchVariantItem[];
   eyeCatchImageUpdatedAt: string;
+  availability: SurfaceAvailabilityValue;
 }
 
 export type SeriesMutationMode = "create" | "update";

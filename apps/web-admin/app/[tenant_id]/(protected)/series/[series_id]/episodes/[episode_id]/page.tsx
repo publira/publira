@@ -43,6 +43,7 @@ import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { EpisodeAvailabilityForm } from "./_components/episode-availability-form";
 import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits-form";
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
@@ -50,6 +51,7 @@ import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-f
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
 import {
   reorderEpisodeImagesAction,
+  updateEpisodeAvailabilityAction,
   updateEpisodeLayoutAction,
   replaceEpisodeCreditsAction,
   updateEpisodeScheduleAction,
@@ -111,8 +113,9 @@ const EditEpisodePage = async ({
       },
       locale
     ),
-    // Only to name what the layout options that follow the series follow, so
-    // a read that failed leaves them unnamed rather than the form unusable.
+    // Only to name what the layout and availability options that follow the
+    // series follow, so a read that failed leaves them unnamed rather than the
+    // forms unusable.
     getSeries({ publicId: series_id, tenantId }, locale),
     listEpisodeCredits({ episodePublicId: episode_id, tenantId }, locale),
     listAllCreators(tenantId, locale),
@@ -180,6 +183,10 @@ const EditEpisodePage = async ({
           title={t("admin.series.episodes.schedule_updated")}
         />
         <FlashToast
+          keyName="availability_updated"
+          title={t("admin.series.episodes.availability.updated")}
+        />
+        <FlashToast
           keyName="layout_updated"
           title={t("admin.series.episodes.layout.updated")}
         />
@@ -215,6 +222,32 @@ const EditEpisodePage = async ({
                 <SectionErrorTitle>
                   <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                     <Message message="admin.series.episodes.schedule_error" />
+                  </Suspense>
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {episodeResult.message}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
+          )}
+          {episodeResult.ok ? (
+            <EpisodeAvailabilityForm
+              action={updateEpisodeAvailabilityAction}
+              episodePublicId={episode_id}
+              initialAvailability={episodeResult.episode.availability}
+              key={`${episode_id}:${episodeResult.episode.availability}`}
+              seriesAvailability={
+                seriesResult.ok ? seriesResult.series.availability : undefined
+              }
+              seriesPublicId={series_id}
+              tenantId={tenantId}
+            />
+          ) : (
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.series.episodes.availability.error" />
                   </Suspense>
                 </SectionErrorTitle>
                 <SectionErrorDescription>

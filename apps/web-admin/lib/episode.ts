@@ -39,6 +39,11 @@ import {
 } from "./reading-direction-enum";
 import type { EpisodeReadingLayoutOverrides } from "./reading-layout";
 import { getAccessToken } from "./session";
+import type { EpisodeAvailabilityOverride } from "./surface-availability";
+import {
+  SURFACE_AVAILABILITY_ENUM,
+  toSurfaceAvailabilityValue,
+} from "./surface-availability-enum";
 
 export interface EpisodeItem {
   publicId: string;
@@ -49,6 +54,12 @@ export interface EpisodeItem {
   status: string;
   scheduledAt: string;
   publishedAt: string;
+  /**
+   * Which surfaces the episode states of its own, empty where it follows its
+   * series. It is the override rather than where the episode ends up, because
+   * the series bounds it: see `episodeShownOn`.
+   */
+  availability: EpisodeAvailabilityOverride;
 }
 
 export interface EpisodeImageItem {
@@ -105,6 +116,10 @@ export type GetEpisodeResult =
 
 export type UpdateEpisodePublishScheduleResult =
   | { ok: true; episode: EpisodeItem }
+  | { ok: false; message: string };
+
+export type UpdateEpisodeAvailabilityResult =
+  | { ok: true; availability: EpisodeAvailabilityOverride }
   | { ok: false; message: string };
 
 export type UpdateEpisodeLayoutResult =
@@ -218,6 +233,7 @@ const mapReorderErrorToMessage = async (
 /** The generated `Episode` fields {@link mapEpisode} reads (see `series.ts`). */
 type RawEpisode = Pick<
   Episode,
+  | "availability"
   | "orderIndex"
   | "price"
   | "publicId"
@@ -229,6 +245,9 @@ type RawEpisode = Pick<
 >;
 
 const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
+  // A value naming none of the three is reported by the reads that open a
+  // form on it; a list only loses the mark on that row.
+  availability: toSurfaceAvailabilityValue(episode.availability) ?? "",
   orderIndex: episode.orderIndex,
   price: episode.price,
   publicId: episode.publicId,
@@ -498,6 +517,7 @@ export const createEpisode = async (
     price: number;
     readingPeriodHours: number;
     publishAt: string;
+    availability: EpisodeAvailabilityOverride;
   },
   locale: Locale
 ): Promise<CreateEpisodeResult> => {
@@ -515,6 +535,9 @@ export const createEpisode = async (
   try {
     const response = await apiClient.series.createEpisode(
       {
+        availability: input.availability
+          ? SURFACE_AVAILABILITY_ENUM[input.availability]
+          : undefined,
         // Omitting orderIndex makes the server append to the end.
         price: input.price,
         readingPeriodHours: input.readingPeriodHours,
@@ -729,7 +752,13 @@ export const getEpisode = async (
     );
 
     const layout = toEpisodeLayoutOverrides(response);
-    if (!response.episode?.publicId?.trim() || layout === undefined) {
+    // An unknown availability would open the form on following the series,
+    // and the next save would write that over the episode's own value.
+    if (
+      !response.episode?.publicId?.trim() ||
+      layout === undefined ||
+      toSurfaceAvailabilityValue(response.episode.availability) === undefined
+    ) {
       return {
         message: t("admin.series.episodes.get_failed"),
         ok: false,
@@ -805,6 +834,63 @@ export const updateEpisodePublishSchedule = async (
       message: await mapErrorToMessage(
         error,
         t("admin.series.episodes.schedule_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/** The empty value puts the episode back on following its series. */
+export const updateEpisodeAvailability = async (
+  input: {
+    tenantId: string;
+    episodePublicId: string;
+    availability: EpisodeAvailabilityOverride;
+  },
+  locale: Locale
+): Promise<UpdateEpisodeAvailabilityResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.updateEpisodeAvailability(
+      {
+        availability: input.availability
+          ? SURFACE_AVAILABILITY_ENUM[input.availability]
+          : undefined,
+        episodePublicId: input.episodePublicId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    const availability = toSurfaceAvailabilityValue(
+      response.episode?.availability
+    );
+    if (availability === undefined) {
+      return {
+        message: t("admin.series.episodes.availability.failed"),
+        ok: false,
+      };
+    }
+
+    return { availability, ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.availability.failed"),
         locale
       ),
       ok: false,

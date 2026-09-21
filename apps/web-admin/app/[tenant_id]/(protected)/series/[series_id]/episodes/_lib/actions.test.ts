@@ -67,6 +67,7 @@ const createEpisodeFormData = (): FormData => {
   formData.set("title", "Episode title");
   formData.set("price", "0");
   formData.set("reading_period_hours", "24");
+  formData.set("availability", "");
   return formData;
 };
 
@@ -96,6 +97,55 @@ describe("episode create actions", () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?created=1"
     );
+  });
+
+  it("sends the empty availability as following the series", async () => {
+    mockCreateEpisode.mockResolvedValueOnce({
+      episode: { publicId: "EP001" },
+      ok: true,
+    });
+
+    const { createEpisodeAction } = await import("./actions");
+
+    await createEpisodeAction(null, createEpisodeFormData());
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: "" }),
+      "en"
+    );
+  });
+
+  it("sends the surfaces an episode is created for", async () => {
+    mockCreateEpisode.mockResolvedValueOnce({
+      episode: { publicId: "EP001" },
+      ok: true,
+    });
+
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("availability", "web");
+
+    await createEpisodeAction(null, formData);
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: "web" }),
+      "en"
+    );
+  });
+
+  it("refuses surfaces the form could not have offered", async () => {
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("availability", "everywhere");
+
+    const result = await createEpisodeAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Choose where the episode is shown, or follow the series.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateEpisode).not.toHaveBeenCalled();
   });
 
   it("leaves the cache alone when the episode cannot be created", async () => {

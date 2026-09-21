@@ -15,6 +15,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   reorderEpisodeImages,
+  updateEpisodeAvailability,
   updateEpisodeLayout,
   replaceEpisodeCredits,
   updateEpisodePublishSchedule,
@@ -31,6 +32,7 @@ import {
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
+import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type {
@@ -220,6 +222,54 @@ export const updateEpisodeScheduleAction = async (
 
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?schedule_updated=1`
+  );
+};
+
+const availabilityFormSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    hiddenParamsSchema(locale),
+  ]);
+
+  return base.extend({
+    // The empty value is the episode following its series.
+    availability: z.enum(EPISODE_AVAILABILITY_OVERRIDES, {
+      error: t("admin.series.episodes.validation.availability_invalid"),
+    }),
+  });
+};
+
+export const updateEpisodeAvailabilityAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await availabilityFormSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      availability: "value",
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { availability, episodePublicId, seriesPublicId, tenantId } =
+    parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateEpisodeAvailability(
+      { availability, episodePublicId, tenantId },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  redirect(
+    `/series/${seriesPublicId}/episodes/${episodePublicId}?availability_updated=1`
   );
 };
 
