@@ -101,7 +101,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 const createTenantConfig = `-- name: CreateTenantConfig :one
 INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
 VALUES ($1, $2, $3, $4)
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id
 `
 
 type CreateTenantConfigParams struct {
@@ -133,6 +133,8 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 		&i.PurchaseAvailability,
 		&i.AppStoreUrl,
 		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
 	)
 	return i, err
 }
@@ -279,7 +281,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 }
 
 const getTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
-SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url
+SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id
 FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -302,6 +304,54 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 		&i.PurchaseAvailability,
 		&i.AppStoreUrl,
 		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
+	)
+	return i, err
+}
+
+const getTenantLegalPages = `-- name: GetTenantLegalPages :one
+SELECT tc.terms_page_id,
+    terms.slug AS terms_slug,
+    terms.title AS terms_title,
+    (terms.published_version_id IS NOT NULL)::boolean AS terms_published,
+    tc.privacy_page_id,
+    privacy.slug AS privacy_slug,
+    privacy.title AS privacy_title,
+    (privacy.published_version_id IS NOT NULL)::boolean AS privacy_published
+FROM tenant_config tc
+    LEFT JOIN pages terms ON terms.tenant_id = tc.tenant_id
+    AND terms.id = tc.terms_page_id
+    LEFT JOIN pages privacy ON privacy.tenant_id = tc.tenant_id
+    AND privacy.id = tc.privacy_page_id
+WHERE tc.tenant_id = $1
+`
+
+type GetTenantLegalPagesRow struct {
+	TermsPageID      uuid.NullUUID  `json:"terms_page_id"`
+	TermsSlug        sql.NullString `json:"terms_slug"`
+	TermsTitle       sql.NullString `json:"terms_title"`
+	TermsPublished   bool           `json:"terms_published"`
+	PrivacyPageID    uuid.NullUUID  `json:"privacy_page_id"`
+	PrivacySlug      sql.NullString `json:"privacy_slug"`
+	PrivacyTitle     sql.NullString `json:"privacy_title"`
+	PrivacyPublished bool           `json:"privacy_published"`
+}
+
+// The pages a tenant names as its terms of service and its privacy policy,
+// each with whether it is published. No row where the tenant has no config.
+func (q *Queries) GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error) {
+	row := q.db.QueryRowContext(ctx, getTenantLegalPages, tenantID)
+	var i GetTenantLegalPagesRow
+	err := row.Scan(
+		&i.TermsPageID,
+		&i.TermsSlug,
+		&i.TermsTitle,
+		&i.TermsPublished,
+		&i.PrivacyPageID,
+		&i.PrivacySlug,
+		&i.PrivacyTitle,
+		&i.PrivacyPublished,
 	)
 	return i, err
 }
@@ -479,7 +529,7 @@ const updateTenantConfig = `-- name: UpdateTenantConfig :one
 UPDATE tenant_config
 SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
 WHERE tenant_id = $1
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id
 `
 
 type UpdateTenantConfigParams struct {
@@ -511,6 +561,8 @@ func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfig
 		&i.PurchaseAvailability,
 		&i.AppStoreUrl,
 		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
 	)
 	return i, err
 }
@@ -651,7 +703,7 @@ VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
 SET age_verification = EXCLUDED.age_verification,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id
 `
 
 type UpsertTenantAgeVerificationParams struct {
@@ -679,6 +731,8 @@ func (q *Queries) UpsertTenantAgeVerification(ctx context.Context, arg UpsertTen
 		&i.PurchaseAvailability,
 		&i.AppStoreUrl,
 		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
 	)
 	return i, err
 }
@@ -690,7 +744,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET comment_mode = EXCLUDED.comment_mode,
     comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id
 `
 
 type UpsertTenantCommentSettingsParams struct {
@@ -724,6 +778,53 @@ func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTen
 		&i.PurchaseAvailability,
 		&i.AppStoreUrl,
 		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
+	)
+	return i, err
+}
+
+const upsertTenantLegalPages = `-- name: UpsertTenantLegalPages :one
+INSERT INTO tenant_config (tenant_id, terms_page_id, privacy_page_id)
+VALUES (
+        $1,
+        $2,
+        $3
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET terms_page_id = EXCLUDED.terms_page_id,
+    privacy_page_id = EXCLUDED.privacy_page_id,
+    updated_at = NOW()
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id
+`
+
+type UpsertTenantLegalPagesParams struct {
+	TenantID      uuid.UUID     `json:"tenant_id"`
+	TermsPageID   uuid.NullUUID `json:"terms_page_id"`
+	PrivacyPageID uuid.NullUUID `json:"privacy_page_id"`
+}
+
+// An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
+// written together because the console offers them as one card.
+func (q *Queries) UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLegalPagesParams) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, upsertTenantLegalPages, arg.TenantID, arg.TermsPageID, arg.PrivacyPageID)
+	var i TenantConfig
+	err := row.Scan(
+		&i.TenantID,
+		&i.CopyrightText,
+		&i.SiteDescription,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SiteTagline,
+		&i.CommentMode,
+		&i.CommentAutoHideReportThreshold,
+		&i.EpisodeRatingMode,
+		&i.AgeVerification,
+		&i.PurchaseAvailability,
+		&i.AppStoreUrl,
+		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
 	)
 	return i, err
 }
@@ -741,7 +842,7 @@ SET purchase_availability = EXCLUDED.purchase_availability,
     app_store_url = EXCLUDED.app_store_url,
     google_play_url = EXCLUDED.google_play_url,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id
 `
 
 type UpsertTenantPurchaseSettingsParams struct {
@@ -776,6 +877,8 @@ func (q *Queries) UpsertTenantPurchaseSettings(ctx context.Context, arg UpsertTe
 		&i.PurchaseAvailability,
 		&i.AppStoreUrl,
 		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
 	)
 	return i, err
 }

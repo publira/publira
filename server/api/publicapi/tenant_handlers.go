@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -53,6 +54,7 @@ func (s *apiServer) GetTenant(
 	ageVerification := publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE
 	appStoreURL := ""
 	googlePlayURL := ""
+	var termsPage, privacyPage *publirav1.TenantLegalPage
 
 	if err == nil {
 		if config.CopyrightText.Valid {
@@ -74,6 +76,7 @@ func (s *apiServer) GetTenant(
 		if err != nil {
 			return nil, s.internalError(ctx, "tenant age verification is not a supported rule", err, "tenant_id", tenant.ID.String())
 		}
+		termsPage, privacyPage = s.publishedLegalPages(ctx, queries, tenant.ID)
 	} else if err != sql.ErrNoRows {
 		// Log error but don't fail the request
 		_ = err
@@ -106,7 +109,30 @@ func (s *apiServer) GetTenant(
 		WebPushVapidPublicKey: s.publishedWebPushPublicKey(ctx),
 		AppStoreUrl:           appStoreURL,
 		GooglePlayUrl:         googlePlayURL,
+		TermsPage:             termsPage,
+		PrivacyPage:           privacyPage,
 	}), nil
+}
+
+// publishedLegalPages answers the terms and privacy pages the tenant names,
+// leaving out one that is not published so the storefront never links to a
+// page it cannot serve. A failed read answers neither, like the rest of the
+// optional site copy.
+func (s *apiServer) publishedLegalPages(ctx context.Context, queries Querier, tenantID uuid.UUID) (terms, privacy *publirav1.TenantLegalPage) {
+	row, err := queries.GetTenantLegalPages(ctx, tenantID)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			s.logger.WarnContext(ctx, "failed to read the tenant legal pages", "tenant_id", tenantID.String(), "error", err)
+		}
+		return nil, nil
+	}
+	if row.TermsPublished {
+		terms = &publirav1.TenantLegalPage{Slug: row.TermsSlug.String, Title: row.TermsTitle.String}
+	}
+	if row.PrivacyPublished {
+		privacy = &publirav1.TenantLegalPage{Slug: row.PrivacySlug.String, Title: row.PrivacyTitle.String}
+	}
+	return terms, privacy
 }
 
 // tenantAcceptsPayments deliberately fails closed. The public response only

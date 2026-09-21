@@ -113,3 +113,61 @@ func TestDBGetTenantByDomainResolvesTheFirstMatchingHost(t *testing.T) {
 		t.Fatalf("GetTenantByDomain for an unknown host code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 }
+
+func getDBTenant(t *testing.T, env *publicDBEnv, tenant testutil.Tenant) *publirav1.GetTenantResponse {
+	t.Helper()
+
+	resp, err := env.tenantAPIClient().GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: tenantContext(tenant),
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	return resp.Msg
+}
+
+// The storefront links the terms and privacy pages a tenant names, and only
+// while they are published: a tenant that named none, and one whose named page
+// is unpublished, gets nothing to link to.
+func TestDBGetTenantReportsItsPublishedLegalPages(t *testing.T) {
+	env := newPublicDBEnv(t)
+	first, second := env.seedTwoTenants(t)
+	seedTenantBranding(t, env, first, "© Tenant A", "", "", "#111111")
+	seedTenantBranding(t, env, second, "© Tenant B", "", "", "#222222")
+	terms := env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "tos", Title: "Terms of Service", Published: true})
+	privacy := env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
+
+	if got := getDBTenant(t, env, first); got.TermsPage != nil || got.PrivacyPage != nil {
+		t.Fatalf("legal pages before naming any = %v / %v, want none", got.TermsPage, got.PrivacyPage)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		UPDATE tenant_config SET terms_page_id = $2, privacy_page_id = $3 WHERE tenant_id = $1
+	`, first.ID, terms.ID, privacy.ID); err != nil {
+		t.Fatalf("name legal pages: %v", err)
+	}
+
+	got := getDBTenant(t, env, first)
+	if got.TermsPage.GetSlug() != "/tos" || got.TermsPage.GetTitle() != "Terms of Service" {
+		t.Fatalf("terms_page = %v, want /tos titled Terms of Service", got.TermsPage)
+	}
+	if got.PrivacyPage.GetSlug() != "/privacy" || got.PrivacyPage.GetTitle() != "Privacy Policy" {
+		t.Fatalf("privacy_page = %v, want /privacy titled Privacy Policy", got.PrivacyPage)
+	}
+	if other := getDBTenant(t, env, second); other.TermsPage != nil || other.PrivacyPage != nil {
+		t.Fatalf("tenant B legal pages = %v / %v, want none", other.TermsPage, other.PrivacyPage)
+	}
+
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE pages SET published_version_id = NULL WHERE id = $1", terms.ID); err != nil {
+		t.Fatalf("unpublish terms: %v", err)
+	}
+	got = getDBTenant(t, env, first)
+	if got.TermsPage != nil {
+		t.Fatalf("terms_page after unpublishing it = %v, want none", got.TermsPage)
+	}
+	if got.PrivacyPage.GetSlug() != "/privacy" {
+		t.Fatalf("privacy_page after unpublishing terms = %v, want /privacy", got.PrivacyPage)
+	}
+}

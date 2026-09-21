@@ -127,6 +127,46 @@ message UpdateTenantPurchaseSettingsResponse {
   TenantPurchaseSettings settings = 1;
 }
 
+// A page the tenant names as its terms of service or its privacy policy.
+message TenantLegalPage {
+  string page_id = 1;
+  string slug = 2;
+  string title = 3;
+  // False once the page has been unpublished. The nomination is kept, so the
+  // page is linked again when it is republished, but until then the storefront
+  // links to nothing for it.
+  bool published = 4;
+}
+
+// The tenant's terms of service and privacy policy. A field is absent where
+// the tenant has named no page for it.
+message TenantLegalPages {
+  TenantLegalPage terms_page = 1;
+  TenantLegalPage privacy_page = 2;
+}
+
+message GetTenantLegalPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantLegalPagesResponse {
+  TenantLegalPages pages = 1;
+}
+
+message UpdateTenantLegalPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Both are written, and an empty id names no page. An id has to name a
+  // published page of this tenant, except that the page already named for the
+  // same role may be kept while it is unpublished; anything else is
+  // invalid_argument.
+  string terms_page_id = 2;
+  string privacy_page_id = 3;
+}
+
+message UpdateTenantLegalPagesResponse {
+  TenantLegalPages pages = 1;
+}
+
 // A tenant's own retention periods, in whole days. An absent field follows the
 // platform default; a present one is from 1 to 36500, and may be longer or
 // shorter than that default.
@@ -215,6 +255,8 @@ service TenantSettingsService {
   rpc UpdateTenantAgeVerification(UpdateTenantAgeVerificationRequest) returns (UpdateTenantAgeVerificationResponse) {}
   rpc GetTenantPurchaseSettings(GetTenantPurchaseSettingsRequest) returns (GetTenantPurchaseSettingsResponse) {}
   rpc UpdateTenantPurchaseSettings(UpdateTenantPurchaseSettingsRequest) returns (UpdateTenantPurchaseSettingsResponse) {}
+  rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
+  rpc UpdateTenantLegalPages(UpdateTenantLegalPagesRequest) returns (UpdateTenantLegalPagesResponse) {}
   rpc GetTenantRetentionSettings(GetTenantRetentionSettingsRequest) returns (GetTenantRetentionSettingsResponse) {}
   rpc UpdateTenantRetentionSettings(UpdateTenantRetentionSettingsRequest) returns (UpdateTenantRetentionSettingsResponse) {}
   rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}

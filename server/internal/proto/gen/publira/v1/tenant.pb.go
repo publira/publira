@@ -66,6 +66,60 @@ func (x *GetTenantRequest) GetTenant() *v1.TenantContext {
 	return nil
 }
 
+// A published page the tenant names for a role. The slug is in storage form
+// ("/privacy"), which is also the path the storefront serves it at.
+type TenantLegalPage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantLegalPage) Reset() {
+	*x = TenantLegalPage{}
+	mi := &file_publira_v1_tenant_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantLegalPage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantLegalPage) ProtoMessage() {}
+
+func (x *TenantLegalPage) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_tenant_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantLegalPage.ProtoReflect.Descriptor instead.
+func (*TenantLegalPage) Descriptor() ([]byte, []int) {
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *TenantLegalPage) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *TenantLegalPage) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
 type GetTenantResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	TenantPublicId  string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
@@ -104,13 +158,18 @@ type GetTenantResponse struct {
 	// no listing in that store.
 	AppStoreUrl   string `protobuf:"bytes,14,opt,name=app_store_url,json=appStoreUrl,proto3" json:"app_store_url,omitempty"`
 	GooglePlayUrl string `protobuf:"bytes,15,opt,name=google_play_url,json=googlePlayUrl,proto3" json:"google_play_url,omitempty"`
+	// The pages the tenant names as its terms of service and its privacy policy.
+	// Absent where it has named none, and where the page it named is not
+	// published, so a link built from one always resolves.
+	TermsPage     *TenantLegalPage `protobuf:"bytes,16,opt,name=terms_page,json=termsPage,proto3" json:"terms_page,omitempty"`
+	PrivacyPage   *TenantLegalPage `protobuf:"bytes,17,opt,name=privacy_page,json=privacyPage,proto3" json:"privacy_page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
 	*x = GetTenantResponse{}
-	mi := &file_publira_v1_tenant_proto_msgTypes[1]
+	mi := &file_publira_v1_tenant_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -122,7 +181,7 @@ func (x *GetTenantResponse) String() string {
 func (*GetTenantResponse) ProtoMessage() {}
 
 func (x *GetTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_tenant_proto_msgTypes[1]
+	mi := &file_publira_v1_tenant_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -135,7 +194,7 @@ func (x *GetTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{1}
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetTenantResponse) GetTenantPublicId() string {
@@ -243,6 +302,20 @@ func (x *GetTenantResponse) GetGooglePlayUrl() string {
 	return ""
 }
 
+func (x *GetTenantResponse) GetTermsPage() *TenantLegalPage {
+	if x != nil {
+		return x.TermsPage
+	}
+	return nil
+}
+
+func (x *GetTenantResponse) GetPrivacyPage() *TenantLegalPage {
+	if x != nil {
+		return x.PrivacyPage
+	}
+	return nil
+}
+
 var File_publira_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_v1_tenant_proto_rawDesc = "" +
@@ -250,7 +323,10 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x17publira/v1/tenant.proto\x12\n" +
 	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"K\n" +
 	"\x10GetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xb1\x05\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\";\n" +
+	"\x0fTenantLegalPage\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\"\xad\x06\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -268,7 +344,10 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x10age_verification\x18\f \x01(\x0e2!.publira.types.v1.AgeVerificationR\x0fageVerification\x128\n" +
 	"\x19web_push_vapid_public_key\x18\r \x01(\tR\x15webPushVapidPublicKey\x12\"\n" +
 	"\rapp_store_url\x18\x0e \x01(\tR\vappStoreUrl\x12&\n" +
-	"\x0fgoogle_play_url\x18\x0f \x01(\tR\rgooglePlayUrl2[\n" +
+	"\x0fgoogle_play_url\x18\x0f \x01(\tR\rgooglePlayUrl\x12:\n" +
+	"\n" +
+	"terms_page\x18\x10 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
+	"\fprivacy_page\x18\x11 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage2[\n" +
 	"\rTenantService\x12J\n" +
 	"\tGetTenant\x12\x1c.publira.v1.GetTenantRequest\x1a\x1d.publira.v1.GetTenantResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
@@ -284,27 +363,30 @@ func file_publira_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_v1_tenant_proto_rawDescData
 }
 
-var file_publira_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_publira_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_publira_v1_tenant_proto_goTypes = []any{
 	(*GetTenantRequest)(nil),  // 0: publira.v1.GetTenantRequest
-	(*GetTenantResponse)(nil), // 1: publira.v1.GetTenantResponse
-	(*v1.TenantContext)(nil),  // 2: publira.types.v1.TenantContext
-	(*v1.TenantTheme)(nil),    // 3: publira.types.v1.TenantTheme
-	(v1.CommentMode)(0),       // 4: publira.types.v1.CommentMode
-	(v1.AgeVerification)(0),   // 5: publira.types.v1.AgeVerification
+	(*TenantLegalPage)(nil),   // 1: publira.v1.TenantLegalPage
+	(*GetTenantResponse)(nil), // 2: publira.v1.GetTenantResponse
+	(*v1.TenantContext)(nil),  // 3: publira.types.v1.TenantContext
+	(*v1.TenantTheme)(nil),    // 4: publira.types.v1.TenantTheme
+	(v1.CommentMode)(0),       // 5: publira.types.v1.CommentMode
+	(v1.AgeVerification)(0),   // 6: publira.types.v1.AgeVerification
 }
 var file_publira_v1_tenant_proto_depIdxs = []int32{
-	2, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
-	3, // 1: publira.v1.GetTenantResponse.theme:type_name -> publira.types.v1.TenantTheme
-	4, // 2: publira.v1.GetTenantResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	5, // 3: publira.v1.GetTenantResponse.age_verification:type_name -> publira.types.v1.AgeVerification
-	0, // 4: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
-	1, // 5: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
-	5, // [5:6] is the sub-list for method output_type
-	4, // [4:5] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
+	4, // 1: publira.v1.GetTenantResponse.theme:type_name -> publira.types.v1.TenantTheme
+	5, // 2: publira.v1.GetTenantResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	6, // 3: publira.v1.GetTenantResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	1, // 4: publira.v1.GetTenantResponse.terms_page:type_name -> publira.v1.TenantLegalPage
+	1, // 5: publira.v1.GetTenantResponse.privacy_page:type_name -> publira.v1.TenantLegalPage
+	0, // 6: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
+	2, // 7: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
+	7, // [7:8] is the sub-list for method output_type
+	6, // [6:7] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_tenant_proto_init() }
@@ -318,7 +400,7 @@ func file_publira_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_tenant_proto_rawDesc), len(file_publira_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

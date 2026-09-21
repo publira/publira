@@ -152,6 +152,17 @@ func validatePageTitle(title string) (string, error) {
 	return normalized, nil
 }
 
+// pageRevalidateTags names the public caches a published page appears in. The
+// site read is among them because GetTenant links the terms and privacy pages
+// by slug and title, and only while they are published.
+func pageRevalidateTags(tenantID, pageID uuid.UUID) []string {
+	return []string{
+		fmt.Sprintf("tenant:%s:pages", tenantID.String()),
+		fmt.Sprintf("tenant:%s:pages:%s", tenantID.String(), pageID.String()),
+		fmt.Sprintf("tenant:%s:site", tenantID.String()),
+	}
+}
+
 func parsePageID(raw string) (uuid.UUID, error) {
 	id, err := uuid.Parse(strings.TrimSpace(raw))
 	if err != nil {
@@ -268,10 +279,7 @@ func (s *adminServer) UpdatePage(
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 	// Title / display_in_footer can change the public footer link list.
-	s.revalidateTags(ctx, tenant.ID, []string{
-		fmt.Sprintf("tenant:%s:pages", tenant.ID.String()),
-		fmt.Sprintf("tenant:%s:pages:%s", tenant.ID.String(), page.ID.String()),
-	})
+	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, page.ID))
 	return connect.NewResponse(&publiraadminv1.UpdatePageResponse{
 		Page: pageFromModel(page),
 	}), nil
@@ -523,10 +531,7 @@ func (s *adminServer) PublishVersion(
 	})
 	// Trigger revalidation for the page on the public site.
 	// Tags must use tenant.ID (path / cache key), same as series revalidate.
-	s.revalidateTags(ctx, tenant.ID, []string{
-		fmt.Sprintf("tenant:%s:pages", tenant.ID.String()),
-		fmt.Sprintf("tenant:%s:pages:%s", tenant.ID.String(), version.PageID.String()),
-	})
+	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, version.PageID))
 	return connect.NewResponse(&publiraadminv1.PublishVersionResponse{
 		Version: pageVersionFromModel(version),
 	}), nil
@@ -575,10 +580,7 @@ func (s *adminServer) UnpublishPage(
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 	// Both the page's own URL and the footer link list have to stop serving it.
-	s.revalidateTags(ctx, tenant.ID, []string{
-		fmt.Sprintf("tenant:%s:pages", tenant.ID.String()),
-		fmt.Sprintf("tenant:%s:pages:%s", tenant.ID.String(), page.ID.String()),
-	})
+	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, page.ID))
 	return connect.NewResponse(&publiraadminv1.UnpublishPageResponse{
 		Page: pageFromModel(page),
 	}), nil

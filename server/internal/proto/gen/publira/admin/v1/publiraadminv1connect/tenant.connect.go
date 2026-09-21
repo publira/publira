@@ -63,6 +63,12 @@ const (
 	// TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure is the fully-qualified name of the
 	// TenantSettingsService's UpdateTenantPurchaseSettings RPC.
 	TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantPurchaseSettings"
+	// TenantSettingsServiceGetTenantLegalPagesProcedure is the fully-qualified name of the
+	// TenantSettingsService's GetTenantLegalPages RPC.
+	TenantSettingsServiceGetTenantLegalPagesProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantLegalPages"
+	// TenantSettingsServiceUpdateTenantLegalPagesProcedure is the fully-qualified name of the
+	// TenantSettingsService's UpdateTenantLegalPages RPC.
+	TenantSettingsServiceUpdateTenantLegalPagesProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantLegalPages"
 	// TenantSettingsServiceGetTenantRetentionSettingsProcedure is the fully-qualified name of the
 	// TenantSettingsService's GetTenantRetentionSettings RPC.
 	TenantSettingsServiceGetTenantRetentionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantRetentionSettings"
@@ -89,6 +95,8 @@ type TenantSettingsServiceClient interface {
 	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
 	GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error)
 	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
+	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
+	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
@@ -166,6 +174,18 @@ func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantPurchaseSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantLegalPages: connect.NewClient[v1.GetTenantLegalPagesRequest, v1.GetTenantLegalPagesResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceGetTenantLegalPagesProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantLegalPages")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantLegalPages: connect.NewClient[v1.UpdateTenantLegalPagesRequest, v1.UpdateTenantLegalPagesResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceUpdateTenantLegalPagesProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantLegalPages")),
+			connect.WithClientOptions(opts...),
+		),
 		getTenantRetentionSettings: connect.NewClient[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse](
 			httpClient,
 			baseURL+TenantSettingsServiceGetTenantRetentionSettingsProcedure,
@@ -205,6 +225,8 @@ type tenantSettingsServiceClient struct {
 	updateTenantAgeVerification        *connect.Client[v1.UpdateTenantAgeVerificationRequest, v1.UpdateTenantAgeVerificationResponse]
 	getTenantPurchaseSettings          *connect.Client[v1.GetTenantPurchaseSettingsRequest, v1.GetTenantPurchaseSettingsResponse]
 	updateTenantPurchaseSettings       *connect.Client[v1.UpdateTenantPurchaseSettingsRequest, v1.UpdateTenantPurchaseSettingsResponse]
+	getTenantLegalPages                *connect.Client[v1.GetTenantLegalPagesRequest, v1.GetTenantLegalPagesResponse]
+	updateTenantLegalPages             *connect.Client[v1.UpdateTenantLegalPagesRequest, v1.UpdateTenantLegalPagesResponse]
 	getTenantRetentionSettings         *connect.Client[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse]
 	updateTenantRetentionSettings      *connect.Client[v1.UpdateTenantRetentionSettingsRequest, v1.UpdateTenantRetentionSettingsResponse]
 	getTenantCommunityLimitSettings    *connect.Client[v1.GetTenantCommunityLimitSettingsRequest, v1.GetTenantCommunityLimitSettingsResponse]
@@ -264,6 +286,16 @@ func (c *tenantSettingsServiceClient) UpdateTenantPurchaseSettings(ctx context.C
 	return c.updateTenantPurchaseSettings.CallUnary(ctx, req)
 }
 
+// GetTenantLegalPages calls publira.admin.v1.TenantSettingsService.GetTenantLegalPages.
+func (c *tenantSettingsServiceClient) GetTenantLegalPages(ctx context.Context, req *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error) {
+	return c.getTenantLegalPages.CallUnary(ctx, req)
+}
+
+// UpdateTenantLegalPages calls publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages.
+func (c *tenantSettingsServiceClient) UpdateTenantLegalPages(ctx context.Context, req *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error) {
+	return c.updateTenantLegalPages.CallUnary(ctx, req)
+}
+
 // GetTenantRetentionSettings calls
 // publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings.
 func (c *tenantSettingsServiceClient) GetTenantRetentionSettings(ctx context.Context, req *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {
@@ -301,6 +333,8 @@ type TenantSettingsServiceHandler interface {
 	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
 	GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error)
 	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
+	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
+	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
@@ -374,6 +408,18 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantPurchaseSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantSettingsServiceGetTenantLegalPagesHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceGetTenantLegalPagesProcedure,
+		svc.GetTenantLegalPages,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantLegalPages")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantSettingsServiceUpdateTenantLegalPagesHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceUpdateTenantLegalPagesProcedure,
+		svc.UpdateTenantLegalPages,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantLegalPages")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tenantSettingsServiceGetTenantRetentionSettingsHandler := connect.NewUnaryHandler(
 		TenantSettingsServiceGetTenantRetentionSettingsProcedure,
 		svc.GetTenantRetentionSettings,
@@ -420,6 +466,10 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 			tenantSettingsServiceGetTenantPurchaseSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure:
 			tenantSettingsServiceUpdateTenantPurchaseSettingsHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceGetTenantLegalPagesProcedure:
+			tenantSettingsServiceGetTenantLegalPagesHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceUpdateTenantLegalPagesProcedure:
+			tenantSettingsServiceUpdateTenantLegalPagesHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceGetTenantRetentionSettingsProcedure:
 			tenantSettingsServiceGetTenantRetentionSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantRetentionSettingsProcedure:
@@ -475,6 +525,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantPurchaseSettings(conte
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantLegalPages is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages is not implemented"))
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {

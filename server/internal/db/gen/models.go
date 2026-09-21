@@ -805,6 +805,8 @@ type TenantConfig struct {
 	PurchaseAvailability           string         `json:"purchase_availability"`
 	AppStoreUrl                    sql.NullString `json:"app_store_url"`
 	GooglePlayUrl                  sql.NullString `json:"google_play_url"`
+	TermsPageID                    uuid.NullUUID  `json:"terms_page_id"`
+	PrivacyPageID                  uuid.NullUUID  `json:"privacy_page_id"`
 }
 
 type TenantFcmConfig struct {
