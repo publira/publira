@@ -87,6 +87,19 @@ const (
 	dailyRebuildInterval = time.Hour
 )
 
+// How often each purge runs. A retention period is counted in days, so a daily
+// pass deletes a row at most a day after it expires. The withdrawn comment
+// purge runs hourly because the admin console shows staff the instant a
+// comment is due to go, and the MFA purge because its rows expire five minutes
+// after they are written.
+const (
+	contentEventPurgeInterval     = 24 * time.Hour
+	rankingSnapshotPurgeInterval  = 24 * time.Hour
+	mfaChallengePurgeInterval     = time.Hour
+	withdrawnCommentPurgeInterval = time.Hour
+	orphanImagePurgeInterval      = 24 * time.Hour
+)
+
 // ServiceNames lists every service.name these jobs record under, for the
 // tracing.Setup call of the process that runs them.
 func ServiceNames() []string {
@@ -212,16 +225,34 @@ func (j *Jobs) Register(workers *river.Workers) error {
 }
 
 // PeriodicJobs is the schedule River enqueues them on. Only the head of the
-// daily rebuild chain is scheduled, and each link enqueues the next. The
-// purges' cadence is still open: https://github.com/publira/publira/issues/2559
+// daily rebuild chain is scheduled, and each link enqueues the next.
+//
+// Every one runs on start as well. A purge deletes whatever is past its cutoff
+// at the time it runs, so the first pass after a restart drains everything
+// that expired while the worker was down, and a worker restarted more often
+// than a day is not a worker whose daily purges never come due.
 func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
-	return []*river.PeriodicJob{
-		river.NewPeriodicJob(
-			river.PeriodicInterval(dailyRebuildInterval),
-			func() (river.JobArgs, *river.InsertOpts) { return ProjectEpisodeReadsArgs{}, nil },
-			&river.PeriodicJobOpts{RunOnStart: true},
-		),
+	schedules := []struct {
+		interval time.Duration
+		args     river.JobArgs
+	}{
+		{dailyRebuildInterval, ProjectEpisodeReadsArgs{}},
+		{contentEventPurgeInterval, PurgeContentEventsArgs{}},
+		{rankingSnapshotPurgeInterval, PurgeRankingSnapshotsArgs{}},
+		{mfaChallengePurgeInterval, PurgeMfaChallengesArgs{}},
+		{withdrawnCommentPurgeInterval, PurgeWithdrawnCommentsArgs{}},
+		{orphanImagePurgeInterval, PurgeOrphanImagesArgs{}},
 	}
+	periodic := make([]*river.PeriodicJob, 0, len(schedules))
+	for _, schedule := range schedules {
+		args := schedule.args
+		periodic = append(periodic, river.NewPeriodicJob(
+			river.PeriodicInterval(schedule.interval),
+			func() (river.JobArgs, *river.InsertOpts) { return args, nil },
+			&river.PeriodicJobOpts{RunOnStart: true},
+		))
+	}
+	return periodic
 }
 
 // Queues is the queue they are enqueued on, for the client that runs them.
@@ -267,6 +298,21 @@ func insertOpts() river.InsertOpts {
 			},
 		},
 	}
+}
+
+// purgeInsertOpts is insertOpts, and also keeps a purge to one run per
+// interval.
+//
+// Running on start would otherwise make every restart a pass of its own, and a
+// sweep of the whole bucket on every deploy. A run that completed in the
+// current interval, aligned to the epoch rather than to the process start,
+// therefore skips the insert as well. A run that failed for good does not, so
+// the next restart tries again.
+func purgeInsertOpts(interval time.Duration) river.InsertOpts {
+	opts := insertOpts()
+	opts.UniqueOpts.ByPeriod = interval
+	opts.UniqueOpts.ByState = append(opts.UniqueOpts.ByState, rivertype.JobStateCompleted)
+	return opts
 }
 
 // startRun opens the span a pass hangs off, taken from the provider registered

@@ -9,6 +9,7 @@ import (
 
 	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -36,7 +37,7 @@ func TestWorkerCatchesUpTheDaysItMissed(t *testing.T) {
 		t.Fatalf("seed daily rebuild progress: %v", err)
 	}
 
-	startWorkerWithMaintenanceJobs(t, pg)
+	startWorkerWithMaintenanceJobs(t, pg, nil)
 
 	// Yesterday is taken from the instant the worker's projection recorded, so
 	// a midnight during the test moves the expectation with it.
@@ -85,12 +86,12 @@ func TestWorkerCatchesUpTheDaysItMissed(t *testing.T) {
 
 // startWorkerWithMaintenanceJobs boots the worker the way cmd/worker does:
 // River on the superuser pool that owns its schema, and the jobs on the
-// maintenance role's own connection.
-func startWorkerWithMaintenanceJobs(t *testing.T, pg *testutil.PostgresEnv) {
+// maintenance role's own connection. It answers a function that stops it.
+func startWorkerWithMaintenanceJobs(t *testing.T, pg *testutil.PostgresEnv, source storage.ReclaimerSource) func() {
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	jobs, err := maintenancejobs.New(maintenancejobs.Config{DB: pg.OpenContentStatsDB(t), Logger: logger})
+	jobs, err := maintenancejobs.New(maintenancejobs.Config{DB: pg.OpenContentStatsDB(t), Storage: source, Logger: logger})
 	if err != nil {
 		t.Fatalf("build maintenance jobs: %v", err)
 	}
@@ -107,13 +108,15 @@ func startWorkerWithMaintenanceJobs(t *testing.T, pg *testutil.PostgresEnv) {
 	if err != nil {
 		t.Fatalf("start worker: %v", err)
 	}
-	t.Cleanup(func() {
+	stop := func() {
 		stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer stopCancel()
 		if err := worker.Stop(stopCtx); err != nil {
 			t.Errorf("stop worker: %v", err)
 		}
-	})
+	}
+	t.Cleanup(stop)
+	return stop
 }
 
 func waitFor(t *testing.T, ctx context.Context, what string, done func() bool) {

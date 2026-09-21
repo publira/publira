@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -38,28 +39,60 @@ func TestNewRejectsAMistypedTunable(t *testing.T) {
 // the same rows or delete the same chunk twice. The unique states are what stop
 // a second instance of the worker and a pass that outlasts its own interval.
 func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
-	inFlight := []rivertype.JobState{
-		rivertype.JobStateAvailable,
-		rivertype.JobStatePending,
-		rivertype.JobStateRunning,
-		rivertype.JobStateRetryable,
-		rivertype.JobStateScheduled,
-	}
-
 	for _, args := range everyArgs() {
-		withOpts, ok := args.(river.JobArgsWithInsertOpts)
-		if !ok {
-			t.Fatalf("%s does not declare insert options", args.Kind())
-		}
-		opts := withOpts.InsertOpts()
+		opts := insertOptsOf(t, args)
 		if opts.Queue != QueueName {
 			t.Fatalf("%s queue = %q, want %q", args.Kind(), opts.Queue, QueueName)
 		}
 		if opts.MaxAttempts != maxAttempts {
 			t.Fatalf("%s max attempts = %d, want %d", args.Kind(), opts.MaxAttempts, maxAttempts)
 		}
-		if !slices.Equal(opts.UniqueOpts.ByState, inFlight) {
-			t.Fatalf("%s unique states = %v, want %v", args.Kind(), opts.UniqueOpts.ByState, inFlight)
+		for _, state := range inFlight() {
+			if !slices.Contains(opts.UniqueOpts.ByState, state) {
+				t.Fatalf("%s unique states = %v, want them to include %s", args.Kind(), opts.UniqueOpts.ByState, state)
+			}
+		}
+	}
+}
+
+// The rebuild chain keeps no completed run as a reason to skip one: each link
+// only reads what a tenant has recorded, so a run that finds nothing to do is
+// the answer rather than a waste.
+func TestTheRebuildChainIsUniqueOnlyWhileInFlight(t *testing.T) {
+	for _, args := range []river.JobArgs{
+		ProjectEpisodeReadsArgs{},
+		AggregateContentStatsArgs{},
+		AggregateRankingsArgs{},
+		BuildRecommendFeaturesArgs{},
+	} {
+		opts := insertOptsOf(t, args)
+		if !slices.Equal(opts.UniqueOpts.ByState, inFlight()) {
+			t.Fatalf("%s unique states = %v, want %v", args.Kind(), opts.UniqueOpts.ByState, inFlight())
+		}
+		if opts.UniqueOpts.ByPeriod != 0 {
+			t.Fatalf("%s unique period = %v, want none", args.Kind(), opts.UniqueOpts.ByPeriod)
+		}
+	}
+}
+
+// A purge runs on start, so without a completed run counting against the
+// insert every restart would be a pass of its own. Each is kept to one run per
+// interval, the same interval it is scheduled on.
+func TestEveryPurgeRunsOncePerInterval(t *testing.T) {
+	for args, interval := range map[river.JobArgs]time.Duration{
+		PurgeContentEventsArgs{}:     contentEventPurgeInterval,
+		PurgeRankingSnapshotsArgs{}:  rankingSnapshotPurgeInterval,
+		PurgeMfaChallengesArgs{}:     mfaChallengePurgeInterval,
+		PurgeWithdrawnCommentsArgs{}: withdrawnCommentPurgeInterval,
+		PurgeOrphanImagesArgs{}:      orphanImagePurgeInterval,
+	} {
+		opts := insertOptsOf(t, args)
+		if opts.UniqueOpts.ByPeriod != interval {
+			t.Fatalf("%s unique period = %v, want %v", args.Kind(), opts.UniqueOpts.ByPeriod, interval)
+		}
+		want := append(inFlight(), rivertype.JobStateCompleted)
+		if !slices.Equal(opts.UniqueOpts.ByState, want) {
+			t.Fatalf("%s unique states = %v, want %v", args.Kind(), opts.UniqueOpts.ByState, want)
 		}
 	}
 }
@@ -85,15 +118,13 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	}
 }
 
-// Only the head of the daily rebuild chain is scheduled, and it runs on start
-// so a worker that was down picks up the days it missed without waiting an
-// interval. Each link enqueues the next.
-func TestTheDailyRebuildChainIsScheduledFromItsHead(t *testing.T) {
+// Only the head of the daily rebuild chain is scheduled, since each link
+// enqueues the next, and every purge is scheduled on its own.
+func TestTheChainHeadAndEveryPurgeAreScheduled(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
-	periodic := jobs.PeriodicJobs()
-	if len(periodic) != 1 {
-		t.Fatalf("periodic jobs = %d, want only the head of the chain", len(periodic))
+	if got, want := len(jobs.PeriodicJobs()), 6; got != want {
+		t.Fatalf("periodic jobs = %d, want %d: the chain head and five purges", got, want)
 	}
 }
 
@@ -158,6 +189,25 @@ func TestPurgeOrphanImagesCancelsWithoutConfiguredStorage(t *testing.T) {
 	if !errors.Is(err, storage.ErrNotConfigured) {
 		t.Fatalf("Work error = %v, want it to wrap %v", err, storage.ErrNotConfigured)
 	}
+}
+
+func inFlight() []rivertype.JobState {
+	return []rivertype.JobState{
+		rivertype.JobStateAvailable,
+		rivertype.JobStatePending,
+		rivertype.JobStateRunning,
+		rivertype.JobStateRetryable,
+		rivertype.JobStateScheduled,
+	}
+}
+
+func insertOptsOf(t *testing.T, args river.JobArgs) river.InsertOpts {
+	t.Helper()
+	withOpts, ok := args.(river.JobArgsWithInsertOpts)
+	if !ok {
+		t.Fatalf("%s does not declare insert options", args.Kind())
+	}
+	return withOpts.InsertOpts()
 }
 
 func newJobs(t *testing.T, cfg Config) *Jobs {

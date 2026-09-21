@@ -99,7 +99,17 @@ How far the chain has got is recorded per tenant in `daily_rebuild_progress`, in
 
 So a worker that was down for days rebuilds each of them on its return, in order, and a link never reads a day the one before it has not finished. A day that fails stops that tenant's progress there: the other tenants carry on, the job is recorded as failed and retried, and the next pass starts again on the day that failed rather than after it. A run of [`batch`](../batch/README.md) neither reads nor moves this record.
 
-The purges' cadence is still open: <https://github.com/publira/publira/issues/2559>. Until then a purge runs when it is enqueued.
+Each purge is scheduled on its own, runs when the client starts, and then once per interval:
+
+| Kind                                   | Interval |
+| -------------------------------------- | -------- |
+| `maintenance.purge_content_events`     | 24 hours |
+| `maintenance.purge_ranking_snapshots`  | 24 hours |
+| `maintenance.purge_mfa_challenges`     | 1 hour   |
+| `maintenance.purge_withdrawn_comments` | 1 hour   |
+| `maintenance.purge_orphan_images`      | 24 hours |
+
+A purge needs no record of what it missed: one pass deletes everything past its cutoff at the moment it runs, so the first pass after downtime drains every row that expired in the meantime. Each is also unique over a run that completed in its current interval, counted from the epoch rather than from the process start, so a restart runs a purge only when none has finished in that interval yet — which is what keeps a deploy from being a sweep of the whole bucket. A pass that failed for good does not count, and the next restart or interval tries again.
 
 They run on a queue of their own (`maintenance`) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue runs one pass at a time, because these share one database with every request the platform is serving. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
 
