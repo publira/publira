@@ -18,6 +18,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 
+	"github.com/publira/publira/server/internal/orphanimages"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/storagesettings"
 )
@@ -31,7 +32,7 @@ const (
 	// probe a refused or timed-out delete leaves behind is gone a day later
 	// rather than kept forever. No row ever names it, and the segment cannot
 	// be a tenant's public ID, whose Base58 alphabet has no "_" or "-".
-	probeKeyPrefix = "tenants/_connection-test/"
+	probeKeyPrefix = orphanimages.DefaultPrefix + "_connection-test/"
 )
 
 var probeBody = []byte("publira storage connection test\n")
@@ -114,10 +115,15 @@ func (t *ConnectionTester) getProbe(ctx context.Context, client *s3.Client, buck
 		return err
 	}
 	defer out.Body.Close() //nolint:errcheck
-	// The body is read to the end rather than dropped: a store that answers
-	// the request and then fails to deliver the bytes serves no image either.
-	if _, err := io.Copy(io.Discard, out.Body); err != nil {
+	// The bytes are compared rather than only read: a proxy that answers 200
+	// with a page of its own would otherwise pass for a store serving images.
+	// One byte past the probe is enough to tell a longer body apart.
+	body, err := io.ReadAll(io.LimitReader(out.Body, int64(len(probeBody))+1))
+	if err != nil {
 		return err
+	}
+	if !bytes.Equal(body, probeBody) {
+		return errProbeAltered
 	}
 	return nil
 }
@@ -126,6 +132,15 @@ func (t *ConnectionTester) listProbe(ctx context.Context, client *s3.Client, buc
 	opCtx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
 
+	// The sweep lists the whole of its prefix, and a bucket policy scoped by
+	// s3:prefix can allow the probe's own listing while refusing that one.
+	if _, err := client.ListObjectsV2(opCtx, &s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucket),
+		Prefix:  aws.String(orphanimages.DefaultPrefix),
+		MaxKeys: aws.Int32(1),
+	}); err != nil {
+		return err
+	}
 	page, err := client.ListObjectsV2(opCtx, &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
 		Prefix:  aws.String(key),
@@ -164,9 +179,14 @@ func (t *ConnectionTester) deleteProbe(ctx context.Context, client *s3.Client, b
 	return nil
 }
 
-// errProbeUnlisted is what a listing that does not hold the object just
-// written reports.
-var errProbeUnlisted = errors.New("the object just written is not in the listing")
+var (
+	// errProbeUnlisted is what a listing that does not hold the object just
+	// written reports.
+	errProbeUnlisted = errors.New("the object just written is not in the listing")
+	// errProbeAltered is what a read that answers with other bytes than the
+	// ones just written reports.
+	errProbeAltered = errors.New("the object read back differs from the one written")
+)
 
 // deleteRefusedError carries the code a batch delete refused one key with, so
 // the same classification applies to it as to a failed request.
@@ -191,6 +211,9 @@ func TestFailureReason(err error) string {
 	}
 	if errors.Is(err, errProbeUnlisted) {
 		return rpcerrors.ReasonStorageTestObjectMissing
+	}
+	if errors.Is(err, errProbeAltered) {
+		return rpcerrors.ReasonStorageTestObjectAltered
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return rpcerrors.ReasonStorageTestTimeout

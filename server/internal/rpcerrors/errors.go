@@ -36,6 +36,7 @@ const (
 	ReasonStorageTestBucketNotFound = "STORAGE_TEST_BUCKET_NOT_FOUND"
 	ReasonStorageTestConnection     = "STORAGE_TEST_CONNECTION"
 	ReasonStorageTestCredentials    = "STORAGE_TEST_CREDENTIALS"
+	ReasonStorageTestObjectAltered  = "STORAGE_TEST_OBJECT_ALTERED"
 	ReasonStorageTestObjectMissing  = "STORAGE_TEST_OBJECT_MISSING"
 	ReasonStorageTestPermission     = "STORAGE_TEST_PERMISSION"
 	ReasonStorageTestTimeout        = "STORAGE_TEST_TIMEOUT"

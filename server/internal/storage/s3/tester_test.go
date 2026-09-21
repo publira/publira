@@ -82,6 +82,11 @@ func TestTestFailureReasonClassifiesWhatAStoreRefusedWith(t *testing.T) {
 			want: rpcerrors.ReasonStorageTestObjectMissing,
 		},
 		{
+			name: "an object read back with other bytes",
+			err:  errProbeAltered,
+			want: rpcerrors.ReasonStorageTestObjectAltered,
+		},
+		{
 			name: "a status with no code behind it",
 			err:  forbiddenResponseError(),
 			want: rpcerrors.ReasonStorageTestPermission,
