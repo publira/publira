@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
 
@@ -200,11 +201,103 @@ class AuthController extends ChangeNotifier {
   /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
   /// is signed in.
   Future<String> recordBirthDate(DateTime birthDate) async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.recordBirthDate(session, birthDate));
+  }
+
+  /// Renames the signed-in account, so the account screen shows the new name
+  /// without another round trip.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> updateName(String name) =>
+      _replaceSession((session) => _repository.updateName(session, name));
+
+  /// Replaces the signed-in account's password and holds on to the token the
+  /// API hands back, because the change ends the one this device had.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => _replaceSession(
+    (session) => _repository.changePassword(
+      session,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    ),
+  );
+
+  /// Asks to move the signed-in account from [currentEmail] to [newEmail].
+  /// Nothing changes until both mailed links have been opened.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> requestEmailChange({
+    required String currentEmail,
+    required String newEmail,
+    required String currentPassword,
+  }) async {
+    final session = _requireSession();
+    await _whileHeld(
+      () => _repository.requestEmailChange(
+        session,
+        currentEmail: currentEmail,
+        newEmail: newEmail,
+        currentPassword: currentPassword,
+      ),
+    );
+  }
+
+  /// Spends one of an email change's two links. The session carries no
+  /// address, so whichever one is held stays as it is.
+  ///
+  /// Throws [AuthFailure].
+  Future<EmailChangeProgress> confirmEmailChange(String token) =>
+      _repository.confirmEmailChange(token);
+
+  /// Deletes the signed-in account and drops the session it was held with,
+  /// so nothing is left signed in to an account that no longer exists.
+  ///
+  /// Throws [AuthFailure] and keeps the session when the API refuses, such as
+  /// for a wrong [password].
+  Future<void> deleteAccount({required String password}) async {
+    final session = _requireSession();
+    final revision = _revision;
+    await _whileHeld(
+      () => _repository.deleteAccount(session, password: password),
+    );
+    if (_revision == revision) {
+      await signOut();
+    }
+  }
+
+  AuthSession _requireSession() {
     final session = _session;
     if (session == null) {
       throw const AuthFailure(AuthFailureKind.sessionExpired);
     }
-    return _whileHeld(() => _repository.recordBirthDate(session, birthDate));
+    return session;
+  }
+
+  /// Runs [call] on the session in hand and adopts the session it returns,
+  /// unless the reader signed out or in again while it was in flight.
+  ///
+  /// The replacement is held before it is stored, so a keychain that refuses
+  /// it still leaves this run working with the token the API now accepts.
+  Future<void> _replaceSession(
+    Future<AuthSession> Function(AuthSession session) call,
+  ) async {
+    final session = _requireSession();
+    final revision = _revision;
+    final replaced = await _whileHeld(() => call(session));
+    if (_revision != revision) {
+      return;
+    }
+    _setSession(replaced);
+    notifyListeners();
+    await _store.write(replaced);
   }
 
   /// Runs [call], and signs out when the API rejects the token while that

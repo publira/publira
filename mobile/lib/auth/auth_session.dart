@@ -66,6 +66,17 @@ class AuthSession {
     );
   }
 
+  /// This reader under the token `ChangePassword` hands back, which replaces
+  /// the one every other device is now signed out with.
+  AuthSession withAccessToken(String accessToken, {DateTime? expiresAt}) {
+    return AuthSession(
+      accessToken: accessToken,
+      userPublicId: userPublicId,
+      userName: userName,
+      expiresAt: expiresAt,
+    );
+  }
+
   Map<String, Object?> toJson() {
     return {
       'accessToken': accessToken,

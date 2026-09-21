@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/config.dart';
@@ -408,5 +409,169 @@ void main() {
         ),
       ),
     );
+  });
+
+  Matcher failsWith(AuthFailureKind kind) => throwsA(
+    isA<AuthFailure>().having((failure) => failure.kind, 'kind', kind),
+  );
+
+  test('updateName renames the account and the session with it', () async {
+    final updated = await auth.updateName(stored, 'Renamed Reader');
+
+    expect(updated.userName, 'Renamed Reader');
+    expect(updated.accessToken, stored.accessToken);
+    expect(server.memberCurrentName, 'Renamed Reader');
+    final request = server.requestsTo('UpdateMe').single;
+    expect(request.body.containsKey('birthDate'), isFalse);
+  });
+
+  test('updateName maps a name the API refuses to invalidInput', () {
+    expect(
+      () => auth.updateName(stored, '   '),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+  });
+
+  test('changePassword hands back the token that replaces this one', () async {
+    final changed = await auth.changePassword(
+      stored,
+      currentPassword: ConnectFixtureServer.memberPassword,
+      newPassword: 'replaced-password',
+    );
+
+    expect(
+      changed.accessToken,
+      ConnectFixtureServer.changedPasswordAccessToken,
+    );
+    expect(changed.userPublicId, stored.userPublicId);
+    expect(changed.expiresAt, isNotNull);
+    expect(server.memberCurrentPassword, 'replaced-password');
+    await expectLater(
+      () => auth.refresh(stored),
+      failsWith(AuthFailureKind.sessionExpired),
+    );
+    expect((await auth.refresh(changed)).userName, stored.userName);
+  });
+
+  test('changePassword maps a wrong current password to invalidInput', () {
+    expect(
+      () => auth.changePassword(
+        stored,
+        currentPassword: 'mistyped-password',
+        newPassword: 'replaced-password',
+      ),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+  });
+
+  test('changePassword maps a rejected session to sessionExpired', () {
+    server.activeAccessToken = 'another-token';
+
+    expect(
+      () => auth.changePassword(
+        stored,
+        currentPassword: ConnectFixtureServer.memberPassword,
+        newPassword: 'replaced-password',
+      ),
+      failsWith(AuthFailureKind.sessionExpired),
+    );
+  });
+
+  test('requestEmailChange sends both addresses and the password', () async {
+    await auth.requestEmailChange(
+      stored,
+      currentEmail: ConnectFixtureServer.memberEmail,
+      newEmail: 'moved@example.com',
+      currentPassword: ConnectFixtureServer.memberPassword,
+    );
+
+    expect(server.requestedEmailChanges, ['moved@example.com']);
+  });
+
+  test('requestEmailChange maps an address already taken to invalidInput', () {
+    expect(
+      () => auth.requestEmailChange(
+        stored,
+        currentEmail: ConnectFixtureServer.memberEmail,
+        newEmail: ConnectFixtureServer.takenEmail,
+        currentPassword: ConnectFixtureServer.memberPassword,
+      ),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+  });
+
+  test('requestEmailChange maps a wrong password to invalidInput', () {
+    expect(
+      () => auth.requestEmailChange(
+        stored,
+        currentEmail: ConnectFixtureServer.memberEmail,
+        newEmail: 'moved@example.com',
+        currentPassword: 'mistyped-password',
+      ),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+  });
+
+  test(
+    'confirmEmailChange reports a change both links have finished',
+    () async {
+      expect(
+        await auth.confirmEmailChange(ConnectFixtureServer.emailChangeToken),
+        EmailChangeProgress.changed,
+      );
+    },
+  );
+
+  test('confirmEmailChange reports the link still waited on', () async {
+    expect(
+      await auth.confirmEmailChange(
+        ConnectFixtureServer.pendingEmailChangeToken,
+      ),
+      EmailChangeProgress.awaitingCurrentEmail,
+    );
+    final request = server.requestsTo('ConfirmEmailChange').single;
+    expect(request.headers['authorization'], isNull);
+  });
+
+  test('confirmEmailChange maps an unknown token to linkInvalid', () {
+    expect(
+      () => auth.confirmEmailChange('never-issued'),
+      failsWith(AuthFailureKind.linkInvalid),
+    );
+  });
+
+  test('confirmEmailChange maps a spent link to linkExpired', () {
+    expect(
+      () =>
+          auth.confirmEmailChange(ConnectFixtureServer.expiredEmailChangeToken),
+      failsWith(AuthFailureKind.linkExpired),
+    );
+  });
+
+  test('deleteAccount leaves nothing to sign in to', () async {
+    await auth.deleteAccount(
+      stored,
+      password: ConnectFixtureServer.memberPassword,
+    );
+
+    await expectLater(
+      () => auth.refresh(stored),
+      failsWith(AuthFailureKind.sessionExpired),
+    );
+    await expectLater(
+      () => auth.signIn(
+        email: ConnectFixtureServer.memberEmail,
+        password: ConnectFixtureServer.memberPassword,
+      ),
+      failsWith(AuthFailureKind.invalidCredentials),
+    );
+  });
+
+  test('deleteAccount maps a wrong password to invalidInput', () async {
+    await expectLater(
+      () => auth.deleteAccount(stored, password: 'mistyped-password'),
+      failsWith(AuthFailureKind.invalidInput),
+    );
+    expect(server.memberDeleted, isFalse);
   });
 }

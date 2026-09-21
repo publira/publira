@@ -3,11 +3,16 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
+import 'package:publira/screens/change_email_screen.dart';
+import 'package:publira/screens/change_password_screen.dart';
 import 'package:publira/screens/checkout_return_screen.dart';
+import 'package:publira/screens/confirm_email_screen.dart';
 import 'package:publira/screens/confirm_password_screen.dart';
 import 'package:publira/screens/contact_screen.dart';
 import 'package:publira/screens/creator_screen.dart';
+import 'package:publira/screens/delete_account_screen.dart';
 import 'package:publira/screens/downloads_screen.dart';
+import 'package:publira/screens/edit_name_screen.dart';
 import 'package:publira/screens/episode_comments_screen.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
 import 'package:publira/screens/follows_screen.dart';
@@ -37,7 +42,19 @@ abstract final class AppRoutes {
   /// link itself, both claimed as App Links so neither opens a browser.
   static const resetPassword = '/reset-password';
   static const confirmPassword = '/confirm-password';
+
+  /// The site's path for either link of an email change, claimed as an App
+  /// Link like the other account mails.
+  static const confirmEmail = '/confirm-email';
   static const account = '/account';
+  static const name = 'name';
+  static const accountName = '$account/$name';
+  static const email = 'email';
+  static const accountEmail = '$account/$email';
+  static const password = 'password';
+  static const accountPassword = '$account/$password';
+  static const delete = 'delete';
+  static const accountDelete = '$account/$delete';
   static const follows = 'follows';
   static const accountFollows = '$account/$follows';
   static const downloads = 'downloads';
@@ -165,6 +182,12 @@ GoRouter createAppRouter({String? initialLocation}) {
         ),
       ),
       GoRoute(
+        path: AppRoutes.confirmEmail,
+        name: 'confirmEmail',
+        builder: (context, state) =>
+            ConfirmEmailScreen(token: state.uri.queryParameters['token'] ?? ''),
+      ),
+      GoRoute(
         path: AppRoutes.checkoutReturn,
         name: 'checkoutReturn',
         // The return URL names the episode alone, so a link without one has
@@ -187,6 +210,26 @@ GoRouter createAppRouter({String? initialLocation}) {
         // Nested so going back from the list lands on the account screen it
         // was opened from rather than out of the app.
         routes: [
+          GoRoute(
+            path: AppRoutes.name,
+            name: 'accountName',
+            builder: (context, state) => const EditNameScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.email,
+            name: 'accountEmail',
+            builder: (context, state) => const ChangeEmailScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.password,
+            name: 'accountPassword',
+            builder: (context, state) => const ChangePasswordScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.delete,
+            name: 'accountDelete',
+            builder: (context, state) => const DeleteAccountScreen(),
+          ),
           GoRoute(
             path: AppRoutes.follows,
             name: 'follows',

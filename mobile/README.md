@@ -195,7 +195,12 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/resend-verification` | Asks for a fresh confirmation link |
 | `/reset-password` | Asks for a password reset link; the site's own path, claimed as an App Link |
 | `/confirm-password` | Where a password reset link sets the new password; the site's own path, claimed as an App Link |
-| `/account` | Signed-in reader, their date of birth, and sign-out |
+| `/confirm-email` | Where either link of an email change is confirmed; the site's own path, claimed as an App Link |
+| `/account` | Signed-in reader, their date of birth, the way to each account setting, and sign-out |
+| `/account/name` | Renames the account (`AuthService/UpdateMe`) |
+| `/account/email` | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
+| `/account/password` | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
+| `/account/delete` | Deletes the account after the password and a second confirmation, then signs out (`AuthService/DeleteMe`) |
 | `/account/follows` | The series and authors the reader follows |
 | `/account/downloads` | What the device keeps for reading offline |
 | `/series/:seriesId` | Series details |
@@ -211,7 +216,7 @@ The catalog's app bar carries the account entry point, which opens `/sign-in` fo
 
 ### Tenant links and sharing
 
-A link to a series, an episode, a checkout return, an email confirmation, or a password reset on the tenant host opens the app when it is installed, rather than the browser. iOS claims the host through `com.apple.developer.associated-domains`; a production archive receives it as the `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same `PUBLIRA_TENANT_HOST` as an App Link (`autoVerify`) for `/series/…`, `/checkout/return`, `/verify`, `/reset-password`, and `/confirm-password`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
+A link to a series, an episode, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the host through `com.apple.developer.associated-domains`; a production archive receives it as the `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same `PUBLIRA_TENANT_HOST` as an App Link (`autoVerify`) for `/series/…`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
 
 `app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
 

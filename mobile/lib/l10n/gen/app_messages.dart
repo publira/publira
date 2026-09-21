@@ -163,11 +163,20 @@ abstract class AppMessages {
   /// `mobile.account.birth_date_set_help`
   String get accountBirthDateSetHelp;
 
+  /// `mobile.account.change_email`
+  String get accountChangeEmail;
+
+  /// `mobile.account.change_password`
+  String get accountChangePassword;
+
   /// `mobile.account.contact`
   String get accountContact;
 
   /// `mobile.account.contact_description`
   String get accountContactDescription;
+
+  /// `mobile.account.delete`
+  String get accountDelete;
 
   /// `mobile.account.downloads`
   String get accountDownloads;
@@ -219,6 +228,12 @@ abstract class AppMessages {
 
   /// `mobile.auth.email_required`
   String get authEmailRequired;
+
+  /// `mobile.auth.name_required`
+  String get authNameRequired;
+
+  /// `mobile.auth.name_too_long`
+  String get authNameTooLong;
 
   /// `mobile.auth.password_confirm_required`
   String get authPasswordConfirmRequired;
@@ -276,6 +291,57 @@ abstract class AppMessages {
 
   /// `mobile.catalog.ranking_heading`
   String get catalogRankingHeading;
+
+  /// `mobile.change_email.current_label`
+  String get changeEmailCurrentLabel;
+
+  /// `mobile.change_email.failed`
+  String get changeEmailFailed;
+
+  /// `mobile.change_email.load_failed`
+  String get changeEmailLoadFailed;
+
+  /// `mobile.change_email.new_label`
+  String get changeEmailNewLabel;
+
+  /// `mobile.change_email.password_label`
+  String get changeEmailPasswordLabel;
+
+  /// `mobile.change_email.requested`
+  String get changeEmailRequested;
+
+  /// `mobile.change_email.same_email`
+  String get changeEmailSameEmail;
+
+  /// `mobile.change_email.submit`
+  String get changeEmailSubmit;
+
+  /// `mobile.change_email.title`
+  String get changeEmailTitle;
+
+  /// `mobile.change_password.changed`
+  String get changePasswordChanged;
+
+  /// `mobile.change_password.current_label`
+  String get changePasswordCurrentLabel;
+
+  /// `mobile.change_password.failed`
+  String get changePasswordFailed;
+
+  /// `mobile.change_password.new_confirm_label`
+  String get changePasswordNewConfirmLabel;
+
+  /// `mobile.change_password.new_label`
+  String get changePasswordNewLabel;
+
+  /// `mobile.change_password.submit`
+  String get changePasswordSubmit;
+
+  /// `mobile.change_password.title`
+  String get changePasswordTitle;
+
+  /// `mobile.change_password.unchanged`
+  String get changePasswordUnchanged;
 
   /// `mobile.comments.approval_notice`
   String get commentsApprovalNotice;
@@ -433,6 +499,33 @@ abstract class AppMessages {
   /// `mobile.common.sign_in`
   String get commonSignIn;
 
+  /// `mobile.confirm_email.changed`
+  String get confirmEmailChanged;
+
+  /// `mobile.confirm_email.confirming`
+  String get confirmEmailConfirming;
+
+  /// `mobile.confirm_email.expired`
+  String get confirmEmailExpired;
+
+  /// `mobile.confirm_email.failed`
+  String get confirmEmailFailed;
+
+  /// `mobile.confirm_email.invalid_token`
+  String get confirmEmailInvalidToken;
+
+  /// `mobile.confirm_email.pending_current_email`
+  String get confirmEmailPendingCurrentEmail;
+
+  /// `mobile.confirm_email.pending_new_email`
+  String get confirmEmailPendingNewEmail;
+
+  /// `mobile.confirm_email.title`
+  String get confirmEmailTitle;
+
+  /// `mobile.confirm_email.to_account`
+  String get confirmEmailToAccount;
+
   /// `mobile.confirm_password.done`
   String get confirmPasswordDone;
 
@@ -529,6 +622,33 @@ abstract class AppMessages {
   /// `mobile.creator.title`
   String get creatorTitle;
 
+  /// `mobile.delete_account.confirm`
+  String get deleteAccountConfirm;
+
+  /// `mobile.delete_account.confirm_description`
+  String get deleteAccountConfirmDescription;
+
+  /// `mobile.delete_account.confirm_title`
+  String get deleteAccountConfirmTitle;
+
+  /// `mobile.delete_account.deleted`
+  String get deleteAccountDeleted;
+
+  /// `mobile.delete_account.description`
+  String get deleteAccountDescription;
+
+  /// `mobile.delete_account.failed`
+  String get deleteAccountFailed;
+
+  /// `mobile.delete_account.password_label`
+  String get deleteAccountPasswordLabel;
+
+  /// `mobile.delete_account.submit`
+  String get deleteAccountSubmit;
+
+  /// `mobile.delete_account.title`
+  String get deleteAccountTitle;
+
   /// `mobile.downloads.clear`
   String get downloadsClear;
 
@@ -573,6 +693,21 @@ abstract class AppMessages {
 
   /// `mobile.downloads.usage`
   String downloadsUsage({required String limit, required String used});
+
+  /// `mobile.edit_name.failed`
+  String get editNameFailed;
+
+  /// `mobile.edit_name.label`
+  String get editNameLabel;
+
+  /// `mobile.edit_name.save`
+  String get editNameSave;
+
+  /// `mobile.edit_name.title`
+  String get editNameTitle;
+
+  /// `mobile.edit_name.updated`
+  String get editNameUpdated;
 
   /// `mobile.follow.failed`
   String get followFailed;
@@ -880,12 +1015,6 @@ abstract class AppMessages {
   /// `mobile.sign_up.name_label`
   String get signUpNameLabel;
 
-  /// `mobile.sign_up.name_required`
-  String get signUpNameRequired;
-
-  /// `mobile.sign_up.name_too_long`
-  String get signUpNameTooLong;
-
   /// `mobile.sign_up.password_confirm_label`
   String get signUpPasswordConfirmLabel;
 
@@ -1151,6 +1280,16 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get accountChangeEmail {
+    return 'メールアドレス変更';
+  }
+
+  @override
+  String get accountChangePassword {
+    return 'パスワード変更';
+  }
+
+  @override
   String get accountContact {
     return 'お問い合わせ';
   }
@@ -1158,6 +1297,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountContactDescription {
     return 'このサイトの運営者にメッセージを送ります。';
+  }
+
+  @override
+  String get accountDelete {
+    return 'アカウントを削除';
   }
 
   @override
@@ -1243,6 +1387,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get authEmailRequired {
     return 'メールアドレスを入力してください';
+  }
+
+  @override
+  String get authNameRequired {
+    return '表示名を入力してください。';
+  }
+
+  @override
+  String get authNameTooLong {
+    return '表示名は100文字以内で入力してください。';
   }
 
   @override
@@ -1338,6 +1492,91 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get catalogRankingHeading {
     return '今週のトップ10';
+  }
+
+  @override
+  String get changeEmailCurrentLabel {
+    return '現在のメールアドレス';
+  }
+
+  @override
+  String get changeEmailFailed {
+    return 'メール変更リクエストに失敗しました。入力内容をご確認ください。';
+  }
+
+  @override
+  String get changeEmailLoadFailed {
+    return 'メールアドレスを読み込めませんでした。';
+  }
+
+  @override
+  String get changeEmailNewLabel {
+    return '新しいメールアドレス';
+  }
+
+  @override
+  String get changeEmailPasswordLabel {
+    return '現在のパスワード';
+  }
+
+  @override
+  String get changeEmailRequested {
+    return '現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。';
+  }
+
+  @override
+  String get changeEmailSameEmail {
+    return '現在とは異なるメールアドレスを入力してください。';
+  }
+
+  @override
+  String get changeEmailSubmit {
+    return '確認メールを送信';
+  }
+
+  @override
+  String get changeEmailTitle {
+    return 'メールアドレス変更';
+  }
+
+  @override
+  String get changePasswordChanged {
+    return 'パスワードを変更しました。他の端末はログアウトされました。';
+  }
+
+  @override
+  String get changePasswordCurrentLabel {
+    return '現在のパスワード';
+  }
+
+  @override
+  String get changePasswordFailed {
+    return 'パスワードの変更に失敗しました。入力内容をご確認ください。';
+  }
+
+  @override
+  String get changePasswordNewConfirmLabel {
+    return '新しいパスワード（確認）';
+  }
+
+  @override
+  String get changePasswordNewLabel {
+    return '新しいパスワード';
+  }
+
+  @override
+  String get changePasswordSubmit {
+    return 'パスワードを変更';
+  }
+
+  @override
+  String get changePasswordTitle {
+    return 'パスワード変更';
+  }
+
+  @override
+  String get changePasswordUnchanged {
+    return '現在のパスワードとは異なるパスワードを入力してください。';
   }
 
   @override
@@ -1601,6 +1840,51 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get confirmEmailChanged {
+    return 'メールアドレスの変更が完了しました。';
+  }
+
+  @override
+  String get confirmEmailConfirming {
+    return 'メールアドレスの変更を確認しています…';
+  }
+
+  @override
+  String get confirmEmailExpired {
+    return 'この確認リンクは有効期限が切れたか、使えなくなっています。もう一度変更を申請してください。';
+  }
+
+  @override
+  String get confirmEmailFailed {
+    return 'メールアドレスの変更を確認できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get confirmEmailInvalidToken {
+    return 'この確認リンクは無効です。';
+  }
+
+  @override
+  String get confirmEmailPendingCurrentEmail {
+    return 'この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。';
+  }
+
+  @override
+  String get confirmEmailPendingNewEmail {
+    return 'この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。';
+  }
+
+  @override
+  String get confirmEmailTitle {
+    return 'メール変更確認';
+  }
+
+  @override
+  String get confirmEmailToAccount {
+    return 'アカウントへ戻る';
+  }
+
+  @override
   String get confirmPasswordDone {
     return 'パスワードを再設定しました。新しいパスワードでサインインしてください。';
   }
@@ -1761,6 +2045,51 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirm {
+    return '削除する';
+  }
+
+  @override
+  String get deleteAccountConfirmDescription {
+    return 'ログアウトされ、アカウントは元に戻せません。';
+  }
+
+  @override
+  String get deleteAccountConfirmTitle {
+    return 'アカウントを削除しますか？';
+  }
+
+  @override
+  String get deleteAccountDeleted {
+    return 'アカウントを削除しました。ご利用ありがとうございました。';
+  }
+
+  @override
+  String get deleteAccountDescription {
+    return '退会するとアカウント情報にアクセスできなくなります。この操作は取り消せません。';
+  }
+
+  @override
+  String get deleteAccountFailed {
+    return '退会処理に失敗しました。入力内容をご確認ください。';
+  }
+
+  @override
+  String get deleteAccountPasswordLabel {
+    return '現在のパスワード';
+  }
+
+  @override
+  String get deleteAccountSubmit {
+    return '退会する';
+  }
+
+  @override
+  String get deleteAccountTitle {
+    return 'アカウントを削除';
+  }
+
+  @override
   String get downloadsClear {
     return 'すべて削除';
   }
@@ -1833,6 +2162,31 @@ class _AppMessagesJa extends AppMessages {
   @override
   String downloadsUsage({required String limit, required String used}) {
     return '$limit 中 $used を使用';
+  }
+
+  @override
+  String get editNameFailed {
+    return 'プロフィールの更新に失敗しました。もう一度お試しください。';
+  }
+
+  @override
+  String get editNameLabel {
+    return '表示名';
+  }
+
+  @override
+  String get editNameSave {
+    return '保存';
+  }
+
+  @override
+  String get editNameTitle {
+    return '表示名';
+  }
+
+  @override
+  String get editNameUpdated {
+    return 'プロフィールを更新しました。';
   }
 
   @override
@@ -2346,16 +2700,6 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
-  String get signUpNameRequired {
-    return '表示名を入力してください。';
-  }
-
-  @override
-  String get signUpNameTooLong {
-    return '表示名は100文字以内で入力してください。';
-  }
-
-  @override
   String get signUpPasswordConfirmLabel {
     return 'パスワード（確認）';
   }
@@ -2704,6 +3048,16 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get accountChangeEmail {
+    return 'Change email address';
+  }
+
+  @override
+  String get accountChangePassword {
+    return 'Change password';
+  }
+
+  @override
   String get accountContact {
     return 'Contact';
   }
@@ -2711,6 +3065,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get accountContactDescription {
     return 'Send a message to the people who run this site.';
+  }
+
+  @override
+  String get accountDelete {
+    return 'Delete account';
   }
 
   @override
@@ -2796,6 +3155,16 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get authEmailRequired {
     return 'Enter your email address.';
+  }
+
+  @override
+  String get authNameRequired {
+    return 'Enter a display name.';
+  }
+
+  @override
+  String get authNameTooLong {
+    return 'Use 100 characters or fewer for the display name.';
   }
 
   @override
@@ -2891,6 +3260,91 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get catalogRankingHeading {
     return 'Top 10 this week';
+  }
+
+  @override
+  String get changeEmailCurrentLabel {
+    return 'Current email address';
+  }
+
+  @override
+  String get changeEmailFailed {
+    return 'Could not request the email change. Check what you entered.';
+  }
+
+  @override
+  String get changeEmailLoadFailed {
+    return 'Could not load your email address.';
+  }
+
+  @override
+  String get changeEmailNewLabel {
+    return 'New email address';
+  }
+
+  @override
+  String get changeEmailPasswordLabel {
+    return 'Current password';
+  }
+
+  @override
+  String get changeEmailRequested {
+    return 'We sent a confirmation email to both your current and your new address. Open both links to finish the change.';
+  }
+
+  @override
+  String get changeEmailSameEmail {
+    return 'Enter an address different from your current one.';
+  }
+
+  @override
+  String get changeEmailSubmit {
+    return 'Send confirmation emails';
+  }
+
+  @override
+  String get changeEmailTitle {
+    return 'Change email address';
+  }
+
+  @override
+  String get changePasswordChanged {
+    return 'Your password has been changed. Your other devices have been signed out.';
+  }
+
+  @override
+  String get changePasswordCurrentLabel {
+    return 'Current password';
+  }
+
+  @override
+  String get changePasswordFailed {
+    return 'Could not change your password. Check what you entered.';
+  }
+
+  @override
+  String get changePasswordNewConfirmLabel {
+    return 'Confirm new password';
+  }
+
+  @override
+  String get changePasswordNewLabel {
+    return 'New password';
+  }
+
+  @override
+  String get changePasswordSubmit {
+    return 'Change password';
+  }
+
+  @override
+  String get changePasswordTitle {
+    return 'Change password';
+  }
+
+  @override
+  String get changePasswordUnchanged {
+    return 'Enter a new password that is different from your current one.';
   }
 
   @override
@@ -3154,6 +3608,51 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get confirmEmailChanged {
+    return 'Your email address has been changed.';
+  }
+
+  @override
+  String get confirmEmailConfirming {
+    return 'Confirming the change to your email address…';
+  }
+
+  @override
+  String get confirmEmailExpired {
+    return 'This confirmation link has expired or no longer applies. Request the change again.';
+  }
+
+  @override
+  String get confirmEmailFailed {
+    return 'Could not confirm the change to your email address. Try again.';
+  }
+
+  @override
+  String get confirmEmailInvalidToken {
+    return 'This confirmation link is not valid.';
+  }
+
+  @override
+  String get confirmEmailPendingCurrentEmail {
+    return 'This confirmation is complete. The change takes effect once the current address is confirmed as well.';
+  }
+
+  @override
+  String get confirmEmailPendingNewEmail {
+    return 'This confirmation is complete. The change takes effect once the new address is confirmed as well.';
+  }
+
+  @override
+  String get confirmEmailTitle {
+    return 'Email change confirmation';
+  }
+
+  @override
+  String get confirmEmailToAccount {
+    return 'Back to account';
+  }
+
+  @override
   String get confirmPasswordDone {
     return 'Your password has been reset. Sign in with your new password.';
   }
@@ -3314,6 +3813,51 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirm {
+    return 'Delete';
+  }
+
+  @override
+  String get deleteAccountConfirmDescription {
+    return 'You will be signed out, and the account cannot be restored.';
+  }
+
+  @override
+  String get deleteAccountConfirmTitle {
+    return 'Delete your account?';
+  }
+
+  @override
+  String get deleteAccountDeleted {
+    return 'Your account has been deleted. Thank you for using the site.';
+  }
+
+  @override
+  String get deleteAccountDescription {
+    return 'Deleting your account permanently removes your access to it. This cannot be undone.';
+  }
+
+  @override
+  String get deleteAccountFailed {
+    return 'Could not delete your account. Check what you entered.';
+  }
+
+  @override
+  String get deleteAccountPasswordLabel {
+    return 'Current password';
+  }
+
+  @override
+  String get deleteAccountSubmit {
+    return 'Delete my account';
+  }
+
+  @override
+  String get deleteAccountTitle {
+    return 'Delete account';
+  }
+
+  @override
   String get downloadsClear {
     return 'Clear all';
   }
@@ -3386,6 +3930,31 @@ class _AppMessagesEn extends AppMessages {
   @override
   String downloadsUsage({required String limit, required String used}) {
     return '$used of $limit used';
+  }
+
+  @override
+  String get editNameFailed {
+    return 'Could not update your profile. Try again.';
+  }
+
+  @override
+  String get editNameLabel {
+    return 'Display name';
+  }
+
+  @override
+  String get editNameSave {
+    return 'Save';
+  }
+
+  @override
+  String get editNameTitle {
+    return 'Display name';
+  }
+
+  @override
+  String get editNameUpdated {
+    return 'Your profile has been updated.';
   }
 
   @override
@@ -3899,16 +4468,6 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
-  String get signUpNameRequired {
-    return 'Enter a display name.';
-  }
-
-  @override
-  String get signUpNameTooLong {
-    return 'Use 100 characters or fewer for the display name.';
-  }
-
-  @override
   String get signUpPasswordConfirmLabel {
     return 'Confirm password';
   }
@@ -4257,6 +4816,16 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get accountChangeEmail {
+    return '이메일 주소 변경';
+  }
+
+  @override
+  String get accountChangePassword {
+    return '비밀번호 변경';
+  }
+
+  @override
   String get accountContact {
     return '문의하기';
   }
@@ -4264,6 +4833,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountContactDescription {
     return '이 사이트 운영자에게 메시지를 보냅니다.';
+  }
+
+  @override
+  String get accountDelete {
+    return '계정 삭제';
   }
 
   @override
@@ -4349,6 +4923,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get authEmailRequired {
     return '이메일 주소를 입력해 주세요.';
+  }
+
+  @override
+  String get authNameRequired {
+    return '표시 이름을 입력해 주세요.';
+  }
+
+  @override
+  String get authNameTooLong {
+    return '표시 이름은 100자 이내로 입력해 주세요.';
   }
 
   @override
@@ -4444,6 +5028,91 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get catalogRankingHeading {
     return '이번 주 톱 10';
+  }
+
+  @override
+  String get changeEmailCurrentLabel {
+    return '현재 이메일 주소';
+  }
+
+  @override
+  String get changeEmailFailed {
+    return '이메일 변경을 요청하지 못했습니다. 입력한 내용을 확인해 주세요.';
+  }
+
+  @override
+  String get changeEmailLoadFailed {
+    return '이메일 주소를 불러오지 못했습니다.';
+  }
+
+  @override
+  String get changeEmailNewLabel {
+    return '새 이메일 주소';
+  }
+
+  @override
+  String get changeEmailPasswordLabel {
+    return '현재 비밀번호';
+  }
+
+  @override
+  String get changeEmailRequested {
+    return '현재 주소와 새 주소 양쪽으로 확인 메일을 보냈습니다. 두 링크를 모두 열어 변경을 완료해 주세요.';
+  }
+
+  @override
+  String get changeEmailSameEmail {
+    return '현재 주소와 다른 주소를 입력해 주세요.';
+  }
+
+  @override
+  String get changeEmailSubmit {
+    return '확인 메일 보내기';
+  }
+
+  @override
+  String get changeEmailTitle {
+    return '이메일 주소 변경';
+  }
+
+  @override
+  String get changePasswordChanged {
+    return '비밀번호를 변경했습니다. 다른 기기는 로그아웃되었습니다.';
+  }
+
+  @override
+  String get changePasswordCurrentLabel {
+    return '현재 비밀번호';
+  }
+
+  @override
+  String get changePasswordFailed {
+    return '비밀번호를 변경하지 못했습니다. 입력한 내용을 확인해 주세요.';
+  }
+
+  @override
+  String get changePasswordNewConfirmLabel {
+    return '새 비밀번호 확인';
+  }
+
+  @override
+  String get changePasswordNewLabel {
+    return '새 비밀번호';
+  }
+
+  @override
+  String get changePasswordSubmit {
+    return '비밀번호 변경';
+  }
+
+  @override
+  String get changePasswordTitle {
+    return '비밀번호 변경';
+  }
+
+  @override
+  String get changePasswordUnchanged {
+    return '현재 비밀번호와 다른 비밀번호를 입력해 주세요.';
   }
 
   @override
@@ -4707,6 +5376,51 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get confirmEmailChanged {
+    return '이메일 주소 변경이 완료되었습니다.';
+  }
+
+  @override
+  String get confirmEmailConfirming {
+    return '이메일 주소 변경을 확인하고 있습니다…';
+  }
+
+  @override
+  String get confirmEmailExpired {
+    return '이 확인 링크는 유효 기간이 지났거나 더 이상 사용할 수 없습니다. 변경을 다시 요청해 주세요.';
+  }
+
+  @override
+  String get confirmEmailFailed {
+    return '이메일 주소 변경을 확인하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get confirmEmailInvalidToken {
+    return '이 확인 링크는 유효하지 않습니다.';
+  }
+
+  @override
+  String get confirmEmailPendingCurrentEmail {
+    return '이 확인은 완료되었습니다. 현재 주소에서도 확인이 완료되면 변경이 반영됩니다.';
+  }
+
+  @override
+  String get confirmEmailPendingNewEmail {
+    return '이 확인은 완료되었습니다. 새 주소에서도 확인이 완료되면 변경이 반영됩니다.';
+  }
+
+  @override
+  String get confirmEmailTitle {
+    return '이메일 변경 확인';
+  }
+
+  @override
+  String get confirmEmailToAccount {
+    return '계정으로 돌아가기';
+  }
+
+  @override
   String get confirmPasswordDone {
     return '비밀번호를 재설정했습니다. 새 비밀번호로 로그인해 주세요.';
   }
@@ -4867,6 +5581,51 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirm {
+    return '삭제';
+  }
+
+  @override
+  String get deleteAccountConfirmDescription {
+    return '로그아웃되며, 계정은 복구할 수 없습니다.';
+  }
+
+  @override
+  String get deleteAccountConfirmTitle {
+    return '계정을 삭제할까요?';
+  }
+
+  @override
+  String get deleteAccountDeleted {
+    return '계정을 삭제했습니다. 그동안 이용해 주셔서 감사합니다.';
+  }
+
+  @override
+  String get deleteAccountDescription {
+    return '계정을 삭제하면 계정에 다시 접근할 수 없습니다. 이 작업은 되돌릴 수 없습니다.';
+  }
+
+  @override
+  String get deleteAccountFailed {
+    return '계정을 삭제하지 못했습니다. 입력한 내용을 확인해 주세요.';
+  }
+
+  @override
+  String get deleteAccountPasswordLabel {
+    return '현재 비밀번호';
+  }
+
+  @override
+  String get deleteAccountSubmit {
+    return '내 계정 삭제하기';
+  }
+
+  @override
+  String get deleteAccountTitle {
+    return '계정 삭제';
+  }
+
+  @override
   String get downloadsClear {
     return '모두 삭제';
   }
@@ -4939,6 +5698,31 @@ class _AppMessagesKo extends AppMessages {
   @override
   String downloadsUsage({required String limit, required String used}) {
     return '$limit 중 $used 사용';
+  }
+
+  @override
+  String get editNameFailed {
+    return '프로필을 변경하지 못했습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get editNameLabel {
+    return '표시 이름';
+  }
+
+  @override
+  String get editNameSave {
+    return '저장';
+  }
+
+  @override
+  String get editNameTitle {
+    return '표시 이름';
+  }
+
+  @override
+  String get editNameUpdated {
+    return '프로필을 변경했습니다.';
   }
 
   @override
@@ -5452,16 +6236,6 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
-  String get signUpNameRequired {
-    return '표시 이름을 입력해 주세요.';
-  }
-
-  @override
-  String get signUpNameTooLong {
-    return '표시 이름은 100자 이내로 입력해 주세요.';
-  }
-
-  @override
   String get signUpPasswordConfirmLabel {
     return '비밀번호 확인';
   }
@@ -5810,6 +6584,16 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get accountChangeEmail {
+    return '变更邮箱地址';
+  }
+
+  @override
+  String get accountChangePassword {
+    return '变更密码';
+  }
+
+  @override
   String get accountContact {
     return '联系我们';
   }
@@ -5817,6 +6601,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get accountContactDescription {
     return '向本站点的运营者发送消息。';
+  }
+
+  @override
+  String get accountDelete {
+    return '注销账户';
   }
 
   @override
@@ -5902,6 +6691,16 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get authEmailRequired {
     return '请输入邮箱地址。';
+  }
+
+  @override
+  String get authNameRequired {
+    return '请输入显示名称。';
+  }
+
+  @override
+  String get authNameTooLong {
+    return '显示名称请控制在 100 个字符以内。';
   }
 
   @override
@@ -5997,6 +6796,91 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get catalogRankingHeading {
     return '本周前十';
+  }
+
+  @override
+  String get changeEmailCurrentLabel {
+    return '当前邮箱地址';
+  }
+
+  @override
+  String get changeEmailFailed {
+    return '无法申请邮箱地址变更。请检查您输入的内容。';
+  }
+
+  @override
+  String get changeEmailLoadFailed {
+    return '无法读取您的邮箱地址。';
+  }
+
+  @override
+  String get changeEmailNewLabel {
+    return '新的邮箱地址';
+  }
+
+  @override
+  String get changeEmailPasswordLabel {
+    return '当前密码';
+  }
+
+  @override
+  String get changeEmailRequested {
+    return '我们已向您的当前邮箱地址和新邮箱地址各发送一封确认邮件。请打开两个链接完成变更。';
+  }
+
+  @override
+  String get changeEmailSameEmail {
+    return '请输入与当前不同的邮箱地址。';
+  }
+
+  @override
+  String get changeEmailSubmit {
+    return '发送确认邮件';
+  }
+
+  @override
+  String get changeEmailTitle {
+    return '变更邮箱地址';
+  }
+
+  @override
+  String get changePasswordChanged {
+    return '您的密码已变更。您其他设备上的登录已退出。';
+  }
+
+  @override
+  String get changePasswordCurrentLabel {
+    return '当前密码';
+  }
+
+  @override
+  String get changePasswordFailed {
+    return '无法变更您的密码。请检查您输入的内容。';
+  }
+
+  @override
+  String get changePasswordNewConfirmLabel {
+    return '确认新密码';
+  }
+
+  @override
+  String get changePasswordNewLabel {
+    return '新密码';
+  }
+
+  @override
+  String get changePasswordSubmit {
+    return '变更密码';
+  }
+
+  @override
+  String get changePasswordTitle {
+    return '变更密码';
+  }
+
+  @override
+  String get changePasswordUnchanged {
+    return '请输入与当前密码不同的新密码。';
   }
 
   @override
@@ -6260,6 +7144,51 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get confirmEmailChanged {
+    return '您的邮箱地址已变更。';
+  }
+
+  @override
+  String get confirmEmailConfirming {
+    return '正在确认邮箱地址的变更…';
+  }
+
+  @override
+  String get confirmEmailExpired {
+    return '此确认链接已失效或不再适用。请重新申请变更。';
+  }
+
+  @override
+  String get confirmEmailFailed {
+    return '无法确认邮箱地址的变更。请重试。';
+  }
+
+  @override
+  String get confirmEmailInvalidToken {
+    return '此确认链接无效。';
+  }
+
+  @override
+  String get confirmEmailPendingCurrentEmail {
+    return '此确认已完成。待当前邮箱地址也完成确认后，变更即会生效。';
+  }
+
+  @override
+  String get confirmEmailPendingNewEmail {
+    return '此确认已完成。待新的邮箱地址也完成确认后，变更即会生效。';
+  }
+
+  @override
+  String get confirmEmailTitle {
+    return '邮箱地址变更确认';
+  }
+
+  @override
+  String get confirmEmailToAccount {
+    return '返回账户';
+  }
+
+  @override
   String get confirmPasswordDone {
     return '您的密码已重设。请使用新密码登录。';
   }
@@ -6420,6 +7349,51 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirm {
+    return '注销';
+  }
+
+  @override
+  String get deleteAccountConfirmDescription {
+    return '您将退出登录，且账户无法恢复。';
+  }
+
+  @override
+  String get deleteAccountConfirmTitle {
+    return '要注销您的账户吗？';
+  }
+
+  @override
+  String get deleteAccountDeleted {
+    return '您的账户已注销。感谢您的使用。';
+  }
+
+  @override
+  String get deleteAccountDescription {
+    return '注销账户会永久取消您对它的访问权限，且无法撤销。';
+  }
+
+  @override
+  String get deleteAccountFailed {
+    return '无法注销您的账户。请检查您输入的内容。';
+  }
+
+  @override
+  String get deleteAccountPasswordLabel {
+    return '当前密码';
+  }
+
+  @override
+  String get deleteAccountSubmit {
+    return '注销我的账户';
+  }
+
+  @override
+  String get deleteAccountTitle {
+    return '注销账户';
+  }
+
+  @override
   String get downloadsClear {
     return '全部删除';
   }
@@ -6492,6 +7466,31 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String downloadsUsage({required String limit, required String used}) {
     return '已使用 $used，共 $limit';
+  }
+
+  @override
+  String get editNameFailed {
+    return '无法更新您的个人资料。请重试。';
+  }
+
+  @override
+  String get editNameLabel {
+    return '显示名称';
+  }
+
+  @override
+  String get editNameSave {
+    return '保存';
+  }
+
+  @override
+  String get editNameTitle {
+    return '显示名称';
+  }
+
+  @override
+  String get editNameUpdated {
+    return '您的个人资料已更新。';
   }
 
   @override
@@ -7005,16 +8004,6 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
-  String get signUpNameRequired {
-    return '请输入显示名称。';
-  }
-
-  @override
-  String get signUpNameTooLong {
-    return '显示名称请控制在 100 个字符以内。';
-  }
-
-  @override
   String get signUpPasswordConfirmLabel {
     return '确认密码';
   }
@@ -7363,6 +8352,16 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get accountChangeEmail {
+    return '變更電子郵件地址';
+  }
+
+  @override
+  String get accountChangePassword {
+    return '變更密碼';
+  }
+
+  @override
   String get accountContact {
     return '聯絡我們';
   }
@@ -7370,6 +8369,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get accountContactDescription {
     return '向本網站的營運者傳送訊息。';
+  }
+
+  @override
+  String get accountDelete {
+    return '刪除帳戶';
   }
 
   @override
@@ -7455,6 +8459,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get authEmailRequired {
     return '請輸入電子郵件地址。';
+  }
+
+  @override
+  String get authNameRequired {
+    return '請輸入顯示名稱。';
+  }
+
+  @override
+  String get authNameTooLong {
+    return '顯示名稱請控制在 100 個字元以內。';
   }
 
   @override
@@ -7550,6 +8564,91 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get catalogRankingHeading {
     return '本週前十名';
+  }
+
+  @override
+  String get changeEmailCurrentLabel {
+    return '目前的電子郵件地址';
+  }
+
+  @override
+  String get changeEmailFailed {
+    return '無法申請電子郵件地址變更。請檢查您輸入的內容。';
+  }
+
+  @override
+  String get changeEmailLoadFailed {
+    return '無法讀取您的電子郵件地址。';
+  }
+
+  @override
+  String get changeEmailNewLabel {
+    return '新的電子郵件地址';
+  }
+
+  @override
+  String get changeEmailPasswordLabel {
+    return '目前的密碼';
+  }
+
+  @override
+  String get changeEmailRequested {
+    return '我們已向您目前的電子郵件地址與新的電子郵件地址各寄出一封確認郵件。請開啟兩個連結完成變更。';
+  }
+
+  @override
+  String get changeEmailSameEmail {
+    return '請輸入與目前不同的電子郵件地址。';
+  }
+
+  @override
+  String get changeEmailSubmit {
+    return '寄送確認郵件';
+  }
+
+  @override
+  String get changeEmailTitle {
+    return '變更電子郵件地址';
+  }
+
+  @override
+  String get changePasswordChanged {
+    return '您的密碼已變更。您其他裝置上的登入已登出。';
+  }
+
+  @override
+  String get changePasswordCurrentLabel {
+    return '目前的密碼';
+  }
+
+  @override
+  String get changePasswordFailed {
+    return '無法變更您的密碼。請檢查您輸入的內容。';
+  }
+
+  @override
+  String get changePasswordNewConfirmLabel {
+    return '確認新密碼';
+  }
+
+  @override
+  String get changePasswordNewLabel {
+    return '新密碼';
+  }
+
+  @override
+  String get changePasswordSubmit {
+    return '變更密碼';
+  }
+
+  @override
+  String get changePasswordTitle {
+    return '變更密碼';
+  }
+
+  @override
+  String get changePasswordUnchanged {
+    return '請輸入與目前密碼不同的新密碼。';
   }
 
   @override
@@ -7813,6 +8912,51 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get confirmEmailChanged {
+    return '您的電子郵件地址已變更。';
+  }
+
+  @override
+  String get confirmEmailConfirming {
+    return '正在確認電子郵件地址的變更…';
+  }
+
+  @override
+  String get confirmEmailExpired {
+    return '此確認連結已失效或不再適用。請重新申請變更。';
+  }
+
+  @override
+  String get confirmEmailFailed {
+    return '無法確認電子郵件地址的變更。請重試。';
+  }
+
+  @override
+  String get confirmEmailInvalidToken {
+    return '此確認連結無效。';
+  }
+
+  @override
+  String get confirmEmailPendingCurrentEmail {
+    return '此確認已完成。待目前的電子郵件地址也完成確認後，變更才會生效。';
+  }
+
+  @override
+  String get confirmEmailPendingNewEmail {
+    return '此確認已完成。待新的電子郵件地址也完成確認後，變更才會生效。';
+  }
+
+  @override
+  String get confirmEmailTitle {
+    return '電子郵件地址變更確認';
+  }
+
+  @override
+  String get confirmEmailToAccount {
+    return '返回帳戶';
+  }
+
+  @override
   String get confirmPasswordDone {
     return '您的密碼已重設。請使用新密碼登入。';
   }
@@ -7973,6 +9117,51 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get deleteAccountConfirm {
+    return '刪除';
+  }
+
+  @override
+  String get deleteAccountConfirmDescription {
+    return '您將被登出，且帳戶無法復原。';
+  }
+
+  @override
+  String get deleteAccountConfirmTitle {
+    return '要刪除您的帳戶嗎？';
+  }
+
+  @override
+  String get deleteAccountDeleted {
+    return '您的帳戶已刪除。感謝您的使用。';
+  }
+
+  @override
+  String get deleteAccountDescription {
+    return '刪除帳戶會永久取消您對它的存取權限，且無法復原。';
+  }
+
+  @override
+  String get deleteAccountFailed {
+    return '無法刪除您的帳戶。請檢查您輸入的內容。';
+  }
+
+  @override
+  String get deleteAccountPasswordLabel {
+    return '目前的密碼';
+  }
+
+  @override
+  String get deleteAccountSubmit {
+    return '刪除我的帳戶';
+  }
+
+  @override
+  String get deleteAccountTitle {
+    return '刪除帳戶';
+  }
+
+  @override
   String get downloadsClear {
     return '全部刪除';
   }
@@ -8045,6 +9234,31 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String downloadsUsage({required String limit, required String used}) {
     return '已使用 $used，共 $limit';
+  }
+
+  @override
+  String get editNameFailed {
+    return '無法更新您的個人資料。請重試。';
+  }
+
+  @override
+  String get editNameLabel {
+    return '顯示名稱';
+  }
+
+  @override
+  String get editNameSave {
+    return '儲存';
+  }
+
+  @override
+  String get editNameTitle {
+    return '顯示名稱';
+  }
+
+  @override
+  String get editNameUpdated {
+    return '您的個人資料已更新。';
   }
 
   @override
@@ -8555,16 +9769,6 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get signUpNameLabel {
     return '名稱';
-  }
-
-  @override
-  String get signUpNameRequired {
-    return '請輸入顯示名稱。';
-  }
-
-  @override
-  String get signUpNameTooLong {
-    return '顯示名稱請控制在 100 個字元以內。';
   }
 
   @override
