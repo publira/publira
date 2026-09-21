@@ -238,6 +238,39 @@ void main() {
     expect(jsonDecode(sent.body), const {'limit': 20});
   });
 
+  for (final (baseUrl, expected) in const [
+    (
+      'http://127.0.0.1:8000',
+      'http://127.0.0.1:8000/publira.v1.DomainService/GetTenantByDomain',
+    ),
+    (
+      'https://reader.example.com/api',
+      'https://reader.example.com/api/publira.v1.DomainService/GetTenantByDomain',
+    ),
+    (
+      'https://reader.example.com/api/',
+      'https://reader.example.com/api/publira.v1.DomainService/GetTenantByDomain',
+    ),
+  ]) {
+    test('unary sends the procedure under the path of $baseUrl', () async {
+      late http.Request sent;
+      final client = ConnectClient(
+        baseUrl: baseUrl,
+        httpClient: MockClient((request) async {
+          sent = request;
+          return http.Response('{}', 200);
+        }),
+      );
+
+      await client.unary(
+        '/publira.v1.DomainService/GetTenantByDomain',
+        const {},
+      );
+
+      expect(sent.url.toString(), expected);
+    });
+  }
+
   test('unary omits the tenant header when no tenant is given', () async {
     late http.Request sent;
     final client = ConnectClient(
