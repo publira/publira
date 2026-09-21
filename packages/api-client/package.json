@@ -71,6 +71,10 @@
       "types": "./dist/admin/access-ticket.d.mts",
       "default": "./dist/admin/access-ticket.mjs"
     },
+    "./admin/royalty": {
+      "types": "./dist/admin/royalty.d.mts",
+      "default": "./dist/admin/royalty.mjs"
+    },
     "./admin/series": {
       "types": "./dist/admin/series.d.mts",
       "default": "./dist/admin/series.mjs"

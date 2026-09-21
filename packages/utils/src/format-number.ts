@@ -56,3 +56,30 @@ export const formatPercent = (
     toIntlLocale(options.locale),
     options.fractionDigits ?? 1
   ).format(ratio);
+
+export interface FormatYenOptions {
+  /** UI locale the amount is worded in: the grouping separator differs. */
+  locale: Locale;
+}
+
+const yenFormatterCache = new Map<string, Intl.NumberFormat>();
+
+/**
+ * Format a whole-yen amount (`1500`) as currency (`¥1,500`). Amounts the API
+ * sends are integers in JPY, so no fraction digits are shown.
+ */
+export const formatYen = (
+  amount: number,
+  options: FormatYenOptions
+): string => {
+  const intlLocale = toIntlLocale(options.locale);
+  let formatter = yenFormatterCache.get(intlLocale);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(intlLocale, {
+      currency: "JPY",
+      style: "currency",
+    });
+    yenFormatterCache.set(intlLocale, formatter);
+  }
+  return formatter.format(amount);
+};

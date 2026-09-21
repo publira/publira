@@ -885,6 +885,7 @@
       "operations": "Operations",
       "pages_label": "Pages",
       "readers_label": "Readers",
+      "royalties_label": "Royalties",
       "series_label": "Series",
       "settings_label": "Settings"
     },
@@ -2129,6 +2130,92 @@
         "complete_count": "Completions",
         "member_view_count": "Member views",
         "rate": "Read-through"
+      }
+    },
+    "royalties": {
+      "title": "Royalties",
+      "page_description": "Review what each author is owed for a month, close the month into a statement, and look back at closed statements.",
+      "load_failed": "Could not load royalties. Please try again later.",
+      "close_failed": "Could not close the month. Please try again later.",
+      "already_closed": "This month is already closed.",
+      "not_over": "This month is not over yet, so it cannot be closed.",
+      "statements_link": "Closed statements",
+      "open_month_link": "Open month",
+      "totals": {
+        "gross": "Sales",
+        "refunded": "Refunds",
+        "payout": "Payout to authors"
+      },
+      "open": {
+        "section_error": "Could not display the open month",
+        "title": "Open month: {$period}",
+        "period_note": "Sales from {$start} to {$end}, cut in the tenant's time zone ({$time_zone}). The figures keep changing until the month is closed.",
+        "in_progress": "This month is still in progress. It can be closed after {$date}.",
+        "auto_scheduled": "This month closes automatically on {$date}.",
+        "ready": "This month is over and ready to close.",
+        "not_open_title": "This month cannot be previewed",
+        "not_open_description": "It is already closed, or it has not started yet.",
+        "picker_label": "Month",
+        "picker_submit": "Show"
+      },
+      "close": {
+        "button": "Close month",
+        "closing": "Closing…",
+        "confirm_title": "Close {$period}?",
+        "confirm_description": "The payout to authors, {$payout} in total, will be fixed in a statement. A closed month cannot be reopened.",
+        "confirm_action": "Close month",
+        "done": "The month was closed."
+      },
+      "lines": {
+        "title": "Lines by author",
+        "description": "Each credit with the month's sales, grouped by author. A payout is the sales net of refunds times the share, rounded down to whole yen.",
+        "empty_title": "No sales this month",
+        "empty_description": "A line appears when an episode credited to an author sells.",
+        "subtotal": "Subtotal",
+        "no_role": "—",
+        "columns": {
+          "creator": "Author",
+          "series": "Series",
+          "episode": "Episode",
+          "role": "Role",
+          "sale_count": "Sales",
+          "gross": "Gross",
+          "refunded": "Refunded",
+          "share": "Share",
+          "payout": "Payout"
+        }
+      },
+      "statements": {
+        "title": "Closed statements",
+        "page_description": "Months already closed, newest first. A closed statement never changes.",
+        "section_error": "Could not display closed statements",
+        "empty_title": "No month has been closed yet",
+        "empty_description": "A statement appears here once a month is closed.",
+        "item_label": "statements",
+        "pagination_aria": "Closed statement pages",
+        "pagination_description": "Shows up to {$count} statements per page.",
+        "closed_by_none": "—",
+        "columns": {
+          "period": "Month",
+          "closed_at": "Closed",
+          "closed_by": "Closed by",
+          "gross": "Sales",
+          "refunded": "Refunds",
+          "payout": "Payout"
+        }
+      },
+      "statement": {
+        "title": "Statement",
+        "page_description": "A closed month, exactly as it was closed.",
+        "section_error": "Could not display the statement",
+        "closed_meta": "Closed on {$closed_at} by {$name}.",
+        "closed_meta_no_user": "Closed on {$closed_at}.",
+        "time_zone": "Cut in the tenant's time zone at close ({$time_zone}).",
+        "subtotal_note": "Subtotals cover the lines on this page.",
+        "item_label": "lines",
+        "pagination_aria": "Statement line pages",
+        "pagination_description": "Shows up to {$count} lines per page.",
+        "back_to_list": "Back to closed statements"
       }
     }
   },

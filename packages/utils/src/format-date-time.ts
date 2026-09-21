@@ -331,6 +331,45 @@ export const formatPlainDate = (
   );
 };
 
+/** A calendar month with no day and no zone (`YYYY-MM`). */
+const PLAIN_YEAR_MONTH_RE = /^\d{4}-\d{2}$/u;
+
+const yearMonthFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * Format a zone-less calendar month (`YYYY-MM`) for display: `March 2026`.
+ * Takes no time zone for the reason {@link formatPlainDate} gives. Returns
+ * `options.fallback` (default: the original `value`) for input that is not a
+ * month.
+ */
+export const formatPlainYearMonth = (
+  value: string,
+  options: FormatPlainDateOptions
+): string => {
+  if (!PLAIN_YEAR_MONTH_RE.test(value)) {
+    return options.fallback ?? value;
+  }
+  let month: Temporal.PlainDate;
+  try {
+    month = Temporal.PlainDate.from(`${value}-01`);
+  } catch {
+    return options.fallback ?? value;
+  }
+
+  const intlLocale = toIntlLocale(options.locale);
+  let formatter = yearMonthFormatterCache.get(intlLocale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(intlLocale, {
+      month: "long",
+      timeZone: "UTC",
+      year: "numeric",
+    });
+    yearMonthFormatterCache.set(intlLocale, formatter);
+  }
+  // Pinned to UTC only to reach an instant, as formatPlainDate does.
+  return formatter.format(month.toZonedDateTime("UTC").epochMilliseconds);
+};
+
 export interface FormatRelativeTimeOptions {
   fallback?: string;
   /** UI locale the phrase is worded in. Required, for the reason above. */

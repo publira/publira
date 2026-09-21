@@ -15,6 +15,7 @@ export {
   formatDate,
   formatDateTime,
   formatPlainDate,
+  formatPlainYearMonth,
   formatRelativeTime,
   formatWeekdayName,
   fromDateTimeLocalValue,
@@ -32,7 +33,12 @@ export {
   type ToDateTimeLocalOptions,
   type WeekdayNameStyle,
 } from "./format-date-time";
-export { formatPercent, type FormatPercentOptions } from "./format-number";
+export {
+  formatPercent,
+  formatYen,
+  type FormatPercentOptions,
+  type FormatYenOptions,
+} from "./format-number";
 export { formatList, type FormatListOptions } from "./format-list";
 export { getTenantDomainCandidates } from "./tenant-domain";
 export {

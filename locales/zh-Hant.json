@@ -885,6 +885,7 @@
       "operations": "營運",
       "pages_label": "頁面",
       "readers_label": "讀者",
+      "royalties_label": "版稅",
       "series_label": "系列",
       "settings_label": "設定"
     },
@@ -2129,6 +2130,92 @@
         "complete_count": "讀完次數",
         "member_view_count": "會員瀏覽次數",
         "rate": "讀完率"
+      }
+    },
+    "royalties": {
+      "title": "版稅",
+      "page_description": "按月檢視應付給每位作者的金額，將該月結算為明細，並回顧已結算的明細。",
+      "load_failed": "無法載入版稅。請稍後再試。",
+      "close_failed": "無法結算該月。請稍後再試。",
+      "already_closed": "該月已經結算。",
+      "not_over": "該月尚未結束，無法結算。",
+      "statements_link": "已結算明細",
+      "open_month_link": "未結算月份",
+      "totals": {
+        "gross": "銷售額",
+        "refunded": "退款",
+        "payout": "支付給作者"
+      },
+      "open": {
+        "section_error": "無法顯示未結算月份",
+        "title": "未結算月份：{$period}",
+        "period_note": "{$start} 至 {$end} 的銷售額，依租戶時區（{$time_zone}）劃分。結算前數字會持續變動。",
+        "in_progress": "該月仍在進行中。{$date} 之後即可結算。",
+        "auto_scheduled": "該月將於 {$date} 自動結算。",
+        "ready": "該月已結束，可以結算。",
+        "not_open_title": "無法預覽該月",
+        "not_open_description": "該月已經結算，或尚未開始。",
+        "picker_label": "月份",
+        "picker_submit": "顯示"
+      },
+      "close": {
+        "button": "結算該月",
+        "closing": "正在結算…",
+        "confirm_title": "要結算 {$period} 嗎？",
+        "confirm_description": "支付給作者的金額（合計 {$payout}）將確定為明細。已結算的月份無法重新開啟。",
+        "confirm_action": "結算該月",
+        "done": "已結算該月。"
+      },
+      "lines": {
+        "title": "依作者列出的明細",
+        "description": "依作者彙整每項署名的當月銷售額。支付額為扣除退款後的銷售額乘以分潤比例，並捨去不足 1 日圓的部分。",
+        "empty_title": "本月沒有銷售",
+        "empty_description": "署名作者的話數售出後，將顯示明細。",
+        "subtotal": "小計",
+        "no_role": "—",
+        "columns": {
+          "creator": "作者",
+          "series": "系列",
+          "episode": "話",
+          "role": "職責",
+          "sale_count": "銷售數",
+          "gross": "銷售額",
+          "refunded": "退款",
+          "share": "分潤比例",
+          "payout": "支付額"
+        }
+      },
+      "statements": {
+        "title": "已結算明細",
+        "page_description": "依由新到舊顯示已結算的月份。已結算的明細不會改變。",
+        "section_error": "無法顯示已結算明細",
+        "empty_title": "尚未結算任何月份",
+        "empty_description": "結算月份後，明細將顯示在這裡。",
+        "item_label": "明細",
+        "pagination_aria": "已結算明細分頁",
+        "pagination_description": "每頁最多顯示 {$count} 份明細。",
+        "closed_by_none": "—",
+        "columns": {
+          "period": "月份",
+          "closed_at": "結算時間",
+          "closed_by": "結算人",
+          "gross": "銷售額",
+          "refunded": "退款",
+          "payout": "支付額"
+        }
+      },
+      "statement": {
+        "title": "明細",
+        "page_description": "依結算時的原樣顯示已結算的月份。",
+        "section_error": "無法顯示明細",
+        "closed_meta": "{$name} 於 {$closed_at} 結算。",
+        "closed_meta_no_user": "於 {$closed_at} 結算。",
+        "time_zone": "依結算時的租戶時區（{$time_zone}）劃分。",
+        "subtotal_note": "小計僅合計本頁的明細列。",
+        "item_label": "明細列",
+        "pagination_aria": "明細列分頁",
+        "pagination_description": "每頁最多顯示 {$count} 列。",
+        "back_to_list": "返回已結算明細"
       }
     }
   },
