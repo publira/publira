@@ -70,7 +70,7 @@ func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard
 	// counters would otherwise be the deployment's shared Redis, where one run
 	// of these tests would charge the budget of the next.
 	server := httptest.NewServer(handlerFromServer(
-		newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, nil, testutil.TokenManager(), slog.Default(), guards, mail),
+		newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), slog.Default(), guards, mail),
 	))
 	t.Cleanup(server.Close)
 	return &publicDBEnv{Server: server, PG: pg}

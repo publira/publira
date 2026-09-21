@@ -2,8 +2,14 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrNotConfigured is what a storage operation answers on an installation
+// whose operator has saved no object store yet. It is a state the Platform
+// Console resolves, not a fault a retry can, so a caller reports it as such.
+var ErrNotConfigured = errors.New("object storage is not configured")
 
 type UploadRequest struct {
 	ObjectKey   string
@@ -52,4 +58,11 @@ type ListResult struct {
 type Reclaimer interface {
 	List(ctx context.Context, req ListRequest) (ListResult, error)
 	Delete(ctx context.Context, objectKeys []string) error
+}
+
+// ReclaimerSource resolves the bucket an orphan sweep reclaims, and the name
+// its log calls it by. A pass resolves it once, so a configuration saved
+// mid-pass cannot list one bucket and delete from another.
+type ReclaimerSource interface {
+	Reclaimer(ctx context.Context) (Reclaimer, string, error)
 }

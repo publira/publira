@@ -106,13 +106,11 @@ func ServiceNames() []string {
 type Config struct {
 	// DB is the maintenance role's own pool. Every query runs on it.
 	DB *sql.DB
-	// Storage is the bucket the orphan image sweep reclaims. A process started
-	// without one registers every other job and leaves that one unregistered,
-	// the way a worker with no push credential leaves the push handler out.
-	Storage storage.Reclaimer
-	// Bucket names that bucket for the sweep's log.
-	Bucket string
-	Logger *slog.Logger
+	// Storage resolves the bucket the orphan image sweep reclaims. A platform
+	// with none configured still registers the sweep, whose runs are then
+	// cancelled with storage.ErrNotConfigured.
+	Storage storage.ReclaimerSource
+	Logger  *slog.Logger
 }
 
 // Jobs holds the settings each kind runs with for the life of the process.
@@ -149,7 +147,6 @@ func New(cfg Config) (*Jobs, error) {
 	jobs := &Jobs{deps: maintenance.Deps{
 		DB:      cfg.DB,
 		Storage: cfg.Storage,
-		Bucket:  cfg.Bucket,
 		Logger:  cfg.Logger,
 	}}
 
@@ -181,10 +178,6 @@ func New(cfg Config) (*Jobs, error) {
 	return jobs, nil
 }
 
-// storageConfigured reports whether the orphan image sweep has a bucket, and
-// with it whether that kind is one of the registered workers.
-func (j *Jobs) storageConfigured() bool { return j.deps.Storage != nil }
-
 // Register adds the workers to the River client's registry.
 func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &projectEpisodeReadsWorker{jobs: j}); err != nil {
@@ -210,9 +203,6 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	}
 	if err := river.AddWorkerSafely(workers, &purgeWithdrawnCommentsWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register purge-withdrawn-comments worker: %w", err)
-	}
-	if !j.storageConfigured() {
-		return nil
 	}
 	if err := river.AddWorkerSafely(workers, &purgeOrphanImagesWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register purge-orphan-images worker: %w", err)
@@ -244,7 +234,6 @@ func (j *Jobs) Settings() []any {
 		"comment_purge_chunk_size", j.withdrawnComments.ChunkSize,
 		"orphan_images_min_age", j.orphanImages.MinAge,
 		"orphan_images_page_size", j.orphanImages.PageSize,
-		"orphan_images_enabled", j.storageConfigured(),
 	}
 }
 

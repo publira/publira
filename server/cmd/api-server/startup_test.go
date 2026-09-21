@@ -16,13 +16,14 @@ func TestMain(m *testing.M) {
 
 // A standard deployment sets bootstrap secrets and infrastructure connections
 // and nothing else; every runtime tuning value has to fall back to a default.
+// Object storage is not among them: it is saved from the Platform Console this
+// process serves, so the process has to start before there is one.
 func TestStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	pg := testutil.StartPostgres(t)
-	s3 := testutil.StartRustFS(t)
-	s3.CreateBucket(t)
+	pg.Reset(t)
 	edgeAddr := testutil.FreeAddr(t)
 
-	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), s3.DeploymentEnv(), map[string]string{
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
 		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
 		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,

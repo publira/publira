@@ -260,7 +260,7 @@ Deletes the image rows nothing points at and the storage objects nothing names, 
 
 The database is the authority over the bucket: an object no `*_image_variants` row names is garbage. A run has two halves, in this order. It deletes every `creator_images`, `label_images`, `series_images`, and `tenant_images` row that its entity no longer points at, and then walks the bucket under `tenants/` a page at a time, asking the database which of the keys on that page any variant still names and deleting the rest. Nothing younger than `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS` is a candidate in either half, which is what keeps an upload still in flight out of range.
 
-Both a database and a bucket are needed, so this is the one batch that also reads the `PUBLIRA_S3_*` settings. For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
+Both a database and a bucket are needed. The bucket is the one saved in the platform's settings, read on the same connection; with none saved the run fails before deleting anything. For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -270,7 +270,8 @@ PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN=true go run ./server/cmd/batch purge-orphan-
 Environment variables:
 
 - `PUBLIRA_ORPHAN_IMAGES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
-- `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, `AWS_REGION`: the bucket to sweep, read the same way every uploading process reads them. A missing bucket fails at startup.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the access key of an object store saved with one.
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`: the ambient credential for an object store saved without an access key.
 - `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`: how old an object or image row must be to become a candidate. Defaults to `24`. Anything below `1` fails at startup, because the cutoff would land at or after now and put every upload in flight in range; so does an age beyond `2562047`, which wraps negative into that same cutoff.
 - `PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE`: objects per listing page, and with it the keys per reference lookup and per batch delete. Defaults to `1000`, which is S3's own page ceiling; a smaller value only adds round trips.
 - `PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN`: `true` deletes nothing and reports the objects the sweep would remove. The row deletes are skipped too, so the count covers the objects already unreferenced rather than the ones this run would have stranded first.

@@ -21,13 +21,12 @@ import (
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/push"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
-	"github.com/publira/publira/server/internal/storage"
-	"github.com/publira/publira/server/internal/storage/s3"
 	"github.com/publira/publira/server/internal/tickerjobs"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -123,23 +122,6 @@ func main() {
 	}
 	defer contentStatsDB.Close() //nolint:errcheck
 
-	reclaimer, err := resolveReclaimer(context.Background(), logger, cfg.Storage)
-	if err != nil {
-		logger.Error("failed to initialize object storage", "error", err)
-		os.Exit(1)
-	}
-	maintenanceJobs, err := maintenancejobs.New(maintenancejobs.Config{
-		DB:      contentStatsDB,
-		Storage: reclaimer,
-		Bucket:  cfg.Storage.S3Bucket,
-		Logger:  logger,
-	})
-	if err != nil {
-		logger.Error("failed to initialize the maintenance jobs", "error", err)
-		os.Exit(1)
-	}
-	logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
-
 	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
 	// assigned to an interface is not nil, and it would slip past the guard in
 	// emailsettings.DecryptPassword into a nil-receiver method call. A process
@@ -154,6 +136,24 @@ func main() {
 		}
 		encryptor = manager
 	}
+
+	// The bucket the orphan image sweep reclaims is read from the platform's
+	// settings when a run starts, so the worker starts before one is saved.
+	reclaimers := platformstorage.Reclaimers{Resolver: platformstorage.New(platformstorage.Config{
+		Queries: dbmodels.New(contentStatsDB),
+		Secrets: encryptor,
+		Logger:  logger,
+	}, platformstorage.NewStorage)}
+	maintenanceJobs, err := maintenancejobs.New(maintenancejobs.Config{
+		DB:      contentStatsDB,
+		Storage: reclaimers,
+		Logger:  logger,
+	})
+	if err != nil {
+		logger.Error("failed to initialize the maintenance jobs", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
 
 	// No Firebase credential means no push handler, so a local stack without
 	// one still drains everything else. An event whose handler is missing goes
@@ -273,30 +273,6 @@ func resolveContentStatsDBURL() string {
 		return url
 	}
 	return defaultContentStatsDBURL
-}
-
-// resolveReclaimer builds the bucket the orphan image sweep reclaims. A
-// deployment with no bucket configured gets nil, which leaves that one job
-// unregistered while every other maintenance job still runs — the alternative
-// would be refusing to start a worker whose mail and ticker work needs no
-// object storage at all.
-func resolveReclaimer(ctx context.Context, logger *slog.Logger, cfg config.Storage) (storage.Reclaimer, error) {
-	if err := cfg.Validate(); err != nil {
-		logger.Info("orphan image reclamation is disabled", "reason", err.Error())
-		return nil, nil
-	}
-	store, err := s3.New(ctx, s3.Config{
-		Bucket:         cfg.S3Bucket,
-		Region:         cfg.S3Region,
-		Endpoint:       cfg.S3Endpoint,
-		PublicBaseURL:  cfg.S3PublicBaseURL,
-		ForcePathStyle: cfg.S3ForcePathStyle,
-	})
-	if err != nil {
-		return nil, err
-	}
-	logger.Info("orphan image reclamation is enabled", "bucket", cfg.S3Bucket)
-	return store, nil
 }
 
 // newRevalidateClient builds the client that sends Next.js cache tags. A

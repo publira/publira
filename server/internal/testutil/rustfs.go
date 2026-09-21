@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -131,6 +132,13 @@ func startRustFS(ctx context.Context) (*RustFSEnv, error) {
 // idempotent: if the bucket already exists the call succeeds silently.
 func (e *RustFSEnv) CreateBucket(t *testing.T) {
 	t.Helper()
+	e.CreateNamedBucket(t, e.Bucket)
+}
+
+// CreateNamedBucket creates a bucket beside the test bucket, for a test that
+// moves the platform from one bucket to another.
+func (e *RustFSEnv) CreateNamedBucket(t *testing.T, bucket string) {
+	t.Helper()
 
 	ctx := context.Background()
 
@@ -147,7 +155,7 @@ func (e *RustFSEnv) CreateBucket(t *testing.T) {
 	})
 
 	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(e.Bucket),
+		Bucket: aws.String(bucket),
 	})
 	if err != nil {
 		var alreadyExists *s3types.BucketAlreadyExists
@@ -155,19 +163,38 @@ func (e *RustFSEnv) CreateBucket(t *testing.T) {
 		if errors.As(err, &alreadyExists) || errors.As(err, &alreadyOwned) {
 			return
 		}
-		t.Fatalf("rustfs: create bucket %q: %v", e.Bucket, err)
+		t.Fatalf("rustfs: create bucket %q: %v", bucket, err)
 	}
 }
 
-// DeploymentEnv returns the variables a process reads this object store from.
-// Storage stays in the environment until #2511 moves it into platform settings.
+// DeploymentEnv returns the ambient credential a process signs its requests to
+// this object store with. Which store that is comes from the platform's
+// settings, which SavePlatformStorage writes.
 func (e *RustFSEnv) DeploymentEnv() map[string]string {
 	return map[string]string{
-		"PUBLIRA_S3_BUCKET":           e.Bucket,
-		"PUBLIRA_S3_ENDPOINT":         e.Endpoint,
-		"PUBLIRA_S3_FORCE_PATH_STYLE": "true",
-		"AWS_REGION":                  e.Region,
-		"AWS_ACCESS_KEY_ID":           e.AccessKey,
-		"AWS_SECRET_ACCESS_KEY":       e.SecretKey,
+		"AWS_ACCESS_KEY_ID":     e.AccessKey,
+		"AWS_SECRET_ACCESS_KEY": e.SecretKey,
+	}
+}
+
+// SavePlatformStorage saves bucket on this object store as the platform's,
+// signed with the ambient credential, the way an operator would save it from
+// the Platform Console. db must be a pool that may write the row.
+func (e *RustFSEnv) SavePlatformStorage(t *testing.T, db *sql.DB, bucket string) {
+	t.Helper()
+	if _, err := db.ExecContext(context.Background(), `
+		INSERT INTO platform_storage_config (singleton, bucket, region, endpoint, force_path_style)
+		VALUES (TRUE, $1, $2, $3, TRUE)
+		ON CONFLICT (singleton) DO UPDATE
+		SET bucket = EXCLUDED.bucket,
+			region = EXCLUDED.region,
+			endpoint = EXCLUDED.endpoint,
+			force_path_style = EXCLUDED.force_path_style,
+			access_key_id = NULL,
+			secret_access_key_encrypted = NULL,
+			revision = platform_storage_config.revision + 1,
+			updated_at = NOW()
+	`, bucket, e.Region, e.Endpoint); err != nil {
+		t.Fatalf("rustfs: save platform storage: %v", err)
 	}
 }

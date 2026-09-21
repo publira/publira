@@ -55,7 +55,7 @@ func (t *ConnectionTester) TestConnection(
 	settings storagesettings.Settings,
 	credentials storagesettings.Credentials,
 ) ([]storagesettings.Check, error) {
-	client, err := newClient(ctx, Config{
+	client, err := NewClient(ctx, Config{
 		Bucket:          settings.Bucket,
 		Region:          settings.Region,
 		Endpoint:        settings.Endpoint,

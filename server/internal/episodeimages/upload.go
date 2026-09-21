@@ -64,6 +64,9 @@ func storageUploadError(err error) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
+	if errors.Is(err, storage.ErrNotConfigured) {
+		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, storage.ErrNotConfigured, rpcerrors.ReasonStorageNotConfigured)
+	}
 	return connect.NewError(connect.CodeInternal, err)
 }
 
@@ -239,6 +242,9 @@ func (s Service) storeImages(
 						ContentType: variant.ContentType,
 						Data:        variant.Data,
 					})
+					if errors.Is(uploadErr, storage.ErrNotConfigured) {
+						return dbmodels.EpisodeImageVariant{}, backoff.Permanent(uploadErr)
+					}
 					if uploadErr != nil {
 						return dbmodels.EpisodeImageVariant{}, uploadErr
 					}

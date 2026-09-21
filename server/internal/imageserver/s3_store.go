@@ -53,3 +53,17 @@ func (s *S3Store) GetObject(ctx context.Context, key string) (ObjectResult, erro
 		ContentLength: contentLength,
 	}, nil
 }
+
+// ResolvingStore reads each object from the store Resolve answers for that
+// read, so a changed platform storage configuration reaches the next request.
+type ResolvingStore struct {
+	Resolve func(ctx context.Context) (ObjectStore, error)
+}
+
+func (s ResolvingStore) GetObject(ctx context.Context, key string) (ObjectResult, error) {
+	store, err := s.Resolve(ctx)
+	if err != nil {
+		return ObjectResult{}, err
+	}
+	return store.GetObject(ctx, key)
+}

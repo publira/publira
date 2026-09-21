@@ -24,14 +24,10 @@ import (
 type Deps struct {
 	// DB is the maintenance role's own pool. Every query below runs on it.
 	DB *sql.DB
-	// Storage is the bucket OrphanImagePurge reclaims, and the one dependency
-	// no other job takes.
-	Storage storage.Reclaimer
-	// Bucket names that bucket for the reclamation log. The Reclaimer holds
-	// the name and exposes none, and a sweep that deletes objects is one whose
-	// log has to say where it deleted them.
-	Bucket string
-	Logger *slog.Logger
+	// Storage resolves the bucket OrphanImagePurge reclaims, and is the one
+	// dependency no other job takes.
+	Storage storage.ReclaimerSource
+	Logger  *slog.Logger
 }
 
 // errNoDB is what a caller that passed no pool gets, rather than the nil

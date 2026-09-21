@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"manael.org/x/manael/v3"
+
+	"github.com/publira/publira/server/internal/storage"
 )
 
 const (
@@ -92,6 +94,11 @@ func (h *Handler) serveOrigin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, ErrObjectNotFound) {
 			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, storage.ErrNotConfigured) {
+			h.logger.Warn("origin has no object store to load from", "error", err, "object_key", key)
+			http.Error(w, "object storage is not configured", http.StatusServiceUnavailable)
 			return
 		}
 		h.logger.Error("origin failed to load object", "error", err, "object_key", key)

@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 func TestCreateEpisodeSuccess(t *testing.T) {
@@ -1684,6 +1686,61 @@ func TestAdminGetEpisodePreservesContextCanceled(t *testing.T) {
 	_, err := client.GetEpisode(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeCanceled {
 		t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertExpectations(t, mock)
+}
+
+// unconfiguredStorageProvider answers every upload the way a platform with no
+// object store saved does, and counts how often it was asked.
+type unconfiguredStorageProvider struct{ calls atomic.Int32 }
+
+func (p *unconfiguredStorageProvider) Upload(context.Context, storage.UploadRequest) (storage.UploadResult, error) {
+	p.calls.Add(1)
+	return storage.UploadResult{}, storage.ErrNotConfigured
+}
+
+// No retry saves an upload on a platform with no object store, so the first
+// refusal ends the request and says which state the platform is in.
+func TestUploadEpisodeImagesWithoutPlatformStorage(t *testing.T) {
+	provider := &unconfiguredStorageProvider{}
+	testServer, mock := newTestAdminServerWithStorage(t, provider)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "EPISODE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability"}).
+			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil))
+	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+		WithArgs(episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+	mock.ExpectQuery("INSERT INTO episode_images").
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, int32(1), now))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodePublicId: "EPISODE001",
+		Images: []*publiraadminv1.EpisodeImageUpload{
+			{Filename: "page.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 480, 270), DisplayOrder: 0},
+		},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UploadEpisodeImages(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UploadEpisodeImages error = %v, want %v", err, connect.CodeFailedPrecondition)
+	}
+	if calls := provider.calls.Load(); calls != 1 {
+		t.Fatalf("uploads attempted = %d, want 1", calls)
 	}
 	assertExpectations(t, mock)
 }

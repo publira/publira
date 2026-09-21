@@ -3,6 +3,7 @@ package maintenancejobs
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -118,7 +119,7 @@ func TestServiceNamesCoverEveryKind(t *testing.T) {
 }
 
 func TestRegisterAddsAWorkerForEveryKind(t *testing.T) {
-	jobs := newJobs(t, Config{DB: &sql.DB{}, Storage: stubReclaimer{}})
+	jobs := newJobs(t, Config{DB: &sql.DB{}, Storage: stubSource{}})
 
 	workers := river.NewWorkers()
 	if err := jobs.Register(workers); err != nil {
@@ -131,29 +132,19 @@ func TestRegisterAddsAWorkerForEveryKind(t *testing.T) {
 	}
 }
 
-// A deployment with no bucket still runs every other job. Refusing to start
-// would take the outbox drain and the ticker jobs down with a sweep that has
-// nothing to sweep.
-func TestRegisterLeavesTheOrphanImageSweepOutWithoutStorage(t *testing.T) {
-	jobs := newJobs(t, Config{DB: &sql.DB{}})
-	if jobs.storageConfigured() {
-		t.Fatal("storageConfigured() = true, want false without a bucket")
-	}
+// A platform that has not configured its object store yet cannot sweep it, and
+// no retry would change that, so the run is cancelled with the reason rather
+// than retried until River discards it.
+func TestPurgeOrphanImagesCancelsWithoutConfiguredStorage(t *testing.T) {
+	jobs := newJobs(t, Config{DB: &sql.DB{}, Storage: stubSource{err: storage.ErrNotConfigured}})
 
-	workers := river.NewWorkers()
-	if err := jobs.Register(workers); err != nil {
-		t.Fatalf("Register: %v", err)
+	err := (&purgeOrphanImagesWorker{jobs: jobs}).Work(context.Background(), &river.Job[PurgeOrphanImagesArgs]{})
+	var cancel *river.JobCancelError
+	if !errors.As(err, &cancel) {
+		t.Fatalf("Work error = %v, want a JobCancelError", err)
 	}
-	if err := probes()[kindPurgeOrphanImages](workers); err != nil {
-		t.Fatalf("the orphan image sweep was registered without a bucket: %v", err)
-	}
-	for kind, probe := range probes() {
-		if kind == kindPurgeOrphanImages {
-			continue
-		}
-		if err := probe(workers); err == nil {
-			t.Fatalf("kind %q has no registered worker", kind)
-		}
+	if !errors.Is(err, storage.ErrNotConfigured) {
+		t.Fatalf("Work error = %v, want it to wrap %v", err, storage.ErrNotConfigured)
 	}
 }
 
@@ -215,12 +206,10 @@ func probes() map[string]func(*river.Workers) error {
 	}
 }
 
-// stubReclaimer stands in for a configured bucket. Registration is all these
-// tests reach, so neither method is called.
-type stubReclaimer struct{}
+// stubSource stands in for the resolved bucket. It answers err, and no
+// reclaimer, because no test here reaches a listing.
+type stubSource struct{ err error }
 
-func (stubReclaimer) List(context.Context, storage.ListRequest) (storage.ListResult, error) {
-	return storage.ListResult{}, nil
+func (s stubSource) Reclaimer(context.Context) (storage.Reclaimer, string, error) {
+	return nil, "", s.err
 }
-
-func (stubReclaimer) Delete(context.Context, []string) error { return nil }

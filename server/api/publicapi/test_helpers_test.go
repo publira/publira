@@ -91,7 +91,7 @@ func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 func mustPublicHandler(t *testing.T, db *sql.DB, queries Querier, encryptor emailsettings.SecretManager) http.Handler {
 	t.Helper()
 
-	api, err := New(db, queries, &testStorageProvider{}, encryptor, testutil.TokenManager())
+	api, err := New(db, queries, encryptor, testutil.TokenManager())
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

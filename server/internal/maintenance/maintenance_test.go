@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+
+	"github.com/publira/publira/server/internal/storage"
 )
 
 // A caller that wired one of these up without its pool gets an error naming
@@ -26,6 +28,22 @@ func TestOrphanImagePurgeRefusesToRunWithoutStorage(t *testing.T) {
 	if !errors.Is(err, errNoStorage) {
 		t.Fatalf("error = %v, want %v", err, errNoStorage)
 	}
+}
+
+// A platform with no object store saved fails the sweep before it deletes a
+// single row: the rows are what protect the objects in whatever bucket is saved
+// next.
+func TestOrphanImagePurgeFailsWithoutPlatformStorage(t *testing.T) {
+	err := OrphanImagePurge{}.Run(context.Background(), Deps{DB: &sql.DB{}, Storage: unconfiguredSource{}})
+	if !errors.Is(err, storage.ErrNotConfigured) {
+		t.Fatalf("error = %v, want %v", err, storage.ErrNotConfigured)
+	}
+}
+
+type unconfiguredSource struct{}
+
+func (unconfiguredSource) Reclaimer(context.Context) (storage.Reclaimer, string, error) {
+	return nil, "", storage.ErrNotConfigured
 }
 
 func everyJob() map[string]func(context.Context, Deps) error {

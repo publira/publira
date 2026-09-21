@@ -186,6 +186,12 @@ GRANT SELECT, INSERT, UPDATE ON tenant_community_limit_overrides TO publira_admi
 -- them.
 GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stats;
 
+-- The image server and the orphan image sweep resolve the object store they
+-- read and reclaim from the platform's settings, on the tenant console's pool
+-- and the maintenance pool. The secret access key is stored encrypted under
+-- keys the database never holds, and neither role may write the row.
+GRANT SELECT ON platform_storage_config TO publira_admin, publira_content_stats;
+
 -- The worker composes the platform console's own mail — a password reset, an
 -- email change confirmation, the notice that follows one — and every mail it
 -- sends goes through the platform relay unless the tenant overrides it. So the

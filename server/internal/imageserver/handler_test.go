@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 // stubResolver answers one of the two tenant lookups and leaves the other
@@ -1575,5 +1576,51 @@ func TestEpisodeImageChecksTheReaderAgainstTheAgeRule(t *testing.T) {
 				t.Fatalf("status = %d, want %d (body = %q)", rec.Code, tc.wantStatus, rec.Body.String())
 			}
 		})
+	}
+}
+
+// The store is resolved for each read, so an image is read from whichever
+// store the platform's settings name at the time it is requested.
+func TestResolvingStoreReadsFromTheStoreResolvedForEachRequest(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	var current ObjectStore
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: stubTenantQueries{
+			creator: dbmodels.GetCreatorImageByIDForTenantRow{
+				ObjectKey:   "creators/avatar.jpg",
+				ContentType: "image/jpeg",
+			},
+		}},
+		ResolvingStore{Resolve: func(context.Context) (ObjectStore, error) {
+			if current == nil {
+				return nil, storage.ErrNotConfigured
+			}
+			return current, nil
+		}},
+	)
+	serve := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/images/creators/"+mediaID.String(), nil)
+		req.Host = "example.test"
+		req.Header.Set("Accept", "image/jpeg")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if rec := serve(); rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status without storage = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+
+	store := &countingStore{objects: map[string]storedObject{
+		"creators/avatar.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+	}}
+	current = store
+	if rec := serve(); rec.Code != http.StatusOK {
+		t.Fatalf("status once storage is saved = %d, body = %q", rec.Code, rec.Body.String())
+	}
+	if store.getCount() != 1 {
+		t.Fatalf("gets = %d, want the read served by the resolved store", store.getCount())
 	}
 }
