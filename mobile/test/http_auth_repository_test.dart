@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -159,6 +161,148 @@ void main() {
       ),
     );
   });
+
+  test('signUp sends what the form collected', () async {
+    await auth.signUp(
+      name: 'New Reader',
+      email: 'new@example.com',
+      password: 'newpassword',
+      birthDate: '1998-07-06',
+    );
+
+    final request = server.requestsTo('CreateUser').single;
+    expect(request.body['name'], 'New Reader');
+    expect(request.body['email'], 'new@example.com');
+    expect(request.body['password'], 'newpassword');
+    expect(request.body['birthDate'], '1998-07-06');
+  });
+
+  test('signUp leaves out a birth date the form did not ask for', () async {
+    await auth.signUp(
+      name: 'New Reader',
+      email: 'new@example.com',
+      password: 'newpassword',
+    );
+
+    expect(
+      server.requestsTo('CreateUser').single.body.containsKey('birthDate'),
+      isFalse,
+    );
+  });
+
+  test('signUp maps a refused address to invalidInput', () async {
+    server.signupStatus = HttpStatus.badRequest;
+    server.signupErrorCode = 'invalid_argument';
+
+    await expectLater(
+      auth.signUp(
+        name: 'New Reader',
+        email: 'not-an-address',
+        password: 'newpassword',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.invalidInput,
+        ),
+      ),
+    );
+  });
+
+  test('signUp maps a spent mail allowance to rateLimited', () async {
+    server.signupStatus = HttpStatus.tooManyRequests;
+    server.signupErrorCode = 'resource_exhausted';
+
+    await expectLater(
+      auth.signUp(
+        name: 'New Reader',
+        email: 'new@example.com',
+        password: 'newpassword',
+      ),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.rateLimited,
+        ),
+      ),
+    );
+  });
+
+  test('verifyEmail confirms the address a sign-up left unconfirmed', () async {
+    await auth.signUp(
+      name: 'New Reader',
+      email: 'new@example.com',
+      password: 'newpassword',
+    );
+
+    await auth.verifyEmail(ConnectFixtureServer.verificationToken);
+
+    expect(server.signups['new@example.com']!.verified, isTrue);
+  });
+
+  test('verifyEmail maps an unknown token to verificationTokenInvalid', () {
+    expect(
+      () => auth.verifyEmail('never-issued'),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.verificationTokenInvalid,
+        ),
+      ),
+    );
+  });
+
+  test('verifyEmail maps a spent link to verificationTokenExpired', () {
+    expect(
+      () => auth.verifyEmail(ConnectFixtureServer.expiredVerificationToken),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.verificationTokenExpired,
+        ),
+      ),
+    );
+  });
+
+  test('requestEmailVerification names the address it was given', () async {
+    await auth.requestEmailVerification('new@example.com');
+
+    expect(
+      server.requestsTo('RequestEmailVerification').single.body['email'],
+      'new@example.com',
+    );
+  });
+
+  test('requestEmailVerification maps a spent allowance to rateLimited', () {
+    server.verificationRequestStatus = HttpStatus.tooManyRequests;
+    server.verificationRequestErrorCode = 'resource_exhausted';
+
+    expect(
+      () => auth.requestEmailVerification('new@example.com'),
+      throwsA(
+        isA<AuthFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          AuthFailureKind.rateLimited,
+        ),
+      ),
+    );
+  });
+
+  test(
+    'readAgeVerification reports the tenant rule without a session',
+    () async {
+      expect(await auth.readAgeVerification(), AgeVerification.checked);
+
+      server.ageVerification = 'AGE_VERIFICATION_NONE';
+
+      expect(await auth.readAgeVerification(), AgeVerification.none);
+    },
+  );
 
   test('refresh maps a token the API rejects to sessionExpired', () async {
     server.activeAccessToken = 'another-token';

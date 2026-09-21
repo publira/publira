@@ -3063,14 +3063,12 @@
       "title": "Series"
     },
     "sign_in": {
-      "email_label": "Email address",
       "email_not_verified": "Your email address has not been confirmed yet. Open the link in the confirmation email.",
-      "email_required": "Enter your email address.",
       "failed": "Could not sign in.",
       "invalid_credentials": "That email address or password is incorrect. Check them and try again.",
-      "password_label": "Password",
-      "password_required": "Enter your password.",
-      "website_note": "Create an account or reset your password on the website."
+      "no_account": "Don't have an account?",
+      "password_reset_note": "Reset your password on the website.",
+      "sign_up": "Sign up"
     },
     "viewer": {
       "back_to_series": "Back to the series",
@@ -3110,6 +3108,52 @@
       "reload": "Reload",
       "save_expired": "The saved copy of this episode has expired. Open it again while connected.",
       "title": "Episode"
+    },
+    "auth": {
+      "email_invalid": "Enter a valid email address.",
+      "email_label": "Email address",
+      "email_required": "Enter your email address.",
+      "password_label": "Password",
+      "password_required": "Enter your password.",
+      "resend_failed": "Could not send the confirmation email. Try again.",
+      "resend_verification": "Send a new confirmation email",
+      "verification_sent": "We sent a confirmation email. Open the link in it to finish signing up."
+    },
+    "sign_up": {
+      "birth_date_clear": "Clear the date of birth",
+      "birth_date_help": "This site checks your age before opening age-rated works. You can add it later, but it cannot be changed once given.",
+      "birth_date_label": "Date of birth",
+      "failed": "Could not create your account. Please check what you entered.",
+      "have_account": "Already have an account?",
+      "name_label": "Name",
+      "name_required": "Enter a display name.",
+      "name_too_long": "Use 100 characters or fewer for the display name.",
+      "password_confirm_label": "Confirm password",
+      "password_confirm_required": "Confirm your password.",
+      "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
+      "password_too_long": "Use 1024 characters or fewer for the password.",
+      "submit": "Sign up",
+      "title": "Sign up"
+    },
+    "sign_up_pending": {
+      "check_spam": "If the email does not arrive, check your spam folder.",
+      "sent": "We sent an email to the address you entered. Open it to continue.",
+      "sent_to": "Sent to: {$email}",
+      "title": "Check your email"
+    },
+    "verify_email": {
+      "expired": "This confirmation link has expired.",
+      "failed": "Could not confirm your email address. Try again.",
+      "invalid_token": "This confirmation link is not valid.",
+      "title": "Email confirmation",
+      "verified": "Your email address has been confirmed. You can sign in now.",
+      "verifying": "Confirming your email address…"
+    },
+    "resend_verification": {
+      "description": "Enter the address you signed up with. If it is still waiting to be confirmed, a new link goes out to it.",
+      "sent_heading": "Confirmation email sent",
+      "submit": "Send confirmation email",
+      "title": "Resend the confirmation email"
     }
   },
   "platform": {

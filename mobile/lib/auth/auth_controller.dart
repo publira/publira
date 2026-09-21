@@ -90,6 +90,43 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Asks for an account, which the API answers by mailing a confirmation
+  /// link. Nothing here signs anybody in: the reader opens that link and then
+  /// signs in, and a session the app already holds is left alone.
+  ///
+  /// Throws [AuthFailure].
+  Future<void> signUp({
+    required String name,
+    required String email,
+    required String password,
+    String birthDate = '',
+  }) {
+    return _repository.signUp(
+      name: name,
+      email: email,
+      password: password,
+      birthDate: birthDate,
+    );
+  }
+
+  /// Confirms the address behind a confirmation link's [token].
+  ///
+  /// Throws [AuthFailure].
+  Future<void> verifyEmail(String token) => _repository.verifyEmail(token);
+
+  /// Asks for a fresh confirmation link to [email].
+  ///
+  /// Throws [AuthFailure].
+  Future<void> requestEmailVerification(String email) =>
+      _repository.requestEmailVerification(email);
+
+  /// Whether the tenant checks ages, which the sign-up form asks before it
+  /// decides whether to offer a birth date.
+  ///
+  /// Throws [AuthFailure].
+  Future<AgeVerification> readAgeVerification() =>
+      _repository.readAgeVerification();
+
   /// The signed-in reader's birth date and the tenant rule it is read
   /// against, or `null` when nobody is signed in.
   ///

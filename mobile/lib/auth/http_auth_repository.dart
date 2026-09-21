@@ -26,6 +26,11 @@ class HttpAuthRepository implements AuthRepository {
   HttpAuthRepository._({required this._client, required this._tenants});
 
   static const _loginProcedure = '/publira.v1.AuthService/Login';
+  static const _createUserProcedure = '/publira.v1.AuthService/CreateUser';
+  static const _verifyUserEmailProcedure =
+      '/publira.v1.AuthService/VerifyUserEmail';
+  static const _requestEmailVerificationProcedure =
+      '/publira.v1.AuthService/RequestEmailVerification';
   static const _getMeProcedure = '/publira.v1.AuthService/GetMe';
   static const _updateMeProcedure = '/publira.v1.AuthService/UpdateMe';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
@@ -49,6 +54,85 @@ class HttpAuthRepository implements AuthRepository {
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<void> signUp({
+    required String name,
+    required String email,
+    required String password,
+    String birthDate = '',
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_createUserProcedure, {
+        'tenant': {'tenantId': tenantId},
+        'name': name,
+        'email': email,
+        'password': password,
+        // protojson reads an absent field as the empty string, which is what
+        // the API takes as a form that did not ask for a date.
+        if (birthDate.isNotEmpty) 'birthDate': birthDate,
+      }, tenantId: tenantId);
+      if (body['accepted'] != true) {
+        throw const AuthFailure(
+          AuthFailureKind.unexpected,
+          message: 'CreateUser answered without accepting the signup',
+        );
+      }
+    } on ConnectException catch (error) {
+      throw _toMailFailure(error);
+    }
+  }
+
+  @override
+  Future<void> verifyEmail(String token) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_verifyUserEmailProcedure, {
+        'tenant': {'tenantId': tenantId},
+        'token': token,
+      }, tenantId: tenantId);
+      if (body['verified'] != true) {
+        throw const AuthFailure(
+          AuthFailureKind.unexpected,
+          message: 'VerifyUserEmail answered without confirming the address',
+        );
+      }
+    } on ConnectException catch (error) {
+      throw switch (error.code) {
+        // A token the API never issued, and one it has already forgotten,
+        // are the same not_found and the same dead end for the reader.
+        'not_found' || 'invalid_argument' => AuthFailure(
+          AuthFailureKind.verificationTokenInvalid,
+          message: error.message,
+        ),
+        'failed_precondition' => AuthFailure(
+          AuthFailureKind.verificationTokenExpired,
+          message: error.message,
+        ),
+        _ => _toFailure(error),
+      };
+    }
+  }
+
+  @override
+  Future<void> requestEmailVerification(String email) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(_requestEmailVerificationProcedure, {
+        'tenant': {'tenantId': tenantId},
+        'email': email,
+      }, tenantId: tenantId);
+    } on ConnectException catch (error) {
+      throw _toMailFailure(error);
+    }
+  }
+
+  @override
+  Future<AgeVerification> readAgeVerification() async {
+    final tenant = await _getTenant();
+    return AgeVerification.fromWire(tenant['ageVerification']);
   }
 
   @override
@@ -180,6 +264,26 @@ class HttpAuthRepository implements AuthRepository {
         _readString(accessToken, 'expiresAt'),
       )?.toUtc(),
     );
+  }
+
+  /// What the RPCs that answer by sending mail refuse with. Login's own
+  /// codes do not apply to them: an address nobody has signed up with is
+  /// accepted here rather than rejected.
+  AuthFailure _toMailFailure(ConnectException error) {
+    if (error.isUnavailable) {
+      return AuthFailure(AuthFailureKind.network, message: error.message);
+    }
+    return switch (error.code) {
+      'invalid_argument' => AuthFailure(
+        AuthFailureKind.invalidInput,
+        message: error.message,
+      ),
+      'resource_exhausted' => AuthFailure(
+        AuthFailureKind.rateLimited,
+        message: error.message,
+      ),
+      _ => AuthFailure(AuthFailureKind.unexpected, message: error.message),
+    };
   }
 
   AuthFailure _toFailure(ConnectException error) {

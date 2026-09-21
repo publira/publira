@@ -87,6 +87,26 @@ class FakeAuthRepository implements AuthRepository {
   String? lastPassword;
   var refreshCount = 0;
 
+  /// What [signUp] was last called with, `null` until it has been called.
+  SignUpCall? lastSignUp;
+
+  /// Thrown by [signUp], standing in for an API that refuses it.
+  AuthFailure? signUpFailure;
+
+  /// The tokens [verifyEmail] accepts. Anything else is answered the way the
+  /// API answers a token it never issued.
+  Set<String> verificationTokens = {};
+
+  /// Thrown by [verifyEmail] in place of reading [verificationTokens],
+  /// standing in for a link whose time has run out or an API that is gone.
+  AuthFailure? verifyEmailFailure;
+
+  /// The addresses [requestEmailVerification] has been asked for, in order.
+  final requestedVerifications = <String>[];
+
+  /// Thrown by [requestEmailVerification].
+  AuthFailure? requestVerificationFailure;
+
   @override
   Future<AuthSession> signIn({
     required String email,
@@ -99,6 +119,54 @@ class FakeAuthRepository implements AuthRepository {
       throw failure;
     }
     return session;
+  }
+
+  @override
+  Future<void> signUp({
+    required String name,
+    required String email,
+    required String password,
+    String birthDate = '',
+  }) async {
+    lastSignUp = SignUpCall(
+      name: name,
+      email: email,
+      password: password,
+      birthDate: birthDate,
+    );
+    final failure = signUpFailure;
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  @override
+  Future<void> verifyEmail(String token) async {
+    final failure = verifyEmailFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (!verificationTokens.contains(token)) {
+      throw const AuthFailure(AuthFailureKind.verificationTokenInvalid);
+    }
+  }
+
+  @override
+  Future<void> requestEmailVerification(String email) async {
+    requestedVerifications.add(email);
+    final failure = requestVerificationFailure;
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  @override
+  Future<AgeVerification> readAgeVerification() async {
+    final failure = birthDateFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return verification;
   }
 
   @override
@@ -153,6 +221,24 @@ class FakeAuthRepository implements AuthRepository {
     this.birthDate = formatBirthDate(birthDate);
     return this.birthDate;
   }
+}
+
+/// One call to [FakeAuthRepository.signUp], so a test can assert on what the
+/// form sent rather than only on what the screen did next.
+class SignUpCall {
+  const SignUpCall({
+    required this.name,
+    required this.email,
+    required this.password,
+    required this.birthDate,
+  });
+
+  final String name;
+  final String email;
+  final String password;
+
+  /// `YYYY-MM-DD`, empty from a form that did not ask.
+  final String birthDate;
 }
 
 const fakeSession = AuthSession(

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
 
 /// Email and password sign-in against `AuthService/Login`.
 ///
-/// Creating an account and resetting a password stay on the website, so this
-/// screen only names them.
+/// Creating an account is a screen of its own here. Resetting a password
+/// stays on the website, so this screen only names it.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key, this.returnTo});
 
@@ -99,6 +100,13 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  /// The resend form, carrying the address the refused attempt used.
+  void _openResendVerification() {
+    context.push(
+      AppRoutes.resendVerificationPath(email: _emailController.text.trim()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
@@ -127,30 +135,29 @@ class _SignInScreenState extends State<SignInScreen> {
                   key: const ValueKey('sign-in-email'),
                   controller: _emailController,
                   decoration: InputDecoration(
-                    labelText: messages.signInEmailLabel,
+                    labelText: messages.authEmailLabel,
                     border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
                   autofillHints: const [AutofillHints.username],
                   textInputAction: TextInputAction.next,
-                  validator: (value) => (value ?? '').trim().isEmpty
-                      ? messages.signInEmailRequired
-                      : null,
+                  validator: (value) =>
+                      validateAuthEmail(messages, value ?? ''),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   key: const ValueKey('sign-in-password'),
                   controller: _passwordController,
                   decoration: InputDecoration(
-                    labelText: messages.signInPasswordLabel,
+                    labelText: messages.authPasswordLabel,
                     border: const OutlineInputBorder(),
                   ),
                   obscureText: true,
                   autofillHints: const [AutofillHints.password],
                   textInputAction: TextInputAction.done,
                   validator: (value) => (value ?? '').isEmpty
-                      ? messages.signInPasswordRequired
+                      ? messages.authPasswordRequired
                       : null,
                   onFieldSubmitted: (_) => _submit(),
                 ),
@@ -165,9 +172,30 @@ class _SignInScreenState extends State<SignInScreen> {
                         )
                       : Text(messages.commonSignIn),
                 ),
+                // The address is already typed, so the reader is not asked
+                // for it again on the way to a replacement link.
+                if (failure == AuthFailureKind.emailNotVerified) ...[
+                  const SizedBox(height: 16),
+                  OutlinedButton(
+                    key: const ValueKey('sign-in-resend-verification'),
+                    onPressed: _openResendVerification,
+                    child: Text(messages.authResendVerification),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 Text(
-                  messages.signInWebsiteNote,
+                  messages.signInNoAccount,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  key: const ValueKey('sign-in-to-sign-up'),
+                  onPressed: () => context.push(AppRoutes.signUp),
+                  child: Text(messages.signInSignUp),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  messages.signInPasswordResetNote,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -183,9 +211,13 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.invalidCredentials => messages.signInInvalidCredentials,
       AuthFailureKind.emailNotVerified => messages.signInEmailNotVerified,
       AuthFailureKind.network => messages.errorsRpcUnavailable,
+      AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
       AuthFailureKind.sessionExpired ||
+      AuthFailureKind.invalidInput ||
       AuthFailureKind.birthDateInvalid ||
       AuthFailureKind.birthDateAlreadySet ||
+      AuthFailureKind.verificationTokenInvalid ||
+      AuthFailureKind.verificationTokenExpired ||
       AuthFailureKind.unexpected => messages.signInFailed,
     };
   }

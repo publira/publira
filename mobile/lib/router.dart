@@ -12,15 +12,24 @@ import 'package:publira/screens/episode_viewer_screen.dart';
 import 'package:publira/screens/follows_screen.dart';
 import 'package:publira/screens/label_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
+import 'package:publira/screens/resend_verification_screen.dart';
 import 'package:publira/screens/search_screen.dart';
 import 'package:publira/screens/series_detail_screen.dart';
 import 'package:publira/screens/sign_in_screen.dart';
+import 'package:publira/screens/sign_up_screen.dart';
+import 'package:publira/screens/verify_email_screen.dart';
 
 /// Route path helpers for type-safe navigation.
 abstract final class AppRoutes {
   static const catalog = '/';
   static const search = '/search';
   static const signIn = '/sign-in';
+  static const signUp = '/sign-up';
+
+  /// The path the site's confirmation mail links to, which this app claims
+  /// as an App Link, so the token is spent here rather than in a browser.
+  static const verifyEmail = '/verify';
+  static const resendVerification = '/resend-verification';
   static const account = '/account';
   static const follows = 'follows';
   static const accountFollows = '$account/$follows';
@@ -34,6 +43,16 @@ abstract final class AppRoutes {
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
   static const checkoutReturn = '/checkout/return';
+
+  /// The resend form, with [email] already in its field for a reader sent
+  /// from a form that knows the address.
+  static String resendVerificationPath({String? email}) =>
+      email == null || email.isEmpty
+      ? resendVerification
+      : Uri(
+          path: resendVerification,
+          queryParameters: {'email': email},
+        ).toString();
 
   /// The sign-in form, landing on [returnTo] once the reader is in rather
   /// than on the screen that sent them.
@@ -100,6 +119,23 @@ GoRouter createAppRouter({String? initialLocation}) {
         builder: (context, state) => SignInScreen(
           returnTo: inAppLocation(state.uri.queryParameters['return_to']),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.signUp,
+        name: 'signUp',
+        builder: (context, state) => const SignUpScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyEmail,
+        name: 'verifyEmail',
+        builder: (context, state) =>
+            VerifyEmailScreen(token: state.uri.queryParameters['token'] ?? ''),
+      ),
+      GoRoute(
+        path: AppRoutes.resendVerification,
+        name: 'resendVerification',
+        builder: (context, state) =>
+            ResendVerificationScreen(email: state.uri.queryParameters['email']),
       ),
       GoRoute(
         path: AppRoutes.checkoutReturn,

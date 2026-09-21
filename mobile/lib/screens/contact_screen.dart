@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/contact/contact_failure.dart';
 import 'package:publira/contact/contact_repository.dart';
+import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
 
@@ -26,10 +27,6 @@ class ContactScreen extends StatefulWidget {
   @override
   State<ContactScreen> createState() => _ContactScreenState();
 }
-
-/// One `@` with something on either side and no whitespace. The API parses the
-/// address properly; this only catches what was obviously not one.
-final _emailShape = RegExp(r'^[^\s@]+@[^\s@]+$');
 
 class _ContactScreenState extends State<ContactScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -244,7 +241,7 @@ class _ContactScreenState extends State<ContactScreen> {
     if (utf8.encode(email).length > ContactScreen.maxReplyToBytes) {
       return messages.contactEmailTooLong;
     }
-    if (!_emailShape.hasMatch(email)) {
+    if (!emailShape.hasMatch(email)) {
       return messages.contactEmailInvalid;
     }
     return null;

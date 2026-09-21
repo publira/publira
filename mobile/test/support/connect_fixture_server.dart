@@ -39,6 +39,10 @@ class ConnectFixtureServer {
     this.followStatus = HttpStatus.ok,
     this.contactStatus = HttpStatus.ok,
     this.contactErrorCode = 'unavailable',
+    this.signupStatus = HttpStatus.ok,
+    this.signupErrorCode = 'unavailable',
+    this.verificationRequestStatus = HttpStatus.ok,
+    this.verificationRequestErrorCode = 'unavailable',
     this.acceptsPayments = false,
     this.checkoutStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
@@ -89,6 +93,23 @@ class ConnectFixtureServer {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
       '.eyJzdWIiOiJTZWVkTU1CUkFBQTEifQ'
       '.fixture-signature';
+
+  /// The account `CreateUser` opens here, and the session `Login` issues for
+  /// it once its address has been confirmed. The seed member is the reader
+  /// who was already registered; this one is the reader a test signs up.
+  static const signedUpPublicId = 'SeedMMBRBBB2';
+  static const signedUpAccessToken =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+      '.eyJzdWIiOiJTZWVkTU1CUkJCQjIifQ'
+      '.fixture-signature';
+
+  /// The confirmation token `CreateUser` issues, standing in for the one the
+  /// API would put in the mail it sends.
+  static const verificationToken = 'fixture-verification-token';
+
+  /// A token `VerifyUserEmail` answers as one whose time has run out, so a
+  /// test can reach the state a reader finds an old link in.
+  static const expiredVerificationToken = 'fixture-expired-verification-token';
 
   /// Unsigned JWT whose `sub` is the synthetic subject a free body's media
   /// token carries (`server/internal/auth`.`FreeEpisodeMediaSubject`). The API
@@ -426,6 +447,21 @@ class ConnectFixtureServer {
   int contactStatus;
   String contactErrorCode;
 
+  /// What `CreateUser` answers with, and the Connect code of the error body
+  /// when that is not 200, so a test can act out an API that refuses a
+  /// sign-up for any of its reasons.
+  int signupStatus;
+  String signupErrorCode;
+
+  /// The same pair for `RequestEmailVerification`, which is charged against
+  /// the same mail allowance and refused on its own.
+  int verificationRequestStatus;
+  String verificationRequestErrorCode;
+
+  /// The accounts `CreateUser` has opened here, keyed by address: what
+  /// `Login` then accepts, and whether the address has been confirmed.
+  final signups = <String, FixtureSignup>{};
+
   /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
   /// another value to act out a token the API has stopped accepting.
   String? activeAccessToken;
@@ -578,27 +614,33 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/Login')) {
-      if (body['email'] != memberEmail || body['password'] != memberPassword) {
-        await _write(request, HttpStatus.unauthorized, {
-          'code': 'unauthenticated',
-          'message': 'invalid credentials',
-        });
-        return;
-      }
-      await _write(request, HttpStatus.ok, {
-        'user': {
-          'publicId': memberPublicId,
-          'name': memberName,
-          'role': 'member',
-        },
-        'accessToken': {
-          'token': memberAccessToken,
-          'expiresAt': DateTime.now()
-              .toUtc()
-              .add(const Duration(hours: 24))
-              .toIso8601String(),
-        },
-      });
+      await _writeLogin(request, body);
+      return;
+    }
+
+    if (path.endsWith('/CreateUser')) {
+      await _writeCreateUser(request, body);
+      return;
+    }
+
+    if (path.endsWith('/VerifyUserEmail')) {
+      await _writeVerifyUserEmail(request, body);
+      return;
+    }
+
+    if (path.endsWith('/RequestEmailVerification')) {
+      // Every address is answered the same way, the way the API answers one,
+      // so nothing here reports whether an account exists.
+      await _write(
+        request,
+        verificationRequestStatus,
+        verificationRequestStatus == HttpStatus.ok
+            ? const {'requested': true}
+            : {
+                'code': verificationRequestErrorCode,
+                'message': verificationRequestErrorCode,
+              },
+      );
       return;
     }
 
@@ -1220,6 +1262,118 @@ class ConnectFixtureServer {
         : const {};
   }
 
+  /// `Login` for the seed member and for an account a test signed up here.
+  ///
+  /// An account whose address is still unconfirmed is refused the way the API
+  /// refuses one, with `failed_precondition` rather than `unauthenticated`,
+  /// because that is what tells the reader to open their mail rather than to
+  /// check their password.
+  Future<void> _writeLogin(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    final email = _trimmed(body['email']);
+    final password = _trimmed(body['password']);
+    if (email == memberEmail && password == memberPassword) {
+      await _write(request, HttpStatus.ok, {
+        'user': {
+          'publicId': memberPublicId,
+          'name': memberName,
+          'role': 'member',
+        },
+        'accessToken': _accessToken(memberAccessToken),
+      });
+      return;
+    }
+    final signup = signups[email];
+    if (signup == null || signup.password != password) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid credentials',
+      });
+      return;
+    }
+    if (!signup.verified) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': 'email address is not verified',
+      });
+      return;
+    }
+    await _write(request, HttpStatus.ok, {
+      'user': {
+        'publicId': signedUpPublicId,
+        'name': signup.name,
+        'role': 'member',
+      },
+      'accessToken': _accessToken(signedUpAccessToken),
+    });
+  }
+
+  /// `CreateUser` as the API answers it: an address that is already taken is
+  /// accepted exactly like a free one, so nothing here says which it was.
+  Future<void> _writeCreateUser(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    if (signupStatus != HttpStatus.ok) {
+      await _write(request, signupStatus, {
+        'code': signupErrorCode,
+        'message': signupErrorCode,
+      });
+      return;
+    }
+    final email = _trimmed(body['email']);
+    signups.putIfAbsent(
+      email,
+      () => FixtureSignup(
+        name: _trimmed(body['name']),
+        password: _trimmed(body['password']),
+        birthDate: _trimmed(body['birthDate']),
+      ),
+    );
+    await _write(request, HttpStatus.ok, {'accepted': true});
+  }
+
+  /// `VerifyUserEmail` for the one token [verificationToken] a sign-up here
+  /// is confirmed with. Everything else is the dead end the API answers with:
+  /// an expired link on [expiredVerificationToken], and a token it never
+  /// issued on anything else.
+  Future<void> _writeVerifyUserEmail(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    final token = _trimmed(body['token']);
+    if (token == expiredVerificationToken) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': 'verification token expired',
+      });
+      return;
+    }
+    if (token != verificationToken || signups.isEmpty) {
+      await _write(request, HttpStatus.notFound, {
+        'code': 'not_found',
+        'message': 'verification token not found',
+      });
+      return;
+    }
+    for (final signup in signups.values) {
+      signup.verified = true;
+    }
+    await _write(request, HttpStatus.ok, {'verified': true});
+  }
+
+  Map<String, Object?> _accessToken(String token) => {
+    'token': token,
+    'expiresAt': DateTime.now()
+        .toUtc()
+        .add(const Duration(hours: 24))
+        .toIso8601String(),
+  };
+
+  String _trimmed(Object? value) => value is String ? value.trim() : '';
+
   /// `UpdateMe` as the API applies a birth date: once, and only as a calendar
   /// date the tenant has reached and no more than 130 years back.
   Future<void> _writeUpdateMe(
@@ -1345,6 +1499,25 @@ class ConnectFixtureServer {
     request.response.write(jsonEncode(body));
     await request.response.close();
   }
+}
+
+/// One account `CreateUser` opened on [ConnectFixtureServer].
+class FixtureSignup {
+  FixtureSignup({
+    required this.name,
+    required this.password,
+    required this.birthDate,
+  });
+
+  final String name;
+  final String password;
+
+  /// `YYYY-MM-DD`, empty from a form that did not ask for one.
+  final String birthDate;
+
+  /// Whether a confirmation link has been opened for this address, which is
+  /// what `Login` stops refusing it for.
+  var verified = false;
 }
 
 /// One Connect request [ConnectFixtureServer] answered, kept so a test can
