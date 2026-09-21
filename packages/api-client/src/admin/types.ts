@@ -15,6 +15,12 @@ export type { EpisodeReadThrough } from "../gen/publira/admin/v1/engagement_pb.j
 export type { AdminNotification } from "../gen/publira/admin/v1/notification_pb.js";
 export type { TenantPaymentSettings } from "../gen/publira/admin/v1/payment_pb.js";
 export type {
+  RoyaltyConfig,
+  RoyaltyStatement,
+  RoyaltyStatementLine,
+  RoyaltyStatementTotals,
+} from "../gen/publira/admin/v1/royalty_pb.js";
+export type {
   TenantCommunityLimitOverrides,
   TenantRetentionOverrides,
 } from "../gen/publira/admin/v1/tenant_pb.js";

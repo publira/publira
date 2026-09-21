@@ -885,6 +885,7 @@
       "operations": "運用",
       "pages_label": "ページ",
       "readers_label": "読者",
+      "royalties_label": "印税",
       "series_label": "シリーズ",
       "settings_label": "設定"
     },
@@ -2129,6 +2130,92 @@
         "complete_count": "完読数",
         "member_view_count": "会員閲覧数",
         "rate": "読了率"
+      }
+    },
+    "royalties": {
+      "title": "印税",
+      "page_description": "月ごとに各著者へ支払う額を確認し、その月を締めて明細にします。締めた明細もここで振り返れます。",
+      "load_failed": "印税を読み込めませんでした。しばらくしてから再度お試しください。",
+      "close_failed": "月を締められませんでした。しばらくしてから再度お試しください。",
+      "already_closed": "この月はすでに締められています。",
+      "not_over": "この月はまだ終わっていないため、締められません。",
+      "statements_link": "締めた明細",
+      "open_month_link": "未締めの月",
+      "totals": {
+        "gross": "売上",
+        "refunded": "返金",
+        "payout": "著者への支払額"
+      },
+      "open": {
+        "section_error": "未締めの月を表示できませんでした",
+        "title": "未締めの月: {$period}",
+        "period_note": "{$start} から {$end} までの売上です（テナントのタイムゾーン {$time_zone} で区切っています）。月を締めるまで数値は変わり続けます。",
+        "in_progress": "この月はまだ進行中です。{$date} を過ぎると締められます。",
+        "auto_scheduled": "この月は {$date} に自動で締められます。",
+        "ready": "この月は終わっており、締められます。",
+        "not_open_title": "この月はプレビューできません",
+        "not_open_description": "すでに締められているか、まだ始まっていません。",
+        "picker_label": "月",
+        "picker_submit": "表示"
+      },
+      "close": {
+        "button": "月を締める",
+        "closing": "締めています…",
+        "confirm_title": "{$period} を締めますか?",
+        "confirm_description": "著者への支払額（合計 {$payout}）が明細として確定します。締めた月は元に戻せません。",
+        "confirm_action": "月を締める",
+        "done": "月を締めました。"
+      },
+      "lines": {
+        "title": "著者ごとの明細",
+        "description": "クレジットごとの当月の売上を著者ごとにまとめています。支払額は返金を差し引いた売上に分配率を掛け、1 円未満を切り捨てた額です。",
+        "empty_title": "この月の売上はありません",
+        "empty_description": "著者がクレジットされたエピソードが売れると明細が表示されます。",
+        "subtotal": "小計",
+        "no_role": "—",
+        "columns": {
+          "creator": "著者",
+          "series": "シリーズ",
+          "episode": "エピソード",
+          "role": "役割",
+          "sale_count": "販売数",
+          "gross": "売上",
+          "refunded": "返金",
+          "share": "分配率",
+          "payout": "支払額"
+        }
+      },
+      "statements": {
+        "title": "締めた明細",
+        "page_description": "締め済みの月を新しい順に表示します。締めた明細は変わりません。",
+        "section_error": "締めた明細を表示できませんでした",
+        "empty_title": "まだ締めた月はありません",
+        "empty_description": "月を締めると、ここに明細が表示されます。",
+        "item_label": "明細",
+        "pagination_aria": "締めた明細のページ",
+        "pagination_description": "1 ページに最大 {$count} 件の明細を表示します。",
+        "closed_by_none": "—",
+        "columns": {
+          "period": "月",
+          "closed_at": "締めた日時",
+          "closed_by": "締めた人",
+          "gross": "売上",
+          "refunded": "返金",
+          "payout": "支払額"
+        }
+      },
+      "statement": {
+        "title": "明細",
+        "page_description": "締めた月を、締めたときのまま表示します。",
+        "section_error": "明細を表示できませんでした",
+        "closed_meta": "{$closed_at} に {$name} が締めました。",
+        "closed_meta_no_user": "{$closed_at} に締められました。",
+        "time_zone": "締めた時点のテナントのタイムゾーン（{$time_zone}）で区切っています。",
+        "subtotal_note": "小計はこのページの明細だけを合計しています。",
+        "item_label": "明細行",
+        "pagination_aria": "明細行のページ",
+        "pagination_description": "1 ページに最大 {$count} 行を表示します。",
+        "back_to_list": "締めた明細に戻る"
       }
     }
   },

@@ -885,6 +885,7 @@
       "operations": "运营",
       "pages_label": "页面",
       "readers_label": "读者",
+      "royalties_label": "版税",
       "series_label": "系列",
       "settings_label": "设置"
     },
@@ -2129,6 +2130,92 @@
         "complete_count": "读完次数",
         "member_view_count": "会员浏览次数",
         "rate": "读完率"
+      }
+    },
+    "royalties": {
+      "title": "版税",
+      "page_description": "按月查看应付给每位作者的金额，将该月结算为明细，并回顾已结算的明细。",
+      "load_failed": "无法加载版税。请稍后再试。",
+      "close_failed": "无法结算该月。请稍后再试。",
+      "already_closed": "该月已经结算。",
+      "not_over": "该月尚未结束，无法结算。",
+      "statements_link": "已结算明细",
+      "open_month_link": "未结算月份",
+      "totals": {
+        "gross": "销售额",
+        "refunded": "退款",
+        "payout": "支付给作者"
+      },
+      "open": {
+        "section_error": "无法显示未结算月份",
+        "title": "未结算月份：{$period}",
+        "period_note": "{$start} 至 {$end} 的销售额，按租户时区（{$time_zone}）划分。结算前数字会持续变化。",
+        "in_progress": "该月仍在进行中。{$date} 之后即可结算。",
+        "auto_scheduled": "该月将于 {$date} 自动结算。",
+        "ready": "该月已结束，可以结算。",
+        "not_open_title": "无法预览该月",
+        "not_open_description": "该月已经结算，或尚未开始。",
+        "picker_label": "月份",
+        "picker_submit": "显示"
+      },
+      "close": {
+        "button": "结算该月",
+        "closing": "正在结算…",
+        "confirm_title": "要结算 {$period} 吗？",
+        "confirm_description": "支付给作者的金额（合计 {$payout}）将确定为明细。已结算的月份无法重新打开。",
+        "confirm_action": "结算该月",
+        "done": "已结算该月。"
+      },
+      "lines": {
+        "title": "按作者列出的明细",
+        "description": "按作者汇总每项署名的当月销售额。支付额为扣除退款后的销售额乘以分成比例，并舍去不足 1 日元的部分。",
+        "empty_title": "本月没有销售",
+        "empty_description": "署名作者的话数售出后，将显示明细。",
+        "subtotal": "小计",
+        "no_role": "—",
+        "columns": {
+          "creator": "作者",
+          "series": "系列",
+          "episode": "话",
+          "role": "职责",
+          "sale_count": "销售数",
+          "gross": "销售额",
+          "refunded": "退款",
+          "share": "分成比例",
+          "payout": "支付额"
+        }
+      },
+      "statements": {
+        "title": "已结算明细",
+        "page_description": "按从新到旧显示已结算的月份。已结算的明细不会改变。",
+        "section_error": "无法显示已结算明细",
+        "empty_title": "尚未结算任何月份",
+        "empty_description": "结算月份后，明细将显示在这里。",
+        "item_label": "明细",
+        "pagination_aria": "已结算明细分页",
+        "pagination_description": "每页最多显示 {$count} 份明细。",
+        "closed_by_none": "—",
+        "columns": {
+          "period": "月份",
+          "closed_at": "结算时间",
+          "closed_by": "结算人",
+          "gross": "销售额",
+          "refunded": "退款",
+          "payout": "支付额"
+        }
+      },
+      "statement": {
+        "title": "明细",
+        "page_description": "按结算时的原样显示已结算的月份。",
+        "section_error": "无法显示明细",
+        "closed_meta": "{$name} 于 {$closed_at} 结算。",
+        "closed_meta_no_user": "于 {$closed_at} 结算。",
+        "time_zone": "按结算时的租户时区（{$time_zone}）划分。",
+        "subtotal_note": "小计仅合计本页的明细行。",
+        "item_label": "明细行",
+        "pagination_aria": "明细行分页",
+        "pagination_description": "每页最多显示 {$count} 行。",
+        "back_to_list": "返回已结算明细"
       }
     }
   },

@@ -45,6 +45,7 @@ const hrefs = [
   "/readers",
   "/contact-messages",
   "/engagement",
+  "/royalties",
   "/audit-logs",
   "/settings",
 ];
@@ -205,6 +206,18 @@ export const AdminNavigation = () => (
             <ConsoleSidebarNavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.nav.engagement_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/royalties">
+          <ConsoleSidebarNavigationItemIcon>
+            <CollectionIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.nav.royalties_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>

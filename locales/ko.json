@@ -885,6 +885,7 @@
       "operations": "운영",
       "pages_label": "페이지",
       "readers_label": "독자",
+      "royalties_label": "인세",
       "series_label": "시리즈",
       "settings_label": "설정"
     },
@@ -2129,6 +2130,92 @@
         "complete_count": "완독 수",
         "member_view_count": "회원 열람 수",
         "rate": "완독률"
+      }
+    },
+    "royalties": {
+      "title": "인세",
+      "page_description": "월별로 각 작가에게 지급할 금액을 확인하고, 그 달을 마감해 명세서로 만듭니다. 마감한 명세서도 여기서 다시 볼 수 있습니다.",
+      "load_failed": "인세를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "close_failed": "월을 마감하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "already_closed": "이 달은 이미 마감되었습니다.",
+      "not_over": "이 달은 아직 끝나지 않아 마감할 수 없습니다.",
+      "statements_link": "마감한 명세서",
+      "open_month_link": "마감 전 월",
+      "totals": {
+        "gross": "매출",
+        "refunded": "환불",
+        "payout": "작가 지급액"
+      },
+      "open": {
+        "section_error": "마감 전 월을 표시하지 못했습니다",
+        "title": "마감 전 월: {$period}",
+        "period_note": "{$start}부터 {$end}까지의 매출입니다(테넌트 시간대 {$time_zone} 기준). 월을 마감하기 전까지 수치는 계속 바뀝니다.",
+        "in_progress": "이 달은 아직 진행 중입니다. {$date} 이후에 마감할 수 있습니다.",
+        "auto_scheduled": "이 달은 {$date}에 자동으로 마감됩니다.",
+        "ready": "이 달은 끝났으며 마감할 수 있습니다.",
+        "not_open_title": "이 달은 미리 볼 수 없습니다",
+        "not_open_description": "이미 마감되었거나 아직 시작되지 않았습니다.",
+        "picker_label": "월",
+        "picker_submit": "표시"
+      },
+      "close": {
+        "button": "월 마감",
+        "closing": "마감하는 중…",
+        "confirm_title": "{$period}을(를) 마감할까요?",
+        "confirm_description": "작가 지급액(합계 {$payout})이 명세서로 확정됩니다. 마감한 달은 다시 열 수 없습니다.",
+        "confirm_action": "월 마감",
+        "done": "월을 마감했습니다."
+      },
+      "lines": {
+        "title": "작가별 명세",
+        "description": "크레딧별 당월 매출을 작가별로 묶었습니다. 지급액은 환불을 뺀 매출에 배분율을 곱하고 1엔 미만을 버린 금액입니다.",
+        "empty_title": "이 달에는 매출이 없습니다",
+        "empty_description": "작가가 크레딧된 에피소드가 판매되면 명세가 표시됩니다.",
+        "subtotal": "소계",
+        "no_role": "—",
+        "columns": {
+          "creator": "작가",
+          "series": "시리즈",
+          "episode": "에피소드",
+          "role": "역할",
+          "sale_count": "판매 수",
+          "gross": "매출",
+          "refunded": "환불",
+          "share": "배분율",
+          "payout": "지급액"
+        }
+      },
+      "statements": {
+        "title": "마감한 명세서",
+        "page_description": "마감한 달을 최신순으로 표시합니다. 마감한 명세서는 바뀌지 않습니다.",
+        "section_error": "마감한 명세서를 표시하지 못했습니다",
+        "empty_title": "아직 마감한 달이 없습니다",
+        "empty_description": "달을 마감하면 여기에 명세서가 표시됩니다.",
+        "item_label": "명세서",
+        "pagination_aria": "마감한 명세서 페이지",
+        "pagination_description": "한 페이지에 최대 {$count}개의 명세서를 표시합니다.",
+        "closed_by_none": "—",
+        "columns": {
+          "period": "월",
+          "closed_at": "마감 일시",
+          "closed_by": "마감한 사람",
+          "gross": "매출",
+          "refunded": "환불",
+          "payout": "지급액"
+        }
+      },
+      "statement": {
+        "title": "명세서",
+        "page_description": "마감한 달을 마감 당시 그대로 표시합니다.",
+        "section_error": "명세서를 표시하지 못했습니다",
+        "closed_meta": "{$closed_at}에 {$name}님이 마감했습니다.",
+        "closed_meta_no_user": "{$closed_at}에 마감되었습니다.",
+        "time_zone": "마감 시점의 테넌트 시간대({$time_zone})를 기준으로 나눴습니다.",
+        "subtotal_note": "소계는 이 페이지의 명세만 합산합니다.",
+        "item_label": "명세 행",
+        "pagination_aria": "명세 행 페이지",
+        "pagination_description": "한 페이지에 최대 {$count}행을 표시합니다.",
+        "back_to_list": "마감한 명세서로 돌아가기"
       }
     }
   },

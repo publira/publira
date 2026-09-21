@@ -7,6 +7,7 @@ import {
   formatDate,
   formatDateTime,
   formatPlainDate,
+  formatPlainYearMonth,
   formatRelativeTime,
   formatWeekdayName,
   fromDateTimeLocalValue,
@@ -603,5 +604,24 @@ describe("currentWeekday", () => {
 
     expect(currentWeekday("UTC", { now: instant })).toBe(1);
     expect(currentWeekday("America/Los_Angeles", { now: instant })).toBe(0);
+  });
+});
+
+describe("formatPlainYearMonth", () => {
+  it("renders the month it was given, whatever the host zone", () => {
+    expect(formatPlainYearMonth("2026-03", { locale: "en" })).toBe(
+      "March 2026"
+    );
+    expect(formatPlainYearMonth("2026-03", { locale: "ja" })).toBe("2026年3月");
+  });
+
+  it("returns fallback for a value that is not a month", () => {
+    expect(formatPlainYearMonth("", { fallback: "-", locale: "en" })).toBe("-");
+    expect(
+      formatPlainYearMonth("2026-03-14", { fallback: "-", locale: "en" })
+    ).toBe("-");
+    expect(
+      formatPlainYearMonth("2026-13", { fallback: "-", locale: "en" })
+    ).toBe("-");
   });
 });

@@ -236,6 +236,16 @@ export const WEB_ADMIN_TENANT_POLICY_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the royalties tenant from
+ * `db/seeds/scenarios/260_royalties.sql`. Its suite closes a month, which is
+ * tenant-wide and never undone, so it needs a console of its own.
+ */
+export const WEB_ADMIN_ROYALTIES_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_ROYALTIES_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.royalty.localhost")
+);
+
+/**
  * Public site of the commenting tenant from the scenario seed
  * `db/seeds/scenarios/140_episode_comments.sql`.
  *
