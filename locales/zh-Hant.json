@@ -3322,6 +3322,7 @@
         "platform_smtp_test_email_sent": "寄出了 SMTP 測試郵件",
         "platform_storage_connection_tested": "測試了儲存連線",
         "platform_storage_settings_updated": "更新了儲存設定",
+        "platform_webpush_subject_updated": "更新了 Web Push 聯絡方式",
         "tenant_created": "建立了租戶",
         "tenant_info_updated": "更新了租戶資訊",
         "tenant_resumed": "恢復了租戶",
@@ -3990,6 +3991,28 @@
           "unknown": "儲存空間因 Publira 無法辨識的原因拒絕了操作。請檢查儲存服務商的記錄。"
         },
         "steps": "連線測試步驟"
+      }
+    },
+    "webpush": {
+      "tab": "Web Push",
+      "page_title": "設定 - Web Push",
+      "heading": "設定",
+      "page_description": "管理 Publira 傳送給讀者的瀏覽器通知。",
+      "title": "Web Push",
+      "description": "Publira 會以為此安裝產生的金鑰組簽署瀏覽器通知。私密金鑰始終保留在伺服器上，不會顯示。儲存的變更無須重新啟動，會在一分鐘內套用到所有伺服器。",
+      "configured": "Web Push 已設定。讀者可以在店面開啟瀏覽器通知。",
+      "unconfigured": "尚未設定 Web Push。在此儲存聯絡方式之前，店面不會提供瀏覽器通知，也不會傳送任何通知。",
+      "load_failed": "無法載入 Web Push 設定。請重新載入頁面後再試一次。",
+      "encryption_unavailable": "API 伺服器沒有用來保護私密金鑰的加密金鑰，因此無法設定 Web Push。請設定 PUBLIRA_SECRET_ENCRYPTION_KEYS，重新啟動 API 伺服器，然後重新載入此頁面。",
+      "save": "儲存 Web Push 設定",
+      "saved": "已儲存 Web Push 設定。",
+      "save_failed": "無法儲存 Web Push 設定。請稍後再試。",
+      "save_conflict": "其他營運人員已變更 Web Push 設定，因此未儲存。請重新載入頁面後再試一次。",
+      "form": {
+        "subject": "聯絡方式（VAPID subject）",
+        "subject_help": "將通知傳遞到瀏覽器的推播服務，會在此安裝傳送的通知發生問題時透過它聯絡你。請以 mailto:push@example.com 的形式輸入電子郵件地址，或輸入聯絡頁面的 https:// URL。",
+        "subject_required": "請輸入供推播服務使用的聯絡方式。",
+        "subject_invalid": "請輸入包含一個電子郵件地址的 mailto: URI（例如 mailto:push@example.com），或 https:// URL（例如 https://example.com/contact）。"
       }
     }
   }

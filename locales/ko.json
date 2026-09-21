@@ -3322,6 +3322,7 @@
         "platform_smtp_test_email_sent": "SMTP 테스트 메일 발송",
         "platform_storage_connection_tested": "스토리지 연결 테스트",
         "platform_storage_settings_updated": "스토리지 설정 변경",
+        "platform_webpush_subject_updated": "Web Push 연락처 변경",
         "tenant_created": "테넌트 생성",
         "tenant_info_updated": "테넌트 정보 변경",
         "tenant_resumed": "테넌트 재개",
@@ -3990,6 +3991,28 @@
           "unknown": "Publira가 알 수 없는 이유로 스토리지가 작업을 거부했습니다. 스토리지 제공업체의 로그를 확인하세요."
         },
         "steps": "연결 테스트 단계"
+      }
+    },
+    "webpush": {
+      "tab": "Web Push",
+      "page_title": "설정 - Web Push",
+      "heading": "설정",
+      "page_description": "Publira가 독자에게 보내는 브라우저 알림을 관리합니다.",
+      "title": "Web Push",
+      "description": "Publira는 이 설치를 위해 생성한 키 쌍으로 브라우저 알림에 서명합니다. 개인 키는 서버 밖으로 나가지 않으며 표시되지 않습니다. 저장한 변경 사항은 재시작 없이 1분 이내에 모든 서버에 반영됩니다.",
+      "configured": "Web Push가 설정되었습니다. 독자는 스토어프런트에서 브라우저 알림을 켤 수 있습니다.",
+      "unconfigured": "Web Push가 아직 설정되지 않았습니다. 여기에서 연락처를 저장하기 전까지 스토어프런트는 브라우저 알림을 제공하지 않으며 알림도 전송되지 않습니다.",
+      "load_failed": "Web Push 설정을 불러오지 못했습니다. 화면을 새로고침한 뒤 다시 시도하세요.",
+      "encryption_unavailable": "API 서버에 개인 키를 보호할 암호화 키가 없어 Web Push를 설정할 수 없습니다. PUBLIRA_SECRET_ENCRYPTION_KEYS를 설정하고 API 서버를 재시작한 뒤 이 화면을 새로고침하세요.",
+      "save": "Web Push 설정 저장",
+      "saved": "Web Push 설정을 저장했습니다.",
+      "save_failed": "Web Push 설정을 저장하지 못했습니다. 잠시 후 다시 시도하세요.",
+      "save_conflict": "다른 운영자가 Web Push 설정을 변경하여 저장되지 않았습니다. 화면을 새로고침한 뒤 다시 시도하세요.",
+      "form": {
+        "subject": "연락처(VAPID subject)",
+        "subject_help": "브라우저에 알림을 전달하는 푸시 서비스가 이 설치에서 보낸 알림에 문제가 있을 때 연락하는 데 사용합니다. 이메일 주소를 mailto:push@example.com 형식으로 입력하거나 연락 페이지의 https:// URL을 입력하세요.",
+        "subject_required": "푸시 서비스용 연락처를 입력하세요.",
+        "subject_invalid": "mailto:push@example.com처럼 이메일 주소 하나를 담은 mailto: URI나 https://example.com/contact 같은 https:// URL을 입력하세요."
       }
     }
   }

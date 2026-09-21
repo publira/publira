@@ -18,7 +18,7 @@ import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformSettings } from "#lib/platform-settings";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
+import { SettingsNavigation } from "../_components/settings-navigation";
 import { updatePlatformDefaultTimezoneAction } from "../_lib/actions";
 import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale-form";
 import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
@@ -29,21 +29,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
   return { title: t("platform.settings.general_title") };
 };
-
-const tabLabel = (
-  message:
-    | "platform.policy.community.tab"
-    | "platform.policy.retention.tab"
-    | "platform.policy.security.tab"
-    | "platform.settings.email_tab"
-    | "platform.settings.general_tab"
-    | "platform.storage.tab",
-  fallbackClassName: string
-) => (
-  <Suspense fallback={<SkeletonLine className={fallbackClassName} />}>
-    <Message message={message} />
-  </Suspense>
-);
 
 const SettingsFormSkeleton = () => (
   <PlatformSection>
@@ -99,15 +84,7 @@ const GeneralSettingsContent = async () => {
 
   return (
     <div className="grid gap-6">
-      <SettingsTabNav
-        communityLabel={tabLabel("platform.policy.community.tab", "h-4 w-20")}
-        current="general"
-        emailLabel={tabLabel("platform.settings.email_tab", "h-4 w-20")}
-        generalLabel={tabLabel("platform.settings.general_tab", "h-4 w-8")}
-        retentionLabel={tabLabel("platform.policy.retention.tab", "h-4 w-16")}
-        securityLabel={tabLabel("platform.policy.security.tab", "h-4 w-14")}
-        storageLabel={tabLabel("platform.storage.tab", "h-4 w-14")}
-      />
+      <SettingsNavigation current="general" />
       <Suspense fallback={<SettingsFormSkeleton />}>
         <DefaultLocaleSection
           initialDefaultLocale={

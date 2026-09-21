@@ -29,11 +29,20 @@ describe("SettingsTabNav", () => {
         retentionLabel="Retention"
         securityLabel="Security"
         storageLabel="Storage"
+        webPushLabel="Web Push"
       />
     );
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
-      ["General", "Email", "Storage", "Security", "Community", "Retention"]
+      [
+        "General",
+        "Email",
+        "Storage",
+        "Web Push",
+        "Security",
+        "Community",
+        "Retention",
+      ]
     );
   });
 
@@ -47,6 +56,7 @@ describe("SettingsTabNav", () => {
         retentionLabel="Retention"
         securityLabel="Security"
         storageLabel="Storage"
+        webPushLabel="Web Push"
       />
     );
 

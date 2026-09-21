@@ -3322,6 +3322,7 @@
         "platform_smtp_test_email_sent": "发送了 SMTP 测试邮件",
         "platform_storage_connection_tested": "测试了存储连接",
         "platform_storage_settings_updated": "更新了存储设置",
+        "platform_webpush_subject_updated": "更新了 Web Push 联系方式",
         "tenant_created": "创建了租户",
         "tenant_info_updated": "更新了租户信息",
         "tenant_resumed": "恢复了租户",
@@ -3990,6 +3991,28 @@
           "unknown": "存储因 Publira 无法识别的原因拒绝了操作。请检查存储服务商的日志。"
         },
         "steps": "连接测试步骤"
+      }
+    },
+    "webpush": {
+      "tab": "Web Push",
+      "page_title": "设置 - Web Push",
+      "heading": "设置",
+      "page_description": "管理 Publira 发送给读者的浏览器通知。",
+      "title": "Web Push",
+      "description": "Publira 使用为此安装生成的密钥对为浏览器通知签名。私钥始终保留在服务器上，不会显示。保存的更改无需重启，会在一分钟内生效于所有服务器。",
+      "configured": "Web Push 已配置。读者可以在店面开启浏览器通知。",
+      "unconfigured": "尚未配置 Web Push。在此保存联系方式之前，店面不会提供浏览器通知，也不会发送任何通知。",
+      "load_failed": "无法加载 Web Push 设置。请重新加载页面后重试。",
+      "encryption_unavailable": "API 服务器没有用于保护私钥的加密密钥，因此无法设置 Web Push。请设置 PUBLIRA_SECRET_ENCRYPTION_KEYS，重启 API 服务器，然后重新加载此页面。",
+      "save": "保存 Web Push 设置",
+      "saved": "已保存 Web Push 设置。",
+      "save_failed": "无法保存 Web Push 设置。请稍后重试。",
+      "save_conflict": "其他运营人员已更改 Web Push 设置，因此未保存。请重新加载页面后重试。",
+      "form": {
+        "subject": "联系方式（VAPID subject）",
+        "subject_help": "向浏览器投递通知的推送服务会在此安装发送的通知出现问题时通过它联系你。请以 mailto:push@example.com 的形式输入电子邮件地址，或输入联系页面的 https:// URL。",
+        "subject_required": "请输入供推送服务使用的联系方式。",
+        "subject_invalid": "请输入包含一个电子邮件地址的 mailto: URI（例如 mailto:push@example.com），或 https:// URL（例如 https://example.com/contact）。"
       }
     }
   }

@@ -13,7 +13,8 @@ const label = (
     | "platform.policy.security.tab"
     | "platform.settings.email_tab"
     | "platform.settings.general_tab"
-    | "platform.storage.tab",
+    | "platform.storage.tab"
+    | "platform.webpush.tab",
   fallbackClassName: string
 ) => (
   <Suspense fallback={<SkeletonLine className={fallbackClassName} />}>
@@ -34,5 +35,6 @@ export const SettingsNavigation = ({
     retentionLabel={label("platform.policy.retention.tab", "h-4 w-16")}
     securityLabel={label("platform.policy.security.tab", "h-4 w-14")}
     storageLabel={label("platform.storage.tab", "h-4 w-14")}
+    webPushLabel={label("platform.webpush.tab", "h-4 w-16")}
   />
 );

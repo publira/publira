@@ -3322,6 +3322,7 @@
         "platform_smtp_test_email_sent": "Sent an SMTP test email",
         "platform_storage_connection_tested": "Tested the storage connection",
         "platform_storage_settings_updated": "Updated storage settings",
+        "platform_webpush_subject_updated": "Updated the Web Push contact",
         "tenant_created": "Created a tenant",
         "tenant_info_updated": "Updated tenant details",
         "tenant_resumed": "Resumed a tenant",
@@ -3990,6 +3991,28 @@
           "unknown": "The storage refused for a reason Publira doesn't recognize. Check the storage provider's logs."
         },
         "steps": "Connection test steps"
+      }
+    },
+    "webpush": {
+      "tab": "Web Push",
+      "page_title": "Settings - Web Push",
+      "heading": "Settings",
+      "page_description": "Manage the browser notifications Publira sends to readers.",
+      "title": "Web Push",
+      "description": "Publira signs browser notifications with a key pair it generated for this installation. The private key stays on the server and is never shown. A saved change reaches every server within a minute, without a restart.",
+      "configured": "Web Push is configured. Readers can turn on browser notifications on the storefront.",
+      "unconfigured": "Web Push isn't configured yet. Until a contact is saved here, the storefront doesn't offer browser notifications and none are sent.",
+      "load_failed": "Could not load the Web Push settings. Reload the screen and try again.",
+      "encryption_unavailable": "Web Push can't be set up because the API server has no secret encryption keys to protect its private key with. Set PUBLIRA_SECRET_ENCRYPTION_KEYS, restart the API server, and reload this screen.",
+      "save": "Save Web Push settings",
+      "saved": "Web Push settings saved.",
+      "save_failed": "Could not save the Web Push settings. Please try again later.",
+      "save_conflict": "Another operator changed the Web Push settings, so nothing was saved. Reload the screen and try again.",
+      "form": {
+        "subject": "Contact (VAPID subject)",
+        "subject_help": "The push services that deliver notifications to browsers use this to reach you if something is wrong with the notifications this installation sends. Enter an email address as mailto:push@example.com, or the https:// URL of a contact page.",
+        "subject_required": "Enter a contact for push services.",
+        "subject_invalid": "Enter a mailto: URI with one email address, such as mailto:push@example.com, or an https:// URL, such as https://example.com/contact."
       }
     }
   }

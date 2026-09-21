@@ -49,6 +49,14 @@ const platformOperatorManagementSpecs = /platform\.operator-management\./u;
 const platformStorageSettingsSpecs = /platform\.storage-settings\./u;
 
 /**
+ * The spec that rewrites `platform_webpush_config`, whose key pair and subject
+ * the storefront's browser notification switch depends on. It clears the
+ * subject once and saves another, so it runs after the parallel projects
+ * rather than beside the member settings suite that subscribes a browser.
+ */
+const platformWebPushSettingsSpecs = /platform\.webpush-settings\./u;
+
+/**
  * This spec changes its tenant's saved comment mode twice and waits for the
  * public cache to observe each value. It runs after the parallel projects so
  * their requests cannot keep the old mode live while that round trip runs.
@@ -201,6 +209,7 @@ export default defineConfig({
         platformLocaleSwitchingSpecs,
         platformOperatorManagementSpecs,
         platformStorageSettingsSpecs,
+        platformWebPushSettingsSpecs,
         platformSetupSpecs,
         performanceSpecs,
         screenshotSpecs,
@@ -325,6 +334,20 @@ export default defineConfig({
         baseURL: WEB_PLATFORM_BASE_URL,
       },
     },
+    // Rewrites the installation's Web Push subject, which the storefront reads
+    // to offer browser notifications, so it follows the storage spec in the
+    // platform chain.
+    {
+      dependencies: ["platform-storage-settings"],
+      fullyParallel: false,
+      name: "platform-webpush-settings",
+      testMatch: [platformWebPushSettingsSpecs],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_PLATFORM_BASE_URL,
+      },
+    },
     // This round trip changes a tenant-wide setting and asks web-host to read
     // both values through its cache. It follows every parallel project so
     // concurrent requests cannot race either cache revalidation.
@@ -332,7 +355,7 @@ export default defineConfig({
       dependencies: [
         "catalog-error-boundary",
         "admin-error-boundary",
-        "platform-storage-settings",
+        "platform-webpush-settings",
       ],
       fullyParallel: false,
       name: "admin-comment-moderation",
@@ -366,7 +389,7 @@ export default defineConfig({
       dependencies: [
         "catalog-error-boundary",
         "admin-error-boundary",
-        "platform-storage-settings",
+        "platform-webpush-settings",
         "admin-age-verification",
       ],
       fullyParallel: false,
